@@ -111,9 +111,40 @@ struct opportunity_report {
     std::string reason;
 };
 
+struct live_context {
+    bool has_believable_local_evidence = false;
+    int evidence_age_minutes = 0;
+    int distance_to_target = 0;
+    bool target_in_bright_exposure = false;
+    bool stalker_in_bright_exposure = false;
+    bool target_has_focus = false;
+    bool cover_route_available = false;
+    bool edge_route_available = false;
+    bool direct_open_route_available = false;
+    bool forced_no_cover = false;
+    bool player_bleeding = false;
+    bool player_hurt = false;
+    bool player_low_stamina = false;
+    bool player_distracted = false;
+    bool player_noisy = false;
+    int zombie_pressure = 0;
+    bool near_cover_or_clutter = false;
+    bool stalker_hurt = false;
+    bool on_cooldown = false;
+};
+
+struct live_response {
+    decision next = decision::ignore;
+    approach_class route = approach_class::none;
+    int opportunity = 0;
+    bool persistent_state_required = false;
+    std::string reason;
+};
+
 interest_report evaluate_interest( const interest_context &ctx );
 latch_update advance_latch( const latch_context &ctx );
 approach_report choose_approach( const approach_context &ctx );
 opportunity_report evaluate_opportunity( const opportunity_context &ctx );
+live_response evaluate_live_response( const live_context &ctx );
 
 } // namespace writhing_stalker

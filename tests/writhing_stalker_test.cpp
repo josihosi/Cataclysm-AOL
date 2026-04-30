@@ -273,3 +273,45 @@ TEST_CASE( "writhing_stalker_withdrawal_and_cooldown_block_repeat_spam",
     CHECK( cooldown.next == decision::cooling_off );
     CHECK( cooldown.reason == "cooldown_blocks_repeat_strike" );
 }
+
+TEST_CASE( "writhing_stalker_live_response_requires_evidence_and_uses_cooldown",
+           "[writhing_stalker][ai][live]" )
+{
+    using namespace writhing_stalker;
+
+    live_context no_evidence;
+    no_evidence.distance_to_target = 8;
+    no_evidence.player_bleeding = true;
+    no_evidence.player_hurt = true;
+    no_evidence.player_low_stamina = true;
+    no_evidence.player_distracted = true;
+    const live_response ignored = evaluate_live_response( no_evidence );
+    CHECK( ignored.next == decision::ignore );
+    CHECK( ignored.reason == "live_no_believable_evidence" );
+
+    live_context shadow_ctx;
+    shadow_ctx.has_believable_local_evidence = true;
+    shadow_ctx.distance_to_target = 8;
+    shadow_ctx.cover_route_available = true;
+    shadow_ctx.near_cover_or_clutter = true;
+    const live_response shadow = evaluate_live_response( shadow_ctx );
+    CHECK( shadow.next == decision::shadow );
+    CHECK( shadow.route == approach_class::cover_shadow );
+    CHECK( shadow.reason == "live_shadowing_believable_evidence" );
+
+    live_context strike_ctx = shadow_ctx;
+    strike_ctx.player_bleeding = true;
+    strike_ctx.player_hurt = true;
+    strike_ctx.player_low_stamina = true;
+    strike_ctx.player_distracted = true;
+    strike_ctx.zombie_pressure = 2;
+    const live_response strike = evaluate_live_response( strike_ctx );
+    CHECK( strike.next == decision::strike );
+    CHECK( strike.reason == "live_vulnerability_window_strike" );
+
+    live_context cooldown_ctx = strike_ctx;
+    cooldown_ctx.on_cooldown = true;
+    const live_response cooldown = evaluate_live_response( cooldown_ctx );
+    CHECK( cooldown.next == decision::cooling_off );
+    CHECK( cooldown.reason == "live_latch_cooldown_blocks_relatched_pressure" );
+}

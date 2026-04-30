@@ -14,6 +14,7 @@
 
 #include "behavior.h"
 #include "bionics.h"
+#include "calendar.h"
 #include "cata_assert.h"
 #include "cata_utility.h"
 #include "character.h"
@@ -54,11 +55,13 @@
 #include "vehicle.h"
 #include "viewer.h"
 #include "vpart_position.h"
+#include "writhing_stalker_ai.h"
 
 static const damage_type_id damage_bash( "bash" );
 static const damage_type_id damage_cut( "cut" );
 
 static const efftype_id effect_absorbed_acidic( "absorbed_acidic" );
+static const efftype_id effect_bleed( "bleed" );
 static const efftype_id effect_absorbed_electric( "absorbed_electric" );
 static const efftype_id effect_bouldering( "bouldering" );
 static const efftype_id effect_countdown( "countdown" );
@@ -75,6 +78,7 @@ static const efftype_id effect_operating( "operating" );
 static const efftype_id effect_pacified( "pacified" );
 static const efftype_id effect_psi_stunned( "psi_stunned" );
 static const efftype_id effect_pushed( "pushed" );
+static const efftype_id effect_run( "run" );
 static const efftype_id effect_stumbled_into_invisible( "stumbled_into_invisible" );
 static const efftype_id effect_stunned( "stunned" );
 
@@ -91,6 +95,8 @@ static const itype_id itype_napalm( "napalm" );
 static const itype_id itype_pressurized_tank( "pressurized_tank" );
 
 static const material_id material_iflesh( "iflesh" );
+
+static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 
 static const mfaction_str_id monfaction_player( "player" );
 
@@ -507,6 +513,164 @@ bool monster::mating_angry() const
     return mating_angry;
 }
 
+static bool writhing_stalker_bright_exposure( const map &here, const tripoint_bub_ms &pos )
+{
+    static const int dim_light = round( .75 * default_daylight_level() );
+    return round( here.ambient_light_at( pos ) ) >= dim_light;
+}
+
+static bool writhing_stalker_has_cover_or_clutter( map &here, const tripoint_bub_ms &pos )
+{
+    for( const tripoint_bub_ms &nearby : here.points_in_radius( pos, 1 ) ) {
+        if( nearby == pos || !here.inbounds( nearby ) ) {
+            continue;
+        }
+        if( here.impassable_ter_furn( nearby ) || here.move_cost( nearby ) > 2 ||
+            !here.is_transparent_wo_fields( nearby ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static int writhing_stalker_zombie_pressure( const monster &stalker, const Creature &target )
+{
+    int pressure = 0;
+    for( const monster &other : g->all_monsters() ) {
+        if( &other == &stalker || other.type->id == mon_writhing_stalker ||
+            !other.type->in_species( species_ZOMBIE ) ) {
+            continue;
+        }
+        if( rl_dist( other.pos_bub(), target.pos_bub() ) <= 8 ) {
+            pressure++;
+        }
+    }
+    return pressure;
+}
+
+static writhing_stalker::live_context writhing_stalker_live_context( monster &stalker,
+        map &here, Creature &target )
+{
+    writhing_stalker::live_context ctx;
+    const tripoint_bub_ms stalker_pos = stalker.pos_bub();
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    const int distance = rl_dist( stalker_pos, target_pos );
+    const bool sees_target = stalker.sees( here, target );
+    const bool heard_recent_target = stalker.provocative_sound && stalker.wandf > 0 &&
+                                     rl_dist( stalker.wander_pos, target.pos_abs() ) <= 8;
+
+    ctx.has_believable_local_evidence = sees_target || heard_recent_target;
+    ctx.evidence_age_minutes = sees_target ? 0 : 5;
+    ctx.distance_to_target = distance;
+    ctx.target_in_bright_exposure = writhing_stalker_bright_exposure( here, target_pos );
+    ctx.stalker_in_bright_exposure = writhing_stalker_bright_exposure( here, stalker_pos );
+    ctx.target_has_focus = target.sees( here, stalker );
+    ctx.direct_open_route_available = here.clear_path( stalker_pos, target_pos, std::max( 1, distance ),
+                                      1, 100 );
+    ctx.cover_route_available = writhing_stalker_has_cover_or_clutter( here, stalker_pos ) ||
+                                writhing_stalker_has_cover_or_clutter( here, target_pos );
+    ctx.edge_route_available = here.is_outside( stalker_pos ) != here.is_outside( target_pos );
+    ctx.forced_no_cover = ctx.direct_open_route_available && !ctx.cover_route_available &&
+                          !ctx.edge_route_available;
+    ctx.zombie_pressure = writhing_stalker_zombie_pressure( stalker, target );
+    ctx.near_cover_or_clutter = writhing_stalker_has_cover_or_clutter( here, target_pos );
+    ctx.stalker_hurt = stalker.hp_percentage() <= 55;
+    ctx.on_cooldown = stalker.has_effect( effect_run );
+
+    if( Character *target_character = target.as_character() ) {
+        ctx.player_bleeding = target_character->has_effect( effect_bleed );
+        ctx.player_hurt = target_character->hp_percentage() <= 70;
+        ctx.player_low_stamina = target_character->get_stamina() < target_character->get_stamina_max() / 3;
+        ctx.player_distracted = !target_character->activity.is_null();
+        ctx.player_noisy = heard_recent_target;
+    }
+
+    return ctx;
+}
+
+static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, map &here,
+        Creature &target, bool &found )
+{
+    found = false;
+    tripoint_bub_ms best = stalker.pos_bub();
+    int best_score = INT_MIN;
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    creature_tracker &creatures = get_creature_tracker();
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( target_pos, 4 ) ) {
+        if( candidate.z() != stalker.posz() || !here.inbounds( candidate ) ) {
+            continue;
+        }
+        const int target_distance = rl_dist( candidate, target_pos );
+        if( target_distance < 2 || target_distance > 4 ) {
+            continue;
+        }
+        if( !stalker.can_move_to( candidate ) || creatures.creature_at( candidate, true ) != nullptr ) {
+            continue;
+        }
+        int score = 20 - rl_dist( stalker.pos_bub(), candidate ) - target_distance;
+        if( !target.sees( here, candidate ) ) {
+            score += 18;
+        }
+        if( writhing_stalker_has_cover_or_clutter( here, candidate ) ) {
+            score += 12;
+        }
+        if( !writhing_stalker_bright_exposure( here, candidate ) ) {
+            score += 8;
+        }
+        if( score > best_score ) {
+            best_score = score;
+            best = candidate;
+            found = true;
+        }
+    }
+
+    return here.get_abs( best );
+}
+
+static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &target )
+{
+    if( stalker.type->id != mon_writhing_stalker ) {
+        return false;
+    }
+
+    const writhing_stalker::live_response response = writhing_stalker::evaluate_live_response(
+                writhing_stalker_live_context( stalker, here, target ) );
+
+    switch( response.next ) {
+        case writhing_stalker::decision::strike:
+            stalker.set_dest( target.pos_abs() );
+            stalker.anger = std::max( stalker.anger, 80 );
+            return true;
+        case writhing_stalker::decision::shadow: {
+            bool found_shadow = false;
+            const tripoint_abs_ms shadow_dest = writhing_stalker_shadow_destination( stalker, here, target,
+                                                found_shadow );
+            if( found_shadow ) {
+                stalker.set_dest( shadow_dest );
+            } else {
+                stalker.unset_dest();
+            }
+            return true;
+        }
+        case writhing_stalker::decision::withdraw:
+        case writhing_stalker::decision::cooling_off: {
+            tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
+            away.z() = stalker.posz();
+            stalker.set_dest( away );
+            stalker.add_effect( effect_run, 5_turns );
+            return true;
+        }
+        case writhing_stalker::decision::hold:
+        case writhing_stalker::decision::interested:
+        case writhing_stalker::decision::ignore:
+            stalker.unset_dest();
+            return true;
+    }
+
+    return false;
+}
+
 void monster::plan()
 {
     monster_plan mon_plan( *this );
@@ -746,6 +910,10 @@ void monster::plan()
         }
 
     } else if( mon_plan.target != nullptr ) {
+
+        if( apply_writhing_stalker_plan( *this, here, *mon_plan.target ) ) {
+            return;
+        }
 
         const tripoint_abs_ms dest = mon_plan.target->pos_abs();
         Creature::Attitude att_to_target = attitude_to( *mon_plan.target );

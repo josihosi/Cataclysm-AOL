@@ -55,7 +55,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 Current target: create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without omniscient beelines or bandit-camp economy logic.
 
-Current boundary: monster/stat/spawn footing plus deterministic AI-decision substrate are implemented and validated. The stalker now has pure helper coverage for interest ranking, bounded latch/decay, cover-first approach, opportunity scoring, zombie distraction, withdrawal, and cooldown/no-repeat rules. Next execution should wire the smallest live game seam for shadow/strike/withdraw behavior without inheriting bandit-camp economy logic. The remaining proof burden is live source hookup -> strike/combat behavior -> persistence if new live state is stored -> live stalk/strike and no-omniscience controls.
+Current boundary: monster/stat/spawn footing, deterministic AI-decision substrate, and the smallest live monster-plan seam are implemented and validated. `monster::plan()` now routes `mon_writhing_stalker` through the pure live-response helper for local-evidence gating, shadow destinations, strike targeting, and withdraw/cooldown behavior without bandit-camp economy logic. No new persisted latch state was added; v0 cooldown uses existing monster effect state. The remaining proof burden is live/harness stalk/strike/withdraw scenes, no-omniscience negative control, exposed/focus retreat control, and tuning readout.
 
 Canonical references:
 - receipt: `doc/work-ledger.md` (`CAOL-WRITHING-STALKER-v0`)

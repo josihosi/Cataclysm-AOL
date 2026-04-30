@@ -251,4 +251,89 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     return report;
 }
 
+live_response evaluate_live_response( const live_context &ctx )
+{
+    live_response response;
+
+    if( !ctx.has_believable_local_evidence ) {
+        response.next = decision::ignore;
+        response.reason = "live_no_believable_evidence";
+        return response;
+    }
+
+    interest_context interest_ctx;
+    interest_ctx.recent_human_evidence = true;
+    interest_ctx.evidence_age_minutes = ctx.evidence_age_minutes;
+    interest_ctx.exposed_night_light = ctx.target_in_bright_exposure;
+    interest_ctx.forest_or_building_edge = ctx.cover_route_available;
+    interest_ctx.town_or_road_edge = ctx.edge_route_available;
+    interest_ctx.zombie_pressure = ctx.zombie_pressure;
+
+    latch_state live_latch;
+    live_latch.cooldown_minutes = ctx.on_cooldown ? 1 : 0;
+    latch_update latch = advance_latch( latch_context{ live_latch, evaluate_interest( interest_ctx ), 0,
+            ctx.distance_to_target, ctx.stalker_in_bright_exposure && ctx.target_has_focus } );
+
+    if( !latch.state.active ) {
+        response.next = latch.next;
+        response.reason = "live_latch_" + latch.reason;
+        return response;
+    }
+
+    approach_context approach_ctx;
+    approach_ctx.latch = latch.state;
+    approach_ctx.cover_route_available = ctx.cover_route_available;
+    approach_ctx.edge_route_available = ctx.edge_route_available;
+    approach_ctx.direct_open_route_available = ctx.direct_open_route_available;
+    approach_ctx.bright_exposure = ctx.stalker_in_bright_exposure;
+    approach_ctx.forced_no_cover = ctx.forced_no_cover;
+    const approach_report approach = choose_approach( approach_ctx );
+
+    opportunity_context opportunity_ctx;
+    opportunity_ctx.latch = latch.state;
+    opportunity_ctx.player_bleeding = ctx.player_bleeding;
+    opportunity_ctx.player_hurt = ctx.player_hurt;
+    opportunity_ctx.player_low_stamina = ctx.player_low_stamina;
+    opportunity_ctx.player_distracted = ctx.player_distracted;
+    opportunity_ctx.player_noisy = ctx.player_noisy;
+    opportunity_ctx.zombie_pressure = ctx.zombie_pressure;
+    opportunity_ctx.near_cover_or_clutter = ctx.near_cover_or_clutter;
+    opportunity_ctx.bright_exposure = ctx.stalker_in_bright_exposure || ctx.target_in_bright_exposure;
+    opportunity_ctx.player_focused = ctx.target_has_focus;
+    opportunity_ctx.stalker_hurt = ctx.stalker_hurt;
+    const opportunity_report opportunity = evaluate_opportunity( opportunity_ctx );
+
+    response.route = approach.route;
+    response.opportunity = opportunity.opportunity;
+
+    if( opportunity.next == decision::withdraw || opportunity.next == decision::cooling_off ) {
+        response.next = opportunity.next;
+        response.reason = "live_" + opportunity.reason;
+        return response;
+    }
+
+    if( opportunity.next == decision::strike ) {
+        response.next = decision::strike;
+        response.reason = "live_" + opportunity.reason;
+        return response;
+    }
+
+    if( approach.next == decision::hold ) {
+        response.next = decision::hold;
+        response.reason = "live_" + approach.reason;
+        return response;
+    }
+
+    if( ctx.distance_to_target <= 2 && opportunity.next == decision::hold ) {
+        response.next = decision::hold;
+        response.reason = "live_close_alert_target_hold";
+        return response;
+    }
+
+    response.next = approach.next == decision::shadow ? decision::shadow : opportunity.next;
+    response.reason = response.next == decision::shadow ? "live_shadowing_believable_evidence" :
+                      "live_" + opportunity.reason;
+    return response;
+}
+
 } // namespace writhing_stalker

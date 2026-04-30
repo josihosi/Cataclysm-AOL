@@ -31,7 +31,7 @@ Success state:
 - [x] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
 - [ ] Strike behavior creates short cut/bleed pressure rather than a tank duel.
 - [x] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
-- [ ] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
+- [x] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
 - [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
 - [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
 - [ ] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
