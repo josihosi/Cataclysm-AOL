@@ -286,6 +286,22 @@ struct structural_bounty_read {
     std::string summary;
 };
 
+struct structural_bounty_scan_result {
+    int scan_budget = 0;
+    int budget_used = 0;
+    bool budget_exhausted = false;
+    int sites_considered = 0;
+    int sites_skipped_not_camp = 0;
+    int sites_skipped_retired = 0;
+    int sites_skipped_no_ready_home = 0;
+    int sites_skipped_active_outside = 0;
+    int sites_deferred_by_cadence = 0;
+    int candidates_sampled = 0;
+    int leads_seeded = 0;
+    int leads_suppressed_by_memory = 0;
+    std::vector<std::string> notes;
+};
+
 struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
@@ -414,6 +430,9 @@ bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &i
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
                                    const structural_bounty_read &read, int now_minutes );
+structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
+        int now_minutes, int scan_budget,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

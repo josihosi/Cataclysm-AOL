@@ -38,6 +38,34 @@ void add_bandit_camp_member( bandit_live_world::world_state &world, int index, i
              tripoint_abs_ms( 240 + index, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
              special_lookup ) );
 }
+
+void add_bandit_work_camp_member( bandit_live_world::world_state &world, int index,
+                                  int id_base = 12000 )
+{
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( id_base + index ),
+             tripoint_abs_ms( 984 + index, 1224, 0 ), std::string( "bandit_work_camp" ),
+             std::nullopt, special_lookup ) );
+}
+
+void add_cannibal_camp_member( bandit_live_world::world_state &world, int index,
+                               int id_base = 12500 )
+{
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter",
+             character_id( id_base + index ), tripoint_abs_ms( 1680 + index, 1920, 0 ),
+             std::string( "cannibal_camp" ), std::nullopt, special_lookup ) );
+}
+
+std::optional<std::string> lookup_test_terrain(
+    const std::vector<std::pair<tripoint_abs_omt, std::string>> &terrain,
+    const tripoint_abs_omt &omt )
+{
+    for( const std::pair<tripoint_abs_omt, std::string> &entry : terrain ) {
+        if( entry.first == omt ) {
+            return entry.second;
+        }
+    }
+    return std::nullopt;
+}
 } // namespace
 
 TEST_CASE( "bandit_live_world_claims_one_bounded_special_backed_site_ledger", "[bandit][live_world]" )
@@ -776,6 +804,292 @@ TEST_CASE( "bandit_structural_bounty_lead_upsert_respects_debounce",
     CHECK( bandit_live_world::structural_bounty_memory_suppresses_refresh( site.intelligence_map,
             town_omt, town.terrain_class ) );
     CHECK_FALSE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town, 400 ) );
+}
+
+TEST_CASE( "bandit_structural_scan_seeds_sparse_leads",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13200 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const std::vector<std::pair<tripoint_abs_omt, std::string>> terrain = {
+        { tripoint_abs_omt( 6, 20, 0 ), "forest_thick" },
+        { tripoint_abs_omt( 14, 20, 0 ), "house_base_north" },
+        { tripoint_abs_omt( 10, 16, 0 ), "field_road" },
+        { tripoint_abs_omt( 10, 24, 0 ), "forest_water" },
+    };
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 4,
+    [&terrain]( const tripoint_abs_omt & omt ) {
+        return lookup_test_terrain( terrain, omt );
+    } );
+
+    CHECK( result.sites_considered == 1 );
+    CHECK( result.candidates_sampled == 4 );
+    CHECK( result.budget_used == 4 );
+    CHECK( result.leads_seeded == 3 );
+    CHECK( site.intelligence_map.known_radius_omt == 8 );
+    CHECK( site.intelligence_map.next_near_tick_minutes == 60 );
+    CHECK( site.intelligence_map.leads.size() == 3 );
+
+    const std::string forest_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                  tripoint_abs_omt( 6, 20, 0 ), "forest" );
+    const bandit_live_world::camp_map_lead *forest = site.intelligence_map.find_lead( forest_id );
+    REQUIRE( forest != nullptr );
+    CHECK( forest->kind == bandit_live_world::camp_lead_kind::structural_bounty );
+    CHECK( forest->status == bandit_live_world::camp_lead_status::suspected );
+    CHECK( forest->target_id == "forest" );
+    CHECK( forest->bounty == 1 );
+    CHECK( forest->threat == 0 );
+    CHECK( forest->confidence == 1 );
+    CHECK_FALSE( forest->generated_by_this_camp_routine );
+
+    const std::string town_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                tripoint_abs_omt( 14, 20, 0 ), "town" );
+    const bandit_live_world::camp_map_lead *town = site.intelligence_map.find_lead( town_id );
+    REQUIRE( town != nullptr );
+    CHECK( town->bounty == 2 );
+    CHECK( town->threat == 0 );
+    CHECK( town->source_key == "structural_bounty:town" );
+}
+
+TEST_CASE( "bandit_structural_scan_respects_global_budget_cap",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13300 );
+    add_bandit_work_camp_member( world, 0, 13400 );
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 5,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+
+    REQUIRE( world.sites.size() == 2 );
+    CHECK( result.sites_considered == 2 );
+    CHECK( result.candidates_sampled == 5 );
+    CHECK( result.budget_used == 5 );
+    CHECK( result.budget_exhausted );
+    CHECK( result.leads_seeded == 5 );
+    CHECK( world.sites.front().intelligence_map.leads.size() == 4 );
+    CHECK( world.sites.back().intelligence_map.leads.size() == 1 );
+}
+
+TEST_CASE( "bandit_structural_scan_respects_per_camp_near_cadence",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13500 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const bandit_live_world::structural_bounty_scan_result first =
+        bandit_live_world::advance_structural_bounty_scan( world, 10, 4,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+    CHECK( first.candidates_sampled == 4 );
+    CHECK( site.intelligence_map.next_near_tick_minutes == 70 );
+
+    const bandit_live_world::structural_bounty_scan_result second =
+        bandit_live_world::advance_structural_bounty_scan( world, 20, 4,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+    CHECK( second.sites_considered == 1 );
+    CHECK( second.sites_deferred_by_cadence == 1 );
+    CHECK( second.candidates_sampled == 0 );
+    CHECK( second.leads_seeded == 0 );
+    CHECK( site.intelligence_map.next_near_tick_minutes == 70 );
+}
+
+TEST_CASE( "bandit_structural_scan_skips_non_camp_profiles",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_cannibal_camp_member( world, 0, 13600 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 4,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+
+    CHECK( result.sites_considered == 1 );
+    CHECK( result.sites_skipped_not_camp == 1 );
+    CHECK( result.candidates_sampled == 0 );
+    CHECK( site.intelligence_map.leads.empty() );
+}
+
+TEST_CASE( "bandit_structural_scan_skips_active_outside_or_no_ready_home_sites",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13700 );
+    add_bandit_work_camp_member( world, 0, 13800 );
+    bandit_live_world::site_record &active_outside_site = world.sites.front();
+    bandit_live_world::site_record &empty_home_site = world.sites.back();
+    active_outside_site.active_member_ids.push_back( character_id( 13700 ) );
+    empty_home_site.members.clear();
+    empty_home_site.headcount = 0;
+    empty_home_site.spawn_tiles.clear();
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 8,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+
+    CHECK( result.sites_considered == 2 );
+    CHECK( result.sites_skipped_active_outside == 1 );
+    CHECK( result.sites_skipped_no_ready_home == 1 );
+    CHECK( result.candidates_sampled == 0 );
+    CHECK( active_outside_site.intelligence_map.leads.empty() );
+    CHECK( empty_home_site.intelligence_map.leads.empty() );
+}
+
+TEST_CASE( "bandit_structural_scan_skips_retired_empty_sites",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13900 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.retired_empty_site = true;
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 4,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+
+    CHECK( result.sites_considered == 1 );
+    CHECK( result.sites_skipped_retired == 1 );
+    CHECK( result.candidates_sampled == 0 );
+    CHECK( result.leads_seeded == 0 );
+    CHECK( site.intelligence_map.leads.empty() );
+    CHECK( site.intelligence_map.next_near_tick_minutes == -1 );
+}
+
+TEST_CASE( "bandit_structural_scan_does_not_refresh_harvested_or_dangerous_bounty",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14000 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 10 ) );
+    const std::string forest_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                  forest_omt, "forest" );
+    site.intelligence_map.find_lead( forest_id )->status =
+        bandit_live_world::camp_lead_status::harvested;
+    site.intelligence_map.find_lead( forest_id )->bounty = 0;
+    site.intelligence_map.find_lead( forest_id )->times_harvested = 1;
+
+    const tripoint_abs_omt town_omt( 14, 20, 0 );
+    const bandit_live_world::structural_bounty_read town_read =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town_read, 10 ) );
+    const std::string town_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                town_omt, "town" );
+    site.intelligence_map.find_lead( town_id )->status =
+        bandit_live_world::camp_lead_status::dangerous;
+    site.intelligence_map.find_lead( town_id )->threat = 5;
+
+    const std::vector<std::pair<tripoint_abs_omt, std::string>> terrain = {
+        { forest_omt, "forest" },
+        { town_omt, "house_base" },
+    };
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 2,
+    [&terrain]( const tripoint_abs_omt & omt ) {
+        return lookup_test_terrain( terrain, omt );
+    } );
+
+    CHECK( result.candidates_sampled == 2 );
+    CHECK( result.leads_seeded == 0 );
+    CHECK( result.leads_suppressed_by_memory == 2 );
+    REQUIRE( site.intelligence_map.find_lead( forest_id ) != nullptr );
+    CHECK( site.intelligence_map.find_lead( forest_id )->status ==
+           bandit_live_world::camp_lead_status::harvested );
+    CHECK( site.intelligence_map.find_lead( forest_id )->bounty == 0 );
+    CHECK( site.intelligence_map.find_lead( forest_id )->times_harvested == 1 );
+    REQUIRE( site.intelligence_map.find_lead( town_id ) != nullptr );
+    CHECK( site.intelligence_map.find_lead( town_id )->status ==
+           bandit_live_world::camp_lead_status::dangerous );
+    CHECK( site.intelligence_map.find_lead( town_id )->threat == 5 );
+}
+
+TEST_CASE( "bandit_structural_scan_suppresses_recently_checked_structural_lead",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14100 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, "forest" );
+    site.intelligence_map.find_lead( lead_id )->last_checked_minutes = 20;
+    site.intelligence_map.find_lead( lead_id )->last_outcome = "recently_checked_low_interest";
+
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 30, 1,
+    []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::string( "forest" );
+    } );
+
+    CHECK( result.candidates_sampled == 1 );
+    CHECK( result.leads_seeded == 0 );
+    CHECK( result.leads_suppressed_by_memory == 1 );
+    REQUIRE( site.intelligence_map.find_lead( lead_id ) != nullptr );
+    CHECK( site.intelligence_map.find_lead( lead_id )->last_checked_minutes == 20 );
+    CHECK( site.intelligence_map.find_lead( lead_id )->last_outcome == "recently_checked_low_interest" );
+}
+
+TEST_CASE( "bandit_structural_scan_does_not_convert_mobile_actor_to_ground_bounty",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14200 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt player_omt( 6, 20, 0 );
+
+    bandit_live_world::camp_map_lead player;
+    player.lead_id = "player_seen_in_open_ground";
+    player.kind = bandit_live_world::camp_lead_kind::moving_actor;
+    player.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    player.target_id = "player@6,20,0";
+    player.omt = player_omt;
+    player.bounty = 9;
+    player.confidence = 3;
+    site.intelligence_map.leads.push_back( player );
+
+    const std::vector<std::pair<tripoint_abs_omt, std::string>> terrain = {
+        { player_omt, "field_road" },
+    };
+    const bandit_live_world::structural_bounty_scan_result result =
+        bandit_live_world::advance_structural_bounty_scan( world, 0, 1,
+    [&terrain]( const tripoint_abs_omt & omt ) {
+        return lookup_test_terrain( terrain, omt );
+    } );
+
+    CHECK( result.candidates_sampled == 1 );
+    CHECK( result.leads_seeded == 0 );
+    REQUIRE( site.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead *mobile =
+        site.intelligence_map.find_lead( "player_seen_in_open_ground" );
+    REQUIRE( mobile != nullptr );
+    CHECK( mobile->kind == bandit_live_world::camp_lead_kind::moving_actor );
+    CHECK( mobile->target_id == "player@6,20,0" );
+    CHECK( mobile->bounty == 9 );
 }
 
 TEST_CASE( "bandit_structural_bounty_keeps_mobile_actor_separate_from_ground_bounty",
