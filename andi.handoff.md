@@ -4,52 +4,79 @@
 
 `CAOL-WRITHING-STALKER-v0` is the **ACTIVE / GREENLIT IMPLEMENTATION PACKET**.
 
-Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, and `TESTING.md` aligned downstream. This handoff is only a terse executor packet; if it ever disagrees with those files, repair this file from canon instead of treating it as truth.
+Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it ever disagrees with those files, repair this file from canon instead of treating it as truth.
 
-The previous Bandit structural bounty Phase 6 handoff is superseded. `CAOL-BANDIT-STRUCT-BOUNTY-v0` is closed/checkpointed green v0 in canon and must not pull execution away from the current creature packet.
+The previous Bandit structural bounty handoff is superseded. `CAOL-BANDIT-STRUCT-BOUNTY-v0` is closed/checkpointed green v0 in canon and must not pull execution away from the current creature packet.
 
 ## Current state boundary
 
-Monster/stat/spawn footing and deterministic AI-decision substrate are implemented and validated:
+Monster/stat/spawn footing, deterministic AI-decision substrate, the live monster-plan seam, and the three basic live writhing-stalker behavior proofs are implemented and validated.
 
-- `mon_writhing_stalker` exists in `data/json/monsters/zed_misc.json` as a rare first-generation zombie-adjacent predator.
-- `GROUP_ZOMBIE` has exactly one direct rare singleton spawn entry for `mon_writhing_stalker` in `data/json/monstergroups/zombies.json`.
-- `tests/writhing_stalker_test.cpp` covers initial creature footing, flags/triggers, special attacks, no-upgrade footing, and rarity/singleton guardrails.
-- `src/writhing_stalker_ai.*` plus `tests/writhing_stalker_test.cpp` cover the pure decision seam: interest ranking, bounded latch/decay, cover-first approach, opportunity scoring, zombie distraction, withdrawal, and cooldown/no-repeat rules.
-- Checkpoint commits on `dev`:
-  - `e0649a71be Add writhing stalker footing`
-  - `aefa526335 Record writhing stalker footing boundary`
-  - `25181aca49 Add writhing stalker AI decision helpers`
-  - `cd7dc50a6b Update writhing stalker deterministic substrate state`
+Green writhing-stalker boundary now includes:
+
+- `mon_writhing_stalker` JSON/stat footing and rare singleton `GROUP_ZOMBIE` spawn entry.
+- Deterministic interest/latch/approach/opportunity/withdraw/cooldown tests in `src/writhing_stalker_ai.*` and `tests/writhing_stalker_test.cpp`.
+- Live `monster::plan()` seam routing `mon_writhing_stalker` through `writhing_stalker::evaluate_live_response()` for local-evidence gating, shadow destinations, strike targeting, withdrawal, and cooldown behavior.
+- Support live spawn/save footing: `.userdata/dev-harness/harness_runs/20260430_161342/`.
+- Basic target/plan-turn live seam proof: `.userdata/dev-harness/harness_runs/20260430_161535/`.
+- Exposed/focused withdrawal proof: `.userdata/dev-harness/harness_runs/20260430_163626/`.
+- Midnight vulnerable-player shadow/strike/cooldown proof: `.userdata/dev-harness/harness_runs/20260430_170528/`.
+- No-omniscience negative-control proof: `.userdata/dev-harness/harness_runs/20260430_173555/`.
+
+V0 adds no new persisted latch state; cooldown uses existing monster effect state.
 
 ## Next executor slice
 
-Wire the smallest live game seam for shadow/strike/withdraw behavior. The deterministic substrate is green support evidence only; do not redo it, and do not treat it as gameplay proof.
+Run the mixed-hostile metrics packet:
 
-1. Connect the minimal live path that feeds believable evidence, exposure/focus, vulnerability, zombie pressure, and route context into the stalker decision helpers without bandit-camp economy logic.
-2. Make the live monster behavior consume those decisions for shadow/hold/strike/withdraw/cooldown in the game path.
-3. Keep persistence honest: if the live seam stores new latch/cooldown state, add save/load proof; if it remains stateless for v0, record persistence as not applicable/future-only.
-4. After the live seam exists, promote harness scenarios:
-   - `writhing_stalker.live_shadow_strike_mcw`
-   - `writhing_stalker.live_no_omniscient_beeline_mcw`
-   - `writhing_stalker.live_exposed_retreat_mcw`
+- scenario target: `performance.mixed_hostile_stalker_horde_mcw`
+- contract: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
+
+The packet must report metrics with:
+
+- one bandit camp / hostile live-world site;
+- one cannibal camp / hostile live-world site;
+- exactly one `mon_writhing_stalker` at plausible distance;
+- one overmap horde or horde-pressure fixture;
+- runtime commit/dirty state;
+- setup proof all four requested actors exist;
+- in-game window and sampled turns/waited minutes;
+- harness wall-clock;
+- per-turn min/median/p95/max where available;
+- `bandit_live_world perf` min/median/max plus slice maxima;
+- stalker and horde timing, or explicit `not instrumented` where unavailable;
+- debug/log spam, stability, and playability/tuning note.
+
+Do **not** drift back into wiring/promoting the three basic live writhing-stalker scenarios. They are green. The next honest missing evidence is the mixed-hostile performance/tuning readout.
 
 ## Credited evidence for current boundary
 
-- `git diff --check`
-- `python3 -m json.tool data/json/monsters/zed_misc.json`
-- `python3 -m json.tool data/json/monstergroups/zombies.json`
-- `make -j4 tests LINTJSON=0 ASTYLE=0`
-- `make -j4 obj/writhing_stalker_ai.o tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0`
-- `./tests/cata_test "[writhing_stalker]"` (88 assertions / 7 test cases after deterministic substrate landed)
-- Focused Python JSON audit proving exactly one `mon_writhing_stalker` entry, in `GROUP_ZOMBIE`, with `weight: 1`, `cost_multiplier: 50`, and no pack-size spam.
+- JSON/schema and rarity gates:
+  - `python3 -m json.tool data/json/monsters/zed_misc.json`
+  - `python3 -m json.tool data/json/monstergroups/zombies.json`
+  - focused Python JSON audit for singleton `GROUP_ZOMBIE` entry.
+- Deterministic/code gates:
+  - `make -j4 obj/writhing_stalker_ai.o obj/monmove.o tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0`
+  - `./tests/cata_test "[writhing_stalker]"`
+- Live behavior gates:
+  - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/`
+  - `writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/`
+  - `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/`
+  - `writhing_stalker.live_shadow_strike_mcw` -> `.userdata/dev-harness/harness_runs/20260430_170528/`
+  - `writhing_stalker.live_no_omniscient_beeline_mcw` -> `.userdata/dev-harness/harness_runs/20260430_173555/`
+- Latest no-omniscience proof classification:
+  - `feature_proof=true`
+  - `evidence_class=feature-path`
+  - 14/14 green steps
+  - same-run `target_probe ... target=no ... sees_player=no`
+  - no `target=yes`, no `sees_player=yes`, no `writhing_stalker live_plan:`, no strike/shadow/cooldown in the no-evidence window.
 
 ## Non-goals/cautions
 
 - Do **not** reopen Bandit structural bounty, Smart Zone, fire/signal, roof-horde, release, or cannibal lanes from this handoff.
 - Do **not** implement bandit shakedown/camp logic, Basecamp economy hooks, common spawn spam, teleport ambushes, global exact scans, or long-term nemesis arcs in writhing stalker v0.
-- Do **not** close gameplay behavior from JSON or deterministic tests alone. A test is not the product; live claims need a live game path or stay open.
-- Do **not** redo the already-green deterministic substrate; the next useful work is the live game seam. Harness scenes come after that seam exists, otherwise the stalker becomes spreadsheet mugging wearing a bedsheet.
+- Do **not** close performance from startup/load, setup-only, or deterministic evidence. The mixed-hostile packet needs live-path metrics or an honest missing-metric classification.
+- Do **not** treat Josef availability as a blocker. If the metrics packet can be agent-run, run it; reserve Josef for product feel/tuning judgment.
 
 ## Canonical anchors
 
@@ -62,7 +89,8 @@ Wire the smallest live game seam for shadow/strike/withdraw behavior. The determ
 - Imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
 - Contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
 - Testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
+- Mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
 ## Superseded handoff note
 
-This file originally replaced the stale Bandit structural bounty Phase 6 handoff after Frau Knackal's 2026-04-30 post-crunch nudge. Bandit structural bounty remains closed/checkpointed green v0; after the deterministic stalker substrate landed, the current executor path is the smallest live writhing-stalker shadow/strike/withdraw seam next.
+This file used to say the next executor should wire the live seam and promote the three basic writhing-stalker scenarios. That is stale. The live seam plus `writhing_stalker.live_shadow_strike_mcw`, `writhing_stalker.live_no_omniscient_beeline_mcw`, and `writhing_stalker.live_exposed_retreat_mcw` are green; the next executor should advance `performance.mixed_hostile_stalker_horde_mcw`.
