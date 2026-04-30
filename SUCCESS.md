@@ -22,8 +22,8 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
 
 Success state:
-- [ ] Monster/stat/spawn footing exists and validates.
-- [ ] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
+- [x] Monster/stat/spawn footing exists and validates.
+- [x] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
 - [ ] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
 - [ ] Direct player/human evidence can create a bounded latch without permanent omniscience.
 - [ ] Weak/no/stale evidence decays or fails to latch.

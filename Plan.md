@@ -55,7 +55,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 Current target: create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without omniscient beelines or bandit-camp economy logic.
 
-Current boundary: concept raw intake has been promoted into a real imagination source, behavior packet, and playtest ladder. Next execution should start from the monster/stat/spawn footing and deterministic AI-decision substrate before attempting live harness scenes. The active proof burden is creature truth -> rarity/singleton -> interest/latch -> approach/opportunity -> strike/withdraw -> persistence if needed -> live stalk/strike and no-omniscience controls.
+Current boundary: monster/stat/spawn footing is implemented and validated as a rare singleton first-generation zombie-adjacent predator. Next execution should build the deterministic AI-decision substrate before attempting live harness scenes. The remaining proof burden is interest/latch -> approach/opportunity -> strike/withdraw -> persistence if needed -> live stalk/strike and no-omniscience controls.
 
 Canonical references:
 - receipt: `doc/work-ledger.md` (`CAOL-WRITHING-STALKER-v0`)

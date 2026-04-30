@@ -55,12 +55,15 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - CAOL-WRITHING-STALKER-v0
 
-Current boundary: **monster/stat/spawn footing and deterministic behavior substrate first**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+Current boundary: **monster/stat/spawn footing is green; deterministic behavior substrate next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+
+Current evidence:
+- `mon_writhing_stalker` JSON/stat footing and rare singleton `GROUP_ZOMBIE` spawn entry landed with `tests/writhing_stalker_test.cpp`. Evidence: `git diff --check`; `python3 -m json.tool data/json/monsters/zed_misc.json`; `python3 -m json.tool data/json/monstergroups/zombies.json`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"`; focused Python JSON audit for singleton `GROUP_ZOMBIE` entry.
 
 Greenlit proof ladder:
 
-1. Creature truth: monster JSON/stat/spawn data validates and matches the intended rare singleton first-generation zombie-adjacent predator.
-2. Rarity truth: spawn footing does not create ordinary stalker soup; debug/harness can intentionally create one.
+1. Creature truth: monster JSON/stat/spawn data validates and matches the intended rare singleton first-generation zombie-adjacent predator. **Green for initial footing.**
+2. Rarity truth: spawn footing does not create ordinary stalker soup; debug/harness can intentionally create one. **Green for initial footing; intentional debug/harness creation remains future live support.**
 3. Interest truth: deterministic helper/evaluator proves human/player evidence and exposed night light outrank empty terrain, smoke stays weak/indirect, cover/edge terrain matters, and zombie pressure increases opportunity rather than threat.
 4. Latch truth: recent believable evidence can create a timed/leashed latch, stale evidence decays, and one clue does not become permanent omniscience.
 5. Approach truth: stalker prefers cover/darkness/clutter where available and does not direct-beeline across open exposure unless forced by the actual map.
@@ -98,7 +101,7 @@ Current important receipts:
 
 ## Pending probes
 
-Current writhing-stalker next step is not a live harness scene yet. First build the monster/stat/spawn footing and deterministic decision substrate, then promote live probes once the code can honestly explain latch, opportunity, strike, and withdrawal.
+Current writhing-stalker next step is not a live harness scene yet. Monster/stat/spawn footing is green; next build the deterministic decision substrate, then promote live probes once the code can honestly explain latch, opportunity, strike, and withdrawal.
 
 Initial greenlit live probes, once implementation footing exists:
 - `writhing_stalker.live_shadow_strike_mcw`
