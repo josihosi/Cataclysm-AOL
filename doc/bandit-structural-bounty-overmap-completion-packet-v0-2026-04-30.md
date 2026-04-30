@@ -6,6 +6,8 @@ Proposed classification: **ACTIVE / GREENLIT implementation packet**.
 
 Imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
 
+Testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
+
 Existing canon anchors:
 
 - `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -517,16 +519,26 @@ Possible second scenario after v0:
 - wait to stalking-distance check and, if applicable, arrival;
 - prove once-only threat/harvest resolution.
 
-## Ralph review loop
+## Ralph Wiggum review loop
 
-Working name: **Ralph** — a small explicit review loop that asks whether each implementation element still serves the bandit AI vision. Name can change later; the function matters. Ralph is not another agent bureaucracy shrine, bitte. It is the pre/post sanity pass that stops Andi from implementing a technically correct but spiritually dead mechanism.
+Working name: **Ralph Wiggum** — inspired by the simple agentic coding loop idea, but deliberately narrowed for this C-AOL lane. This is not an unattended infinite loop and not another agent bureaucracy shrine, bitte. It is a bounded pre/post review loop that keeps Andi from implementing a technically correct but spiritually dead mechanism.
 
-Run Ralph twice for every phase or meaningful handoff:
+Run Ralph Wiggum around every phase or meaningful handoff:
 
-1. **Before implementation** — check the planned code/test slice against the lived bandit vision.
-2. **After implementation** — check the actual diff/evidence against the same vision before calling the slice green.
+1. **Specify** — state the intended player/world behavior and the exact proof rung.
+2. **Implement** — make the smallest slice that can satisfy that rung.
+3. **Test** — run the deterministic/build/harness gate for that rung.
+4. **Review** — compare the actual diff/evidence against the lived bandit vision.
+5. **Revise or stop** — revise if the mismatch is small; stop/park/escalate if the slice violates the vision, loops twice inconclusively, or lacks the right evidence class.
 
-For each plan element, answer:
+Minimum stop conditions:
+
+- no blind retries after the same blocker;
+- no claiming green from the wrong evidence class;
+- no broad/destructive/external actions;
+- no continuing if threat/bounty semantics drift from the source-of-truth rules.
+
+During the review step, answer:
 
 - What player/world behavior is this supposed to create?
 - Which source-of-truth rule does it satisfy?
@@ -540,10 +552,11 @@ For each plan element, answer:
 - What live/harness evidence proves the game path, not just the helper?
 - What would make the behavior feel omniscient, suicidal, idle, or mechanically fake?
 
-Ralph output should be short and attached to the handoff/checkpoint, not a parallel novel:
+Ralph Wiggum output should be short and attached to the handoff/checkpoint, not a parallel novel:
 
 ```text
-Ralph pass:
+Ralph Wiggum pass:
+- Phase/rung:
 - Vision behavior:
 - Rule(s):
 - Risk smell:
@@ -551,7 +564,7 @@ Ralph pass:
 - Verdict: keep / revise / park
 ```
 
-A phase should not be called done if Ralph says the code passes tests but violates the lived picture. Tests are the lockpick; Ralph checks whether we opened the right door.
+A phase should not be called done if Ralph Wiggum says the code passes tests but violates the lived picture. Tests are the lockpick; Ralph Wiggum checks whether we opened the right door.
 
 ## Implementation phases
 

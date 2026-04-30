@@ -21,12 +21,12 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
 
 Success state:
-- [ ] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
+- [x] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
 - [ ] Per-camp bounded structural scan seeds sparse camp-map leads without global scanning.
 - [ ] Harvested/dangerous/recently-checked debounce prevents immediate repeat interest.
 - [ ] Non-player structural outing planner can send a small bandit dispatch to forest/town structural bounty.
 - [ ] Abstract outing resolver reveals threat at stalking distance, subtracts it from effective bounty/interest, and only consumes structural bounty on arrival if interest survives.
-- [ ] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
+- [x] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
 - [ ] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
 - [ ] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
 - [ ] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
@@ -36,7 +36,8 @@ Success state:
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final active/closed state.
 
 Current boundary:
-- Phase 1 deterministic substrate is the next execution slice; no live game claim is credited yet.
+- Phase 1 deterministic substrate is locally green for classifier, structural lead id/upsert, harvested/dangerous helper suppression, and mobile-actor/ground separation.
+- Phase 2 scan/seed cadence is the next execution slice; no live game claim is credited yet.
 
 Notes:
 - Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.

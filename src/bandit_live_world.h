@@ -276,6 +276,16 @@ struct camp_map_dispatch_decision {
     std::vector<std::string> notes;
 };
 
+struct structural_bounty_read {
+    std::string terrain_class;
+    int bounty = 0;
+    int confidence = 0;
+    int latent_threat = 0;
+    int radius_omt = 0;
+    bool eligible = false;
+    std::string summary;
+};
+
 struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
@@ -397,6 +407,13 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
 const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &site,
         const tripoint_abs_omt &target_omt,
         const std::string &target_id );
+structural_bounty_read classify_structural_bounty_terrain( const std::string &overmap_terrain_id );
+std::string make_structural_bounty_lead_id( const std::string &site_id,
+        const tripoint_abs_omt &omt, const std::string &terrain_class );
+bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
+        const tripoint_abs_omt &omt, const std::string &terrain_class );
+bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
+                                   const structural_bounty_read &read, int now_minutes );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

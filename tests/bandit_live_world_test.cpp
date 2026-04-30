@@ -701,6 +701,124 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
     }
 }
 
+TEST_CASE( "bandit_structural_bounty_classifies_coarse_terrain",
+           "[bandit][live_world][structural_bounty]" )
+{
+    const bandit_live_world::structural_bounty_read forest =
+        bandit_live_world::classify_structural_bounty_terrain( "forest_thick" );
+    CHECK( forest.eligible );
+    CHECK( forest.terrain_class == "forest" );
+    CHECK( forest.bounty == 1 );
+    CHECK( forest.confidence == 1 );
+
+    const bandit_live_world::structural_bounty_read town =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base_north" );
+    CHECK( town.eligible );
+    CHECK( town.terrain_class == "town" );
+    CHECK( town.bounty == 2 );
+    CHECK( town.confidence == 1 );
+    CHECK( town.latent_threat == 1 );
+
+    const bandit_live_world::structural_bounty_read city =
+        bandit_live_world::classify_structural_bounty_terrain( "city_downtown" );
+    CHECK( city.eligible );
+    CHECK( city.terrain_class == "town" );
+    CHECK( city.bounty == 3 );
+    CHECK( city.latent_threat == 2 );
+
+    const bandit_live_world::structural_bounty_read open =
+        bandit_live_world::classify_structural_bounty_terrain( "field_road" );
+    CHECK_FALSE( open.eligible );
+    CHECK( open.bounty == 0 );
+    CHECK( open.terrain_class == "open" );
+}
+
+TEST_CASE( "bandit_structural_bounty_lead_upsert_respects_debounce",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13000 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt forest_omt( 13, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest =
+        bandit_live_world::classify_structural_bounty_terrain( "forest_water" );
+    REQUIRE( forest.eligible );
+
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest, 100 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, forest.terrain_class );
+    bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->kind == bandit_live_world::camp_lead_kind::structural_bounty );
+    CHECK( lead->status == bandit_live_world::camp_lead_status::suspected );
+    CHECK( lead->bounty == 1 );
+    CHECK( lead->threat == 0 );
+    CHECK_FALSE( lead->threat_confirmed );
+
+    lead->status = bandit_live_world::camp_lead_status::harvested;
+    lead->bounty = 0;
+    lead->times_harvested = 1;
+    CHECK( bandit_live_world::structural_bounty_memory_suppresses_refresh( site.intelligence_map,
+            forest_omt, forest.terrain_class ) );
+    CHECK_FALSE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest, 200 ) );
+    CHECK( site.intelligence_map.find_lead( lead_id )->status ==
+           bandit_live_world::camp_lead_status::harvested );
+    CHECK( site.intelligence_map.find_lead( lead_id )->bounty == 0 );
+    CHECK( site.intelligence_map.find_lead( lead_id )->times_harvested == 1 );
+
+    const tripoint_abs_omt town_omt( 14, 20, 0 );
+    const bandit_live_world::structural_bounty_read town =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town, 300 ) );
+    const std::string town_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                              town_omt, town.terrain_class );
+    site.intelligence_map.find_lead( town_id )->status = bandit_live_world::camp_lead_status::dangerous;
+    CHECK( bandit_live_world::structural_bounty_memory_suppresses_refresh( site.intelligence_map,
+            town_omt, town.terrain_class ) );
+    CHECK_FALSE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town, 400 ) );
+}
+
+TEST_CASE( "bandit_structural_bounty_keeps_mobile_actor_separate_from_ground_bounty",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 13100 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt forest_omt( 13, 21, 0 );
+
+    bandit_live_world::camp_map_lead player;
+    player.lead_id = "player_seen_in_forest";
+    player.kind = bandit_live_world::camp_lead_kind::moving_actor;
+    player.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    player.target_id = "player@13,21,0";
+    player.omt = forest_omt;
+    player.bounty = 9;
+    player.confidence = 3;
+    site.intelligence_map.leads.push_back( player );
+
+    const bandit_live_world::structural_bounty_read forest =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest, 500 ) );
+
+    const std::string structural_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                       forest_omt, forest.terrain_class );
+    const bandit_live_world::camp_map_lead *structural =
+        site.intelligence_map.find_lead( structural_id );
+    REQUIRE( structural != nullptr );
+    CHECK( structural->kind == bandit_live_world::camp_lead_kind::structural_bounty );
+    CHECK( structural->target_id == "forest" );
+    CHECK( structural->bounty == 1 );
+    CHECK( structural->confidence == 1 );
+
+    const bandit_live_world::camp_map_lead *mobile =
+        site.intelligence_map.find_lead( "player_seen_in_forest" );
+    REQUIRE( mobile != nullptr );
+    CHECK( mobile->kind == bandit_live_world::camp_lead_kind::moving_actor );
+    CHECK( mobile->target_id == "player@13,21,0" );
+    CHECK( mobile->bounty == 9 );
+    CHECK( site.intelligence_map.leads.size() == 2 );
+}
+
 TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

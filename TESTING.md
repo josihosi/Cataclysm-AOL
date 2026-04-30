@@ -55,16 +55,20 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - Bandit structural bounty overmap completion packet v0
 
-Current boundary: **Phase 1 deterministic substrate** only. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
+Current boundary: **Phase 2 scan/seed cadence**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
 
-Evidence required before claiming this boundary green:
+Phase 1 deterministic substrate is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (45 assertions in 3 test cases). Credited claims: forest/town/open classifier; structural lead id/upsert; harvested/dangerous helper suppression; mobile actor leads stay separate from ground bounty. No live game claim is credited yet.
 
-- structural classifier tests prove forest/woods eligible low bounty, town/building eligible medium bounty, and open/road/no-value terrain rejected;
-- structural lead helper/debounce tests prove harvested and dangerous structural leads suppress refresh/repeat interest;
-- mobile actor/player/NPC leads remain mobile/route/signal evidence and do not permanently upgrade the terrain OMT into structural bounty;
-- Ralph pass says the deterministic substrate still serves the lived bandit-ecology picture: bounty is broad, threat is not globally known, and repeat visits are debounced.
+Evidence required before claiming Phase 2 green:
 
-Suggested narrow gates after code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` once the tag exists. Broaden only if touched files justify it.
+- structural scan seeds sparse `structural_bounty` leads from ordinary OMT classes without global scanning;
+- scan budget/cap behavior is deterministic and visible;
+- retired empty sites do not scan/seed;
+- harvested and dangerous structural memory suppresses refresh through the scan path, not only the helper;
+- mobile actor/player/NPC leads remain mobile/route/signal evidence and do not permanently upgrade the terrain OMT into structural bounty through the scan path;
+- Ralph Wiggum pass says the scan still serves the lived bandit-ecology picture: bounty is broad, threat is not globally known, repeated visits are debounced, and no player sighting smears into terrain.
+
+Suggested narrow gates after Phase 2 code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`. Broaden only if touched files justify it.
 
 The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
 

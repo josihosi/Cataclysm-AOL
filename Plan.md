@@ -50,7 +50,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 **Status:** ACTIVE / GREENLIT IMPLEMENTATION PACKET
 
-Josef/Schani promoted the next C-AOL execution target on 2026-04-30: complete the live bandit overmap ecology so idle camps can act on ordinary structural OMT bounty, not only player-near smoke/light/direct-range triggers. The first state boundary is deterministic substrate: structural OMT classifier, structural lead identity/upsert/debounce support, and focused tests for forest/town/open classes plus harvested/dangerous/mobile-ground separation.
+Josef/Schani promoted the next C-AOL execution target on 2026-04-30: complete the live bandit overmap ecology so idle camps can act on ordinary structural OMT bounty, not only player-near smoke/light/direct-range triggers. Phase 1 deterministic substrate is checkpointed locally: structural OMT classifier, structural lead identity/upsert/debounce support, and focused tests for forest/town/open classes plus harvested/dangerous/mobile-ground separation. The next state boundary is Phase 2 scan/seed cadence: a bounded per-camp structural scan that writes sparse camp-map leads without global scanning or refreshing harvested/dangerous sites.
 
 Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
 Canonical contract lives at `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
