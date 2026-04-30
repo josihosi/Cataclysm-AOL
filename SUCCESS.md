@@ -17,6 +17,28 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0 — Writhing stalker live fun-scenario benchmarks
+
+Status: ACTIVE / GREENLIT LIVE FUN-SCENARIO PLAYTEST PACKET
+
+Success state:
+- [ ] Scenario A campfire/light counterplay is green or honestly red/yellow with exact blocker: proposed `writhing_stalker.live_campfire_counterplay_mcw`.
+- [ ] Scenario B alley predator/shadow route is green or honestly red/yellow with exact blocker: proposed `writhing_stalker.live_alley_predator_mcw`.
+- [ ] Scenario C zombie distraction without magic is green or honestly red/yellow with exact blocker: proposed `writhing_stalker.live_zombie_distraction_mcw`.
+- [ ] Scenario D door/light escape is green or honestly red/yellow with exact blocker: proposed `writhing_stalker.live_door_light_escape_mcw`.
+- [ ] Scenario E wounded predator retreat is green or honestly red/yellow with exact blocker: proposed `writhing_stalker.live_wounded_predator_mcw`.
+- [ ] At least one repeated-turn trace proves or falsifies the fun rhythm: shadow/pressure -> strike -> cooldown/reposition -> possible second strike -> injured retreat or escape break.
+- [ ] All credited rows include scenario/run ids, decision/reason traces, pass/fail verdicts, and stability/perf notes.
+- [ ] If behavior/tuning change is needed, it is the smallest change that preserves no-omniscience, counterplay, cooldown anti-spam, and injured retreat.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`.
+- Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+
+---
+
 ## CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 — Multi-camp signal gauntlet
 
 Status: CLOSED / CHECKPOINTED GREEN V0

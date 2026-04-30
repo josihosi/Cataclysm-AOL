@@ -69,13 +69,23 @@ Boundary: deterministic pattern proof is closed for v0. The live seam was not re
 
 ---
 
-## Parked awaiting next promotion
+## Active lane — CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 
-**Status:** PARKED AWAITING NEXT PROMOTION
+**Status:** ACTIVE / GREENLIT LIVE FUN-SCENARIO PLAYTEST PACKET
 
-No active execution item remains after the writhing-stalker pattern-test closure. Wait for Schani/Josef to promote the next lane instead of freelancing from held/parked receipts.
+Josef explicitly greenlit live writhing-stalker fun scenarios on 2026-04-30: “YESSSS DO IT”. This lane follows the closed deterministic `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` and asks whether the stalker creates fair dread in live-shaped scenes instead of only passing tidy evaluator traces.
 
-Prior closed active lane: `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` — see `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
+Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`.
+
+Imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`.
+
+Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+
+Goal: run clear live scenario/benchmark rows for campfire/light counterplay, alley predator shadow routes, zombie distraction without magic, door/light escape, and wounded-predator retreat. Each row needs pass/fail facts, compact decision traces, scenario/run ids, stability/perf notes, and honest caveats.
+
+Boundary: do **not** reopen monster flavor/stat/spawn footing, deterministic pattern closure, roof-horde, Smart Zone, old fire proof lanes, or the multi-camp gauntlet. Staged-but-live scenes are acceptable; unit tests alone do not prove this packet. Do not make the monster scarier by making it omniscient.
+
+Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
 
 ---
 

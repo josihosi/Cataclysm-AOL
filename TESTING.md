@@ -53,6 +53,19 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
+
+`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is the active live fun-scenario playtest packet. Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`; prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+
+Validation burden:
+- Scenario A: campfire/light counterplay — prove light/focus makes the stalker hold/withdraw and blocks unfair strike.
+- Scenario B: alley predator/shadow route — prove cover/edge route preference, plausible close strike, cooldown/reposition, and possible second strike without spam.
+- Scenario C: zombie distraction without magic — prove zombie pressure helps only with plausible evidence/vulnerability and does not grant omniscience.
+- Scenario D: door/light escape — prove readable escape/counterplay breaks pressure instead of glued pursuit.
+- Scenario E: wounded predator retreat — prove badly-injured retreat after legitimate pressure/attacks, with no withdraw->strike jitter.
+- Each credited row needs scenario/run id, artifact path, start-state facts, compact per-turn/per-decision trace, pass/fail verdict, caveats, and stability/perf notes.
+- Unit/evaluator tests alone do not close this packet. If a row is deterministic-only, mark it as support rather than live fun proof.
+
 ### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 
 `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`; proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
