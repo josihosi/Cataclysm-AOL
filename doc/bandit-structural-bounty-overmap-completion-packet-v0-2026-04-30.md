@@ -2,7 +2,9 @@
 
 ## Classification
 
-Proposed classification: **ACTIVE / GREENLIT implementation packet**.
+Final classification: **CLOSED / CHECKPOINTED GREEN V0**.
+
+Closure readout: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`.
 
 Imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
 
@@ -607,15 +609,21 @@ A phase should not be called done if Ralph Wiggum says the code passes tests but
 
 ### Phase 6 — live proof
 
-- Add harness scenario for idle camp -> structural dispatch -> arrival -> consumption/debounce.
-- Add reload-resume scenario if phase 4 touched active persistence in nontrivial ways.
-- Run narrow deterministic tests, rebuild, live probe, saved-state audits.
+- [x] Add harness scenario for idle camp -> structural dispatch -> arrival -> consumption/debounce: `bandit.structural_bounty_idle_camp_forest_town_mcw`.
+- [x] Expose same-run candidate economics in the structural maintenance report: `bounty=8`, `known_threat=0`, `confidence=3`, `effective_interest=11`, `decision=scavenge`.
+- [x] Rebuild/current-runtime gate and run narrow live probe: `.userdata/dev-harness/harness_runs/20260430_115157/` (`evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`, wait ledger green).
+- [x] Saved-state audits prove harvested once, members returned, no active outing left, and harvested/no-repeat state persisted.
+- [x] Decide whether to add a reload-resume live scenario beyond the Phase 4 deterministic active-outing reload coverage: optional future proof, not a v0 closure blocker.
+
+Non-credit caveat: `.userdata/dev-harness/harness_runs/20260430_114106/` remains red/inconclusive because candidate-planning evidence was missing from the same-run artifact and the runtime gate was dirty/mismatched.
 
 ### Phase 7 — tuning/readout
 
-- Tune bounty/threat numeric bands after lifecycle is proven.
-- Update docs with final numbers, evidence paths, and caveats.
-- Keep any unproven local-bubble materialization as future work, not hidden scope.
+- [x] Current bounty/threat numeric bands accepted as good enough for v0 closure; future tuning must be a follow-up, not a hidden reopening.
+- [x] Final evidence paths, caveats, and optional future playtests recorded in `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`.
+- [x] Existing smoke/fire/light receipts remain separate regression gates; this packet does not claim fresh smoke/light proof.
+- [x] Reload-resume live proof classified optional/future-only after deterministic active-outing reload coverage.
+- [x] Local-bubble materialization, exact loot harvest, Branch A live turnback, mixed-signal coexistence, and multi-camp wait stress remain optional follow-ups.
 
 ## Build/test gates
 
@@ -655,23 +663,18 @@ This packet is complete only when all of these are true:
 - [x] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
 - [x] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
 - [x] Real `do_turn` maintenance invokes bounded structural scan/outing maintenance with concise report/debug output and a current-runtime tiles build.
-- [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
-- [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
-- [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final active/closed state.
+- [x] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
+- [x] Live/harness proof shows stalking-distance threat/interest writeback, later arrival harvest, and no immediate repeat of the consumed/harvested target; dangerous/lost-interest no-repeat remains covered by deterministic Phase 4/5 evidence unless a later live Branch A proof is promoted.
+- [x] Existing player smoke/light signal receipts remain classified separately and are not overwritten by this structural closure.
+- [x] Phase 7 tuning/readout records current numbers as good enough for v0 and classifies reload-resume proof optional/future-only.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final active/closed state.
 
-## Open questions
+## Resolved / parked design questions
 
-1. Exact terrain classifier source: should v0 use land-use code where available, overmap terrain id/name heuristics, or a small explicit allowlist of OMT ids?
-2. Town consumption granularity: does stepping onto one town/building OMT consume only that OMT, or should a building cluster lead cover radius 1?
-3. Job label: should forest/town structural harvest use existing `scavenge`, or keep `scout` for v0 until a formal non-player `scavenge` resolver is proven?
-4. Threat source v0: which cheap stalking-distance threat signals are acceptable initially: terrain class only, known zombie/horde pressure, hostile sites, prior losses, or a blend?
-5. Return consequences: should v0 simply return members alive, or include bounded chance of wound/loss from high threat? Recommendation: no random wound/loss in v0; write threat/danger first, add casualties later only if deterministic.
-6. Bubble materialization: if the player enters the target OMT while an abstract structural outing is active, should the group materialize now or remain abstract for v0? Recommendation: abstract-only in v0 unless existing active group path already handles it safely.
-7. Resupply: should any structural bounty ever regenerate through world events? Recommendation: not in v0; only new mobile/activity signal creates separate interest.
+The original v0 design prompts around terrain classifier source, town consumption granularity, job label, threat source, return consequences, bubble materialization, and resupply were implementation-planning questions. They are no longer active blockers; the current implementation, named evidence, and closure readout are the source for the chosen v0 answers.
 
-## Handoff sketch for Andi
+Do not reopen those questions by drift. If later playtesting finds a real product problem, create a bounded follow-up with its own receipt and success state.
 
-Implement `Bandit structural bounty overmap completion packet v0` as the next active C-AOL target.
+## Final handoff note
 
-Start with deterministic substrate, not live harness first. Reuse `camp_intelligence_map` and `camp_map_lead`. Add structural OMT classifier, bounded camp scan, structural outing planner/resolver, stalking-distance threat reveal, threat-minus-bounty interest loss, harvest debounce, save/load proof, 500-turn anti-loop playback, performance counters, then one feature-path harness proof. Do not implement writhing stalker, local bubble materialization, exact loot harvest, or random casualty economy in this packet.
+No active Andi handoff remains for this packet. Optional future structural-bounty playtests are listed in `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`; run them only if Josef/Schani promotes a follow-up or a regression/tuning concern appears.

@@ -835,6 +835,7 @@ def classify_wait_step_ledger(
     after_text: Dict[str, Any],
     wait_classification: Dict[str, Any],
     artifact_after_wait: Optional[Dict[str, Any]] = None,
+    allow_artifact_elapsed_without_menu_ocr: bool = False,
 ) -> Dict[str, Any]:
     expected_seconds = wait_duration_seconds( expected_duration )
     duration_patterns = wait_menu_expected_duration_patterns( expected_duration )
@@ -868,10 +869,13 @@ def classify_wait_step_ledger(
     effective_wait_status = wait_status
     if wait_status == "unknown_after_wait" and artifact_elapsed["matched"]:
         effective_wait_status = "completed_by_artifact_delta"
+    menu_ocr_deferred_to_artifact_delta = bool(
+        allow_artifact_elapsed_without_menu_ocr and artifact_elapsed["matched"] and expected_seconds is not None
+    )
     issues: List[str] = []
-    if not menu_has_wait_prompt:
+    if not menu_has_wait_prompt and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_prompt" )
-    if expected_seconds is not None and not menu_expected_matches:
+    if expected_seconds is not None and not menu_expected_matches and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_expected_duration" )
     if elapsed["status"] == "not_parsed":
         issues.append( "before_after_clock_or_turn_not_parsed" )
@@ -894,6 +898,7 @@ def classify_wait_step_ledger(
         "menu_has_wait_prompt": menu_has_wait_prompt,
         "menu_expected_duration_patterns": duration_patterns,
         "menu_expected_matches": menu_expected_matches,
+        "menu_ocr_deferred_to_artifact_delta": menu_ocr_deferred_to_artifact_delta,
         "before_clock_or_turn": before_clock,
         "after_clock_or_turn": after_clock,
         "artifact_elapsed_evidence": artifact_elapsed,
@@ -902,9 +907,10 @@ def classify_wait_step_ledger(
         "issues": issues,
         "verdict": verdict,
         "review_rule": (
-            "Artifact matches alone do not make this wait step green. Green requires the wait menu, "
+            "Artifact matches alone do not make this wait step green. Green normally requires readable wait-menu OCR, "
             "either a parsed before/after clock or turn delta or all configured post-wait cadence artifacts, "
-            "and either a finish signal, classified interruption, or completed-by-artifact delta."
+            "and either a finish signal, classified interruption, or completed-by-artifact delta. A scenario may explicitly "
+            "defer noisy wait-menu OCR to bounded choice-key plus matched post-wait cadence artifacts."
         ),
     }
 
@@ -1060,6 +1066,121 @@ def audit_log_contains(
     }
 
 
+
+def player_message_log_path(world_dir: Path, player_save: str = "") -> Path:
+    selected_player_save = str(player_save or "").strip()
+    if selected_player_save:
+        if selected_player_save.endswith(".sav.zzip"):
+            return world_dir / (selected_player_save[: -len(".sav.zzip")] + ".log")
+        return world_dir / (Path(selected_player_save).stem + ".log")
+    logs = sorted(world_dir.glob("*.log"))
+    if len(logs) == 1:
+        return logs[0]
+    saves = sorted(world_dir.glob("*.sav.zzip"))
+    if len(saves) == 1:
+        return world_dir / (saves[0].name[: -len(".sav.zzip")] + ".log")
+    raise RuntimeError(f"Expected one player message log in {world_dir}, found {[path.name for path in logs]}")
+
+
+def audit_player_message_log_contains(
+    world_dir: Path,
+    run_dir: Path,
+    label: str,
+    *,
+    player_save: str = "",
+    changed_since: Optional[Dict[str, Any]] = None,
+    patterns: List[str],
+    required_line_patterns: Optional[List[List[str]]] = None,
+    required_any_line_patterns: Optional[List[List[str]]] = None,
+) -> Dict[str, Any]:
+    line_pattern_groups = required_line_patterns or []
+    any_line_pattern_groups = required_any_line_patterns or []
+    any_group_label = " OR ".join(" && ".join(group) for group in any_line_pattern_groups)
+    required_items = patterns + [" && ".join(group) for group in line_pattern_groups]
+    if any_line_pattern_groups:
+        required_items.append(any_group_label)
+    log_path = player_message_log_path(world_dir, player_save=player_save)
+    baseline = 0
+    changed_label = ""
+    if changed_since:
+        changed_label = str(changed_since.get("label", "") or "")
+        try:
+            baseline = int(changed_since.get("log_size", 0) or 0)
+        except (TypeError, ValueError):
+            baseline = 0
+    if not log_path.exists():
+        return {
+            "status": "required_state_missing" if required_items else "baseline_recorded",
+            "reason": "player_message_log_not_found",
+            "world": world_dir.name,
+            "world_dir": str(world_dir),
+            "player_save": player_save,
+            "source_log": str(log_path),
+            "log_size": 0,
+            "required_items": required_items,
+            "missing_required_items": required_items,
+            "changed_since_label": changed_label,
+            "changed_since_log_size": baseline,
+        }
+    raw_bytes = log_path.read_bytes()
+    log_size = len(raw_bytes)
+    if baseline > log_size:
+        delta_bytes = b""
+    else:
+        delta_bytes = raw_bytes[max(0, baseline):]
+    delta = delta_bytes.decode("utf-8", errors="replace")
+    log_lines = delta.splitlines()
+    matches_by_pattern: List[Dict[str, Any]] = []
+    missing: List[str] = []
+    for pattern in patterns:
+        lines = [line for line in log_lines if pattern in line]
+        matches_by_pattern.append({"pattern": pattern, "lines": lines})
+        if not lines:
+            missing.append(pattern)
+    for group in line_pattern_groups:
+        group_label = " && ".join(group)
+        lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+        matches_by_pattern.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+        if not lines:
+            missing.append(group_label)
+    if any_line_pattern_groups:
+        any_lines: List[str] = []
+        any_matches: List[Dict[str, Any]] = []
+        for group in any_line_pattern_groups:
+            group_label = " && ".join(group)
+            lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+            any_matches.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+            any_lines.extend(lines)
+        matches_by_pattern.append({
+            "pattern": any_group_label,
+            "any_line_patterns": any_matches,
+            "lines": any_lines,
+        })
+        if not any_lines:
+            missing.append(any_group_label)
+    matched_lines = [line for entry in matches_by_pattern for line in entry.get("lines", [])]
+    matched_path = run_dir / f"{label}.matched_player_messages.txt"
+    if matched_lines:
+        matched_path.write_text("\n".join(matched_lines).rstrip() + "\n", encoding="utf-8")
+    return {
+        "status": "required_state_present" if required_items and not missing else ("required_state_missing" if required_items else "baseline_recorded"),
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": player_save,
+        "source_log": str(log_path),
+        "artifact_path": str(matched_path) if matched_lines else "",
+        "log_size": log_size,
+        "changed_since_label": changed_label,
+        "changed_since_log_size": baseline,
+        "required_items": required_items,
+        "observed_items": [entry["pattern"] for entry in matches_by_pattern if entry.get("lines")],
+        "missing_required_items": missing,
+        "matches_by_pattern": matches_by_pattern,
+        "matched_lines": matched_lines,
+        "line_count": len(log_lines),
+        "capture_policy": "matched decisive player-message lines only; no broad message-log dump",
+    }
+
 def execute_long_wait_action(
     pid: int,
     run_dir: Path,
@@ -1183,18 +1304,66 @@ def execute_long_wait_action(
         state_patterns,
         filter_debug_noise=filter_debug_noise,
     )
+    classification_text = after_text
     report["wait_classification"] = classify_wait_screen_text(
-        after_text, complete_patterns, interrupt_patterns
+        classification_text, complete_patterns, interrupt_patterns
     )
+
+    interrupt_response_key = str(step.get("interrupt_response_key", "") or "").strip()
+    max_interrupt_responses = int(step.get("max_interrupt_responses", 0) or 0)
+    if interrupt_response_key and max_interrupt_responses > 0:
+        responses: List[Dict[str, Any]] = []
+        for response_index in range(max_interrupt_responses):
+            if report["wait_classification"].get("status") != "interrupted_or_prompt_visible":
+                break
+            response_label = f"{label}.interrupt_response_{response_index + 1}"
+            response_wait_seconds = float(step.get("interrupt_response_wait_seconds", completion_wait_seconds) or 0.0)
+            peekaboo_press_sequence(pid, [interrupt_response_key], delay_ms=delay_ms)
+            if response_wait_seconds > 0:
+                time.sleep(response_wait_seconds)
+            response_capture = capture_screenshot(pid, run_dir, response_label)
+            response_text = capture_screen_text_artifact(
+                run_dir, response_label, response_capture, tail_lines=tail_lines
+            )
+            response_artifact_after = capture_wait_artifact_delta(
+                artifact_log,
+                run_dir,
+                label,
+                f"after_interrupt_response_{response_index + 1}",
+                wait_start_size,
+                state_patterns,
+                filter_debug_noise=filter_debug_noise,
+            )
+            response_classification = classify_wait_screen_text(
+                response_text, complete_patterns, interrupt_patterns
+            )
+            responses.append({
+                "response_key": interrupt_response_key,
+                "response_index": response_index + 1,
+                "response_label": response_label,
+                "response_wait_seconds": response_wait_seconds,
+                "screen_after_response": response_capture.get("screen_summary", {}),
+                "screen_after_response_text": response_text,
+                "artifact_after_response": response_artifact_after,
+                "wait_classification_after_response": response_classification,
+            })
+            classification_text = response_text
+            report["artifact_after_wait"] = response_artifact_after
+            report["wait_classification"] = response_classification
+        report["interrupt_responses"] = responses
+
     report["wait_step_ledger"] = classify_wait_step_ledger(
         label=label,
         choice_key=choice_key,
         expected_duration=expected_duration,
         before_text=before_text,
         menu_text=menu_text,
-        after_text=after_text,
+        after_text=classification_text,
         wait_classification=report["wait_classification"],
         artifact_after_wait=report["artifact_after_wait"],
+        allow_artifact_elapsed_without_menu_ocr=bool(
+            step.get("allow_artifact_elapsed_without_menu_ocr", False)
+        ),
     )
     if bool(step.get("abort_on_interrupt", False)) and \
             report["wait_classification"].get("status") == "interrupted_or_prompt_visible":
@@ -1359,12 +1528,17 @@ def summarize_map_field(payload: Any) -> Dict[str, Any]:
 def map_item_typeid(item: Any) -> str:
     if isinstance(item, dict):
         return str(item.get("typeid", ""))
+    if isinstance(item, list) and len(item) == 2 and isinstance(item[0], dict):
+        return str(item[0].get("typeid", ""))
     return str(item)
 
 
 def summarize_map_items(payload: Any) -> List[str]:
     if not isinstance(payload, list):
         return [map_item_typeid(payload)] if payload else []
+    if len(payload) == 2 and isinstance(payload[0], dict):
+        typeid = map_item_typeid(payload)
+        return [typeid] if typeid else []
     return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
 
 
@@ -1795,13 +1969,44 @@ def summarize_saved_item_rows(
     return counts, item_rows
 
 
+def saved_item_nested_charge_sum(entry: Any, *, ammo_type: str = "") -> int:
+    """Sum charges carried by nested ammo/items inside a saved item payload."""
+    total = 0
+    if not isinstance(entry, dict):
+        return total
+    typeid = str(entry.get("typeid", "")).strip()
+    if (not ammo_type or typeid == ammo_type) and "charges" in entry:
+        try:
+            total += int(entry.get("charges") or 0)
+        except (TypeError, ValueError):
+            pass
+    contents_obj = entry.get("contents")
+    if not isinstance(contents_obj, dict):
+        return total
+    pockets = contents_obj.get("contents", [])
+    if not isinstance(pockets, list):
+        return total
+    for pocket in pockets:
+        if not isinstance(pocket, dict):
+            continue
+        pocket_contents = pocket.get("contents", [])
+        if not isinstance(pocket_contents, list):
+            continue
+        for child in pocket_contents:
+            total += saved_item_nested_charge_sum(child, ammo_type=ammo_type)
+    return total
+
+
 def audit_saved_player_items(
     world_dir: Path,
     *,
     player_save: str = "",
     required_items: Optional[List[str]] = None,
+    required_weapon: str = "",
+    required_weapon_ammo_type: str = "",
+    required_weapon_ammo_min: int = 0,
 ) -> Dict[str, Any]:
-    """Read-only saved-player inventory audit for exact item type ids plus deploy metadata."""
+    """Read-only saved-player inventory/wield audit for exact item type ids plus deploy metadata."""
     if not world_dir.exists():
         raise FileNotFoundError(f"World dir not found: {world_dir}")
     selected_player_save = player_save.strip()
@@ -1835,8 +2040,18 @@ def audit_saved_player_items(
     accessible_rows, legacy_rows = saved_player_item_rows(player)
     counts, item_rows = summarize_saved_item_rows(accessible_rows)
     legacy_counts, legacy_item_rows = summarize_saved_item_rows(legacy_rows)
+    weapon = player.get("weapon")
+    observed_weapon = str(weapon.get("typeid", "")) if isinstance(weapon, dict) else ""
+    required_weapon_ammo_type = str(required_weapon_ammo_type or "").strip()
+    required_weapon_ammo_min = max(0, int(required_weapon_ammo_min or 0))
+    observed_weapon_ammo_remaining = (
+        saved_item_nested_charge_sum(weapon, ammo_type=required_weapon_ammo_type)
+        if isinstance(weapon, dict)
+        else 0
+    )
 
     required = [item for item in (required_items or []) if item]
+    required_weapon = str(required_weapon or "").strip()
     interesting_typeids = sorted(set(required) if required else set(counts))
     definitions = load_item_definitions_for(interesting_typeids)
     item_details: Dict[str, Dict[str, Any]] = {}
@@ -1851,9 +2066,21 @@ def audit_saved_player_items(
         }
 
     missing_required_items = [item for item in required if counts.get(item, 0) < 1]
-    if required and not missing_required_items:
+    missing_required_weapon = (
+        [required_weapon]
+        if required_weapon and observed_weapon != required_weapon
+        else []
+    )
+    missing_required_weapon_ammo = (
+        [f"{required_weapon_ammo_type or 'nested_ammo'}>={required_weapon_ammo_min}"]
+        if required_weapon_ammo_min and observed_weapon_ammo_remaining < required_weapon_ammo_min
+        else []
+    )
+    required_count = len(required) + (1 if required_weapon else 0) + (1 if required_weapon_ammo_min else 0)
+    missing_count = len(missing_required_items) + len(missing_required_weapon) + len(missing_required_weapon_ammo)
+    if required_count and not missing_count:
         status = "required_state_present"
-    elif required:
+    elif required_count:
         status = "required_state_missing"
     else:
         status = "scanned"
@@ -1863,12 +2090,19 @@ def audit_saved_player_items(
         "world_dir": str(world_dir),
         "player_save": selected_player_save,
         "required_items": required,
+        "required_weapon": required_weapon,
+        "required_weapon_ammo_type": required_weapon_ammo_type,
+        "required_weapon_ammo_min": required_weapon_ammo_min,
+        "observed_weapon": observed_weapon,
+        "observed_weapon_ammo_remaining": observed_weapon_ammo_remaining,
         "observed_items": sorted(counts),
         "inventory_counts": dict(sorted(counts.items())),
         "live_accessible_counts": dict(sorted(counts.items())),
         "legacy_top_level_inv_counts": dict(sorted(legacy_counts.items())),
         "item_details": item_details,
         "missing_required_items": missing_required_items,
+        "missing_required_weapon": missing_required_weapon,
+        "missing_required_weapon_ammo": missing_required_weapon_ammo,
         "status": status,
     }
 
@@ -2502,6 +2736,15 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     active_member_ids = site.get("active_member_ids", [])
     if not isinstance(active_member_ids, list):
         active_member_ids = []
+    retired_empty_site = bool(site.get("retired_empty_site", False))
+    spawn_tiles = site.get("spawn_tiles", [])
+    if not isinstance(spawn_tiles, list):
+        spawn_tiles = []
+    spawn_tile_headcount = 0
+    for spawn_tile in spawn_tiles:
+        if not isinstance(spawn_tile, dict):
+            continue
+        spawn_tile_headcount += max(0, int(spawn_tile.get("headcount", 0) or 0))
     members = site.get("members", [])
     if not isinstance(members, list):
         members = []
@@ -2522,6 +2765,16 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         if state in {"outbound", "local_contact"}:
             active_outside_ids.add(str(member.get("npc_id", "")))
     active_outside_ids.discard("")
+    home_side_signals = ready_at_home + wounded_or_unready + max(0, int(site.get("headcount", 0) or 0)) + spawn_tile_headcount
+    empty_retirement_blockers: List[str] = []
+    if retired_empty_site:
+        empty_retirement_blockers.append("already_retired")
+    if str(site.get("site_kind", "")) in {"", "none"}:
+        empty_retirement_blockers.append("no_hostile_site_kind")
+    if home_side_signals != 0:
+        empty_retirement_blockers.append("home_side_present")
+    if active_outside_ids:
+        empty_retirement_blockers.append("active_outside_present")
     known_recent_marks = site.get("known_recent_marks", [])
     if not isinstance(known_recent_marks, list):
         known_recent_marks = []
@@ -2532,6 +2785,12 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "hostile_profile": site.get("hostile_profile", site.get("profile", "")),
         "anchor": site.get("anchor", []),
         "headcount": site.get("headcount", 0),
+        "spawn_tile_headcount": spawn_tile_headcount,
+        "home_side_signal_count": home_side_signals,
+        "retired_empty_site": retired_empty_site,
+        "retirement_summary": site.get("retirement_summary", ""),
+        "empty_site_retirement_eligible": not retired_empty_site and not empty_retirement_blockers,
+        "empty_site_retirement_blockers": empty_retirement_blockers,
         "member_count": len(members),
         "ready_at_home_count": ready_at_home,
         "wounded_or_unready_count": wounded_or_unready,
@@ -2559,9 +2818,14 @@ def audit_saved_bandit_live_world_state(
     *,
     required_profile: str = "",
     required_site_id_contains: str = "",
+    required_active_group_id_exact: Optional[str] = None,
     required_active_group_id_contains: str = "",
+    required_active_target_id_exact: Optional[str] = None,
     required_active_target_id_prefix: str = "",
+    required_active_target_id_contains: str = "",
     required_active_job_type: str = "",
+    required_active_sortie_started_minutes: Optional[int] = None,
+    required_active_sortie_local_contact_minutes: Optional[int] = None,
     required_member_count: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
     required_wounded_or_unready_count: Optional[int] = None,
@@ -2573,10 +2837,21 @@ def audit_saved_bandit_live_world_state(
     required_remembered_target_or_mark_prefix: str = "",
     required_min_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
+    required_lead_kind: str = "",
+    required_lead_target_id: str = "",
+    required_lead_target_id_prefix: str = "",
+    required_lead_bounty: Optional[int] = None,
+    required_lead_threat: Optional[int] = None,
+    required_lead_times_harvested: Optional[int] = None,
+    required_lead_last_checked_minutes_min: Optional[int] = None,
     required_lead_status: str = "",
     required_lead_last_outcome: str = "",
     required_lead_confidence: Optional[int] = None,
     required_known_recent_mark_contains: str = "",
+    required_home_side_signal_count: Optional[int] = None,
+    required_retired_empty_site: Optional[bool] = None,
+    required_retirement_summary_contains: str = "",
+    required_empty_retirement_blocker_contains: str = "",
 ) -> Dict[str, Any]:
     """Read-only saved dimension-data audit for persisted bandit_live_world state."""
     if not world_dir.exists():
@@ -2716,25 +2991,43 @@ def audit_saved_bandit_live_world_state(
 
     required_profile = str(required_profile or "").strip()
     required_site_id_contains = str(required_site_id_contains or "").strip()
+    normalized_active_group_id_exact = None if required_active_group_id_exact is None else str(required_active_group_id_exact)
     required_active_group_id_contains = str(required_active_group_id_contains or "").strip()
+    normalized_active_target_id_exact = None if required_active_target_id_exact is None else str(required_active_target_id_exact)
     required_active_target_id_prefix = str(required_active_target_id_prefix or "").strip()
+    required_active_target_id_contains = str(required_active_target_id_contains or "").strip()
     required_active_job_type = str(required_active_job_type or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
+    required_lead_kind = str(required_lead_kind or "").strip()
+    required_lead_target_id = str(required_lead_target_id or "").strip()
+    required_lead_target_id_prefix = str(required_lead_target_id_prefix or "").strip()
     required_lead_status = str(required_lead_status or "").strip()
     required_lead_last_outcome = str(required_lead_last_outcome or "").strip()
     required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
+    required_retirement_summary_contains = str(required_retirement_summary_contains or "").strip()
+    required_empty_retirement_blocker_contains = str(required_empty_retirement_blocker_contains or "").strip()
 
     def site_matches(site: Dict[str, Any]) -> bool:
         if required_profile and site.get("hostile_profile") != required_profile:
             return False
         if required_site_id_contains and required_site_id_contains not in str(site.get("site_id", "")):
             return False
+        if normalized_active_group_id_exact is not None and str(site.get("active_group_id", "")) != normalized_active_group_id_exact:
+            return False
         if required_active_group_id_contains and required_active_group_id_contains not in str(site.get("active_group_id", "")):
+            return False
+        if normalized_active_target_id_exact is not None and str(site.get("active_target_id", "")) != normalized_active_target_id_exact:
             return False
         if required_active_target_id_prefix and not str(site.get("active_target_id", "")).startswith(required_active_target_id_prefix):
             return False
+        if required_active_target_id_contains and required_active_target_id_contains not in str(site.get("active_target_id", "")):
+            return False
         if required_active_job_type and site.get("active_job_type") != required_active_job_type:
+            return False
+        if required_active_sortie_started_minutes is not None and int(site.get("active_sortie_started_minutes", -1) or -1) != required_active_sortie_started_minutes:
+            return False
+        if required_active_sortie_local_contact_minutes is not None and int(site.get("active_sortie_local_contact_minutes", -1) or -1) != required_active_sortie_local_contact_minutes:
             return False
         if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
             return False
@@ -2744,6 +3037,16 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_active_outside_count is not None and int(site.get("active_outside_count", 0) or 0) != required_active_outside_count:
             return False
+        if required_home_side_signal_count is not None and int(site.get("home_side_signal_count", 0) or 0) != required_home_side_signal_count:
+            return False
+        if required_retired_empty_site is not None and bool(site.get("retired_empty_site", False)) != required_retired_empty_site:
+            return False
+        if required_retirement_summary_contains and required_retirement_summary_contains not in str(site.get("retirement_summary", "")):
+            return False
+        if required_empty_retirement_blocker_contains:
+            blockers = site.get("empty_site_retirement_blockers", [])
+            if not isinstance(blockers, list) or required_empty_retirement_blocker_contains not in [str(blocker) for blocker in blockers]:
+                return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
             return False
         if required_active_members_found and not bool(site.get("active_members_all_found_in_saved_overmap")):
@@ -2756,6 +3059,13 @@ def audit_saved_bandit_live_world_state(
             return False
         lead_requirements_present = any([
             required_lead_source_contains,
+            required_lead_kind,
+            required_lead_target_id,
+            required_lead_target_id_prefix,
+            required_lead_bounty is not None,
+            required_lead_threat is not None,
+            required_lead_times_harvested is not None,
+            required_lead_last_checked_minutes_min is not None,
             required_lead_status,
             required_lead_last_outcome,
             required_lead_confidence is not None,
@@ -2769,6 +3079,20 @@ def audit_saved_bandit_live_world_state(
                     or required_lead_source_contains in str(lead.get("source_summary", ""))
                     or required_lead_source_contains in str(lead.get("lead_id", ""))
                 ):
+                    return False
+                if required_lead_kind and str(lead.get("kind", "")) != required_lead_kind:
+                    return False
+                if required_lead_target_id and str(lead.get("target_id", "")) != required_lead_target_id:
+                    return False
+                if required_lead_target_id_prefix and not str(lead.get("target_id", "")).startswith(required_lead_target_id_prefix):
+                    return False
+                if required_lead_bounty is not None and int(lead.get("bounty", 0) or 0) != required_lead_bounty:
+                    return False
+                if required_lead_threat is not None and int(lead.get("threat", 0) or 0) != required_lead_threat:
+                    return False
+                if required_lead_times_harvested is not None and int(lead.get("times_harvested", 0) or 0) != required_lead_times_harvested:
+                    return False
+                if required_lead_last_checked_minutes_min is not None and int(lead.get("last_checked_minutes", -1) or -1) < required_lead_last_checked_minutes_min:
                     return False
                 if required_lead_status and str(lead.get("status", "")) != required_lead_status:
                     return False
@@ -2793,9 +3117,14 @@ def audit_saved_bandit_live_world_state(
     required_fields = {
         "required_profile": required_profile,
         "required_site_id_contains": required_site_id_contains,
+        "required_active_group_id_exact": normalized_active_group_id_exact,
         "required_active_group_id_contains": required_active_group_id_contains,
+        "required_active_target_id_exact": normalized_active_target_id_exact,
         "required_active_target_id_prefix": required_active_target_id_prefix,
+        "required_active_target_id_contains": required_active_target_id_contains,
         "required_active_job_type": required_active_job_type,
+        "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
+        "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_wounded_or_unready_count": required_wounded_or_unready_count,
@@ -2806,10 +3135,21 @@ def audit_saved_bandit_live_world_state(
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_min_leads": required_min_leads,
         "required_lead_source_contains": required_lead_source_contains,
+        "required_lead_kind": required_lead_kind,
+        "required_lead_target_id": required_lead_target_id,
+        "required_lead_target_id_prefix": required_lead_target_id_prefix,
+        "required_lead_bounty": required_lead_bounty,
+        "required_lead_threat": required_lead_threat,
+        "required_lead_times_harvested": required_lead_times_harvested,
+        "required_lead_last_checked_minutes_min": required_lead_last_checked_minutes_min,
         "required_lead_status": required_lead_status,
         "required_lead_last_outcome": required_lead_last_outcome,
         "required_lead_confidence": required_lead_confidence,
         "required_known_recent_mark_contains": required_known_recent_mark_contains,
+        "required_home_side_signal_count": required_home_side_signal_count,
+        "required_retired_empty_site": required_retired_empty_site,
+        "required_retirement_summary_contains": required_retirement_summary_contains,
+        "required_empty_retirement_blocker_contains": required_empty_retirement_blocker_contains,
     }
     has_requirement = any(value not in (None, "", []) for value in required_fields.values())
     matching_sites = [site for site in observed_sites if site_matches(site)]
@@ -3937,6 +4277,10 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_fields")
         if metadata.get("missing_required_items"):
             issues.append("missing_required_items")
+        if metadata.get("missing_required_weapon"):
+            issues.append("missing_required_weapon")
+        if metadata.get("missing_required_weapon_ammo"):
+            issues.append("missing_required_weapon_ammo")
         if metadata.get("missing_required_furniture"):
             issues.append("missing_required_furniture")
         if metadata.get("missing_required_traps"):
@@ -3945,6 +4289,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_radiation")
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
+        if metadata.get("missing_required_hordes"):
+            issues.append("missing_required_hordes")
         if metadata.get("missing_required_npcs"):
             issues.append("missing_required_npcs")
         if metadata.get("missing_required_new_npcs"):
@@ -3953,6 +4299,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_npc_count_delta")
         if metadata.get("missing_required_weather"):
             issues.append("missing_required_weather")
+        if metadata.get("missing_required_points_ms"):
+            issues.append("missing_required_points_ms")
         if metadata.get("missing_required_min_delta_turns"):
             issues.append("missing_required_min_delta_turns")
         missing_fields = metadata.get("missing_required_fields")
@@ -4049,6 +4397,8 @@ def auto_step_action_description(report: Dict[str, Any]) -> str:
         return f"sleep wall-clock {report.get('seconds', '')} second(s)"
     if kind == "audit_log_contains":
         return "scan harness debug log delta for required UI trace patterns"
+    if kind == "audit_player_message_log_contains":
+        return "scan saved player message log for narrow decisive in-game message lines"
     if kind.startswith("debug_"):
         return f"debug helper primitive {kind}"
     return kind or "scenario step"
@@ -4168,6 +4518,13 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "missing_required_new_npcs": metadata_summary.get("missing_required_new_npcs", []),
                 "missing_required_npc_count_delta": metadata_summary.get("missing_required_npc_count_delta", False),
                 "missing_required_weather": metadata_summary.get("missing_required_weather", []),
+                "required_weapon": metadata_summary.get("required_weapon", ""),
+                "observed_weapon": metadata_summary.get("observed_weapon", ""),
+                "required_weapon_ammo_type": metadata_summary.get("required_weapon_ammo_type", ""),
+                "required_weapon_ammo_min": metadata_summary.get("required_weapon_ammo_min", 0),
+                "observed_weapon_ammo_remaining": metadata_summary.get("observed_weapon_ammo_remaining", 0),
+                "missing_required_weapon": metadata_summary.get("missing_required_weapon", []),
+                "missing_required_weapon_ammo": metadata_summary.get("missing_required_weapon_ammo", []),
                 "required_weather_id": metadata_summary.get("required_weather_id", ""),
                 "required_temperature_f": metadata_summary.get("required_temperature_f"),
                 "required_bandit_fields": metadata_summary.get("required_fields", {}),
@@ -4535,11 +4892,32 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         )
                     item["contents"] = contents
                 items.append(item)
+            replace_existing_weapon = bool(raw.get("replace_existing_weapon", False))
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "storage": storage,
                 "items": items,
+                "replace_existing_weapon": replace_existing_weapon,
+            })
+            continue
+
+        if kind == "player_location_offset_ms":
+            offset_raw = raw.get("offset_ms", [])
+            if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                )
+            try:
+                offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] offset_ms values must be integers in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "offset_ms": offset_ms,
             })
             continue
 
@@ -4646,6 +5024,154 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "map_furniture_near_player":
+            furniture_raw = raw.get("furniture", raw.get("furnitures", []))
+            if not isinstance(furniture_raw, list) or not furniture_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs non-empty furniture list in {manifest_path}"
+                )
+            furniture: List[Dict[str, Any]] = []
+            for furn_index, furn_raw in enumerate(furniture_raw, start=1):
+                if not isinstance(furn_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] must be an object in {manifest_path}"
+                    )
+                furn_id = str(furn_raw.get("id", furn_raw.get("furn_id", ""))).strip()
+                if not furn_id:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] needs id/furn_id in {manifest_path}"
+                    )
+                offset_raw = furn_raw.get("offset_ms", [0, 0, 0])
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] has non-integer offset in {manifest_path}"
+                    )
+                furniture.append({"id": furn_id, "offset_ms": offset_ms})
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "furniture": furniture,
+            })
+            continue
+
+        if kind == "map_items_near_player":
+            items_raw = raw.get("items", [])
+            if not isinstance(items_raw, list) or not items_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs non-empty items list in {manifest_path}"
+                )
+            items: List[Dict[str, Any]] = []
+            for item_index, item_raw in enumerate(items_raw, start=1):
+                if not isinstance(item_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] must be an object in {manifest_path}"
+                    )
+                typeid = str(item_raw.get("typeid", "")).strip()
+                if not typeid:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs typeid in {manifest_path}"
+                    )
+                offset_raw = item_raw.get("offset_ms", [0, 0, 0])
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+                    count = int(item_raw.get("count", 1) or 1)
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] has non-integer offset/count in {manifest_path}"
+                    )
+                if count <= 0:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be > 0 in {manifest_path}"
+                    )
+                item = {"typeid": typeid, "offset_ms": offset_ms, "count": count}
+                if "charges" in item_raw:
+                    item["charges"] = int(item_raw.get("charges"))
+                if "contents" in item_raw:
+                    contents = item_raw.get("contents")
+                    if not isinstance(contents, dict):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] contents must be object in {manifest_path}"
+                        )
+                    item["contents"] = contents
+                items.append(item)
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "items": items,
+            })
+            continue
+
+        if kind == "source_firewood_zone_near_player":
+            def normalize_zone_offset(key: str, default: List[int]) -> List[int]:
+                value = raw.get(key, default)
+                if not isinstance(value, list) or len(value) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    return [int(value[0]), int(value[1]), int(value[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} values must be integers in {manifest_path}"
+                    )
+
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "name": str(raw.get("name", "OpenClaw fuel source") or "OpenClaw fuel source").strip(),
+                "zone_type": str(raw.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD").strip(),
+                "faction": str(raw.get("faction", "your_followers") or "your_followers").strip(),
+                "start_offset_ms": normalize_zone_offset("start_offset_ms", [1, -1, 0]),
+                "end_offset_ms": normalize_zone_offset("end_offset_ms", [3, 1, 0]),
+                "write_temp": bool(raw.get("write_temp", True)),
+            })
+            continue
+
+        if kind == "horde_entity_near_player":
+            def normalize_horde_offset(key: str, default: List[int]) -> List[int]:
+                value = raw.get(key, default)
+                if not isinstance(value, list) or len(value) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    return [int(value[0]), int(value[1]), int(value[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} values must be integers in {manifest_path}"
+                    )
+
+            try:
+                tracking_intensity = int(raw.get("tracking_intensity", 0) or 0)
+                last_processed = int(raw.get("last_processed", 0) or 0)
+                moves = int(raw.get("moves", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] horde_entity_near_player needs integer "
+                    f"tracking_intensity/last_processed/moves in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "monster_id": str(raw.get("monster_id", "mon_zombie") or "mon_zombie").strip(),
+                "offset_ms": normalize_horde_offset("offset_ms", [0, -240, 0]),
+                "destination_offset_ms": normalize_horde_offset("destination_offset_ms", [0, -240, 0]),
+                "tracking_intensity": tracking_intensity,
+                "last_processed": last_processed,
+                "moves": moves,
+            })
+            continue
+
         if kind == "game_turn":
             try:
                 turn = int(raw.get("turn"))
@@ -4678,7 +5204,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "last_checked_minutes": int(raw.get("last_checked_minutes", 0) or 0),
                 "last_scouted_minutes": int(raw.get("last_scouted_minutes", 0) or 0),
                 "bounty": int(raw.get("bounty", 8) or 8),
-                "threat": int(raw.get("threat", 1) or 1),
+                "threat": int(1 if raw.get("threat") is None or str(raw.get("threat")).strip() == "" else raw.get("threat")),
                 "confidence": int(raw.get("confidence", 3) or 3),
                 "threat_confirmed": bool(raw.get("threat_confirmed", True)),
                 "target_alert": bool(raw.get("target_alert", False)),
@@ -4694,19 +5220,63 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_clone_site":
+            source_site_id = str(raw.get("source_site_id", raw.get("site_id", "")) or "").strip()
+            new_site_id = str(raw.get("new_site_id", "") or "").strip()
+            if not source_site_id or not new_site_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_clone_site needs source_site_id and new_site_id in {manifest_path}"
+                )
+            raw_new_anchor = raw.get("new_anchor", raw.get("anchor"))
+            new_anchor: Optional[List[int]] = None
+            if raw_new_anchor is not None:
+                if not isinstance(raw_new_anchor, list) or len(raw_new_anchor) < 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] bandit_clone_site new_anchor needs [x,y,z] in {manifest_path}"
+                    )
+                new_anchor = [int(raw_new_anchor[0]), int(raw_new_anchor[1]), int(raw_new_anchor[2])]
+            raw_new_footprint = raw.get("new_footprint", raw.get("footprint"))
+            new_footprint: Optional[List[List[int]]] = None
+            if raw_new_footprint is not None:
+                if not isinstance(raw_new_footprint, list) or not raw_new_footprint:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] bandit_clone_site new_footprint needs non-empty [[x,y,z], ...] in {manifest_path}"
+                    )
+                new_footprint = []
+                for point_index, point in enumerate(raw_new_footprint):
+                    if not isinstance(point, list) or len(point) < 3:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}] bandit_clone_site new_footprint[{point_index}] needs [x,y,z] in {manifest_path}"
+                        )
+                    new_footprint.append([int(point[0]), int(point[1]), int(point[2])])
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "source_site_id": source_site_id,
+                "new_site_id": new_site_id,
+                "new_source_id": str(raw.get("new_source_id", raw.get("source_id", "")) or "").strip(),
+                "new_site_kind": str(raw.get("new_site_kind", raw.get("site_kind", "")) or "").strip(),
+                "new_anchor": new_anchor,
+                "new_footprint": new_footprint,
+                "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
+                "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
+            })
+            continue
+
         if kind == "bandit_site_roster_shape":
             try:
                 living_member_count = int(raw.get("living_member_count"))
                 wounded_or_unready_count = int(raw.get("wounded_or_unready_count", 0) or 0)
                 active_outside_member_count = int(raw.get("active_outside_member_count", 0) or 0)
+                member_start_index = int(raw.get("member_start_index", 0) or 0)
             except (TypeError, ValueError):
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_site_roster_shape needs integer "
-                    f"living_member_count/wounded_or_unready_count/active_outside_member_count in {manifest_path}"
+                    f"living_member_count/wounded_or_unready_count/active_outside_member_count/member_start_index in {manifest_path}"
                 )
-            if living_member_count < 0 or wounded_or_unready_count < 0 or active_outside_member_count < 0:
+            if living_member_count < 0 or wounded_or_unready_count < 0 or active_outside_member_count < 0 or member_start_index < 0:
                 raise SystemExit(
-                    f"Fixture save_transforms[{index}] bandit_site_roster_shape counts must be >= 0 in {manifest_path}"
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape counts/member_start_index must be >= 0 in {manifest_path}"
                 )
             if wounded_or_unready_count + active_outside_member_count > living_member_count:
                 raise SystemExit(
@@ -4717,17 +5287,21 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "player_save": player_save,
                 "site_id": str(raw.get("site_id", "") or "").strip(),
                 "living_member_count": living_member_count,
+                "member_start_index": member_start_index,
                 "wounded_or_unready_count": wounded_or_unready_count,
                 "active_outside_member_count": active_outside_member_count,
                 "active_job_type": str(raw.get("active_job_type", "stalk") or "stalk").strip(),
                 "active_target_id": str(raw.get("active_target_id", "") or "").strip(),
+                "headcount_override": raw.get("headcount_override"),
+                "clear_spawn_tile_headcount": bool(raw.get("clear_spawn_tile_headcount", False)),
             })
             continue
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_items, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player, game_turn, "
+            "supported kinds: player_mutations, player_items, player_location_offset_ms, player_near_overmap_special, "
+            "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
+            "map_items_near_player, source_firewood_zone_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
         )
     return transforms
@@ -4844,6 +5418,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         raise SystemExit(f"Player inventory is not a list in {extracted_save}")
 
     storage = str(transform.get("storage", "legacy_top_level_inv")).strip().lower()
+    replace_existing_weapon = bool(transform.get("replace_existing_weapon", False))
+    replaced_weapon_typeid = ""
     target_container: Optional[List[Any]] = None
     target_path = "player.inv"
     if storage == "legacy_top_level_inv":
@@ -4851,10 +5427,12 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
     elif storage == "live_accessible_wielded":
         existing_weapon = player.get("weapon")
         if isinstance(existing_weapon, dict) and str(existing_weapon.get("typeid", "")).strip():
-            raise SystemExit(
-                "Fixture player-items transform requested live_accessible_wielded, "
-                f"but player already has weapon {existing_weapon.get('typeid')!r} in {extracted_save}"
-            )
+            if not replace_existing_weapon:
+                raise SystemExit(
+                    "Fixture player-items transform requested live_accessible_wielded, "
+                    f"but player already has weapon {existing_weapon.get('typeid')!r} in {extracted_save}"
+                )
+            replaced_weapon_typeid = str(existing_weapon.get("typeid", ""))
         requested_count = sum(int(item.get("count", 1) or 1) for item in transform.get("items", []))
         if requested_count != 1:
             raise SystemExit(
@@ -4943,6 +5521,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         "target_path": target_path,
         "added_items": added_items,
         "inserted_paths": inserted_paths,
+        "replace_existing_weapon": replace_existing_weapon,
+        "replaced_weapon_typeid": replaced_weapon_typeid,
     }
 
 
@@ -5441,6 +6021,98 @@ def apply_player_near_overmap_special_transform(world_dir: Path, transform: Dict
 
 
 
+def apply_player_location_offset_ms_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Move the saved player by a small map-square offset and update load anchors.
+
+    This is setup footing only. It is intended for narrow live probes that need
+    the player on an already-auditable adjacent z-level/tile without pretending
+    the move itself proves any downstream product behavior.
+    """
+    player_save = world_dir / str(transform.get("player_save", "")).strip()
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-location-offset target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-location-offset expects .zzip save path: {player_save}")
+    raw_offset = transform.get("offset_ms", [])
+    if not isinstance(raw_offset, list) or len(raw_offset) != 3:
+        raise SystemExit(f"Fixture player-location-offset needs offset_ms=[x,y,z]: {transform}")
+    try:
+        offset_ms = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture player-location-offset offset_ms values must be integers: {transform}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-location-offset did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+
+    old_location_raw = player.get("location", [])
+    if not isinstance(old_location_raw, list) or len(old_location_raw) < 3:
+        raise SystemExit(f"Extracted player save is missing usable player.location: {extracted_save}")
+    old_location = [int(old_location_raw[0]), int(old_location_raw[1]), int(old_location_raw[2])]
+    target_location = [old_location[i] + offset_ms[i] for i in range(3)]
+
+    old_overmap_x = int(payload.get("om_x", 0))
+    old_overmap_y = int(payload.get("om_y", 0))
+    old_levx = int(payload.get("levx", 0))
+    old_levy = int(payload.get("levy", 0))
+    old_levz = int(payload.get("levz", 0))
+    updated_load_anchor = player_load_anchor_from_location(
+        old_location,
+        target_location,
+        old_overmap_x=old_overmap_x,
+        old_overmap_y=old_overmap_y,
+        old_levx=old_levx,
+        old_levy=old_levy,
+        old_levz=old_levz,
+    )
+    player["location"] = target_location
+    payload["om_x"] = updated_load_anchor["om_x"]
+    payload["om_y"] = updated_load_anchor["om_y"]
+    payload["levx"] = updated_load_anchor["levx"]
+    payload["levy"] = updated_load_anchor["levy"]
+    payload["levz"] = updated_load_anchor["levz"]
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_location_offset_ms",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "")),
+        "offset_ms": offset_ms,
+        "previous_location": old_location,
+        "target_location": target_location,
+        "previous_load_anchor": {
+            "om_x": old_overmap_x,
+            "om_y": old_overmap_y,
+            "levx": old_levx,
+            "levy": old_levy,
+            "levz": old_levz,
+        },
+        "target_load_anchor": {
+            "om_x": updated_load_anchor["om_x"],
+            "om_y": updated_load_anchor["om_y"],
+            "levx": updated_load_anchor["levx"],
+            "levy": updated_load_anchor["levy"],
+            "levz": updated_load_anchor["levz"],
+        },
+        "preserved_player_offset_sm": [
+            updated_load_anchor["offset_sm_x"],
+            updated_load_anchor["offset_sm_y"],
+            updated_load_anchor["offset_sm_z"],
+        ],
+    }
+
+
 def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
@@ -5548,6 +6220,669 @@ def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str,
         "recompressed_maps": recompressed_maps,
         "removed_extracted_map_dirs": removed_extracted_dirs,
         "plain_map_dirs_left_for_game_load": False,
+    }
+
+
+def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = None, contents: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "typeid": typeid,
+        "bday": int(bday),
+        "last_temp_check": 0,
+        "template_traits": [],
+    }
+    if charges is not None:
+        payload["charges"] = int(charges)
+    if isinstance(contents, dict):
+        payload["contents"] = contents
+    return payload
+
+
+def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    maps_dir = world_dir / "maps"
+    if not maps_dir.exists():
+        raise SystemExit(f"Fixture map-item transform maps dir not found: {maps_dir}")
+
+    placed_items: List[Dict[str, Any]] = []
+    extracted_packs: List[str] = []
+    modified_map_paths: Dict[str, Path] = {}
+    for item in transform.get("items", []):
+        typeid = str(item.get("typeid", "")).strip()
+        offset_ms_raw = item.get("offset_ms", [0, 0, 0])
+        offset_ms = [int(offset_ms_raw[0]), int(offset_ms_raw[1]), int(offset_ms_raw[2])]
+        count = int(item.get("count", 1) or 1)
+        if count <= 0:
+            raise SystemExit(f"Fixture map-item transform count must be positive: {item}")
+        charges = item.get("charges")
+        contents = item.get("contents") if isinstance(item.get("contents"), dict) else None
+
+        target_location = [
+            int(player_location[0]) + offset_ms[0],
+            int(player_location[1]) + offset_ms[1],
+            int(player_location[2]) + offset_ms[2],
+        ]
+        target_abs_sm = (target_location[0] // 12, target_location[1] // 12, target_location[2])
+        target_abs_omt = (target_location[0] // 24, target_location[1] // 24, target_location[2])
+        local_ms = (
+            target_location[0] - target_abs_sm[0] * 12,
+            target_location[1] - target_abs_sm[1] * 12,
+            target_location[2],
+        )
+        pack_stem = f"{target_abs_omt[0] // 32}.{target_abs_omt[1] // 32}.{target_abs_omt[2]}"
+        pack_dir = maps_dir / pack_stem
+        pack_zzip = maps_dir / f"{pack_stem}.zzip"
+        if not pack_dir.exists():
+            if not pack_zzip.exists():
+                raise SystemExit(f"Fixture map-item transform target map pack not found: {pack_zzip}")
+            run_zzip(pack_zzip)
+            extracted_packs.append(pack_stem)
+        if not pack_dir.exists() or not pack_dir.is_dir():
+            raise SystemExit(f"Fixture map-item transform did not extract map pack: {pack_dir}")
+
+        map_path = pack_dir / f"{target_abs_omt[0]}.{target_abs_omt[1]}.{target_abs_omt[2]}.map"
+        if not map_path.exists():
+            raise SystemExit(f"Fixture map-item transform target map file not found: {map_path}")
+        map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+        if not isinstance(map_payload, list):
+            raise SystemExit(f"Fixture map-item transform map payload is not a list: {map_path}")
+        target_submap: Optional[Dict[str, Any]] = None
+        target_coords = [target_abs_sm[0], target_abs_sm[1], target_abs_sm[2]]
+        for submap in map_payload:
+            if isinstance(submap, dict) and submap.get("coordinates") == target_coords:
+                target_submap = submap
+                break
+        if target_submap is None:
+            raise SystemExit(f"Fixture map-item transform submap {target_coords} not found in {map_path}")
+        items = target_submap.setdefault("items", [])
+        if not isinstance(items, list):
+            raise SystemExit(f"Fixture map-item transform items is not a list in {map_path}")
+        item_payloads = [
+            saved_item_payload(
+                typeid,
+                bday=0,
+                charges=int(charges) if charges is not None else None,
+                contents=contents,
+            )
+            for _ in range(count)
+        ]
+        items.extend([local_ms[0], local_ms[1], item_payloads])
+        map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        modified_map_paths[str(map_path)] = map_path
+
+        placed_items.append({
+            "typeid": typeid,
+            "count": count,
+            "charges": int(charges) if charges is not None else None,
+            "offset_ms": offset_ms,
+            "target_location_ms": target_location,
+            "target_abs_omt": list(target_abs_omt),
+            "target_abs_sm": list(target_abs_sm),
+            "local_ms": [local_ms[0], local_ms[1], local_ms[2]],
+            "map_pack": pack_stem,
+            "map_file": map_path.name,
+        })
+
+    recompressed_maps: List[str] = []
+    for map_path in sorted(modified_map_paths.values(), key=lambda path: str(path)):
+        run_zzip(map_path)
+        recompressed_maps.append(str(map_path.relative_to(world_dir)))
+
+    removed_extracted_dirs: List[str] = []
+    for pack_stem in sorted(set(extracted_packs)):
+        pack_dir = maps_dir / pack_stem
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed_extracted_dirs.append(str(pack_dir.relative_to(world_dir)))
+
+    return {
+        "kind": "map_items_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "placed_items": placed_items,
+        "extracted_map_packs": sorted(set(extracted_packs)),
+        "recompressed_maps": recompressed_maps,
+        "removed_extracted_map_dirs": removed_extracted_dirs,
+        "plain_map_dirs_left_for_game_load": False,
+    }
+
+
+def player_zone_file_stem(player_save_name: str) -> str:
+    if player_save_name.endswith(".sav.zzip"):
+        return player_save_name[:-len(".sav.zzip")]
+    if player_save_name.endswith(".sav"):
+        return player_save_name[:-len(".sav")]
+    return Path(player_save_name).stem
+
+
+def zone_contains_abs_point(zone: Dict[str, Any], point: Sequence[int]) -> bool:
+    start = zone.get("start", [])
+    end = zone.get("end", [])
+    if not isinstance(start, list) or not isinstance(end, list) or len(start) < 3 or len(end) < 3:
+        return False
+    try:
+        mins = [min(int(start[i]), int(end[i])) for i in range(3)]
+        maxs = [max(int(start[i]), int(end[i])) for i in range(3)]
+        target = [int(point[i]) for i in range(3)]
+    except (TypeError, ValueError, IndexError):
+        return False
+    return all(mins[i] <= target[i] <= maxs[i] for i in range(3))
+
+
+def map_submap_for_ms_location(world_dir: Path, target_location: Sequence[int]) -> Tuple[Path, Path, str, Path, List[Any], Dict[str, Any], Tuple[int, int, int], Tuple[int, int, int], Tuple[int, int, int], bool]:
+    maps_dir = world_dir / "maps"
+    if not maps_dir.exists():
+        raise SystemExit(f"Fixture map transform maps dir not found: {maps_dir}")
+    target_abs_sm = (int(target_location[0]) // 12, int(target_location[1]) // 12, int(target_location[2]))
+    target_abs_omt = (int(target_location[0]) // 24, int(target_location[1]) // 24, int(target_location[2]))
+    local_ms = (
+        int(target_location[0]) - target_abs_sm[0] * 12,
+        int(target_location[1]) - target_abs_sm[1] * 12,
+        int(target_location[2]),
+    )
+    pack_stem = f"{target_abs_omt[0] // 32}.{target_abs_omt[1] // 32}.{target_abs_omt[2]}"
+    pack_dir = maps_dir / pack_stem
+    pack_zzip = maps_dir / f"{pack_stem}.zzip"
+    extracted = False
+    if not pack_dir.exists():
+        if not pack_zzip.exists():
+            raise SystemExit(f"Fixture map transform target map pack not found: {pack_zzip}")
+        run_zzip(pack_zzip)
+        extracted = True
+    if not pack_dir.exists() or not pack_dir.is_dir():
+        raise SystemExit(f"Fixture map transform did not extract map pack: {pack_dir}")
+    map_path = pack_dir / f"{target_abs_omt[0]}.{target_abs_omt[1]}.{target_abs_omt[2]}.map"
+    if not map_path.exists():
+        raise SystemExit(f"Fixture map transform target map file not found: {map_path}")
+    map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+    if not isinstance(map_payload, list):
+        raise SystemExit(f"Fixture map transform map payload is not a list: {map_path}")
+    target_coords = [target_abs_sm[0], target_abs_sm[1], target_abs_sm[2]]
+    target_submap = next(
+        (submap for submap in map_payload if isinstance(submap, dict) and submap.get("coordinates") == target_coords),
+        None,
+    )
+    if target_submap is None:
+        raise SystemExit(f"Fixture map transform submap {target_coords} not found in {map_path}")
+    return maps_dir, pack_dir, pack_stem, map_path, map_payload, target_submap, target_abs_omt, target_abs_sm, local_ms, extracted
+
+
+def apply_map_furniture_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    placed_furniture: List[Dict[str, Any]] = []
+    extracted_packs: set[str] = set()
+    modified_map_paths: Dict[str, Tuple[Path, List[Any]]] = {}
+
+    for furniture in transform.get("furniture", []):
+        furn_id = str(furniture.get("id", "")).strip()
+        offset_raw = furniture.get("offset_ms", [0, 0, 0])
+        offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+        target_location = [
+            int(player_location[0]) + offset_ms[0],
+            int(player_location[1]) + offset_ms[1],
+            int(player_location[2]) + offset_ms[2],
+        ]
+        maps_dir, pack_dir, pack_stem, map_path, map_payload, target_submap, target_abs_omt, target_abs_sm, local_ms, extracted = map_submap_for_ms_location(world_dir, target_location)
+        if extracted:
+            extracted_packs.add(pack_stem)
+        triples = target_submap.setdefault("furniture", [])
+        if not isinstance(triples, list):
+            raise SystemExit(f"Fixture furniture transform furniture is not a list in {map_path}")
+        kept: List[Any] = []
+        for x, y, payload in iter_map_triples(triples):
+            if x == local_ms[0] and y == local_ms[1]:
+                continue
+            kept.append([x, y, payload])
+        kept.append([local_ms[0], local_ms[1], furn_id])
+        target_submap["furniture"] = kept
+        modified_map_paths[str(map_path)] = (map_path, map_payload)
+        placed_furniture.append({
+            "id": furn_id,
+            "offset_ms": offset_ms,
+            "target_location_ms": target_location,
+            "target_abs_omt": list(target_abs_omt),
+            "target_abs_sm": list(target_abs_sm),
+            "local_ms": [local_ms[0], local_ms[1], local_ms[2]],
+            "map_pack": pack_stem,
+            "map_file": map_path.name,
+        })
+
+    recompressed_maps: List[str] = []
+    for map_path, map_payload in sorted(modified_map_paths.values(), key=lambda pair: str(pair[0])):
+        map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        run_zzip(map_path)
+        recompressed_maps.append(str(map_path.relative_to(world_dir)))
+
+    removed_extracted_dirs: List[str] = []
+    maps_dir = world_dir / "maps"
+    for pack_stem in sorted(extracted_packs):
+        pack_dir = maps_dir / pack_stem
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed_extracted_dirs.append(str(pack_dir.relative_to(world_dir)))
+
+    return {
+        "kind": "map_furniture_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "placed_furniture": placed_furniture,
+        "extracted_map_packs": sorted(extracted_packs),
+        "recompressed_maps": recompressed_maps,
+        "removed_extracted_map_dirs": removed_extracted_dirs,
+        "plain_map_dirs_left_for_game_load": False,
+    }
+
+
+def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    start_offset = [int(value) for value in transform.get("start_offset_ms", [1, -1, 0])]
+    end_offset = [int(value) for value in transform.get("end_offset_ms", [3, 1, 0])]
+    start = [int(player_location[i]) + start_offset[i] for i in range(3)]
+    end = [int(player_location[i]) + end_offset[i] for i in range(3)]
+    zone = {
+        "name": str(transform.get("name", "OpenClaw fuel source") or "OpenClaw fuel source"),
+        "type": str(transform.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD"),
+        "faction": str(transform.get("faction", "your_followers") or "your_followers"),
+        "invert": False,
+        "enabled": True,
+        "temporarily_disabled": False,
+        "is_vehicle": False,
+        "is_personal": False,
+        "cached_shift": [0, 0, 0],
+        "start": [min(start[i], end[i]) for i in range(3)],
+        "end": [max(start[i], end[i]) for i in range(3)],
+        "is_displayed": False,
+    }
+
+    stem = player_zone_file_stem(player_save_name)
+    zone_paths = [world_dir / f"{stem}.zones.json"]
+    if bool(transform.get("write_temp", True)):
+        zone_paths.append(world_dir / f"{stem}.zoneszmgr-temp.json")
+
+    updated_paths: List[str] = []
+    for zone_path in zone_paths:
+        existing: List[Any] = []
+        if zone_path.exists():
+            loaded = json.loads(zone_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded, list):
+                raise SystemExit(f"Fixture source-firewood zone transform expected zone list: {zone_path}")
+            existing = loaded
+        existing = [
+            entry for entry in existing
+            if not (
+                isinstance(entry, dict)
+                and entry.get("name") == zone["name"]
+                and entry.get("type") == zone["type"]
+            )
+        ]
+        existing.append(dict(zone))
+        zone_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
+        updated_paths.append(str(zone_path.relative_to(world_dir)))
+
+    return {
+        "kind": "source_firewood_zone_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "zone": zone,
+        "updated_zone_files": updated_paths,
+    }
+
+
+def audit_saved_zones_near_player(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_zone_type: str = "",
+    required_name_contains: str = "",
+    required_faction: str = "",
+    required_offsets: Optional[List[Tuple[int, int, int]]] = None,
+) -> Dict[str, Any]:
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
+    stem = player_zone_file_stem(selected_player_save)
+    candidate_paths = [
+        world_dir / f"{stem}.zones.json",
+        world_dir / f"{stem}.zoneszmgr-temp.json",
+        world_dir / "zones.json",
+        world_dir / "zoneszmgr-temp.json",
+    ]
+    zone_files: List[Dict[str, Any]] = []
+    matching_zones: List[Dict[str, Any]] = []
+    required_points = []
+    for offset in required_offsets or []:
+        required_points.append([
+            int(player_location[0]) + int(offset[0]),
+            int(player_location[1]) + int(offset[1]),
+            int(player_location[2]) + int(offset[2]),
+        ])
+
+    for zone_path in candidate_paths:
+        if not zone_path.exists():
+            continue
+        loaded = json.loads(zone_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list):
+            continue
+        file_matches: List[Dict[str, Any]] = []
+        for index, zone in enumerate(loaded):
+            if not isinstance(zone, dict):
+                continue
+            if required_zone_type and str(zone.get("type", "")) != required_zone_type:
+                continue
+            if required_faction and str(zone.get("faction", "")) != required_faction:
+                continue
+            if required_name_contains and required_name_contains not in str(zone.get("name", "")):
+                continue
+            contained_points = [point for point in required_points if zone_contains_abs_point(zone, point)]
+            zone_summary = {
+                "file": str(zone_path.relative_to(world_dir)),
+                "index": index,
+                "name": zone.get("name", ""),
+                "type": zone.get("type", ""),
+                "faction": zone.get("faction", ""),
+                "start": zone.get("start"),
+                "end": zone.get("end"),
+                "contained_required_points": contained_points,
+            }
+            if not required_points or contained_points:
+                file_matches.append(zone_summary)
+                matching_zones.append(zone_summary)
+        zone_files.append({
+            "file": str(zone_path.relative_to(world_dir)),
+            "zone_count": len(loaded),
+            "matching_count": len(file_matches),
+        })
+
+    missing_points = [
+        point for point in required_points
+        if not any(point in zone.get("contained_required_points", []) for zone in matching_zones)
+    ]
+    required_present = bool(matching_zones) and not missing_points
+    status = "required_state_present" if required_present else "required_state_missing"
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "required_zone_type": required_zone_type,
+        "required_name_contains": required_name_contains,
+        "required_faction": required_faction,
+        "required_offsets": [list(offset) for offset in required_offsets or []],
+        "required_points_ms": required_points,
+        "missing_required_points_ms": missing_points,
+        "zone_files": zone_files,
+        "matching_zones": matching_zones,
+        "status": status,
+    }
+
+
+def horde_overmap_path_for_abs_ms(world_dir: Path, abs_ms: List[int]) -> Path:
+    if len(abs_ms) < 3:
+        raise SystemExit(f"Horde abs_ms point needs [x,y,z]: {abs_ms!r}")
+    abs_omt = (int(abs_ms[0]) // 24, int(abs_ms[1]) // 24, int(abs_ms[2]))
+    overmap_x, overmap_y, _local = overmap_file_coords_from_abs_omt(abs_omt)
+    return world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+
+
+def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
+    if raw_horde_map in (None, ""):
+        return []
+    if not isinstance(raw_horde_map, list):
+        raise SystemExit("Overmap horde_map is not a list")
+    if len(raw_horde_map) % 6 != 0:
+        raise SystemExit(f"Overmap horde_map length {len(raw_horde_map)} is not divisible by 6")
+
+    entries: List[Dict[str, Any]] = []
+    for base in range(0, len(raw_horde_map), 6):
+        location_raw = raw_horde_map[base]
+        monster_raw = raw_horde_map[base + 1]
+        destination_raw = raw_horde_map[base + 2]
+        if not isinstance(location_raw, list) or len(location_raw) < 3:
+            continue
+        if not isinstance(destination_raw, list) or len(destination_raw) < 3:
+            destination: List[int] = []
+        else:
+            destination = [int(destination_raw[0]), int(destination_raw[1]), int(destination_raw[2])]
+        if isinstance(monster_raw, str):
+            monster_id = monster_raw
+        elif isinstance(monster_raw, dict):
+            monster_id = str(
+                monster_raw.get(
+                    "typeid",
+                    monster_raw.get("type", monster_raw.get("id", "")),
+                )
+            ).strip()
+        else:
+            monster_id = ""
+        location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+        entries.append({
+            "index": base // 6,
+            "base_index": base,
+            "location_ms": location,
+            "monster_id": monster_id,
+            "monster_payload_kind": "type_id" if isinstance(monster_raw, str) else type(monster_raw).__name__,
+            "destination_ms": destination,
+            "tracking_intensity": int(raw_horde_map[base + 3] or 0),
+            "last_processed": raw_horde_map[base + 4],
+            "moves": int(raw_horde_map[base + 5] or 0),
+        })
+    return entries
+
+
+def apply_horde_entity_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    monster_id = str(transform.get("monster_id", "mon_zombie") or "mon_zombie").strip()
+    if not monster_id:
+        raise SystemExit(f"Fixture horde transform needs monster_id: {transform}")
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    offset_ms = [int(value) for value in transform.get("offset_ms", [0, -240, 0])]
+    destination_offset_ms = [int(value) for value in transform.get("destination_offset_ms", offset_ms)]
+    location_ms = [int(player_location[i]) + offset_ms[i] for i in range(3)]
+    destination_ms = [int(player_location[i]) + destination_offset_ms[i] for i in range(3)]
+    overmap_path = horde_overmap_path_for_abs_ms(world_dir, location_ms)
+    if not overmap_path.exists():
+        raise SystemExit(f"Target overmap file not found for horde transform: {overmap_path}")
+
+    plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+    try:
+        raw_horde_map = payload.get("horde_map")
+        if raw_horde_map is None:
+            raw_horde_map = []
+            payload["horde_map"] = raw_horde_map
+        if not isinstance(raw_horde_map, list):
+            raise SystemExit(f"Overmap horde_map is not a list in {plain_path}")
+        existing_entries = iter_horde_map_entries(raw_horde_map)
+        removed_entries = [entry for entry in existing_entries if entry.get("location_ms") == location_ms]
+        if removed_entries:
+            kept: List[Any] = []
+            for base in range(0, len(raw_horde_map), 6):
+                loc = raw_horde_map[base]
+                if isinstance(loc, list) and len(loc) >= 3 and [int(loc[0]), int(loc[1]), int(loc[2])] == location_ms:
+                    continue
+                kept.extend(raw_horde_map[base:base + 6])
+            raw_horde_map[:] = kept
+        raw_horde_map.extend([
+            location_ms,
+            monster_id,
+            destination_ms,
+            int(transform.get("tracking_intensity", 0) or 0),
+            int(transform.get("last_processed", 0) or 0),
+            int(transform.get("moves", 0) or 0),
+        ])
+        write_overmap_payload(plain_path, version_line, payload)
+    except Exception:
+        cleanup_extracted_overmap(plain_path, keep=not bool(payload.get("_created_plain", False)))
+        raise
+
+    return {
+        "kind": "horde_entity_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location_ms": player_location,
+        "monster_id": monster_id,
+        "offset_ms": offset_ms,
+        "location_ms": location_ms,
+        "destination_offset_ms": destination_offset_ms,
+        "destination_ms": destination_ms,
+        "tracking_intensity": int(transform.get("tracking_intensity", 0) or 0),
+        "last_processed": int(transform.get("last_processed", 0) or 0),
+        "moves": int(transform.get("moves", 0) or 0),
+        "overmap": str(overmap_path.relative_to(world_dir)),
+        "removed_existing_at_location": len(removed_entries),
+    }
+
+
+def audit_saved_hordes_near_player(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_hordes: Optional[List[Dict[str, Any]]] = None,
+    radius_ms: Optional[int] = None,
+) -> Dict[str, Any]:
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save, _player_save_path, payload, _stat = load_saved_player_payload(world_dir, player_save)
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise RuntimeError("Extracted player save is missing player object")
+    location_raw = player.get("location", [])
+    if not isinstance(location_raw, list) or len(location_raw) < 3:
+        raise RuntimeError("Extracted player save is missing player location")
+    player_location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+
+    normalized_required: List[Dict[str, Any]] = []
+    overmap_paths: Dict[str, Path] = {}
+    player_overmap = horde_overmap_path_for_abs_ms(world_dir, player_location)
+    if player_overmap.exists():
+        overmap_paths[str(player_overmap)] = player_overmap
+    for raw in required_hordes or []:
+        if not isinstance(raw, dict):
+            continue
+        monster_id = str(raw.get("monster_id", raw.get("typeid", raw.get("monster", ""))) or "").strip()
+        requirement: Dict[str, Any] = {}
+        if monster_id:
+            requirement["monster_id"] = monster_id
+        offset_raw = raw.get("offset_ms")
+        if isinstance(offset_raw, list) and len(offset_raw) >= 3:
+            offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            location_ms = [player_location[i] + offset_ms[i] for i in range(3)]
+            requirement["offset_ms"] = offset_ms
+            requirement["location_ms"] = location_ms
+            overmap_path = horde_overmap_path_for_abs_ms(world_dir, location_ms)
+            if overmap_path.exists():
+                overmap_paths[str(overmap_path)] = overmap_path
+        destination_offset_raw = raw.get("destination_offset_ms")
+        if isinstance(destination_offset_raw, list) and len(destination_offset_raw) >= 3:
+            requirement["destination_offset_ms"] = [
+                int(destination_offset_raw[0]),
+                int(destination_offset_raw[1]),
+                int(destination_offset_raw[2]),
+            ]
+            requirement["destination_ms"] = [
+                player_location[i] + requirement["destination_offset_ms"][i] for i in range(3)
+            ]
+        if "tracking_intensity" in raw:
+            requirement["tracking_intensity"] = int(raw.get("tracking_intensity") or 0)
+        if "min_tracking_intensity" in raw:
+            requirement["min_tracking_intensity"] = int(raw.get("min_tracking_intensity") or 0)
+        if "moves" in raw:
+            requirement["moves"] = int(raw.get("moves") or 0)
+        if "min_moves" in raw:
+            requirement["min_moves"] = int(raw.get("min_moves") or 0)
+        if "min_last_processed" in raw:
+            requirement["min_last_processed"] = int(raw.get("min_last_processed") or 0)
+        if requirement:
+            normalized_required.append(requirement)
+
+    observed: List[Dict[str, Any]] = []
+    scanned_overmaps: List[Dict[str, Any]] = []
+    for overmap_path in sorted(overmap_paths.values(), key=lambda p: str(p)):
+        plain_path, _version_line, overmap_payload = extract_overmap_payload(overmap_path)
+        try:
+            entries = iter_horde_map_entries(overmap_payload.get("horde_map", []))
+        finally:
+            cleanup_extracted_overmap(plain_path, keep=not bool(overmap_payload.get("_created_plain", False)))
+        nearby_count = 0
+        for entry in entries:
+            location_ms = entry.get("location_ms", [])
+            if not isinstance(location_ms, list) or len(location_ms) < 3:
+                continue
+            offset_ms = [location_ms[i] - player_location[i] for i in range(3)]
+            distance_xy = max(abs(offset_ms[0]), abs(offset_ms[1]))
+            if radius_ms is not None and distance_xy > int(radius_ms):
+                continue
+            summary = dict(entry)
+            summary["offset_ms"] = offset_ms
+            summary["distance_chebyshev_ms"] = distance_xy
+            summary["overmap"] = str(overmap_path.relative_to(world_dir))
+            observed.append(summary)
+            nearby_count += 1
+        scanned_overmaps.append({
+            "overmap": str(overmap_path.relative_to(world_dir)),
+            "horde_count": len(entries),
+            "observed_nearby_count": nearby_count,
+        })
+
+    def matches_requirement(entry: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
+        if "monster_id" in requirement and entry.get("monster_id") != requirement.get("monster_id"):
+            return False
+        if "location_ms" in requirement and entry.get("location_ms") != requirement.get("location_ms"):
+            return False
+        if "destination_ms" in requirement and entry.get("destination_ms") != requirement.get("destination_ms"):
+            return False
+        if "tracking_intensity" in requirement and entry.get("tracking_intensity") != requirement.get("tracking_intensity"):
+            return False
+        if "min_tracking_intensity" in requirement and int(entry.get("tracking_intensity") or 0) < int(requirement.get("min_tracking_intensity") or 0):
+            return False
+        if "moves" in requirement and entry.get("moves") != requirement.get("moves"):
+            return False
+        if "min_moves" in requirement and int(entry.get("moves") or 0) < int(requirement.get("min_moves") or 0):
+            return False
+        if "min_last_processed" in requirement and int(entry.get("last_processed") or 0) < int(requirement.get("min_last_processed") or 0):
+            return False
+        return True
+
+    missing_required_hordes = [
+        requirement for requirement in normalized_required
+        if not any(matches_requirement(entry, requirement) for entry in observed)
+    ]
+    if normalized_required and not missing_required_hordes:
+        status = "required_state_present"
+    elif normalized_required:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+    counts: Dict[str, int] = {}
+    for entry in observed:
+        monster_id = str(entry.get("monster_id", ""))
+        if monster_id:
+            counts[monster_id] = counts.get(monster_id, 0) + 1
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "radius_ms": radius_ms,
+        "required_hordes": normalized_required,
+        "scanned_overmaps": scanned_overmaps,
+        "observed_horde_counts": dict(sorted(counts.items())),
+        "observed_hordes": observed,
+        "missing_required_hordes": missing_required_hordes,
+        "missing_required_monsters": missing_required_hordes,
+        "status": status,
     }
 
 
@@ -5759,7 +7094,7 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "last_checked_minutes": int(transform.get("last_checked_minutes", 0) or 0),
         "last_scouted_minutes": int(transform.get("last_scouted_minutes", 0) or 0),
         "bounty": int(transform.get("bounty", 8) or 8),
-        "threat": int(transform.get("threat", 1) or 1),
+        "threat": int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat")),
         "confidence": int(transform.get("confidence", 3) or 3),
         "threat_confirmed": bool(transform.get("threat_confirmed", True)),
         "target_alert": bool(transform.get("target_alert", False)),
@@ -5776,7 +7111,7 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     )]
     leads.append(lead)
     selected_site["remembered_target_or_mark"] = target_id
-    selected_site["remembered_threat_estimate"] = int(transform.get("threat", 1) or 1)
+    selected_site["remembered_threat_estimate"] = int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat"))
     selected_site["remembered_bounty_estimate"] = int(transform.get("bounty", 8) or 8)
     selected_site.setdefault("known_recent_marks", [])
 
@@ -5795,6 +7130,93 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "lead_id": lead_id,
         "lead": lead,
         "clear_active_pressure": bool(transform.get("clear_active_pressure", True)),
+    }
+
+
+def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit clone-site transform target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    if not isinstance(overmapbuffer, dict):
+        raise SystemExit(f"Fixture dimension data lacks overmapbuffer object: {dimension_path}")
+    live_world = overmapbuffer.get("bandit_live_world", {})
+    if not isinstance(live_world, dict):
+        raise SystemExit(f"Fixture dimension data lacks bandit_live_world object: {dimension_path}")
+    sites = live_world.get("sites", [])
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    source_site_id = str(transform.get("source_site_id", "") or "").strip()
+    new_site_id = str(transform.get("new_site_id", "") or "").strip()
+    source_site: Optional[Dict[str, Any]] = None
+    for site in sites:
+        if isinstance(site, dict) and str(site.get("site_id", "")) == source_site_id:
+            source_site = site
+            break
+    if source_site is None:
+        raise SystemExit(f"Fixture bandit clone-site transform found no source site matching {source_site_id}")
+    if any(isinstance(site, dict) and str(site.get("site_id", "")) == new_site_id for site in sites):
+        raise SystemExit(f"Fixture bandit clone-site transform target site already exists: {new_site_id}")
+
+    cloned_site = json.loads(json.dumps(source_site))
+    cloned_site["site_id"] = new_site_id
+    new_source_id = str(transform.get("new_source_id", "") or "").strip()
+    if new_source_id:
+        cloned_site["source_id"] = new_source_id
+    new_site_kind = str(transform.get("new_site_kind", "") or "").strip()
+    if new_site_kind:
+        cloned_site["site_kind"] = new_site_kind
+    new_anchor = transform.get("new_anchor")
+    if isinstance(new_anchor, list) and len(new_anchor) >= 3:
+        cloned_site["anchor"] = [int(new_anchor[0]), int(new_anchor[1]), int(new_anchor[2])]
+    new_footprint = transform.get("new_footprint")
+    if isinstance(new_footprint, list) and new_footprint:
+        cloned_site["footprint"] = [
+            [int(point[0]), int(point[1]), int(point[2])]
+            for point in new_footprint
+            if isinstance(point, list) and len(point) >= 3
+        ]
+    cloned_site["active_group_id"] = ""
+    cloned_site["active_member_ids"] = []
+    cloned_site["active_target_id"] = ""
+    cloned_site["active_target_omt"] = [0, 0, 0]
+    cloned_site["active_job_type"] = ""
+    cloned_site["active_sortie_started_minutes"] = -1
+    cloned_site["active_sortie_local_contact_minutes"] = -1
+    cloned_site["retired_empty_site"] = False
+    cloned_site["retirement_summary"] = ""
+    if bool(transform.get("clear_intelligence_map", True)):
+        cloned_site["intelligence_map"] = {"leads": []}
+    if bool(transform.get("clear_remembered_pressure", True)):
+        cloned_site["remembered_target_or_mark"] = ""
+        cloned_site["remembered_pressure"] = ""
+        cloned_site["known_recent_marks"] = []
+
+    sites.append(cloned_site)
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_clone_site",
+        "world": world_dir.name,
+        "source_site_id": source_site_id,
+        "new_site_id": new_site_id,
+        "new_source_id": str(cloned_site.get("source_id", "")),
+        "new_site_kind": str(cloned_site.get("site_kind", "")),
+        "new_anchor": cloned_site.get("anchor", []),
+        "new_footprint": cloned_site.get("footprint", []),
+        "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
+        "clear_remembered_pressure": bool(transform.get("clear_remembered_pressure", True)),
     }
 
 
@@ -5840,14 +7262,16 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     if not isinstance(members, list):
         raise SystemExit("Fixture bandit roster-shape transform target site has no members list")
     living_member_count = int(transform.get("living_member_count", 0) or 0)
+    member_start_index = int(transform.get("member_start_index", 0) or 0)
     wounded_or_unready_count = int(transform.get("wounded_or_unready_count", 0) or 0)
     active_outside_member_count = int(transform.get("active_outside_member_count", 0) or 0)
-    if living_member_count > len(members):
+    member_end_index = member_start_index + living_member_count
+    if member_end_index > len(members):
         raise SystemExit(
-            f"Fixture bandit roster-shape requested {living_member_count} members but only {len(members)} are available"
+            f"Fixture bandit roster-shape requested members {member_start_index}:{member_end_index} but only {len(members)} are available"
         )
 
-    shaped_members = [dict(member) for member in members[:living_member_count] if isinstance(member, dict)]
+    shaped_members = [dict(member) for member in members[member_start_index:member_end_index] if isinstance(member, dict)]
     for member in shaped_members:
         member["state"] = "at_home"
         member["wounded_or_unready"] = False
@@ -5866,7 +7290,17 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         member["last_writeback_summary"] = "fixture roster shape: wounded/unready member"
 
     selected_site["members"] = shaped_members
-    selected_site["headcount"] = living_member_count
+    headcount_override = transform.get("headcount_override")
+    if headcount_override is None or str(headcount_override).strip() == "":
+        selected_site["headcount"] = living_member_count
+    else:
+        selected_site["headcount"] = max(0, int(headcount_override))
+    if bool(transform.get("clear_spawn_tile_headcount", False)):
+        spawn_tiles = selected_site.get("spawn_tiles", [])
+        if isinstance(spawn_tiles, list):
+            for spawn_tile in spawn_tiles:
+                if isinstance(spawn_tile, dict):
+                    spawn_tile["headcount"] = 0
     selected_site["active_member_ids"] = active_member_ids
     if active_member_ids:
         site_id = str(selected_site.get("site_id", ""))
@@ -5892,6 +7326,9 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "world": world_dir.name,
         "site_id": str(selected_site.get("site_id", "")),
         "living_member_count": living_member_count,
+        "member_start_index": member_start_index,
+        "headcount": int(selected_site.get("headcount", 0) or 0),
+        "clear_spawn_tile_headcount": bool(transform.get("clear_spawn_tile_headcount", False)),
         "ready_at_home_count": max(0, living_member_count - active_outside_member_count - wounded_or_unready_count),
         "wounded_or_unready_count": wounded_or_unready_count,
         "active_outside_member_count": active_outside_member_count,
@@ -5912,6 +7349,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "player_items":
             reports.append(apply_player_items_transform(world_dir, transform))
             continue
+        if kind == "player_location_offset_ms":
+            reports.append(apply_player_location_offset_ms_transform(world_dir, transform))
+            continue
         if kind == "player_near_overmap_special":
             reports.append(apply_player_near_overmap_special_transform(world_dir, transform))
             continue
@@ -5921,11 +7361,26 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "map_fields_near_player":
             reports.append(apply_map_fields_near_player_transform(world_dir, transform))
             continue
+        if kind == "map_furniture_near_player":
+            reports.append(apply_map_furniture_near_player_transform(world_dir, transform))
+            continue
+        if kind == "map_items_near_player":
+            reports.append(apply_map_items_near_player_transform(world_dir, transform))
+            continue
+        if kind == "source_firewood_zone_near_player":
+            reports.append(apply_source_firewood_zone_near_player_transform(world_dir, transform))
+            continue
+        if kind == "horde_entity_near_player":
+            reports.append(apply_horde_entity_near_player_transform(world_dir, transform))
+            continue
         if kind == "game_turn":
             reports.append(apply_game_turn_transform(world_dir, transform))
             continue
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
+            continue
+        if kind == "bandit_clone_site":
+            reports.append(apply_bandit_clone_site_transform(world_dir, transform))
             continue
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
@@ -6053,11 +7508,13 @@ def execute_probe_steps(
         kind = str(step.get("kind", "")).strip().lower()
         label = str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}"
         settle_seconds = float(step.get("settle_seconds", 0.0) or 0.0)
+        artifact_log_start_size = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_baseline
         report: Dict[str, Any] = {
             "index": index,
             "kind": kind,
             "label": label,
             "settle_seconds": settle_seconds,
+            "artifact_log_start_size": artifact_log_start_size,
         }
         expected_visible_fact = str(step.get("expected_visible_fact", "")).strip()
         if expected_visible_fact:
@@ -6123,6 +7580,7 @@ def execute_probe_steps(
                 artifact_patterns=artifact_patterns,
             ))
             if report.get("status") == "aborted_by_wait_interruption":
+                report["artifact_log_end_size"] = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_log_start_size
                 reports.append(report)
                 return reports
         elif kind == "wait":
@@ -6141,16 +7599,31 @@ def execute_probe_steps(
             any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
             if not patterns and not line_groups and not any_line_groups:
                 raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
+            audit_baseline = artifact_baseline
+            since_label = str(step.get("since_label", step.get("since_step", "")) or "").strip()
+            if since_label:
+                for previous_report in reversed(reports):
+                    if str(previous_report.get("label", "")) == since_label:
+                        try:
+                            audit_baseline = int(previous_report.get("artifact_log_start_size", artifact_baseline))
+                        except (TypeError, ValueError):
+                            audit_baseline = artifact_baseline
+                        break
+                else:
+                    raise SystemExit(f"Scenario step '{label}' since_label not found: {since_label}")
             metadata = audit_log_contains(
                 run_dir,
                 label,
                 artifact_log=artifact_log,
-                artifact_baseline=artifact_baseline,
+                artifact_baseline=audit_baseline,
                 patterns=patterns,
                 required_line_patterns=line_groups,
                 required_any_line_patterns=any_line_groups,
                 filter_debug_noise=filter_debug_noise,
             )
+            if since_label:
+                metadata["since_label"] = since_label
+                metadata["since_label_start_size"] = audit_baseline
             metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
             write_json(run_dir / f"{label}.metadata.json", metadata)
             report["metadata"] = metadata
@@ -6160,6 +7633,65 @@ def execute_probe_steps(
                     "status": "aborted_by_metadata_guard",
                     "verdict": str(step.get("abort_verdict", "red_step_required_log_pattern_missing")),
                     "reason": str(step.get("abort_reason", "required log pattern was missing")),
+                    "missing_required_items": metadata.get("missing_required_items", []),
+                }
+                reports.append(report)
+                return reports
+        elif kind == "audit_player_message_log_contains":
+            patterns = normalize_screen_text_patterns(
+                step.get("required_patterns", step.get("patterns", step.get("required_items", [])))
+            )
+            raw_line_groups = step.get("required_line_patterns", []) or []
+            line_groups = [normalize_screen_text_patterns(group) for group in raw_line_groups]
+            raw_any_line_groups = step.get("required_any_line_patterns", []) or []
+            any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
+            player_save = str(step.get("player_save", "") or "").strip()
+            since_label = str(step.get("since_label", step.get("since_step", "")) or "").strip()
+            changed_since = None
+            if since_label:
+                for previous_report in reversed(reports):
+                    if str(previous_report.get("label", "")) == since_label:
+                        previous_metadata = previous_report.get("metadata")
+                        if isinstance(previous_metadata, dict):
+                            changed_since = dict(previous_metadata)
+                            changed_since.setdefault("label", since_label)
+                        break
+                if changed_since is None:
+                    raise SystemExit(f"Scenario step '{label}' since_label not found or had no metadata: {since_label}")
+            elif not patterns and not line_groups and not any_line_groups:
+                changed_since = {}
+            if not patterns and not line_groups and not any_line_groups and since_label:
+                raise SystemExit(f"Scenario step '{label}' with since_label needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
+            world_dir = save_dir_for_profile(profile) / world
+            metadata = audit_player_message_log_contains(
+                world_dir,
+                run_dir,
+                label,
+                player_save=player_save,
+                changed_since=changed_since,
+                patterns=patterns,
+                required_line_patterns=line_groups,
+                required_any_line_patterns=any_line_groups,
+            )
+            metadata_json = run_dir / f"{label}.metadata.json"
+            metadata["metadata_path"] = str(metadata_json)
+            if not metadata.get("artifact_path"):
+                metadata["artifact_path"] = str(metadata_json)
+            write_json(metadata_json, metadata)
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "scan saved player message log for narrow decisive in-game message lines",
+                "expected_immediate_state": "player message log contains the required action-path line(s), captured narrowly without dumping broad logs",
+                "failure_rule": "missing decisive player-message line leaves the normal action bridge unproven",
+            })
+            if metadata.get("status") == "required_state_missing" and bool(step.get("abort_on_metadata_failure", False)):
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get("abort_verdict", "red_step_required_player_message_missing")),
+                    "reason": str(step.get("abort_reason", "required player message line was missing")),
                     "missing_required_items": metadata.get("missing_required_items", []),
                 }
                 reports.append(report)
@@ -6502,6 +8034,21 @@ def execute_probe_steps(
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
             required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
             required_active_outside_count = optional_step_int("required_active_outside_count")
+            required_active_sortie_started_minutes = optional_step_int("required_active_sortie_started_minutes")
+            required_active_sortie_local_contact_minutes = optional_step_int("required_active_sortie_local_contact_minutes")
+            required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
+            required_lead_bounty = optional_step_int("required_lead_bounty")
+            required_lead_threat = optional_step_int("required_lead_threat")
+            required_lead_times_harvested = optional_step_int("required_lead_times_harvested")
+            required_lead_last_checked_minutes_min = optional_step_int("required_lead_last_checked_minutes_min")
+            raw_required_retired_empty_site = step.get("required_retired_empty_site")
+            required_retired_empty_site: Optional[bool]
+            if raw_required_retired_empty_site is None or str(raw_required_retired_empty_site).strip() == "":
+                required_retired_empty_site = None
+            elif isinstance(raw_required_retired_empty_site, bool):
+                required_retired_empty_site = raw_required_retired_empty_site
+            else:
+                required_retired_empty_site = str(raw_required_retired_empty_site).strip().lower() in {"1", "true", "yes", "y"}
             raw_required_min_active_member_ids = step.get("required_min_active_member_ids", step.get("required_active_member_count_min"))
             required_min_active_member_ids: Optional[int]
             if raw_required_min_active_member_ids is None or str(raw_required_min_active_member_ids).strip() == "":
@@ -6535,13 +8082,26 @@ def execute_probe_steps(
                     world_dir,
                     required_profile=str(step.get("required_profile", "") or "").strip(),
                     required_site_id_contains=str(step.get("required_site_id_contains", "") or "").strip(),
+                    required_active_group_id_exact=step.get("required_active_group_id_exact"),
                     required_active_group_id_contains=str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    required_active_target_id_exact=step.get("required_active_target_id_exact"),
                     required_active_target_id_prefix=str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    required_active_target_id_contains=str(step.get("required_active_target_id_contains", "") or "").strip(),
                     required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
+                    required_active_sortie_started_minutes=required_active_sortie_started_minutes,
+                    required_active_sortie_local_contact_minutes=required_active_sortie_local_contact_minutes,
                     required_member_count=required_member_count,
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_wounded_or_unready_count=required_wounded_or_unready_count,
                     required_active_outside_count=required_active_outside_count,
+                    required_home_side_signal_count=required_home_side_signal_count,
+                    required_retired_empty_site=required_retired_empty_site,
+                    required_retirement_summary_contains=str(
+                        step.get("required_retirement_summary_contains", "") or ""
+                    ).strip(),
+                    required_empty_retirement_blocker_contains=str(
+                        step.get("required_empty_retirement_blocker_contains", "") or ""
+                    ).strip(),
                     required_min_active_member_ids=required_min_active_member_ids,
                     required_active_members_found=bool(step.get("required_active_members_found", False)),
                     required_active_member_max_abs_offset_ms=required_max_offset,
@@ -6551,6 +8111,13 @@ def execute_probe_steps(
                     ).strip(),
                     required_min_leads=required_min_leads,
                     required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
+                    required_lead_kind=str(step.get("required_lead_kind", "") or "").strip(),
+                    required_lead_target_id=str(step.get("required_lead_target_id", "") or "").strip(),
+                    required_lead_target_id_prefix=str(step.get("required_lead_target_id_prefix", "") or "").strip(),
+                    required_lead_bounty=required_lead_bounty,
+                    required_lead_threat=required_lead_threat,
+                    required_lead_times_harvested=required_lead_times_harvested,
+                    required_lead_last_checked_minutes_min=required_lead_last_checked_minutes_min,
                     required_lead_status=str(step.get("required_lead_status", "") or "").strip(),
                     required_lead_last_outcome=str(step.get("required_lead_last_outcome", "") or "").strip(),
                     required_lead_confidence=required_lead_confidence,
@@ -6566,18 +8133,38 @@ def execute_probe_steps(
                     "world_dir": str(world_dir),
                     "required_profile": str(step.get("required_profile", "") or "").strip(),
                     "required_site_id_contains": str(step.get("required_site_id_contains", "") or "").strip(),
+                    "required_active_group_id_exact": step.get("required_active_group_id_exact"),
                     "required_active_group_id_contains": str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    "required_active_target_id_exact": step.get("required_active_target_id_exact"),
                     "required_active_target_id_prefix": str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    "required_active_target_id_contains": str(step.get("required_active_target_id_contains", "") or "").strip(),
                     "required_active_job_type": str(step.get("required_active_job_type", "") or "").strip(),
+                    "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
+                    "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
                     "required_member_count": required_member_count,
                     "required_ready_at_home_count": required_ready_at_home_count,
                     "required_wounded_or_unready_count": required_wounded_or_unready_count,
                     "required_active_outside_count": required_active_outside_count,
+                    "required_home_side_signal_count": required_home_side_signal_count,
+                    "required_retired_empty_site": required_retired_empty_site,
+                    "required_retirement_summary_contains": str(
+                        step.get("required_retirement_summary_contains", "") or ""
+                    ).strip(),
+                    "required_empty_retirement_blocker_contains": str(
+                        step.get("required_empty_retirement_blocker_contains", "") or ""
+                    ).strip(),
                     "required_min_active_member_ids": required_min_active_member_ids,
                     "required_active_members_found": bool(step.get("required_active_members_found", False)),
                     "required_active_member_max_abs_offset_ms": required_max_offset,
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
+                    "required_lead_kind": str(step.get("required_lead_kind", "") or "").strip(),
+                    "required_lead_target_id": str(step.get("required_lead_target_id", "") or "").strip(),
+                    "required_lead_target_id_prefix": str(step.get("required_lead_target_id_prefix", "") or "").strip(),
+                    "required_lead_bounty": required_lead_bounty,
+                    "required_lead_threat": required_lead_threat,
+                    "required_lead_times_harvested": required_lead_times_harvested,
+                    "required_lead_last_checked_minutes_min": required_lead_last_checked_minutes_min,
                     "required_lead_status": str(step.get("required_lead_status", "") or "").strip(),
                     "required_lead_last_outcome": str(step.get("required_lead_last_outcome", "") or "").strip(),
                     "required_lead_confidence": required_lead_confidence,
@@ -6894,6 +8481,9 @@ def execute_probe_steps(
         elif kind == "audit_saved_player_items":
             player_save = str(step.get("player_save", "") or "").strip()
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            required_weapon = str(step.get("required_weapon", step.get("required_weapon_typeid", "")) or "").strip()
+            required_weapon_ammo_type = str(step.get("required_weapon_ammo_type", "") or "").strip()
+            required_weapon_ammo_min = int(step.get("required_weapon_ammo_min", 0) or 0)
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -6901,6 +8491,9 @@ def execute_probe_steps(
                     world_dir,
                     player_save=player_save,
                     required_items=required_items,
+                    required_weapon=required_weapon,
+                    required_weapon_ammo_type=required_weapon_ammo_type,
+                    required_weapon_ammo_min=required_weapon_ammo_min,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -6909,6 +8502,9 @@ def execute_probe_steps(
                     "world": world,
                     "world_dir": str(world_dir),
                     "required_items": required_items,
+                    "required_weapon": required_weapon,
+                    "required_weapon_ammo_type": required_weapon_ammo_type,
+                    "required_weapon_ammo_min": required_weapon_ammo_min,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -6916,9 +8512,9 @@ def execute_probe_steps(
                 "world_dir": str(world_dir),
                 "player_save": player_save,
                 "metadata": metadata,
-                "action_description": "read saved player inventory and require exact item type metadata",
-                "expected_immediate_state": "saved player inventory contains the required item metadata before feature proof may continue",
-                "failure_rule": "missing required saved-player item metadata or unreadable save metadata makes this step red/blocked",
+                "action_description": "read saved player inventory/wield state and require exact item type metadata",
+                "expected_immediate_state": "saved player inventory/wield state contains the required metadata before feature proof may continue",
+                "failure_rule": "missing required saved-player item/wield metadata or unreadable save metadata makes this step red/blocked",
             })
             if bool(step.get("abort_on_metadata_failure", False)):
                 metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
@@ -6989,6 +8585,64 @@ def execute_probe_steps(
                             step.get(
                                 "abort_reason",
                                 "required saved active-monster metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_hordes_near_player":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_hordes_raw = step.get("required_hordes", step.get("required_monsters", []))
+            if not isinstance(required_hordes_raw, list):
+                raise SystemExit(f"Scenario step '{label}' required_hordes must be a list")
+            required_hordes = [horde for horde in required_hordes_raw if isinstance(horde, dict)]
+            radius_raw = step.get("radius_ms")
+            radius_ms = int(radius_raw) if radius_raw is not None and str(radius_raw).strip() != "" else None
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_hordes_near_player(
+                    world_dir,
+                    player_save=player_save,
+                    required_hordes=required_hordes,
+                    radius_ms=radius_ms,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_hordes": required_hordes,
+                    "radius_ms": radius_ms,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved overmap horde_map entries near the player and require exact horde type/location metadata",
+                "expected_immediate_state": "saved overmap horde_map contains the required staged horde metadata before roof/fire horde proof may continue",
+                "failure_rule": "missing required saved horde metadata or unreadable overmap metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_untrusted_saved_horde_target_state",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved horde metadata was missing or unreadable",
                             )
                         ),
                         "issues": metadata_issues,
@@ -7154,6 +8808,72 @@ def execute_probe_steps(
                     }
                     reports.append(report)
                     return reports
+        elif kind == "audit_saved_zones_near_player":
+            raw_offsets = step.get("offsets", step.get("offset", []))
+            offsets: Optional[List[Tuple[int, int, int]]]
+            if isinstance(raw_offsets, list) and raw_offsets and all(isinstance(entry, list) for entry in raw_offsets):
+                offsets = [
+                    (int(entry[0]), int(entry[1]), int(entry[2]))
+                    for entry in raw_offsets
+                    if isinstance(entry, list) and len(entry) >= 3
+                ]
+            elif isinstance(raw_offsets, list):
+                offsets = parse_map_tile_offsets(raw_offsets) if raw_offsets else None
+            else:
+                raise SystemExit(f"Scenario step '{label}' offsets must be a list")
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_zone_type = str(step.get("required_zone_type", step.get("zone_type", "")) or "").strip()
+            required_name_contains = str(step.get("required_name_contains", step.get("zone_name_contains", "")) or "").strip()
+            required_faction = str(step.get("required_faction", "") or "").strip()
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_zones_near_player(
+                    world_dir,
+                    player_save=player_save,
+                    required_zone_type=required_zone_type,
+                    required_name_contains=required_name_contains,
+                    required_faction=required_faction,
+                    required_offsets=offsets,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_zone_type": required_zone_type,
+                    "required_name_contains": required_name_contains,
+                    "required_faction": required_faction,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "offsets": [list(offset) for offset in offsets] if offsets is not None else [],
+                "metadata": metadata,
+                "action_description": "read saved zone metadata near player and require exact zone type/faction/coverage",
+                "expected_immediate_state": "saved zone metadata contains the required zone covering the target offset(s) before feature proof may continue",
+                "failure_rule": "missing required saved-zone metadata or unreadable zone files makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved-zone metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "capture":
             capture_crop = normalize_capture_crop(
                 step.get("capture_crop", step.get("crop"))
@@ -7230,6 +8950,7 @@ def execute_probe_steps(
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports
+        report["artifact_log_end_size"] = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_log_start_size
         reports.append(report)
     return reports
 
@@ -8572,6 +10293,28 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         matches_by_pattern.append({"pattern": pattern, "lines": lines})
         all_matched_lines.extend(lines)
 
+    step_artifact_matches: List[Dict[str, Any]] = []
+    for step_report in step_reports:
+        if str(step_report.get("kind", "")).strip().lower() not in {"audit_log_contains", "audit_player_message_log_contains"}:
+            continue
+        metadata = step_report.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        for entry in metadata.get("matches_by_pattern", []):
+            if isinstance(entry, dict) and entry.get("lines"):
+                step_artifact_matches.append({
+                    "pattern": f"{step_report.get('label', '')}: {entry.get('pattern', '')}",
+                    "lines": entry.get("lines", []),
+                    "source": str(metadata.get("source_log", "")),
+                    "artifact_path": str(metadata.get("artifact_path", "")),
+                    "capture_policy": str(metadata.get("capture_policy", "")),
+                })
+    effective_artifact_patterns = list(artifact_patterns)
+    effective_matches_by_pattern = list(matches_by_pattern)
+    if not effective_artifact_patterns and step_artifact_matches:
+        effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in step_artifact_matches]
+        effective_matches_by_pattern = step_artifact_matches
+
     companion_helpers: List[Dict[str, Any]] = []
     abort_report: Optional[Dict[str, Any]] = None
     for step_report in step_reports:
@@ -8582,6 +10325,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             helper = step_report.get(helper_key)
             if isinstance(helper, dict):
                 companion_helpers.append(helper)
+    if not all_matched_lines and effective_matches_by_pattern is step_artifact_matches:
+        all_matched_lines = [line for entry in effective_matches_by_pattern for line in entry.get("lines", [])]
     patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
@@ -8622,8 +10367,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict=verdict,
         startup_classification=startup_classification,
         step_reports=step_reports,
-        artifact_patterns=artifact_patterns,
-        matches_by_pattern=matches_by_pattern,
+        artifact_patterns=effective_artifact_patterns,
+        matches_by_pattern=effective_matches_by_pattern,
         wait_step_summary=wait_step_summary,
         abort_report=abort_report,
         step_ledger_summary=step_ledger_summary,
@@ -8668,8 +10413,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "status": "captured" if artifact_text else "no_new_artifacts",
             "path": str(artifact_path) if artifact_text else "",
             "source_log": str(artifact_log),
-            "match_patterns": artifact_patterns,
-            "matches_by_pattern": matches_by_pattern,
+            "match_patterns": effective_artifact_patterns,
+            "matches_by_pattern": effective_matches_by_pattern,
+            "step_artifact_matches": step_artifact_matches,
             "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },

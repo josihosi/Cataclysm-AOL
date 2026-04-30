@@ -288,6 +288,10 @@ Probe ledger:
 8. Artifact: threat reveal + effective-interest computation.
 9. Branch A: lost interest -> return without harvest; saved state proves bounty remains and debounce/threat exists.
 10. Branch B: interest survives -> wait to arrival; artifact/saved state proves harvest consumed bounty once.
+
+Green receipt: `.userdata/dev-harness/harness_runs/20260430_115157/` proves Branch B with `evidence_class=feature-path`, `feature_proof=true`, green startup, green step-local ledger, green wait ledger, same-run candidate economics (`bounty=8`, `known_threat=0`, `confidence=3`, `effective_interest=11`, `decision=scavenge`), dispatch, stalking keep-open, harvest, `arrivals=1`, and `members_returned=1`. The saved audit `audit_saved_structural_harvest_no_immediate_repeat.metadata.json` records the lead as `status=harvested`, `times_harvested=1`, `bounty=0`, ready members back home, and no active outing.
+
+Non-credit receipt: `.userdata/dev-harness/harness_runs/20260430_114106/` is red/inconclusive and must not be used as closure evidence.
 11. Additional wait proves no immediate repeat.
 12. Cleanup/report path records artifact directory.
 
@@ -374,27 +378,32 @@ Ralph Wiggum smell:
 
 Do not close the packet until these are all true:
 
-- [ ] classifier tests green;
-- [ ] memory seeding/debounce tests green;
-- [ ] dispatch selection tests green;
-- [ ] stalking-distance threat reveal tests green;
-- [ ] threat-minus-bounty interest tests green;
-- [ ] arrival-after-interest harvest tests green;
-- [ ] save/load active outing tests green;
-- [ ] 500-turn anti-loop playback green;
-- [ ] multi-camp budget/perf proof green;
-- [ ] live idle-camp structural proof green or explicitly handed to Josef as manual playtest package;
-- [ ] Ralph Wiggum before/after notes exist for every implementation phase;
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` reflect the final state.
+- [x] classifier tests green;
+- [x] memory seeding/debounce tests green;
+- [x] dispatch selection tests green;
+- [x] stalking-distance threat reveal tests green;
+- [x] threat-minus-bounty interest tests green;
+- [x] arrival-after-interest harvest tests green;
+- [x] save/load active outing tests green;
+- [x] 500-turn anti-loop playback green;
+- [x] multi-camp budget/perf proof green;
+- [x] live idle-camp structural proof green from `.userdata/dev-harness/harness_runs/20260430_115157/`;
+- [x] Ralph Wiggum before/after notes exist for the completed implementation/proof phases;
+- [x] existing player smoke/light signal receipts remain classified separately and are not overwritten by this structural closure;
+- [x] Phase 7 tuning/readout records current bounty/threat/interest numbers as good enough for v0 closure;
+- [x] reload-resume live proof is explicitly classified optional/future-only after deterministic reload coverage;
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` reflect the final state.
 
-## Suggested first Andi slice
+## Closed v0 / optional next slices
 
-The first implementation slice should be deliberately small:
+Phase 1-7 are closed for v0. Closure readout: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`.
 
-1. Add structural OMT classifier.
-2. Add lead id/upsert helpers.
-3. Add tests for forest/town/open classification.
-4. Add tests that harvested/dangerous existing leads suppress refresh.
-5. Run Ralph Wiggum pre/post pass on just those seams.
+Optional future structural-bounty playtests are greenlit as follow-up ideas, not current blockers:
 
-Do not start with live harness. If the classifier/memory seam is wrong, the live probe will only produce expensive nonsense with better lighting.
+1. live dangerous/turnback Branch A;
+2. live reload-resume continuity;
+3. two/four-camp wait stress;
+4. mixed player signal + structural coexistence;
+5. less-blessed natural-ish idle samples.
+
+Do not start a new implementation slice from the old classifier plan unless a new follow-up packet deliberately reopens that seam.

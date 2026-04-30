@@ -11,14 +11,45 @@ Use this file so completion is explicit instead of vibes-based.
 - When all conditions for a roadmap item are crossed off, that roadmap item is **DONE** and can be removed from `Plan.md`.
 - Josef self-testing is **never** a blocker in this file.
 - If Josef-specific tests or checks are useful, write them down as non-blocking notes so Josef can do them later from his own testing list.
-- This file is a completion ledger, not a changelog.
-- Older closed sections may be compacted: retain the success-state bullets and canonical aux-doc reference, but move closure narrative to `doc/*.md`, `TESTING.md` snapshots, and git history.
+- This file is an exit-criteria ledger, not a state-transition log or changelog.
+- `doc/work-ledger.md` carries compact receipts for raw asks, state changes, supersessions, evidence links, and next owner.
+- Older closed sections may be compacted: retain success-state bullets, final status, and canonical aux/proof references, but move transition/closure narrative to `doc/work-ledger.md`, `doc/*.md`, and git history.
 
 ---
 
-## Bandit structural bounty overmap completion packet v0
+## CAOL-WRITHING-STALKER-v0 — Writhing stalker behavior packet v0
 
 Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
+
+Success state:
+- [ ] Monster/stat/spawn footing exists and validates.
+- [ ] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
+- [ ] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
+- [ ] Direct player/human evidence can create a bounded latch without permanent omniscience.
+- [ ] Weak/no/stale evidence decays or fails to latch.
+- [ ] Exposed night light, cover/edge terrain, and zombie distraction affect interest/opportunity with named reasons.
+- [ ] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
+- [ ] Strike behavior creates short cut/bleed pressure rather than a tank duel.
+- [ ] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
+- [ ] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
+- [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
+- [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
+- [ ] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
+- [ ] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, or too stupid.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
+
+Notes:
+- Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
+- Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
+- Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+- Raw intake remains preserved at `doc/writhing-stalker-raw-intake-2026-04-30.md`.
+
+
+---
+
+## CAOL-BANDIT-STRUCT-BOUNTY-v0 — Bandit structural bounty overmap completion packet v0
+
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
 - [x] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
@@ -31,22 +62,19 @@ Success state:
 - [x] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
 - [x] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
 - [x] Real `do_turn` maintenance invokes bounded structural scan/outing maintenance with concise report/debug output and a current-runtime tiles build.
-- [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
-- [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
-- [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final active/closed state.
+- [x] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
+- [x] Live/harness proof shows stalking-distance threat/interest writeback, later arrival harvest, and no immediate repeat of the consumed/harvested target; dangerous/lost-interest no-repeat remains covered by deterministic Phase 4/5 evidence.
+- [x] Existing player smoke/light signal receipts remain classified separately and are not overwritten by structural-bounty closure.
+- [x] Phase 7 tuning/readout records current numbers as good enough for v0 closure, with future tuning/playtests explicitly separated.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final closed/next-active state.
 
-Current boundary:
-- Phase 1 deterministic substrate is locally green for classifier, structural lead id/upsert, harvested/dangerous helper suppression, and mobile-actor/ground separation.
-- Phase 2 scan/seed cadence is locally green for bounded near-ring per-camp scanning, cadence/global-budget caps, eligible camp-only skips, harvested/dangerous/recently-checked suppression, and mobile actor separation.
-- Phase 3 structural outing planner/resolver is locally green for non-player forest/town planning, reserve/active-outside gating, stalking-distance threat reveal, threat-minus-bounty turnback, arrival harvest, return/member clearing, and recent-check debounce.
-- Phase 4 save/load and anti-loop is locally green for structural lead/active outing/outcome/member serialization, once-only post-reload arrival harvest, harvested/dangerous scan suppression, 500-turn forest/town no-repeat playback, and bounded multi-camp counters.
-- Phase 5 live wiring is locally green for `do_turn` cadence wiring, bounded scan/dispatch maintenance, per-candidate overmap terrain lookup, concise structural maintenance reporting, deterministic maintenance coverage, and current-runtime tiles build.
-- Phase 6 live/harness proof is the next execution slice; no live game claim is credited yet.
-
-Notes:
+Compact reference:
+- Closure readout lives at `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`.
 - Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
 - Canonical contract lives at `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
+- Testing ladder lives at `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
+- Green run: `.userdata/dev-harness/harness_runs/20260430_115157/`.
+- Non-credit run: `.userdata/dev-harness/harness_runs/20260430_114106/`.
 
 
 ---
@@ -317,28 +345,21 @@ Compact reference:
 
 ---
 
-## Bandit live signal + site bootstrap correction v0
+## CAOL-BANDIT-LIVE-SIGNAL-SITE-BOOTSTRAP-v0 — Bandit live signal + site bootstrap correction v0
 
-Status: GREENLIT / REOPENED FOR DEBUG-PROOF FINISH (PARTIAL, NOT CLOSED)
+Status: SUPERSEDED / FUTURE-ONLY REMAINDERS
 
 Success state:
 - [x] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
-- [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up. _(Partial: selected abstract overmap-special candidates now lazily create only the minimum profile-specific concrete scout roster, reconcile it through the owned-site ledger, and skip failed claims before overmap insertion; paired several-hour harness proof exercises this footing.)_
 - [x] Materialized NPCs reconcile back to the same owned-site ledger, preserving exact-member writeback behavior when concrete members exist.
-- [ ] Real or explicitly synthetic fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets, and live signal generation respects weather/light conditions such as daylight, darkness, fog/mist, rain, wind, shelter/containment, source strength, persistence, and exposure. _(Partial: raw saved `fd_fire` / `fd_smoke` near-player fields now build live smoke packets using current weather, refresh owned-site marks, and repaired reader run `.userdata/dev-harness/harness_runs/20260427_014408/` proves initial `matched_sites=1 refreshed_sites=1` before the several-hour wait plus later no-signal decay. This is map-field reader proof only. A bounded synthetic smoke source from nothing is allowed as `synthetic smoke-source/live-signal proof` if labeled as such; it may prove smoke-source live-signal behavior but not player fire-lighting. Full player-fire proof still requires the candidate action chain — deployed brazier, wood beside it, firewood source on the wood, lighter, normal in-game lighting, visible fire/smoke, safe player placement, survival needs such as thirst/water handled, and then wait/log evidence. Live fire now also builds ordinary-light packets with current time/weather/exposure/source detail; current-runtime run `.userdata/dev-harness/harness_runs/20260427_114034/` proves the synthetic loaded-map `fd_fire` light branch can survive thresholding with `light_packets=1`, horde light signal, `matched_light_sites=1`, and `refreshed_sites=1`. This is synthetic source-hook proof, not full player-lit-fire proof.)_
-- [ ] The corrected range matrix is implemented or explicitly centralized: `40 OMT` overmap AI/system envelope; about `15 OMT` sustained smoke cap; ordinary bounty around `10 OMT`; confident threat around `6 OMT`; hard/searchlight threat around `8 OMT`; exceptional elevated light adapter-bounded inside the `40 OMT` envelope; movement remains `1-6 OMT/day` elapsed-time-earned travel credit. _(Partial: live dispatch now separates the `40 OMT` system envelope, `10 OMT` direct-player cap, and adapter-derived smoke cap.)_
 - [x] The hard `distance <= 10` live-dispatch gate is removed or demoted so `10 OMT` ordinary visibility no longer impersonates the whole system range.
-- [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance. _(Partial: signal observation/mark refresh now runs on a `5_minutes` cadence while dispatch stays `30_minutes`; the current wait proof observes seeded smoke/fire fields decaying to no-signal, but decay policy still needs reviewer-readable design/coverage.)_
-- [ ] Instrumentation distinguishes empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, and hold/chill decisions. _(Partial: empty ownership, no signal packet, below-threshold smoke/light, smoke/light packet counts, matched smoke/light site counts, rejected-by-range, signal packet id, candidate distance, cap used, cadence skip, missing concrete member, and route failure are now logged; full hold/chill signal reasons remain open.)_
-- [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split. _(Partial: site bootstrap serialization/reconciliation and live-signal mark ledger refresh/capping are covered; candidate scoring split and full range matrix remain open.)_
-- [ ] At least one bounded smoke-source/live-signal proof shows a smoke source under live wait/time passage producing or refreshing a live bandit candidate/mark on a real owned-site path during/around a several-hour `|` wait, plus one no-signal control for the same setup. This may be either the full player-action fire chain or an explicitly labeled synthetic smoke-source shortcut. If the shortcut is used, keep the full player-fire proof open or move it to Josef's playtest package under the 4-attempt rule; the full proof remains: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal in-game mechanics, visibly produce fire/smoke while the player stays safe and basic needs such as thirst/water are handled. _(Raw saved-field run `.userdata/dev-harness/harness_runs/20260427_014408/` is retained as map-field reader proof only.)_
+- [x] Real player source-zone fire -> bandit signal response is superseded/closed by `CAOL-REAL-FIRE-SIGNAL-v0` (`doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`).
+- [ ] Remaining range-matrix/scoring/decay/hold-chill refinements are future-only unless explicitly promoted as a new bounded item.
 
 Notes:
+- Receipt lives in `doc/work-ledger.md` as `CAOL-BANDIT-LIVE-SIGNAL-SITE-BOOTSTRAP-v0`.
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
-- This package supersedes the older 48/60 OMT starter lean with Josef's corrected `40 OMT` overmap AI/system envelope while preserving the anti-tripwire product law.
-- First implementation slice registers abstract overmap-special hostile sites from existing loaded overmaps during the 30-minute overmap NPC cadence, serializes the abstract site footprint/headcount/profile, reconciles later concrete spawn claims into the same ledger, expands live dispatch candidate eligibility to the `40 OMT` system envelope, and adds reviewer-readable dispatch/bootstrap skip/reject logging.
-- Current implementation also has a minimal raw-field `fd_fire` / `fd_smoke` reader hook, accepted live-signal mark memory refresh, candidate-local lazy materialization for abstract overmap-special sites, and repaired several-hour `|`-wait reader proof for initial smoke-site refresh followed by decay/no-signal. Josef explicitly reopened the remaining debug-proof work on 2026-04-27 under `C-AOL debug-proof finish stack v0`; do not close from raw saved-field proof, and do not park failed implemented behavior as dead. Preserve the specific failed reviewed run `.userdata/dev-harness/harness_runs/20260427_013136/`: `signal_packet=yes`, but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then no-signal decay. Full player-fire proof, signal decay design, candidate/scoring/range follow-up, and remaining hold/chill evidence remain open under the 4-attempt escalation/playtest-package rule; the clean threshold-surviving synthetic loaded-map light-source proof is covered by `.userdata/dev-harness/harness_runs/20260427_114034/`.
-- Keep `Basecamp medical consumable readiness v0` separate unless Josef explicitly bundles it.
+- This section used to look like an active reopened partial lane. It is not active now. Raw-field/synthetic source-hook proof remains historical support/non-credit for player-fire claims; real player-fire signal response is closed by the later actual-playtest proof bundle.
 
 ---
 

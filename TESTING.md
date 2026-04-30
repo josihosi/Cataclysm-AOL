@@ -53,123 +53,59 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Bandit structural bounty overmap completion packet v0
+### Active validation target - CAOL-WRITHING-STALKER-v0
 
-Current boundary: **Phase 6 live proof**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
+Current boundary: **monster/stat/spawn footing and deterministic behavior substrate first**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
 
-Phase 4 save/load and anti-loop is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests/bandit_playback_test.o LINTJSON=0 ASTYLE=0`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (382 assertions in 22 test cases); `./tests/cata_test "[bandit][playback][structural_bounty]" --success` (88 assertions in 2 test cases). Credited claims: save/load preserves structural bounty leads, active structural outings, harvested/dangerous outcomes, member outbound/returned state, active group/target/job fields, and stalking contact time; reload does not collapse stalking-before-arrival into arrival; arrival after reload consumes structural bounty once and repeat advancement does not double-harvest; harvested/dangerous memory suppresses later structural scan refreshes; 500-turn deterministic forest/town playback proves no repeated harvested tile, no ping-pong against a dangerous/low-interest town target, no stuck active outing, and bounded scan candidates; multi-camp 500-turn playback proves bounded active outings, bounded scan budget hits, unique dispatched lead ids, and once-only harvests across camps. Ralph Wiggum result: keep — save/load keeps risk/harvest memory instead of creating repeat magnets, and counters prove bounded work rather than final-status-only luck.
+Greenlit proof ladder:
 
-Phase 5 live wiring is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests/bandit_playback_test.o LINTJSON=0 ASTYLE=0`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (411 assertions in 23 test cases); `./tests/cata_test "[bandit][playback][structural_bounty]" --success` (88 assertions in 2 test cases); `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`. Credited claims: real `do_turn` maintenance invokes structural maintenance on `calendar::once_every( 60_minutes )`; live terrain reads use one `overmap_buffer.ter( omt )` lookup per sampled candidate rather than a global sweep; `advance_structural_bounty_maintenance` advances active outings, runs bounded scan, plans/applies capped structural dispatches, and reports scan budget/use, sampled/seeded/suppressed leads, dispatches, active outings, stalking checks, turnbacks, arrivals, and returned members. Deterministic coverage proves live-maintenance seam can seed a structural lead, dispatch a member without player smoke/light/direct-range bait, process stalking contact, skip active-outside scan churn, process arrival/harvest, return the member, and render concise evidence. No live game claim is credited yet.
+1. Creature truth: monster JSON/stat/spawn data validates and matches the intended rare singleton first-generation zombie-adjacent predator.
+2. Rarity truth: spawn footing does not create ordinary stalker soup; debug/harness can intentionally create one.
+3. Interest truth: deterministic helper/evaluator proves human/player evidence and exposed night light outrank empty terrain, smoke stays weak/indirect, cover/edge terrain matters, and zombie pressure increases opportunity rather than threat.
+4. Latch truth: recent believable evidence can create a timed/leashed latch, stale evidence decays, and one clue does not become permanent omniscience.
+5. Approach truth: stalker prefers cover/darkness/clutter where available and does not direct-beeline across open exposure unless forced by the actual map.
+6. Opportunity truth: strike pressure rises when the player is hurt, bleeding, low stamina, noisy, sleeping/resting/crafting, boxed by zombies, or moving through clutter; alert/bright/open player states hold or repel pressure.
+7. Strike truth: combat creates short cut/bleed pressure and then either withdraws or changes state; it does not become a tank duel.
+8. Withdrawal/cooldown truth: hurt/exposed/focused stalker backs off, cooldown blocks immediate repeat spam, and re-engagement needs refreshed evidence.
+9. Persistence truth: any new latch/cooldown state survives save/load, or the packet explicitly avoids new persisted state.
+10. Live truth: live/harness packets prove a real shadow/strike scene plus no-omniscient-beeline negative control and exposed/focus retreat or an explicit future-only classification.
 
-Evidence required before claiming Phase 6 green:
+Initial proposed live scenarios:
 
-- one feature-path harness probe shows idle camp -> structural forest/town dispatch without player smoke/light/direct-range bait;
-- saved-state metadata audit proves structural leads, active/returned members, active outing fields, stalking-distance threat/interest writeback, harvested/dangerous outcome, and debounce/no immediate repeat;
-- scenario JSON is validated with `python3 -m json.tool` for any new harness scenario/fixture;
-- `python3 tools/openclaw_harness/proof_classification_unit_test.py` is rerun if classifier/report logic changes;
-- the proof packet separates screenshot/UI facts, debug/log facts, deterministic tests, and saved-state artifacts instead of treating startup/load as feature proof.
+- `writhing_stalker.live_shadow_strike_mcw` — one believable stalk/hold/strike/withdraw scene.
+- `writhing_stalker.live_no_omniscient_beeline_mcw` — no valid evidence, no instant beeline/attack.
+- `writhing_stalker.live_exposed_retreat_mcw` — latch exists, exposure/focus/hurt state causes hold or withdrawal.
 
-The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
+Do not close from JSON alone. Do not close from deterministic tests pretending to be gameplay. Do not close from a debug spawn directly on top of the player and call it stalking. This is horror, not a spreadsheet mugging.
 
-### Recently completed validation target - Smart Zone Manager live coordinate-label proof v0
+### Closed validation receipt - CAOL-BANDIT-STRUCT-BOUNTY-v0
 
-`Smart Zone Manager live coordinate-label proof v0` is **COMPLETE / GREEN LIVE COORDINATE-LABEL PROOF**. Canonical contract: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`; stabilized scenario: `tools/openclaw_harness/scenarios/smart_zone.live_coordinate_label_proof_v0.json`.
+`CAOL-BANDIT-STRUCT-BOUNTY-v0` is closed/checkpointed green for v0. Closure readout: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`; receipt: `doc/work-ledger.md`.
 
-Evidence: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9`, command `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_coordinate_label_proof_v0_tmp9`. The run is feature-path green with `verdict=artifacts_matched`, `feature_proof=true`, and 18/18 green step-local rows.
+Credited live run: `.userdata/dev-harness/harness_runs/20260430_115157/`. Credited live claims: idle camp structural forest bounty dispatch without player smoke/light/direct-range bait; same-run candidate economics (`bounty=8`, `known_threat=0`, `confidence=3`, `effective_interest=11`, `decision=scavenge`); stalking-distance keep-open; arrival/harvest; `arrivals=1`; `members_returned=1`; saved harvested/no-repeat state. Non-credit run `.userdata/dev-harness/harness_runs/20260430_114106/` remains red/inconclusive and must not be reused as closure evidence.
 
-Proof chain: real Zone Manager entry is traced as `invoke_zone_manager`; live Smart Zone prompt/result logs include `[harness][smart_zone] prompt accepted` and `[harness][smart_zone] result success=1 placed_zones=23`; after close/save-changes/reopen, `zone_manager_row` redraw traces include generated row names/types/options where available plus `visible_label`, `compact_label`, `start_abs`, `end_abs`, and `center_abs` fields. The layout spans distinct labels/coordinates such as `1 S`, `1 SE`, `1 W`, `2 E`, `3 W`, `10 NW`, and `10 SE`, so it is not the one-tile lumping bug. Intentional paired overlaps remain allowed and are not treated as lumping by themselves.
+Future structural-bounty playtests are greenlit as optional follow-ups, not blockers: live dangerous/turnback Branch A, live reload-resume, two/four-camp wait stress, mixed signal coexistence, and less-blessed natural-ish idle samples.
 
-Evidence boundary: screenshot/OCR artifacts exist for UI checkpoints, but OCR is fallback-quality; the decisive coordinate-label evidence is live UI row trace metadata from the Zone Manager redraw. The proof covers create -> inspect -> close/save-changes -> reopen in the live UI, not a separate full process-reload disk-persistence audit.
+Recent completed validation targets have been moved to compact receipts in `doc/work-ledger.md` plus their canonical aux/proof docs. Do not re-expand them here unless one becomes the active validation target again.
 
-### Recently completed validation target - Fuel normal-map entry primitive packet v0
-
-`Fuel normal-map entry primitive packet v0` is **COMPLETE / GREEN NORMAL-MAP ENTRY GATE** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
-
-Evidence: `.userdata/dev-harness/harness_runs/20260429_140645/`, scenario `bandit.live_world_nearby_camp_source_zone_normal_map_entry_mcw`, command `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_source_zone_normal_map_entry_mcw`. The run is feature-path green with `verdict=artifacts_matched`, 5/5 green step-local ledger, matched `game::load: Finalizing end`, saved charged wielded `lighter`, saved `f_brazier` + real `log` items, saved `SOURCE_FIREWOOD`, and screenshot `normal_map_entry_gate_before_activation.png` with OCR fallback including `Wield:` and standalone `YOU`.
-
-Evidence boundary: direct model image inspection was unavailable, so screen proof is screenshot artifact path plus OCR fallback rather than independent image-model inspection. This primitive sends no activation/targeting/fire/lighter action keys and does **not** close normal ignition, save mtime, `fd_fire`/`fd_smoke`, smoke/light, or bandit signal proof.
-
-### Recently completed validation target - Fuel writeback repair via wood source zone packet v0
-
-`Fuel writeback repair via wood source zone packet v0` is **COMPLETE / GREEN NORMAL PLAYER IGNITION + SAVED `fd_fire`** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
-
-Retired/non-proof surfaces remain retired: the old `fuel_writeback_source_zone_v0_2026-04-29` fixture is broken and must not be used for fire/lighter proof; `.userdata/dev-harness/harness_runs/20260429_142257/` remains a prior failed diagnostic because apply-wielded `A` did not show `Light where?`.
-
-Green evidence: `.userdata/dev-harness/harness_runs/20260429_153253/`, scenario `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`, command `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`. The run is feature-path green with `verdict=artifacts_matched`, `feature_proof=true`, 31/31 green step-local ledger, and claim-scoped UI trace artifacts proving normal Apply inventory returned `brazier`, `Deploy where?` consumed east/right, normal Apply inventory returned `lighter`, exact `Light where?` opened before targeting, and `Light where?` consumed east/right.
-
-Action/writeback evidence: OCR matched `burn your firewood source` at `target_direction_east_to_visible_brazier_logs.after.screen_text.json`, then matched ignition guard `a fir` from `Dau successfillu linht a fire` at `confirm_burn_source_firewood_prompt_after_visible_brazier.after.screen_text.json`, then matched `Save and quit` before uppercase save confirmation. Same-run writeback is proven by `audit_player_save_mtime_after_visible_brazier_ignition_save.metadata.json` (`mtime_changed_since_required_label=true`, `save_mtime_iso=2026-04-29T15:34:04.648315`) and `audit_saved_target_tile_for_visible_brazier_fd_fire.metadata.json` (`observed_furniture=[f_brazier]`, `observed_field_ids=[fd_fire]`, no missing required field/furniture).
-
-Evidence boundary: this closes real player-action source-zone ignition and same-run saved `fd_fire` on the visibly deployed brazier/log tile. It does **not** prove bandit signal response, roof/elevated fire, horde response, long-duration smoke/light behavior, or `fd_smoke`; those remain separate stack items. Direct image-model inspection was not used, so screenshot/OCR evidence remains named-artifact plus OCR fallback.
-
-### Recently completed validation target - Player-lit fire and bandit signal verification packet v0
-
-`Player-lit fire and bandit signal verification packet v0` is **COMPLETE / GREEN REAL-FIRE BANDIT SIGNAL RESPONSE** under `C-AOL actual playtest verification stack v0`. Canonical proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`.
-
-Evidence: `.userdata/dev-harness/harness_runs/20260429_162100/`, scenario `bandit.player_lit_fire_signal_wait_mcw`, command `python3 tools/openclaw_harness/startup_harness.py probe bandit.player_lit_fire_signal_wait_mcw`. The run is feature-path green with `verdict=artifacts_matched`, `feature_proof=true`, 14/14 green step-local ledger rows, and one green bounded wait ledger row.
-
-Footing/writeback evidence: fixture `player_lit_fire_bandit_signal_wait_v0_2026-04-29` was captured from the green real-fire run `.userdata/dev-harness/harness_runs/20260429_153253/`, then installed with 12 adjacent `water_mineral` items plus an `AUTO_DRINK` / `your_followers` zone named `OpenClaw auto drink wait support zone`. Same-run metadata proves the saved east tile still has `f_brazier` + `fd_fire`, the water and auto-drink zone are present, save mtime advanced after the post-wait save, and saved turns advanced from `5266942` to `5268742` (`observed_delta_turns=1800`, required minimum `1500`).
-
-Signal evidence: `audit_player_lit_fire_signal_dispatch_artifact.log_delta.txt` includes live `bandit_live_world signal scan: signal_packet=yes` with `smoke_packets=1`, `signal maintenance` with `matched_sites=1`, and `dispatch plan` for `overmap_special:bandit_camp@140,52,0` targeting `player@140,41,0` with `candidate_reason=live_signal`, `job=scout`, `selected_members=1`, and `signal_packet=live_smoke@140,41,0`. `audit_saved_bandit_live_world_after_player_lit_signal_save.metadata.json` persists matching `camp_style` active scout state, active member `[4]`, and `known_recent_marks=["live_smoke@140,41,0", "player@140,41,0"]`.
-
-Evidence boundary: this closes source-zone player-lit fire -> bandit signal response only. It does **not** prove roof/elevated fire, `fd_smoke`, horde response, or natural three/four-site pressure. Direct image-model inspection was unavailable, so screen proof remains named screenshot/OCR/ledger fallback rather than independent image-model confirmation.
-
-### Recently completed validation target - Roof-fire horde detection proof packet v0
-
-`Roof-fire horde detection proof packet v0` is **COMPLETE / GREEN SPLIT-RUN FEATURE PROOF**. The final proof must not be confused with the earlier save-and-quit partial boundary: source run `.userdata/dev-harness/harness_runs/20260429_172847/` proves normal player-created roof/elevated `t_tile_flat_roof` + `f_brazier` + `fd_fire` writeback; split-run `.userdata/dev-harness/harness_runs/20260429_180239/` loads that saved world back into gameplay and proves the roof-horde path.
-
-Credited split-run: fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29`, scenario `bandit.roof_fire_horde_split_wait_from_player_fire_mcw`, proof note `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`. `probe.report.json` has `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`, `14/14` green step-local rows, and `green_wait_steps_proven`.
-
-Evidence chain: saved roof fire was re-audited before wait (`t_tile_flat_roof`, `f_brazier`, `fd_fire` at `[3368,994,1]`); bounded wait advanced `observed_delta_turns=300`; same-run debug artifact captured `bandit_live_world horde light signal:` with `horde_signal_power=20`, `elevated_roof_exposed=yes`, `vertical_sightline=yes`; saved horde metadata changed from staged `mon_zombie` at `[3367,874,1]` targeting itself with `moves=0` to the same horde targeting roof-fire source submap `[3360,984,1]` with `moves=8400` and `last_processed=5267242`.
-
-Boundary: `tracking_intensity` remained `0`, so the credited horde response is retarget/movement-budget metadata after live roof-fire light signaling, not positive tracking-intensity proof. The prior doc `doc/roof-fire-horde-player-action-boundary-v0-2026-04-29.md` remains the partial-boundary/postmortem explaining why split-run was needed. Harness support now includes interrupt-response handling for long waits and `audit_saved_hordes_near_player` can require `min_moves` / `min_last_processed` in addition to exact location/destination/tracking fields.
-
-Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
-
-### Recently completed validation target - Cannibal camp confidence-push live playtest packet v0
-
-`Cannibal camp confidence-push live playtest packet v0` is complete as **confidence uplift green**. Matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
-
-Checkpoint evidence boundary:
-
-- bandit contrast control: `.userdata/dev-harness/harness_runs/20260429_012915/`, scenario `bandit.extortion_first_demand_fight_mcw`, current runtime `7ca870f6be`, 6/6 green step ledger, feature proof, shakedown/pay/fight surface preserved;
-- cannibal day smoke/pressure: `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw`, current runtime `782d8edabd`, 2/2 green step ledger, feature proof, live smoke/signal path with `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`;
-- cannibal night/contact pack-forward: `.userdata/dev-harness/harness_runs/20260429_014900/`, scenario `cannibal.live_world_night_local_contact_pack_mcw`, current runtime `acfe6fd0ce`, 2/2 green step ledger, feature proof, local-contact `attack_now` pack with `pack_size=2`, `darkness_or_concealment=yes`, `shakedown=no`, `combat_forward=yes`;
-- reload brain create/save: `.userdata/dev-harness/harness_runs/20260429_021849/`, scenario `cannibal.live_world_day_smoke_persistence_mcw`, current runtime `e778902cac`, 7/7 green step ledger, feature proof, guarded save mtime writeback, saved active `cannibal_camp` stalk group with active members `[4,5]`, target `player@140,41,0`, and `known_recent_marks` including `live_smoke@140,41,0`;
-- paired no-fixture reload support: `.userdata/dev-harness/harness_runs/20260429_021929/`, scenario `cannibal.live_world_day_smoke_persistence_reload_audit_mcw`, current runtime `e778902cac`, 2/2 green step ledger and saved-state metadata still present after fresh startup; top-level classifier stays yellow/no-new-artifacts, so this is saved-file/startup support paired with the create/save feature proof, not independent new behavior proof;
-- different-footing exposed-sight repeat: `.userdata/dev-harness/harness_runs/20260429_022021/`, scenario `cannibal.live_world_exposed_sight_avoid_mcw`, current runtime `e778902cac`, 5/5 green step ledger, feature proof on fixture `cannibal_live_world_exposed_sight_avoid_v0_2026-04-28` from source footing `bandit_local_sight_avoid_exposed_v0_2026-04-27`, showing `profile=cannibal_camp`, `active_job=stalk`, `posture=hold_off`, `pack_size=2`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`.
-
-Caveats retained: this is confidence uplift for already-finished cannibal behavior, not behavior redesign; reload support reads saved state rather than proving fresh post-load local-gate behavior; the different-footing repeat reduces but does not eliminate fixture-bias risk.
-
-### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
-
-`Bandit camp-map risk/reward dispatch planning packet v0` is closed as **scoped live/product checkpoint green**. Frau product review accepted the current matrix as sufficient for this checkpoint and did not require a second-fixture bias variant before closure.
-
-Checkpoint evidence boundary:
-
-- deterministic/code support covers the camp-owned `camp_intelligence_map`, serialization, active target OMT persistence, scout-return writeback, live signal camp-map lead writes, remembered-lead selection through live dispatch cadence/reporting, two-OMT ordinary scout stand-off, 720-minute scout return clock, 2/4/5/7/10 roster/reserve sizing, active-outside dogpile blocking, wounded/unready and killed-member shrinkage, bounded stockpile pressure, high-threat non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing, and no-opening hold/return;
-- feature-path proof covers sight-avoid (`20260428_173626`), vanished-signal redispatch (`20260428_185947`), 2/5/10 variable-roster sizing (`20260428_202044`, `20260428_192059`, `20260428_193621`), no-opening stalk-pressure (`20260428_195617`), high-threat/low-reward hold (`20260428_200600`), active-outside dogpile-block (`20260428_200434`), shakedown/toll-control (`20260428_204454`, `20260428_204630`, `20260428_204813`), same-fixture high-threat repeatability (`20260428_211105`, `20260428_211153`), and optional empty-camp retirement sanity (`20260428_214542`).
-
-Recorded gates: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; relevant scenario/fixture `python3 -m json.tool` checks; `python3 tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`; `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit_live_world]"`; `./tests/cata_test "[bandit][live_world][camp_map]" --success`; and the named harness probes. `make astyle-diff` remains locally blocked by missing `astyle`.
-
-Caveats retained: the old Multidrop fuel/writeback route for player-created fire/smoke/light scenario 1 remains non-credit evidence, and the later source-zone `fd_fire` proof does not by itself prove bandit signal response; same-fixture repeatability is not second-fixture anti-bias proof; the no-opening proof is not opening-present escalation proof.
-
-### Recently completed validation target - Cannibal camp night-raid behavior packet v0
-
-The required cannibal live matrix scenarios are checkpointed green: day smoke/stalk pressure, night local-contact pack attack, exposed/recent-sight hold-off, daylight/high-threat negative, saved-state persistence, and day-smoke repeatability. The optional labeled bandit-control contrast is non-blocking unless product review explicitly reopens it.
-
-### Recently completed validation target - C-AOL debug-proof finish stack
-
-`C-AOL debug-proof finish stack v0` is complete and ready for Schani review. The old implemented-but-unproven Smart Zone live layout boundary has since been superseded by the green reopened coordinate-label proof; real source-zone player-lit fire and the follow-on player-lit fire -> bandit signal response have also been proven green in the actual-playtest stack.
-
----
+Current important receipts:
+- `CAOL-SZM-LIVE-LABEL-v0` — Smart Zone live coordinate-label proof.
+- `CAOL-REAL-FIRE-SIGNAL-v0` — real player fire -> bandit signal response.
+- `CAOL-ROOF-HORDE-SPLIT-v0` — split-run roof-fire horde response.
+- `CAOL-CANNIBAL-NIGHT-RAID-v0` and `CAOL-CANNIBAL-CONFIDENCE-PUSH-v0` — cannibal behavior closure/confidence uplift.
+- `CAOL-BANDIT-CAMP-MAP-RISK-REWARD-v0` — scoped bandit camp-map risk/reward checkpoint.
+- `CAOL-FUEL-RED-MULTIDROP-v0` and `CAOL-BANDIT-LIVE-SIGNAL-SITE-BOOTSTRAP-v0` — non-credit/superseded surfaces that must not be reopened by drift.
 
 ## Pending probes
 
-The structural-bounty packet is now promoted to Phase 6 live proof because deterministic scan/outing/save-load substrate is green and wired into the real `do_turn` maintenance path.
+Current writhing-stalker next step is not a live harness scene yet. First build the monster/stat/spawn footing and deterministic decision substrate, then promote live probes once the code can honestly explain latch, opportunity, strike, and withdrawal.
 
-Promoted live target: `bandit.structural_bounty_idle_camp_forest_town_mcw`: idle camp, no player smoke/light/direct-range bait, bounded wait through structural scan, dispatch, stalking-distance threat/interest result, optional arrival/harvest, saved-state audit, and no immediate repeat.
+Initial greenlit live probes, once implementation footing exists:
+- `writhing_stalker.live_shadow_strike_mcw`
+- `writhing_stalker.live_no_omniscient_beeline_mcw`
+- `writhing_stalker.live_exposed_retreat_mcw`
 
-Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Do not rerun solved rows as ritual.
+Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Preserve `.userdata/dev-harness/harness_runs/20260430_115157/` as green structural-bounty v0 proof and `.userdata/dev-harness/harness_runs/20260430_114106/` as red/non-credit structural-bounty postmortem. Do not rerun solved rows as ritual.
 
 Future-only watchlist unless Schani/Josef explicitly promotes it:
 
