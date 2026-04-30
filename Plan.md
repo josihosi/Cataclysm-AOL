@@ -46,6 +46,17 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane - Bandit structural bounty overmap completion packet v0
+
+**Status:** ACTIVE / GREENLIT IMPLEMENTATION PACKET
+
+Josef/Schani promoted the next C-AOL execution target on 2026-04-30: complete the live bandit overmap ecology so idle camps can act on ordinary structural OMT bounty, not only player-near smoke/light/direct-range triggers. The first state boundary is deterministic substrate: structural OMT classifier, structural lead identity/upsert/debounce support, and focused tests for forest/town/open classes plus harvested/dangerous/mobile-ground separation.
+
+Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
+Canonical contract lives at `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
+
+---
+
 ## Closed lane - Smart Zone Manager live coordinate-label proof v0
 
 **Status:** CLOSED / CHECKPOINTED

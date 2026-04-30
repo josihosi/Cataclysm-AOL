@@ -53,7 +53,20 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-No active validation target is currently promoted. The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
+### Active validation target - Bandit structural bounty overmap completion packet v0
+
+Current boundary: **Phase 1 deterministic substrate** only. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
+
+Evidence required before claiming this boundary green:
+
+- structural classifier tests prove forest/woods eligible low bounty, town/building eligible medium bounty, and open/road/no-value terrain rejected;
+- structural lead helper/debounce tests prove harvested and dangerous structural leads suppress refresh/repeat interest;
+- mobile actor/player/NPC leads remain mobile/route/signal evidence and do not permanently upgrade the terrain OMT into structural bounty;
+- Ralph pass says the deterministic substrate still serves the lived bandit-ecology picture: bounty is broad, threat is not globally known, and repeat visits are debounced.
+
+Suggested narrow gates after code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` once the tag exists. Broaden only if touched files justify it.
+
+The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
 
 ### Recently completed validation target - Smart Zone Manager live coordinate-label proof v0
 
@@ -149,7 +162,9 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-No active probe is currently promoted.
+No live/harness probe is currently promoted for the structural-bounty packet. Live proof waits until deterministic scan/outing/save-load substrate is green and wired into the real `do_turn` maintenance path.
+
+Future promoted live target should be `bandit.structural_bounty_idle_camp_forest_town_mcw`: idle camp, no player smoke/light/direct-range bait, bounded wait through structural scan, dispatch, stalking-distance threat/interest result, optional arrival/harvest, saved-state audit, and no immediate repeat.
 
 Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Do not rerun solved rows as ritual.
 
