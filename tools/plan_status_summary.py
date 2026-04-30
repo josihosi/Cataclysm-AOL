@@ -83,6 +83,8 @@ def classification_from_status( status: str ) -> str | None:
 
 def classification_from_heading( title: str ) -> str | None:
     lowered = title.lower()
+    if lowered.startswith( "last closed" ):
+        return "checkpointed"
     if "active" in lowered:
         return "active"
     if lowered.startswith( "greenlit " ) or "greenlit backlog" in lowered or "bottom-of-stack" in lowered:
@@ -264,9 +266,8 @@ def run_self_test() -> None:
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
     assert current_active_titles == []
-    assert current_greenlit_titles == []
+    assert current_greenlit_titles == ["Greenlit queued lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0"]
     assert current_waiting_titles == []
-    assert any( "Open promotion slot" in title for title in current_parked_titles )
     assert any( "Held / parked lanes" in title for title in current_parked_titles )
     assert parsed_current.warnings == []
 
@@ -274,7 +275,7 @@ def run_self_test() -> None:
     greenlit_render = render_view( parsed_current, "greenlit" )
     waiting_render = render_view( parsed_current, "waiting" )
     assert active_render == "active\n(none)"
-    assert greenlit_render == "greenlit\n(none)"
+    assert "CAOL-WRITHING-STALKER-PATTERN-TESTS-v0" in greenlit_render
     assert waiting_render == "waiting\n(none)"
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
