@@ -55,20 +55,22 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - Bandit structural bounty overmap completion packet v0
 
-Current boundary: **Phase 2 scan/seed cadence**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
+Current boundary: **Phase 3 structural outing planner/resolver**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
 
-Phase 1 deterministic substrate is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (45 assertions in 3 test cases). Credited claims: forest/town/open classifier; structural lead id/upsert; harvested/dangerous helper suppression; mobile actor leads stay separate from ground bounty. No live game claim is credited yet.
+Phase 2 deterministic scan/seed cadence is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (132 assertions in 12 test cases). Credited claims: forest/town/open classifier; structural lead id/upsert/debounce; bounded near-ring per-camp scan; sparse structural lead seeding without global scanning; deterministic global budget/cap and per-camp cadence; eligible camp-only skips for non-camp profiles, retired-empty sites, active-outside pressure, and no-ready-home sites; harvested/dangerous/recently-checked suppression through the scan path; mobile actor leads stay separate from ground bounty. Ralph Wiggum result: keep — bounty remains broad and non-omniscient, scan writes no confirmed threat, repeated dumb revisits are debounced, and player/mobile evidence does not smear into terrain. No live game claim is credited yet.
 
-Evidence required before claiming Phase 2 green:
+Evidence required before claiming Phase 3 green:
 
-- structural scan seeds sparse `structural_bounty` leads from ordinary OMT classes without global scanning;
-- scan budget/cap behavior is deterministic and visible;
-- retired empty sites do not scan/seed;
-- harvested and dangerous structural memory suppresses refresh through the scan path, not only the helper;
-- mobile actor/player/NPC leads remain mobile/route/signal evidence and do not permanently upgrade the terrain OMT into structural bounty through the scan path;
-- Ralph Wiggum pass says the scan still serves the lived bandit-ecology picture: bounty is broad, threat is not globally known, repeated visits are debounced, and no player sighting smears into terrain.
+- structural outing planner selects small non-player outings from `structural_bounty` camp-map leads without relying on player smoke/light/direct-sight handoff;
+- forest/town choice is deterministic and explains effective interest from bounty, confidence, known threat, and caution/reserve;
+- active outside pressure blocks parallel same-site structural dispatch;
+- stalking-distance threat reveal happens before arrival and does not consume bounty by itself;
+- revealed threat subtracts from interest and can turn the party back before arrival;
+- arrival consumes structural bounty only after interest survives, then writes harvested/debounce state;
+- recently checked or low-interest structural targets are not immediately reselected;
+- Ralph Wiggum pass says the planner/resolver still serves the lived bandit-ecology picture: broad bounty first, threat checked near target, threat-minus-bounty interest, turn-back-before-arrival, arrival-consumes-only-after-interest-survives.
 
-Suggested narrow gates after Phase 2 code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`. Broaden only if touched files justify it.
+Suggested narrow gates after Phase 3 code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`. Broaden only if touched files justify it.
 
 The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
 
