@@ -1,0 +1,167 @@
+{
+  "name": "writhing_stalker.live_exposed_retreat_mcw",
+  "description": "Open/repair-needed first live writhing-stalker exposed-retreat scene proof: spawn exactly one writhing stalker at a plausible visible distance in the McWilliams live-debug fixture, advance a short live turn window, require the live monster-plan seam to classify exposed/focused contact as withdrawal, then save/audit same-run active-monster state. Current prior attempts showed the wait-to-noon setup is not reliable exposure proof; repair the exposure/focus setup before crediting this scenario as green.",
+  "known_status": "open_repair_needed_wait_to_noon_did_not_prove_exposure",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=withdraw",
+    "reason=live_exposed_and_focused_withdraw",
+    "evidence=yes",
+    "target_focus=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_stalker_live_exposed_retreat_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the transformed McWilliams live-debug fixture loads to the normal live map before the writhing stalker is spawned"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_until_noon_for_writhing_stalker_exposure",
+      "choice_key": "n",
+      "expected_duration": "noon",
+      "completion_wait_seconds": 10.0,
+      "capture_after": true,
+      "expected_visible_fact": "the fixture advances to a daylight/noon exposure window before the writhing stalker is spawned, so exposed/focused retreat is testing bright contact rather than night contact",
+      "failure_rule": "if the long-wait ledger is yellow/blocked or the daylight/noon wait is interrupted, the exposed-retreat scene is inconclusive rather than green"
+    },
+    {
+      "kind": "debug_spawn_monster",
+      "label": "debug_spawn_writhing_stalker_one_east",
+      "monster_query": "writhing stalker",
+      "target_keys": [
+        "right"
+      ],
+      "friendly": false,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug spawn monster primitive starts from the main map screen",
+      "expected_visible_fact": "debug spawn monster helper returns to the live map after selecting writhing stalker and confirming a target tile one square east of the player",
+      "expected_immediate_state": "one hostile mon_writhing_stalker should exist at a plausible visible distance, close enough for exposed/focus retreat but not spawned on top of the player",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing later same-run writhing_stalker live_plan artifact lines makes this row non-green"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_writhing_stalker_live_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off after the writhing stalker spawn so the live turn window is not consumed by the safe-mode monster warning prompt"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_short_exposed_focus_retreat_window",
+      "count": 40,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "decision=withdraw",
+        "reason=live_exposed_and_focused_withdraw",
+        "evidence=yes",
+        "target_focus=yes",
+        "eval_us="
+      ],
+      "expected_visible_fact": "a short live turn window runs after the stalker spawn; feature proof depends on same-run writhing_stalker live_plan debug lines, not the screenshot alone",
+      "failure_rule": "if the artifact delta lacks the exposed/focus withdrawal live_plan line, this scene is inconclusive rather than green"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_exposed_retreat_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=withdraw",
+          "reason=live_exposed_and_focused_withdraw",
+          "evidence=yes",
+          "target_focus=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_exposed_retreat_live_plan_missing",
+      "abort_reason": "same-run debug artifact did not contain the live writhing stalker exposed/focus withdrawal plan line",
+      "expected_visible_fact": "same-run debug artifact proves the live monster-plan seam evaluated the spawned writhing stalker and chose withdrawal for exposed/focused contact"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_writhing_stalker_retreat_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the exposed/focus live-plan window and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_writhing_stalker_retreat_window",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_retreat_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the writhing-stalker save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the live-plan window; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_writhing_stalker_retreat_window",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_writhing_stalker_retreat_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_writhing_stalker_retreat_save",
+      "changed_since_label": "audit_player_save_mtime_before_writhing_stalker_retreat_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_retreat_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the writhing-stalker live-scene save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed writhing-stalker live-scene save, proving the following active_monsters audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_after_exposed_retreat_scene",
+      "required_typeids": [
+        "mon_writhing_stalker"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_live_scene_target_state",
+      "abort_reason": "saved active_monsters metadata did not contain mon_writhing_stalker after same-run exposed/focus retreat proof",
+      "expected_visible_fact": "same-run saved active_monsters metadata contains the live writhing stalker after the exposed/focus retreat window"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_exposed_retreat_mcw",
+  "evidence_contract": {
+    "claim": "a spawned writhing stalker reaches the live monster-plan seam and withdraws from exposed/focused contact instead of blindly tank-dueling",
+    "current_caveat": "The current wait-to-noon setup has not proved bright/exposed contact; do not use this scenario as closure until the exposure/focus setup is repaired and rerun.",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker live behavior",
+    "failure_rule": "No live-scene credit if startup/load, debug-spawn footing, same-run writhing_stalker live_plan withdrawal line, save/writeback, and active-monster metadata are not all present and classified separately."
+  }
+}

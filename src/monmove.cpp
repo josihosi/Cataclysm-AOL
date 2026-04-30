@@ -2,6 +2,7 @@
 #include "monster.h" // IWYU pragma: associated
 
 #include <algorithm>
+#include <chrono>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -628,14 +629,69 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
     return here.get_abs( best );
 }
 
+static const char *writhing_stalker_decision_name( writhing_stalker::decision decision )
+{
+    switch( decision ) {
+        case writhing_stalker::decision::ignore:
+            return "ignore";
+        case writhing_stalker::decision::interested:
+            return "interested";
+        case writhing_stalker::decision::shadow:
+            return "shadow";
+        case writhing_stalker::decision::hold:
+            return "hold";
+        case writhing_stalker::decision::strike:
+            return "strike";
+        case writhing_stalker::decision::withdraw:
+            return "withdraw";
+        case writhing_stalker::decision::cooling_off:
+            return "cooling_off";
+    }
+    return "unknown";
+}
+
+static const char *writhing_stalker_approach_name( writhing_stalker::approach_class approach )
+{
+    switch( approach ) {
+        case writhing_stalker::approach_class::none:
+            return "none";
+        case writhing_stalker::approach_class::cover_shadow:
+            return "cover_shadow";
+        case writhing_stalker::approach_class::edge_shadow:
+            return "edge_shadow";
+        case writhing_stalker::approach_class::direct_forced:
+            return "direct_forced";
+        case writhing_stalker::approach_class::hold_exposed:
+            return "hold_exposed";
+    }
+    return "unknown";
+}
+
 static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &target )
 {
     if( stalker.type->id != mon_writhing_stalker ) {
         return false;
     }
 
-    const writhing_stalker::live_response response = writhing_stalker::evaluate_live_response(
-                writhing_stalker_live_context( stalker, here, target ) );
+    const auto perf_started = std::chrono::steady_clock::now();
+    const writhing_stalker::live_context ctx = writhing_stalker_live_context( stalker, here, target );
+    const writhing_stalker::live_response response = writhing_stalker::evaluate_live_response( ctx );
+    const auto perf_done = std::chrono::steady_clock::now();
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
+                            perf_started ).count();
+    DebugLog( D_INFO, DC_ALL ) << "writhing_stalker live_plan: decision="
+                               << writhing_stalker_decision_name( response.next )
+                               << " route=" << writhing_stalker_approach_name( response.route )
+                               << " reason=" << response.reason
+                               << " opportunity=" << response.opportunity
+                               << " evidence=" << ( ctx.has_believable_local_evidence ? "yes" : "no" )
+                               << " distance=" << ctx.distance_to_target
+                               << " zombie_pressure=" << ctx.zombie_pressure
+                               << " target_bright=" << ( ctx.target_in_bright_exposure ? "yes" : "no" )
+                               << " stalker_bright=" << ( ctx.stalker_in_bright_exposure ? "yes" : "no" )
+                               << " target_focus=" << ( ctx.target_has_focus ? "yes" : "no" )
+                               << " cooldown=" << ( ctx.on_cooldown ? "yes" : "no" )
+                               << " eval_us=" << elapsed_us << '\n';
 
     switch( response.next ) {
         case writhing_stalker::decision::strike:
@@ -828,6 +884,27 @@ void monster::plan()
         turns_since_target = std::min( turns_since_target + 1, max_turns_for_rate_limiting );
     } else {
         turns_since_target = 0;
+    }
+
+    if( type->id == mon_writhing_stalker ) {
+        const Creature *target = mon_plan.target;
+        const monster *target_mon = dynamic_cast<const monster *>( target );
+        DebugLog( D_INFO, DC_ALL ) << "writhing_stalker target_probe: stalker_pos="
+                                   << pos_abs().to_string_writable()
+                                   << " target=" << ( target != nullptr ? "yes" : "no" )
+                                   << " target_type=" << ( target_mon != nullptr ? target_mon->type->id.str() :
+                                           ( target != nullptr ? "non_monster" : "none" ) )
+                                   << " target_name=" << ( target != nullptr ? target->disp_name() : "none" )
+                                   << " target_pos=" << ( target != nullptr ? target->pos_abs().to_string_writable() : "none" )
+                                   << " mon_plan_dist=" << mon_plan.dist
+                                   << " sees_player=" << ( sees( here, player_character ) ? "yes" : "no" )
+                                   << " player_pos=" << player_character.pos_abs().to_string_writable()
+                                   << " friendly=" << friendly
+                                   << " mood=" << static_cast<int>( mood )
+                                   << " fleeing=" << ( mon_plan.fleeing ? "yes" : "no" )
+                                   << " anger=" << anger
+                                   << " morale=" << morale
+                                   << " turns_since_target=" << turns_since_target << '\n';
     }
 
     // Friendly monsters here

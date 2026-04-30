@@ -3262,10 +3262,13 @@ def debug_spawn_monster(
     type_delay_ms: int = 20,
     menu_settle_seconds: float = 0.35,
     prompt_settle_seconds: float = 0.25,
+    initial_settle_seconds: float = 5.0,
     exit_menu: bool = True,
 ) -> None:
     if group_radius < 0:
         raise SystemExit("Monster group radius cannot be negative")
+    if initial_settle_seconds > 0:
+        time.sleep(initial_settle_seconds)
     run_debug_menu_shortcut_path(
         pid,
         ["s", "m"],
@@ -7755,6 +7758,7 @@ def execute_probe_steps(
             type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
             menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
             prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            initial_settle_seconds = float(step.get("initial_settle_seconds", 5.0) or 0.0)
             debug_spawn_monster(
                 pid,
                 monster_query=monster_query,
@@ -7766,6 +7770,7 @@ def execute_probe_steps(
                 type_delay_ms=type_delay_ms,
                 menu_settle_seconds=menu_settle_seconds,
                 prompt_settle_seconds=prompt_settle_seconds,
+                initial_settle_seconds=initial_settle_seconds,
             )
             report.update({
                 "monster_query": monster_query,
@@ -7777,6 +7782,7 @@ def execute_probe_steps(
                 "type_delay_ms": type_delay_ms,
                 "menu_settle_seconds": menu_settle_seconds,
                 "prompt_settle_seconds": prompt_settle_seconds,
+                "initial_settle_seconds": initial_settle_seconds,
                 "debug_menu_path": ["}", "s", "m"],
                 "spawn_target": "look_around_confirm",
             })
