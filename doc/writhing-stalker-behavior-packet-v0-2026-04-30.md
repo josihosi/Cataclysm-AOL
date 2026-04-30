@@ -16,6 +16,14 @@ Raw intake preserved at: `doc/writhing-stalker-raw-intake-2026-04-30.md`.
 
 Create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without becoming omniscient or turning into a bandit-camp economy clone.
 
+## Creature description lock
+
+Josef's preserved flavor text is documentation truth for the creature description. Do not replace it with generic zombie/predator slop:
+
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It's the eyes that do it for you, not it's dripping teeth.
+
+The in-game description may polish grammar, but it must keep the core: inward grey arms, twitching/writhing body, half-crazed/half-panicked eyes, prehensile madness, and the explicit idea that the eyes—not the teeth—are what unsettles the player.
+
 ## Scope
 
 Implement in bounded layers:

@@ -4,6 +4,14 @@
 
 A slim, shaking figure. Grey arms wrapped around its chest, hugging its twitching and writhing body. The teeth are not the point. The eyes are: half-crazed, half-panicked, steering around in prehensile madness until the player feels watched before they feel attacked.
 
+### Preserved description source
+
+Josef's original creature flavor is canonical and must not be flattened into generic zombie prose:
+
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It's the eyes that do it for you, not it's dripping teeth.
+
+In-game description text may correct grammar or line rhythm, but it must preserve the image: slim and shaking; grey arms wrapped inward; twitching/writhing body; eyes that raise the neck hair; half-crazed / half-panicked motion; prehensile madness; teeth explicitly not being the point.
+
 The writhing stalker is a rare first-generation zombie-adjacent singleton predator. It is not a bandit, not a camp, not a faction, not a Basecamp economy actor, and not a zombie brute with a prettier hat. It should feel like one wrong animal using the same world-signals as the smarter systems, but interpreting them through appetite, fear, fixation, and opportunity.
 
 ## Player-facing fantasy
