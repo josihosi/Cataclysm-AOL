@@ -63,3 +63,18 @@ Important counterplay questions:
 - how riders decide to circle/harass/withdraw rather than charging into walls;
 - how rider bands avoid infinite accumulation or permanent unavoidable camping;
 - how the player reads the danger before it becomes pure bullshit.
+
+## Addendum — end-of-line mutation
+
+Josef clarified that zombie rider should probably be an **endgame / end-of-the-line mutation**, not merely a mid/late-game annoyance.
+
+Interpretation:
+
+- if late zombie evolution tends toward brute-like endpoint horrors, the rider belongs at that terminal tier;
+- this should be one of the map's final escalation shapes: a mature-world predator/cavalry mutation, not a year-one surprise for an under-equipped player;
+- timing should likely be later than ordinary late-game specials, with year two or equivalent mature evolution as a better default than year one;
+- spawn/evolution should communicate “the world has gone very wrong now,” not just “new fast archer unlocked.”
+
+Design implication:
+
+The rider can justify high speed, ranged harassment, overmap light attraction, and rider-band formation because it is an endpoint threat. Counterplay still matters, but the baseline expectation is endgame danger.
