@@ -1,4 +1,8 @@
+#include <algorithm>
 #include <optional>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "calendar.h"
 #include "cata_catch.h"
@@ -13,6 +17,142 @@ static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
 static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 static const species_id species_HUMAN( "HUMAN" );
 static const species_id species_ZOMBIE( "ZOMBIE" );
+
+namespace
+{
+
+const char *decision_trace_name( const writhing_stalker::decision value )
+{
+    using writhing_stalker::decision;
+    switch( value ) {
+        case decision::ignore:
+            return "ignore";
+        case decision::interested:
+            return "interested";
+        case decision::shadow:
+            return "shadow";
+        case decision::hold:
+            return "hold";
+        case decision::strike:
+            return "strike";
+        case decision::withdraw:
+            return "withdraw";
+        case decision::cooling_off:
+            return "cooling_off";
+    }
+    return "unknown";
+}
+
+const char *route_trace_name( const writhing_stalker::approach_class value )
+{
+    using writhing_stalker::approach_class;
+    switch( value ) {
+        case approach_class::none:
+            return "none";
+        case approach_class::cover_shadow:
+            return "cover_shadow";
+        case approach_class::edge_shadow:
+            return "edge_shadow";
+        case approach_class::direct_forced:
+            return "direct_forced";
+        case approach_class::hold_exposed:
+            return "hold_exposed";
+    }
+    return "unknown";
+}
+
+struct stalker_pattern_row {
+    int turn = 0;
+    int distance = 0;
+    int hp_percent = 100;
+    int cooldown_turns = 0;
+    int strike_count = 0;
+    writhing_stalker::decision next = writhing_stalker::decision::ignore;
+    writhing_stalker::approach_class route = writhing_stalker::approach_class::none;
+    std::string reason;
+};
+
+std::string trace_rows( const std::vector<stalker_pattern_row> &rows )
+{
+    std::ostringstream out;
+    for( const stalker_pattern_row &row : rows ) {
+        out << 't' << row.turn << " dist=" << row.distance << " hp=" << row.hp_percent
+            << " cd=" << row.cooldown_turns << " decision=" << decision_trace_name( row.next )
+            << " route=" << route_trace_name( row.route ) << " strikes=" << row.strike_count
+            << " reason=" << row.reason << '\n';
+    }
+    return out.str();
+}
+
+writhing_stalker::live_context pattern_base_context()
+{
+    writhing_stalker::live_context ctx;
+    ctx.has_believable_local_evidence = true;
+    ctx.cover_route_available = true;
+    ctx.direct_open_route_available = true;
+    ctx.near_cover_or_clutter = true;
+    return ctx;
+}
+
+std::vector<stalker_pattern_row> run_vulnerable_stalker_pattern( const int turns )
+{
+    std::vector<stalker_pattern_row> rows;
+    writhing_stalker::live_context ctx = pattern_base_context();
+    ctx.player_bleeding = true;
+    ctx.player_hurt = true;
+    ctx.player_low_stamina = true;
+    ctx.player_distracted = true;
+    ctx.player_noisy = true;
+    ctx.zombie_pressure = 2;
+
+    int distance = 5;
+    int cooldown_turns = 0;
+    int hp_percent = 100;
+    int strike_count = 0;
+
+    for( int turn = 0; turn < turns; ++turn ) {
+        ctx.distance_to_target = distance;
+        ctx.on_cooldown = cooldown_turns > 0;
+        ctx.stalker_hurt = hp_percent <= 55;
+
+        const writhing_stalker::live_response response = writhing_stalker::evaluate_live_response( ctx );
+        rows.push_back( stalker_pattern_row{ turn, distance, hp_percent, cooldown_turns, strike_count,
+                                             response.next, response.route, response.reason } );
+
+        if( response.next == writhing_stalker::decision::strike ) {
+            ++strike_count;
+            cooldown_turns = 2;
+            distance = 4;
+            if( strike_count == 2 ) {
+                hp_percent = 50;
+                cooldown_turns = 0;
+            }
+        } else if( response.next == writhing_stalker::decision::cooling_off ) {
+            cooldown_turns = std::max( 0, cooldown_turns - 1 );
+            distance = std::min( 5, distance + 1 );
+        } else if( response.next == writhing_stalker::decision::shadow ) {
+            distance = std::max( 2, distance - 2 );
+        } else if( response.next == writhing_stalker::decision::withdraw ) {
+            distance += 3;
+        }
+    }
+
+    return rows;
+}
+
+int count_decisions( const std::vector<stalker_pattern_row> &rows,
+                     const writhing_stalker::decision next )
+{
+    int count = 0;
+    for( const stalker_pattern_row &row : rows ) {
+        if( row.next == next ) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+} // namespace
 
 TEST_CASE( "writhing_stalker_monster_footing", "[writhing_stalker][monster]" )
 {
@@ -320,4 +460,96 @@ TEST_CASE( "writhing_stalker_live_response_requires_evidence_and_uses_cooldown",
     const live_response cooldown = evaluate_live_response( cooldown_ctx );
     CHECK( cooldown.next == decision::cooling_off );
     CHECK( cooldown.reason == "live_latch_cooldown_blocks_relatched_pressure" );
+}
+
+TEST_CASE( "writhing_stalker_pattern_helper_covers_fair_dread_baselines",
+           "[writhing_stalker][ai][pattern]" )
+{
+    using namespace writhing_stalker;
+
+    live_context no_evidence = pattern_base_context();
+    no_evidence.has_believable_local_evidence = false;
+    no_evidence.distance_to_target = 2;
+    no_evidence.player_bleeding = true;
+    no_evidence.player_hurt = true;
+    no_evidence.player_low_stamina = true;
+    no_evidence.player_distracted = true;
+    no_evidence.zombie_pressure = 4;
+    const live_response no_magic = evaluate_live_response( no_evidence );
+    CHECK( no_magic.next == decision::ignore );
+    CHECK( no_magic.reason == "live_no_believable_evidence" );
+
+    interest_context weak_evidence;
+    weak_evidence.recent_human_evidence = true;
+    weak_evidence.evidence_age_minutes = 25;
+    latch_update weak = advance_latch( latch_context{ latch_state{}, evaluate_interest( weak_evidence ),
+            0, 8, false } );
+    REQUIRE( weak.state.active );
+    weak = advance_latch( latch_context{ weak.state, interest_report{}, 31, 8, false } );
+    CHECK_FALSE( weak.state.active );
+    CHECK( weak.next == decision::cooling_off );
+    CHECK( weak.reason == "latch_timed_out" );
+
+    live_context cover = pattern_base_context();
+    cover.distance_to_target = 7;
+    const live_response covered_route = evaluate_live_response( cover );
+    CHECK( covered_route.next == decision::shadow );
+    CHECK( covered_route.route == approach_class::cover_shadow );
+    CHECK( covered_route.reason == "live_shadowing_believable_evidence" );
+
+    live_context exposed = cover;
+    exposed.stalker_in_bright_exposure = true;
+    exposed.target_has_focus = true;
+    const live_response counterplay = evaluate_live_response( exposed );
+    CHECK( counterplay.next == decision::withdraw );
+    CHECK( counterplay.reason == "live_exposed_and_focused_withdraw" );
+
+    live_context zombie_only = pattern_base_context();
+    zombie_only.distance_to_target = 2;
+    zombie_only.zombie_pressure = 4;
+    const live_response distraction_without_vulnerability = evaluate_live_response( zombie_only );
+    CHECK( distraction_without_vulnerability.next != decision::strike );
+
+    live_context vulnerable = zombie_only;
+    vulnerable.player_bleeding = true;
+    vulnerable.player_hurt = true;
+    vulnerable.player_low_stamina = true;
+    vulnerable.player_distracted = true;
+    const live_response strike_window = evaluate_live_response( vulnerable );
+    CHECK( strike_window.next == decision::strike );
+    CHECK( strike_window.reason == "live_vulnerability_window_strike" );
+}
+
+TEST_CASE( "writhing_stalker_pattern_helper_traces_repeated_strikes_then_injured_retreat",
+           "[writhing_stalker][ai][pattern]" )
+{
+    using namespace writhing_stalker;
+
+    const std::vector<stalker_pattern_row> rows = run_vulnerable_stalker_pattern( 8 );
+    INFO( "writhing stalker pattern trace:\n" << trace_rows( rows ) );
+
+    REQUIRE( rows.size() == 8 );
+    CHECK( rows[0].next == decision::shadow );
+    CHECK( rows[0].route == approach_class::cover_shadow );
+    CHECK( rows[1].next == decision::strike );
+    CHECK( rows[2].next == decision::cooling_off );
+    CHECK( rows[3].next == decision::cooling_off );
+    CHECK( rows[4].next == decision::shadow );
+    CHECK( rows[5].next == decision::strike );
+    CHECK( rows[6].hp_percent == 50 );
+    CHECK( rows[6].next == decision::withdraw );
+    CHECK( rows[6].reason == "live_stalker_hurt_withdraw" );
+
+    CHECK( count_decisions( rows, decision::strike ) == 2 );
+    CHECK( count_decisions( rows, decision::withdraw ) >= 1 );
+    CHECK_FALSE( rows[2].next == decision::strike );
+    CHECK_FALSE( rows[3].next == decision::strike );
+
+    int jitter_count = 0;
+    for( size_t i = 1; i < rows.size(); ++i ) {
+        if( rows[i - 1].next == decision::withdraw && rows[i].next == decision::strike ) {
+            ++jitter_count;
+        }
+    }
+    CHECK( jitter_count == 0 );
 }

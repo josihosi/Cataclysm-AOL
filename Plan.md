@@ -49,44 +49,33 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Last closed active lane — CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
+## Last closed active lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 
 **Status:** CLOSED / CHECKPOINTED GREEN V0
 
-Josef greenlit a real Andi challenge on 2026-04-30: “make it good” and give Andi “a real challenge or a couple challenges”. This packet combined the strongest current follow-ups into one bounded gauntlet: multi-camp structural stress, mixed signal coexistence, and reload/resume continuity.
-
-Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`.
-
-Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
-
-Proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
-
-Green runs:
-- Challenge A multi-camp structural stress: `bandit.multi_camp_structural_stress_mcw`, `.userdata/dev-harness/harness_runs/20260430_204416/`.
-- Challenge B mixed signal coexistence: `bandit.mixed_signal_coexistence_mcw`, `.userdata/dev-harness/harness_runs/20260430_203757/`.
-- Challenge C reload/resume continuity: `bandit.mixed_signal_reload_resume_mcw`, `.userdata/dev-harness/harness_runs/20260430_203944/`.
-
-Result: live bandit overmap systems stayed sane across two-camp structural stress, staged-but-live smoke/fire signal coexistence, and no-fixture reload/resume of active live-signal + structural outings. No dogpile, stale-state, reload-loss, CPU churn, log spam, or crash failure was observed in the final green runs.
-
-Boundary: do **not** reopen roof-horde, writhing-stalker, Smart Zone, old fire proof lanes, or this gauntlet without explicit Schani/Josef promotion. The v0 caveats are preserved in the proof doc: two camps rather than four; staged-but-live signal footing rather than natural discovery; Challenge A proves harvested fixture leads plus east-camp followthrough/no-repeat, not all-camps-idle.
-
-Prior closed active lane: `CAOL-ROOF-HORDE-NICE-FIRE-v0` — see `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
-
----
-
-## Greenlit queued lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
-
-**Status:** GREENLIT / QUEUED AFTER CLOSED GAUNTLET
-
-Josef greenlit a writhing-stalker behavior-pattern follow-up on 2026-04-30 after clarifying the desired attack rhythm: the stalker should be able to attack a few times when healthy and the opportunity stays good, then withdraw once badly injured. This is queued after `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`; do not start it unless Schani/Josef explicitly promote this packet to active.
+Schani promoted the queued writhing-stalker behavior-pattern follow-up into the next active lane after Josef clarified the desired rhythm: fair dread, not hidden-cheat goblin nonsense; repeated attacks with breathing room while healthy; withdrawal once badly injured.
 
 Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
 
 Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
 
-Goal: add a tiny primitive minimap/ASCII/equivalent repeated-turn behavior-pattern test layer for writhing-stalker stalking cadence: no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike windows, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells. If current code already passes, record the proof; if not, make the smallest tuning/implementation change that preserves no-omniscience and anti-spam constraints.
+Proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
 
-Boundary: this is not a monster-flavor/stat respin, not a mixed-hostile rerun, and not a full long-term nemesis-memory design. Do not make the stalker nastier by making it omniscient.
+Result: `tests/writhing_stalker_test.cpp` now has a compact deterministic behavior-pattern helper and trace rows covering no-magic/no-evidence, weak evidence decay, cover-route preference, light/focus counterplay, zombie-pressure guardrails, vulnerable-player strike windows, cooldown anti-spam, healthy repeated strikes, badly-injured retreat, and jitter/stuckness smell checks. No gameplay tuning/source behavior changed.
+
+Evidence: `make -j4 tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` passed (`97 assertions in 8 test cases`); `./tests/cata_test "[writhing_stalker]"` passed (`129 assertions in 10 test cases`); trace extraction for `writhing_stalker_pattern_helper_traces_repeated_strikes_then_injured_retreat` passed and shows `shadow -> strike -> cooldown -> cooldown -> shadow -> strike -> withdraw` with retreat at `hp=50`.
+
+Boundary: deterministic pattern proof is closed for v0. The live seam was not rerun because this slice changed tests only; existing live `monster::plan()` receipts remain the unchanged v0 game-path evidence. Do **not** reopen roof-horde, old writhing-stalker v0 closure, Smart Zone, old fire proof lanes, the multi-camp signal gauntlet, or this pattern packet without explicit Schani/Josef promotion.
+
+---
+
+## Parked awaiting next promotion
+
+**Status:** PARKED AWAITING NEXT PROMOTION
+
+No active execution item remains after the writhing-stalker pattern-test closure. Wait for Schani/Josef to promote the next lane instead of freelancing from held/parked receipts.
+
+Prior closed active lane: `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` — see `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
 
 ---
 

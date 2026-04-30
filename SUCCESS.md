@@ -45,23 +45,27 @@ Caveats preserved: two camps rather than four; staged-but-live smoke/fire signal
 
 ## CAOL-WRITHING-STALKER-PATTERN-TESTS-v0 — Writhing stalker primitive behavior-pattern tests
 
-Status: GREENLIT / QUEUED AFTER CLOSED GAUNTLET
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
-- [ ] A named primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper exists for writhing-stalker behavior.
-- [ ] Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
-- [ ] Repeated-attack evidence shows a healthy stalker can strike, cool down/reposition, and strike again if the player remains vulnerable and the opportunity remains plausible.
-- [ ] Injured-retreat evidence shows badly-injured stalker self-preservation overrides greed even when the player is vulnerable.
-- [ ] If current code fails the desired rhythm, the smallest behavior/tuning change is made without weakening no-omniscience, cover preference, exposed-withdraw, or cooldown anti-spam constraints.
-- [ ] Focused writhing-stalker tests and any minimal live-seam probe needed for `monster::plan()` mapping are run and recorded.
-- [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when the packet becomes active or closes.
+- [x] A named primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper exists in `tests/writhing_stalker_test.cpp` (`stalker_pattern_row`, `trace_rows`, `run_vulnerable_stalker_pattern`).
+- [x] Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
+- [x] Repeated-attack evidence shows a healthy stalker can strike, cool down/reposition, and strike again if the player remains vulnerable and the opportunity remains plausible.
+- [x] Injured-retreat evidence shows badly-injured stalker self-preservation overrides greed even when the player is vulnerable (`hp=50`, `live_stalker_hurt_withdraw`).
+- [x] Current code passes without behavior/tuning change; no-omniscience, cover preference, exposed-withdraw, and cooldown anti-spam constraints remain guarded.
+- [x] Focused writhing-stalker tests were run and recorded; no fresh live-seam probe was needed because this slice changed tests only and the unchanged `monster::plan()` seam already consumes `writhing_stalker::evaluate_live_response`.
+- [x] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final closed state.
 
 Canonical docs:
 - Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
 - Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
+- Closure proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
 - Prior v0 closure footing: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md` and `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
 
+Evidence: `make -j4 tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` passed (`97 assertions in 8 test cases`); `./tests/cata_test "[writhing_stalker]"` passed (`129 assertions in 10 test cases`). Trace proof shows `t0 shadow`, `t1 strike`, `t2/t3 cooling_off`, `t4 shadow`, `t5 strike`, `t6/t7 withdraw` with strike count `2`, cooldown anti-spam, retreat at `hp=50`, and jitter count `0`.
+
 ---
+
 
 ## CAOL-ROOF-HORDE-NICE-FIRE-v0 — Roof-fire horde nice-fire playtest
 

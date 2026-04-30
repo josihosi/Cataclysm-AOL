@@ -2,11 +2,13 @@
 
 ## Classification
 
-**GREENLIT / QUEUED AFTER ACTIVE GAUNTLET**
+**CLOSED / CHECKPOINTED GREEN V0**
 
-This packet is greenlit by Josef, but it must not interrupt `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` unless Schani/Josef explicitly promote it to active.
+This packet was greenlit by Josef, then Schani promoted/refined it from queued primitive minimap tests into fun-scenario pass/fail benchmarks after `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` closed.
 
 Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+
+Closure proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
 
 ## Why this exists
 
@@ -79,13 +81,13 @@ Across enough repeated turns, the compact trace should show coherent state progr
 
 ## Success state
 
-- A named primitive minimap/ASCII/equivalent behavior-pattern test helper exists.
-- The helper emits or records a compact repeated-turn trace suitable for debugging behavior feel.
-- Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, repeated attack cadence, injured retreat, cooldown anti-spam, and jitter/stuckness smell checks.
-- If current code already passes, record the evidence and leave behavior unchanged.
-- If current code fails the desired repeated-attack/injured-retreat feel, make the smallest tuning/implementation change that fixes the trace without weakening no-omniscience, cooldown, or exposed-withdraw constraints.
-- Run the focused writhing-stalker test target and any minimal harness/live probe needed to prove the live seam still maps to the tested behavior.
-- Update `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` when the packet becomes active or closes.
+- [x] A named primitive minimap/ASCII/equivalent behavior-pattern test helper exists.
+- [x] The helper emits or records a compact repeated-turn trace suitable for debugging behavior feel.
+- [x] Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, repeated attack cadence, injured retreat, cooldown anti-spam, and jitter/stuckness smell checks.
+- [x] Current code passed; evidence was recorded and behavior was left unchanged.
+- [x] No tuning/implementation change was needed; no-omniscience, cooldown, and exposed-withdraw constraints remain guarded.
+- [x] Focused writhing-stalker tests ran green. No fresh harness/live probe was needed because this was a test-only closure and the unchanged live seam already maps through `writhing_stalker::evaluate_live_response`.
+- [x] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` were updated for closure.
 
 ## Evidence expectations
 

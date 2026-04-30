@@ -53,7 +53,29 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Closed validation target - CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
+### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
+
+`CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`; proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+
+Credited evidence:
+- Deterministic pattern helper in `tests/writhing_stalker_test.cpp`: `stalker_pattern_row`, `trace_rows`, `pattern_base_context`, `run_vulnerable_stalker_pattern`, `count_decisions`.
+- Green tests: `make -j4 tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (97 assertions in 8 test cases)`.
+- Broader focused filter: `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (129 assertions in 10 test cases)`.
+- Trace extraction: `./tests/cata_test "writhing_stalker_pattern_helper_traces_repeated_strikes_then_injured_retreat" -s` -> `All tests passed (16 assertions in 1 test case)`.
+
+Credited behavior-pattern facts:
+- no believable local evidence -> `ignore`, `live_no_believable_evidence`;
+- weak evidence latch times out via `latch_timed_out`;
+- cover route is preferred over direct open route;
+- bright/focused exposure withdraws with `live_exposed_and_focused_withdraw`;
+- zombie pressure alone does not create a strike;
+- vulnerability can create `live_vulnerability_window_strike`;
+- repeated trace shows `shadow -> strike -> cooling_off -> cooling_off -> shadow -> strike -> withdraw`;
+- strike count `2`, retreat trigger `hp=50`, jitter count `0`.
+
+Caveat: this is deterministic helper proof, not a new live harness scene. No behavior code changed; the existing live seam remains `monster::plan()` -> `apply_writhing_stalker_plan()` -> `writhing_stalker::evaluate_live_response()`.
+
+### Closed validation receipt - CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
 
 `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` is closed/checkpointed green v0. Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`; proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
 
@@ -64,17 +86,6 @@ Green harness runs:
 
 Do not reopen this target without explicit Schani/Josef promotion. Caveats: two camps rather than four; staged-but-live signal source; Challenge A is not an all-camps-idle-after-harvest proof.
 
-
-### Greenlit queued validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
-
-`CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is greenlit and queued after the closed multi-camp gauntlet. Start it only when Schani/Josef explicitly promote it to active. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
-
-Validation burden when active:
-- Build a primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper, not only isolated one-shot decision assertions.
-- Cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike windows, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
-- Include compact trace evidence for the repeated-attack and injured-retreat rows: strike count, cooldown/reposition turns, HP threshold/retreat trigger, and final decision reasons.
-- Preserve the closed v0 guardrails: no omniscient tracking, no direct-route preference when cover exists, no exposed/focused suicide charge, no repeat-strike spam.
-- If deterministic helper proof outpaces `monster::plan()` coverage, run the smallest live-seam probe needed to show the live path still maps to the tested behavior.
 
 ### Closed validation receipt - CAOL-ROOF-HORDE-NICE-FIRE-v0
 
@@ -127,7 +138,7 @@ Current important receipts:
 
 ## Pending probes
 
-No active same-lane agent-side probe remains open for `CAOL-ROOF-HORDE-NICE-FIRE-v0`. Nice roof-fire horde proof is green/closed for v0 at `.userdata/dev-harness/harness_runs/20260430_191556/`; stricter positive `tracking_intensity`, horde-specific timing, or natural multi-day horde discovery remain future-only unless Schani/Josef explicitly promote them. `CAOL-WRITHING-STALKER-v0` also remains closed and must not be reopened by drift.
+No active same-lane agent-side probe remains open after `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` closure. The pattern packet is deterministic-helper green; old `CAOL-WRITHING-STALKER-v0`, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
 
 Current green support/behavior probes:
 - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).
