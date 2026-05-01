@@ -243,21 +243,10 @@ bool camp_locker_slot_plan::has_changes() const {
 namespace {
 bool armor_covers_any(const item &it,
                       const std::initializer_list<std::string_view> &parts) {
-  const islot_armor *armor = it.find_armor_data();
-  if (armor == nullptr) {
-    return false;
-  }
-
-  for (const armor_portion_data &portion : armor->data) {
-    if (!portion.covers) {
-      continue;
-    }
-    for (const auto &covered_part : *portion.covers) {
-      for (const std::string_view part : parts) {
-        if (covered_part.str() == part) {
-          return true;
-        }
-      }
+  for (const std::string_view part : parts) {
+    const bodypart_str_id bodypart(part);
+    if (bodypart.is_valid() && it.covers(bodypart.id(), false)) {
+      return true;
     }
   }
   return false;
@@ -265,18 +254,17 @@ bool armor_covers_any(const item &it,
 
 bool armor_specifically_covers_any(
     const item &it, const std::initializer_list<std::string_view> &parts) {
-  const islot_armor *armor = it.find_armor_data();
-  if (armor == nullptr) {
-    return false;
-  }
-
-  for (const armor_portion_data &portion : armor->data) {
-    for (const auto &covered_part : portion.sub_coverage) {
-      for (const std::string_view part : parts) {
-        if (covered_part.str() == part) {
-          return true;
-        }
-      }
+  const std::vector<sub_bodypart_id> covered_subparts =
+      it.get_covered_sub_body_parts();
+  for (const std::string_view part : parts) {
+    const sub_bodypart_str_id subpart(part);
+    if (!subpart.is_valid()) {
+      continue;
+    }
+    const sub_bodypart_id subpart_id = subpart.id();
+    if (std::find(covered_subparts.begin(), covered_subparts.end(), subpart_id) !=
+        covered_subparts.end()) {
+      return true;
     }
   }
   return false;

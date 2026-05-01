@@ -175,7 +175,7 @@ Boundary preserved: this was cleanup/refactor, not tuning. Closed writhing-stalk
 
 ## Active lane — CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST AUDIT NEXT
+**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST COVERAGE REFACTOR GREEN
 
 Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -183,7 +183,7 @@ Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
 
 Goal: keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, body coverage, reload, and zone APIs. Camp-specific policy stays explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries.
 
-Current checkpoint: newly promoted after stalker seam-reduction closure. Next honest step is a narrow audit of `camp_locker_slot`, item classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection against existing engine APIs before making the first code change.
+Current checkpoint: first narrow code step replaces camp-locker-local body/sub-body coverage loops with existing item coverage APIs while preserving the camp-specific slot policy. Focused camp-locker gate is green. Next honest step is to continue the audit/refactor pass on remaining local ontology: classification/scoring edges, carried cleanup, ammo/magazine readiness, and zone item collection.
 
 Boundary: cleanup/refactor only. Do not redesign basecamp missions, Smart Zones, general NPC equipment selection, or outfit tuning by drift.
 
