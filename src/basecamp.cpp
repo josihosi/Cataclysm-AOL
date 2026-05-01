@@ -841,7 +841,7 @@ int camp_locker_outerwear_rain_adjustment(
 } // namespace
 
 std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
-  if (it.is_firearm()) {
+  if (it.is_gun()) {
     return camp_locker_slot::ranged_weapon;
   }
   const islot_armor *armor = it.find_armor_data();

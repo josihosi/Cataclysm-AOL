@@ -61,6 +61,7 @@ static const itype_id itype_briefs("briefs");
 static const itype_id itype_coat_rain("coat_rain");
 static const itype_id itype_coat_winter("coat_winter");
 static const itype_id itype_crude_plastic_vest("crude_plastic_vest");
+static const itype_id itype_crossbow("crossbow");
 static const itype_id itype_daypack("daypack");
 static const itype_id itype_duffelbag("duffelbag");
 static const itype_id itype_fishing_waders("fishing_waders");
@@ -394,6 +395,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_bio_blade_weapon)) ==
         camp_locker_slot::melee_weapon);
   CHECK(classify_camp_locker_item(item(itype_glock_19)) ==
+        camp_locker_slot::ranged_weapon);
+  CHECK(classify_camp_locker_item(item(itype_crossbow)) ==
         camp_locker_slot::ranged_weapon);
 }
 
