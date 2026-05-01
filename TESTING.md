@@ -120,6 +120,10 @@ Closure verdict: Frau accepted v0 for agent-side close with staged-but-live cave
 
 When promoted, validation is a product-feel sampler, not a broad proof rerun: use existing green staged/live rows as footing, create only the missing handoff/startup artifacts needed for Josef to play the selected postcards, and keep staged-vs-natural caveats visible. Visual postcards need optical/screenshot checkpoints with named expected visible facts. Josef's checks are non-blocking taste/readability/fairness/optical-legibility/gnostic-meaning notes unless he explicitly reopens a lane. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
+### Queued validation target - CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0
+
+When promoted, validation must prove both UI/product path and mechanics: normal chat/dialogue-window opening where feasible, at least one scenic variant screenshot, retained pay/fight/refuse clarity, retained first-demand/reopened-demand semantics, and no cannibal/no-shakedown regression. Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+
 ### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
 `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is active after writhing-stalker seam-reduction closure. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.

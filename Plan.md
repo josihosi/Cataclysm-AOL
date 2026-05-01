@@ -205,6 +205,20 @@ Boundary: this is product-taste sampling over existing/near-existing vision work
 
 ---
 
+## Greenlit backlog — bandit scenic shakedown chat openings
+
+**Status:** GREENLIT / QUEUED / PRODUCT-UX FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+
+Josef asked on 2026-05-01 for the bandit shakedown to use a normal chat window, become more scenic, and have a selection of bandit openings.
+
+Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+
+Goal: make the visible shakedown read like an in-world bandit encounter rather than a bare proof/menu surface, while preserving pay/fight/refuse clarity, demanded-toll/reachable-goods mechanics, and reopened higher-demand aftermath semantics.
+
+Boundary: product-UX follow-up only. Do not redesign the whole bandit economy, do not regress cannibal no-shakedown behavior, and do not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+
+---
+
 ## Greenlit backlog — targeted anti-redundancy packages
 
 **Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE

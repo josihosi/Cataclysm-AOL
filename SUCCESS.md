@@ -147,6 +147,23 @@ Canonical docs:
 
 ---
 
+## CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 — Bandit scenic shakedown chat openings
+
+Status: GREENLIT / QUEUED / PRODUCT-UX FOLLOW-UP
+
+Success state:
+- [ ] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not.
+- [ ] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration.
+- [ ] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics.
+- [ ] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof.
+- [ ] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts.
+- [ ] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI.
+
+Canonical docs:
+- Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+
+---
+
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
 Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE TOTAL-CAPACITY API GREEN
