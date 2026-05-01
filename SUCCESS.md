@@ -91,7 +91,7 @@ Canonical docs:
 
 ## CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0 — Writhing stalker zombie-shadow predator shift
 
-Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / BOTH SCOPED LIVE ROWS GREEN / CLOSURE REVIEW NEXT
+Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
 
 Success state:
 - [x] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
@@ -111,12 +111,12 @@ Canonical docs:
 
 ## CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0 — Writhing stalker behavior seam reduction
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
 
 Success state:
 - [ ] Existing monster behavior/strategy/special-attack seams that can replace bespoke writhing-stalker planning glue are identified in the implementation note or commit message.
 - [ ] The live-facing `monster::plan()` path still consumes the approved stalker behavior current at execution time through a named, test-covered seam.
-- [ ] Focused `[writhing_stalker]` tests remain green for no-evidence/no-beeline, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+- [ ] Focused `[writhing_stalker]` tests remain green for the approved zombie-shadow behavior, including no-evidence/no-beeline, quiet-side/cutoff scoring, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
 - [ ] At least one new or updated seam-consumption test fails if the behavior is only exercised by detached helper code and not by the live planner path.
 - [ ] No product tuning or new gameplay claim is mixed into the refactor unless separately promoted and proven.
 

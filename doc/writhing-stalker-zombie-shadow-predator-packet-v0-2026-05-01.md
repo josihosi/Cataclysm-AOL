@@ -1,6 +1,6 @@
 # CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 
-Status: GREENLIT / BACKLOG / PREDATOR VARIETY PACKAGE
+Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
 
 Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 

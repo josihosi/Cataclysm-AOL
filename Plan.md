@@ -135,35 +135,54 @@ Boundary: staged-but-live McWilliams rows are not natural random discovery. Equi
 
 ---
 
-## Active lane — CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
+## Recently closed lane — CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 
-**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / BOTH SCOPED LIVE ROWS GREEN / CLOSURE REVIEW NEXT
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
 
-Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is now closed green v0; the remaining predator-behavior package is the stalker zombie-shadow predator shift.
+Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is closed green v0, and the stalker zombie-shadow predator shift is now closed green v0 for the scoped local-evidence package.
 
 Shared imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
 Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
 
-Goal: shift the stalker into a zombie-shadow attention predator: overmap light interest plus honest local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not, while preserving no-omniscience, light/focus/open-exposure counterplay, cooldown, and injured retreat.
+Result: the stalker now has explicit confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure. The live shadow destination consumes the quiet-side cutoff scorer, so ordinary zombies pressing one side can make the stalker choose a shadow/cutoff tile where the zombies are not, without granting omniscient target acquisition.
 
-Current checkpoint: deterministic zombie-shadow footing is green, and both scoped staged-but-live rows are green. `src/writhing_stalker_ai.*` now separates confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and light/focus/open-exposure counterpressure; the live shadow destination consumes the quiet-side cutoff scorer. Focused `[writhing_stalker]` tests prove pressure-side scoring, ambiguous split-pressure restraint, retreat-route cutoff bias, pressure gating, and light/focus suppression. `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the local-evidence-only live path from east/front zombie pressure (`pressure_x=3`) to a west/quiet-side cutoff tile (`quiet_x=-1`, `chosen_rel_x=-1`, `chosen_rel_y=-4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`. `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/` proves the local-evidence-only retreat row from north/front zombie pressure (`pressure_y=-3`) to a south/escape-side cutoff tile (`quiet_y=1`, `chosen_rel_y=4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`. Next honest state is closure review, not anti-redundancy drift.
+Evidence: focused `[writhing_stalker]` tests prove pressure-side scoring, ambiguous split-pressure restraint, retreat-route cutoff bias, pressure gating, overmap-interest helper admission, light/focus suppression, and preservation of old no-omniscience/cooldown/injured-retreat constraints. `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the local-evidence-only live path from east/front zombie pressure (`pressure_x=3`) to a west/quiet-side cutoff tile (`quiet_x=-1`, `chosen_rel_x=-1`, `chosen_rel_y=-4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`. `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/` proves the local-evidence-only retreat row from north/front zombie pressure (`pressure_y=-3`) to a south/escape-side cutoff tile (`quiet_y=1`, `chosen_rel_y=4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
 
-Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make zombie proximity a magical target buff, and do not give the stalker omniscient backstab magic. If this product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
+Closure caveat: v0 proves local-evidence zombie-shadow behavior through staged-but-live McWilliams rows. Live overmap-interest wiring/logging remains unclaimed unless a later packet promotes it; Josef taste/playtest is optional future feedback, not a v0 blocker.
+
+Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make zombie proximity a magical target buff, and do not give the stalker omniscient backstab magic. The anti-redundancy refactor must preserve this approved zombie-shadow behavior shape.
+
+---
+
+## Active lane — CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
+
+**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
+
+Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. The first active cleanup package is the writhing-stalker behavior seam reduction, now that the zombie-shadow product behavior is closed green v0.
+
+Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
+
+Goal: reduce the bespoke `mon_writhing_stalker` planning hook where existing monster behavior/strategy/special-attack seams can honestly carry the shape, while preserving the approved zombie-shadow predator behavior: local evidence/no-omniscience, quiet-side/cutoff scoring, light/focus counterplay, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+
+Current checkpoint: seam inventory is recorded in the contract doc and a focused live planner seam-consumption test now proves `monster::plan()` reaches the quiet-side cutoff behavior. Next honest step is the smallest refactor that shrinks the private `mon_writhing_stalker` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible, while leaving product-specific zombie-shadow judgment custom and explicit.
+
+Boundary: this is cleanup/refactor, not tuning. Do not reopen closed writhing-stalker v0, zombie-shadow proof rows, bandit/horde/camp claims, flesh raptors, or eigenspectres by drift. If a supposedly redundant layer carries product-specific judgment, preserve it and document why it remains custom.
 
 ---
 
 ## Greenlit backlog — targeted anti-redundancy packages
 
-**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE STALKER ZOMBIE-SHADOW LANE
+**Status:** GREENLIT / BACKLOG / AFTER ACTIVE STALKER SEAM-REDUCTION LANE
 
-Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
+These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
 
 Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
-1. `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` — reduce the bespoke `mon_writhing_stalker` planning hook where existing monster behavior/strategy/special-attack seams can carry the shape, while preserving the approved stalker behavior current at execution time. If `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` runs first, this means preserving the zombie-shadow predator shape, not the older hit-and-dash-adjacent behavior. Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
-2. `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` — keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, reload, and zone APIs. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
-3. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+1. `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` — keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, reload, and zone APIs. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
+2. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
 
 Boundary: these packages do not reopen closed writhing-stalker, bandit, horde, Smart Zone, or camp claims by drift. The larger bandit live-world roster/mission-state reduction remains future audit territory, not part of this targeted package set.
 

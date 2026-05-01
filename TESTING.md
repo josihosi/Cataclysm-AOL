@@ -112,9 +112,21 @@ Credited staged-but-live rows:
 
 Closure verdict: Frau accepted v0 for agent-side close with staged-but-live caveats. Optional Josef taste/playtest remains future-only and is not a blocker. No equipment-damage tuning changed; equipment damage remains an observational frustration metric.
 
-### Active validation target - CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
+### Active validation target - CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
 
-`CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is active after flesh-raptor closure. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is active after scoped zombie-shadow predator closure. Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Current validation burden:
+- Inventory checkpoint is recorded in `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
+- New seam-consumption proof: `writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam` sets up a live map, player, stalker, and east-side zombie pressure, calls `monster::plan()`, and requires a west/quiet-side destination. It fails if the live planner falls back to generic target beelining or stops consuming `writhing_stalker::choose_quiet_side_cutoff()`.
+- Any code refactor must preserve the approved zombie-shadow behavior shape and keep focused `[writhing_stalker]` tests green.
+- Do not claim tuning, new gameplay, or overmap-interest behavior from this refactor unless separately implemented and proven.
+
+Latest gate: `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`. Run `git diff --check` before checkpoint commit.
+
+### Closed validation receipt - CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
+
+`CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is closed/checkpointed green v0 after flesh-raptor closure. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
 Credited deterministic footing:
 - Code seam: `src/writhing_stalker_ai.*` adds explicit confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure; `src/monmove.cpp` routes live shadow destinations through `choose_quiet_side_cutoff()` and logs confidence alongside opportunity.
@@ -129,12 +141,12 @@ Green gates:
 - `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (135 assertions in 12 test cases)`.
 - `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (167 assertions in 14 test cases)`.
 
-Current validation burden:
+Closure verdict:
 - Deterministic zombie-pressure / quiet-side footing is green.
 - Both scoped live rows are green and explicitly **do not** claim overmap-interest footing.
-- Closure review caveat: v0 proves local-evidence live zombie-shadow behavior; live overmap-interest wiring/logging remains unclaimed unless a later packet promotes it.
-- Preserve old closed writhing-stalker constraints unless explicitly changed by this packet: no omniscience, no zombie-proximity magic target acquisition, cooldown anti-spam, light/focus counterplay, and injured retreat.
-- Do not widen into anti-redundancy cleanup, eigenspectres, global attack-and-retreat rewrites, or extra flesh-raptor proof rows by drift.
+- V0 proves local-evidence live zombie-shadow behavior; live overmap-interest wiring/logging remains unclaimed unless a later packet promotes it.
+- Old closed writhing-stalker constraints remain preserved: no omniscience, no zombie-proximity magic target acquisition, cooldown anti-spam, light/focus counterplay, and injured retreat.
+- Anti-redundancy cleanup is now a separate active refactor lane and must preserve this approved behavior rather than reopening product tuning.
 
 
 ### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0

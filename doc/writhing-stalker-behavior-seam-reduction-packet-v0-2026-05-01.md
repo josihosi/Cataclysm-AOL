@@ -1,6 +1,6 @@
 # CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -22,6 +22,17 @@ Reduce the writhing stalker's bespoke monster-planning seam without changing the
 - Do not reopen closed writhing-stalker v0 or live fun-scenario claims.
 - Do not create a broad monster-AI framework rewrite.
 - Do not hide behavior changes inside a “refactor” commit.
+
+## Current seam inventory checkpoint
+
+Live path today:
+- `monster::plan()` first builds `monster_plan` target state, then calls `apply_writhing_stalker_plan()` before the generic hostile/fleeing destination fallback and before the later `monster::move()` behavior-tree/special-attack tick.
+- `apply_writhing_stalker_plan()` is currently a narrow `mon_writhing_stalker` adapter: it gathers map/creature facts with `writhing_stalker_live_context()`, delegates product judgment to `writhing_stalker::evaluate_live_response()`, logs the decision, and translates the response into `set_dest()` / `unset_dest()` / `effect_run` side effects.
+- Shadow destination selection still has product-specific zombie-shadow judgment in `writhing_stalker_shadow_destination()`: nearby zombie pressure is converted into quiet-side candidates through `writhing_stalker::choose_quiet_side_cutoff()`.
+- Existing reusable seams available in this path are `mtype::get_goals()` / `behavior::tree` / `behavior::monster_oracle_t` predicates and the `type->special_attacks` action dispatch in `monster::move()`. These can honestly carry availability/dispatch gating or a thin named special-action adapter.
+- Product-specific pieces that should stay custom unless a better seam appears: local-evidence/no-omniscience confidence, quiet-side/cutoff scoring, light/focus counterpressure, cooldown/repeated-strike rhythm, and injured retreat.
+
+Next refactor target: shrink the private `monmove.cpp` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible, while leaving the stalker evaluator and quiet-side scorer explicit and test-covered.
 
 ## Success state
 

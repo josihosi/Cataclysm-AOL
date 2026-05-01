@@ -8,16 +8,15 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active: `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0`.
+Active: `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0`.
 
-`CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` is closed/checkpointed green v0 after Frau closure review. Preserve the four credited rows and do not rerun them by ritual unless code touching the raptor live bridge, fixture footing, chosen-arc/fallback logging, OCR/screenshot evidence, or comparison-row contract changes.
+`CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is closed/checkpointed green v0 after deterministic footing and both scoped staged-but-live local-evidence rows. Preserve its caveat: live overmap-interest footing is unclaimed.
 
-Current narrow slice: staged-but-live zombie-shadow rows for the stalker product-behavior package.
+Current narrow slice: first refactor after seam inventory.
 
-Deterministic footing is green. Both scoped live rows are green and explicitly local-evidence-only:
-- `writhing_stalker.live_quiet_side_zombie_pressure_mcw` proves east/front zombie pressure -> west/quiet-side cutoff from the live shadow-destination path, with `overmap_interest=no` logged.
-- `writhing_stalker.live_escape_side_zombie_retreat_mcw` proves a southward retreat from north/front zombie pressure -> south/escape-side cutoff from the live shadow-destination path, with `overmap_interest=no` logged.
+Inventory checkpoint is recorded in `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`: the current live path is `monster::plan()` -> `apply_writhing_stalker_plan()` -> `writhing_stalker_live_context()` / `writhing_stalker::evaluate_live_response()` -> destination/effect side effects, with quiet-side shadow destinations delegated to `writhing_stalker::choose_quiet_side_cutoff()`. A live planner seam-consumption test now covers quiet-side cutoff use through `monster::plan()`.
 
-1. Closure-review the scoped v0 state; do not claim live overmap-interest footing.
-2. Preserve no-omniscience, cooldown anti-spam, injured retreat, and old closed writhing-stalker green behavior unless the active packet explicitly changes it.
-3. Do not start anti-redundancy cleanup, eigenspectre work, global `HIT_AND_RUN` rewrites, or extra flesh-raptor rows by drift.
+1. Make the smallest honest refactor that shrinks the private `mon_writhing_stalker` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible.
+2. Keep product-specific zombie-shadow judgment explicit: no-omniscience/local evidence, quiet-side/cutoff scoring, light/focus counterplay, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+3. After code changes, keep the new live planner seam-consumption proof and focused `[writhing_stalker]` gate green.
+4. Do not start camp-locker, bandit-signal, eigenspectre, flesh-raptor, or product-tuning work by drift.

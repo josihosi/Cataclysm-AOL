@@ -6,7 +6,12 @@
 
 #include "calendar.h"
 #include "cata_catch.h"
+#include "character.h"
 #include "damage.h"
+#include "game.h"
+#include "map.h"
+#include "map_helpers.h"
+#include "monster.h"
 #include "mongroup.h"
 #include "mtype.h"
 #include "type_id.h"
@@ -14,6 +19,7 @@
 
 static const damage_type_id damage_cut( "cut" );
 static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
+static const mtype_id mon_zombie( "mon_zombie" );
 static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 static const species_id species_HUMAN( "HUMAN" );
 static const species_id species_ZOMBIE( "ZOMBIE" );
@@ -152,6 +158,33 @@ int count_decisions( const std::vector<stalker_pattern_row> &rows,
     return count;
 }
 
+void refresh_writhing_stalker_arena( map &here )
+{
+    g->reset_light_level();
+    here.invalidate_visibility_cache();
+    here.update_visibility_cache( 0 );
+    here.invalidate_map_cache( 0 );
+    here.set_transparency_cache_dirty( 0 );
+    here.set_pathfinding_cache_dirty( 0 );
+    here.build_map_cache( 0 );
+}
+
+void prepare_writhing_stalker_arena( map &here, const tripoint_bub_ms &center )
+{
+    const ter_id t_floor( "t_floor" );
+    const ter_id t_wall( "t_wall" );
+    for( const tripoint_bub_ms &p : here.points_in_radius( center, 12 ) ) {
+        here.ter_set( p, t_floor );
+        here.furn_clear( p );
+        here.clear_fields( p );
+    }
+
+    // A little adjacent clutter gives the live context an honest cover route without
+    // blocking the east/west sight line used by the seam-consumption proof.
+    here.ter_set( center + point::north, t_wall );
+    refresh_writhing_stalker_arena( here );
+}
+
 } // namespace
 
 TEST_CASE( "writhing_stalker_monster_footing", "[writhing_stalker][monster]" )
@@ -210,6 +243,38 @@ TEST_CASE( "writhing_stalker_spawn_footing_is_rare_singleton", "[writhing_stalke
     CHECK( stalker_entry->starts == 0_turns );
     CHECK( total_direct_weight > 9000 );
     CHECK( stalker_entry->frequency * 5000 < total_direct_weight );
+}
+
+TEST_CASE( "writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam",
+           "[writhing_stalker][monster][map][zombie_shadow]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    const tripoint_bub_ms stalker_start = center + point::east * 5;
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( calendar::turn_zero + 0_hours );
+    refresh_writhing_stalker_arena( here );
+
+    monster &stalker = spawn_test_monster( mon_writhing_stalker.str(), stalker_start );
+    spawn_test_monster( mon_zombie.str(), center + point::east * 3 );
+    spawn_test_monster( mon_zombie.str(), center + point::east * 4 + point::north );
+    spawn_test_monster( mon_zombie.str(), center + point::east * 2 + point::south );
+    stalker.anger = 100;
+    stalker.aggro_character = true;
+
+    REQUIRE( stalker.sees( here, you ) );
+    stalker.plan();
+
+    const tripoint_bub_ms dest = here.get_bub( stalker.get_dest() );
+    CHECK( dest.x() < you.pos_bub().x() );
+    CHECK( rl_dist( dest, you.pos_bub() ) >= 2 );
+    CHECK( rl_dist( dest, you.pos_bub() ) <= 4 );
+    CHECK_FALSE( dest == you.pos_bub() );
+    clear_map_without_vision();
 }
 
 TEST_CASE( "writhing_stalker_interest_sources_are_ranked_without_bandit_economy",
