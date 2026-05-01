@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "avatar.h"
+#include "bodypart.h"
 #include "build_reqs.h"
 #include "calendar.h"
 #include "cata_assert.h"
@@ -64,6 +65,8 @@ static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
 static const damage_type_id damage_bash("bash");
 static const damage_type_id damage_bullet("bullet");
 static const damage_type_id damage_cut("cut");
+
+static const bodypart_str_id body_part_muzzle("muzzle");
 
 namespace {
 
@@ -245,9 +248,8 @@ bool camp_locker_slot_plan::has_changes() const {
 
 namespace {
 bool armor_covers_any(const item &it,
-                      const std::initializer_list<std::string_view> &parts) {
-  for (const std::string_view part : parts) {
-    const bodypart_str_id bodypart(part);
+                      const std::initializer_list<bodypart_str_id> &parts) {
+  for (const bodypart_str_id &bodypart : parts) {
     if (bodypart.is_valid() && it.covers(bodypart.id(), false)) {
       return true;
     }
@@ -267,9 +269,8 @@ bool armor_specifically_covers_any(
 }
 
 bool armor_has_layer_on_any(const item &it, layer_level layer,
-                            const std::initializer_list<std::string_view> &parts) {
-  for (const std::string_view part : parts) {
-    const bodypart_str_id bodypart(part);
+                            const std::initializer_list<bodypart_str_id> &parts) {
+  for (const bodypart_str_id &bodypart : parts) {
     if (bodypart.is_valid() && it.has_layer({layer}, bodypart.id())) {
       return true;
     }
@@ -483,14 +484,15 @@ bool is_camp_locker_weather_sensitive_outerwear(
   if (slot != camp_locker_slot::shirt && slot != camp_locker_slot::vest) {
     return false;
   }
-  return armor_has_layer_on_any(it, layer_level::OUTER, {"torso"}) &&
-         armor_has_layer_on_any(it, layer_level::OUTER, {"arm_l", "arm_r"});
+  return armor_has_layer_on_any(it, layer_level::OUTER, {body_part_torso}) &&
+         armor_has_layer_on_any(it, layer_level::OUTER,
+                                {body_part_arm_l, body_part_arm_r});
 }
 
 bool is_camp_locker_weather_sensitive_legwear(
     camp_locker_slot slot, const item &it) {
   return slot == camp_locker_slot::pants &&
-         armor_covers_any(it, {"leg_l", "leg_r"});
+         armor_covers_any(it, {body_part_leg_l, body_part_leg_r});
 }
 
 bool is_camp_locker_weather_sensitive_rainwear(
@@ -543,7 +545,7 @@ bool is_camp_locker_leg_accessory(const item &it) {
       covers_only_upper_leg && covers_lower_leg && !covers_hips;
   const bool support_storage = utility_storage_capacity(it) > 0_ml;
   const bool outer = armor_has_layer_on_any(
-      it, layer_level::OUTER, {"leg_l", "leg_r"});
+      it, layer_level::OUTER, {body_part_leg_l, body_part_leg_r});
 
   if (covers_upper_leg && !covers_lower_leg && !covers_feet &&
       (it.has_flag(flag_BELTED) || it.has_flag(flag_BELT_CLIP))) {
@@ -596,20 +598,22 @@ bool is_camp_locker_jumpsuit_like(const item &it) {
 
 bool is_camp_locker_armored_full_body_suit(const item &it) {
   return utility_storage_capacity(it) >= 4_liter &&
-         armor_covers_any(it, {"torso"}) &&
-         armor_covers_any(it, {"arm_l", "arm_r"}) &&
-         armor_covers_any(it, {"leg_l", "leg_r"}) &&
+         armor_covers_any(it, {body_part_torso}) &&
+         armor_covers_any(it, {body_part_arm_l, body_part_arm_r}) &&
+         armor_covers_any(it, {body_part_leg_l, body_part_leg_r}) &&
          !it.has_layer({layer_level::SKINTIGHT}) &&
          protection_score(it, 1, 2, 2) >= 80;
 }
 
 bool is_camp_locker_protective_full_body_suit(const item &it) {
-  if (!armor_covers_any(it, {"torso"}) ||
-      !armor_covers_any(it, {"arm_l", "arm_r"}) ||
-      !armor_covers_any(it, {"leg_l", "leg_r"}) ||
+  if (!armor_covers_any(it, {body_part_torso}) ||
+      !armor_covers_any(it, {body_part_arm_l, body_part_arm_r}) ||
+      !armor_covers_any(it, {body_part_leg_l, body_part_leg_r}) ||
       it.has_layer({layer_level::SKINTIGHT}) ||
-      armor_covers_any(it, {"head", "eyes", "mouth", "hand_l",
-                            "hand_r", "foot_l", "foot_r"})) {
+      armor_covers_any(it, {body_part_head, body_part_eyes,
+                            body_part_mouth, body_part_hand_l,
+                            body_part_hand_r, body_part_foot_l,
+                            body_part_foot_r})) {
     return false;
   }
 
@@ -625,17 +629,21 @@ bool is_camp_locker_protective_full_body_suit(const item &it) {
 }
 
 bool is_camp_locker_outer_onepiece_garment(const item &it) {
-  return armor_has_layer_on_any(it, layer_level::OUTER, {"torso"}) &&
-         armor_has_layer_on_any(it, layer_level::OUTER, {"arm_l", "arm_r"}) &&
-         armor_has_layer_on_any(it, layer_level::OUTER, {"leg_l", "leg_r"}) &&
+  return armor_has_layer_on_any(it, layer_level::OUTER, {body_part_torso}) &&
+         armor_has_layer_on_any(it, layer_level::OUTER,
+                                {body_part_arm_l, body_part_arm_r}) &&
+         armor_has_layer_on_any(it, layer_level::OUTER,
+                                {body_part_leg_l, body_part_leg_r}) &&
          it.weight() < 1500_gram && utility_storage_capacity(it) < 500_ml &&
-         !armor_covers_any(it, {"head", "eyes", "mouth", "hand_l",
-                                "hand_r", "foot_l", "foot_r"});
+         !armor_covers_any(it, {body_part_head, body_part_eyes,
+                                body_part_mouth, body_part_hand_l,
+                                body_part_hand_r, body_part_foot_l,
+                                body_part_foot_r});
 }
 
 bool camp_locker_plan_slot_retains_coverage(
     const camp_locker_plan &plan, camp_locker_slot slot,
-    std::initializer_list<std::string_view> parts) {
+    std::initializer_list<bodypart_str_id> parts) {
   const auto found = plan.find(slot);
   if (found == plan.end()) {
     return false;
@@ -649,7 +657,7 @@ bool camp_locker_plan_slot_retains_coverage(
 
 bool camp_locker_plan_has_other_coverage(
     const camp_locker_plan &plan,
-    std::initializer_list<std::string_view> parts,
+    std::initializer_list<bodypart_str_id> parts,
     std::initializer_list<camp_locker_slot> slots) {
   return std::any_of(slots.begin(), slots.end(),
                      [&](const camp_locker_slot slot) {
@@ -679,7 +687,7 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
   }
 
   auto coverage_preserved =
-      [&](std::initializer_list<std::string_view> parts,
+      [&](std::initializer_list<bodypart_str_id> parts,
           std::initializer_list<camp_locker_slot> fallback_slots) {
         return !armor_covers_any(*pants_plan.kept_current, parts) ||
                armor_covers_any(*pants_plan.selected_candidate, parts) ||
@@ -687,19 +695,19 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
                                                    fallback_slots);
       };
 
-  if (coverage_preserved({"torso"}, {camp_locker_slot::shirt,
-                                      camp_locker_slot::vest,
-                                      camp_locker_slot::body_armor}) &&
-      coverage_preserved({"arm_l", "arm_r"},
+  if (coverage_preserved({body_part_torso}, {camp_locker_slot::shirt,
+                                             camp_locker_slot::vest,
+                                             camp_locker_slot::body_armor}) &&
+      coverage_preserved({body_part_arm_l, body_part_arm_r},
                          {camp_locker_slot::shirt, camp_locker_slot::vest,
                           camp_locker_slot::body_armor}) &&
-      coverage_preserved({"head"}, {camp_locker_slot::helmet}) &&
-      coverage_preserved({"eyes"},
+      coverage_preserved({body_part_head}, {camp_locker_slot::helmet}) &&
+      coverage_preserved({body_part_eyes},
                          {camp_locker_slot::helmet,
                           camp_locker_slot::glasses}) &&
-      coverage_preserved({"mouth"}, {camp_locker_slot::helmet}) &&
-      coverage_preserved({"hand_l", "hand_r"}, {}) &&
-      coverage_preserved({"foot_l", "foot_r"},
+      coverage_preserved({body_part_mouth}, {camp_locker_slot::helmet}) &&
+      coverage_preserved({body_part_hand_l, body_part_hand_r}, {}) &&
+      coverage_preserved({body_part_foot_l, body_part_foot_r},
                          {camp_locker_slot::socks,
                           camp_locker_slot::shoes})) {
     return;
@@ -712,7 +720,8 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
 void prevent_missing_pants_fill_under_full_body_body_armor(
     camp_locker_plan &plan) {
   if (!camp_locker_plan_slot_retains_coverage(
-          plan, camp_locker_slot::body_armor, {"leg_l", "leg_r"})) {
+          plan, camp_locker_slot::body_armor,
+          {body_part_leg_l, body_part_leg_r})) {
     return;
   }
 
@@ -877,23 +886,29 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
     return std::nullopt;
   }
 
-  const bool covers_eyes = armor_covers_any(it, {"eyes"});
-  const bool covers_head = armor_covers_any(it, {"head"});
-  const bool covers_hands = armor_covers_any(it, {"hand_l", "hand_r"});
-  const bool covers_mouth = armor_covers_any(it, {"mouth", "muzzle"});
-  const bool covers_feet = armor_covers_any(it, {"foot_l", "foot_r"});
-  const bool covers_legs = armor_covers_any(it, {"leg_l", "leg_r"});
+  const bool covers_eyes = armor_covers_any(it, {body_part_eyes});
+  const bool covers_head = armor_covers_any(it, {body_part_head});
+  const bool covers_hands = armor_covers_any(it,
+                            {body_part_hand_l, body_part_hand_r});
+  const bool covers_mouth = armor_covers_any(it,
+                            {body_part_mouth, body_part_muzzle});
+  const bool covers_feet = armor_covers_any(it,
+                           {body_part_foot_l, body_part_foot_r});
+  const bool covers_legs = armor_covers_any(it,
+                           {body_part_leg_l, body_part_leg_r});
   const bool covers_lower_legs =
       armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
                                         "leg_lower_l", "leg_lower_r"});
-  const bool covers_torso = armor_covers_any(it, {"torso"});
-  const bool covers_arms = armor_covers_any(it, {"arm_l", "arm_r"});
+  const bool covers_torso = armor_covers_any(it, {body_part_torso});
+  const bool covers_arms = armor_covers_any(it,
+                           {body_part_arm_l, body_part_arm_r});
   const bool covers_waist = armor_specifically_covers_any(it, {"torso_waist"});
   const bool covers_hips =
       armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
   const bool skintight = it.has_layer({layer_level::SKINTIGHT});
   const bool outer = armor_has_layer_on_any(
-      it, layer_level::OUTER, {"torso", "leg_l", "leg_r"});
+      it, layer_level::OUTER,
+      {body_part_torso, body_part_leg_l, body_part_leg_r});
   const units::volume storage = utility_storage_capacity(it);
 
   if (is_camp_locker_draped_overlay_onepiece(it)) {
