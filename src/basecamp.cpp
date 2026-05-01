@@ -2431,8 +2431,7 @@ static bool equip_camp_locker_item(npc &worker, camp_locker_slot slot, item &it)
     return worker.wield(it);
   }
 
-  return worker.can_wear(it).success() &&
-         worker.wear_item(it, false).has_value();
+  return worker.wear_item(it, false).has_value();
 }
 
 void store_camp_locker_item(const tripoint_abs_ms &locker_tile, item moved) {
