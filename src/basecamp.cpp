@@ -1642,14 +1642,15 @@ static std::vector<const item *> collect_camp_locker_worker_items(
 }
 
 static const heal_actor *camp_locker_heal_actor(const item &it) {
-  for (const auto &[use_id, use] : it.type->use_methods) {
-    (void)use_id;
-    if (const heal_actor *actor =
-            dynamic_cast<const heal_actor *>(use.get_actor_ptr())) {
-      return actor;
-    }
+  static const std::string heal_use_id("heal");
+  if (it.type == nullptr) {
+    return nullptr;
   }
-  return nullptr;
+  const use_function *use = it.type->get_use(heal_use_id);
+  if (use == nullptr) {
+    return nullptr;
+  }
+  return dynamic_cast<const heal_actor *>(use->get_actor_ptr());
 }
 
 static bool is_camp_locker_medical_readiness_supply(const item &it) {
