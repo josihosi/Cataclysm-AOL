@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / SERVICE LIVE-STATE REUSE GREEN**.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE TOTAL-CAPACITY API GREEN**.
 
 `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
 
@@ -31,15 +31,16 @@ Do not repeat these seams unless a later change touches them again:
 - live weapon scoring `Character::evaluate_weapon( ..., true )` reduction
 - worker-context reload viability `Character::can_reload()` reduction
 - reload-supply ammo-state `item::ammo_remaining()` reduction
-- magazine preference `item::ammo_capacity()` reduction
+- magazine total-capacity `item::ammo_remaining()` plus `item::remaining_ammo_capacity()` reduction
 - ranged readiness/reloadability-gate reduction through `item::can_reload_with()` / `Character::can_reload()`
-- empty-magazine fallback `item::ammo_default()` reduction
+- empty-magazine fallback through item-owned `remaining_ammo_capacity()` / default-ammo logic
 - managed-ranged readiness helper `item::is_gun()` reduction
 - ablative-insert compatibility reduction
 - ranged ammo-state readiness `item::has_ammo()` reduction
 - shared camp storage/locker `zone_manager::get_near()` tile collection reduction
 - outer-layer classification `item::has_layer( { layer_level::OUTER } )` reduction
 - final worn-slot equip validation through `Character::wear_item()` reduction
+- direct medical supply lookup through `item::get_usable_item()` / `item::get_use()` reduction
 
 ## Next executor target
 

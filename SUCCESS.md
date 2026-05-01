@@ -149,7 +149,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / SERVICE LIVE-STATE REUSE GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE TOTAL-CAPACITY API GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
@@ -165,9 +165,10 @@ Success state:
 - [x] Live melee/ranged weapon scoring defers to `Character::evaluate_weapon(..., true)` when a worker fit context is available, while no-context helper calls retain the prior fallback scoring.
 - [x] Worker-context ammo readiness defers reload viability to `Character::can_reload()`, so engine-owned reload constraints such as ammo-belt linkages gate locker ammo readiness.
 - [x] Locker reload supply selection uses `item::ammo_remaining()` instead of ammo-only `charges`, allowing reload-compatible loaded speedloaders/supplies to ready weapons through existing reload APIs.
-- [x] Compatible magazine preference uses `item::ammo_capacity()` with loaded/available ammo type instead of camp-local remaining-capacity arithmetic, so empty magazine ranking follows existing item capacity APIs.
+- [x] Compatible magazine total-capacity preference composes existing item ammo-state APIs (`item::ammo_remaining()` plus `item::remaining_ammo_capacity()`) instead of camp-local `ammo_data()` / default-ammo type lookup plumbing.
 - [x] Managed ranged-readiness recognition asks existing `item::is_gun()` directly instead of re-entering camp locker classification, while enabled-slot policy stays explicit.
 - [x] Ranged readiness ready/loaded checks use `item::has_ammo()` instead of local `ammo_remaining() > 0` / `<= 0` predicates, while camp policy still decides which magazines and reload supplies to move.
+- [x] Direct medical supply recognition uses `item::get_usable_item()` / `item::get_use()` instead of raw type use lookup, while camp policy still limits readiness stock to direct bandage/bleed supplies.
 - [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
