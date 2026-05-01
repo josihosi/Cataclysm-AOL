@@ -116,10 +116,19 @@ Closure verdict: Frau accepted v0 for agent-side close with staged-but-live cave
 
 `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is active after flesh-raptor closure. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
+Credited deterministic footing:
+- Code seam: `src/writhing_stalker_ai.*` adds explicit confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure; `src/monmove.cpp` routes live shadow destinations through `choose_quiet_side_cutoff()` and logs confidence alongside opportunity.
+- Focused tests in `tests/writhing_stalker_test.cpp` prove east-side zombie pressure prefers west/quiet-side shadow candidate, split east/west pressure avoids fake precision, retreat-route bias can choose a consistent quiet cutoff, zombie pressure is ignored without local evidence or overmap-interest footing, overmap-interest footing can admit pressure confidence, and light/focus/open exposure suppresses cutoff confidence.
+- Preservation tests still cover no-evidence/no-magic targetlessness, cooldown anti-spam, light/focus withdrawal, injured retreat, repeated strike rhythm, and old monster/spawn footing.
+
+Green gates:
+- `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (135 assertions in 12 test cases)`.
+- `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (167 assertions in 14 test cases)`.
+
 Current validation burden:
-- First prove deterministic zombie-pressure / quiet-side footing before live rows: evidence/interest gating, zombie-pressure confidence contribution, quiet-side/cutoff candidate choice, and light/focus/open-exposure suppression.
+- Deterministic zombie-pressure / quiet-side footing is green.
+- Live rows are next: at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, with confidence reasons, chosen quiet-side/cutoff tile, strike timing, counterplay outcome, turn-time cost, warnings/errors, and fun/fairness notes.
 - Preserve old closed writhing-stalker constraints unless explicitly changed by this packet: no omniscience, no zombie-proximity magic target acquisition, cooldown anti-spam, light/focus counterplay, and injured retreat.
-- Live rows are future after deterministic footing is green: at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, with confidence reasons, chosen quiet-side/cutoff tile, strike timing, counterplay outcome, turn-time cost, warnings/errors, and fun/fairness notes.
 - Do not widen into anti-redundancy cleanup, eigenspectres, global attack-and-retreat rewrites, or extra flesh-raptor proof rows by drift.
 
 
@@ -208,7 +217,7 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is review for `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`: four staged-but-live rows are green (open-field, crowded-arc, blocked-corridor, old-feeling/equipment-frustration comparison). Schani/Frau should decide whether v0 can close from this evidence or whether only a Josef taste/playtest caveat remains. `CAOL-ZOMBIE-RIDER-0.3-v0`, old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
+Active same-lane next action is staged-but-live proof for `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0`: deterministic zombie-pressure / quiet-side footing is green, and the next missing evidence is live behavior for quiet-side/back-route pressure and escape-side cutoff. `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`, `CAOL-ZOMBIE-RIDER-0.3-v0`, old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
 
 Closed zombie-rider green live rows:
 - `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/` (open-field bow pressure then withdrawal).

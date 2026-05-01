@@ -91,15 +91,17 @@ Canonical docs:
 
 ## CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0 — Writhing stalker zombie-shadow predator shift
 
-Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING NEXT
+Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING GREEN / LIVE ROWS NEXT
 
 Success state:
-- [ ] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
-- [ ] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
-- [ ] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
-- [ ] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
+- [x] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
+- [x] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
+- [x] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
+- [x] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
 - [ ] Live/playtest rows prove at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario.
 - [ ] Metrics include zombie-pressure side, chosen quiet-side/cutoff tile, confidence reasons, strike timing, counterplay outcome, turn-time cost, warnings/errors, and player fun/fairness notes.
+
+Evidence: `src/writhing_stalker_ai.*` adds confidence and quiet-side/cutoff evaluators; `src/monmove.cpp` consumes the quiet-side scorer for live shadow destinations and logs confidence; `tests/writhing_stalker_test.cpp` covers one-sided zombie pressure, split-pressure ambiguity, retreat-route cutoff bias, pressure gating, and light/focus/open-exposure suppression. Gates: `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (135 assertions in 12 test cases)`; `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (167 assertions in 14 test cases)`.
 
 Canonical docs:
 - Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.

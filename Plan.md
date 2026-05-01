@@ -137,7 +137,7 @@ Boundary: staged-but-live McWilliams rows are not natural random discovery. Equi
 
 ## Active lane — CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 
-**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING NEXT
+**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING GREEN / LIVE ROWS NEXT
 
 Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is now closed green v0; the remaining predator-behavior package is the stalker zombie-shadow predator shift.
 
@@ -147,7 +147,7 @@ Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
 
 Goal: shift the stalker into a zombie-shadow attention predator: overmap light interest plus honest local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not, while preserving no-omniscience, light/focus/open-exposure counterplay, cooldown, and injured retreat.
 
-Current checkpoint: promoted after flesh-raptor closure; no zombie-shadow behavior code has changed yet. Next honest state is deterministic footing for confidence components, quiet-side/cutoff candidate scoring, zombie-pressure gating, and light/focus suppression before live rows.
+Current checkpoint: deterministic zombie-shadow footing is green. `src/writhing_stalker_ai.*` now separates confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and light/focus/open-exposure counterpressure; the live shadow destination consumes the quiet-side cutoff scorer. Focused `[writhing_stalker]` tests prove pressure-side scoring, ambiguous split-pressure restraint, retreat-route cutoff bias, pressure gating, and light/focus suppression. Next honest state is staged-but-live rows for “fighting zombies, stalker appears on quiet side/back route” and “running from zombies, stalker blocks/cuts off escape side”.
 
 Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make zombie proximity a magical target buff, and do not give the stalker omniscient backstab magic. If this product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
 
