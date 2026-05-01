@@ -104,11 +104,12 @@ Green gate:
 - `git diff --check` -> clean.
 - `make astyle-diff LINTJSON=0 ASTYLE=0` could not run because `astyle` is not installed on this host.
 
-Credited staged-but-live row:
+Credited staged-but-live rows:
 - `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/` proves feature-path open-field orbit/swoop behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, no runtime warnings, and required log state present. Decisive lines include `decision=orbit reason=best_open_orbit_arc distance=5 candidates=91 eval_us=0`, `decision=swoop reason=cadence_swoop_window`, `decision=swoop reason=committed_swoop_path`, and repeated `flesh_raptor melee_event: source=special result=hit damage=... target_hp_percent=... run_after=yes`. This row is feature-path proof for the staged open-field slice, not a natural random-discovery claim.
+- `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/` proves feature-path crowded-arc behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, startup green, no runtime warnings, and cleanup terminated. Decisive lines include `decision=orbit reason=best_open_orbit_arc distance=1 candidates=90 score=138 chosen_rel=0,5 chosen_distance=5 chosen_crowding=0 run=yes held=no eval_us=1`, `decision=swoop reason=cadence_swoop_window`, and `flesh_raptor melee_event: source=special result=hit damage=8 hitspread=25 target_hp_percent=98 run_after=yes`. This row is feature-path proof that a staged raptor avoids the zombie-crowded north arc and selects the under-occupied south/open arc before bounded swoops; it is not natural random-discovery proof.
 
 Remaining validation burden:
-- Next live/playtest row should cover one additional counterplay shape, likely blocked/corridor or crowded-arc behavior, while still reporting orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
+- Next live/playtest row should cover one additional counterplay shape, likely blocked/corridor/interior fallback behavior, while still reporting orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
 - Existing JSON/load is indirectly covered by focused test data load; rerun a broader load/check only if raptor JSON changes or startup/load becomes suspicious.
 - Do not widen into writhing-stalker zombie-shadow, anti-redundancy refactors, eigenspectres, global `HIT_AND_RUN` rewrite, or equipment-damage difficulty tuning by drift.
 

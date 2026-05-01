@@ -1,0 +1,145 @@
+{
+  "name": "flesh_raptor.live_crowded_arc_skirmisher_mcw",
+  "description": "Live crowded-arc raptor row: zombies occupy one side of the player while a staged flesh raptor records under-occupied arc choice, bounded swoop cadence, hit/equipment/frustration notes, and log/perf stability.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_flesh_raptor_crowded_arc_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "flesh_raptor live_plan:",
+    "decision=orbit",
+    "chosen_rel=0,5",
+    "chosen_crowding=0",
+    "decision=swoop",
+    "eval_us=",
+    "flesh_raptor melee_event:"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_raptor_crowded_arc_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "staged flesh-raptor crowded-arc fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_raptor_crowded_arc",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon turn before live flesh-raptor crowded-arc window",
+      "expected_visible_fact": "saved turn proves local noon before crowded-arc raptor skirmish window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_flesh_raptor_and_zombies_before_crowded_arc",
+      "required_monsters": [
+        {
+          "typeid": "mon_spawn_raptor",
+          "offset_ms": [5, 0, 0]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [0, -5, 0]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [1, -5, 0]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [-1, -5, 0]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_crowded_arc_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required raptor plus crowded north-arc zombie footing",
+      "expected_visible_fact": "one flesh raptor starts five tiles east and three zombies occupy the north arc"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_raptor_crowded_arc",
+      "keys": ["!"],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor crowded-arc window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_raptor_crowded_arc_skirmish_window",
+      "count": 140,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "flesh_raptor live_plan:",
+        "decision=orbit",
+        "chosen_rel=0,5",
+        "chosen_crowding=0",
+        "decision=swoop",
+        "eval_us=",
+        "flesh_raptor melee_event:"
+      ],
+      "expected_visible_fact": "bounded live turn window records the raptor choosing the under-occupied south/open arc, then periodic swoops and melee outcomes"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_flesh_raptor_crowded_arc_live_plan",
+      "required_line_patterns": [
+        [
+          "flesh_raptor live_plan:",
+          "decision=orbit",
+          "reason=best_open_orbit_arc",
+          "chosen_rel=0,5",
+          "chosen_distance=5",
+          "chosen_crowding=0",
+          "eval_us="
+        ],
+        [
+          "flesh_raptor live_plan:",
+          "decision=swoop",
+          "reason=cadence_swoop_window",
+          "eval_us="
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "target_hp_percent=",
+          "run_after=yes"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_crowded_arc_live_plan_missing",
+      "abort_reason": "same-run artifact lacked under-occupied arc choice, cadence-swoop, or raptor melee-event lines",
+      "expected_visible_fact": "same-run debug artifact proves crowded-arc raptor planning avoids the zombie-occupied side, keeps bounded swoop cadence, and records concrete melee hit/miss/armor-absorb outcomes for frustration metrics",
+      "required_any_line_patterns": [
+        [
+          "flesh_raptor melee_event:",
+          "result=hit",
+          "damage="
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "result=miss",
+          "damage=0"
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "result=armor_absorb",
+          "damage=0"
+        ]
+      ]
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_crowded_arc_skirmisher_mcw",
+  "evidence_contract": {
+    "claim": "a staged live flesh raptor uses the monster::plan seam to choose the under-occupied south/open orbit arc when ordinary zombies crowd the north arc, then periodically swoops and emits concrete combat-result metrics instead of stacking into the blob or behaving only as generic hit-and-run retreat",
+    "load_only_verdict": "load proof only / inconclusive for flesh-raptor crowded-arc behavior",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan/combat behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim. Equipment-damage frustration stays explicit through raptor melee_event hit/miss/armor-absorb outcomes and any destructive equipment messages if they appear; no equipment damage tuning is changed here."
+  }
+}

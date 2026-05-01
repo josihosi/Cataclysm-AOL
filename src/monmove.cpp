@@ -634,6 +634,13 @@ static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &targe
                                << " distance=" << distance_to_target
                                << " candidates=" << candidates.size()
                                << " score=" << response.score
+                               << " chosen_rel="
+                               << ( response.has_candidate ? response.chosen.rel_x : 0 ) << ','
+                               << ( response.has_candidate ? response.chosen.rel_y : 0 )
+                               << " chosen_distance="
+                               << ( response.has_candidate ? response.chosen.distance_to_target : 0 )
+                               << " chosen_crowding="
+                               << ( response.has_candidate ? response.chosen.crowding : 0 )
                                << " run=" << ( raptor.has_effect( effect_run ) ? "yes" : "no" )
                                << " held=" << ( has_held_destination ? "yes" : "no" )
                                << " eval_us=" << elapsed_us << '\n';
