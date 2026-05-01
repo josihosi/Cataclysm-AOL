@@ -5894,6 +5894,65 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_locker_ranged_readiness_ignores_magazines_installed_in_carried_guns",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms storage_abs = here.get_abs(tripoint_bub_ms{4, 5, 0});
+  const tripoint_bub_ms storage_local = here.get_bub(storage_abs);
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Storage", zone_type_CAMP_STORAGE, storage_abs);
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(storage_local);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  const int ammo_total = item(itype_glockmag).remaining_ammo_capacity() * 2;
+  here.add_item_or_charges(locker_local,
+                           item(itype_9mm, calendar::turn_zero, ammo_total));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_backpack), false).has_value());
+  item empty_glock(itype_glock_19);
+  REQUIRE(worker.wield(empty_glock));
+
+  item carried_spare_gun(itype_glock_19);
+  REQUIRE(carried_spare_gun.put_in(make_loaded_glock_magazine(),
+                                   pocket_type::MAGAZINE_WELL).success());
+  REQUIRE(carried_spare_gun.magazine_current() != nullptr);
+  REQUIRE(worker.i_add(carried_spare_gun));
+  test_camp->add_assignee(worker.getID());
+
+  const camp_locker_service_probe probe =
+      test_camp->measure_camp_locker_service(worker);
+  CHECK(probe.magazines_to_take == 2);
+  CHECK(probe.magazines_to_reload == 2);
+
+  const item_location weapon = worker.get_wielded_item();
+  REQUIRE(weapon);
+  REQUIRE(weapon->magazine_current() != nullptr);
+  CHECK(weapon->ammo_remaining() > 0);
+  CHECK(count_character_items(worker, itype_glockmag) == 1);
+  CHECK(count_tile_items(here, storage_local, itype_glock_19) == 1);
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_locker_downtime_queue_processes_one_worker_at_a_time",
           "[camp][locker]") {
   restore_on_out_of_scope restore_calendar_turn(calendar::turn);

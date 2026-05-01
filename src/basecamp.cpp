@@ -1834,14 +1834,13 @@ static std::vector<item_location> collect_camp_locker_compatible_magazine_locati
   if (weapon_loc && current_magazine != nullptr) {
     magazines.emplace_back(weapon_loc, const_cast<item *>(current_magazine));
   }
-  worker.visit_items([&worker, &weapon, current_magazine,
-                      &magazines](item *node, item *) {
-    if (node != nullptr && node != current_magazine && node->is_magazine() &&
-        weapon.can_reload_with(*node, false)) {
-      magazines.push_back(form_loc_recursive(worker, *node));
+
+  for (const item_location &ammo_loc : worker.find_ammo(weapon, true, -1)) {
+    if (ammo_loc && ammo_loc.get_item() != current_magazine &&
+        ammo_loc->is_magazine()) {
+      magazines.push_back(ammo_loc);
     }
-    return VisitResponse::NEXT;
-  });
+  }
 
   std::stable_sort(magazines.begin(), magazines.end(),
                    [](const item_location &lhs, const item_location &rhs) {
@@ -1945,7 +1944,6 @@ struct camp_locker_ranged_readiness_state {
 
 static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
     npc &worker, const camp_locker_policy &policy,
-    const std::vector<const item *> &worker_items,
     const std::vector<const item *> &locker_items,
     camp_locker_service_probe *probe = nullptr) {
   camp_locker_ranged_readiness_state readiness;
@@ -1958,13 +1956,18 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
   readiness.weapon = camp_locker_item_debug_label(*weapon_loc);
 
   if (weapon_loc->uses_magazine()) {
-    const std::vector<const item *> current_magazines =
-        collect_camp_locker_compatible_magazines(worker_items, *weapon_loc,
-                                                 probe);
+    const std::vector<item_location> current_magazine_locs =
+        collect_camp_locker_compatible_magazine_locations(worker, *weapon_loc);
     readiness.current_compatible_magazines =
-        static_cast<int>(current_magazines.size());
+        static_cast<int>(current_magazine_locs.size());
 
-    std::vector<const item *> selected_magazines = current_magazines;
+    std::vector<const item *> selected_magazines;
+    selected_magazines.reserve(current_magazine_locs.size());
+    for (const item_location &magazine_loc : current_magazine_locs) {
+      if (magazine_loc) {
+        selected_magazines.push_back(&*magazine_loc);
+      }
+    }
     const std::vector<const item *> locker_magazines =
         collect_camp_locker_compatible_magazines(locker_items, *weapon_loc,
                                                  probe);
@@ -2513,7 +2516,7 @@ camp_locker_live_state collect_camp_locker_live_state(
   live_state.carried_cleanup =
       collect_camp_locker_carried_cleanup_state(worker);
   live_state.ranged_readiness = collect_camp_locker_ranged_readiness_state(
-      worker, policy, live_state.worker_items, live_state.locker_items);
+      worker, policy, live_state.locker_items);
   live_state.medical_readiness = collect_camp_locker_medical_readiness_state(
       live_state.worker_items, live_state.locker_items);
   return live_state;
@@ -3715,8 +3718,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       collect_camp_locker_carried_cleanup_state(worker);
   const camp_locker_ranged_readiness_state ranged_readiness =
       collect_camp_locker_ranged_readiness_state(worker, locker_policy,
-                                                 worker_items, locker_items,
-                                                 probe);
+                                                 locker_items, probe);
   const camp_locker_medical_readiness_state medical_readiness =
       collect_camp_locker_medical_readiness_state(worker_items, locker_items);
   if (probe != nullptr) {
@@ -4023,7 +4025,6 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                                           probe);
   const camp_locker_ranged_readiness_state ranged_readiness_after =
       collect_camp_locker_ranged_readiness_state(worker, locker_policy,
-                                                 worker_items_after,
                                                  locker_items_after, probe);
   const camp_locker_carried_cleanup_state carried_cleanup_after =
       collect_camp_locker_carried_cleanup_state(worker);
