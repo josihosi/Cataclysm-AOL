@@ -45,6 +45,10 @@ Current debug-stack attempt rule for the same item/blocker:
 
 A test is not allowed to impersonate implementation. Before claiming gameplay behavior, identify the live code path that consumes the tested seam and name the evidence class that proves it: unit/evaluator, playback/proof packet, live source hook, harness/startup, screen, save inspection, or artifact/log. Deterministic-only packets may close only as deterministic-only packets; if the contract says the game does something, the proof must reach the game path or the claim stays open.
 
+### Promotion / closure hygiene
+
+Before promoting, closing, or handing off a lane, confirm that `TESTING.md` pending probes still match the active `Plan.md` lane. If the pending-probe text points at an older slice, fix it before Andi uses it as execution truth.
+
 ### Bandit overmap-proof rule
 
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
@@ -123,6 +127,7 @@ Current validation burden:
 - Ranged-readiness reduction is green: carried compatible magazine discovery now defers to `Character::find_ammo()` / reload compatibility instead of manually visiting every worker item, while locker-side magazine/ammo selection remains camp policy; focused regression `camp_locker_ranged_readiness_ignores_magazines_installed_in_carried_guns` -> `All tests passed (15 assertions in 1 test case)`; full `./tests/cata_test "[camp][locker]"` after this slice -> `All tests passed (2081 assertions in 72 test cases)`.
 - Average-coverage scoring reduction is green: `average_armor_coverage` now defers to `item::get_avg_coverage()` instead of camp-local armor-portion averaging; `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` plus rerun with captured tail -> `All tests passed (2081 assertions in 72 test cases)`.
 - Worker-item collection / carried-cleanup enumeration reduction is green: `collect_camp_locker_current_items`, `collect_camp_locker_worker_items`, and carried-cleanup summary collection now defer to the existing visitable `items_with()` API instead of local `visit_items()` collection loops, while worn/wielded and kept/dump policy stays explicit; `git diff --check && make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` -> `All tests passed (2081 assertions in 72 test cases)`.
+- Direct subpart coverage API reduction is green: `armor_specifically_covers_any()` now calls `item::covers(sub_bodypart_id, false)` directly instead of building/searching `get_covered_sub_body_parts()`, while preserving explicit camp slot policy; commit `27e27372d3`; `git diff --check && make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` -> `All tests passed (2081 assertions in 72 test cases)`.
 - Continue auditing remaining camp locker classification/scoring against existing item, wearability, reload, and zone APIs.
 - Any code refactor must preserve camp locker policy behavior: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
 - Targeted tests should continue to cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and any newly touched `CAMP_STORAGE` / `NO_NPC_PICKUP` boundary behavior.
@@ -249,7 +254,7 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, and medical-readiness reductions.
+Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, and direct subpart coverage API reductions.
 
 Required remaining audit questions:
 - Which item classification/scoring, carried cleanup, and ranged ammo/magazine readiness checks are duplicate engine ontology rather than camp policy?
