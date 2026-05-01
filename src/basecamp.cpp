@@ -1878,10 +1878,10 @@ static std::vector<item_location> collect_camp_locker_compatible_magazine_locati
 static bool can_camp_locker_worker_reload_with(const Character *reloader,
                                                const item &target,
                                                const item &ammo) {
-  if (reloader != nullptr) {
-    return reloader->can_reload(target, &ammo);
+  if (!target.can_reload_with(ammo, true)) {
+    return false;
   }
-  return target.can_reload_with(ammo, true);
+  return reloader == nullptr || reloader->can_reload(target, &ammo);
 }
 
 static const item *select_best_camp_locker_ammo_candidate(
@@ -1918,7 +1918,7 @@ static bool reload_camp_locker_target_from_zone(npc &worker,
                                          const item_location &target,
                                          const std::vector<tripoint_abs_ms> &locker_tiles,
                                          const tripoint_abs_ms &locker_drop_tile) {
-  if (!target || target->remaining_ammo_capacity() <= 0) {
+  if (!target) {
     return false;
   }
 
@@ -2019,7 +2019,7 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
     }
 
     for (const item *magazine : selected_magazines) {
-      if (magazine == nullptr || magazine->remaining_ammo_capacity() <= 0 ||
+      if (magazine == nullptr ||
           select_best_camp_locker_ammo_candidate(locker_items, *magazine,
                                                  &worker, probe) == nullptr) {
         continue;
@@ -2036,7 +2036,7 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
                                       readiness.magazines_to_reload > 0;
     readiness.weapon_needs_reload =
         weapon_loc->ammo_remaining() <= 0 && could_ready_magazine;
-  } else if (weapon_loc->remaining_ammo_capacity() > 0) {
+  } else {
     readiness.weapon_needs_reload =
         select_best_camp_locker_ammo_candidate(locker_items, *weapon_loc,
                                                &worker, probe) != nullptr;
