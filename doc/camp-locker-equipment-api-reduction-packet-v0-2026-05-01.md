@@ -1,6 +1,6 @@
 # CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / RELOADABILITY GATE API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE DEFAULT AMMO API GREEN
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -35,7 +35,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [x] Camp locker weapon/armor classification now defers to existing `item::is_gun()` and `item::is_armor()` boundaries instead of narrower camp-local predicates/raw armor-slot lookup, while camp slot policy remains explicit.
 - [x] Live camp locker weapon scoring now defers to `Character::evaluate_weapon(..., true)` when a worker fit context is present, while no-context helper calls keep the prior fallback scoring.
 - [x] Worker-context camp locker ammo readiness now defers reload viability to `Character::can_reload()` instead of only `item::can_reload_with()`, so engine-owned constraints such as ammo-belt linkages gate whether locker ammo can ready an item.
-- [x] Compatible magazine preference now defers full-capacity ranking to `item::ammo_capacity()` using loaded/available ammo type instead of camp-local remaining-capacity arithmetic.
+- [x] Compatible magazine preference now defers full-capacity ranking to `item::ammo_capacity()` using loaded/available ammo type instead of camp-local remaining-capacity arithmetic; empty-magazine fallback ammo selection now uses existing `item::ammo_default()` instead of re-reading the magazine ammo-type set locally.
 - [x] Ranged readiness/reload selection now lets existing `item::can_reload_with()` / `Character::can_reload()` own reloadability before camp policy moves locker supplies, instead of gating candidate targets with camp-local `remaining_ammo_capacity()` prechecks.
 - [x] Live service collection now reuses `collect_camp_locker_live_state()` for the pre-service camp-state pass, keeping worker/locker item collection, candidate classification, planning, cleanup, ranged readiness, and medical readiness on one shared aggregation path.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
