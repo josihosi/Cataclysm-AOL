@@ -128,6 +128,24 @@ Canonical docs:
 
 ---
 
+## CAOL-VISIONS-PLAYTEST-SAMPLER-v0 — C-AOL visions product-feel sampler
+
+Status: GREENLIT / QUEUED / PRODUCT-TASTE PLAYTEST PACKET
+
+Success state:
+- [ ] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
+- [ ] Each postcard has a named vision, a prepared scenario/handoff or exact setup recipe, and a short Josef-facing play instruction.
+- [ ] Each postcard has focused taste questions that distinguish fun/readable/fair/alive from annoying/fake/unfair/invisible.
+- [ ] Existing closed proof rows are cited as footing where used, without laundering staged rows into natural discovery claims.
+- [ ] If fresh handoff runs are created, each run records artifact dir, cleanup/handoff status, and one visible fact or explicit reason visual proof is not the evidence class.
+- [ ] The final Josef handoff is short enough to actually use.
+
+Canonical docs:
+- Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+- Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+
+---
+
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
 Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / SERVICE LIVE-STATE REUSE GREEN

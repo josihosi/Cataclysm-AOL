@@ -189,6 +189,22 @@ Boundary: cleanup/refactor only. Do not redesign basecamp missions, Smart Zones,
 
 ---
 
+## Greenlit backlog — C-AOL visions playtest sampler
+
+**Status:** GREENLIT / QUEUED / PRODUCT-TASTE PLAYTEST PACKET / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+
+Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
+
+Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+
+Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+
+Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology.
+
+Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, does not create release packaging, and should not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+
+---
+
 ## Greenlit backlog — targeted anti-redundancy packages
 
 **Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
