@@ -68,6 +68,32 @@ static const damage_type_id damage_cut("cut");
 
 static const bodypart_str_id body_part_muzzle("muzzle");
 
+static const sub_bodypart_str_id sub_body_part_arm_lower_l("arm_lower_l");
+static const sub_bodypart_str_id sub_body_part_arm_lower_r("arm_lower_r");
+static const sub_bodypart_str_id sub_body_part_arm_upper_l("arm_upper_l");
+static const sub_bodypart_str_id sub_body_part_arm_upper_r("arm_upper_r");
+static const sub_bodypart_str_id sub_body_part_eye_l("eye_l");
+static const sub_bodypart_str_id sub_body_part_eye_r("eye_r");
+static const sub_bodypart_str_id sub_body_part_foot_l("foot_l");
+static const sub_bodypart_str_id sub_body_part_foot_r("foot_r");
+static const sub_bodypart_str_id sub_body_part_hand_l("hand_l");
+static const sub_bodypart_str_id sub_body_part_hand_r("hand_r");
+static const sub_bodypart_str_id sub_body_part_head("head");
+static const sub_bodypart_str_id sub_body_part_leg_draped_l("leg_draped_l");
+static const sub_bodypart_str_id sub_body_part_leg_draped_r("leg_draped_r");
+static const sub_bodypart_str_id sub_body_part_leg_hip_l("leg_hip_l");
+static const sub_bodypart_str_id sub_body_part_leg_hip_r("leg_hip_r");
+static const sub_bodypart_str_id sub_body_part_leg_knee_l("leg_knee_l");
+static const sub_bodypart_str_id sub_body_part_leg_knee_r("leg_knee_r");
+static const sub_bodypart_str_id sub_body_part_leg_lower_l("leg_lower_l");
+static const sub_bodypart_str_id sub_body_part_leg_lower_r("leg_lower_r");
+static const sub_bodypart_str_id sub_body_part_leg_upper_l("leg_upper_l");
+static const sub_bodypart_str_id sub_body_part_leg_upper_r("leg_upper_r");
+static const sub_bodypart_str_id sub_body_part_mouth("mouth");
+static const sub_bodypart_str_id sub_body_part_torso_lower("torso_lower");
+static const sub_bodypart_str_id sub_body_part_torso_upper("torso_upper");
+static const sub_bodypart_str_id sub_body_part_torso_waist("torso_waist");
+
 namespace {
 
 bool tripoint_abs_ms_zyx_less(const tripoint_abs_ms &lhs,
@@ -258,9 +284,8 @@ bool armor_covers_any(const item &it,
 }
 
 bool armor_specifically_covers_any(
-    const item &it, const std::initializer_list<std::string_view> &parts) {
-  for (const std::string_view part : parts) {
-    const sub_bodypart_str_id subpart(part);
+    const item &it, const std::initializer_list<sub_bodypart_str_id> &parts) {
+  for (const sub_bodypart_str_id &subpart : parts) {
     if (subpart.is_valid() && it.covers(subpart.id(), false)) {
       return true;
     }
@@ -503,43 +528,60 @@ bool is_camp_locker_weather_sensitive_rainwear(
 
 bool is_camp_locker_short_legwear(const item &it) {
   return armor_specifically_covers_any(
-             it, {"leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r"}) &&
+             it, {sub_body_part_leg_hip_l, sub_body_part_leg_hip_r,
+                  sub_body_part_leg_upper_l, sub_body_part_leg_upper_r}) &&
          !armor_specifically_covers_any(
-             it, {"leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r"});
+             it, {sub_body_part_leg_knee_l, sub_body_part_leg_knee_r,
+                  sub_body_part_leg_lower_l, sub_body_part_leg_lower_r});
 }
 
 bool is_camp_locker_draped_only_legwear(const item &it) {
-  return armor_specifically_covers_any(it, {"leg_draped_l", "leg_draped_r"}) &&
+  return armor_specifically_covers_any(it, {sub_body_part_leg_draped_l,
+                                            sub_body_part_leg_draped_r}) &&
          !armor_specifically_covers_any(
-             it, {"leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r",
-                  "leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r",
-                  "foot_l", "foot_r"});
+             it, {sub_body_part_leg_hip_l, sub_body_part_leg_hip_r,
+                  sub_body_part_leg_upper_l, sub_body_part_leg_upper_r,
+                  sub_body_part_leg_knee_l, sub_body_part_leg_knee_r,
+                  sub_body_part_leg_lower_l, sub_body_part_leg_lower_r,
+                  sub_body_part_foot_l, sub_body_part_foot_r});
 }
 
 bool is_camp_locker_draped_overlay_onepiece(const item &it) {
-  return armor_specifically_covers_any(it, {"torso_waist"}) &&
-         armor_specifically_covers_any(it, {"leg_draped_l", "leg_draped_r"}) &&
+  return armor_specifically_covers_any(it, {sub_body_part_torso_waist}) &&
+         armor_specifically_covers_any(it, {sub_body_part_leg_draped_l,
+                                            sub_body_part_leg_draped_r}) &&
          !armor_specifically_covers_any(
-             it, {"torso_upper", "torso_lower", "arm_upper_l", "arm_upper_r",
-                  "arm_lower_l", "arm_lower_r", "hand_l", "hand_r",
-                  "leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r",
-                  "leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r",
-                  "foot_l", "foot_r", "head", "eye_l", "eye_r", "mouth"});
+             it, {sub_body_part_torso_upper, sub_body_part_torso_lower,
+                  sub_body_part_arm_upper_l, sub_body_part_arm_upper_r,
+                  sub_body_part_arm_lower_l, sub_body_part_arm_lower_r,
+                  sub_body_part_hand_l, sub_body_part_hand_r,
+                  sub_body_part_leg_hip_l, sub_body_part_leg_hip_r,
+                  sub_body_part_leg_upper_l, sub_body_part_leg_upper_r,
+                  sub_body_part_leg_knee_l, sub_body_part_leg_knee_r,
+                  sub_body_part_leg_lower_l, sub_body_part_leg_lower_r,
+                  sub_body_part_foot_l, sub_body_part_foot_r,
+                  sub_body_part_head, sub_body_part_eye_l, sub_body_part_eye_r,
+                  sub_body_part_mouth});
 }
 
 bool is_camp_locker_leg_accessory(const item &it) {
   const bool covers_hips =
-      armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_hip_l,
+                                         sub_body_part_leg_hip_r});
   const bool covers_upper_leg =
-      armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r",
-                                         "leg_upper_l", "leg_upper_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_hip_l, sub_body_part_leg_hip_r,
+                                         sub_body_part_leg_upper_l,
+                                         sub_body_part_leg_upper_r});
   const bool covers_only_upper_leg =
-      armor_specifically_covers_any(it, {"leg_upper_l", "leg_upper_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_upper_l,
+                                         sub_body_part_leg_upper_r});
   const bool covers_lower_leg =
-      armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
-                                         "leg_lower_l", "leg_lower_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_knee_l, sub_body_part_leg_knee_r,
+                                         sub_body_part_leg_lower_l,
+                                         sub_body_part_leg_lower_r});
   const bool covers_feet =
-      armor_specifically_covers_any(it, {"foot_l", "foot_r"});
+      armor_specifically_covers_any(it, {sub_body_part_foot_l,
+                                         sub_body_part_foot_r});
   const bool covers_only_partial_upper_leg = covers_only_upper_leg != covers_hips;
   const bool full_leg_without_hips =
       covers_only_upper_leg && covers_lower_leg && !covers_hips;
@@ -558,11 +600,15 @@ bool is_camp_locker_leg_accessory(const item &it) {
   }
 
   const bool covers_non_leg_regions =
-      armor_specifically_covers_any(it, {"torso_upper", "torso_lower",
-                                         "arm_upper_l", "arm_upper_r",
-                                         "arm_lower_l", "arm_lower_r",
-                                         "hand_l", "hand_r", "head",
-                                         "eye_l", "eye_r", "mouth"});
+      armor_specifically_covers_any(it, {sub_body_part_torso_upper,
+                                         sub_body_part_torso_lower,
+                                         sub_body_part_arm_upper_l,
+                                         sub_body_part_arm_upper_r,
+                                         sub_body_part_arm_lower_l,
+                                         sub_body_part_arm_lower_r,
+                                         sub_body_part_hand_l, sub_body_part_hand_r,
+                                         sub_body_part_head, sub_body_part_eye_l,
+                                         sub_body_part_eye_r, sub_body_part_mouth});
 
   if (covers_upper_leg && !covers_lower_leg && !covers_feet &&
       !support_storage && !it.is_holster() && !covers_non_leg_regions && outer &&
@@ -897,14 +943,18 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   const bool covers_legs = armor_covers_any(it,
                            {body_part_leg_l, body_part_leg_r});
   const bool covers_lower_legs =
-      armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
-                                        "leg_lower_l", "leg_lower_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_knee_l,
+                                         sub_body_part_leg_knee_r,
+                                         sub_body_part_leg_lower_l,
+                                         sub_body_part_leg_lower_r});
   const bool covers_torso = armor_covers_any(it, {body_part_torso});
   const bool covers_arms = armor_covers_any(it,
                            {body_part_arm_l, body_part_arm_r});
-  const bool covers_waist = armor_specifically_covers_any(it, {"torso_waist"});
+  const bool covers_waist = armor_specifically_covers_any(
+                                it, {sub_body_part_torso_waist});
   const bool covers_hips =
-      armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
+      armor_specifically_covers_any(it, {sub_body_part_leg_hip_l,
+                                         sub_body_part_leg_hip_r});
   const bool skintight = it.has_layer({layer_level::SKINTIGHT});
   const bool outer = armor_has_layer_on_any(
       it, layer_level::OUTER,
