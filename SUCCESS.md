@@ -130,14 +130,14 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST AUDIT NEXT
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / RANGED READINESS GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
 - [ ] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept readiness items.
 - [ ] Carried cleanup still dumps only safe non-kept baggage and preserves worn/wielded items plus kept ammo/magazine/medical/insert supplies.
-- [ ] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
-- [ ] Focused faction/basecamp tests pass without widening or interrupting the active zombie rider lane.
+- [x] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
+- [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
 Canonical docs:
 - Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
