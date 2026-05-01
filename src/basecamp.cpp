@@ -1868,15 +1868,26 @@ static std::vector<item_location> collect_camp_locker_compatible_magazine_locati
   return magazines;
 }
 
+static bool can_camp_locker_worker_reload_with(const Character *reloader,
+                                               const item &target,
+                                               const item &ammo) {
+  if (reloader != nullptr) {
+    return reloader->can_reload(target, &ammo);
+  }
+  return target.can_reload_with(ammo, true);
+}
+
 static const item *select_best_camp_locker_ammo_candidate(
     const std::vector<const item *> &items, const item &target,
+    const Character *reloader = nullptr,
     camp_locker_service_probe *probe = nullptr) {
   std::vector<const item *> ammo_items;
   for (const item *it : items) {
     if (probe != nullptr) {
       probe->metrics.compatible_ammo_item_checks++;
     }
-    if (it == nullptr || !it->is_ammo() || !target.can_reload_with(*it, true)) {
+    if (it == nullptr || !it->is_ammo() ||
+        !can_camp_locker_worker_reload_with(reloader, target, *it)) {
       continue;
     }
     ammo_items.push_back(it);
@@ -1908,7 +1919,7 @@ static bool reload_camp_locker_target_from_zone(npc &worker,
       collect_camp_locker_zone_items(locker_tiles,
                                      std::vector<camp_locker_reservation>(),
                                      worker.getID()),
-      *target, nullptr);
+      *target, &worker, nullptr);
   if (ammo_candidate == nullptr) {
     return false;
   }
@@ -2003,7 +2014,7 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
     for (const item *magazine : selected_magazines) {
       if (magazine == nullptr || magazine->remaining_ammo_capacity() <= 0 ||
           select_best_camp_locker_ammo_candidate(locker_items, *magazine,
-                                                 probe) == nullptr) {
+                                                 &worker, probe) == nullptr) {
         continue;
       }
       readiness.magazines_to_reload++;
@@ -2021,7 +2032,7 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
   } else if (weapon_loc->remaining_ammo_capacity() > 0) {
     readiness.weapon_needs_reload =
         select_best_camp_locker_ammo_candidate(locker_items, *weapon_loc,
-                                               probe) != nullptr;
+                                               &worker, probe) != nullptr;
   }
 
   return readiness;

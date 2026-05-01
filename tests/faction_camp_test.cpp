@@ -51,6 +51,7 @@ static const itype_id itype_bandages_makeshift_bleached("bandages_makeshift_blea
 static const itype_id itype_bandages_makeshift_boiled("bandages_makeshift_boiled");
 static const itype_id itype_aspirin("aspirin");
 static const itype_id itype_ballistic_vest_esapi("ballistic_vest_esapi");
+static const itype_id itype_belt223("belt223");
 static const itype_id itype_esapi_plate("esapi_plate");
 static const itype_id itype_bandages("bandages");
 static const itype_id itype_backpack("backpack");
@@ -91,6 +92,7 @@ static const itype_id itype_leggings("leggings");
 static const itype_id itype_long_dress("long_dress");
 static const itype_id itype_long_dress_sleeved("long_dress_sleeved");
 static const itype_id itype_mask_dust("mask_dust");
+static const itype_id itype_m249("m249");
 static const itype_id itype_cheongsam("cheongsam");
 static const itype_id itype_pants_cargo("pants_cargo");
 static const itype_id itype_rock("rock");
@@ -109,6 +111,7 @@ static const itype_id itype_tshirt("tshirt");
 static const itype_id itype_tux("tux");
 static const itype_id itype_union_suit("union_suit");
 static const itype_id itype_vest("vest");
+static const itype_id itype_556("556");
 static const itype_id itype_wetsuit("wetsuit");
 
 static const vitamin_id vitamin_mutagen("mutagen");
@@ -6019,6 +6022,44 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
 
   calendar::turn += 10_minutes;
   CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_ranged_readiness_defers_worker_reload_rules",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_belt223));
+  here.add_item_or_charges(locker_local, item(itype_556, calendar::turn_zero, 500));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  item m249(itype_m249);
+  REQUIRE(worker.wield(m249));
+  test_camp->add_assignee(worker.getID());
+
+  const camp_locker_service_probe probe =
+      test_camp->measure_camp_locker_service(worker);
+  CHECK(probe.magazines_to_take == 1);
+  CHECK(probe.magazines_to_reload == 0);
 
   zone_manager::get_manager().clear();
 }
