@@ -31,6 +31,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [x] Ranged weapon readiness still selects compatible magazines/ammo and uses existing reload behavior correctly. Current carried-magazine discovery defers to `Character::find_ammo()` / reload compatibility and regression coverage proves magazines installed in other carried guns are not stolen or double-counted.
 - [x] Live camp locker armor/clothing scoring now passes the worker as fit context and defers encumbrance penalties to `item::get_avg_encumber()` instead of camp-local armor-portion averaging; no-context helper calls retain the prior fallback.
 - [x] Live camp locker worn-slot candidate collection filters through `Character::can_wear(..., true)` before scoring/planning, so worker-specific direct-wearability rules reject unwearable armor/clothing while no-worker helper classification stays stable.
+- [x] Live camp locker weapon-slot candidate collection filters through `Character::can_wield()` before scoring/planning, so integrated/unwieldable weapon items remain classified by item type but are rejected from worker-specific live service candidates.
 - [x] Live service collection now reuses `collect_camp_locker_live_state()` for the pre-service camp-state pass, keeping worker/locker item collection, candidate classification, planning, cleanup, ranged readiness, and medical readiness on one shared aggregation path.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 

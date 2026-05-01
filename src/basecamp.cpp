@@ -941,10 +941,15 @@ bool camp_locker_slot_is_worn(camp_locker_slot slot) {
          slot != camp_locker_slot::ranged_weapon;
 }
 
-bool camp_locker_candidate_is_wearable_by_worker(
+bool camp_locker_candidate_is_usable_by_worker(
     camp_locker_slot slot, const item &it, const Character *worker) {
-  return worker == nullptr || !camp_locker_slot_is_worn(slot) ||
-         worker->can_wear(it, true).success();
+  if (worker == nullptr) {
+    return true;
+  }
+  if (camp_locker_slot_is_worn(slot)) {
+    return worker->can_wear(it, true).success();
+  }
+  return worker->can_wield(it).success();
 }
 
 camp_locker_candidate_map collect_camp_locker_candidates_impl(
@@ -960,7 +965,7 @@ camp_locker_candidate_map collect_camp_locker_candidates_impl(
     }
     const std::optional<camp_locker_slot> slot = classify_camp_locker_item(*it);
     if (!slot || !policy.is_enabled(*slot) ||
-        !camp_locker_candidate_is_wearable_by_worker(*slot, *it, worker)) {
+        !camp_locker_candidate_is_usable_by_worker(*slot, *it, worker)) {
       continue;
     }
     if (probe != nullptr) {

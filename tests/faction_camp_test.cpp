@@ -55,6 +55,7 @@ static const itype_id itype_esapi_plate("esapi_plate");
 static const itype_id itype_bandages("bandages");
 static const itype_id itype_backpack("backpack");
 static const itype_id itype_bholster("bholster");
+static const itype_id itype_bio_blade_weapon("bio_blade_weapon");
 static const itype_id itype_boots("boots");
 static const itype_id itype_briefs("briefs");
 static const itype_id itype_coat_rain("coat_rain");
@@ -389,6 +390,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_backpack)) ==
         camp_locker_slot::bag);
   CHECK(classify_camp_locker_item(item(itype_knife_combat)) ==
+        camp_locker_slot::melee_weapon);
+  CHECK(classify_camp_locker_item(item(itype_bio_blade_weapon)) ==
         camp_locker_slot::melee_weapon);
   CHECK(classify_camp_locker_item(item(itype_glock_19)) ==
         camp_locker_slot::ranged_weapon);
@@ -2685,6 +2688,50 @@ TEST_CASE("camp_locker_service_filters_unwearable_armor_candidates",
     locker_has_plate = locker_has_plate || it.typeId() == itype_esapi_plate;
   }
   CHECK(locker_has_plate);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_filters_unwieldable_weapon_candidates",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_bio_blade_weapon));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  test_camp->add_assignee(worker.getID());
+
+  const camp_locker_service_probe probe =
+      test_camp->measure_camp_locker_service(worker);
+  CHECK_FALSE(probe.applied_changes);
+  CHECK(probe.locker_item_count == 1);
+  CHECK(probe.candidate_item_count == 0);
+  CHECK(probe.changed_slot_count == 0);
+  CHECK(count_character_items(worker, itype_bio_blade_weapon) == 0);
+
+  bool locker_has_bio_blade = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_bio_blade = locker_has_bio_blade ||
+                            it.typeId() == itype_bio_blade_weapon;
+  }
+  CHECK(locker_has_bio_blade);
 
   zone_manager::get_manager().clear();
 }
