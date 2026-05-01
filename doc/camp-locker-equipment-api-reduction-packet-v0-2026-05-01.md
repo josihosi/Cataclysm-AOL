@@ -1,6 +1,6 @@
 # CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / WORKER-ITEM COLLECTION GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / SUBPART COVERAGE API GREEN
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -29,7 +29,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [ ] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept medical/readiness items.
 - [x] Carried cleanup still dumps only safe non-kept baggage and preserves kept ammo/magazine/medical/insert readiness items. Current worker/equipped item enumeration and carried-cleanup summaries defer to the existing visitable `items_with()` API instead of local `visit_items()` collection loops.
 - [x] Ranged weapon readiness still selects compatible magazines/ammo and uses existing reload behavior correctly. Current carried-magazine discovery defers to `Character::find_ammo()` / reload compatibility and regression coverage proves magazines installed in other carried guns are not stolen or double-counted.
-- [x] Focused faction/basecamp tests pass without widening the active lane for the current worker-item collection slice.
+- [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
 ## Targeted tests
 
