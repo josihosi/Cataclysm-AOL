@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "behavior.h"
 #include "bionics.h"
@@ -722,7 +723,10 @@ static writhing_stalker::live_context writhing_stalker_live_context( monster &st
     ctx.edge_route_available = here.is_outside( stalker_pos ) != here.is_outside( target_pos );
     ctx.forced_no_cover = ctx.direct_open_route_available && !ctx.cover_route_available &&
                           !ctx.edge_route_available;
+    ctx.open_exposure = ctx.forced_no_cover;
     ctx.zombie_pressure = writhing_stalker_zombie_pressure( stalker, target );
+    ctx.quiet_side_cutoff_available = ctx.zombie_pressure > 0 &&
+                                      ( ctx.cover_route_available || ctx.edge_route_available );
     ctx.near_cover_or_clutter = writhing_stalker_has_cover_or_clutter( here, target_pos );
     ctx.stalker_hurt = stalker.hp_percentage() <= 55;
     ctx.on_cooldown = stalker.has_effect( effect_run );
@@ -742,11 +746,21 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
         Creature &target, bool &found )
 {
     found = false;
-    tripoint_bub_ms best = stalker.pos_bub();
-    int best_score = INT_MIN;
     const tripoint_bub_ms target_pos = target.pos_bub();
-    creature_tracker &creatures = get_creature_tracker();
+    std::vector<writhing_stalker::relative_point> zombies;
+    for( const monster &other : g->all_monsters() ) {
+        if( &other == &stalker || other.type->id == mon_writhing_stalker ||
+            !other.type->in_species( species_ZOMBIE ) ) {
+            continue;
+        }
+        if( rl_dist( other.pos_bub(), target_pos ) <= 8 ) {
+            zombies.push_back( writhing_stalker::relative_point{ other.pos_bub().x() - target_pos.x(),
+                               other.pos_bub().y() - target_pos.y(), 1 } );
+        }
+    }
 
+    std::vector<writhing_stalker::quiet_candidate> candidates;
+    creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &candidate : here.points_in_radius( target_pos, 4 ) ) {
         if( candidate.z() != stalker.posz() || !here.inbounds( candidate ) ) {
             continue;
@@ -755,27 +769,23 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
         if( target_distance < 2 || target_distance > 4 ) {
             continue;
         }
-        if( !stalker.can_move_to( candidate ) || creatures.creature_at( candidate, true ) != nullptr ) {
-            continue;
-        }
-        int score = 20 - rl_dist( stalker.pos_bub(), candidate ) - target_distance;
-        if( !target.sees( here, candidate ) ) {
-            score += 18;
-        }
-        if( writhing_stalker_has_cover_or_clutter( here, candidate ) ) {
-            score += 12;
-        }
-        if( !writhing_stalker_bright_exposure( here, candidate ) ) {
-            score += 8;
-        }
-        if( score > best_score ) {
-            best_score = score;
-            best = candidate;
-            found = true;
-        }
+        const Creature *occupant = creatures.creature_at( candidate, true );
+        candidates.push_back( writhing_stalker::quiet_candidate{ candidate.x() - target_pos.x(),
+                              candidate.y() - target_pos.y(), rl_dist( stalker.pos_bub(), candidate ),
+                              stalker.can_move_to( candidate ), occupant != nullptr,
+                              writhing_stalker_has_cover_or_clutter( here, candidate ),
+                              !target.sees( here, candidate ), writhing_stalker_bright_exposure( here, candidate ),
+                              0 } );
     }
 
-    return here.get_abs( best );
+    const writhing_stalker::quiet_candidate_report cutoff =
+        writhing_stalker::choose_quiet_side_cutoff( zombies, candidates );
+    if( cutoff.has_candidate ) {
+        found = true;
+        return here.get_abs( target_pos + point( cutoff.chosen.rel_x, cutoff.chosen.rel_y ) );
+    }
+
+    return here.get_abs( stalker.pos_bub() );
 }
 
 static const char *writhing_stalker_decision_name( writhing_stalker::decision decision )
@@ -833,6 +843,7 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " route=" << writhing_stalker_approach_name( response.route )
                                << " reason=" << response.reason
                                << " opportunity=" << response.opportunity
+                               << " confidence=" << response.confidence
                                << " evidence=" << ( ctx.has_believable_local_evidence ? "yes" : "no" )
                                << " distance=" << ctx.distance_to_target
                                << " zombie_pressure=" << ctx.zombie_pressure

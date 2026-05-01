@@ -1,6 +1,8 @@
 #include "writhing_stalker_ai.h"
 
 #include <algorithm>
+#include <climits>
+#include <cstdlib>
 #include <utility>
 
 namespace writhing_stalker
@@ -15,6 +17,17 @@ constexpr int latch_timeout_minutes = 30;
 constexpr int default_latch_leash_tiles = 60;
 constexpr int withdrawal_cooldown_minutes = 10;
 constexpr int faded_latch_cooldown_minutes = 5;
+
+int signum( const int value )
+{
+    if( value < 0 ) {
+        return -1;
+    }
+    if( value > 0 ) {
+        return 1;
+    }
+    return 0;
+}
 
 void keep_strongest( interest_report &best, interest_source source, int score, int confidence,
                      bool can_latch, std::string reason )
@@ -251,6 +264,146 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     return report;
 }
 
+quiet_side_report evaluate_quiet_side( const std::vector<relative_point> &zombies )
+{
+    quiet_side_report report;
+
+    for( const relative_point &zombie : zombies ) {
+        const int weight = std::max( 1, zombie.weight );
+        report.pressure_x += signum( zombie.rel_x ) * weight;
+        report.pressure_y += signum( zombie.rel_y ) * weight;
+        report.pressure_count += weight;
+    }
+
+    const int abs_x = std::abs( report.pressure_x );
+    const int abs_y = std::abs( report.pressure_y );
+    const int strength = abs_x + abs_y;
+    report.has_dominant_pressure = report.pressure_count > 0 && strength >=
+                                   std::max( 1, report.pressure_count / 2 );
+    report.ambiguous_pressure = report.pressure_count > 1 && !report.has_dominant_pressure;
+
+    if( report.has_dominant_pressure ) {
+        if( abs_x >= abs_y ) {
+            report.quiet_x = -signum( report.pressure_x );
+        } else {
+            report.quiet_y = -signum( report.pressure_y );
+        }
+    }
+
+    return report;
+}
+
+quiet_candidate_report choose_quiet_side_cutoff( const std::vector<relative_point> &zombies,
+        const std::vector<quiet_candidate> &candidates )
+{
+    quiet_candidate_report report;
+    report.pressure = evaluate_quiet_side( zombies );
+    report.score = INT_MIN;
+    report.reason = "no_candidate";
+
+    for( const quiet_candidate &candidate : candidates ) {
+        if( !candidate.passable || candidate.occupied ) {
+            continue;
+        }
+
+        int score = 20 - candidate.distance_to_stalker;
+        if( candidate.shadow_or_cover ) {
+            score += 18;
+        }
+        if( candidate.broken_line_of_sight ) {
+            score += 14;
+        }
+        if( !candidate.bright_exposure ) {
+            score += 8;
+        }
+        score += std::max( -2, std::min( 4, candidate.retreat_alignment ) ) * 4;
+
+        int quiet_alignment = 0;
+        int crowding_penalty = 0;
+        if( report.pressure.has_dominant_pressure ) {
+            quiet_alignment = signum( candidate.rel_x ) * report.pressure.quiet_x +
+                              signum( candidate.rel_y ) * report.pressure.quiet_y;
+            const int pressure_alignment = signum( candidate.rel_x ) * signum( report.pressure.pressure_x ) +
+                                           signum( candidate.rel_y ) * signum( report.pressure.pressure_y );
+            if( quiet_alignment > 0 ) {
+                score += quiet_alignment * 12;
+            } else {
+                score -= 10;
+            }
+            if( pressure_alignment > 0 ) {
+                crowding_penalty = pressure_alignment * 8;
+                score -= crowding_penalty;
+            }
+        }
+
+        if( !report.has_candidate || score > report.score ) {
+            report.has_candidate = true;
+            report.chosen = candidate;
+            report.score = score;
+            report.quiet_alignment = quiet_alignment;
+            report.crowding_penalty = crowding_penalty;
+            if( report.pressure.ambiguous_pressure ) {
+                report.reason = "ambiguous_pressure_no_precise_quiet_side";
+            } else if( quiet_alignment > 0 ) {
+                report.reason = "quiet_side_cutoff_preferred";
+            } else {
+                report.reason = "best_shadow_without_quiet_side";
+            }
+        }
+    }
+
+    return report;
+}
+
+confidence_report evaluate_confidence( const confidence_context &ctx )
+{
+    confidence_report report;
+    report.evidence = ctx.has_believable_local_evidence ? 36 : 0;
+    report.interest = ctx.has_overmap_interest_footing ? 24 : 0;
+    report.pressure_allowed = report.evidence > 0 || report.interest > 0;
+    if( report.pressure_allowed ) {
+        report.zombie_pressure = std::min( 28, ctx.zombie_pressure * 7 );
+    }
+
+    if( ctx.target_in_bright_exposure ) {
+        report.counterpressure += 25;
+    }
+    if( ctx.stalker_in_bright_exposure ) {
+        report.counterpressure += 25;
+    }
+    if( ctx.target_has_focus ) {
+        report.counterpressure += 25;
+    }
+    if( ctx.open_exposure ) {
+        report.counterpressure += 15;
+    }
+    if( ctx.stalker_hurt ) {
+        report.counterpressure += 45;
+    }
+
+    report.cutoff_allowed = report.pressure_allowed && ctx.quiet_side_cutoff_available &&
+                            report.counterpressure == 0;
+    if( report.cutoff_allowed ) {
+        report.quiet_side_cutoff = 16;
+    }
+
+    report.total = report.evidence + report.interest + report.zombie_pressure +
+                   report.quiet_side_cutoff - report.counterpressure;
+    if( !report.pressure_allowed && ctx.zombie_pressure > 0 ) {
+        report.reason = "no_evidence_or_interest_pressure_ignored";
+    } else if( report.counterpressure > 0 ) {
+        report.reason = "counterpressure_suppresses_cutoff";
+    } else if( report.quiet_side_cutoff > 0 ) {
+        report.reason = "zombie_shadow_quiet_cutoff_confidence";
+    } else if( report.zombie_pressure > 0 ) {
+        report.reason = "zombie_shadow_pressure_confidence";
+    } else {
+        report.reason = report.pressure_allowed ? "evidence_confidence" : "no_confidence";
+    }
+
+    return report;
+}
+
 live_response evaluate_live_response( const live_context &ctx )
 {
     live_response response;
@@ -303,8 +456,14 @@ live_response evaluate_live_response( const live_context &ctx )
     opportunity_ctx.stalker_hurt = ctx.stalker_hurt;
     const opportunity_report opportunity = evaluate_opportunity( opportunity_ctx );
 
+    const confidence_report confidence = evaluate_confidence( confidence_context{
+        ctx.has_believable_local_evidence, ctx.has_overmap_interest_footing, ctx.zombie_pressure,
+        ctx.quiet_side_cutoff_available, ctx.target_in_bright_exposure, ctx.stalker_in_bright_exposure,
+        ctx.target_has_focus, ctx.open_exposure, ctx.stalker_hurt } );
+
     response.route = approach.route;
     response.opportunity = opportunity.opportunity;
+    response.confidence = confidence.total;
 
     if( opportunity.next == decision::withdraw || opportunity.next == decision::cooling_off ) {
         response.next = opportunity.next;

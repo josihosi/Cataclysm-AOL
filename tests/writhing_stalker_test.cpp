@@ -373,6 +373,112 @@ TEST_CASE( "writhing_stalker_opportunity_uses_zombies_without_magic_tracking",
     CHECK( vulnerable.reason == "vulnerability_window_strike" );
 }
 
+TEST_CASE( "writhing_stalker_quiet_side_cutoff_prefers_the_side_zombies_are_not",
+           "[writhing_stalker][ai][zombie_shadow]" )
+{
+    using namespace writhing_stalker;
+
+    const std::vector<relative_point> east_zombies = { { 3, 0, 1 }, { 4, 1, 1 }, { 2, -1, 1 } };
+    const std::vector<quiet_candidate> candidates = {
+        { -3, 0, 8, true, false, true, true, false, 0 },
+        { 3, 0, 3, true, false, true, true, false, 0 }
+    };
+
+    const quiet_candidate_report chosen = choose_quiet_side_cutoff( east_zombies, candidates );
+    REQUIRE( chosen.has_candidate );
+    CHECK( chosen.pressure.has_dominant_pressure );
+    CHECK( chosen.pressure.pressure_x > 0 );
+    CHECK( chosen.pressure.quiet_x < 0 );
+    CHECK( chosen.chosen.rel_x < 0 );
+    CHECK( chosen.quiet_alignment > 0 );
+    CHECK( chosen.reason == "quiet_side_cutoff_preferred" );
+}
+
+TEST_CASE( "writhing_stalker_quiet_side_cutoff_avoids_fake_precision_when_pressure_splits",
+           "[writhing_stalker][ai][zombie_shadow]" )
+{
+    using namespace writhing_stalker;
+
+    const std::vector<relative_point> split_zombies = { { 3, 0, 1 }, { -3, 0, 1 } };
+    const std::vector<quiet_candidate> candidates = {
+        { -3, 0, 6, true, false, false, false, false, 0 },
+        { 0, -3, 6, true, false, true, true, false, 0 }
+    };
+
+    const quiet_candidate_report chosen = choose_quiet_side_cutoff( split_zombies, candidates );
+    REQUIRE( chosen.has_candidate );
+    CHECK_FALSE( chosen.pressure.has_dominant_pressure );
+    CHECK( chosen.pressure.ambiguous_pressure );
+    CHECK( chosen.quiet_alignment == 0 );
+    CHECK( chosen.chosen.rel_y < 0 );
+    CHECK( chosen.reason == "ambiguous_pressure_no_precise_quiet_side" );
+}
+
+TEST_CASE( "writhing_stalker_quiet_side_cutoff_can_follow_retreat_route_when_it_matches_pressure",
+           "[writhing_stalker][ai][zombie_shadow]" )
+{
+    using namespace writhing_stalker;
+
+    const std::vector<relative_point> north_zombies = { { 0, -3, 1 }, { 1, -2, 1 } };
+    const std::vector<quiet_candidate> candidates = {
+        { 0, 3, 3, true, false, true, true, false, 0 },
+        { 1, 3, 6, true, false, true, true, false, 4 }
+    };
+
+    const quiet_candidate_report chosen = choose_quiet_side_cutoff( north_zombies, candidates );
+    REQUIRE( chosen.has_candidate );
+    CHECK( chosen.pressure.quiet_y > 0 );
+    CHECK( chosen.chosen.rel_y > 0 );
+    CHECK( chosen.chosen.retreat_alignment > 0 );
+    CHECK( chosen.reason == "quiet_side_cutoff_preferred" );
+}
+
+TEST_CASE( "writhing_stalker_confidence_gates_zombie_pressure_and_suppresses_cutoff_with_light_focus",
+           "[writhing_stalker][ai][zombie_shadow]" )
+{
+    using namespace writhing_stalker;
+
+    confidence_context no_evidence;
+    no_evidence.zombie_pressure = 5;
+    no_evidence.quiet_side_cutoff_available = true;
+    const confidence_report ignored = evaluate_confidence( no_evidence );
+    CHECK_FALSE( ignored.pressure_allowed );
+    CHECK_FALSE( ignored.cutoff_allowed );
+    CHECK( ignored.zombie_pressure == 0 );
+    CHECK( ignored.quiet_side_cutoff == 0 );
+    CHECK( ignored.reason == "no_evidence_or_interest_pressure_ignored" );
+
+    confidence_context evidence = no_evidence;
+    evidence.has_believable_local_evidence = true;
+    const confidence_report pressure = evaluate_confidence( evidence );
+    CHECK( pressure.pressure_allowed );
+    CHECK( pressure.cutoff_allowed );
+    CHECK( pressure.evidence > 0 );
+    CHECK( pressure.zombie_pressure > 0 );
+    CHECK( pressure.quiet_side_cutoff > 0 );
+    CHECK( pressure.total > ignored.total );
+    CHECK( pressure.reason == "zombie_shadow_quiet_cutoff_confidence" );
+
+    confidence_context interest = no_evidence;
+    interest.has_overmap_interest_footing = true;
+    const confidence_report overmap_pressure = evaluate_confidence( interest );
+    CHECK( overmap_pressure.pressure_allowed );
+    CHECK( overmap_pressure.zombie_pressure > 0 );
+    CHECK( overmap_pressure.quiet_side_cutoff > 0 );
+
+    confidence_context countered = evidence;
+    countered.target_in_bright_exposure = true;
+    countered.stalker_in_bright_exposure = true;
+    countered.target_has_focus = true;
+    countered.open_exposure = true;
+    const confidence_report suppressed = evaluate_confidence( countered );
+    CHECK( suppressed.counterpressure > 0 );
+    CHECK_FALSE( suppressed.cutoff_allowed );
+    CHECK( suppressed.quiet_side_cutoff == 0 );
+    CHECK( suppressed.total < pressure.total );
+    CHECK( suppressed.reason == "counterpressure_suppresses_cutoff" );
+}
+
 TEST_CASE( "writhing_stalker_withdrawal_and_cooldown_block_repeat_spam",
            "[writhing_stalker][ai]" )
 {
