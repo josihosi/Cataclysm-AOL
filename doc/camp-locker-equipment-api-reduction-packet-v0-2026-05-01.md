@@ -41,6 +41,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [x] Ranged readiness ready/loaded checks now use existing `item::has_ammo()` instead of local `ammo_remaining() > 0` / `<= 0` predicates, while camp policy still decides which magazines and reload supplies to move.
 - [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
 - [x] Live service collection now reuses `collect_camp_locker_live_state()` for the pre-service camp-state pass, keeping worker/locker item collection, candidate classification, planning, cleanup, ranged readiness, and medical readiness on one shared aggregation path.
+- [x] Camp storage and camp locker zone tile collection now share one thin `zone_manager::get_near()` adapter plus deterministic sorting, keeping explicit camp zone policy while removing duplicated local zone lookup boilerplate.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
 ## Targeted tests

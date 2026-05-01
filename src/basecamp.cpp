@@ -2286,29 +2286,31 @@ static bool service_camp_locker_medical_readiness(
 }
 
 static std::vector<tripoint_abs_ms>
+collect_sorted_camp_zone_tiles(const zone_type_id &zone_type,
+                               const tripoint_abs_ms &origin,
+                               const faction_id &fac, int range) {
+  std::unordered_set<tripoint_abs_ms> zone_tiles =
+      zone_manager::get_manager().get_near(zone_type, origin, range, nullptr,
+                                           fac);
+  std::vector<tripoint_abs_ms> sorted_tiles(zone_tiles.begin(), zone_tiles.end());
+  sort_tripoints_zyx(sorted_tiles);
+  return sorted_tiles;
+}
+
+static std::vector<tripoint_abs_ms>
 collect_sorted_camp_storage_tiles(const tripoint_abs_ms &origin,
                                   const faction_id &fac,
                                   int range) {
-  std::unordered_set<tripoint_abs_ms> storage_tiles =
-      zone_manager::get_manager().get_near(zone_type_CAMP_STORAGE, origin, range,
-                                           nullptr, fac);
-  std::vector<tripoint_abs_ms> sorted_tiles(storage_tiles.begin(),
-                                            storage_tiles.end());
-  sort_tripoints_zyx(sorted_tiles);
-  return sorted_tiles;
+  return collect_sorted_camp_zone_tiles(zone_type_CAMP_STORAGE, origin, fac,
+                                        range);
 }
 
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,
                                  int range) {
-  std::unordered_set<tripoint_abs_ms> locker_tiles =
-      zone_manager::get_manager().get_near(zone_type_CAMP_LOCKER, origin, range,
-                                           nullptr, fac);
-  std::vector<tripoint_abs_ms> sorted_tiles(locker_tiles.begin(),
-                                            locker_tiles.end());
-  sort_tripoints_zyx(sorted_tiles);
-  return sorted_tiles;
+  return collect_sorted_camp_zone_tiles(zone_type_CAMP_LOCKER, origin, fac,
+                                        range);
 }
 
 static std::optional<tripoint_abs_ms> find_camp_locker_cleanup_drop_tile(
