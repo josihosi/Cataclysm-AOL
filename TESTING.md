@@ -243,38 +243,20 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is staged-but-live proof for `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0`: deterministic zombie-pressure / quiet-side footing is green, and the next missing evidence is live behavior for quiet-side/back-route pressure and escape-side cutoff. `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`, `CAOL-ZOMBIE-RIDER-0.3-v0`, old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
+Active same-lane next action is the first audit for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` before code changes.
 
-Closed zombie-rider green live rows:
-- `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/` (open-field bow pressure then withdrawal).
-- `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/` (wounded rider withdraws, no bow pressure).
-- `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260501_021656/` (opaque cover keeps target/no-sight/no-line-of-fire, no bow pressure).
-- `zombie_rider.live_camp_light_band_mcw` -> `.userdata/dev-harness/harness_runs/20260501_030432/` (camp lights aggregate into capped two-rider band/circle-harass).
-- `zombie_rider.live_no_camp_light_control_mcw` -> `.userdata/dev-harness/harness_runs/20260501_032016/` (matched no-light footing emits no horde-light or rider camp-light/band trace).
+Required audit questions:
+- Which `camp_locker_slot`, item classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection checks are duplicate engine ontology rather than camp policy?
+- Which existing item, wearability, body coverage, reload, and zone APIs can safely own those checks?
+- Which behavior is deliberately camp-specific policy and must remain explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns?
+- What is the smallest focused faction/basecamp/camp-locker gate that proves preservation after the first refactor?
 
-Closed writhing-stalker green support/behavior probes:
-- `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).
-- `writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/` (target acquisition + `live_plan` seam only).
-- `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/` (earlier bright/focused withdrawal support row).
-- `writhing_stalker.live_shadow_strike_mcw` -> `.userdata/dev-harness/harness_runs/20260430_170528/` (earlier vulnerable shadow/strike/cooldown support row).
-- `writhing_stalker.live_no_omniscient_beeline_mcw` -> `.userdata/dev-harness/harness_runs/20260430_173555/` (earlier no-evidence/no-target support row).
-- `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/` (live fun Scenario A).
-- `writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/` (live fun Scenario B).
-- `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/` (live fun Scenario C positive row).
-- `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/` (live fun Scenario C no-magic guard).
-- `writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/` (live fun Scenario D).
-- `writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/` (live fun Scenario E).
-- `performance.mixed_hostile_stalker_horde_mcw` -> `.userdata/dev-harness/harness_runs/20260430_181748/` (mixed hostile metrics/tuning report; horde direct timing explicitly `not instrumented`).
-
-Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Preserve `.userdata/dev-harness/harness_runs/20260430_115157/` as green structural-bounty v0 proof and `.userdata/dev-harness/harness_runs/20260430_114106/` as red/non-credit structural-bounty postmortem. Do not rerun solved rows as ritual.
+Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
 Future-only watchlist unless Schani/Josef explicitly promotes it:
-
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 - A stricter roof-horde positive `tracking_intensity` proof remains optional/future-only; current green roof proof is retarget/movement-budget metadata after live roof-fire horde signaling.
 - Full Smart Zone process-reload disk persistence can be promoted later if Josef wants that stricter audit; the current green proof covers live create/inspect/close-save/reopen coordinate labels.
-
-Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.
 
 If a later live probe is promoted:
 - build the current runtime first when binary freshness matters;

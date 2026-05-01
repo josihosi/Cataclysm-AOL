@@ -1,6 +1,6 @@
 # CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST AUDIT NEXT
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
