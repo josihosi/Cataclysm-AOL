@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -1783,7 +1784,13 @@ static bool is_camp_locker_managed_ranged_weapon(const item &it,
 }
 
 static int camp_locker_magazine_total_capacity(const item &magazine) {
-  return magazine.ammo_remaining() + magazine.remaining_ammo_capacity();
+  const itype *loaded_ammo = magazine.ammo_data();
+  if (loaded_ammo != nullptr && loaded_ammo->ammo) {
+    return magazine.ammo_capacity(loaded_ammo->ammo->type);
+  }
+
+  const std::set<ammotype> ammo_types = magazine.ammo_types();
+  return ammo_types.empty() ? 0 : magazine.ammo_capacity(*ammo_types.begin());
 }
 
 static bool is_better_camp_locker_magazine(const item &lhs, const item &rhs) {

@@ -73,6 +73,7 @@ static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_gloves_leather("gloves_leather");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
+static const itype_id itype_glockbigmag("glockbigmag");
 static const itype_id itype_hakama("hakama");
 static const itype_id itype_medical_gauze("medical_gauze");
 static const itype_id itype_hazmat_suit("hazmat_suit");
@@ -6026,6 +6027,56 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
 
   calendar::turn += 10_minutes;
   CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_ranged_readiness_prefers_existing_magazine_capacity_api",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  here.add_item_or_charges(locker_local, item(itype_glockbigmag));
+  const int ammo_total = item(itype_glockmag).remaining_ammo_capacity() +
+                         item(itype_glockbigmag).remaining_ammo_capacity();
+  here.add_item_or_charges(locker_local,
+                           item(itype_9mm, calendar::turn_zero, ammo_total));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_backpack), false).has_value());
+  REQUIRE(worker.i_add(item(itype_glockmag)));
+  item empty_glock(itype_glock_19);
+  REQUIRE(worker.wield(empty_glock));
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+
+  const item_location weapon = worker.get_wielded_item();
+  REQUIRE(weapon);
+  REQUIRE(weapon->magazine_current() != nullptr);
+  CHECK(weapon->magazine_current()->typeId() == itype_glockbigmag);
+  CHECK(weapon->ammo_remaining() ==
+        item(itype_glockbigmag).remaining_ammo_capacity());
+  CHECK(count_character_items(worker, itype_glockmag) == 1);
+  CHECK(count_tile_items(here, locker_local, itype_glockbigmag) == 0);
 
   zone_manager::get_manager().clear();
 }
