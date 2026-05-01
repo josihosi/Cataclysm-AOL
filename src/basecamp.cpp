@@ -1639,10 +1639,10 @@ static std::vector<const item *> collect_camp_locker_worker_items(
 
 static const heal_actor *camp_locker_heal_actor(const item &it) {
   static const std::string heal_use_id("heal");
-  if (it.type == nullptr) {
+  if (it.get_usable_item(heal_use_id) != &it) {
     return nullptr;
   }
-  const use_function *use = it.type->get_use(heal_use_id);
+  const use_function *use = it.get_use(heal_use_id);
   if (use == nullptr) {
     return nullptr;
   }
