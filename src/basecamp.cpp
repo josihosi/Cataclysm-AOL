@@ -255,16 +255,9 @@ bool armor_covers_any(const item &it,
 
 bool armor_specifically_covers_any(
     const item &it, const std::initializer_list<std::string_view> &parts) {
-  const std::vector<sub_bodypart_id> covered_subparts =
-      it.get_covered_sub_body_parts();
   for (const std::string_view part : parts) {
     const sub_bodypart_str_id subpart(part);
-    if (!subpart.is_valid()) {
-      continue;
-    }
-    const sub_bodypart_id subpart_id = subpart.id();
-    if (std::find(covered_subparts.begin(), covered_subparts.end(), subpart_id) !=
-        covered_subparts.end()) {
+    if (subpart.is_valid() && it.covers(subpart.id(), false)) {
       return true;
     }
   }
