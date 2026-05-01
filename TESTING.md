@@ -89,31 +89,39 @@ Credited staged-but-live rows:
 
 Caveat: staged-but-live McWilliams rows, not natural random discovery/full siege navigation/release packaging. Do not rerun solved rider rows by ritual unless Schani/Josef explicitly promote a stricter follow-up.
 
-### Active validation target - CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
+### Closed validation receipt - CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
 
-`CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` is active after zombie-rider closure. Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+`CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` is closed/checkpointed green v0. Contract / closure evidence: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
-Deterministic footing checkpoint:
+Credited deterministic footing:
 - Code seam: `src/monmove.cpp` routes only base/shadow/unstable/electric/dusted/fungalized/fungal flesh raptors through `apply_flesh_raptor_plan()` after existing writhing-stalker and zombie-rider special plan hooks, before generic target pursuit.
 - Helper: `src/flesh_raptor_ai.*` scores 4–6 tile lateral/orbit candidates, under-occupied arcs, held-destination hysteresis, bounded cadence swoop windows, and fallback when no readable lateral orbit exists.
 - Focused tests: `tests/flesh_raptor_test.cpp` covers variant footing, lateral-over-straight scoring, crowding preference, cadence/hysteresis, corridor fallback, live `monster::plan()` consumption for `mon_spawn_raptor`, and preservation of a non-raptor `HIT_AND_RUN` monster.
 
-Green gate:
+Green gates:
 - `make -j4 tests/flesh_raptor_test.o tests src/flesh_raptor_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[flesh_raptor]"` -> `All tests passed (61 assertions in 7 test cases)`.
 - `make -j4 TILES=1 LINTJSON=0 ASTYLE=0` -> green after the committed-swoop movement bridge fix.
 - `git diff --check` -> clean.
 - `make astyle-diff LINTJSON=0 ASTYLE=0` could not run because `astyle` is not installed on this host.
 
 Credited staged-but-live rows:
-- `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/` proves feature-path open-field orbit/swoop behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, no runtime warnings, and required log state present. Decisive lines include `decision=orbit reason=best_open_orbit_arc distance=5 candidates=91 eval_us=0`, `decision=swoop reason=cadence_swoop_window`, `decision=swoop reason=committed_swoop_path`, and repeated `flesh_raptor melee_event: source=special result=hit damage=... target_hp_percent=... run_after=yes`. This row is feature-path proof for the staged open-field slice, not a natural random-discovery claim.
-- `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/` proves feature-path crowded-arc behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, startup green, no runtime warnings, and cleanup terminated. Decisive lines include `decision=orbit reason=best_open_orbit_arc distance=1 candidates=90 score=138 chosen_rel=0,5 chosen_distance=5 chosen_crowding=0 run=yes held=no eval_us=1`, `decision=swoop reason=cadence_swoop_window`, and `flesh_raptor melee_event: source=special result=hit damage=8 hitspread=25 target_hp_percent=98 run_after=yes`. This row is feature-path proof that a staged raptor avoids the zombie-crowded north arc and selects the under-occupied south/open arc before bounded swoops; it is not natural random-discovery proof.
-- `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/` proves feature-path blocked/corridor behavior with step ledger green (`8/8`), `artifacts_matched`, `feature_proof True`, clean startup (`startup_load_only`), no runtime warnings, and cleanup terminated. Saved footing proves rack blockers on lateral/behind orbit sample tiles, an open straight east lane, and `mon_spawn_raptor` at `[5,0,0]`. Decisive lines include `decision=fallback reason=no_readable_lateral_orbit distance=5 candidates=3 score=76 chosen_rel=5,0 chosen_distance=5 chosen_crowding=0 run=no held=no eval_us=0`, later bounded `decision=swoop reason=cadence_swoop_window` / `decision=swoop reason=committed_swoop_path`, and repeated `flesh_raptor melee_event: source=special result=hit damage=... target_hp_percent=... run_after=yes`. This row is feature-path proof that blocked/corridor footing falls back instead of requiring open-field lateral circling, then continues as ordinary corridor pressure with combat/frustration metrics; it is not natural random-discovery proof and did not change equipment-damage tuning.
-- `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/` proves the promoted old-feeling/equipment-damage comparison row with step ledger green (`7/7`), `artifacts_matched`, `feature_proof True`, clean startup, no runtime warnings, and cleanup terminated. Debug evidence includes `decision=orbit reason=best_open_orbit_arc distance=5 candidates=91 eval_us=0`, `decision=swoop reason=cadence_swoop_window`, and repeated `flesh_raptor melee_event: source=special result=hit damage=... target_hp_percent=... run_after=yes` lines. Screenshot/OCR evidence carries the player-facing frustration leg from message history: `flesh-raptor`, `impales`, `cut!`, and `You put pressure on the bleeding wound...`; the after-window screenshot also matched `flesh-raptor`, `impales`, and `You're bleeding!`. This row compares the new orbit/swoop mechanics against the old-feeling equipment/frustration bar without changing equipment-damage tuning.
+- `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/` proves feature-path open-field orbit/swoop behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, no runtime warnings, and required log state present.
+- `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/` proves feature-path crowded-arc behavior: a staged raptor avoids the zombie-crowded north arc and selects the under-occupied south/open arc before bounded swoops.
+- `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/` proves feature-path blocked/corridor behavior: lateral/behind orbit sample tiles sealed, east lane open, `decision=fallback reason=no_readable_lateral_orbit`, then bounded corridor swoop/committed path pressure.
+- `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/` proves the old-feeling/equipment-damage comparison row with step ledger green (`7/7`), `artifacts_matched`, `feature_proof True`, clean startup, no runtime warnings, cleanup terminated, current orbit/swoop/melee debug metrics, and screenshot/OCR player-facing evidence: `flesh-raptor`, `impales`, `cut!`, `You put pressure on the bleeding wound...`, and `You're bleeding!`.
 
-Remaining validation burden:
-- Agent-side staged live rows now cover open-field, crowded-arc, blocked/corridor counterplay, and the promoted old-feeling/equipment-damage comparison row. Next review should decide whether this is enough to close v0 or whether only Josef taste/playtest review remains; do not auto-add rows by drift.
-- Existing JSON/load is indirectly covered by focused test data load; rerun a broader load/check only if raptor JSON changes or startup/load becomes suspicious.
-- Do not widen into writhing-stalker zombie-shadow, anti-redundancy refactors, eigenspectres, global `HIT_AND_RUN` rewrite, or equipment-damage difficulty tuning by drift.
+Closure verdict: Frau accepted v0 for agent-side close with staged-but-live caveats. Optional Josef taste/playtest remains future-only and is not a blocker. No equipment-damage tuning changed; equipment damage remains an observational frustration metric.
+
+### Active validation target - CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
+
+`CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is active after flesh-raptor closure. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+
+Current validation burden:
+- First prove deterministic zombie-pressure / quiet-side footing before live rows: evidence/interest gating, zombie-pressure confidence contribution, quiet-side/cutoff candidate choice, and light/focus/open-exposure suppression.
+- Preserve old closed writhing-stalker constraints unless explicitly changed by this packet: no omniscience, no zombie-proximity magic target acquisition, cooldown anti-spam, light/focus counterplay, and injured retreat.
+- Live rows are future after deterministic footing is green: at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, with confidence reasons, chosen quiet-side/cutoff tile, strike timing, counterplay outcome, turn-time cost, warnings/errors, and fun/fairness notes.
+- Do not widen into anti-redundancy cleanup, eigenspectres, global attack-and-retreat rewrites, or extra flesh-raptor proof rows by drift.
+
 
 ### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 

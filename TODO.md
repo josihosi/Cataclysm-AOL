@@ -8,12 +8,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active: `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`.
+Active: `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0`.
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is closed/checkpointed green v0. Do not rerun its endpoint, local-combat, overmap-light, convergence/band, or five staged-but-live funness rows by ritual unless Schani/Josef explicitly reopen a stricter follow-up.
+`CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` is closed/checkpointed green v0 after Frau closure review. Preserve the four credited rows and do not rerun them by ritual unless code touching the raptor live bridge, fixture footing, chosen-arc/fallback logging, OCR/screenshot evidence, or comparison-row contract changes.
 
-Current narrow slice: Frau's old-feeling/equipment-damage comparison row is green.
+Current narrow slice: deterministic zombie-pressure / quiet-side footing for the stalker product-behavior package.
 
-1. Preserve the four credited rows: open-field, crowded-arc, blocked-corridor, and old-feeling/equipment-frustration comparison. Do not rerun them by ritual unless code touching the raptor live bridge, fixture footing, chosen-arc/fallback logging, OCR/screenshot evidence, or comparison-row contract changes.
-2. Keep equipment-damage frustration visible as an observational metric; no equipment-damage difficulty tuning changed in this slice.
-3. Next action is review, not another automatic row: Schani/Frau should decide whether the comparison-row evidence is enough to close the flesh-raptor package or whether to mark a Josef playtest/taste caveat.
+1. Audit the current writhing-stalker live seam and helper state enough to place the smallest confidence/scoring change without reopening old v0 claims.
+2. Add deterministic little-map proof for evidence/interest gating, zombie-pressure confidence, quiet-side/cutoff candidate preference, and light/focus/open-exposure suppression.
+3. Preserve no-omniscience, cooldown anti-spam, injured retreat, and old closed writhing-stalker green behavior unless the active packet explicitly changes it.
+4. Do not start anti-redundancy cleanup, eigenspectre work, global `HIT_AND_RUN` rewrites, or extra flesh-raptor rows by drift.

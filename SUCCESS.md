@@ -68,25 +68,30 @@ Canonical docs:
 
 ## CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0 — Flesh raptor circling skirmisher retrofit
 
-Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC CIRCLING FOOTING NEXT
+Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
 
 Success state:
-- [ ] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
-- [ ] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
-- [ ] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
-- [ ] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
-- [ ] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage events, player counterplay, warnings/errors, and perceived fun/annoyance.
-- [ ] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+- [x] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
+- [x] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
+- [x] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
+- [x] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
+- [x] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage/frustration events, player counterplay, warnings/errors, and perceived fun/annoyance caveats.
+- [x] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+- [x] Frau closure review accepted v0 for agent-side close with staged-but-live caveats; Josef taste/playtest is optional/future, not a blocker.
+
+Evidence: focused `[flesh_raptor]` tests are green; full tiles build is green; `git diff --check` is clean; `astyle-diff` is unavailable on this host because `astyle` is not installed. Credited staged-but-live rows: open field `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/`; crowded arc `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/`; blocked corridor `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/`; old-feeling/equipment-frustration comparison `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/`.
+
+Caveats: staged-but-live McWilliams rows, not natural random discovery; no equipment-damage tuning changed; later Josef taste/tuning feedback would be a follow-up, not a v0 proof failure.
 
 Canonical docs:
 - Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
-- Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
+- Contract / closure evidence: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
 
 ---
 
 ## CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0 — Writhing stalker zombie-shadow predator shift
 
-Status: GREENLIT / BACKLOG / PREDATOR VARIETY PACKAGE
+Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING NEXT
 
 Success state:
 - [ ] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.

@@ -115,9 +115,9 @@ Boundary: staged-but-live v0 does not claim natural random discovery, full siege
 
 ---
 
-## Active lane — CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
+## Recently closed lane — CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
 
-**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / OLD-FEELING COMPARISON ROW GREEN / REVIEW NEXT
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
 
 Josef greenlit changing predator behavior variety after the zombie-rider lane, starting with flesh raptors as visible circling skirmishers instead of one-note stab-and-flee annoyance.
 
@@ -125,31 +125,37 @@ Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
 
 Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
-Goal: retrofit flesh raptors so open terrain produces readable 4–6 tile orbit/flank pressure, under-occupied arc preference, bounded swoop cadence, corridor/blocked-terrain fallback, jitter guardrails, and frustration metrics without globally rewriting every `HIT_AND_RUN` monster or increasing equipment-destruction tedium.
+Result: flesh raptors now use a raptor-only live `monster::plan()` seam for readable 4–6 tile orbit/flank pressure, under-occupied arc preference, bounded swoop cadence, corridor/blocked-terrain fallback, and jitter guardrails without globally rewriting every `HIT_AND_RUN` monster or increasing equipment-destruction tedium.
 
-Current checkpoint: deterministic circling footing is implemented for base/shadow/unstable/electric/dusted/fungalized/fungal flesh raptors through the live `monster::plan()` seam. Focused tests cover variant footing, orbit/flank scoring, under-occupied arc preference, fallback, cadence/hysteresis, live plan consumption for `mon_spawn_raptor`, and non-raptor `HIT_AND_RUN` preservation. Three staged-but-live rows are green: `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/` proves open-field orbit, cadence swoop, committed swoop path, and special-melee hit/counterplay evidence; `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/` proves zombie-crowded north-arc footing, under-occupied south/open arc choice (`chosen_rel=0,5`, `chosen_crowding=0`), cadence swoops, and special-melee hit/frustration metrics on a clean feature-path row; `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/` proves blocked/corridor footing with lateral and behind orbit tiles sealed, the east lane open, `decision=fallback reason=no_readable_lateral_orbit candidates=3`, bounded corridor swoop/committed path pressure, melee-event hit/frustration metrics, clean startup, green step ledger (`8/8`), no runtime warnings, and cleanup terminated. Frau's post-crunch nudge promoted the missing old-feeling/equipment-damage comparison row instead of closing from those three rows alone; `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/` is now green feature-path proof with current orbit/swoop/melee debug metrics plus screenshot/OCR player-facing `flesh-raptor` / `impales` / `cut` / `bleeding` evidence from the message-history screen. Next honest state is Schani/Frau closure review, not another automatic row.
+Evidence: focused `[flesh_raptor]` tests cover variant footing, orbit/flank scoring, under-occupied arc preference, fallback, cadence/hysteresis, live plan consumption for `mon_spawn_raptor`, and non-raptor `HIT_AND_RUN` preservation. Credited staged-but-live rows are `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/`, `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/`, `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/`, and `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/`. The final comparison row proves current orbit/swoop/melee debug metrics plus screenshot/OCR player-facing `flesh-raptor` / `impales` / `cut` / `bleeding` evidence from message history.
 
-Boundary: do not start the writhing-stalker zombie-shadow package, anti-redundancy packages, release packaging, or old closed lanes by drift. Do not remove every attack-and-retreat enemy, redesign eigenspectres, create a global pack-AI rewrite, or tune raptors by simply raising damage/equipment destruction.
+Closure review: Frau accepted v0 for agent-side close with staged-but-live caveats. Josef taste/playtest is optional/future, not a blocker; if Josef later says the raptor is still annoying, that is a taste/tuning follow-up, not proof that v0 failed.
+
+Boundary: staged-but-live McWilliams rows are not natural random discovery. Equipment-damage tuning was not changed; equipment damage remains an observational frustration metric. Do not reopen this lane, remove every attack-and-retreat enemy, redesign eigenspectres, create a global pack-AI rewrite, or tune raptors by simply raising damage/equipment destruction unless Schani/Josef promote a follow-up.
 
 ---
 
-## Greenlit backlog — remaining predator behavior variety package
+## Active lane — CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 
-**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE FLESH RAPTOR LANE
+**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING NEXT
 
-Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is now the active package; the stalker product-behavior package stays queued behind it.
+Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is now closed green v0; the remaining predator-behavior package is the stalker zombie-shadow predator shift.
 
 Shared imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
-1. `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` — shift the stalker into a zombie-shadow attention predator: overmap light interest plus local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
+Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
 
-Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, and do not give the stalker omniscient backstab magic. If the stalker product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
+Goal: shift the stalker into a zombie-shadow attention predator: overmap light interest plus honest local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not, while preserving no-omniscience, light/focus/open-exposure counterplay, cooldown, and injured retreat.
+
+Current checkpoint: promoted after flesh-raptor closure; no zombie-shadow behavior code has changed yet. Next honest state is deterministic footing for confidence components, quiet-side/cutoff candidate scoring, zombie-pressure gating, and light/focus suppression before live rows.
+
+Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make zombie proximity a magical target buff, and do not give the stalker omniscient backstab magic. If this product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
 
 ---
 
 ## Greenlit backlog — targeted anti-redundancy packages
 
-**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE FLESH RAPTOR LANE
+**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE STALKER ZOMBIE-SHADOW LANE
 
 Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
 
