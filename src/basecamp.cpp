@@ -1595,16 +1595,11 @@ plan_camp_locker_loadout(
   return plan;
 }
 
-static std::vector<const item *> collect_camp_locker_current_items(npc &worker) {
-  std::vector<const item *> current_items;
-  worker.visit_items([&worker, &current_items](item *node, item *) {
-    if (node != nullptr &&
-        (worker.is_worn(*node) || worker.is_wielding(*node))) {
-      current_items.push_back(node);
-    }
-    return VisitResponse::NEXT;
+static std::vector<const item *> collect_camp_locker_current_items(
+    const npc &worker) {
+  return worker.items_with([&worker](const item &node) {
+    return worker.is_worn(node) || worker.is_wielding(node);
   });
-  return current_items;
 }
 
 item take_camp_locker_candidate(
@@ -1613,15 +1608,9 @@ void store_camp_locker_item(const tripoint_abs_ms &locker_tile, item moved);
 std::string camp_locker_item_debug_label(const item &it);
 static std::string join_camp_locker_debug_parts(const std::vector<std::string> &parts);
 
-static std::vector<const item *> collect_camp_locker_worker_items(npc &worker) {
-  std::vector<const item *> worker_items;
-  worker.visit_items([&worker_items](item *node, item *) {
-    if (node != nullptr) {
-      worker_items.push_back(node);
-    }
-    return VisitResponse::NEXT;
-  });
-  return worker_items;
+static std::vector<const item *> collect_camp_locker_worker_items(
+    const npc &worker) {
+  return worker.items_with([](const item &) { return true; });
 }
 
 static const heal_actor *camp_locker_heal_actor(const item &it) {
@@ -1649,7 +1638,8 @@ static bool is_camp_locker_kept_carried_item(const item &it) {
          it.is_magazine() || is_camp_locker_armor_insert(it);
 }
 
-static bool is_camp_locker_dumpable_carried_item(npc &worker, const item &it) {
+static bool is_camp_locker_dumpable_carried_item(const npc &worker,
+                                                  const item &it) {
   return !worker.is_worn(it) && !worker.is_wielding(it) &&
          !is_camp_locker_kept_carried_item(it);
 }
@@ -1665,11 +1655,12 @@ struct camp_locker_carried_cleanup_state {
 };
 
 static camp_locker_carried_cleanup_state
-collect_camp_locker_carried_cleanup_state(npc &worker) {
+collect_camp_locker_carried_cleanup_state(const npc &worker) {
   camp_locker_carried_cleanup_state cleanup;
-  worker.visit_items([&worker, &cleanup](item *node, item *) {
+  const std::vector<const item *> worker_items = collect_camp_locker_worker_items(worker);
+  for (const item *node : worker_items) {
     if (node == nullptr) {
-      return VisitResponse::NEXT;
+      continue;
     }
     if (is_camp_locker_dumpable_carried_item(worker, *node)) {
       cleanup.items_to_dump++;
@@ -1678,8 +1669,7 @@ collect_camp_locker_carried_cleanup_state(npc &worker) {
                is_camp_locker_kept_carried_item(*node)) {
       cleanup.kept_items.push_back(camp_locker_item_debug_label(*node));
     }
-    return VisitResponse::NEXT;
-  });
+  }
   return cleanup;
 }
 
