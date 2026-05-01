@@ -2499,17 +2499,17 @@ bool camp_locker_plan_has_changes(const camp_locker_plan &plan) {
 }
 
 camp_locker_live_state collect_camp_locker_live_state(
-    npc &worker, const faction_id &fac, const camp_locker_policy &policy,
-    const std::vector<camp_locker_reservation> &reservations) {
+    npc &worker, const std::vector<tripoint_abs_ms> &locker_tiles,
+    const camp_locker_policy &policy,
+    const std::vector<camp_locker_reservation> &reservations,
+    camp_locker_service_probe *probe = nullptr) {
   camp_locker_live_state live_state;
   live_state.current_items = collect_camp_locker_current_items(worker);
   live_state.worker_items = collect_camp_locker_worker_items(worker);
-  const std::vector<tripoint_abs_ms> locker_tiles =
-      collect_sorted_camp_locker_tiles(worker.pos_abs(), fac);
   live_state.locker_items = collect_camp_locker_zone_items(
-      locker_tiles, reservations, worker.getID());
+      locker_tiles, reservations, worker.getID(), probe);
   live_state.locker_candidates = collect_camp_locker_candidates_impl(
-      live_state.locker_items, policy, nullptr, &worker);
+      live_state.locker_items, policy, probe, &worker);
   live_state.plan = plan_camp_locker_loadout(
       live_state.current_items, live_state.locker_candidates, policy,
       get_weather().get_temperature(worker.pos_bub()),
@@ -2517,10 +2517,18 @@ camp_locker_live_state collect_camp_locker_live_state(
   live_state.carried_cleanup =
       collect_camp_locker_carried_cleanup_state(worker);
   live_state.ranged_readiness = collect_camp_locker_ranged_readiness_state(
-      worker, policy, live_state.locker_items);
+      worker, policy, live_state.locker_items, probe);
   live_state.medical_readiness = collect_camp_locker_medical_readiness_state(
       live_state.worker_items, live_state.locker_items);
   return live_state;
+}
+
+camp_locker_live_state collect_camp_locker_live_state(
+    npc &worker, const faction_id &fac, const camp_locker_policy &policy,
+    const std::vector<camp_locker_reservation> &reservations) {
+  return collect_camp_locker_live_state(
+      worker, collect_sorted_camp_locker_tiles(worker.pos_abs(), fac), policy,
+      reservations);
 }
 
 std::string camp_locker_live_state_signature(
@@ -3702,40 +3710,24 @@ bool basecamp::service_camp_locker_impl(npc &worker,
           }),
       locker_reservations.end());
 
-  const std::vector<const item *> current_items =
-      collect_camp_locker_current_items(worker);
-  const std::vector<const item *> worker_items =
-      collect_camp_locker_worker_items(worker);
-  const std::vector<const item *> locker_items = collect_camp_locker_zone_items(
-      locker_tiles, locker_reservations, worker.getID(), probe);
-  const camp_locker_candidate_map locker_candidates =
-      collect_camp_locker_candidates_impl(locker_items, locker_policy, probe,
-                                          &worker);
-  const int candidate_count = count_camp_locker_candidates(locker_candidates);
-  const camp_locker_plan plan = plan_camp_locker_loadout(
-      current_items, locker_candidates, locker_policy,
-      get_weather().get_temperature(worker.pos_bub()),
-      get_weather().weather_id->rains, &worker);
-  const camp_locker_carried_cleanup_state carried_cleanup =
-      collect_camp_locker_carried_cleanup_state(worker);
-  const camp_locker_ranged_readiness_state ranged_readiness =
-      collect_camp_locker_ranged_readiness_state(worker, locker_policy,
-                                                 locker_items, probe);
-  const camp_locker_medical_readiness_state medical_readiness =
-      collect_camp_locker_medical_readiness_state(worker_items, locker_items);
+  const camp_locker_live_state live_state = collect_camp_locker_live_state(
+      worker, locker_tiles, locker_policy, locker_reservations, probe);
+  const int candidate_count =
+      count_camp_locker_candidates(live_state.locker_candidates);
   if (probe != nullptr) {
-    probe->current_item_count = static_cast<int>(current_items.size());
-    probe->worker_item_count = static_cast<int>(worker_items.size());
-    probe->locker_item_count = static_cast<int>(locker_items.size());
+    probe->current_item_count =
+        static_cast<int>(live_state.current_items.size());
+    probe->worker_item_count = static_cast<int>(live_state.worker_items.size());
+    probe->locker_item_count = static_cast<int>(live_state.locker_items.size());
     probe->candidate_item_count = candidate_count;
-    probe->changed_slot_count = count_changed_camp_locker_slots(plan);
-    probe->cleanup_item_count = carried_cleanup.items_to_dump;
-    probe->magazines_to_take = ranged_readiness.magazines_to_take;
-    probe->magazines_to_reload = ranged_readiness.magazines_to_reload;
-    probe->medical_supplies_to_take = medical_readiness.supplies_to_take;
+    probe->changed_slot_count = count_changed_camp_locker_slots(live_state.plan);
+    probe->cleanup_item_count = live_state.carried_cleanup.items_to_dump;
+    probe->magazines_to_take = live_state.ranged_readiness.magazines_to_take;
+    probe->magazines_to_reload = live_state.ranged_readiness.magazines_to_reload;
+    probe->medical_supplies_to_take = live_state.medical_readiness.supplies_to_take;
   }
-  if (plan.empty() && !carried_cleanup.has_changes() &&
-      !ranged_readiness.has_changes() && !medical_readiness.has_changes()) {
+  if (live_state.plan.empty() && !live_state.carried_cleanup.has_changes() &&
+      !live_state.ranged_readiness.has_changes() && !live_state.medical_readiness.has_changes()) {
     if (probe != nullptr) {
       probe->applied_changes = false;
     }
@@ -3744,11 +3736,11 @@ bool basecamp::service_camp_locker_impl(npc &worker,
         << string_format(
                "camp locker: no-op for %s locker_tiles=%d current_items=%d candidates=%d reservations=%d cleanup=[%s] ranged=[%s] medical=[%s]",
                worker.get_name(), static_cast<int>(locker_tiles.size()),
-               static_cast<int>(current_items.size()), candidate_count,
+               static_cast<int>(live_state.current_items.size()), candidate_count,
                static_cast<int>(locker_reservations.size()),
-               camp_locker_carried_cleanup_debug_summary(carried_cleanup),
-               camp_locker_ranged_readiness_debug_summary(ranged_readiness),
-               camp_locker_medical_readiness_debug_summary(medical_readiness));
+               camp_locker_carried_cleanup_debug_summary(live_state.carried_cleanup),
+               camp_locker_ranged_readiness_debug_summary(live_state.ranged_readiness),
+               camp_locker_medical_readiness_debug_summary(live_state.medical_readiness));
     }
     return false;
   }
@@ -3757,16 +3749,16 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: before %s worker=[%s] locker=[%s] cleanup=[%s] ranged=[%s] medical=[%s]",
-             worker.get_name(), camp_locker_item_debug_summary(current_items,
+             worker.get_name(), camp_locker_item_debug_summary(live_state.current_items,
                                                                locker_policy),
-             camp_locker_candidate_debug_summary(locker_candidates),
-             camp_locker_carried_cleanup_debug_summary(carried_cleanup),
-             camp_locker_ranged_readiness_debug_summary(ranged_readiness),
-             camp_locker_medical_readiness_debug_summary(medical_readiness));
+             camp_locker_candidate_debug_summary(live_state.locker_candidates),
+             camp_locker_carried_cleanup_debug_summary(live_state.carried_cleanup),
+             camp_locker_ranged_readiness_debug_summary(live_state.ranged_readiness),
+             camp_locker_medical_readiness_debug_summary(live_state.medical_readiness));
   }
 
   const time_point reservation_expiry = calendar::turn + 10_minutes;
-  for (const auto &[slot, slot_plan] : plan) {
+  for (const auto &[slot, slot_plan] : live_state.plan) {
     if (slot_plan.selected_candidate == nullptr) {
       continue;
     }
@@ -3780,18 +3772,18 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                                    reservation_expiry});
   }
 
-  const int planned_slots = count_changed_camp_locker_slots(plan);
+  const int planned_slots = count_changed_camp_locker_slots(live_state.plan);
   if( verbose_logging ) {
       DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: plan for %s locker_tiles=%d current_items=%d candidates=%d changed_slots=%d reservations=%d changes=[%s] cleanup=[%s] ranged=[%s] medical=[%s]",
              worker.get_name(), static_cast<int>(locker_tiles.size()),
-             static_cast<int>(current_items.size()), candidate_count, planned_slots,
+             static_cast<int>(live_state.current_items.size()), candidate_count, planned_slots,
              static_cast<int>(locker_reservations.size()),
-             camp_locker_plan_debug_summary(plan),
-             camp_locker_carried_cleanup_debug_summary(carried_cleanup),
-             camp_locker_ranged_readiness_debug_summary(ranged_readiness),
-             camp_locker_medical_readiness_debug_summary(medical_readiness));
+             camp_locker_plan_debug_summary(live_state.plan),
+             camp_locker_carried_cleanup_debug_summary(live_state.carried_cleanup),
+             camp_locker_ranged_readiness_debug_summary(live_state.ranged_readiness),
+             camp_locker_medical_readiness_debug_summary(live_state.medical_readiness));
   }
 
   const tripoint_abs_ms locker_drop_tile = locker_tiles.front();
@@ -3870,8 +3862,8 @@ bool basecamp::service_camp_locker_impl(npc &worker,
 
   std::vector<const std::pair<const camp_locker_slot, camp_locker_slot_plan> *>
       apply_entries;
-  apply_entries.reserve(plan.size());
-  for (const auto &entry : plan) {
+  apply_entries.reserve(live_state.plan.size());
+  for (const auto &entry : live_state.plan) {
     if (entry.second.selected_candidate != nullptr) {
       apply_entries.push_back(&entry);
     }
@@ -3916,7 +3908,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
           removed_all_planned_blockers;
     }
     if (is_camp_locker_protective_full_body_suit(candidate)) {
-      for (const auto &blocker_entry : plan) {
+      for (const auto &blocker_entry : live_state.plan) {
         if (&blocker_entry == entry) {
           continue;
         }
@@ -3960,7 +3952,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
     store_camp_locker_item(locker_drop_tile, std::move(candidate));
   }
 
-  for (const auto &plan_entry : plan) {
+  for (const auto &plan_entry : live_state.plan) {
     const camp_locker_slot_plan &slot_plan = plan_entry.second;
     for (const item *duplicate : slot_plan.duplicate_current) {
       if (was_accepted_pre_removed_duplicate(duplicate)) {
