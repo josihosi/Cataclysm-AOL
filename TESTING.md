@@ -118,7 +118,7 @@ Closure verdict: Frau accepted v0 for agent-side close with staged-but-live cave
 
 ### Queued validation target - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
 
-When promoted, validation is a product-feel sampler, not a broad proof rerun: use existing green staged/live rows as footing, create only the missing handoff/startup artifacts needed for Josef to play the selected postcards, and keep staged-vs-natural caveats visible. Josef's checks are non-blocking taste/readability/fairness notes unless he explicitly reopens a lane. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+When promoted, validation is a product-feel sampler, not a broad proof rerun: use existing green staged/live rows as footing, create only the missing handoff/startup artifacts needed for Josef to play the selected postcards, and keep staged-vs-natural caveats visible. Visual postcards need optical/screenshot checkpoints with named expected visible facts. Josef's checks are non-blocking taste/readability/fairness/optical-legibility notes unless he explicitly reopens a lane. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
 ### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 

@@ -6,9 +6,10 @@ Josef asked to playtest the C-AOL “visions” — not one unit test, not one o
 
 Josef opens a prepared C-AOL build/save and can sample a handful of scenes like short playable postcards. Each postcard says what vision it is testing before the first keypress: “late-world rider terror with cover counterplay”, “stalker uses zombies as pressure instead of omniscience”, “raptor circles instead of stab-flee annoyance”, “camp locker makes NPCs practically useful without magic inventory soup”, or “bandit/basecamp pressure feels alive but not unfair”.
 
-The playtest should not ask Josef to become an archaeologist of harness logs. He should be able to play, look, and answer taste questions:
+The playtest should not ask Josef to become an archaeologist of harness logs. He should be able to play, look, and answer taste questions. Josef also explicitly wants **vision in the optical sense** as a playtest condition: screenshots/visual read matter, not only mechanics. He phrased a second axis as “gosnic”; keep that word visible until clarified instead of silently translating it into a fake requirement.
 
-- Did this read as the intended creature/world behavior?
+- Did this read visually/optically as the intended creature/world behavior from screenshots and screen state?
+- Did this read as the intended creature/world behavior mechanically?
 - Did it feel fair, scary, useful, alive, or just annoying?
 - Was the counterplay visible enough?
 - Did anything feel fake, over-scripted, or too invisible?
@@ -17,6 +18,7 @@ The playtest should not ask Josef to become an archaeologist of harness logs. He
 ## What must be true
 
 - Every sampled scene has a named vision and a short pass/fail taste question.
+- Every sampled scene has at least one named screenshot checkpoint with an expected visible/optical fact, unless the postcard is explicitly classified as non-visual.
 - Existing green harness rows are used as footing where possible instead of rebuilding scenes from folklore.
 - Agent-side probes/handoffs prepare the stage first; Josef's role is product judgment, not proof janitor.
 - Staged scenarios are honestly labelled as staged/handoff scenes, not natural random-discovery proof.
