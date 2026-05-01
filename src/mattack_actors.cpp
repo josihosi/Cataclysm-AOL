@@ -87,6 +87,22 @@ static const itype_id itype_backpack( "backpack" );
 
 static const json_character_flag json_flag_BIONIC_LIMB( "BIONIC_LIMB" );
 
+static const mtype_id mon_fungal_raptor( "mon_fungal_raptor" );
+static const mtype_id mon_spawn_raptor( "mon_spawn_raptor" );
+static const mtype_id mon_spawn_raptor_dusted( "mon_spawn_raptor_dusted" );
+static const mtype_id mon_spawn_raptor_electric( "mon_spawn_raptor_electric" );
+static const mtype_id mon_spawn_raptor_fungalize( "mon_spawn_raptor_fungalize" );
+static const mtype_id mon_spawn_raptor_shady( "mon_spawn_raptor_shady" );
+static const mtype_id mon_spawn_raptor_unstable( "mon_spawn_raptor_unstable" );
+
+static bool is_flesh_raptor_type( const mtype_id &id )
+{
+    return id == mon_spawn_raptor || id == mon_spawn_raptor_shady ||
+           id == mon_spawn_raptor_unstable || id == mon_spawn_raptor_electric ||
+           id == mon_spawn_raptor_dusted || id == mon_spawn_raptor_fungalize ||
+           id == mon_fungal_raptor;
+}
+
 static const skill_id skill_gun( "gun" );
 static const skill_id skill_throw( "throw" );
 
@@ -855,6 +871,14 @@ bool melee_actor::call( monster &z ) const
             target->add_msg_player_or_npc( msg_type, miss_msg_u,
                                            get_option<bool>( "LOG_MONSTER_ATTACK_MONSTER" ) ? miss_msg_npc : translation(),
                                            mon_name, body_part_name_accusative( bodyparts_hit.front() ) );
+            if( target->is_avatar() && is_flesh_raptor_type( z.type->id ) ) {
+                DebugLog( D_INFO, DC_ALL ) << "flesh_raptor melee_event: source=special result=miss"
+                                           << " damage=0"
+                                           << " hitspread=" << hitspread
+                                           << " target_hp_percent=" << target->hp_percentage()
+                                           << " run_after=" << ( z.has_effect( effect_run ) ? "yes" : "no" )
+                                           << '\n';
+            }
             return true;
         }
     }
@@ -1007,6 +1031,14 @@ bool melee_actor::call( monster &z ) const
     // run on_damage() and apply effects
     int damage_total = dealt_damage.total_damage();
     add_msg_debug( debugmode::DF_MATTACK, "%s's melee_attack did %d damage", z.name(), damage_total );
+    if( target->is_avatar() && is_flesh_raptor_type( z.type->id ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "flesh_raptor melee_event: source=special result="
+                                   << ( damage_total > 0 ? "hit" : "armor_absorb" )
+                                   << " damage=" << damage_total
+                                   << " hitspread=" << hitspread
+                                   << " target_hp_percent=" << target->hp_percentage()
+                                   << " run_after=" << ( z.has_effect( effect_run ) ? "yes" : "no" ) << '\n';
+    }
     if( damage_total > 0 ) {
         on_damage( z, *target, dealt_damage );
     } else {

@@ -100,11 +100,15 @@ Deterministic footing checkpoint:
 
 Green gate:
 - `make -j4 tests/flesh_raptor_test.o tests src/flesh_raptor_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[flesh_raptor]"` -> `All tests passed (61 assertions in 7 test cases)`.
+- `make -j4 TILES=1 LINTJSON=0 ASTYLE=0` -> green after the committed-swoop movement bridge fix.
 - `git diff --check` -> clean.
 - `make astyle-diff LINTJSON=0 ASTYLE=0` could not run because `astyle` is not installed on this host.
 
+Credited staged-but-live row:
+- `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/` proves feature-path open-field orbit/swoop behavior with step ledger green (`6/6`), `artifacts_matched`, `feature_proof True`, no runtime warnings, and required log state present. Decisive lines include `decision=orbit reason=best_open_orbit_arc distance=5 candidates=91 eval_us=0`, `decision=swoop reason=cadence_swoop_window`, `decision=swoop reason=committed_swoop_path`, and repeated `flesh_raptor melee_event: source=special result=hit damage=... target_hp_percent=... run_after=yes`. This row is feature-path proof for the staged open-field slice, not a natural random-discovery claim.
+
 Remaining validation burden:
-- Live/playtest rows should report orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
+- Next live/playtest row should cover one additional counterplay shape, likely blocked/corridor or crowded-arc behavior, while still reporting orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
 - Existing JSON/load is indirectly covered by focused test data load; rerun a broader load/check only if raptor JSON changes or startup/load becomes suspicious.
 - Do not widen into writhing-stalker zombie-shadow, anti-redundancy refactors, eigenspectres, global `HIT_AND_RUN` rewrite, or equipment-damage difficulty tuning by drift.
 
@@ -193,7 +197,7 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next probe is `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`: deterministic circling/orbit footing before live rows. `CAOL-ZOMBIE-RIDER-0.3-v0`, old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
+Active same-lane next probe is `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`: one additional staged-but-live row after the green open-field skirmisher row, likely blocked/corridor counterplay or crowded-arc behavior. `CAOL-ZOMBIE-RIDER-0.3-v0`, old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
 
 Closed zombie-rider green live rows:
 - `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/` (open-field bow pressure then withdrawal).

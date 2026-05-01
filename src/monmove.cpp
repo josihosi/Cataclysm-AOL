@@ -576,6 +576,15 @@ static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &targe
     std::vector<flesh_raptor::orbit_candidate> candidates;
     const tripoint_bub_ms target_pos = target.pos_bub();
     const tripoint_bub_ms raptor_pos = raptor.pos_bub();
+    const tripoint_abs_ms target_abs = target.pos_abs();
+    if( !raptor.has_effect( effect_run ) && raptor.get_dest() == target_abs &&
+        distance_to_target > 1 && distance_to_target <= 6 ) {
+        DebugLog( D_INFO, DC_ALL ) << "flesh_raptor live_plan: decision=swoop"
+                                   << " reason=committed_swoop_path"
+                                   << " distance=" << distance_to_target
+                                   << " candidates=0 score=0 run=no held=no eval_us=0" << '\n';
+        return true;
+    }
     const bool has_held_destination = raptor.wandf > 0;
     const tripoint_bub_ms held_destination = has_held_destination ? here.get_bub( raptor.wander_pos ) :
                                                 raptor_pos;
@@ -633,7 +642,8 @@ static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &targe
         return false;
     }
     if( response.next == flesh_raptor::decision::swoop ) {
-        raptor.set_dest( target.pos_abs() );
+        raptor.set_dest( target_abs );
+        raptor.wandf = 0;
         return true;
     }
 
@@ -1352,7 +1362,6 @@ void monster::move()
         return;
     }
     Character &player_character = get_player_character();
-
     behavior::monster_oracle_t oracle( this );
     behavior::tree goals;
     goals.add( type->get_goals() );
@@ -1486,6 +1495,15 @@ void monster::move()
         }
     }
 
+    // Flesh raptors normally keep distance, but a committed swoop must finish the attack run.
+    const bool flesh_raptor_committed_swoop = is_flesh_raptor( *this ) &&
+            get_dest() == player_character.pos_abs() &&
+            pos_abs().z() == player_character.pos_abs().z() &&
+            rl_dist( pos_bub(), player_character.pos_bub() ) > 1 &&
+            rl_dist( pos_bub(), player_character.pos_bub() ) <= 6 && wandf == 0;
+    if( flesh_raptor_committed_swoop ) {
+        current_attitude = MATT_ATTACK;
+    }
     if( is_pet_follow() || ( friendly != 0 && has_effect( effect_led_by_leash ) ) ) {
         const int dist = rl_dist( pos_abs(), get_dest() );
         if( ( dist <= 1 || ( dist <= 2 && !has_effect( effect_led_by_leash ) &&
@@ -1498,7 +1516,8 @@ void monster::move()
         }
     } else if( ( current_attitude == MATT_IGNORE && patrol_route.empty() ) ||
                ( ( current_attitude == MATT_FOLLOW ||
-                   ( has_flag( mon_flag_KEEP_DISTANCE ) && !( current_attitude == MATT_FLEE ) ) )
+                   ( has_flag( mon_flag_KEEP_DISTANCE ) && !( current_attitude == MATT_FLEE ) &&
+                     !flesh_raptor_committed_swoop ) )
                  && rl_dist( pos_abs(), get_dest() ) <= type->tracking_distance ) ) {
         moves = 0;
         stumble_voluntary();

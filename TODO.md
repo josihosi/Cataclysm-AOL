@@ -12,8 +12,8 @@ Active: `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0`.
 
 `CAOL-ZOMBIE-RIDER-0.3-v0` is closed/checkpointed green v0. Do not rerun its endpoint, local-combat, overmap-light, convergence/band, or five staged-but-live funness rows by ritual unless Schani/Josef explicitly reopen a stricter follow-up.
 
-Next narrow slice: first staged-but-live flesh raptor row.
+Next narrow slice: second staged-but-live flesh raptor row, after the open-field row went green.
 
-1. Build one staged-but-live open-terrain flesh raptor row that records orbit turns, swoop cadence, hit/equipment events, counterplay outcome, turn-time cost, and warnings/log state.
+1. Build one blocked/corridor or crowded-arc flesh raptor row that proves the next counterplay shape without widening the lane.
 2. Keep equipment-damage frustration visible in notes/metrics; do not increase it as a difficulty substitute.
-3. If the open-terrain row is green, widen only to the next single row (likely blocked/corridor counterplay or crowded-arc pack behavior).
+3. Preserve the open-field row as credited evidence; do not rerun it by ritual unless code touching the raptor live bridge changes.
