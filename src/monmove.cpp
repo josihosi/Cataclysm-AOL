@@ -1035,6 +1035,26 @@ void monster::plan()
         }
     }
 
+    if( mon_plan.target == nullptr && type->id == mon_zombie_rider ) {
+        const auto perf_started = std::chrono::steady_clock::now();
+        const bool player_same_level = player_character.posz() == posz() &&
+                                       seen_levels.test( player_character.posz() + OVERMAP_DEPTH );
+        const bool sees_player = player_same_level && sees( here, player_character );
+        const int distance_to_player = rl_dist( pos_bub(), player_character.pos_bub() );
+        const bool line_of_fire = player_same_level && distance_to_player <= 18 &&
+                                  zombie_rider_line_of_fire( here, pos_bub(), player_character );
+        const auto perf_done = std::chrono::steady_clock::now();
+        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
+                                perf_started ).count();
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider target_probe: target=no sees_player="
+                                   << ( sees_player ? "yes" : "no" )
+                                   << " distance=" << distance_to_player
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " hp=" << hp_percentage()
+                                   << " run=" << ( has_effect( effect_run ) ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
+    }
+
     if( has_effect( effect_dragging ) ) {
 
         if( type->has_special_attack( "OPERATE" ) ) {

@@ -71,7 +71,7 @@ Caveat: staged-but-live McWilliams scenarios, not fully natural random discovery
 
 ### Active validation target - CAOL-ZOMBIE-RIDER-0.3-v0
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is active after the writhing-stalker live fun packet closed green. Monster/evolution, local combat AI, overmap light-attraction, deterministic rider convergence/band pressure footing, the first staged-but-live open-field local-combat row, and the staged-but-live wounded disengagement row are green; next validation slice is still live-shaped rider funness rows. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is active after the writhing-stalker live fun packet closed green. Monster/evolution, local combat AI, overmap light-attraction, deterministic rider convergence/band pressure footing, the first staged-but-live open-field local-combat row, the staged-but-live wounded disengagement row, and the staged-but-live cover/LOS escape row are green; next validation slice is still live-shaped rider funness rows. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
 
 Credited footing evidence:
 - Commit `d50715f00e` adds `mon_zombie_rider` with exact three-line Josef description, huge/scary-fast monster footing, pseudo `zombie_rider_bone_bow`, direct mature `GROUP_ZOMBIE` gate at `730 days`, and no normal predator/upgrade path into rider.
@@ -82,11 +82,12 @@ Credited footing evidence:
 - Rider convergence/band checkpoint `ce05ef44ec` adds deterministic loose-rider selection by overmap distance then `rider_id`, ignores unavailable/cooling/already-banded/out-of-radius riders, preserves `max_riders_drawn_by_light = 2`, keeps lone riders below band minimum, suppresses convergence after decayed memory, and chooses camp pressure postures (`none`, `investigate`, `circle_harass`, `direct_attack`, `withdraw`) without wall-suicide. Gates: `git diff --check && make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (170 assertions in 14 test cases)`.
 - Live open-field local-combat row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/` is green after fresh runtime build `make -j4 TILES=1 LINTJSON=0 ASTYLE=0`: one hostile `mon_zombie_rider` staged at offset `[0,-5,0]`, noon start audited, safe mode off, `6/6` step rows green, no abort/runtime warnings, artifact rows include `decision=bow_pressure reason=line_of_fire distance=5 ... eval_us=2` then `decision=withdraw ... distance=3 ... eval_us=1`; decision counts `bow_pressure=1`, `withdraw=2`, max observed `eval_us=2`. Proof note: `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md`.
 - Live wounded disengagement row `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/` is green after forced fresh executable relink `rm -f obj/version.o cataclysm-tiles && make -j4 TILES=1 LINTJSON=0 ASTYLE=0`: one wounded hostile `mon_zombie_rider` staged at offset `[0,-8,0]`, noon start audited, safe mode off, runtime title `7ecdd41f03-dirty` with matching runtime paths, `6/6` step rows green, no abort/runtime warnings, artifact rows include `decision=withdraw reason=wounded_or_close distance=7 line_of_fire=yes hp=36 ... eval_us=1` through `distance=24`, decision counts `withdraw=14`, `bow_pressure=0`, max observed `eval_us=3`. Proof note: `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`.
+- Live cover/LOS escape row `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260501_021656/` is green: one hostile `mon_zombie_rider` staged at offset `[10,0,0]`, noon start audited, overmap NPCs removed/audited as zero, thick opaque `f_locker` wall guard offsets present, safe mode off, `9/9` step rows green, no abort/runtime warnings, feature classification `feature-path`, artifact rows include `zombie_rider target_probe: target=no sees_player=no distance=10 line_of_fire=no hp=100 run=no eval_us=1`; counts `target_probe=104`, `decision=bow_pressure=0`, `line_of_fire=yes=0`. Proof note: `doc/zombie-rider-live-funness-cover-escape-proof-v0-2026-05-01.md`.
 
 Validation burden:
 - Keep the existing endpoint evolution/spawn gate, large-body passage seam, scary-fast movement constraints, local shoot/flee/reposition constraints, bounded light-interest constraints, and deterministic convergence/band pressure constraints green while widening into live-shaped rows.
-- Live/harness playtests still needed: cover/indoor escape, camp-light attraction, and rider-band circling/harassment; open-field local-combat pressure and wounded-rider disengagement have green staged-but-live rows.
-- Next live slice should be camp-light attraction into bounded rider convergence/band circling if the harness can stage it honestly; otherwise choose cover/indoor escape as the next smallest reliable live-shaped row.
+- Live/harness playtests still needed: camp-light attraction and rider-band circling/harassment; open-field local-combat pressure, wounded-rider disengagement, and cover/LOS escape have green staged-but-live rows.
+- Next live slice should be camp-light attraction into bounded rider convergence/band circling if the harness can stage it honestly.
 - Report scenario/test/run ids, start conditions, decision traces, rider counts, band state, shot/reposition/retreat counts, pass/fail/yellow verdicts, caveats, stability/perf, and crash/log-spam state.
 - Do not close on JSON/stat presence alone; gameplay claims must reach tests and/or live-shaped scenarios.
 
@@ -175,9 +176,14 @@ Current important receipts:
 
 ## Pending probes
 
-No active same-lane agent-side probe remains open after `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` closure. The live fun packet is staged-but-live green; old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
+Active same-lane next probe is `CAOL-ZOMBIE-RIDER-0.3-v0` camp-light attraction into bounded convergence/band circling, if the harness can stage it honestly. Old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, writhing-stalker live fun scenarios, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
 
-Current green support/behavior probes:
+Current zombie-rider green live rows:
+- `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/` (open-field bow pressure then withdrawal).
+- `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/` (wounded rider withdraws, no bow pressure).
+- `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260501_021656/` (opaque cover keeps target/no-sight/no-line-of-fire, no bow pressure).
+
+Closed writhing-stalker green support/behavior probes:
 - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).
 - `writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/` (target acquisition + `live_plan` seam only).
 - `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/` (earlier bright/focused withdrawal support row).
