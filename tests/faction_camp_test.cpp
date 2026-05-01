@@ -2646,6 +2646,49 @@ TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_locker_service_filters_unwearable_armor_candidates",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_esapi_plate));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  test_camp->add_assignee(worker.getID());
+
+  const camp_locker_service_probe probe =
+      test_camp->measure_camp_locker_service(worker);
+  CHECK_FALSE(probe.applied_changes);
+  CHECK(probe.locker_item_count == 1);
+  CHECK(probe.candidate_item_count == 0);
+  CHECK(probe.changed_slot_count == 0);
+  CHECK(count_character_items(worker, itype_esapi_plate) == 0);
+
+  bool locker_has_plate = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_plate = locker_has_plate || it.typeId() == itype_esapi_plate;
+  }
+  CHECK(locker_has_plate);
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_locker_service_prefers_winter_outerwear_in_moderate_winter_weather",
           "[camp][locker]") {
   restore_on_out_of_scope restore_calendar_turn(calendar::turn);

@@ -936,9 +936,20 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
 
 namespace {
 
+bool camp_locker_slot_is_worn(camp_locker_slot slot) {
+  return slot != camp_locker_slot::melee_weapon &&
+         slot != camp_locker_slot::ranged_weapon;
+}
+
+bool camp_locker_candidate_is_wearable_by_worker(
+    camp_locker_slot slot, const item &it, const Character *worker) {
+  return worker == nullptr || !camp_locker_slot_is_worn(slot) ||
+         worker->can_wear(it, true).success();
+}
+
 camp_locker_candidate_map collect_camp_locker_candidates_impl(
     const std::vector<const item *> &items, const camp_locker_policy &policy,
-    camp_locker_service_probe *probe) {
+    camp_locker_service_probe *probe, const Character *worker = nullptr) {
   camp_locker_candidate_map candidates;
   for (const item *it : items) {
     if (it == nullptr) {
@@ -948,7 +959,8 @@ camp_locker_candidate_map collect_camp_locker_candidates_impl(
       probe->metrics.candidate_item_checks++;
     }
     const std::optional<camp_locker_slot> slot = classify_camp_locker_item(*it);
-    if (!slot || !policy.is_enabled(*slot)) {
+    if (!slot || !policy.is_enabled(*slot) ||
+        !camp_locker_candidate_is_wearable_by_worker(*slot, *it, worker)) {
       continue;
     }
     if (probe != nullptr) {
@@ -2496,8 +2508,8 @@ camp_locker_live_state collect_camp_locker_live_state(
       collect_sorted_camp_locker_tiles(worker.pos_abs(), fac);
   live_state.locker_items = collect_camp_locker_zone_items(
       locker_tiles, reservations, worker.getID());
-  live_state.locker_candidates =
-      collect_camp_locker_candidates(live_state.locker_items, policy);
+  live_state.locker_candidates = collect_camp_locker_candidates_impl(
+      live_state.locker_items, policy, nullptr, &worker);
   live_state.plan = plan_camp_locker_loadout(
       live_state.current_items, live_state.locker_candidates, policy,
       get_weather().get_temperature(worker.pos_bub()),
@@ -3697,7 +3709,8 @@ bool basecamp::service_camp_locker_impl(npc &worker,
   const std::vector<const item *> locker_items = collect_camp_locker_zone_items(
       locker_tiles, locker_reservations, worker.getID(), probe);
   const camp_locker_candidate_map locker_candidates =
-      collect_camp_locker_candidates_impl(locker_items, locker_policy, probe);
+      collect_camp_locker_candidates_impl(locker_items, locker_policy, probe,
+                                          &worker);
   const int candidate_count = count_camp_locker_candidates(locker_candidates);
   const camp_locker_plan plan = plan_camp_locker_loadout(
       current_items, locker_candidates, locker_policy,
@@ -4011,7 +4024,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                                      worker.getID(), probe);
   const camp_locker_candidate_map locker_candidates_after =
       collect_camp_locker_candidates_impl(locker_items_after, locker_policy,
-                                          probe);
+                                          probe, &worker);
   const camp_locker_ranged_readiness_state ranged_readiness_after =
       collect_camp_locker_ranged_readiness_state(worker, locker_policy,
                                                  locker_items_after, probe);
