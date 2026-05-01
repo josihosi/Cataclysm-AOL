@@ -1,6 +1,6 @@
 # CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
 
-Status: GREENLIT / BACKLOG / PREDATOR VARIETY PACKAGE
+Status: ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / OLD-FEELING COMPARISON ROW GREEN / REVIEW NEXT
 
 Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
@@ -27,12 +27,20 @@ Retrofit flesh raptors from plain `HIT_AND_RUN` annoyance into visible circling 
 
 ## Success state
 
-- [ ] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
-- [ ] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
-- [ ] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
-- [ ] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
-- [ ] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage events, player counterplay, warnings/errors, and perceived fun/annoyance.
-- [ ] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+- [x] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
+- [x] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
+- [x] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
+- [x] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
+- [x] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage events, player counterplay, and warnings/errors.
+- [ ] Review whether the agent-side old-feeling comparison is enough for perceived fun/annoyance closure, or whether Josef should get a taste/playtest caveat before final close.
+- [x] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+
+## Evidence checkpoint
+
+- Deterministic/test/build gate: focused `tests/flesh_raptor_test.cpp` rows are green, full tiles build is green, and `git diff --check` is clean; `astyle-diff` remains unavailable because `astyle` is not installed on this host.
+- Staged live feature rows: open field (`.userdata/dev-harness/harness_runs/20260501_052709/`), crowded arc (`.userdata/dev-harness/harness_runs/20260501_053414/`), and blocked corridor (`.userdata/dev-harness/harness_runs/20260501_054807/`) are credited feature-path proof for orbit/swoop/fallback behavior.
+- Promoted old-feeling/equipment comparison row: `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/` is green feature-path proof (`7/7` step ledger, `artifacts_matched`, `feature_proof True`). It combines current mechanics evidence (`decision=orbit`, `decision=swoop`, `flesh_raptor melee_event: ... target_hp_percent=... run_after=yes`) with screenshot/OCR player-facing frustration evidence from message history (`flesh-raptor`, `impales`, `cut!`, `You put pressure on the bleeding wound...`).
+- Caveat: these are staged-but-live McWilliams rows, not natural random-discovery/release packaging proof. Equipment-damage tuning was not changed; the row keeps equipment damage visible as a frustration metric rather than solving taste by making the raptor hit harder or shred more gear.
 
 ## Targeted tests
 
