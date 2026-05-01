@@ -4076,36 +4076,22 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                                             locker_drop_tile) ||
       applied_changes;
 
-  const std::vector<const item *> current_items_after =
-      collect_camp_locker_current_items(worker);
-  const std::vector<const item *> worker_items_after =
-      collect_camp_locker_worker_items(worker);
-  const std::vector<const item *> locker_items_after =
-      collect_camp_locker_zone_items(locker_tiles, locker_reservations,
-                                     worker.getID(), probe);
-  const camp_locker_candidate_map locker_candidates_after =
-      collect_camp_locker_candidates_impl(locker_items_after, locker_policy,
-                                          probe, &worker);
-  const camp_locker_ranged_readiness_state ranged_readiness_after =
-      collect_camp_locker_ranged_readiness_state(worker, locker_policy,
-                                                 locker_items_after, probe);
-  const camp_locker_carried_cleanup_state carried_cleanup_after =
-      collect_camp_locker_carried_cleanup_state(worker);
-  const camp_locker_medical_readiness_state medical_readiness_after =
-      collect_camp_locker_medical_readiness_state(worker_items_after,
-                                                  locker_items_after);
+  const camp_locker_live_state live_state_after = collect_camp_locker_live_state(
+      worker, locker_tiles, locker_policy, locker_reservations, probe);
   if( verbose_logging ) {
       DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: after %s applied=%s worker=[%s] locker=[%s] cleanup=[%s] ranged=[%s] medical=[%s]",
              worker.get_name(), applied_changes ? "true" : "false",
-             camp_locker_item_debug_summary(current_items_after, locker_policy),
-             camp_locker_candidate_debug_summary(locker_candidates_after),
-             camp_locker_carried_cleanup_debug_summary(carried_cleanup_after),
+             camp_locker_item_debug_summary(live_state_after.current_items,
+                                            locker_policy),
+             camp_locker_candidate_debug_summary(live_state_after.locker_candidates),
+             camp_locker_carried_cleanup_debug_summary(
+                 live_state_after.carried_cleanup),
              camp_locker_ranged_readiness_debug_summary(
-                 ranged_readiness_after),
+                 live_state_after.ranged_readiness),
              camp_locker_medical_readiness_debug_summary(
-                 medical_readiness_after));
+                 live_state_after.medical_readiness));
   }
 
   if (probe != nullptr) {
