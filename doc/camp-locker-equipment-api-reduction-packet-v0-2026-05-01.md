@@ -1,6 +1,6 @@
 # CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE DEFAULT AMMO API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MANAGED RANGED HELPER API GREEN
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -37,6 +37,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [x] Worker-context camp locker ammo readiness now defers reload viability to `Character::can_reload()` instead of only `item::can_reload_with()`, so engine-owned constraints such as ammo-belt linkages gate whether locker ammo can ready an item.
 - [x] Compatible magazine preference now defers full-capacity ranking to `item::ammo_capacity()` using loaded/available ammo type instead of camp-local remaining-capacity arithmetic; empty-magazine fallback ammo selection now uses existing `item::ammo_default()` instead of re-reading the magazine ammo-type set locally.
 - [x] Ranged readiness/reload selection now lets existing `item::can_reload_with()` / `Character::can_reload()` own reloadability before camp policy moves locker supplies, instead of gating candidate targets with camp-local `remaining_ammo_capacity()` prechecks.
+- [x] Managed ranged-readiness recognition now asks existing `item::is_gun()` directly instead of re-entering camp locker classification, while enabled-slot policy stays explicit.
 - [x] Live service collection now reuses `collect_camp_locker_live_state()` for the pre-service camp-state pass, keeping worker/locker item collection, candidate classification, planning, cleanup, ranged readiness, and medical readiness on one shared aggregation path.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 

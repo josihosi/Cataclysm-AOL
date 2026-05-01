@@ -1778,9 +1778,7 @@ static bool place_camp_locker_item_contents(
 
 static bool is_camp_locker_managed_ranged_weapon(const item &it,
                                           const camp_locker_policy &policy) {
-  const std::optional<camp_locker_slot> slot = classify_camp_locker_item(it);
-  return slot && *slot == camp_locker_slot::ranged_weapon &&
-         policy.is_enabled(*slot);
+  return it.is_gun() && policy.is_enabled(camp_locker_slot::ranged_weapon);
 }
 
 static int camp_locker_magazine_total_capacity(const item &magazine) {

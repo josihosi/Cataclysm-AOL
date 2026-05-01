@@ -130,7 +130,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE CAPACITY API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MANAGED RANGED HELPER API GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
@@ -147,6 +147,7 @@ Success state:
 - [x] Worker-context ammo readiness defers reload viability to `Character::can_reload()`, so engine-owned reload constraints such as ammo-belt linkages gate locker ammo readiness.
 - [x] Locker reload supply selection uses `item::ammo_remaining()` instead of ammo-only `charges`, allowing reload-compatible loaded speedloaders/supplies to ready weapons through existing reload APIs.
 - [x] Compatible magazine preference uses `item::ammo_capacity()` with loaded/available ammo type instead of camp-local remaining-capacity arithmetic, so empty magazine ranking follows existing item capacity APIs.
+- [x] Managed ranged-readiness recognition asks existing `item::is_gun()` directly instead of re-entering camp locker classification, while enabled-slot policy stays explicit.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
 Canonical docs:
