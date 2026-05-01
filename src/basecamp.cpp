@@ -30,6 +30,7 @@
 #include "input_popup.h"
 #include "inventory.h"
 #include "item.h"
+#include "item_factory.h"
 #include "itype.h"
 #include "iuse_actor.h"
 #include "llm_intent.h"
@@ -1656,8 +1657,37 @@ static bool is_camp_locker_medical_readiness_supply(const item &it) {
   return actor != nullptr && (actor->bandages_power > 0.0f || actor->bleed > 0);
 }
 
+static const std::vector<itype_id> &camp_locker_ablative_carrier_types() {
+  static const std::vector<itype_id> carrier_types = []() {
+    std::vector<itype_id> result;
+    for (const itype *type : item_controller->all()) {
+      if (type == nullptr) {
+        continue;
+      }
+      const item carrier(type->id);
+      if (carrier.is_ablative() && !carrier.get_ablative_pockets().empty()) {
+        result.push_back(type->id);
+      }
+    }
+    return result;
+  }();
+  return carrier_types;
+}
+
 static bool is_camp_locker_armor_insert(const item &it) {
-  return it.is_armor() && it.has_flag(flag_CANT_WEAR);
+  if (!it.is_armor() || it.is_ablative()) {
+    return false;
+  }
+
+  for (const itype_id &carrier_type : camp_locker_ablative_carrier_types()) {
+    const item carrier(carrier_type);
+    for (const item_pocket *pocket : carrier.get_ablative_pockets()) {
+      if (pocket != nullptr && pocket->can_contain(it, true).success()) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 static bool is_camp_locker_kept_carried_item(const item &it) {

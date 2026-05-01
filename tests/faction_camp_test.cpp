@@ -49,6 +49,7 @@ static const itype_id itype_38_speedloader("38_speedloader");
 static const itype_id itype_abaya("abaya");
 static const itype_id itype_adhesive_bandages("adhesive_bandages");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
+static const itype_id itype_attachable_ear_muffs("attachable_ear_muffs");
 static const itype_id itype_bandages_makeshift("bandages_makeshift");
 static const itype_id itype_bandages_makeshift_bleached("bandages_makeshift_bleached");
 static const itype_id itype_bandages_makeshift_boiled("bandages_makeshift_boiled");
@@ -5725,6 +5726,9 @@ TEST_CASE(
   REQUIRE(worker.i_add(item(itype_bandages)));
   REQUIRE(worker.i_add(item(itype_glockmag)));
   REQUIRE(worker.i_add(item(itype_9mm, calendar::turn_zero, 10)));
+  REQUIRE(worker.i_add(item(itype_esapi_plate)));
+  REQUIRE(worker.i_add(item(itype_attachable_ear_muffs)));
+  REQUIRE(worker.i_add(item(itype_helmet_army)));
   REQUIRE(worker.i_add(item(itype_knife_combat)));
   test_camp->add_assignee(worker.getID());
 
@@ -5736,6 +5740,9 @@ TEST_CASE(
   bool worker_has_magazine = false;
   bool worker_has_ammo = false;
   bool worker_has_knife = false;
+  bool worker_has_plate = false;
+  bool worker_has_ear_muffs = false;
+  bool worker_has_helmet = false;
   worker.visit_items([&](item *node, item *) {
     if (node == nullptr) {
       return VisitResponse::NEXT;
@@ -5743,12 +5750,19 @@ TEST_CASE(
     worker_has_bandages = worker_has_bandages || node->typeId() == itype_bandages;
     worker_has_magazine = worker_has_magazine || node->typeId() == itype_glockmag;
     worker_has_ammo = worker_has_ammo || node->typeId() == itype_9mm;
+    worker_has_plate = worker_has_plate || node->typeId() == itype_esapi_plate;
+    worker_has_ear_muffs = worker_has_ear_muffs ||
+                            node->typeId() == itype_attachable_ear_muffs;
+    worker_has_helmet = worker_has_helmet || node->typeId() == itype_helmet_army;
     worker_has_knife = worker_has_knife || node->typeId() == itype_knife_combat;
     return VisitResponse::NEXT;
   });
   CHECK(worker_has_bandages);
   CHECK(worker_has_magazine);
   CHECK(worker_has_ammo);
+  CHECK(worker_has_plate);
+  CHECK(worker_has_ear_muffs);
+  CHECK_FALSE(worker_has_helmet);
   CHECK_FALSE(worker_has_knife);
 
   bool locker_has_daypack = false;
@@ -5778,11 +5792,16 @@ TEST_CASE(
   CHECK_FALSE(locker_has_bandages);
 
   bool storage_has_knife = false;
+  bool storage_has_ear_muffs = false;
+  bool storage_has_helmet = false;
   bool storage_has_bandages = false;
   bool storage_has_magazine = false;
   bool storage_has_ammo = false;
   for (const item &it : here.i_at(storage_local)) {
     storage_has_knife = storage_has_knife || it.typeId() == itype_knife_combat;
+    storage_has_ear_muffs = storage_has_ear_muffs ||
+                             it.typeId() == itype_attachable_ear_muffs;
+    storage_has_helmet = storage_has_helmet || it.typeId() == itype_helmet_army;
     storage_has_bandages = storage_has_bandages || it.typeId() == itype_bandages;
     storage_has_magazine = storage_has_magazine || it.typeId() == itype_glockmag;
     storage_has_ammo = storage_has_ammo || it.typeId() == itype_9mm;
@@ -5798,13 +5817,18 @@ TEST_CASE(
     worker_floor_has_magazine = worker_floor_has_magazine || it.typeId() == itype_glockmag;
     worker_floor_has_ammo = worker_floor_has_ammo || it.typeId() == itype_9mm;
   }
-  INFO("storage knife=" << storage_has_knife << " bandages=" << storage_has_bandages
+  INFO("storage knife=" << storage_has_knife
+                         << " ear_muffs=" << storage_has_ear_muffs
+                         << " helmet=" << storage_has_helmet
+                         << " bandages=" << storage_has_bandages
                          << " mag=" << storage_has_magazine << " ammo=" << storage_has_ammo);
   INFO("worker floor knife=" << worker_floor_has_knife
                               << " bandages=" << worker_floor_has_bandages
                               << " mag=" << worker_floor_has_magazine
                               << " ammo=" << worker_floor_has_ammo);
   CHECK(storage_has_knife);
+  CHECK_FALSE(storage_has_ear_muffs);
+  CHECK(storage_has_helmet);
   CHECK_FALSE(storage_has_bandages);
   CHECK_FALSE(storage_has_magazine);
   CHECK_FALSE(storage_has_ammo);
