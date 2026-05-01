@@ -117,7 +117,7 @@ Boundary: staged-but-live v0 does not claim natural random discovery, full siege
 
 ## Active lane — CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0
 
-**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC CIRCLING FOOTING NEXT
+**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / LIVE RAPTOR ROWS NEXT
 
 Josef greenlit changing predator behavior variety after the zombie-rider lane, starting with flesh raptors as visible circling skirmishers instead of one-note stab-and-flee annoyance.
 
@@ -127,7 +127,7 @@ Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2
 
 Goal: retrofit flesh raptors so open terrain produces readable 4–6 tile orbit/flank pressure, under-occupied arc preference, bounded swoop cadence, corridor/blocked-terrain fallback, jitter guardrails, and frustration metrics without globally rewriting every `HIT_AND_RUN` monster or increasing equipment-destruction tedium.
 
-Current checkpoint: promoted after `CAOL-ZOMBIE-RIDER-0.3-v0` closure. No raptor behavior code has changed yet. Next slice is implementation reconnaissance plus the smallest deterministic circling/orbit footing that can fail honestly before live/playtest rows.
+Current checkpoint: deterministic circling footing is implemented for base/shadow/unstable/electric/dusted/fungalized/fungal flesh raptors through the live `monster::plan()` seam. Focused tests cover variant footing, orbit/flank scoring, under-occupied arc preference, fallback, cadence/hysteresis, live plan consumption for `mon_spawn_raptor`, and non-raptor `HIT_AND_RUN` preservation. Next slice is one staged-but-live raptor row at a time with orbit turns, swoop cadence, counterplay, equipment-hit/frustration notes, warnings/log state, and turn-time cost.
 
 Boundary: do not start the writhing-stalker zombie-shadow package, anti-redundancy packages, release packaging, or old closed lanes by drift. Do not remove every attack-and-retreat enemy, redesign eigenspectres, create a global pack-AI rewrite, or tune raptors by simply raising damage/equipment destruction.
 

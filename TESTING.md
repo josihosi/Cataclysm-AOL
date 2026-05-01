@@ -93,11 +93,19 @@ Caveat: staged-but-live McWilliams rows, not natural random discovery/full siege
 
 `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` is active after zombie-rider closure. Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`; imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
 
-Validation burden:
-- First prove deterministic circling footing before live rows: current raptor IDs/variants and live-consumed behavior seam, 4–6 tile orbit/flank preference, under-occupied arc/crowding preference, corridor/blocked fallback, and cadence/hysteresis jitter guard.
-- Focused tests should fail if the new behavior is only helper math and not reachable from the live monster path selected for flesh raptors.
-- Live/playtest rows come after deterministic footing and should report orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
-- Existing JSON/load and focused monster tests for touched raptor variants must remain green.
+Deterministic footing checkpoint:
+- Code seam: `src/monmove.cpp` routes only base/shadow/unstable/electric/dusted/fungalized/fungal flesh raptors through `apply_flesh_raptor_plan()` after existing writhing-stalker and zombie-rider special plan hooks, before generic target pursuit.
+- Helper: `src/flesh_raptor_ai.*` scores 4–6 tile lateral/orbit candidates, under-occupied arcs, held-destination hysteresis, bounded cadence swoop windows, and fallback when no readable lateral orbit exists.
+- Focused tests: `tests/flesh_raptor_test.cpp` covers variant footing, lateral-over-straight scoring, crowding preference, cadence/hysteresis, corridor fallback, live `monster::plan()` consumption for `mon_spawn_raptor`, and preservation of a non-raptor `HIT_AND_RUN` monster.
+
+Green gate:
+- `make -j4 tests/flesh_raptor_test.o tests src/flesh_raptor_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[flesh_raptor]"` -> `All tests passed (61 assertions in 7 test cases)`.
+- `git diff --check` -> clean.
+- `make astyle-diff LINTJSON=0 ASTYLE=0` could not run because `astyle` is not installed on this host.
+
+Remaining validation burden:
+- Live/playtest rows should report orbit turns, swoop cadence, hit/equipment-damage events, player counterplay outcome, warnings/errors, and turn-time cost.
+- Existing JSON/load is indirectly covered by focused test data load; rerun a broader load/check only if raptor JSON changes or startup/load becomes suspicious.
 - Do not widen into writhing-stalker zombie-shadow, anti-redundancy refactors, eigenspectres, global `HIT_AND_RUN` rewrite, or equipment-damage difficulty tuning by drift.
 
 ### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0

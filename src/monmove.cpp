@@ -26,6 +26,7 @@
 #include "enums.h"
 #include "field.h"
 #include "field_type.h"
+#include "flesh_raptor_ai.h"
 #include "game.h"
 #include "item.h"
 #include "line.h"
@@ -97,6 +98,13 @@ static const itype_id itype_pressurized_tank( "pressurized_tank" );
 
 static const material_id material_iflesh( "iflesh" );
 
+static const mtype_id mon_fungal_raptor( "mon_fungal_raptor" );
+static const mtype_id mon_spawn_raptor( "mon_spawn_raptor" );
+static const mtype_id mon_spawn_raptor_dusted( "mon_spawn_raptor_dusted" );
+static const mtype_id mon_spawn_raptor_electric( "mon_spawn_raptor_electric" );
+static const mtype_id mon_spawn_raptor_fungalize( "mon_spawn_raptor_fungalize" );
+static const mtype_id mon_spawn_raptor_shady( "mon_spawn_raptor_shady" );
+static const mtype_id mon_spawn_raptor_unstable( "mon_spawn_raptor_unstable" );
 static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 
@@ -513,6 +521,129 @@ bool monster::mating_angry() const
         }
     }
     return mating_angry;
+}
+
+static bool is_flesh_raptor( const monster &raptor )
+{
+    return raptor.type->id == mon_spawn_raptor || raptor.type->id == mon_spawn_raptor_shady ||
+           raptor.type->id == mon_spawn_raptor_unstable ||
+           raptor.type->id == mon_spawn_raptor_electric ||
+           raptor.type->id == mon_spawn_raptor_dusted ||
+           raptor.type->id == mon_spawn_raptor_fungalize ||
+           raptor.type->id == mon_fungal_raptor;
+}
+
+static int flesh_raptor_orbit_crowding( const monster &raptor, const Creature &target,
+                                        const tripoint_bub_ms &candidate )
+{
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    const int candidate_x = candidate.x() - target_pos.x();
+    const int candidate_y = candidate.y() - target_pos.y();
+    int crowding = 0;
+
+    for( const monster &other : g->all_monsters() ) {
+        if( &other == &raptor ) {
+            continue;
+        }
+        const int other_distance = rl_dist( other.pos_bub(), target_pos );
+        if( other_distance > 7 ) {
+            continue;
+        }
+        const int other_x = other.pos_bub().x() - target_pos.x();
+        const int other_y = other.pos_bub().y() - target_pos.y();
+        if( candidate_x * other_x + candidate_y * other_y > 0 ) {
+            ++crowding;
+        }
+        if( rl_dist( other.pos_bub(), candidate ) <= 2 ) {
+            crowding += 2;
+        }
+    }
+
+    return crowding;
+}
+
+static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &target )
+{
+    if( !is_flesh_raptor( raptor ) || target.posz() != raptor.posz() || !raptor.sees( here, target ) ) {
+        return false;
+    }
+
+    const int distance_to_target = rl_dist( raptor.pos_bub(), target.pos_bub() );
+    if( distance_to_target <= 1 && !raptor.has_effect( effect_run ) ) {
+        return false;
+    }
+
+    std::vector<flesh_raptor::orbit_candidate> candidates;
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    const tripoint_bub_ms raptor_pos = raptor.pos_bub();
+    const bool has_held_destination = raptor.wandf > 0;
+    const tripoint_bub_ms held_destination = has_held_destination ? here.get_bub( raptor.wander_pos ) :
+                                                raptor_pos;
+    creature_tracker &creatures = get_creature_tracker();
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( target_pos, 6 ) ) {
+        if( candidate.z() != raptor.posz() || !here.inbounds( candidate ) ) {
+            continue;
+        }
+        const int candidate_distance = rl_dist( candidate, target_pos );
+        if( candidate_distance < 4 || candidate_distance > 6 ) {
+            continue;
+        }
+        if( !raptor.can_move_to( candidate ) ) {
+            continue;
+        }
+        const Creature *occupant = creatures.creature_at( candidate, true );
+        if( occupant != nullptr && occupant != &raptor ) {
+            continue;
+        }
+        candidates.push_back( flesh_raptor::orbit_candidate{ candidate.x() - target_pos.x(),
+                              candidate.y() - target_pos.y(), candidate_distance,
+                              rl_dist( raptor_pos, candidate ),
+                              flesh_raptor_orbit_crowding( raptor, target, candidate ),
+                              has_held_destination && held_destination == candidate,
+                              "" } );
+    }
+
+    const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    const int cadence_phase = std::abs( current_turn + raptor.pos_abs().x() + raptor.pos_abs().y() ) % 6;
+    const flesh_raptor::orbit_context ctx{ raptor_pos.x() - target_pos.x(),
+                                           raptor_pos.y() - target_pos.y(),
+                                           distance_to_target,
+                                           raptor.has_effect( effect_run ) || distance_to_target < 4,
+                                           cadence_phase };
+    const auto perf_started = std::chrono::steady_clock::now();
+    const flesh_raptor::orbit_response response = flesh_raptor::choose_orbit_destination( ctx,
+            candidates );
+    const auto perf_done = std::chrono::steady_clock::now();
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
+                            perf_started ).count();
+
+    DebugLog( D_INFO, DC_ALL ) << "flesh_raptor live_plan: decision="
+                               << ( response.next == flesh_raptor::decision::orbit ? "orbit" :
+                                    response.next == flesh_raptor::decision::swoop ? "swoop" : "fallback" )
+                               << " reason=" << response.reason
+                               << " distance=" << distance_to_target
+                               << " candidates=" << candidates.size()
+                               << " score=" << response.score
+                               << " run=" << ( raptor.has_effect( effect_run ) ? "yes" : "no" )
+                               << " held=" << ( has_held_destination ? "yes" : "no" )
+                               << " eval_us=" << elapsed_us << '\n';
+
+    if( response.next == flesh_raptor::decision::fallback ) {
+        return false;
+    }
+    if( response.next == flesh_raptor::decision::swoop ) {
+        raptor.set_dest( target.pos_abs() );
+        return true;
+    }
+
+    const tripoint_bub_ms orbit_destination = target_pos + point( response.chosen.rel_x,
+                                             response.chosen.rel_y );
+    const tripoint_abs_ms orbit_destination_abs = here.get_abs( orbit_destination );
+    raptor.set_dest( orbit_destination_abs );
+    raptor.wander_pos = orbit_destination_abs;
+    raptor.wandf = std::max( raptor.wandf, 3 );
+    return true;
 }
 
 static bool writhing_stalker_bright_exposure( const map &here, const tripoint_bub_ms &pos )
@@ -1087,6 +1218,9 @@ void monster::plan()
             return;
         }
         if( apply_zombie_rider_plan( *this, here, *mon_plan.target ) ) {
+            return;
+        }
+        if( apply_flesh_raptor_plan( *this, here, *mon_plan.target ) ) {
             return;
         }
 
