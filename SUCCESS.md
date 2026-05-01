@@ -130,7 +130,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / ITEM ENCUMBRANCE API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / WORKER WEARABILITY API GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
@@ -138,6 +138,7 @@ Success state:
 - [x] Carried cleanup still dumps only safe non-kept baggage and preserves worn/wielded items plus kept ammo/magazine/medical/insert supplies.
 - [x] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
 - [x] Live clothing/armor scoring uses the worker fit context through `item::get_avg_encumber()` for encumbrance penalties, while no-context helper calls keep the prior fallback.
+- [x] Live worn-slot candidate collection uses `Character::can_wear(..., true)` to filter worker-specific unwearable armor/clothing before camp scoring/planning, while no-worker helper classification stays stable.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 
 Canonical docs:
