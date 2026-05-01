@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / WEAPON SCORING API GREEN**.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / WORKER RELOAD API GREEN**.
 
 `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the new named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
 
@@ -13,7 +13,7 @@
 
 ## Next executor target
 
-Continue after the green coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item encumbrance, worker-wearability, service live-state reuse, weapon-wieldability, `item::is_gun()` ranged-classification, `item::is_armor()` armor-classification, and worker-context `Character::evaluate_weapon()` weapon-scoring API checkpoints:
+Continue after the green coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item encumbrance, worker-wearability, service live-state reuse, weapon-wieldability, `item::is_gun()` ranged-classification, `item::is_armor()` armor-classification, worker-context `Character::evaluate_weapon()` weapon-scoring, and worker-context `Character::can_reload()` ammo-readiness API checkpoints:
 
 1. Do not repeat the green seams unless the next change touches them again.
 2. Inspect the remaining camp locker seams: scoring/readiness edges and any leftover cleanup checks that still duplicate engine ontology.
