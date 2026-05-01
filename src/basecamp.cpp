@@ -292,7 +292,7 @@ int average_armor_encumber(const item &it) {
 }
 
 int average_armor_coverage(const item &it) {
-  return average_armor_portion_stat(it, &armor_portion_data::coverage);
+  return it.get_avg_coverage();
 }
 
 units::volume utility_storage_capacity(const item &it) {
