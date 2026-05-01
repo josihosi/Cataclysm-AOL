@@ -27,12 +27,21 @@ Shift the writhing stalker away from hit-and-dash and toward a zombie-shadow att
 
 ## Success state
 
-- [ ] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
-- [ ] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
-- [ ] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
-- [ ] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
-- [ ] Live/playtest rows prove at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario.
-- [ ] Metrics include zombie-pressure side, chosen quiet-side/cutoff tile, confidence reasons, strike timing, counterplay outcome, turn-time cost, warnings/errors, and player fun/fairness notes.
+- [x] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
+- [x] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
+- [x] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
+- [x] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
+- [x] Live/playtest rows prove at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, scoped to local-evidence-only live footing.
+- [x] Metrics include zombie-pressure side, chosen quiet-side/cutoff tile, confidence reasons, strike timing, counterplay outcome, turn-time cost, warnings/errors, and player fun/fairness notes, with the live overmap-interest caveat preserved.
+
+## Current proof checkpoint
+
+- Deterministic footing: focused `[writhing_stalker]` tests are green for confidence components, quiet-side/cutoff choice, split-pressure ambiguity, pressure gating, overmap-interest helper admission, and light/focus/open-exposure suppression.
+- First staged-but-live row: `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/`; proof note `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`.
+- Second staged-but-live row: `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/`; proof note `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
+- Scope caveat: both live rows are local-evidence-only and explicitly log `overmap_interest=no`; they do not claim live overmap-interest footing.
+- Decisive bridges: live `zombie_pressure=3` / `pressure_x=3` maps to `quiet_x=-1` and first matched `chosen_rel_x=-1`, `chosen_rel_y=-4`; live `zombie_pressure=3` / `pressure_y=-3` maps to `quiet_y=1` and first matched `chosen_rel_y=4`. Both bridges come from the live shadow-destination path, not from confidence-total logs alone.
+- Closure caveat: v0 proves local-evidence zombie-shadow behavior. Live overmap-interest wiring/logging remains unclaimed unless a later packet promotes it.
 
 ## Targeted tests
 

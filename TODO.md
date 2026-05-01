@@ -14,9 +14,10 @@ Active: `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0`.
 
 Current narrow slice: staged-but-live zombie-shadow rows for the stalker product-behavior package.
 
-Deterministic footing is green: confidence components, quiet-side/cutoff candidate preference, split-pressure restraint, retreat-route cutoff bias, zombie-pressure gating, and light/focus/open-exposure suppression are covered by focused `[writhing_stalker]` tests.
+Deterministic footing is green. Both scoped live rows are green and explicitly local-evidence-only:
+- `writhing_stalker.live_quiet_side_zombie_pressure_mcw` proves east/front zombie pressure -> west/quiet-side cutoff from the live shadow-destination path, with `overmap_interest=no` logged.
+- `writhing_stalker.live_escape_side_zombie_retreat_mcw` proves a southward retreat from north/front zombie pressure -> south/escape-side cutoff from the live shadow-destination path, with `overmap_interest=no` logged.
 
-1. Add the first staged-but-live row where ordinary zombies pressure one side/front of the player and the stalker selects/appears from the quiet side or back route, with confidence and chosen-cutoff metrics in the log/artifacts.
-2. Add the second staged-but-live row where the player retreats/runs from zombie pressure and the stalker occupies a readable escape-side/cutoff tile.
-3. Preserve no-omniscience, cooldown anti-spam, injured retreat, and old closed writhing-stalker green behavior unless the active packet explicitly changes it.
-4. Do not start anti-redundancy cleanup, eigenspectre work, global `HIT_AND_RUN` rewrites, or extra flesh-raptor rows by drift.
+1. Closure-review the scoped v0 state; do not claim live overmap-interest footing.
+2. Preserve no-omniscience, cooldown anti-spam, injured retreat, and old closed writhing-stalker green behavior unless the active packet explicitly changes it.
+3. Do not start anti-redundancy cleanup, eigenspectre work, global `HIT_AND_RUN` rewrites, or extra flesh-raptor rows by drift.

@@ -780,6 +780,21 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
 
     const writhing_stalker::quiet_candidate_report cutoff =
         writhing_stalker::choose_quiet_side_cutoff( zombies, candidates );
+    DebugLog( D_INFO, DC_ALL ) << "writhing_stalker quiet_cutoff:"
+                               << " pressure_x=" << cutoff.pressure.pressure_x
+                               << " pressure_y=" << cutoff.pressure.pressure_y
+                               << " pressure_count=" << cutoff.pressure.pressure_count
+                               << " dominant=" << ( cutoff.pressure.has_dominant_pressure ? "yes" : "no" )
+                               << " ambiguous=" << ( cutoff.pressure.ambiguous_pressure ? "yes" : "no" )
+                               << " quiet_x=" << cutoff.pressure.quiet_x
+                               << " quiet_y=" << cutoff.pressure.quiet_y
+                               << " has_candidate=" << ( cutoff.has_candidate ? "yes" : "no" )
+                               << " chosen_rel_x=" << ( cutoff.has_candidate ? cutoff.chosen.rel_x : 0 )
+                               << " chosen_rel_y=" << ( cutoff.has_candidate ? cutoff.chosen.rel_y : 0 )
+                               << " score=" << cutoff.score
+                               << " quiet_alignment=" << cutoff.quiet_alignment
+                               << " crowding_penalty=" << cutoff.crowding_penalty
+                               << " reason=" << cutoff.reason << '\n';
     if( cutoff.has_candidate ) {
         found = true;
         return here.get_abs( target_pos + point( cutoff.chosen.rel_x, cutoff.chosen.rel_y ) );
@@ -845,6 +860,7 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " opportunity=" << response.opportunity
                                << " confidence=" << response.confidence
                                << " evidence=" << ( ctx.has_believable_local_evidence ? "yes" : "no" )
+                               << " overmap_interest=" << ( ctx.has_overmap_interest_footing ? "yes" : "no" )
                                << " distance=" << ctx.distance_to_target
                                << " zombie_pressure=" << ctx.zombie_pressure
                                << " target_bright=" << ( ctx.target_in_bright_exposure ? "yes" : "no" )

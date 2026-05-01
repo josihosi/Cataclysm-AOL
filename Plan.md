@@ -137,7 +137,7 @@ Boundary: staged-but-live McWilliams rows are not natural random discovery. Equi
 
 ## Active lane — CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 
-**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / DETERMINISTIC ZOMBIE-PRESSURE FOOTING GREEN / LIVE ROWS NEXT
+**Status:** ACTIVE / GREENLIT / PREDATOR VARIETY PACKAGE / BOTH SCOPED LIVE ROWS GREEN / CLOSURE REVIEW NEXT
 
 Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. Flesh raptor circling is now closed green v0; the remaining predator-behavior package is the stalker zombie-shadow predator shift.
 
@@ -147,7 +147,7 @@ Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
 
 Goal: shift the stalker into a zombie-shadow attention predator: overmap light interest plus honest local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not, while preserving no-omniscience, light/focus/open-exposure counterplay, cooldown, and injured retreat.
 
-Current checkpoint: deterministic zombie-shadow footing is green. `src/writhing_stalker_ai.*` now separates confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and light/focus/open-exposure counterpressure; the live shadow destination consumes the quiet-side cutoff scorer. Focused `[writhing_stalker]` tests prove pressure-side scoring, ambiguous split-pressure restraint, retreat-route cutoff bias, pressure gating, and light/focus suppression. Next honest state is staged-but-live rows for “fighting zombies, stalker appears on quiet side/back route” and “running from zombies, stalker blocks/cuts off escape side”.
+Current checkpoint: deterministic zombie-shadow footing is green, and both scoped staged-but-live rows are green. `src/writhing_stalker_ai.*` now separates confidence components for evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and light/focus/open-exposure counterpressure; the live shadow destination consumes the quiet-side cutoff scorer. Focused `[writhing_stalker]` tests prove pressure-side scoring, ambiguous split-pressure restraint, retreat-route cutoff bias, pressure gating, and light/focus suppression. `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the local-evidence-only live path from east/front zombie pressure (`pressure_x=3`) to a west/quiet-side cutoff tile (`quiet_x=-1`, `chosen_rel_x=-1`, `chosen_rel_y=-4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`. `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/` proves the local-evidence-only retreat row from north/front zombie pressure (`pressure_y=-3`) to a south/escape-side cutoff tile (`quiet_y=1`, `chosen_rel_y=4`) with `overmap_interest=no`; proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`. Next honest state is closure review, not anti-redundancy drift.
 
 Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make zombie proximity a magical target buff, and do not give the stalker omniscient backstab magic. If this product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
 

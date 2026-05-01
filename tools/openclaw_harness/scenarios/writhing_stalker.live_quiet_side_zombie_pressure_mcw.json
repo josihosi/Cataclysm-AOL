@@ -1,0 +1,148 @@
+{
+  "name": "writhing_stalker.live_quiet_side_zombie_pressure_mcw",
+  "description": "Live local-evidence zombie-shadow row: zombies pressure the east/front side and the stalker shadow destination chooses a west/quiet-side cutoff tile. This row deliberately does not claim overmap-interest footing.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_stalker_quiet_side_zombie_pressure_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "overmap_interest=no",
+    "zombie_pressure=3",
+    "writhing_stalker quiet_cutoff:",
+    "pressure_x=3",
+    "quiet_x=-1",
+    "chosen_rel_x=-"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_quiet_side_zombie_pressure_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "vulnerable-midnight local-evidence stalker plus east-side zombie-pressure fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_before_quiet_side_pressure",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_time_setup_missing",
+      "abort_reason": "installed save did not prove expected midnight before quiet-side zombie-pressure window",
+      "expected_visible_fact": "saved turn proves local midnight before quiet-side zombie-pressure window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_monsters_before_quiet_side_pressure",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            8,
+            0,
+            0
+          ]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            3,
+            0,
+            0
+          ]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            4,
+            1,
+            0
+          ]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            4,
+            -1,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required local-evidence stalker plus east-side zombie-pressure footing",
+      "expected_visible_fact": "saved active_monsters proves stalker plus east-side ordinary zombies before live window"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_quiet_side_pressure",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_quiet_side_zombie_pressure_window",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "overmap_interest=no",
+        "zombie_pressure=3",
+        "writhing_stalker quiet_cutoff:",
+        "pressure_x=3",
+        "quiet_x=-1",
+        "has_candidate=yes",
+        "chosen_rel_x=-",
+        "reason=quiet_side_cutoff_preferred"
+      ],
+      "expected_visible_fact": "bounded live turn window runs from local evidence and selects a quiet-side cutoff opposite the east zombie pressure"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_quiet_side_pressure_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=shadow",
+          "evidence=yes",
+          "overmap_interest=no",
+          "zombie_pressure=3",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker quiet_cutoff:",
+          "pressure_x=3",
+          "pressure_count=3",
+          "dominant=yes",
+          "quiet_x=-1",
+          "has_candidate=yes",
+          "chosen_rel_x=-",
+          "quiet_alignment=1",
+          "reason=quiet_side_cutoff_preferred"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_audit_writhing_stalker_quiet_side_pressure_missing",
+      "abort_reason": "same-run artifact lacked local-evidence live_plan plus quiet_cutoff lines proving east zombie-pressure side maps to a west/quiet-side cutoff tile",
+      "expected_visible_fact": "same-run debug artifact proves the actual live shadow-destination path chose the quiet side from local evidence; overmap interest is explicitly not claimed"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_quiet_side_zombie_pressure_mcw",
+  "evidence_contract": {
+    "claim": "local-evidence-only zombie pressure from the east/front side feeds the live shadow-destination path and chooses a west/quiet-side cutoff tile",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker zombie-shadow live behavior",
+    "scope_note": "This first live row deliberately does not prove overmap-interest footing; live_context currently leaves has_overmap_interest_footing false and still requires local evidence before response.",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}

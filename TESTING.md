@@ -121,13 +121,18 @@ Credited deterministic footing:
 - Focused tests in `tests/writhing_stalker_test.cpp` prove east-side zombie pressure prefers west/quiet-side shadow candidate, split east/west pressure avoids fake precision, retreat-route bias can choose a consistent quiet cutoff, zombie pressure is ignored without local evidence or overmap-interest footing, overmap-interest footing can admit pressure confidence, and light/focus/open exposure suppresses cutoff confidence.
 - Preservation tests still cover no-evidence/no-magic targetlessness, cooldown anti-spam, light/focus withdrawal, injured retreat, repeated strike rhythm, and old monster/spawn footing.
 
+Credited staged-but-live rows:
+- `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the scoped local-evidence-only first live row: `overmap_interest=no`, `zombie_pressure=3`, east/front pressure (`pressure_x=3`) maps through the live shadow-destination path to west/quiet-side cutoff (`quiet_x=-1`, first matched `chosen_rel_x=-1`, `chosen_rel_y=-4`, reason `quiet_side_cutoff_preferred`). Proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`.
+- `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/` proves the scoped local-evidence-only retreat row: after southward retreat input, `overmap_interest=no`, `zombie_pressure=3`, north/front pressure (`pressure_y=-3`) maps through the live shadow-destination path to south/escape-side cutoff (`quiet_y=1`, first matched `chosen_rel_y=4`, reason `quiet_side_cutoff_preferred`). Proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
+
 Green gates:
 - `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (135 assertions in 12 test cases)`.
 - `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (167 assertions in 14 test cases)`.
 
 Current validation burden:
 - Deterministic zombie-pressure / quiet-side footing is green.
-- Live rows are next: at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, with confidence reasons, chosen quiet-side/cutoff tile, strike timing, counterplay outcome, turn-time cost, warnings/errors, and fun/fairness notes.
+- Both scoped live rows are green and explicitly **do not** claim overmap-interest footing.
+- Closure review caveat: v0 proves local-evidence live zombie-shadow behavior; live overmap-interest wiring/logging remains unclaimed unless a later packet promotes it.
 - Preserve old closed writhing-stalker constraints unless explicitly changed by this packet: no omniscience, no zombie-proximity magic target acquisition, cooldown anti-spam, light/focus counterplay, and injured retreat.
 - Do not widen into anti-redundancy cleanup, eigenspectres, global attack-and-retreat rewrites, or extra flesh-raptor proof rows by drift.
 
