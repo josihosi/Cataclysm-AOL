@@ -47,7 +47,7 @@ Do not repeat these seams unless a later change touches them again:
 
 1. Inspect remaining camp locker scoring/readiness and cleanup seams for local ontology that still duplicates existing item, wearability, body coverage, reload, and zone APIs.
 2. Pick the smallest refactor that removes duplicate ontology while preserving camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
-3. Keep unresolved quality feedback identifiers visible until resolved or explicitly retired: `basecamp.h:116`, `basecamp.h:122`, `basecamp.h:169`.
+3. Do not chase the retired quality-feedback line ids inside this camp-locker package: source inspection showed `basecamp.h:116` / `basecamp.h:122` are legacy basecamp resource/fuel `ammo_id` fields, and `basecamp.h:169` is the LLM craft-request `blockers` vector, not camp locker equipment API ontology.
 4. After code changes, run the focused faction/basecamp/camp-locker gate identified by the audit.
 
 ## Non-goals/cautions
