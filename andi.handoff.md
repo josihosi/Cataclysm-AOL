@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / RANGED AMMO-STATE API GREEN**.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / SERVICE LIVE-STATE REUSE GREEN**.
 
 `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
 
@@ -24,7 +24,7 @@ Do not repeat these seams unless a later change touches them again:
 - direct subpart `item::covers( sub_bodypart_id, false )` coverage reduction
 - live worker-fit `item::get_avg_encumber()` scoring reduction
 - live worker-wearability `Character::can_wear( ..., true )` candidate filtering
-- shared `collect_camp_locker_live_state()` pre-pass reduction
+- shared `collect_camp_locker_live_state()` pre-pass and post-service summary reduction
 - live weapon-wieldability `Character::can_wield()` candidate filtering
 - ranged classification `item::is_gun()` reduction
 - armor classification `item::is_armor()` reduction
