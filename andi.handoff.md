@@ -2,24 +2,46 @@
 
 ## Current canon state
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / WORKER RELOAD API GREEN**.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MANAGED RANGED HELPER API GREEN**.
 
-`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the new named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
+`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
 
 ## Canonical packet
 
 - Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`
 - Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`
 
+## Green checkpoints already consumed
+
+Do not repeat these seams unless a later change touches them again:
+
+- coverage-helper API reduction
+- zone-boundary / `NO_NPC_PICKUP` collection reduction
+- medical-readiness `heal_actor` metadata reduction
+- carried ranged-readiness `Character::find_ammo()` discovery reduction
+- average-coverage `item::get_avg_coverage()` scoring reduction
+- worker-item / cleanup enumeration `items_with()` reduction
+- direct subpart `item::covers( sub_bodypart_id, false )` coverage reduction
+- live worker-fit `item::get_avg_encumber()` scoring reduction
+- live worker-wearability `Character::can_wear( ..., true )` candidate filtering
+- shared `collect_camp_locker_live_state()` pre-pass reduction
+- live weapon-wieldability `Character::can_wield()` candidate filtering
+- ranged classification `item::is_gun()` reduction
+- armor classification `item::is_armor()` reduction
+- live weapon scoring `Character::evaluate_weapon( ..., true )` reduction
+- worker-context reload viability `Character::can_reload()` reduction
+- reload-supply ammo-state `item::ammo_remaining()` reduction
+- magazine preference `item::ammo_capacity()` reduction
+- ranged readiness/reloadability-gate reduction through `item::can_reload_with()` / `Character::can_reload()`
+- empty-magazine fallback `item::ammo_default()` reduction
+- managed-ranged readiness helper `item::is_gun()` reduction
+
 ## Next executor target
 
-Continue after the green coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item encumbrance, worker-wearability, service live-state reuse, weapon-wieldability, `item::is_gun()` ranged-classification, `item::is_armor()` armor-classification, worker-context `Character::evaluate_weapon()` weapon-scoring, and worker-context `Character::can_reload()` ammo-readiness API checkpoints:
-
-1. Do not repeat the green seams unless the next change touches them again.
-2. Inspect the remaining camp locker seams: scoring/readiness edges and any leftover cleanup checks that still duplicate engine ontology.
-3. Map each duplicate check against existing item, wearability, body coverage, reload, and zone APIs.
-4. Pick the smallest refactor that removes duplicate ontology while preserving camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
-5. After code changes, run the focused faction/basecamp/camp-locker gate identified by the audit.
+1. Inspect remaining camp locker scoring/readiness and cleanup seams for local ontology that still duplicates existing item, wearability, body coverage, reload, and zone APIs.
+2. Pick the smallest refactor that removes duplicate ontology while preserving camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
+3. Keep unresolved quality feedback identifiers visible until resolved or explicitly retired: `basecamp.h:116`, `basecamp.h:122`, `basecamp.h:169`.
+4. After code changes, run the focused faction/basecamp/camp-locker gate identified by the audit.
 
 ## Non-goals/cautions
 
