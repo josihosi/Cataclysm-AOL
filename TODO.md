@@ -14,8 +14,8 @@ Active: `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0`.
 
 Current narrow slice: camp-locker API-reduction audit/refactor, after the first coverage-helper reduction.
 
-1. Continue auditing remaining local camp locker ontology: item classification/scoring edges, carried cleanup, ammo/magazine readiness, and zone item collection against existing item, wearability, reload, and zone APIs.
-2. Identify the next smallest honest refactor that preserves camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries.
+1. Continue auditing remaining local camp locker ontology: item classification/scoring edges, carried cleanup, and ammo/magazine readiness against existing item, wearability, reload, and zone APIs.
+2. Identify the next smallest honest refactor that preserves camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries. The `NO_NPC_PICKUP` zone collection boundary is green; do not repeat it unless later changes touch locker-zone gathering again.
 3. After each code change, run the narrow focused faction/basecamp/camp-locker gate named by the audit; do not broaden into basecamp mission redesign or Smart Zone work.
 4. Keep unresolved quality feedback identifiers visible for the next checkpoint: `basecamp.h:116`, `basecamp.h:122`, `basecamp.h:169`.
 5. Do not start bandit-signal, eigenspectre, flesh-raptor, zombie-rider, or product-tuning work by drift.

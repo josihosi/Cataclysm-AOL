@@ -183,7 +183,7 @@ Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
 
 Goal: keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, body coverage, reload, and zone APIs. Camp-specific policy stays explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries.
 
-Current checkpoint: first narrow code step replaces camp-locker-local body/sub-body coverage loops with existing item coverage APIs while preserving the camp-specific slot policy. Focused camp-locker gate is green. Next honest step is to continue the audit/refactor pass on remaining local ontology: classification/scoring edges, carried cleanup, ammo/magazine readiness, and zone item collection.
+Current checkpoint: first narrow code step replaces camp-locker-local body/sub-body coverage loops with existing item coverage APIs while preserving the camp-specific slot policy. Second narrow code step makes camp locker item gathering respect the existing `NO_NPC_PICKUP` zone API before treating a `CAMP_LOCKER` tile as candidate stock. Focused camp-locker gate is green. Next honest step is to continue the audit/refactor pass on remaining local ontology: classification/scoring edges, carried cleanup, and ammo/magazine readiness.
 
 Boundary: cleanup/refactor only. Do not redesign basecamp missions, Smart Zones, general NPC equipment selection, or outfit tuning by drift.
 

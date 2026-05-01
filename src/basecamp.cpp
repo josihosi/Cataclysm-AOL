@@ -55,6 +55,7 @@ static const flag_id json_flag_PSEUDO("PSEUDO");
 static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
 static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
 static const zone_type_id zone_type_CAMP_PATROL("CAMP_PATROL");
+static const zone_type_id zone_type_NO_NPC_PICKUP("NO_NPC_PICKUP");
 
 static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
 
@@ -1392,6 +1393,9 @@ static std::vector<const item *> collect_camp_locker_zone_items(
   for (const tripoint_abs_ms &tile : locker_tiles) {
     const tripoint_bub_ms local = here.get_bub(tile);
     if (!here.inbounds(local)) {
+      continue;
+    }
+    if (g->check_zone(zone_type_NO_NPC_PICKUP, local)) {
       continue;
     }
     if (probe != nullptr) {

@@ -118,9 +118,10 @@ Closure verdict: Frau accepted v0 for agent-side close with staged-but-live cave
 
 Current validation burden:
 - First coverage-helper reduction is green: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
-- Continue auditing remaining camp locker classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection against existing item, wearability, reload, and zone APIs.
+- Zone-boundary reduction is green: `collect_camp_locker_zone_items` now defers the pickup boundary to the existing `NO_NPC_PICKUP` zone API before considering `CAMP_LOCKER` stock; `camp_locker_zone_candidate_gathering` covers the overlapped-zone regression; `./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
+- Continue auditing remaining camp locker classification/scoring, carried cleanup, and ammo/magazine readiness against existing item, wearability, reload, and zone APIs.
 - Any code refactor must preserve camp locker policy behavior: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
-- Targeted tests should continue to cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and `CAMP_STORAGE` / `NO_NPC_PICKUP` boundaries.
+- Targeted tests should continue to cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and any newly touched `CAMP_STORAGE` / `NO_NPC_PICKUP` boundary behavior.
 - Do not claim basecamp mission redesign, Smart Zone redesign, or outfit tuning from this cleanup unless separately promoted and proven.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0

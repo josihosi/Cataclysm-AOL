@@ -115,6 +115,7 @@ static const zone_type_id zone_type_CAMP_FOOD("CAMP_FOOD");
 static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
 static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
 static const zone_type_id zone_type_CAMP_PATROL("CAMP_PATROL");
+static const zone_type_id zone_type_NO_NPC_PICKUP("NO_NPC_PICKUP");
 
 static std::string find_snapshot_line(const std::string &snapshot,
                                       const std::string &prefix) {
@@ -398,12 +399,17 @@ TEST_CASE("camp_locker_zone_candidate_gathering", "[camp][locker]") {
   map &here = get_map();
   const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{5, 5, 0});
   const tripoint_abs_ms offzone_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_abs_ms blocked_abs = here.get_abs(tripoint_bub_ms{7, 5, 0});
   const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
   const tripoint_bub_ms offzone_local = here.get_bub(offzone_abs);
+  const tripoint_bub_ms blocked_local = here.get_bub(blocked_abs);
 
   create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  create_tile_zone("Blocked locker", zone_type_CAMP_LOCKER, blocked_abs);
+  create_tile_zone("No NPC pickup", zone_type_NO_NPC_PICKUP, blocked_abs);
   here.i_clear(locker_local);
   here.i_clear(offzone_local);
+  here.i_clear(blocked_local);
   here.add_item_or_charges(locker_local, item(itype_sneakers));
   here.add_item_or_charges(locker_local, item(itype_gloves_leather));
   here.add_item_or_charges(locker_local, item(itype_mask_dust));
@@ -412,6 +418,7 @@ TEST_CASE("camp_locker_zone_candidate_gathering", "[camp][locker]") {
   here.add_item_or_charges(locker_local, item(itype_backpack));
   here.add_item_or_charges(locker_local, item(itype_glock_19));
   here.add_item_or_charges(offzone_local, item(itype_helmet_bike));
+  here.add_item_or_charges(blocked_local, item(itype_helmet_army));
 
   basecamp test_camp("Locker Camp", project_to<coords::omt>(locker_abs));
   test_camp.set_locker_slot_enabled(camp_locker_slot::belt, false);
