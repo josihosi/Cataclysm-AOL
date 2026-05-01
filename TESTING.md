@@ -258,7 +258,7 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item-encumbrance, worker-wearability, and service live-state reuse reductions.
+Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item-encumbrance, worker-wearability, service live-state reuse, and weapon-wieldability reductions.
 
 Required remaining audit questions:
 - Which item classification/scoring, carried cleanup, and ranged ammo/magazine readiness checks are duplicate engine ontology rather than camp policy?
