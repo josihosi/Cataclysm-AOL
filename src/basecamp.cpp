@@ -844,8 +844,7 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (it.is_gun()) {
     return camp_locker_slot::ranged_weapon;
   }
-  const islot_armor *armor = it.find_armor_data();
-  if (armor == nullptr) {
+  if (!it.is_armor()) {
     if (it.is_holster()) {
       return camp_locker_slot::holster;
     }
