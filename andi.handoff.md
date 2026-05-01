@@ -37,6 +37,9 @@ Do not repeat these seams unless a later change touches them again:
 - managed-ranged readiness helper `item::is_gun()` reduction
 - ablative-insert compatibility reduction
 - ranged ammo-state readiness `item::has_ammo()` reduction
+- shared camp storage/locker `zone_manager::get_near()` tile collection reduction
+- outer-layer classification `item::has_layer( { layer_level::OUTER } )` reduction
+- final worn-slot equip validation through `Character::wear_item()` reduction
 
 ## Next executor target
 
