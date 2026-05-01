@@ -1809,19 +1809,7 @@ static bool is_camp_locker_managed_ranged_weapon(const item &it,
 }
 
 static int camp_locker_magazine_total_capacity(const item &magazine) {
-  const itype *capacity_ammo = magazine.ammo_data();
-  if (capacity_ammo == nullptr) {
-    const itype_id default_ammo = magazine.ammo_default();
-    if (default_ammo.is_null()) {
-      return 0;
-    }
-    capacity_ammo = item::find_type(default_ammo);
-  }
-  if (capacity_ammo == nullptr || !capacity_ammo->ammo) {
-    return 0;
-  }
-
-  return magazine.ammo_capacity(capacity_ammo->ammo->type);
+  return magazine.ammo_remaining() + magazine.remaining_ammo_capacity();
 }
 
 static bool is_better_camp_locker_magazine(const item &lhs, const item &rhs) {
