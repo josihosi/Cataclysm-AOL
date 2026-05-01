@@ -148,6 +148,7 @@ Success state:
 - [x] Locker reload supply selection uses `item::ammo_remaining()` instead of ammo-only `charges`, allowing reload-compatible loaded speedloaders/supplies to ready weapons through existing reload APIs.
 - [x] Compatible magazine preference uses `item::ammo_capacity()` with loaded/available ammo type instead of camp-local remaining-capacity arithmetic, so empty magazine ranking follows existing item capacity APIs.
 - [x] Managed ranged-readiness recognition asks existing `item::is_gun()` directly instead of re-entering camp locker classification, while enabled-slot policy stays explicit.
+- [x] Ranged readiness ready/loaded checks use `item::has_ammo()` instead of local `ammo_remaining() > 0` / `<= 0` predicates, while camp policy still decides which magazines and reload supplies to move.
 - [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
 - [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
 

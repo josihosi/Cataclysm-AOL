@@ -1991,7 +1991,7 @@ static bool reload_camp_locker_target_from_zone(npc &worker,
 static item_location select_best_loaded_camp_locker_magazine(
     const std::vector<item_location> &magazines) {
   for (const item_location &magazine_loc : magazines) {
-    if (magazine_loc && magazine_loc->ammo_remaining() > 0) {
+    if (magazine_loc && magazine_loc->has_ammo()) {
       return magazine_loc;
     }
   }
@@ -2065,12 +2065,11 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
     const bool has_ready_magazine = std::any_of(
         selected_magazines.begin(), selected_magazines.end(),
         [](const item *magazine) {
-          return magazine != nullptr && magazine->ammo_remaining() > 0;
+          return magazine != nullptr && magazine->has_ammo();
         });
     const bool could_ready_magazine = has_ready_magazine ||
                                       readiness.magazines_to_reload > 0;
-    readiness.weapon_needs_reload =
-        weapon_loc->ammo_remaining() <= 0 && could_ready_magazine;
+    readiness.weapon_needs_reload = !weapon_loc->has_ammo() && could_ready_magazine;
   } else {
     readiness.weapon_needs_reload =
         select_best_camp_locker_ammo_candidate(locker_items, *weapon_loc,
@@ -2150,7 +2149,7 @@ static bool service_camp_locker_ranged_readiness(
           applied_changes;
     }
 
-    if (weapon_loc->ammo_remaining() <= 0) {
+    if (!weapon_loc->has_ammo()) {
       const item_location loaded_magazine =
           select_best_loaded_camp_locker_magazine(
               collect_camp_locker_compatible_magazine_locations(worker,
