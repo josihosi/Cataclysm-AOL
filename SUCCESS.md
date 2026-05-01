@@ -166,7 +166,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / MAGAZINE TOTAL-CAPACITY API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / BODY-PART OUTER-LAYER API GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
@@ -179,6 +179,7 @@ Success state:
 - [x] Live weapon-slot candidate collection uses `Character::can_wield()` to reject worker-specific unwieldable melee/ranged candidates while no-worker helper classification stays stable.
 - [x] Camp locker ranged-weapon classification defers to `item::is_gun()` instead of a firearm-only predicate, preserving primitive ranged weapons as item-owned ranged candidates.
 - [x] Camp locker armor/clothing classification defers its armor boundary to `item::is_armor()` instead of raw armor-slot lookup, preserving camp slot policy while respecting engine armor ontology.
+- [x] Camp locker outerwear/body-armor classification uses existing armor layer APIs, including the body-part-specific `item::has_layer(..., bodypart_id)` overload for torso/arm/leg outer-layer checks, instead of raw `OUTER` flags or global layer checks plus duplicate coverage gates.
 - [x] Live melee/ranged weapon scoring defers to `Character::evaluate_weapon(..., true)` when a worker fit context is available, while no-context helper calls retain the prior fallback scoring.
 - [x] Worker-context ammo readiness defers reload viability to `Character::can_reload()`, so engine-owned reload constraints such as ammo-belt linkages gate locker ammo readiness.
 - [x] Locker reload supply selection uses `item::ammo_remaining()` instead of ammo-only `charges`, allowing reload-compatible loaded speedloaders/supplies to ready weapons through existing reload APIs.
