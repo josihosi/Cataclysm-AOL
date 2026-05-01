@@ -112,17 +112,26 @@ Credited staged-but-live rows:
 
 Closure verdict: Frau accepted v0 for agent-side close with staged-but-live caveats. Optional Josef taste/playtest remains future-only and is not a blocker. No equipment-damage tuning changed; equipment damage remains an observational frustration metric.
 
-### Active validation target - CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
+### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is active after scoped zombie-shadow predator closure. Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is active after writhing-stalker seam-reduction closure. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
 Current validation burden:
-- Inventory checkpoint is recorded in `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
-- New seam-consumption proof: `writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam` sets up a live map, player, stalker, and east-side zombie pressure, calls `monster::plan()`, and requires a west/quiet-side destination. It fails if the live planner falls back to generic target beelining or stops consuming `writhing_stalker::choose_quiet_side_cutoff()`.
-- Any code refactor must preserve the approved zombie-shadow behavior shape and keep focused `[writhing_stalker]` tests green.
-- Do not claim tuning, new gameplay, or overmap-interest behavior from this refactor unless separately implemented and proven.
+- First step is an audit of `camp_locker_slot`, camp locker classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection against existing item, wearability, body coverage, reload, and zone APIs.
+- Any code refactor must preserve camp locker policy behavior: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
+- Targeted tests should cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and `CAMP_STORAGE` / `NO_NPC_PICKUP` boundaries. Name the exact focused gate after the audit finds the current test surface.
+- Do not claim basecamp mission redesign, Smart Zone redesign, or outfit tuning from this cleanup unless separately promoted and proven.
 
-Latest gate: `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`. Run `git diff --check` before checkpoint commit.
+### Closed validation receipt - CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
+
+`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Credited evidence:
+- Inventory checkpoint recorded the live path: `monster::plan()` target acquisition -> writhing-stalker evaluator/quiet-side scorer -> destination/effect side effects.
+- Seam-consumption proof `writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam` calls live `monster::plan()` and fails if the live planner stops consuming quiet-side cutoff behavior.
+- Source refactor in `src/monmove.cpp` routes writhing stalker / zombie rider / flesh raptor target-response planning through a named `targeted_live_plan_adapter` dispatch before the generic hostile/flee destination fallback. No behavior-tree or special-attack seam honestly owns this destination-planning response today, so product-specific stalker judgment stays custom.
+
+Gates: `git diff --check`; `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`; adapter spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]"` -> `All tests passed (231 assertions in 21 test cases)`.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0
 

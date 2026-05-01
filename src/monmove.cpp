@@ -977,6 +977,50 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     return false;
 }
 
+struct targeted_live_plan_adapter {
+    const char *name;
+    bool ( *matches )( const monster & );
+    bool ( *apply )( monster &, map &, Creature & );
+};
+
+static bool is_writhing_stalker( const monster &mon )
+{
+    return mon.type->id == mon_writhing_stalker;
+}
+
+static bool is_zombie_rider( const monster &mon )
+{
+    return mon.type->id == mon_zombie_rider;
+}
+
+static const targeted_live_plan_adapter *targeted_live_plan_adapter_for( const monster &mon )
+{
+    // Use a single named dispatch seam for monsters whose target-response behavior
+    // must run after monster::plan() has acquired a live target, but before the
+    // generic hostile/flee destination fallback. Product-specific judgment stays
+    // inside each adapter; the shared seam only owns routing.
+    static const targeted_live_plan_adapter adapters[] = {
+        { "writhing_stalker_live_plan", is_writhing_stalker, apply_writhing_stalker_plan },
+        { "zombie_rider_live_plan", is_zombie_rider, apply_zombie_rider_plan },
+        { "flesh_raptor_live_plan", is_flesh_raptor, apply_flesh_raptor_plan },
+    };
+
+    for( const targeted_live_plan_adapter &adapter : adapters ) {
+        if( adapter.matches( mon ) ) {
+            return &adapter;
+        }
+    }
+
+    return nullptr;
+}
+
+static bool apply_targeted_live_plan_adapter( monster &mon, map &here, Creature &target )
+{
+    const targeted_live_plan_adapter *adapter = targeted_live_plan_adapter_for( mon );
+    return adapter != nullptr && adapter->apply( mon, here, target );
+}
+
+
 void monster::plan()
 {
     monster_plan mon_plan( *this );
@@ -1258,13 +1302,7 @@ void monster::plan()
 
     } else if( mon_plan.target != nullptr ) {
 
-        if( apply_writhing_stalker_plan( *this, here, *mon_plan.target ) ) {
-            return;
-        }
-        if( apply_zombie_rider_plan( *this, here, *mon_plan.target ) ) {
-            return;
-        }
-        if( apply_flesh_raptor_plan( *this, here, *mon_plan.target ) ) {
+        if( apply_targeted_live_plan_adapter( *this, here, *mon_plan.target ) ) {
             return;
         }
 

@@ -1,6 +1,6 @@
 # CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -32,15 +32,15 @@ Live path today:
 - Existing reusable seams available in this path are `mtype::get_goals()` / `behavior::tree` / `behavior::monster_oracle_t` predicates and the `type->special_attacks` action dispatch in `monster::move()`. These can honestly carry availability/dispatch gating or a thin named special-action adapter.
 - Product-specific pieces that should stay custom unless a better seam appears: local-evidence/no-omniscience confidence, quiet-side/cutoff scoring, light/focus counterpressure, cooldown/repeated-strike rhythm, and injured retreat.
 
-Next refactor target: shrink the private `monmove.cpp` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible, while leaving the stalker evaluator and quiet-side scorer explicit and test-covered.
+Closure refactor: `src/monmove.cpp` now uses a single named `targeted_live_plan_adapter` dispatch for writhing stalker, zombie rider, and flesh raptor target-response planning after live target acquisition and before the generic hostile/flee destination fallback. The reused seam is existing `monster::plan()` target acquisition plus fallback destination handling; no behavior-tree or special-attack seam honestly owns this destination-planning response today. The stalker evaluator and quiet-side scorer remain explicit and test-covered because they carry product-specific no-omniscience, zombie-shadow, light/focus, cooldown, and injured-retreat judgment.
 
 ## Success state
 
-- [ ] A short code audit note or commit message names the existing seam(s) reused and the bespoke code reduced.
-- [ ] The live-facing monster path still reaches the writhing-stalker evaluator or its replacement through a named, test-covered seam.
-- [ ] Focused `[writhing_stalker]` tests remain green, including no-omniscience, light/focus counterplay, cooldown anti-spam, repeated strikes, and injured retreat.
-- [ ] At least one new/updated test proves the refactored seam is consumed by the live planner rather than only by a detached helper.
-- [ ] No gameplay tuning claim is made unless a separate proof explicitly supports it.
+- [x] A short code audit note or commit message names the existing seam(s) reused and the bespoke code reduced.
+- [x] The live-facing monster path still reaches the writhing-stalker evaluator or its replacement through a named, test-covered seam.
+- [x] Focused `[writhing_stalker]` tests remain green, including no-omniscience, light/focus counterplay, cooldown anti-spam, repeated strikes, and injured retreat.
+- [x] At least one new/updated test proves the refactored seam is consumed by the live planner rather than only by a detached helper.
+- [x] No gameplay tuning claim is made unless a separate proof explicitly supports it.
 
 ## Targeted tests
 

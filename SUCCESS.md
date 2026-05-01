@@ -111,14 +111,16 @@ Canonical docs:
 
 ## CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0 — Writhing stalker behavior seam reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Success state:
-- [ ] Existing monster behavior/strategy/special-attack seams that can replace bespoke writhing-stalker planning glue are identified in the implementation note or commit message.
-- [ ] The live-facing `monster::plan()` path still consumes the approved stalker behavior current at execution time through a named, test-covered seam.
-- [ ] Focused `[writhing_stalker]` tests remain green for the approved zombie-shadow behavior, including no-evidence/no-beeline, quiet-side/cutoff scoring, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
-- [ ] At least one new or updated seam-consumption test fails if the behavior is only exercised by detached helper code and not by the live planner path.
-- [ ] No product tuning or new gameplay claim is mixed into the refactor unless separately promoted and proven.
+- [x] Existing monster behavior/strategy/special-attack seams that can replace bespoke writhing-stalker planning glue are identified in the implementation note or commit message: the refactor reuses `monster::plan()` target acquisition plus generic hostile/flee fallback through a named `targeted_live_plan_adapter`; no behavior-tree or special-attack seam honestly owns this destination-planning response today.
+- [x] The live-facing `monster::plan()` path still consumes the approved stalker behavior current at execution time through a named, test-covered seam.
+- [x] Focused `[writhing_stalker]` tests remain green for the approved zombie-shadow behavior, including no-evidence/no-beeline, quiet-side/cutoff scoring, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+- [x] At least one new or updated seam-consumption test fails if the behavior is only exercised by detached helper code and not by the live planner path.
+- [x] No product tuning or new gameplay claim is mixed into the refactor unless separately promoted and proven.
+
+Evidence: `src/monmove.cpp` replaces three inline live-plan exceptions with `targeted_live_plan_adapter` dispatch for writhing stalker, zombie rider, and flesh raptor before generic destination fallback, while leaving product-specific stalker evaluator and quiet-side scorer custom. Gates: `git diff --check`; `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`; `./tests/cata_test "[zombie_rider],[flesh_raptor]"` -> `All tests passed (231 assertions in 21 test cases)`.
 
 Canonical docs:
 - Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
@@ -128,7 +130,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST AUDIT NEXT
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.

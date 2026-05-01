@@ -8,15 +8,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active: `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0`.
+Active: `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0`.
 
-`CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` is closed/checkpointed green v0 after deterministic footing and both scoped staged-but-live local-evidence rows. Preserve its caveat: live overmap-interest footing is unclaimed.
+`CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0 after the first targeted anti-redundancy refactor. Preserve its caveat: the named `targeted_live_plan_adapter` dispatch reduces inline live-planner exceptions, while stalker-specific no-omniscience, quiet-side/cutoff, light/focus, cooldown, repeated-strike, and injured-retreat judgment remains custom and explicit.
 
-Current narrow slice: first refactor after seam inventory.
+Current narrow slice: first camp-locker API-reduction audit before code changes.
 
-Inventory checkpoint is recorded in `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`: the current live path is `monster::plan()` -> `apply_writhing_stalker_plan()` -> `writhing_stalker_live_context()` / `writhing_stalker::evaluate_live_response()` -> destination/effect side effects, with quiet-side shadow destinations delegated to `writhing_stalker::choose_quiet_side_cutoff()`. A live planner seam-consumption test now covers quiet-side cutoff use through `monster::plan()`.
-
-1. Make the smallest honest refactor that shrinks the private `mon_writhing_stalker` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible.
-2. Keep product-specific zombie-shadow judgment explicit: no-omniscience/local evidence, quiet-side/cutoff scoring, light/focus counterplay, cooldown anti-spam, repeated strike rhythm, and injured retreat.
-3. After code changes, keep the new live planner seam-consumption proof and focused `[writhing_stalker]` gate green.
-4. Do not start camp-locker, bandit-signal, eigenspectre, flesh-raptor, or product-tuning work by drift.
+1. Audit `camp_locker_slot`, camp locker item classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection against existing item, wearability, body coverage, reload, and zone APIs.
+2. Identify the smallest honest refactor that removes duplicate camp-locker ontology while preserving camp policy: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries.
+3. After code changes, run the narrow focused faction/basecamp/camp-locker gate named by the audit; do not broaden into basecamp mission redesign or Smart Zone work.
+4. Do not start bandit-signal, eigenspectre, flesh-raptor, zombie-rider, or product-tuning work by drift.

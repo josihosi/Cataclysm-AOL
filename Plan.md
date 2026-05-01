@@ -155,34 +155,49 @@ Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectre
 
 ---
 
-## Active lane — CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
+## Closed recent lane — CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
 
-**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST REFACTOR NEXT
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
-Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. The first active cleanup package is the writhing-stalker behavior seam reduction, now that the zombie-shadow product behavior is closed green v0.
+Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. The first cleanup package was the writhing-stalker behavior seam reduction, preserving the closed green zombie-shadow predator behavior.
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
 Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
 
-Goal: reduce the bespoke `mon_writhing_stalker` planning hook where existing monster behavior/strategy/special-attack seams can honestly carry the shape, while preserving the approved zombie-shadow predator behavior: local evidence/no-omniscience, quiet-side/cutoff scoring, light/focus counterplay, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+Closure checkpoint: seam inventory is recorded in the contract doc, the live planner seam-consumption test proves `monster::plan()` reaches quiet-side cutoff behavior, and `src/monmove.cpp` now routes writhing stalker / zombie rider / flesh raptor target-response planning through a single named `targeted_live_plan_adapter` dispatch before the generic hostile/flee destination fallback. No behavior-tree or special-attack seam honestly owns this destination-planning response today; product-specific stalker judgment remains explicit in the writhing-stalker evaluator and quiet-side scorer.
 
-Current checkpoint: seam inventory is recorded in the contract doc and a focused live planner seam-consumption test now proves `monster::plan()` reaches the quiet-side cutoff behavior. Next honest step is the smallest refactor that shrinks the private `mon_writhing_stalker` planning exception into a thinner named adapter around existing behavior/special-attack dispatch where possible, while leaving product-specific zombie-shadow judgment custom and explicit.
+Evidence: `git diff --check`; `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`; adapter spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]"` -> `All tests passed (231 assertions in 21 test cases)`.
 
-Boundary: this is cleanup/refactor, not tuning. Do not reopen closed writhing-stalker v0, zombie-shadow proof rows, bandit/horde/camp claims, flesh raptors, or eigenspectres by drift. If a supposedly redundant layer carries product-specific judgment, preserve it and document why it remains custom.
+Boundary preserved: this was cleanup/refactor, not tuning. Closed writhing-stalker v0, zombie-shadow proof rows, bandit/horde/camp claims, flesh raptors, and eigenspectres remain closed unless explicitly promoted.
+
+---
+
+## Active lane — CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
+
+**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / FIRST AUDIT NEXT
+
+Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
+
+Goal: keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, body coverage, reload, and zone APIs. Camp-specific policy stays explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, and camp-storage boundaries.
+
+Current checkpoint: newly promoted after stalker seam-reduction closure. Next honest step is a narrow audit of `camp_locker_slot`, item classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection against existing engine APIs before making the first code change.
+
+Boundary: cleanup/refactor only. Do not redesign basecamp missions, Smart Zones, general NPC equipment selection, or outfit tuning by drift.
 
 ---
 
 ## Greenlit backlog — targeted anti-redundancy packages
 
-**Status:** GREENLIT / BACKLOG / AFTER ACTIVE STALKER SEAM-REDUCTION LANE
+**Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
 
 These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
 
 Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
-1. `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` — keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, reload, and zone APIs. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
-2. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+1. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
 
 Boundary: these packages do not reopen closed writhing-stalker, bandit, horde, Smart Zone, or camp claims by drift. The larger bandit live-world roster/mission-state reduction remains future audit territory, not part of this targeted package set.
 
