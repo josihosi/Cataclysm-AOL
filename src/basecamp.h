@@ -332,12 +332,12 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it);
 int score_camp_locker_item(
     camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 camp_locker_candidate_map
 collect_camp_locker_candidates(const std::vector<const item *> &items,
                                const camp_locker_policy &policy);
@@ -356,7 +356,7 @@ plan_camp_locker_loadout(
     const camp_locker_candidate_map &locker_candidates,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_patrol_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,

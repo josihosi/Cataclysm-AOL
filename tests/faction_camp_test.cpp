@@ -21,6 +21,7 @@
 #include "clzones.h"
 #include "coordinates.h"
 #include "faction.h"
+#include "flag.h"
 #include "game.h"
 #include "item.h"
 #include "item_components.h"
@@ -1556,6 +1557,21 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
         score_camp_locker_item(camp_locker_slot::helmet, great_helm,
                                bulletproof_policy);
     CHECK(bulletproof_helmet_gap > default_helmet_gap);
+  }
+
+  SECTION("worker fit context uses item encumbrance scoring") {
+    clear_avatar();
+    Character &worker = get_player_character();
+    item loose_jeans(itype_jeans);
+    item fitted_jeans(itype_jeans);
+    fitted_jeans.set_flag(flag_FIT);
+
+    CHECK(score_camp_locker_item(camp_locker_slot::pants, fitted_jeans,
+                                 test_camp.get_locker_policy(), std::nullopt,
+                                 false, &worker) >
+          score_camp_locker_item(camp_locker_slot::pants, loose_jeans,
+                                 test_camp.get_locker_policy(), std::nullopt,
+                                 false, &worker));
   }
 
   SECTION("ballistic vest scoring notices loaded plates and damaged inserts") {

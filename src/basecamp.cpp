@@ -280,7 +280,10 @@ int average_armor_portion_stat(const item &it,
   return total / static_cast<int>(armor->data.size());
 }
 
-int average_armor_encumber(const item &it) {
+int average_armor_encumber(const item &it, const Character *fit_context) {
+  if (fit_context != nullptr) {
+    return it.get_avg_encumber(*fit_context, item::encumber_flags::assume_empty);
+  }
   return average_armor_portion_stat(it, &armor_portion_data::encumber);
 }
 
@@ -310,20 +313,21 @@ int protection_score(const item &it, int bash_weight, int cut_weight,
 }
 
 int generic_clothing_score(const item &it, int storage_divisor,
-                           int encumbrance_weight) {
+                           int encumbrance_weight,
+                           const Character *fit_context) {
   return average_armor_coverage(it) * 3 + protection_score(it, 4, 6, 8) +
          it.get_env_resist() * 2 + it.get_warmth() +
          storage_score(it, storage_divisor) -
-         average_armor_encumber(it) * encumbrance_weight;
+         average_armor_encumber(it, fit_context) * encumbrance_weight;
 }
 
-int bag_score(const item &it) {
+int bag_score(const item &it, const Character *fit_context) {
   return storage_score(it, 25) + protection_score(it, 2, 2, 2) +
          average_armor_coverage(it) + it.get_env_resist() -
-         average_armor_encumber(it) * 3;
+         average_armor_encumber(it, fit_context) * 3;
 }
 
-int ablative_armor_score(const item &it) {
+int ablative_armor_score(const item &it, const Character *fit_context) {
   int score = 0;
   for (const item *ablative : it.all_ablative_armor()) {
     if (ablative == nullptr) {
@@ -331,7 +335,7 @@ int ablative_armor_score(const item &it) {
     }
     score += average_armor_coverage(*ablative) * 2 +
              protection_score(*ablative, 6, 8, 12) -
-             average_armor_encumber(*ablative) * 2;
+             average_armor_encumber(*ablative, fit_context) * 2;
   }
   return score;
 }
@@ -347,21 +351,21 @@ int total_ballistic_resist_score(const item &it) {
   return score;
 }
 
-int body_armor_score(const item &it) {
+int body_armor_score(const item &it, const Character *fit_context) {
   return average_armor_coverage(it) * 4 + protection_score(it, 10, 12, 16) +
-         ablative_armor_score(it) + it.get_env_resist() * 2 +
-         it.get_warmth() - average_armor_encumber(it) * 6;
+         ablative_armor_score(it, fit_context) + it.get_env_resist() * 2 +
+         it.get_warmth() - average_armor_encumber(it, fit_context) * 6;
 }
 
-int helmet_score(const item &it) {
+int helmet_score(const item &it, const Character *fit_context) {
   return average_armor_coverage(it) * 4 + protection_score(it, 8, 10, 14) +
          it.get_env_resist() * 2 + it.get_warmth() -
-         average_armor_encumber(it) * 4;
+         average_armor_encumber(it, fit_context) * 4;
 }
 
-int glasses_score(const item &it) {
+int glasses_score(const item &it, const Character *fit_context) {
   return average_armor_coverage(it) * 2 + protection_score(it, 1, 2, 2) +
-         it.get_env_resist() * 8 - average_armor_encumber(it) * 2;
+         it.get_env_resist() * 8 - average_armor_encumber(it, fit_context) * 2;
 }
 
 int melee_weapon_score(const item &it) {
@@ -411,13 +415,13 @@ bool is_better_scored_locker_item(
     camp_locker_slot slot, const item &lhs, const item &rhs,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false) {
+    bool wet_weather = false, const Character *fit_context = nullptr) {
   const int lhs_score =
       score_camp_locker_item(slot, lhs, policy, local_temperature,
-                             wet_weather);
+                             wet_weather, fit_context);
   const int rhs_score =
       score_camp_locker_item(slot, rhs, policy, local_temperature,
-                             wet_weather);
+                             wet_weather, fit_context);
   if (lhs_score != rhs_score) {
     return lhs_score > rhs_score;
   }
@@ -434,7 +438,7 @@ const item *select_best_locker_item(
     camp_locker_slot slot, const std::vector<const item *> &items,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false) {
+    bool wet_weather = false, const Character *fit_context = nullptr) {
   const item *best = nullptr;
   for (const item *candidate : items) {
     if (candidate == nullptr) {
@@ -442,7 +446,8 @@ const item *select_best_locker_item(
     }
     if (best == nullptr ||
         is_better_scored_locker_item(slot, *candidate, *best, policy,
-                                     local_temperature, wet_weather)) {
+                                     local_temperature, wet_weather,
+                                     fit_context)) {
       best = candidate;
     }
   }
@@ -735,7 +740,7 @@ void prevent_missing_shirt_fill_under_armored_full_body_suit(
 void prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
     camp_locker_plan &plan, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature,
-    bool wet_weather) {
+    bool wet_weather, const Character *fit_context) {
   const auto pants_it = plan.find(camp_locker_slot::pants);
   if (pants_it == plan.end()) {
     return;
@@ -760,7 +765,7 @@ void prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
         slot_plan.selected_candidate != nullptr ||
         !is_camp_locker_candidate_meaningfully_better(
             slot, *pants_plan.selected_candidate, *slot_plan.kept_current,
-            policy, local_temperature, wet_weather)) {
+            policy, local_temperature, wet_weather, fit_context)) {
       continue;
     }
 
@@ -1435,7 +1440,7 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
 int score_camp_locker_item(
     camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature,
-    bool wet_weather) {
+    bool wet_weather, const Character *fit_context) {
   int score = 0;
   switch (slot) {
   case camp_locker_slot::underwear:
@@ -1444,30 +1449,30 @@ int score_camp_locker_item(
   case camp_locker_slot::shoes:
   case camp_locker_slot::pants:
   case camp_locker_slot::shirt:
-    score = generic_clothing_score(it, 250, 4);
+    score = generic_clothing_score(it, 250, 4, fit_context);
     break;
   case camp_locker_slot::vest:
-    score = generic_clothing_score(it, 100, 4);
+    score = generic_clothing_score(it, 100, 4, fit_context);
     break;
   case camp_locker_slot::body_armor:
-    score = body_armor_score(it) +
+    score = body_armor_score(it, fit_context) +
             ( policy.prefers_bulletproof() ?
                   total_ballistic_resist_score(it) * 12 : 0 );
     break;
   case camp_locker_slot::helmet:
-    score = helmet_score(it) +
+    score = helmet_score(it, fit_context) +
             ( policy.prefers_bulletproof() ?
                   static_cast<int>( it.resist( damage_bullet ) ) * 10 :
                   0 );
     break;
   case camp_locker_slot::glasses:
   case camp_locker_slot::mask:
-    score = glasses_score(it);
+    score = glasses_score(it, fit_context);
     break;
   case camp_locker_slot::belt:
   case camp_locker_slot::holster:
   case camp_locker_slot::bag:
-    score = bag_score(it);
+    score = bag_score(it, fit_context);
     break;
   case camp_locker_slot::melee_weapon:
     score = melee_weapon_score(it);
@@ -1491,7 +1496,7 @@ bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature,
-    bool wet_weather) {
+    bool wet_weather, const Character *fit_context) {
   if (candidate.typeId() == current.typeId()) {
     if (candidate.damage_level() != current.damage_level()) {
       return candidate.damage_level() < current.damage_level();
@@ -1502,18 +1507,19 @@ bool is_camp_locker_candidate_meaningfully_better(
 
     const int candidate_score =
         score_camp_locker_item(slot, candidate, policy, local_temperature,
-                               wet_weather);
+                               wet_weather, fit_context);
     const int current_score =
         score_camp_locker_item(slot, current, policy, local_temperature,
-                               wet_weather);
+                               wet_weather, fit_context);
     if (candidate_score != current_score) {
       return candidate_score > current_score;
     }
   }
   return score_camp_locker_item(slot, candidate, policy,
-                                local_temperature, wet_weather) >=
+                                local_temperature, wet_weather,
+                                fit_context) >=
          score_camp_locker_item(slot, current, policy, local_temperature,
-                                wet_weather) +
+                                wet_weather, fit_context) +
              camp_locker_upgrade_threshold(slot);
 }
 
@@ -1523,7 +1529,7 @@ plan_camp_locker_loadout(
     const camp_locker_candidate_map &locker_candidates,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature,
-    bool wet_weather) {
+    bool wet_weather, const Character *fit_context) {
   camp_locker_plan plan;
   const camp_locker_candidate_map current_by_slot =
       collect_camp_locker_candidates(current_items, policy);
@@ -1538,14 +1544,14 @@ plan_camp_locker_loadout(
     if (current_it != current_by_slot.end() && !current_it->second.empty()) {
       std::vector<const item *> sorted_current = current_it->second;
       std::stable_sort(sorted_current.begin(), sorted_current.end(),
-                       [slot, &policy, &local_temperature,
-                        wet_weather](const item *lhs, const item *rhs) {
+                       [slot, &policy, &local_temperature, wet_weather,
+                        fit_context](const item *lhs, const item *rhs) {
                          if (lhs == nullptr || rhs == nullptr) {
                            return rhs != nullptr;
                          }
                          return is_better_scored_locker_item(
                              slot, *lhs, *rhs, policy, local_temperature,
-                             wet_weather);
+                             wet_weather, fit_context);
                        });
       slot_plan.kept_current = sorted_current.front();
       if (sorted_current.size() > 1) {
@@ -1558,14 +1564,14 @@ plan_camp_locker_loadout(
     if (candidate_it != locker_candidates.end()) {
       const item *best_candidate = select_best_locker_item(
           slot, candidate_it->second, policy, local_temperature,
-          wet_weather);
+          wet_weather, fit_context);
       if (best_candidate != nullptr) {
         if (slot_plan.kept_current == nullptr) {
           slot_plan.missing_current = true;
           slot_plan.selected_candidate = best_candidate;
         } else if (is_camp_locker_candidate_meaningfully_better(
                        slot, *best_candidate, *slot_plan.kept_current,
-                       policy, local_temperature, wet_weather)) {
+                       policy, local_temperature, wet_weather, fit_context)) {
           slot_plan.selected_candidate = best_candidate;
           slot_plan.upgrade_selected = true;
         }
@@ -1583,7 +1589,7 @@ plan_camp_locker_loadout(
   prevent_upper_body_stripping_pants_upgrades(plan);
   prevent_missing_shirt_fill_under_armored_full_body_suit(plan);
   prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
-      plan, policy, local_temperature, wet_weather);
+      plan, policy, local_temperature, wet_weather, fit_context);
 
   return plan;
 }
@@ -2495,7 +2501,7 @@ camp_locker_live_state collect_camp_locker_live_state(
   live_state.plan = plan_camp_locker_loadout(
       live_state.current_items, live_state.locker_candidates, policy,
       get_weather().get_temperature(worker.pos_bub()),
-      get_weather().weather_id->rains);
+      get_weather().weather_id->rains, &worker);
   live_state.carried_cleanup =
       collect_camp_locker_carried_cleanup_state(worker);
   live_state.ranged_readiness = collect_camp_locker_ranged_readiness_state(
@@ -3696,7 +3702,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
   const camp_locker_plan plan = plan_camp_locker_loadout(
       current_items, locker_candidates, locker_policy,
       get_weather().get_temperature(worker.pos_bub()),
-      get_weather().weather_id->rains);
+      get_weather().weather_id->rains, &worker);
   const camp_locker_carried_cleanup_state carried_cleanup =
       collect_camp_locker_carried_cleanup_state(worker);
   const camp_locker_ranged_readiness_state ranged_readiness =
