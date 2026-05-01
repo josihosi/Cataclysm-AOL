@@ -124,6 +124,10 @@ When promoted, validation is a product-feel sampler, not a broad proof rerun: us
 
 When promoted, validation must prove both UI/product path and mechanics: normal chat/dialogue-window opening where feasible, at least one scenic variant screenshot, retained pay/fight/refuse clarity, retained first-demand/reopened-demand semantics, and no cannibal/no-shakedown regression. Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
 
+### Queued validation target - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
+
+When promoted, validation must include portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+
 ### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
 `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is active after writhing-stalker seam-reduction closure. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.

@@ -219,6 +219,20 @@ Boundary: product-UX follow-up only. Do not redesign the whole bandit economy, d
 
 ---
 
+## Greenlit backlog — harness portal-storm warning light
+
+**Status:** GREENLIT / QUEUED / HARNESS-HARDENING FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+
+Josef reported on 2026-05-02 that portal storms sometimes seem to break harness runs and asked for a “flashing light”.
+
+Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+
+Goal: make portal-storm contamination reviewer-visible in probe/handoff/repeatability reports, with a report-level warning/light, step-ledger contamination status when unallowed, negative controls for normal weather, and an opt-in path for scenarios that intentionally test portal storms.
+
+Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or interrupt the active camp-locker cleanup lane unless explicitly promoted.
+
+---
+
 ## Greenlit backlog — targeted anti-redundancy packages
 
 **Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
