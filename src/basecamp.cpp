@@ -1886,7 +1886,7 @@ static const item *select_best_camp_locker_ammo_candidate(
     if (probe != nullptr) {
       probe->metrics.compatible_ammo_item_checks++;
     }
-    if (it == nullptr || !it->is_ammo() ||
+    if (it == nullptr || it->ammo_remaining() <= 0 ||
         !can_camp_locker_worker_reload_with(reloader, target, *it)) {
       continue;
     }
@@ -1898,8 +1898,8 @@ static const item *select_best_camp_locker_ammo_candidate(
                      if (lhs == nullptr || rhs == nullptr) {
                        return rhs != nullptr;
                      }
-                     if (lhs->charges != rhs->charges) {
-                       return lhs->charges > rhs->charges;
+                     if (lhs->ammo_remaining() != rhs->ammo_remaining()) {
+                       return lhs->ammo_remaining() > rhs->ammo_remaining();
                      }
                      return lhs->typeId().str() < rhs->typeId().str();
                    });

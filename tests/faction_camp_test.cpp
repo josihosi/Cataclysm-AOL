@@ -35,6 +35,7 @@
 #include "options_helpers.h"
 #include "overmapbuffer.h"
 #include "player_helpers.h"
+#include "pocket_type.h"
 #include "point.h"
 #include "stomach.h"
 #include "type_id.h"
@@ -43,6 +44,8 @@
 #include "weather.h"
 
 static const itype_id itype_9mm("9mm");
+static const itype_id itype_38_special("38_special");
+static const itype_id itype_38_speedloader("38_speedloader");
 static const itype_id itype_abaya("abaya");
 static const itype_id itype_adhesive_bandages("adhesive_bandages");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
@@ -101,6 +104,7 @@ static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
 static const itype_id itype_socks("socks");
 static const itype_id itype_suit("suit");
+static const itype_id itype_sw_619("sw_619");
 static const itype_id itype_tool_belt("tool_belt");
 static const itype_id itype_survivor_suit("survivor_suit");
 static const itype_id itype_test_100_kcal("test_100_kcal");
@@ -6022,6 +6026,67 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
 
   calendar::turn += 10_minutes;
   CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_ranged_readiness_uses_existing_reload_supply_api",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+
+  item loaded_speedloader(itype_38_speedloader, calendar::turn_zero, 0);
+  const ammotype &speedloader_ammo_type =
+      item::find_type(loaded_speedloader.ammo_default())->ammo->type;
+  item speedloader_ammo(
+      itype_38_special, calendar::turn_zero,
+      loaded_speedloader.ammo_capacity(speedloader_ammo_type));
+  REQUIRE(loaded_speedloader.put_in(speedloader_ammo,
+                                    pocket_type::MAGAZINE).success());
+  const int speedloader_rounds = loaded_speedloader.ammo_remaining();
+  REQUIRE(speedloader_rounds > 0);
+  here.add_item_or_charges(locker_local, loaded_speedloader);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_backpack), false).has_value());
+  item empty_revolver(itype_sw_619, calendar::turn_zero, 0);
+  REQUIRE(worker.wield(empty_revolver));
+  REQUIRE(worker.get_wielded_item());
+  CHECK(worker.get_wielded_item()->ammo_remaining() == 0);
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+
+  const item_location weapon = worker.get_wielded_item();
+  REQUIRE(weapon);
+  CHECK(weapon->ammo_remaining() == speedloader_rounds);
+
+  bool locker_has_empty_speedloader = false;
+  for (const item &it : here.i_at(locker_local)) {
+    if (it.typeId() == itype_38_speedloader) {
+      locker_has_empty_speedloader = locker_has_empty_speedloader ||
+                                     it.ammo_remaining() == 0;
+    }
+  }
+  CHECK(locker_has_empty_speedloader);
 
   zone_manager::get_manager().clear();
 }
