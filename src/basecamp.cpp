@@ -585,6 +585,10 @@ bool is_camp_locker_leg_accessory(const item &it) {
 bool is_camp_locker_jumpsuit_like(const item &it) {
   static const itype_id itype_jumpsuit("jumpsuit");
   static const itype_id itype_suit("suit");
+  // Camp policy: content marks suit/tux-style one-piece outfits with these
+  // tile/lineage hints, but their storage makes the generic light one-piece
+  // garment predicate intentionally reject them.  Keep this narrow hint until
+  // item data exposes a real pants-equivalent suit API.
   return it.typeId() == itype_jumpsuit ||
          it.typeId()->looks_like == itype_jumpsuit ||
          it.typeId()->looks_like == itype_suit;
@@ -1982,6 +1986,8 @@ static bool reload_camp_locker_target_from_zone(npc &worker,
   return reloaded;
 }
 
+static constexpr int camp_locker_ranged_magazine_reserve_limit = 2;
+
 static item_location select_best_loaded_camp_locker_magazine(
     const std::vector<item_location> &magazines) {
   for (const item_location &magazine_loc : magazines) {
@@ -2034,7 +2040,9 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
     const std::vector<const item *> locker_magazines =
         collect_camp_locker_compatible_magazines(locker_items, *weapon_loc,
                                                  probe);
-    const int desired_magazines = std::max(0, 2 - readiness.current_compatible_magazines);
+    const int desired_magazines = std::max(
+        0, camp_locker_ranged_magazine_reserve_limit -
+           readiness.current_compatible_magazines);
     readiness.magazines_to_take =
         std::min(desired_magazines, static_cast<int>(locker_magazines.size()));
     for (int i = 0; i < readiness.magazines_to_take; ++i) {
@@ -2043,8 +2051,9 @@ static camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_s
       }
     }
     sort_camp_locker_magazines(selected_magazines);
-    if (selected_magazines.size() > 2) {
-      selected_magazines.resize(2);
+    if (selected_magazines.size() >
+        camp_locker_ranged_magazine_reserve_limit) {
+      selected_magazines.resize(camp_locker_ranged_magazine_reserve_limit);
     }
 
     for (const item *magazine : selected_magazines) {
@@ -2100,7 +2109,8 @@ static bool service_camp_locker_ranged_readiness(
     std::vector<item_location> compatible_magazines =
         collect_camp_locker_compatible_magazine_locations(worker, *weapon_loc);
     int magazines_needed =
-        std::max(0, 2 - static_cast<int>(compatible_magazines.size()));
+        std::max(0, camp_locker_ranged_magazine_reserve_limit -
+                 static_cast<int>(compatible_magazines.size()));
     while (magazines_needed-- > 0) {
       const item *locker_magazine = nullptr;
       const std::vector<const item *> locker_magazines =
@@ -2133,8 +2143,9 @@ static bool service_camp_locker_ranged_readiness(
 
     compatible_magazines =
         collect_camp_locker_compatible_magazine_locations(worker, *weapon_loc);
-    if (compatible_magazines.size() > 2) {
-      compatible_magazines.resize(2);
+    if (compatible_magazines.size() >
+        camp_locker_ranged_magazine_reserve_limit) {
+      compatible_magazines.resize(camp_locker_ranged_magazine_reserve_limit);
     }
     for (const item_location &magazine_loc : compatible_magazines) {
       applied_changes =
