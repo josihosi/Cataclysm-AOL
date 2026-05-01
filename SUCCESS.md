@@ -130,7 +130,7 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / ABLATIVE INSERT API GREEN
+Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / RANGED AMMO-STATE API GREEN
 
 Success state:
 - [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
