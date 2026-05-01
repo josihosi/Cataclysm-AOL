@@ -1928,7 +1928,7 @@ static const item *select_best_camp_locker_ammo_candidate(
     if (probe != nullptr) {
       probe->metrics.compatible_ammo_item_checks++;
     }
-    if (it == nullptr || it->ammo_remaining() <= 0 ||
+    if (it == nullptr || !it->has_ammo() ||
         !can_camp_locker_worker_reload_with(reloader, target, *it)) {
       continue;
     }

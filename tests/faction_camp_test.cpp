@@ -6130,6 +6130,7 @@ TEST_CASE("camp_locker_ranged_readiness_uses_existing_reload_supply_api",
                                     pocket_type::MAGAZINE).success());
   const int speedloader_rounds = loaded_speedloader.ammo_remaining();
   REQUIRE(speedloader_rounds > 0);
+  REQUIRE(loaded_speedloader.has_ammo());
   here.add_item_or_charges(locker_local, loaded_speedloader);
 
   const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
@@ -6158,7 +6159,7 @@ TEST_CASE("camp_locker_ranged_readiness_uses_existing_reload_supply_api",
   for (const item &it : here.i_at(locker_local)) {
     if (it.typeId() == itype_38_speedloader) {
       locker_has_empty_speedloader = locker_has_empty_speedloader ||
-                                     it.ammo_remaining() == 0;
+                                     (!it.has_ammo() && it.ammo_remaining() == 0);
     }
   }
   CHECK(locker_has_empty_speedloader);

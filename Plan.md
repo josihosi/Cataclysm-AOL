@@ -175,7 +175,7 @@ Boundary preserved: this was cleanup/refactor, not tuning. Closed writhing-stalk
 
 ## Active lane — CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / ABLATIVE INSERT API GREEN
+**Status:** ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / RANGED AMMO-STATE API GREEN
 
 Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
