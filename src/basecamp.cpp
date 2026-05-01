@@ -368,13 +368,24 @@ int glasses_score(const item &it, const Character *fit_context) {
          it.get_env_resist() * 8 - average_armor_encumber(it, fit_context) * 2;
 }
 
-int melee_weapon_score(const item &it) {
+int character_weapon_score(const item &it, const Character *fit_context) {
+  return fit_context == nullptr ? 0 :
+         static_cast<int>(fit_context->evaluate_weapon(it, true) * 100.0);
+}
+
+int melee_weapon_score(const item &it, const Character *fit_context) {
+  if (fit_context != nullptr) {
+    return character_weapon_score(it, fit_context);
+  }
   return static_cast<int>(it.base_damage_melee().total_damage() * 20.0f) -
          units::to_gram(it.weight()) / 100 -
          units::to_milliliter(it.volume()) / 250;
 }
 
-int ranged_weapon_score(const item &it) {
+int ranged_weapon_score(const item &it, const Character *fit_context) {
+  if (fit_context != nullptr) {
+    return character_weapon_score(it, fit_context);
+  }
   return static_cast<int>(it.gun_damage().total_damage() * 20.0f) -
          units::to_gram(it.weight()) / 250 -
          units::to_milliliter(it.volume()) / 250;
@@ -1491,10 +1502,10 @@ int score_camp_locker_item(
     score = bag_score(it, fit_context);
     break;
   case camp_locker_slot::melee_weapon:
-    score = melee_weapon_score(it);
+    score = melee_weapon_score(it, fit_context);
     break;
   case camp_locker_slot::ranged_weapon:
-    score = ranged_weapon_score(it);
+    score = ranged_weapon_score(it, fit_context);
     break;
   case camp_locker_slot::num_slots:
     break;

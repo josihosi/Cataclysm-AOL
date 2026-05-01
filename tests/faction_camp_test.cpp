@@ -2608,6 +2608,26 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
 
 }
 
+TEST_CASE("camp_locker_weapon_scoring_uses_character_weapon_value",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+
+  npc &worker = spawn_npc(tripoint_bub_ms{5, 5, 0}.xy(), "thug");
+  clear_character(worker, true);
+
+  const camp_locker_policy policy;
+  const item combat_knife(itype_knife_combat);
+  const item glock(itype_glock_19);
+
+  CHECK(score_camp_locker_item(camp_locker_slot::melee_weapon, combat_knife,
+                               policy, std::nullopt, false, &worker) ==
+        static_cast<int>(worker.evaluate_weapon(combat_knife, true) * 100.0));
+  CHECK(score_camp_locker_item(camp_locker_slot::ranged_weapon, glock, policy,
+                               std::nullopt, false, &worker) ==
+        static_cast<int>(worker.evaluate_weapon(glock, true) * 100.0));
+}
+
 TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
           "[camp][locker]") {
   clear_avatar();
