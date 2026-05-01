@@ -46,6 +46,8 @@ static const itype_id itype_abaya("abaya");
 static const itype_id itype_adhesive_bandages("adhesive_bandages");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
 static const itype_id itype_bandages_makeshift("bandages_makeshift");
+static const itype_id itype_bandages_makeshift_bleached("bandages_makeshift_bleached");
+static const itype_id itype_bandages_makeshift_boiled("bandages_makeshift_boiled");
 static const itype_id itype_aspirin("aspirin");
 static const itype_id itype_ballistic_vest_esapi("ballistic_vest_esapi");
 static const itype_id itype_esapi_plate("esapi_plate");
@@ -5691,6 +5693,8 @@ TEST_CASE("camp_locker_service_readies_medical_consumables_from_locker_supply",
   here.add_item_or_charges(locker_local, item(itype_adhesive_bandages));
   here.add_item_or_charges(locker_local, item(itype_medical_gauze));
   here.add_item_or_charges(locker_local, item(itype_bandages_makeshift));
+  here.add_item_or_charges(locker_local, item(itype_bandages_makeshift_bleached));
+  here.add_item_or_charges(locker_local, item(itype_bandages_makeshift_boiled));
   here.add_item_or_charges(locker_local, item(itype_aspirin));
 
   const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
@@ -5711,11 +5715,15 @@ TEST_CASE("camp_locker_service_readies_medical_consumables_from_locker_supply",
   CHECK(count_character_items(worker, itype_adhesive_bandages) == 1);
   CHECK(count_character_items(worker, itype_medical_gauze) == 1);
   CHECK(count_character_items(worker, itype_bandages_makeshift) == 1);
+  CHECK(count_character_items(worker, itype_bandages_makeshift_bleached) == 1);
+  CHECK(count_character_items(worker, itype_bandages_makeshift_boiled) == 1);
   CHECK(count_character_items(worker, itype_aspirin) == 0);
   CHECK(count_tile_items(here, locker_local, itype_bandages) == 0);
   CHECK(count_tile_items(here, locker_local, itype_adhesive_bandages) == 0);
   CHECK(count_tile_items(here, locker_local, itype_medical_gauze) == 0);
   CHECK(count_tile_items(here, locker_local, itype_bandages_makeshift) == 0);
+  CHECK(count_tile_items(here, locker_local, itype_bandages_makeshift_bleached) == 0);
+  CHECK(count_tile_items(here, locker_local, itype_bandages_makeshift_boiled) == 0);
   CHECK(count_tile_items(here, locker_local, itype_aspirin) == 1);
 
   zone_manager::get_manager().clear();

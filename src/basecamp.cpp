@@ -1624,21 +1624,20 @@ static std::vector<const item *> collect_camp_locker_worker_items(npc &worker) {
   return worker_items;
 }
 
+static const heal_actor *camp_locker_heal_actor(const item &it) {
+  for (const auto &[use_id, use] : it.type->use_methods) {
+    (void)use_id;
+    if (const heal_actor *actor =
+            dynamic_cast<const heal_actor *>(use.get_actor_ptr())) {
+      return actor;
+    }
+  }
+  return nullptr;
+}
+
 static bool is_camp_locker_medical_readiness_supply(const item &it) {
-  static const itype_id itype_adhesive_bandages("adhesive_bandages");
-  static const itype_id itype_bandages("bandages");
-  static const itype_id itype_bandages_makeshift("bandages_makeshift");
-  static const itype_id itype_bandages_makeshift_bleached(
-      "bandages_makeshift_bleached");
-  static const itype_id itype_bandages_makeshift_boiled(
-      "bandages_makeshift_boiled");
-  static const itype_id itype_medical_gauze("medical_gauze");
-  return it.typeId() == itype_bandages ||
-         it.typeId() == itype_adhesive_bandages ||
-         it.typeId() == itype_bandages_makeshift ||
-         it.typeId() == itype_bandages_makeshift_bleached ||
-         it.typeId() == itype_bandages_makeshift_boiled ||
-         it.typeId() == itype_medical_gauze;
+  const heal_actor *actor = camp_locker_heal_actor(it);
+  return actor != nullptr && (actor->bandages_power > 0.0f || actor->bleed > 0);
 }
 
 static bool is_camp_locker_armor_insert(const item &it) {
@@ -2141,12 +2140,23 @@ static std::string camp_locker_medical_readiness_debug_summary(
                        readiness.supplies_to_take);
 }
 
-static int camp_locker_medical_readiness_priority(const item &it) {
-  static const itype_id itype_bandages("bandages");
-  if (it.typeId() == itype_bandages) {
-    return 0;
+static bool is_better_camp_locker_medical_readiness_supply(const item &lhs,
+                                                           const item &rhs) {
+  const heal_actor *lhs_actor = camp_locker_heal_actor(lhs);
+  const heal_actor *rhs_actor = camp_locker_heal_actor(rhs);
+  if (lhs_actor == nullptr || rhs_actor == nullptr) {
+    return rhs_actor != nullptr;
   }
-  return 1;
+  if (lhs_actor->bandages_power != rhs_actor->bandages_power) {
+    return lhs_actor->bandages_power > rhs_actor->bandages_power;
+  }
+  if (lhs_actor->bleed != rhs_actor->bleed) {
+    return lhs_actor->bleed > rhs_actor->bleed;
+  }
+  if (lhs_actor->move_cost != rhs_actor->move_cost) {
+    return lhs_actor->move_cost < rhs_actor->move_cost;
+  }
+  return lhs.typeId().str() < rhs.typeId().str();
 }
 
 static const item *select_camp_locker_medical_readiness_supply(
@@ -2163,14 +2173,8 @@ static const item *select_camp_locker_medical_readiness_supply(
                      if (lhs == nullptr || rhs == nullptr) {
                        return rhs != nullptr;
                      }
-                     const int lhs_priority =
-                         camp_locker_medical_readiness_priority(*lhs);
-                     const int rhs_priority =
-                         camp_locker_medical_readiness_priority(*rhs);
-                     if (lhs_priority != rhs_priority) {
-                       return lhs_priority < rhs_priority;
-                     }
-                     return lhs->typeId().str() < rhs->typeId().str();
+                     return is_better_camp_locker_medical_readiness_supply(
+                         *lhs, *rhs);
                    });
   return supplies.empty() ? nullptr : supplies.front();
 }

@@ -119,7 +119,8 @@ Closure verdict: Frau accepted v0 for agent-side close with staged-but-live cave
 Current validation burden:
 - First coverage-helper reduction is green: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
 - Zone-boundary reduction is green: `collect_camp_locker_zone_items` now defers the pickup boundary to the existing `NO_NPC_PICKUP` zone API before considering `CAMP_LOCKER` stock; `camp_locker_zone_candidate_gathering` covers the overlapped-zone regression; `./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
-- Continue auditing remaining camp locker classification/scoring, carried cleanup, and ammo/magazine readiness against existing item, wearability, reload, and zone APIs.
+- Medical-readiness reduction is green: camp locker readiness/kept-supply logic now recognizes bandage/bleed supplies through existing `heal_actor` use-action metadata instead of a camp-local item id list; `camp_locker_service_readies_medical_consumables_from_locker_supply`, `camp_locker_service_preserves_carried_medical_and_caps_reserve`, and `camp_locker_service_ignores_unrelated_medical_consumables` -> `All tests passed (37 assertions in 3 test cases)`; full `./tests/cata_test "[camp][locker]"` after this slice -> `All tests passed (2066 assertions in 71 test cases)`.
+- Continue auditing remaining camp locker classification/scoring, carried cleanup, and ranged ammo/magazine readiness against existing item, wearability, reload, and zone APIs.
 - Any code refactor must preserve camp locker policy behavior: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
 - Targeted tests should continue to cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and any newly touched `CAMP_STORAGE` / `NO_NPC_PICKUP` boundary behavior.
 - Do not claim basecamp mission redesign, Smart Zone redesign, or outfit tuning from this cleanup unless separately promoted and proven.
@@ -245,13 +246,13 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is the first audit for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` before code changes.
+Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, and medical-readiness reductions.
 
-Required audit questions:
-- Which `camp_locker_slot`, item classification/scoring, carried cleanup, ammo/magazine readiness, and zone item collection checks are duplicate engine ontology rather than camp policy?
+Required remaining audit questions:
+- Which item classification/scoring, carried cleanup, and ranged ammo/magazine readiness checks are duplicate engine ontology rather than camp policy?
 - Which existing item, wearability, body coverage, reload, and zone APIs can safely own those checks?
 - Which behavior is deliberately camp-specific policy and must remain explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns?
-- What is the smallest focused faction/basecamp/camp-locker gate that proves preservation after the first refactor?
+- What is the smallest focused faction/basecamp/camp-locker gate that proves preservation after the next refactor?
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
