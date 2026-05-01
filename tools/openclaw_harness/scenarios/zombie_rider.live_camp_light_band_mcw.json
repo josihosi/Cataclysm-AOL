@@ -1,0 +1,170 @@
+{
+  "name": "zombie_rider.live_camp_light_band_mcw",
+  "description": "Live camp-light rider row: staged mature-world fires feed the real live light signal hook, two staged riders are observed by the overmap AI bridge, and the artifact records bounded band formation with circle-harass posture rather than permanent camp doom.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_camp_light_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "zombie_rider camp_light:",
+    "signal=yes",
+    "interest=yes",
+    "aggregate_sources=3",
+    "selected_riders=2",
+    "band_formed=yes",
+    "posture=circle_harass"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_rider_camp_light_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "staged mature-world camp-light rider fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_mature_before_rider_camp_light",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_camp_light_time_setup_missing",
+      "abort_reason": "installed save did not prove expected mature-world midnight turn before live camp-light window",
+      "expected_visible_fact": "saved turn proves local midnight in a mature-world turn window before rider camp-light pressure"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_saved_no_human_npcs_before_rider_camp_light",
+      "scan_all_overmaps": true,
+      "required_observed_npc_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_camp_light_human_target_present",
+      "abort_reason": "installed save still contained overmap NPC human targets before the zombie-rider camp-light window",
+      "expected_visible_fact": "saved-overmap metadata proves no NPC human target can substitute for the player/camp-light setup"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_zombie_riders_before_camp_light",
+      "required_monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            20,
+            20,
+            0
+          ],
+          "min_distance_to_player": 12
+        },
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            -20,
+            20,
+            0
+          ],
+          "min_distance_to_player": 12
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_camp_light_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain the two required rider footing records",
+      "expected_visible_fact": "two hostile zombie riders start far enough out to feed the live convergence/band hook"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_fire_fields_before_rider_camp_light",
+      "offsets": [
+        [
+          0,
+          -20,
+          0
+        ],
+        [
+          20,
+          0,
+          0
+        ],
+        [
+          -20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0
+        ]
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_camp_light_fire_missing",
+      "abort_reason": "installed save did not prove any staged bright fire field near the player",
+      "expected_visible_fact": "saved-map metadata proves staged fd_fire camp-light sources before live turns advance"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_rider_camp_light",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live camp-light window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_rider_camp_light_signal_window",
+      "count": 310,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "zombie_rider camp_light:",
+        "signal=yes",
+        "interest=yes",
+        "aggregate_sources=3",
+        "selected_riders=2",
+        "band_formed=yes",
+        "posture=circle_harass"
+      ],
+      "expected_visible_fact": "bounded live turn window reaches the camp-light signal cadence and records rider light interest, capped two-rider selection, band formation, and circle-harass posture"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_zombie_rider_camp_light_band_trace",
+      "since_label": "advance_rider_camp_light_signal_window",
+      "required_line_patterns": [
+        [
+          "zombie_rider camp_light:",
+          "signal=yes",
+          "interest=yes",
+          "aggregate_sources=3",
+          "selected_riders=2",
+          "band_formed=yes",
+          "posture=circle_harass"
+        ],
+        [
+          "bandit_live_world horde light signal:",
+          "horde_signal_power="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_camp_light_band_trace_missing",
+      "abort_reason": "same-run artifact lacked the live zombie-rider camp-light/band trace or the underlying horde light signal",
+      "expected_visible_fact": "same-run debug artifact proves nearby live fire observations aggregate into one bounded camp-light rider signal, selecting a capped two-rider band with circle-harass posture"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_camp_light_band_mcw",
+  "evidence_contract": {
+    "claim": "staged mature-world camp lights enter the live light-signal path, aggregate as one nearby camp-light cluster, and feed zombie-rider overmap convergence into a capped two-rider band with circle-harass posture",
+    "setup_guard": "the run uses harness-only game_turn, remove-overmap-NPC, map_fields, and active_monsters save transforms plus saved-turn/NPC/rider/fire audits before live turns; it proves a nearby live camp-light cluster hook, not natural discovery, persistent rider travel, or physical camp assault navigation",
+    "load_only_verdict": "load proof only / inconclusive for zombie-rider camp-light attraction behavior",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live source-hook and same-run artifact behavior; persistent overmap migration/camp assault remains future-only unless promoted."
+  }
+}

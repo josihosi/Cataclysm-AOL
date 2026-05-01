@@ -1,0 +1,97 @@
+{
+  "name": "mcwilliams_live_debug_zombie_rider_camp_light_2026-05-01",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only zombie-rider camp-light restage: remove human NPC targets, set a mature-world midnight turn, place several bright fire fields near the player as a camp-light source, and stage two hostile riders far enough out to feed the live overmap light/convergence hook without relying on natural random discovery.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 68256000
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            0,
+            -20,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            20,
+            0,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            -20,
+            0,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            0,
+            20,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            20,
+            20,
+            0
+          ],
+          "hp": 220,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            -20,
+            20,
+            0
+          ],
+          "hp": 220,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

@@ -85,6 +85,7 @@
 #include "weather.h"
 #include "weather_type.h"
 #include "worldfactory.h"
+#include "zombie_rider_overmap_ai.h"
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
@@ -95,12 +96,15 @@ static const bionic_id bio_alarm( "bio_alarm" );
 
 static const efftype_id effect_controlled( "controlled" );
 static const efftype_id effect_npc_suspend( "npc_suspend" );
+static const efftype_id effect_run( "run" );
 static const efftype_id effect_ridden( "ridden" );
 static const efftype_id effect_sleep( "sleep" );
 
 static const event_statistic_id event_statistic_last_words( "last_words" );
 
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
+
+static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
@@ -977,6 +981,8 @@ struct live_bandit_signal_observation {
     int range_cap_omt = 0;
     int horde_signal_power = 0;
     std::string weather_summary;
+    bool has_light_projection = false;
+    bandit_mark_generation::light_projection light_projection;
 };
 
 struct live_bandit_dispatch_candidate {
@@ -1304,6 +1310,8 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         light_observation.mark.notes = light_projection.signal.notes;
         light_observation.horde_signal_power =
             bandit_mark_generation::horde_signal_power_from_light_projection( light_projection );
+        light_observation.has_light_projection = true;
+        light_observation.light_projection = light_projection;
         observations.push_back( light_observation );
     }
 
@@ -1489,6 +1497,115 @@ int signal_live_hordes_from_light_observations(
                                    << " horde_signal_power=" << signal.horde_signal_power
                                    << " range_cap_omt=" << signal.range_cap_omt
                                    << " weather=" << signal.weather_summary << '\n';
+    }
+    return signaled_sources;
+}
+
+int signal_live_zombie_riders_from_light_observations(
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    int signaled_sources = 0;
+    const int world_age_days = std::max( 0, to_days<int>( calendar::turn -
+                                         calendar::start_of_cataclysm ) );
+
+    std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders;
+    int wounded_riders = 0;
+    for( monster &critter : g->all_monsters() ) {
+        if( critter.type->id != mon_zombie_rider || critter.is_dead() ) {
+            continue;
+        }
+        zombie_rider_overmap_ai::rider_overmap_agent rider;
+        rider.rider_id = "active@" + critter.pos_abs().to_string();
+        rider.pos = critter.pos_abs_omt();
+        rider.available = true;
+        rider.already_in_band = false;
+        rider.cooldown_turns = critter.has_effect( effect_run ) ? 1 : 0;
+        riders.push_back( rider );
+        if( critter.hp_percentage() <= 50 ) {
+            wounded_riders++;
+        }
+    }
+
+    std::vector<bool> used_signal( signals.size(), false );
+    for( size_t signal_index = 0; signal_index < signals.size(); ++signal_index ) {
+        const live_bandit_signal_observation &signal = signals[signal_index];
+        if( used_signal[signal_index] || !signal.has_light_projection || signal.horde_signal_power <= 0 ) {
+            continue;
+        }
+
+        used_signal[signal_index] = true;
+        int aggregate_sources = 1;
+        int aggregate_horde_signal_power = signal.horde_signal_power;
+        bandit_mark_generation::light_projection aggregate_projection = signal.light_projection;
+        for( size_t peer_index = signal_index + 1; peer_index < signals.size(); ++peer_index ) {
+            const live_bandit_signal_observation &peer = signals[peer_index];
+            if( used_signal[peer_index] || !peer.has_light_projection || peer.horde_signal_power <= 0 ) {
+                continue;
+            }
+            const int distance = std::max( std::abs( peer.source_omt.x() - signal.source_omt.x() ),
+                                           std::abs( peer.source_omt.y() - signal.source_omt.y() ) );
+            if( peer.source_omt.z() != signal.source_omt.z() || distance > 1 ) {
+                continue;
+            }
+            used_signal[peer_index] = true;
+            aggregate_sources++;
+            aggregate_horde_signal_power += peer.horde_signal_power;
+        }
+
+        if( aggregate_sources > 1 ) {
+            const int nearby_light_bonus = std::min( aggregate_sources - 1, 4 ) * 2;
+            aggregate_projection.packet.id += "_cluster";
+            aggregate_projection.visibility_score = std::clamp(
+                    aggregate_projection.visibility_score + nearby_light_bonus, 0, 60 );
+            aggregate_projection.projected_range_omt = std::clamp(
+                    aggregate_projection.projected_range_omt + nearby_light_bonus, 0, 30 );
+            aggregate_projection.review_summary += "; nearby camp-light cluster sources=" +
+                    std::to_string( aggregate_sources );
+            aggregate_projection.signal.notes.push_back( "nearby camp-light cluster sources=" +
+                    std::to_string( aggregate_sources ) + ", combined_horde_signal_power=" +
+                    std::to_string( aggregate_horde_signal_power ) );
+        }
+
+        const int rider_horde_signal_power =
+            bandit_mark_generation::horde_signal_power_from_light_projection( aggregate_projection );
+        const zombie_rider_overmap_ai::rider_light_interest interest =
+            zombie_rider_overmap_ai::evaluate_light_attraction( aggregate_projection, world_age_days,
+                    static_cast<int>( riders.size() ) );
+        zombie_rider_overmap_ai::rider_light_memory memory;
+        zombie_rider_overmap_ai::refresh_light_memory( memory, interest );
+        const zombie_rider_overmap_ai::rider_convergence_result convergence =
+            zombie_rider_overmap_ai::evaluate_rider_convergence( memory, signal.source_omt, riders );
+
+        zombie_rider_overmap_ai::rider_camp_pressure_input pressure_input;
+        pressure_input.light_memory_active = memory.active();
+        pressure_input.rider_count = convergence.selected_riders;
+        pressure_input.band_formed = convergence.band_formed;
+        pressure_input.breach_or_opening = false;
+        pressure_input.defender_strength = 2;
+        pressure_input.rider_wounded = wounded_riders > 0;
+        const zombie_rider_overmap_ai::rider_camp_pressure_result pressure =
+            zombie_rider_overmap_ai::choose_camp_pressure_posture( pressure_input );
+
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider camp_light: signal=yes source_omt="
+                                   << signal.source_omt.to_string()
+                                   << " world_age_days=" << world_age_days
+                                   << " horde_signal_power=" << rider_horde_signal_power
+                                   << " aggregate_sources=" << aggregate_sources
+                                   << " aggregate_horde_signal_power=" << aggregate_horde_signal_power
+                                   << " interest=" << ( interest.should_investigate ? "yes" : "no" )
+                                   << " interest_reason=" << interest.reason
+                                   << " interest_score=" << interest.interest_score
+                                   << " memory_active=" << ( memory.active() ? "yes" : "no" )
+                                   << " riders_observed=" << riders.size()
+                                   << " selected_riders=" << convergence.selected_riders
+                                   << " cap=" << convergence.cap
+                                   << " band_formed=" << ( convergence.band_formed ? "yes" : "no" )
+                                   << " band_size=" << convergence.band_size
+                                   << " convergence_reason=" << convergence.reason
+                                   << " posture=" << zombie_rider_overmap_ai::to_string( pressure.posture )
+                                   << " posture_reason=" << pressure.reason
+                                   << " wounded_riders=" << wounded_riders << '\n';
+        signaled_sources++;
     }
     return signaled_sources;
 }
@@ -2130,6 +2247,7 @@ void overmap_npc_move()
         live_signals = observe_live_bandit_field_signals_near_player();
         refresh_live_bandit_signal_marks( live_signals );
         signal_live_hordes_from_light_observations( live_signals );
+        signal_live_zombie_riders_from_light_observations( live_signals );
     }
     const auto signal_done = std::chrono::steady_clock::now();
     if( dispatch_cadence_due ) {
