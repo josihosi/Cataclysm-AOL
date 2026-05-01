@@ -1696,6 +1696,12 @@ def audit_map_tiles_near_player(
     required_furniture: Optional[List[str]] = None,
     required_traps: Optional[List[str]] = None,
     required_radiation: Optional[List[int]] = None,
+    forbidden_terrain: Optional[List[str]] = None,
+    forbidden_fields: Optional[List[str]] = None,
+    forbidden_items: Optional[List[str]] = None,
+    forbidden_furniture: Optional[List[str]] = None,
+    forbidden_traps: Optional[List[str]] = None,
+    forbidden_radiation: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """Read-only saved-map audit for terrain/fields/items/furniture/traps/radiation near the saved player."""
     if not world_dir.exists():
@@ -1798,6 +1804,12 @@ def audit_map_tiles_near_player(
     required_furniture = [furn for furn in (required_furniture or []) if furn]
     required_traps = [trap for trap in (required_traps or []) if trap]
     required_radiation = [int(rad) for rad in (required_radiation or [])]
+    forbidden_terrain = [terrain for terrain in (forbidden_terrain or []) if terrain]
+    forbidden_fields = [field for field in (forbidden_fields or []) if field]
+    forbidden_items = [item for item in (forbidden_items or []) if item]
+    forbidden_furniture = [furn for furn in (forbidden_furniture or []) if furn]
+    forbidden_traps = [trap for trap in (forbidden_traps or []) if trap]
+    forbidden_radiation = [int(rad) for rad in (forbidden_radiation or [])]
     observed_terrain = [str(tile.get("terrain")) for tile in tile_reports if str(tile.get("terrain", ""))]
     observed_field_ids = [str(field.get("field_id")) for tile in tile_reports for field in tile.get("fields", []) if isinstance(field, dict)]
     observed_items = [str(item) for tile in tile_reports for item in tile.get("items", [])]
@@ -1810,6 +1822,12 @@ def audit_map_tiles_near_player(
     missing_required_furniture = [furn for furn in required_furniture if furn not in observed_furniture]
     missing_required_traps = [trap for trap in required_traps if trap not in observed_traps]
     missing_required_radiation = [rad for rad in required_radiation if rad not in observed_radiation]
+    observed_forbidden_terrain = [terrain for terrain in forbidden_terrain if terrain in observed_terrain]
+    observed_forbidden_fields = [field for field in forbidden_fields if field in observed_field_ids]
+    observed_forbidden_items = [item for item in forbidden_items if item in observed_items]
+    observed_forbidden_furniture = [furn for furn in forbidden_furniture if furn in observed_furniture]
+    observed_forbidden_traps = [trap for trap in forbidden_traps if trap in observed_traps]
+    observed_forbidden_radiation = [rad for rad in forbidden_radiation if rad in observed_radiation]
     required_count = (
         len(required_terrain)
         + len(required_fields)
@@ -1817,6 +1835,12 @@ def audit_map_tiles_near_player(
         + len(required_furniture)
         + len(required_traps)
         + len(required_radiation)
+        + len(forbidden_terrain)
+        + len(forbidden_fields)
+        + len(forbidden_items)
+        + len(forbidden_furniture)
+        + len(forbidden_traps)
+        + len(forbidden_radiation)
     )
     missing_count = (
         len(missing_required_terrain)
@@ -1825,6 +1849,12 @@ def audit_map_tiles_near_player(
         + len(missing_required_furniture)
         + len(missing_required_traps)
         + len(missing_required_radiation)
+        + len(observed_forbidden_terrain)
+        + len(observed_forbidden_fields)
+        + len(observed_forbidden_items)
+        + len(observed_forbidden_furniture)
+        + len(observed_forbidden_traps)
+        + len(observed_forbidden_radiation)
     )
     if required_count and missing_count == 0:
         status = "required_state_present"
@@ -1845,12 +1875,24 @@ def audit_map_tiles_near_player(
         "required_furniture": required_furniture,
         "required_traps": required_traps,
         "required_radiation": required_radiation,
+        "forbidden_terrain": forbidden_terrain,
+        "forbidden_fields": forbidden_fields,
+        "forbidden_items": forbidden_items,
+        "forbidden_furniture": forbidden_furniture,
+        "forbidden_traps": forbidden_traps,
+        "forbidden_radiation": forbidden_radiation,
         "observed_terrain": observed_terrain,
         "observed_field_ids": observed_field_ids,
         "observed_items": observed_items,
         "observed_furniture": observed_furniture,
         "observed_traps": observed_traps,
         "observed_radiation": observed_radiation,
+        "observed_forbidden_terrain": observed_forbidden_terrain,
+        "observed_forbidden_fields": observed_forbidden_fields,
+        "observed_forbidden_items": observed_forbidden_items,
+        "observed_forbidden_furniture": observed_forbidden_furniture,
+        "observed_forbidden_traps": observed_forbidden_traps,
+        "observed_forbidden_radiation": observed_forbidden_radiation,
         "missing_required_terrain": missing_required_terrain,
         "missing_required_fields": missing_required_fields,
         "missing_required_items": missing_required_items,
@@ -4415,6 +4457,16 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_traps")
         if metadata.get("missing_required_radiation"):
             issues.append("missing_required_radiation")
+        for forbidden_key in (
+            "observed_forbidden_terrain",
+            "observed_forbidden_fields",
+            "observed_forbidden_items",
+            "observed_forbidden_furniture",
+            "observed_forbidden_traps",
+            "observed_forbidden_radiation",
+        ):
+            if metadata.get(forbidden_key):
+                issues.append(forbidden_key)
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
         if metadata.get("missing_required_hordes"):
@@ -9338,6 +9390,12 @@ def execute_probe_steps(
             required_furniture = [str(furn).strip() for furn in step.get("required_furniture", step.get("required_furniture_ids", [])) if str(furn).strip()]
             required_traps = [str(trap).strip() for trap in step.get("required_traps", step.get("required_trap_ids", [])) if str(trap).strip()]
             required_radiation = [int(rad) for rad in step.get("required_radiation", step.get("required_radiation_values", []))]
+            forbidden_terrain = [str(terrain).strip() for terrain in step.get("forbidden_terrain", step.get("forbidden_terrain_ids", [])) if str(terrain).strip()]
+            forbidden_fields = [str(field).strip() for field in step.get("forbidden_fields", step.get("forbidden_field_ids", [])) if str(field).strip()]
+            forbidden_items = [str(item).strip() for item in step.get("forbidden_items", step.get("forbidden_item_ids", [])) if str(item).strip()]
+            forbidden_furniture = [str(furn).strip() for furn in step.get("forbidden_furniture", step.get("forbidden_furniture_ids", [])) if str(furn).strip()]
+            forbidden_traps = [str(trap).strip() for trap in step.get("forbidden_traps", step.get("forbidden_trap_ids", [])) if str(trap).strip()]
+            forbidden_radiation = [int(rad) for rad in step.get("forbidden_radiation", step.get("forbidden_radiation_values", []))]
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -9352,6 +9410,12 @@ def execute_probe_steps(
                     required_furniture=required_furniture,
                     required_traps=required_traps,
                     required_radiation=required_radiation,
+                    forbidden_terrain=forbidden_terrain,
+                    forbidden_fields=forbidden_fields,
+                    forbidden_items=forbidden_items,
+                    forbidden_furniture=forbidden_furniture,
+                    forbidden_traps=forbidden_traps,
+                    forbidden_radiation=forbidden_radiation,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -9365,6 +9429,12 @@ def execute_probe_steps(
                     "required_furniture": required_furniture,
                     "required_traps": required_traps,
                     "required_radiation": required_radiation,
+                    "forbidden_terrain": forbidden_terrain,
+                    "forbidden_fields": forbidden_fields,
+                    "forbidden_items": forbidden_items,
+                    "forbidden_furniture": forbidden_furniture,
+                    "forbidden_traps": forbidden_traps,
+                    "forbidden_radiation": forbidden_radiation,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -10008,7 +10078,7 @@ def probe_proof_classification(
         "matched_artifact_patterns": [entry.get("pattern", "") for entry in matches_by_pattern if entry.get("lines")],
         "wait_step_status": wait_status,
         "step_ledger_status": step_ledger_status,
-        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate, green step-local ledger rows, matched artifacts, and no blocked/yellow wait ledger.",
+        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate, green step-local ledger rows, matched positive artifacts or explicit negative artifact guards, and no blocked/yellow wait ledger.",
     }
 
 
@@ -10882,10 +10952,25 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
 
     step_artifact_matches: List[Dict[str, Any]] = []
     for step_report in step_reports:
-        if str(step_report.get("kind", "")).strip().lower() not in {"audit_log_contains", "audit_player_message_log_contains"}:
+        step_kind = str(step_report.get("kind", "")).strip().lower()
+        if step_kind not in {"audit_log_contains", "audit_log_not_contains", "audit_player_message_log_contains"}:
             continue
         metadata = step_report.get("metadata")
         if not isinstance(metadata, dict):
+            continue
+        if step_kind == "audit_log_not_contains" and metadata.get("status") == "required_state_present":
+            forbidden_items = [str(item) for item in metadata.get("forbidden_items", []) if str(item).strip()]
+            if forbidden_items:
+                step_artifact_matches.append({
+                    "pattern": f"{step_report.get('label', '')}: absent: " + "; ".join(forbidden_items),
+                    "lines": [
+                        "ABSENT after artifact baseline: " + "; ".join(forbidden_items) +
+                        f" (scanned {int(metadata.get('line_count', 0) or 0)} line(s))"
+                    ],
+                    "source": str(metadata.get("source_log", "")),
+                    "artifact_path": str(metadata.get("artifact_path", "")),
+                    "capture_policy": str(metadata.get("capture_policy", "negative log guard")),
+                })
             continue
         for entry in metadata.get("matches_by_pattern", []):
             if isinstance(entry, dict) and entry.get("lines"):
@@ -10946,6 +11031,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = "artifacts_matched"
     elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "inconclusive_partial_artifact_match"
+    elif (not artifact_patterns and effective_matches_by_pattern and
+          all(entry.get("lines") for entry in effective_matches_by_pattern)):
+        verdict = "artifacts_matched"
     elif not artifact_text.strip():
         verdict = "inconclusive_no_new_artifacts"
 

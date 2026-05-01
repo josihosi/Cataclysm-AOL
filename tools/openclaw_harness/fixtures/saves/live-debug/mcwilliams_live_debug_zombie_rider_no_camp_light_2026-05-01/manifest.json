@@ -1,0 +1,43 @@
+{
+  "name": "mcwilliams_live_debug_zombie_rider_no_camp_light_2026-05-01",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only zombie-rider no-camp-light control restage: remove human NPC targets, set a mature-world midnight turn, stage the same two hostile riders as the positive camp-light row, and deliberately add no fire/light fields so the live light-signal bridge can be guarded by absence.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 68256000
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [20, 20, 0],
+          "hp": 220,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [-20, 20, 0],
+          "hp": 220,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}
