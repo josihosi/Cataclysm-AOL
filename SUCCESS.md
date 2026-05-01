@@ -136,7 +136,7 @@ Success state:
 - [ ] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
 - [ ] Each postcard has a named vision, a prepared scenario/handoff or exact setup recipe, and a short Josef-facing play instruction.
 - [ ] Each visual postcard has at least one screenshot checkpoint with a named expected optical/visible fact.
-- [ ] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible from annoying/fake/unfair/invisible/visually-confusing.
+- [ ] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible/gnostic from annoying/fake/unfair/invisible/visually-confusing/hollow.
 - [ ] Existing closed proof rows are cited as footing where used, without laundering staged rows into natural discovery claims.
 - [ ] If fresh handoff runs are created, each run records artifact dir, cleanup/handoff status, and one visible fact or explicit reason visual proof is not the evidence class.
 - [ ] The final Josef handoff is short enough to actually use.

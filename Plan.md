@@ -199,7 +199,7 @@ Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
-Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef also asked for “gosnic” as a possible taste axis; keep that word visible until clarified.
+Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
 
 Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, does not create release packaging, and should not interrupt the active camp-locker cleanup lane unless explicitly promoted. The optical/screenshot playtest condition is required for visual postcards when promoted.
 

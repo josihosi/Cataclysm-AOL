@@ -6,10 +6,11 @@ Josef asked to playtest the C-AOL “visions” — not one unit test, not one o
 
 Josef opens a prepared C-AOL build/save and can sample a handful of scenes like short playable postcards. Each postcard says what vision it is testing before the first keypress: “late-world rider terror with cover counterplay”, “stalker uses zombies as pressure instead of omniscience”, “raptor circles instead of stab-flee annoyance”, “camp locker makes NPCs practically useful without magic inventory soup”, or “bandit/basecamp pressure feels alive but not unfair”.
 
-The playtest should not ask Josef to become an archaeologist of harness logs. He should be able to play, look, and answer taste questions. Josef also explicitly wants **vision in the optical sense** as a playtest condition: screenshots/visual read matter, not only mechanics. He phrased a second axis as “gosnic”; keep that word visible until clarified instead of silently translating it into a fake requirement.
+The playtest should not ask Josef to become an archaeologist of harness logs. He should be able to play, look, and answer taste questions. Josef also explicitly wants **vision in the optical sense** as a playtest condition: screenshots/visual read matter, not only mechanics. He clarified the second axis as **gnostic**: whether the scene carries a strange inner meaning / occult-intelligible C-AOL mood, not merely whether the tactics work.
 
 - Did this read visually/optically as the intended creature/world behavior from screenshots and screen state?
 - Did this read as the intended creature/world behavior mechanically?
+- Did it have the intended gnostic/occult inner sense — the “ah, this world knows something wrong” feeling — or was it just a mechanic wearing a funny hat?
 - Did it feel fair, scary, useful, alive, or just annoying?
 - Was the counterplay visible enough?
 - Did anything feel fake, over-scripted, or too invisible?
@@ -50,3 +51,7 @@ The playtest should not ask Josef to become an archaeologist of harness logs. He
 ## Anti-fog rule
 
 This packet should make a small sampler, not a grand opera. Better three clear scenes with honest taste questions than twelve half-understood save files and a heroic spreadsheet nobody loves. If the sampler starts to sprawl, split it into v0 postcards and future postcards.
+
+## Gnostic taste axis
+
+For this sampler, “gnostic” is a taste check, not a lore dissertation: does the scene feel like it reveals a hidden rule, omen, mood, or wrongness inside C-AOL? A rider, stalker, raptor, camp, or bandit scene can pass mechanically and optically while still failing this axis if it feels hollow, generic, or too obviously staged.

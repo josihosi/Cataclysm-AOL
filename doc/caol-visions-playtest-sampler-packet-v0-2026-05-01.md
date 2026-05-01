@@ -43,14 +43,14 @@ For each visual postcard:
 - capture or request screenshots at the decisive moment;
 - label each screenshot with the expected visible fact;
 - record whether the screenshot actually supports the optical read, is ambiguous, or shows the wrong thing;
-- keep the extra Josef word “gosnic” as an unresolved taste axis until Schani/Josef classify whether it means sonic, scenic, cosmic, or something else.
+- include a gnostic taste check: whether the scene carries occult/inner C-AOL meaning and not only visible mechanics.
 
 ## Evidence classes
 
 Use C-AOL harness discipline:
 
 - **Agent-side footing:** existing green scenario rows, startup/load, deterministic tests, or fresh handoff setup.
-- **Josef taste:** fun, fairness, readability, optical/screenshot read, annoyance, vibe, and whether the thing feels like the intended C-AOL vision.
+- **Josef taste:** fun, fairness, readability, optical/screenshot read, gnostic/occult inner meaning, annoyance, vibe, and whether the thing feels like the intended C-AOL vision.
 - **Not claimed:** natural random discovery, release readiness, full playthrough balance, or regression closure for unrelated lanes.
 
 ## Success state
@@ -58,7 +58,7 @@ Use C-AOL harness discipline:
 - [ ] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
 - [ ] Each postcard has a named vision, a prepared scenario/handoff or exact setup recipe, and a short Josef-facing play instruction.
 - [ ] Each visual postcard has at least one screenshot checkpoint with a named expected optical/visible fact.
-- [ ] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible from annoying/fake/unfair/invisible/visually-confusing.
+- [ ] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible/gnostic from annoying/fake/unfair/invisible/visually-confusing/hollow.
 - [ ] Existing closed proof rows are cited as footing where used, without laundering staged rows into natural discovery claims.
 - [ ] If fresh handoff runs are created, each run records artifact dir, cleanup/handoff status, and one visible fact or explicit reason visual proof is not the evidence class.
 - [ ] The final Josef handoff is short enough to actually use.
@@ -81,4 +81,4 @@ Use C-AOL harness discipline:
 
 ## First implementation step when promoted
 
-Build `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md` from existing green scenario evidence, including screenshot/optical checkpoints, then run only the missing `handoff` commands needed to leave live sessions playable. Stop after the smallest usable sampler; future postcards can be v1. Clarify Josef's “gosnic” axis before turning it into hard closure criteria.
+Build `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md` from existing green scenario evidence, including screenshot/optical checkpoints, then run only the missing `handoff` commands needed to leave live sessions playable. Stop after the smallest usable sampler; future postcards can be v1. Treat Josef's “gnostic” axis as a taste question: occult/inner meaning, omen-like wrongness, or hidden-world intelligibility; record it separately from optical and mechanical proof.
