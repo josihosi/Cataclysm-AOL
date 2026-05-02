@@ -12,7 +12,7 @@
   "artifact_patterns": [
     "zombie_rider live_plan:",
     "decision=bow_pressure",
-    "decision=withdraw",
+    "decision=reposition",
     "line_of_fire=yes",
     "eval_us="
   ],
@@ -44,7 +44,10 @@
             0,
             -5,
             0
-          ]
+          ],
+          "ammo": {
+            "arrow_wood": 18
+          }
         }
       ],
       "abort_on_metadata_failure": true,
@@ -72,11 +75,11 @@
       "artifact_state_patterns": [
         "zombie_rider live_plan:",
         "decision=bow_pressure",
-        "decision=withdraw",
+        "decision=reposition",
         "line_of_fire=yes",
         "eval_us="
       ],
-      "expected_visible_fact": "bounded live turn window records bow-pressure planning followed by close-pressure withdrawal-repositioning"
+      "expected_visible_fact": "bounded live turn window records bow-pressure planning followed by close-pressure bunny-hop repositioning"
     },
     {
       "kind": "audit_log_contains",
@@ -92,20 +95,20 @@
         ],
         [
           "zombie_rider live_plan:",
-          "decision=withdraw",
+          "decision=reposition",
           "line_of_fire=yes",
           "eval_us="
         ]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_zombie_rider_open_field_live_plan_missing",
-      "abort_reason": "same-run artifact lacked bow-pressure and withdrawal/reposition live-plan lines",
-      "expected_visible_fact": "same-run debug artifact proves live rider local-combat planning reaches bow pressure and close-pressure withdrawal"
+      "abort_reason": "same-run artifact lacked bow-pressure and close-pressure reposition live-plan lines",
+      "expected_visible_fact": "same-run debug artifact proves live rider local-combat planning reaches bow pressure and close-pressure bunny-hop repositioning"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_open_field_pressure_mcw",
   "evidence_contract": {
-    "claim": "a staged live zombie rider at visible bow range uses the monster::plan seam to pressure the player at range and then withdraw/reposition at close pressure instead of static melee dogpile behavior",
+    "claim": "a staged live zombie rider at visible bow range uses the monster::plan seam to pressure the player at range and then bunny-hop/reposition at close pressure instead of static melee dogpile behavior",
     "load_only_verdict": "load proof only / inconclusive for zombie-rider live fun behavior",
     "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
   }

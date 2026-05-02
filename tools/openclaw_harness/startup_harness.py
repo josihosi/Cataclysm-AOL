@@ -2308,6 +2308,7 @@ def audit_saved_active_monsters(
             "dead": monster.get("dead"),
             "hp": monster.get("hp"),
             "faction": monster.get("faction"),
+            "ammo": monster.get("ammo", {}),
             "unique_name": monster.get("unique_name", ""),
             "nickname": monster.get("nickname", ""),
         })
@@ -2330,6 +2331,12 @@ def audit_saved_active_monsters(
         for key in ("min_distance_to_player", "max_distance_to_player"):
             if key in raw:
                 requirement[key] = int(raw[key])
+        if isinstance(raw.get("ammo"), dict):
+            requirement["ammo"] = {
+                str(ammo_type).strip(): int(amount)
+                for ammo_type, amount in raw.get("ammo", {}).items()
+                if str(ammo_type).strip()
+            }
         required.append(requirement)
 
     def matches_requirement(monster: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
@@ -2350,6 +2357,17 @@ def audit_saved_active_monsters(
             distance_to_player is None or distance_to_player > int(requirement["max_distance_to_player"])
         ):
             return False
+        required_ammo = requirement.get("ammo")
+        if isinstance(required_ammo, dict):
+            observed_ammo = monster.get("ammo", {})
+            if not isinstance(observed_ammo, dict):
+                return False
+            for ammo_type, amount in required_ammo.items():
+                try:
+                    if int(observed_ammo.get(ammo_type, 0) or 0) < int(amount):
+                        return False
+                except (TypeError, ValueError):
+                    return False
         return True
 
     missing_required_monsters = [
@@ -5397,6 +5415,24 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     raise SystemExit(
                         f"Fixture save_transforms[{index}].monsters[{monster_index}] has non-integer offset/hp/friendly/anger/morale in {manifest_path}"
                     )
+                raw_ammo = monster_raw.get("ammo", {})
+                if raw_ammo is None:
+                    raw_ammo = {}
+                if not isinstance(raw_ammo, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] ammo must be an object in {manifest_path}"
+                    )
+                ammo: Dict[str, int] = {}
+                try:
+                    for ammo_type, amount in raw_ammo.items():
+                        ammo_id = str(ammo_type).strip()
+                        ammo_amount = int(amount)
+                        if ammo_id and ammo_amount > 0:
+                            ammo[ammo_id] = ammo_amount
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] ammo values must be positive integers in {manifest_path}"
+                    )
                 monsters.append({
                     "typeid": typeid,
                     "offset_ms": offset,
@@ -5407,6 +5443,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     "morale": morale,
                     "hallucination": bool(monster_raw.get("hallucination", False)),
                     "dead": bool(monster_raw.get("dead", False)),
+                    "ammo": ammo,
                 })
             transforms.append({
                 "kind": kind,
@@ -7211,7 +7248,7 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "morale": int(raw_monster.get("morale", 18) or 18),
             "hallucination": bool(raw_monster.get("hallucination", False)),
             "aggro_character": bool(raw_monster.get("aggro_character", False)),
-            "ammo": {},
+            "ammo": dict(raw_monster.get("ammo", {}) or {}),
             "underwater": False,
             "upgrades": False,
             "upgrade_time": -1,

@@ -12,7 +12,7 @@
   "artifact_patterns": [
     "zombie_rider live_plan:",
     "decision=withdraw",
-    "reason=wounded_or_close",
+    "reason=wounded_rider_disengages",
     "line_of_fire=yes",
     "eval_us="
   ],
@@ -44,7 +44,10 @@
             0,
             -8,
             0
-          ]
+          ],
+          "ammo": {
+            "arrow_wood": 18
+          }
         }
       ],
       "abort_on_metadata_failure": true,
@@ -72,7 +75,7 @@
       "artifact_state_patterns": [
         "zombie_rider live_plan:",
         "decision=withdraw",
-        "reason=wounded_or_close",
+        "reason=wounded_rider_disengages",
         "line_of_fire=yes",
         "eval_us="
       ],
@@ -85,7 +88,7 @@
         [
           "zombie_rider live_plan:",
           "decision=withdraw",
-          "reason=wounded_or_close",
+          "reason=wounded_rider_disengages",
           "line_of_fire=yes",
           "eval_us="
         ]

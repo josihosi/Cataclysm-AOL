@@ -25,7 +25,10 @@
           "friendly": 0,
           "faction": "zombie",
           "anger": 100,
-          "morale": 100
+          "morale": 100,
+          "ammo": {
+            "arrow_wood": 18
+          }
         }
       ]
     }
