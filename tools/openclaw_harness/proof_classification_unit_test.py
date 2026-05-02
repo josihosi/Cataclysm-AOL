@@ -8,7 +8,9 @@ just because a log/artifact pattern matched.
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Dict, List
@@ -17,8 +19,13 @@ HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
 from startup_harness import (  # noqa: E402
+    audit_saved_weather_state,
+    build_portal_storm_warning,
     classify_wait_step_ledger,
+    portal_storm_policy_from_scenario,
+    portal_storm_step_ledger_rows,
     probe_proof_classification,
+    render_repeatability_text_report,
     summarize_probe_step_ledger,
 )
 
@@ -183,6 +190,108 @@ class ProbeProofClassificationTest(unittest.TestCase):
                 self.assertIn("before_after_clock_or_turn_not_parsed", result["issues"])
                 self.assertIn("missing_finish_or_interruption_signal", result["issues"])
                 self.assertIn("active_job=stalk", result["artifact_elapsed_evidence"]["missing_patterns"])
+
+
+
+class PortalStormWarningTest(unittest.TestCase):
+    def write_dimension_weather(self, root: Path, weather_id: str) -> Path:
+        world_dir = root / "World"
+        world_dir.mkdir(parents=True)
+        payload = {
+            "weather": {
+                "weather_id": weather_id,
+                "temperature": 62.0,
+                "forced_temperature": None,
+            }
+        }
+        (world_dir / "dimension_data.gsav").write_text(
+            "# version 1\n" + json.dumps(payload, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        return world_dir
+
+    def test_saved_weather_audit_detects_portal_storm_positive_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            world_dir = self.write_dimension_weather(Path(tmp), "portal_storm")
+            audit = audit_saved_weather_state(world_dir)
+            warning = build_portal_storm_warning(policy={"allowed": False, "required": False}, current_audit=audit)
+
+        self.assertEqual(audit["observed_weather_id"], "portal_storm")
+        self.assertEqual(warning["status"], "active")
+        self.assertEqual(warning["classification"], "contaminating")
+        self.assertTrue(warning["contaminates_result"])
+        self.assertIn("PORTAL STORM ACTIVE", warning["summary"])
+
+    def test_saved_weather_audit_negative_control_does_not_raise_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            world_dir = self.write_dimension_weather(Path(tmp), "clear")
+            audit = audit_saved_weather_state(world_dir)
+            warning = build_portal_storm_warning(policy={"allowed": False, "required": False}, current_audit=audit)
+
+        self.assertEqual(audit["observed_weather_id"], "clear")
+        self.assertEqual(warning["status"], "not_observed")
+        self.assertEqual(warning["classification"], "clear")
+        self.assertFalse(warning["contaminates_result"])
+
+    def test_unallowed_portal_storm_adds_yellow_ledger_row_and_blocks_feature_proof(self) -> None:
+        warning = build_portal_storm_warning(
+            policy={"allowed": False, "required": False},
+            current_audit={"status": "scanned", "observed_weather_id": "close_portal_storm"},
+        )
+        ledger = [{"primitive_step": "guarded_step", "verdict": "green_step_expected_fact_present"}]
+        ledger.extend(portal_storm_step_ledger_rows(warning))
+        summary = summarize_probe_step_ledger(ledger)
+        result = probe_proof_classification(
+            verdict="artifacts_matched",
+            startup_classification=startup(clean=True),
+            step_reports=[{"label": "guarded_step"}],
+            artifact_patterns=["claim scoped line"],
+            matches_by_pattern=matches(),
+            step_ledger_summary=summary,
+        )
+
+        self.assertEqual(summary["status"], "yellow_step_local_proof_incomplete")
+        self.assertIn("yellow_step_portal_storm_contamination", summary["verdicts"])
+        self.assertEqual(result["status"], "yellow")
+        self.assertFalse(result["feature_proof"])
+
+    def test_allowed_portal_storm_stays_green_and_remains_visible(self) -> None:
+        policy = portal_storm_policy_from_scenario({"portal_storm": {"allow": True}})
+        warning = build_portal_storm_warning(
+            policy=policy,
+            current_audit={"status": "scanned", "observed_weather_id": "WEATHER_PORTAL_STORM"},
+        )
+        ledger = [{"primitive_step": "guarded_step", "verdict": "green_step_expected_fact_present"}]
+        ledger.extend(portal_storm_step_ledger_rows(warning))
+        summary = summarize_probe_step_ledger(ledger)
+
+        self.assertEqual(warning["status"], "active")
+        self.assertEqual(warning["classification"], "expected_allowed")
+        self.assertIn("EXPECTED BY SCENARIO", warning["summary"])
+        self.assertEqual(summary["status"], "green_step_local_proof")
+        self.assertIn("green_step_portal_storm_expected_allowed", summary["verdicts"])
+
+    def test_repeatability_text_report_surfaces_portal_storm_warning(self) -> None:
+        text = render_repeatability_text_report({
+            "scenario": "portal.weather_probe",
+            "run_count": 1,
+            "overall_verdict": "mixed_repeatability",
+            "runs": [{
+                "run": 1,
+                "verdict": "yellow_step_local_proof_incomplete",
+                "cleanup": {"status": "terminated"},
+                "version_matches_runtime_paths": True,
+                "portal_storm_warning": {
+                    "status": "active",
+                    "summary": "⚠ PORTAL STORM ACTIVE / HARNESS RESULT MAY BE CONTAMINATED",
+                },
+                "expectations": [],
+            }],
+            "aggregate_expectations": [],
+        })
+
+        self.assertIn("portal_storm=active", text)
+        self.assertIn("PORTAL STORM ACTIVE / HARNESS RESULT MAY BE CONTAMINATED", text)
 
 
 if __name__ == "__main__":

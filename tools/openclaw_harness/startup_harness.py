@@ -72,6 +72,19 @@ CLEANUP_ACCEPTED_STATUSES = {
     "killed",
 }
 
+PORTAL_STORM_WEATHER_IDS = {
+    "portal_storm",
+    "early_portal_storm",
+    "distant_portal_storm",
+    "close_portal_storm",
+    "WEATHER_PORTAL_STORM",
+}
+
+PORTAL_STORM_CONTAMINATION_SUMMARY = "⚠ PORTAL STORM ACTIVE / HARNESS RESULT MAY BE CONTAMINATED"
+PORTAL_STORM_ALLOWED_SUMMARY = "⚠ PORTAL STORM ACTIVE / EXPECTED BY SCENARIO"
+PORTAL_STORM_REQUIRED_MISSING_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT NOT OBSERVED"
+PORTAL_STORM_REQUIRED_UNKNOWN_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT WEATHER STATUS IS UNKNOWN"
+
 PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
     "corrupted": 0,
     "key": 32,
@@ -2881,6 +2894,201 @@ def audit_saved_weather_state(
         "missing_required_weather": missing_required_weather,
         "status": status,
     }
+
+
+def is_portal_storm_weather_id(weather_id: str) -> bool:
+    normalized = str(weather_id or "").strip()
+    if not normalized:
+        return False
+    if normalized in PORTAL_STORM_WEATHER_IDS:
+        return True
+    lowered = normalized.lower()
+    return lowered in {value.lower() for value in PORTAL_STORM_WEATHER_IDS} or "portal_storm" in lowered
+
+
+def portal_storm_policy_from_scenario(scenario: Dict[str, Any]) -> Dict[str, bool]:
+    raw_policy = scenario.get("portal_storm", {})
+    policy = raw_policy if isinstance(raw_policy, dict) else {}
+    allowed = bool(
+        scenario.get("allow_portal_storm", False)
+        or scenario.get("portal_storm_allowed", False)
+        or policy.get("allow", False)
+        or policy.get("allowed", False)
+    )
+    required = bool(
+        scenario.get("require_portal_storm", False)
+        or scenario.get("portal_storm_required", False)
+        or policy.get("require", False)
+        or policy.get("required", False)
+    )
+    if required:
+        allowed = True
+    return {"allowed": allowed, "required": required}
+
+
+def collect_weather_audits_from_step_reports(step_reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    audits: List[Dict[str, Any]] = []
+    for report in step_reports:
+        if not isinstance(report, dict):
+            continue
+        metadata = report.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if "observed_weather_id" in metadata or "observed_weather" in metadata:
+            audits.append(metadata)
+    return audits
+
+
+def read_current_saved_weather_audit(profile: str, world: str) -> Dict[str, Any]:
+    world_name = str(world or "").strip()
+    if not world_name:
+        return {
+            "status": "unknown",
+            "error": "world_not_configured",
+            "world": "",
+            "world_dir": "",
+        }
+    world_dir = save_dir_for_profile(profile) / world_name
+    try:
+        return audit_saved_weather_state(world_dir)
+    except (Exception, SystemExit) as exc:
+        return {
+            "status": "unknown",
+            "error": str(exc),
+            "world": world_name,
+            "world_dir": str(world_dir),
+        }
+
+
+def build_portal_storm_warning(
+    *,
+    policy: Dict[str, bool],
+    current_audit: Optional[Dict[str, Any]] = None,
+    step_weather_audits: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    allowed = bool(policy.get("allowed", False))
+    required = bool(policy.get("required", False))
+    audits: List[Dict[str, Any]] = []
+    if isinstance(current_audit, dict) and current_audit:
+        audits.append(current_audit)
+    if step_weather_audits:
+        audits.extend(audit for audit in step_weather_audits if isinstance(audit, dict))
+
+    observed_weather_ids: List[str] = []
+    current_weather_id = ""
+    current_status = str((current_audit or {}).get("status", "")).strip()
+    if isinstance(current_audit, dict):
+        current_weather_id = str(current_audit.get("observed_weather_id", "")).strip()
+    for audit in audits:
+        weather_id = str(audit.get("observed_weather_id", "")).strip()
+        if weather_id and weather_id not in observed_weather_ids:
+            observed_weather_ids.append(weather_id)
+
+    current_active = is_portal_storm_weather_id(current_weather_id)
+    observed = any(is_portal_storm_weather_id(weather_id) for weather_id in observed_weather_ids)
+    audit_unknown = not audits or any(str(audit.get("status", "")).strip() in {"", "unknown", "failed"} for audit in audits)
+
+    if current_active:
+        status = "active"
+    elif observed:
+        status = "observed"
+    elif audit_unknown:
+        status = "unknown"
+    else:
+        status = "not_observed"
+
+    if observed and allowed:
+        classification = "expected_allowed"
+        summary = PORTAL_STORM_ALLOWED_SUMMARY
+    elif observed:
+        classification = "contaminating"
+        summary = PORTAL_STORM_CONTAMINATION_SUMMARY
+    elif required and status == "unknown":
+        classification = "required_unknown"
+        summary = PORTAL_STORM_REQUIRED_UNKNOWN_SUMMARY
+    elif required:
+        classification = "required_missing"
+        summary = PORTAL_STORM_REQUIRED_MISSING_SUMMARY
+    elif status == "unknown":
+        classification = "unknown"
+        summary = "Portal storm status unknown; saved weather metadata could not be audited."
+    else:
+        classification = "clear"
+        summary = "Portal storm not observed in saved weather metadata."
+
+    return {
+        "status": status,
+        "summary": summary,
+        "classification": classification,
+        "allowed": allowed,
+        "required": required,
+        "observed": observed,
+        "contaminates_result": classification == "contaminating",
+        "observed_weather_ids": observed_weather_ids,
+        "current_weather_id": current_weather_id,
+        "audit_status": current_status,
+        "current_audit": current_audit or {},
+        "step_weather_audit_count": len(step_weather_audits or []),
+    }
+
+
+def portal_storm_step_ledger_rows(portal_storm_warning: Dict[str, Any]) -> List[Dict[str, Any]]:
+    classification = str(portal_storm_warning.get("classification", "")).strip()
+    if classification == "contaminating":
+        verdict = "yellow_step_portal_storm_contamination"
+        issues = ["unallowed_portal_storm_observed"]
+        next_step_gate = "rerun under controlled non-portal-storm weather unless the scenario explicitly allows portal storms"
+    elif classification == "expected_allowed":
+        verdict = "green_step_portal_storm_expected_allowed"
+        issues = []
+        next_step_gate = "portal storm is expected/allowed by this scenario and does not contaminate the proof ledger"
+    elif classification in {"required_missing", "required_unknown"}:
+        verdict = "red_step_portal_storm_required_missing"
+        issues = [classification]
+        next_step_gate = "required portal-storm scenario cannot be green until saved weather metadata proves portal storm state"
+    else:
+        return []
+    return [{
+        "index": "portal_storm_warning",
+        "primitive_step": "portal_storm_warning",
+        "kind": "portal_storm_warning",
+        "preconditions": "scenario portal-storm policy evaluated against saved dimension weather metadata",
+        "action": "read saved weather metadata and classify portal-storm contamination/allowance",
+        "expected_immediate_state": str(portal_storm_warning.get("summary", "")),
+        "evidence_artifact": "probe.report.json:portal_storm_warning",
+        "expected_visible_fact": str(portal_storm_warning.get("summary", "")),
+        "screen_text_expectation": {},
+        "metadata_expectation": {
+            "observed_weather_ids": portal_storm_warning.get("observed_weather_ids", []),
+            "current_weather_id": portal_storm_warning.get("current_weather_id", ""),
+            "portal_storm_policy": {
+                "allowed": bool(portal_storm_warning.get("allowed", False)),
+                "required": bool(portal_storm_warning.get("required", False)),
+            },
+        },
+        "proof_deferred_to_label": "",
+        "failure_rule": "unallowed portal storm is yellow contamination; missing/unknown required portal storm is red; explicitly allowed portal storm is green",
+        "next_step_gate": next_step_gate,
+        "issues": issues,
+        "verdict": verdict,
+    }]
+
+
+def build_portal_storm_warning_for_report(
+    *,
+    profile: str,
+    world: str,
+    scenario: Dict[str, Any],
+    step_reports: Optional[List[Dict[str, Any]]] = None,
+    extra_weather_audits: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    step_weather_audits = list(extra_weather_audits or [])
+    step_weather_audits.extend(collect_weather_audits_from_step_reports(step_reports or []))
+    return build_portal_storm_warning(
+        policy=portal_storm_policy_from_scenario(scenario),
+        current_audit=read_current_saved_weather_audit(profile, world),
+        step_weather_audits=step_weather_audits,
+    )
 
 
 def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
@@ -10546,6 +10754,7 @@ def repeatability_run_summary(
     startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
+    portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
     expectation_results, helper_lines = evaluate_repeatability_expectations(report, expectations)
     cleanup_status = str(cleanup.get("status", "")).strip()
     return {
@@ -10560,6 +10769,7 @@ def repeatability_run_summary(
         "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
         "cleanup": cleanup,
         "cleanup_ok": cleanup_status in CLEANUP_ACCEPTED_STATUSES,
+        "portal_storm_warning": portal_storm_warning,
         "expectations": expectation_results,
         "helper_tail_lines": helper_lines,
     }
@@ -10573,14 +10783,18 @@ def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
         "",
     ]
     for run in summary.get("runs", []):
+        portal_warning = run.get("portal_storm_warning", {}) if isinstance(run.get("portal_storm_warning"), dict) else {}
         lines.append(
-            "Run {run}: verdict={verdict} cleanup={cleanup} runtime_current={runtime_current}".format(
+            "Run {run}: verdict={verdict} cleanup={cleanup} runtime_current={runtime_current} portal_storm={portal_status}".format(
                 run=run.get("run", "?"),
                 verdict=run.get("verdict", ""),
                 cleanup=run.get("cleanup", {}).get("status", ""),
                 runtime_current=run.get("version_matches_runtime_paths", None),
+                portal_status=portal_warning.get("status", ""),
             )
         )
+        if portal_warning.get("summary"):
+            lines.append(f"  - portal storm warning: {portal_warning.get('summary', '')}")
         for expectation in run.get("expectations", []):
             status = "ok" if expectation.get("matched") else "missing"
             lines.append(f"  - {expectation.get('label', '')}: {status}")
@@ -10665,7 +10879,21 @@ def run_repeatability(args: argparse.Namespace) -> int:
     all_runtime_current = all(run.get("version_matches_runtime_paths") is True for run in run_summaries)
     all_cleanup_ok = all(run.get("cleanup_ok") for run in run_summaries)
     all_expectations_ok = all(item.get("all_runs_matched") for item in aggregate_expectations) if aggregate_expectations else True
-    overall_verdict = "stable_repeatability_pass" if all_runs_ok and all_runtime_current and all_cleanup_ok and all_expectations_ok else "mixed_repeatability"
+    portal_storm_warnings = [
+        run.get("portal_storm_warning", {})
+        for run in run_summaries
+        if isinstance(run.get("portal_storm_warning"), dict)
+    ]
+    portal_storm_clean = all(
+        not warning.get("contaminates_result")
+        and str(warning.get("classification", "")) not in {"required_missing", "required_unknown"}
+        for warning in portal_storm_warnings
+    )
+    overall_verdict = (
+        "stable_repeatability_pass"
+        if all_runs_ok and all_runtime_current and all_cleanup_ok and all_expectations_ok and portal_storm_clean
+        else "mixed_repeatability"
+    )
 
     summary = {
         "ok": True,
@@ -10678,6 +10906,8 @@ def run_repeatability(args: argparse.Namespace) -> int:
         "probe_command": base_cmd,
         "expectations": expectations,
         "runs": run_summaries,
+        "portal_storm_warnings": portal_storm_warnings,
+        "portal_storm_clean": portal_storm_clean,
         "aggregate_expectations": aggregate_expectations,
         "overall_verdict": overall_verdict,
     }
@@ -10722,6 +10952,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
     capture_world_after = bool(scenario.get("capture_world_after", False))
+    portal_storm_policy = portal_storm_policy_from_scenario(scenario)
     mode = "handoff" if handoff else "probe"
     report_filename = "handoff.report.json" if handoff else "probe.report.json"
 
@@ -10752,6 +10983,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "artifact_patterns": artifact_patterns,
                 "steps": steps,
                 "capture_world_after": capture_world_after,
+                "portal_storm_policy": portal_storm_policy,
             },
             "startup": {
                 "status": "not_run_blocked_scenario",
@@ -10785,6 +11017,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "line_count": 0,
             },
             "blocked": blocker_info,
+            "portal_storm_warning": build_portal_storm_warning_for_report(
+                profile=profile,
+                world=world,
+                scenario=scenario,
+                step_reports=[],
+            ),
             "proof_classification": proof_classification,
             "evidence_class": proof_classification["evidence_class"],
             "feature_proof": proof_classification["feature_proof"],
@@ -10829,6 +11067,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "recommended_test_command": recommended_test_command,
                 "steps": steps,
                 "capture_world_after": capture_world_after,
+                "portal_storm_policy": portal_storm_policy,
             },
             "startup_plan": start_result,
             "start_command": start_cmd,
@@ -10851,6 +11090,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_failed",
             "startup": start_result,
+            "portal_storm_warning": build_portal_storm_warning_for_report(
+                profile=profile,
+                world=world,
+                scenario=scenario,
+                step_reports=[],
+            ),
             "proof_classification": proof_classification,
             "evidence_class": proof_classification.get("evidence_class", "startup/load"),
             "feature_proof": proof_classification.get("feature_proof", False),
@@ -10881,6 +11126,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_missing_runtime_details",
             "startup": start_result,
+            "portal_storm_warning": build_portal_storm_warning_for_report(
+                profile=profile,
+                world=world,
+                scenario=scenario,
+                step_reports=[],
+            ),
             "proof_classification": proof_classification,
             "evidence_class": proof_classification.get("evidence_class", "startup/load"),
             "feature_proof": proof_classification.get("feature_proof", False),
@@ -10921,6 +11172,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "artifact_patterns": artifact_patterns,
                 "steps": steps,
                 "capture_world_after": capture_world_after,
+                "portal_storm_policy": portal_storm_policy,
             },
             "startup": start_result,
             "steps": [
@@ -10952,6 +11204,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             },
             "runtime_blockers": runtime_blockers,
             "runtime_warnings": runtime_warnings,
+            "portal_storm_warning": build_portal_storm_warning_for_report(
+                profile=profile,
+                world=world,
+                scenario=scenario,
+                step_reports=[],
+            ),
             "proof_classification": proof_classification,
             "evidence_class": proof_classification.get("evidence_class", "startup/load-or-inconclusive"),
             "feature_proof": proof_classification.get("feature_proof", False),
@@ -10960,6 +11218,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
         return 0
 
+    initial_weather_audit = read_current_saved_weather_audit(profile, world)
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
     step_reports = execute_probe_steps(
@@ -11040,11 +11299,20 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
     wait_step_summary = summarize_wait_step_ledgers(step_reports)
+    portal_storm_warning = build_portal_storm_warning_for_report(
+        profile=profile,
+        world=world,
+        scenario=scenario,
+        step_reports=step_reports,
+        extra_weather_audits=[initial_weather_audit],
+    )
     step_ledger = build_probe_step_ledger(step_reports)
+    step_ledger.extend(portal_storm_step_ledger_rows(portal_storm_warning))
     step_ledger_summary = summarize_probe_step_ledger(step_ledger)
     write_json(run_dir / f"{mode}.step_ledger.json", {
         "mode": mode,
         "scenario": str(scenario.get("name", args.scenario)),
+        "portal_storm_warning": portal_storm_warning,
         "step_ledger_summary": step_ledger_summary,
         "step_ledger": step_ledger,
     })
@@ -11105,6 +11373,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "steps": steps,
             "derived_screens": derived_screens,
             "capture_world_after": capture_world_after,
+            "portal_storm_policy": portal_storm_policy,
         },
         "startup": start_result,
         "steps": step_reports,
@@ -11132,6 +11401,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
         "wait_step_summary": wait_step_summary,
+        "portal_storm_warning": portal_storm_warning,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
         "proof_classification": proof_classification,
