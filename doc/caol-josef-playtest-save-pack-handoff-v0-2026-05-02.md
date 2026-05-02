@@ -21,6 +21,10 @@ Required entries:
 5. Zombie rider predator/counterplay.
 6. Writhing stalker hit-fade / zombie-shadow behavior.
 
+## Camp/NPC assignment preflight
+
+Josef flagged that NPCs in the current harness save are not properly assigned to the camp. Treat that as a preflight blocker for camp-threat claims. Audit membership/assignment first. For low-threat rows, remove/kill/despawn or neutralize unassigned extras; for high-threat rows, spawn or repair enough NPCs as properly camp-assigned members. Record the audit evidence and do not let loose NPCs masquerade as camp pressure.
+
 ## Added thematic contrast pass
 
 Before the card is final, try paired thematic playtests for stalkers and bandits:

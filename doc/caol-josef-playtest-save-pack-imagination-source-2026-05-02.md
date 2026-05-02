@@ -29,6 +29,10 @@ V0 should keep the old route labels visible — `/visions/camp-locker`, `/rider/
 5. **Zombie rider** — late-world mounted predator pressure, bow/counterplay, camp-light/no-light or open-field pressure as appropriate.
 6. **Writhing stalker** — current hit-fade retreat rhythm and/or zombie-shadow pressure with clean caveats.
 
+## Camp/NPC assignment preflight
+
+The camp scenes only mean anything if the actors belong to the camp. If the current harness save has loose NPCs that are not actually assigned, the first job is to make the cast honest: low-threat scenes can remove or kill the extras, while high-threat scenes need properly assigned camp members spawned or repaired. Otherwise the player is testing soup, not pressure.
+
 ## Thematic contrast Josef wants before playtest
 
 The pack should include paired contrast rows where possible, because these scenes need to feel like different instincts rather than one canned monster/bandit trick:

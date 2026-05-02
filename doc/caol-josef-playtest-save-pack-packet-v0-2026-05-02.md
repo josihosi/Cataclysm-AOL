@@ -44,6 +44,10 @@ Prepare one usable entry each for:
    - Prepare the current hit-fade retreat rhythm and/or zombie-shadow pressure entry.
    - Existing footing should include the fresh hit-fade proof `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_113738/`. Avoid old dirty quiet-side optical footing unless rerun clean.
 
+## Camp/NPC assignment preflight
+
+Before any camp-threat or bandit contrast row is credited, audit the current harness save's NPCs for real camp membership/assignment. Unassigned NPCs are noise, not low-threat or high-threat proof. For low-threat rows, remove/kill/despawn or otherwise neutralize those extras so the scene is genuinely quiet. For high-threat rows, spawn or repair NPCs as properly camp-assigned members tied to the intended camp/faction/overmap-special state, then record the audit path and caveat.
+
 ## Thematic contrast pass
 
 Before Josef's playtest card is called ready, try a small contrast matrix for the two most state-sensitive families:

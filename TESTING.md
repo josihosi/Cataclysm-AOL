@@ -106,6 +106,7 @@ Required entries:
 Evidence required before handoff:
 - [ ] stalker contrast rows distinguish no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or mark blocked/caveated;
 - [ ] bandit contrast rows distinguish no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or mark blocked/caveated;
+- [ ] camp/NPC preflight audits membership assignment; unassigned current-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows;
 - [ ] each ready entry has a save path, handoff command, or exact setup/load path;
 - [ ] each ready entry has a current-build load/start-state result from `probe`, `handoff`, startup, or an equivalent narrow check;
 - [ ] each ready entry records `portal_storm_warning` status and any runtime warning caveats;
