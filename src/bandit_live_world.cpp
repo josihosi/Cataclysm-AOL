@@ -454,6 +454,41 @@ std::string shakedown_outcome_label( const bandit_live_world::shakedown_outcome 
     return "unknown";
 }
 
+struct shakedown_opening_beat {
+    std::string id;
+    std::string summary;
+    std::string bark;
+};
+
+shakedown_opening_beat choose_shakedown_opening_beat( const bandit_live_world::site_record &site,
+        const bandit_live_world::local_gate_input &input,
+        const bandit_live_world::local_gate_decision &decision )
+{
+    if( site.shakedown_reopen_available && !site.shakedown_reopen_used ) {
+        return { "reopened_demand",
+                 "seen-you-before reopened demand after prior bloodshed",
+                 "Last time you made this expensive.  Now you pay the higher cut, or we finish it." };
+    }
+    if( input.basecamp_or_camp_scene ) {
+        return { "basecamp_pressure",
+                 "basecamp leverage against supplies and workers",
+                 "Nice camp.  Lots of hands, lots of supplies.  Pay our share and nobody has to count bodies." };
+    }
+    if( input.darkness_or_concealment || input.standoff_distance >= 2 ) {
+        return { "warning_from_cover",
+                 "bandits call from cover before closing the fork",
+                 "You hear us before you see all of us.  Put the goods down and walk away breathing." };
+    }
+    if( input.local_threat <= 1 && decision.pressure_margin >= 3 ) {
+        return { "weakness_read",
+                 "bandits read the player's weak odds before demanding payment",
+                 "You look light on friends and heavy on things worth taking.  Make this easy." };
+    }
+    return { "roadblock_toll",
+             "roadblock toll demand",
+             "Road's taxed now.  Pay the toll or fight for the privilege." };
+}
+
 int special_footprint_radius( const std::string &special_id )
 {
     if( special_id == "bandit_camp" || special_id == "bandit_work_camp" ||
@@ -2855,7 +2890,6 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool )
 {
     shakedown_surface surface;
-    surface.bark = "Drop the goods.  Pay the toll or fight.";
 
     if( !decision.valid || !decision.opens_shakedown_surface ||
         decision.posture != local_gate_posture::open_shakedown ) {
@@ -2891,6 +2925,11 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
         return surface;
     }
 
+    const shakedown_opening_beat opening = choose_shakedown_opening_beat( site, input, decision );
+    surface.opening_id = opening.id;
+    surface.opening_summary = opening.summary;
+    surface.bark = opening.bark;
+
     surface.valid = true;
     surface.pay_available = true;
     surface.fight_available = true;
@@ -2903,6 +2942,7 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
     } else if( demand_modifier_percent < 100 ) {
         surface.notes.push_back( "aftermath caution: previous bandit loss cools or shrinks this demand" );
     }
+    surface.notes.push_back( "scenic opening beat: " + surface.opening_summary );
     surface.notes.push_back( "pay branch surrenders the demanded share into abstract bandit bounty/writeback" );
     surface.notes.push_back( "fight branch stays explicit whenever this surface is invoked" );
     surface.notes.push_back( "source site " + site.site_id + " opened the surface from " +
@@ -2925,6 +2965,7 @@ std::string render_shakedown_surface_report( const site_record &site,
         << " demanded_toll=" << surface.demanded_value
         << " basecamp_inventory=" << ( surface.includes_basecamp_inventory ? "yes" : "no" )
         << " vehicle_inventory=" << ( surface.includes_vehicle_inventory ? "yes" : "no" )
+        << " opening=" << ( surface.opening_id.empty() ? "none" : surface.opening_id )
         << " bark=\"" << surface.bark << "\"\n";
     for( const std::string &note : surface.notes ) {
         out << "- " << note << '\n';

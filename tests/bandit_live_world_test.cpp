@@ -2750,12 +2750,14 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     CHECK_FALSE( basecamp_surface.includes_vehicle_inventory );
     CHECK( basecamp_surface.reachable_goods_value == 1000 );
     CHECK( basecamp_surface.demanded_value == 350 );
+    CHECK( basecamp_surface.opening_id == "basecamp_pressure" );
     const std::string basecamp_report =
         bandit_live_world::render_shakedown_surface_report( site, basecamp_surface );
     CHECK( basecamp_report.find( "pay_option=yes" ) != std::string::npos );
     CHECK( basecamp_report.find( "fight_option=yes" ) != std::string::npos );
     CHECK( basecamp_report.find( "basecamp_inventory=yes" ) != std::string::npos );
     CHECK( basecamp_report.find( "vehicle_inventory=no" ) != std::string::npos );
+    CHECK( basecamp_report.find( "opening=basecamp_pressure" ) != std::string::npos );
     CHECK( basecamp_report.find( "demanded_toll=350" ) != std::string::npos );
 
     bandit_live_world::local_gate_input offbase_gate_input = gate_input;
@@ -2773,6 +2775,26 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     CHECK( offbase_surface.includes_vehicle_inventory );
     CHECK( offbase_surface.reachable_goods_value == 900 );
     CHECK( offbase_surface.demanded_value == 315 );
+    CHECK( offbase_surface.opening_id == "weakness_read" );
+
+    bandit_live_world::local_gate_input cover_gate_input = offbase_gate_input;
+    cover_gate_input.standoff_distance = 2;
+    const bandit_live_world::shakedown_surface cover_surface =
+        bandit_live_world::build_shakedown_surface( site, cover_gate_input, gate_decision,
+                offbase_pool );
+    CHECK( cover_surface.valid );
+    CHECK( cover_surface.opening_id == "warning_from_cover" );
+
+    bandit_live_world::local_gate_input roadblock_gate_input = offbase_gate_input;
+    roadblock_gate_input.local_threat = 3;
+    const bandit_live_world::local_gate_decision roadblock_gate_decision =
+        bandit_live_world::choose_local_gate_posture( site, roadblock_gate_input );
+    REQUIRE( roadblock_gate_decision.opens_shakedown_surface );
+    const bandit_live_world::shakedown_surface roadblock_surface =
+        bandit_live_world::build_shakedown_surface( site, roadblock_gate_input,
+                roadblock_gate_decision, offbase_pool );
+    CHECK( roadblock_surface.valid );
+    CHECK( roadblock_surface.opening_id == "roadblock_toll" );
 
     bandit_live_world::local_gate_input rolling_gate_input = gate_input;
     rolling_gate_input.rolling_travel_scene = true;
@@ -2865,6 +2887,7 @@ TEST_CASE( "bandit_live_world_records_shakedown_aftermath_for_renegotiation_pres
     CHECK( reopened_surface.valid );
     CHECK( reopened_surface.pay_available );
     CHECK( reopened_surface.fight_available );
+    CHECK( reopened_surface.opening_id == "reopened_demand" );
     CHECK( reopened_surface.demanded_value == 490 );
     const std::string reopened_report =
         bandit_live_world::render_shakedown_surface_report( site, reopened_surface );

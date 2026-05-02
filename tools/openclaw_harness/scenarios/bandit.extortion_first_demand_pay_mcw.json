@@ -14,6 +14,7 @@
     "profile=camp_style",
     "posture=open_shakedown",
     "demanded_toll=15797",
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight/refuse",
     "pay_option=yes fight_option=yes",
     "shakedown_surface paid toll="
   ],
@@ -40,7 +41,7 @@
       "label": "advance_final_turn_to_first_shakedown",
       "count": 1,
       "settle_seconds": 1.0,
-      "expected_visible_fact": "Bandit shakedown menu is visible with player-facing pay/fight choice after the final local-contact turn",
+      "expected_visible_fact": "Bandit shakedown dialogue window is visible with the basecamp-pressure opening and player-facing pay/fight/refuse choices after the final local-contact turn",
       "capture_after": true
     },
     {
@@ -67,6 +68,9 @@
           "demanded_toll=15797",
           "basecamp_inventory=yes",
           "vehicle_inventory=no"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight/refuse"
         ]
       ],
       "abort_on_metadata_failure": true,
@@ -79,7 +83,7 @@
       "label": "choose_pay",
       "keys": ["p"],
       "settle_seconds": 1.0,
-      "expected_visible_fact": "pay branch was selected from the visible bandit shakedown menu; immediate screen should return to gameplay rather than hostile-forward fight selection",
+      "expected_visible_fact": "pay branch was selected from the visible bandit shakedown dialogue; immediate screen should return to gameplay rather than hostile-forward fight selection",
       "capture_after": true
     },
     {

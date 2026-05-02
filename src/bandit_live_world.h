@@ -392,6 +392,8 @@ struct shakedown_goods_pool {
 
 struct shakedown_surface {
     bool valid = false;
+    std::string opening_id;
+    std::string opening_summary;
     std::string bark;
     int reachable_goods_value = 0;
     int demanded_value = 0;
