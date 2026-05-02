@@ -1,0 +1,13 @@
+{
+  "name": "bandit_live_world_nearby_camp_no_loose_npcs_v0_2026-05-02",
+  "source_fixture": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "No-signal bandit contrast footing: reuse the nearby camp restage, then remove saved overmap NPC records so loose/unassigned NPCs cannot masquerade as camp-threat pressure in the quiet control row.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    }
+  ]
+}

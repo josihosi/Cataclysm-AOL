@@ -1,9 +1,9 @@
 {
   "name": "bandit.live_world_nearby_camp_no_signal_control_mcw",
-  "description": "No-signal live-world control on the same nearby bandit camp footing: install the bounded nearby camp without injected fire/smoke fields, open the in-game wait command (`|`), choose `w`ait a while from the alarm prompt, wait three in-game hours with `7`, and capture that signal cadence stays no-signal or otherwise explains the difference.",
+  "description": "No-signal live-world control on cleaned nearby bandit-camp footing: install the bounded nearby camp, remove loose saved-overmap NPCs, audit that no unassigned NPC pressure actors remain, then use the guarded wait action for a 30-minute cadence window and capture that the bandit signal path stays no-signal instead of borrowing theatrical pressure from unrelated NPC records.",
   "profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "fixture": "bandit_live_world_nearby_camp_no_loose_npcs_v0_2026-05-02",
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
@@ -18,38 +18,59 @@
       "kind": "wait",
       "label": "nearby_camp_no_signal_control_load_settle",
       "seconds": 2.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the cleaned nearby-camp no-signal control; startup/load only before saved-state audits"
     },
     {
-      "kind": "press",
-      "label": "open_in_game_wait_command_no_signal_control",
-      "keys": [
-        "|"
-      ],
-      "delay_ms": 250,
-      "settle_seconds": 0.8,
-      "capture_after": true
+      "kind": "audit_saved_overmap_npcs",
+      "label": "preflight_no_signal_no_loose_overmap_npcs",
+      "scan_all_overmaps": true,
+      "required_observed_npc_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_no_signal_loose_overmap_npcs_present",
+      "abort_reason": "no-signal bandit contrast cannot be credited while loose saved-overmap NPC records can masquerade as pressure actors",
+      "expected_immediate_state": "all saved overmaps have zero NPC records after the no-loose-NPC fixture transform"
     },
     {
-      "kind": "press",
-      "label": "choose_wait_a_while_no_signal_control",
-      "keys": [
-        "w"
+      "kind": "wait_action",
+      "label": "wait_30m_for_no_signal_control_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 10.0,
+      "extract_text_tail_lines": 40,
+      "artifact_state_patterns": [
+        "bandit_live_world signal scan: signal_packet=no",
+        "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle signal_packet=no"
       ],
-      "delay_ms": 250,
-      "settle_seconds": 0.8,
-      "capture_after": true
+      "abort_on_interrupt": true,
+      "abort_verdict": "inconclusive_no_signal_wait_interrupted",
+      "abort_reason": "long wait was interrupted before the no-signal cadence artifact could be captured",
+      "expected_visible_fact": "guarded wait action completes a 30-minute no-signal cadence window; feature credit depends on same-run no-signal debug artifact lines, not the wait UI alone",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu"
     },
     {
-      "kind": "press",
-      "label": "select_3_hour_wait_no_signal_control",
-      "keys": [
-        "7"
+      "kind": "audit_log_contains",
+      "label": "audit_no_signal_cadence_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world signal scan: signal_packet=no"
+        ],
+        [
+          "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle signal_packet=no"
+        ]
       ],
-      "delay_ms": 250,
-      "settle_seconds": 600.0,
-      "capture_after": true
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_no_signal_cadence_artifact_missing",
+      "abort_reason": "same-run debug artifact did not show the quiet no-signal scan and 30-minute no-signal cadence skip"
     }
   ],
-  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_no_signal_control_mcw"
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_no_signal_control_mcw",
+  "evidence_contract": {
+    "claim": "a cleaned nearby bandit-camp no-signal control has no loose saved-overmap NPC pressure actors and stays no-signal through a guarded 30-minute cadence window",
+    "load_only_verdict": "load proof only / inconclusive for no-signal contrast behavior",
+    "failure_rule": "No no-signal contrast credit unless startup/load, no-loose-NPC saved audit, guarded 30-minute wait, and same-run no-signal cadence artifact are all green/matched. This low-threat control does not claim camp-threat membership; high-threat/camp-pressure rows still need bandit_live_world roster assignment proof."
+  }
 }
