@@ -9,7 +9,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active lane: `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0`.
 
-Current execution item: prepare a labelled current-build save/handoff pack for Josef to playtest.
+Current execution item: v0 save-pack prep is at a review boundary; Schani should decide whether to relay the six-entry Josef card as-is or request a second bandit contrast card.
 
 Required entries:
 - Basecamp AI / camp locker usefulness.
@@ -27,6 +27,6 @@ Current checkpoint:
 - Portal-storm warning-light lane is Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`; proof in `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`. Use the warning light while preparing entries; do not rerun portal-storm proof by ritual.
 
 Next execution target:
-- Review/checkpoint the bandit auxiliary repair boundary (`20260502_134959/`, `20260502_144842/`, `20260502_145429/`). Remaining unblocked bandit contrast gap is smoke-fire/basecamp signal only; rerun it only through a materially repaired guarded path if Schani wants a second bandit contrast card, and do not rerun the six ready save-pack entries by ritual.
+- No further unblocked Andi proof target remains for the first v0 save-pack card. If Schani wants a second bandit contrast card, the only remaining unblocked gap is smoke-fire/basecamp signal and it should be rerun only through a materially repaired guarded path. Otherwise Schani can package/relay the six-entry card to Josef; do not rerun the six ready save-pack entries by ritual.
 
 Non-goals: no release packaging, no broad gameplay implementation/tuning, no closed-lane reopen by drift, no log archaeology as Josef's primary playtest activity.

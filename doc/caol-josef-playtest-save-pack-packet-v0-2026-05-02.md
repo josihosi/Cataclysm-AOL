@@ -1,6 +1,6 @@
 # CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0 packet (2026-05-02)
 
-Status: ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
+Status: ACTIVE / GREENLIT / SCHANI REVIEW BOUNDARY / JOSEF HANDOFF CARD READY / SECOND BANDIT CARD OPTIONAL
 
 Owner: Andi for save/handoff preparation and verification; Schani for final Josef-facing framing.
 
@@ -83,13 +83,13 @@ Before claiming the save pack is ready:
 
 ## Success state
 
-- [ ] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
-- [ ] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
-- [ ] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
-- [ ] Each entry has short Josef-facing instructions and focused taste questions.
-- [ ] Existing proof rows are cited only as footing and staged-vs-natural caveats stay visible.
-- [ ] The final Josef-facing card is short enough to use without log archaeology.
-- [ ] Any blockers become concrete follow-up packets or caveated omissions, not hidden failures.
+- [x] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
+- [x] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
+- [x] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
+- [x] Each entry has short Josef-facing instructions and focused taste questions.
+- [x] Existing proof rows are cited only as footing and staged-vs-natural caveats stay visible.
+- [x] The final Josef-facing card is short enough to use without log archaeology.
+- [x] Any blockers become concrete follow-up packets or caveated omissions, not hidden failures.
 
 ## Non-goals
 

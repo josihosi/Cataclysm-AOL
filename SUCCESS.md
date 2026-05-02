@@ -200,13 +200,13 @@ Canonical docs:
 
 ## CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0 — Josef playable save/handoff pack
 
-Status: ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
+Status: ACTIVE / GREENLIT / SCHANI REVIEW BOUNDARY / JOSEF HANDOFF CARD READY / SECOND BANDIT CARD OPTIONAL
 
 Success state:
 - [x] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
 - [x] Stalker contrast rows cover no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or are explicitly caveated/blocked.
 - [x] Bandit contrast rows cover no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or are explicitly caveated/blocked.
-- [ ] Camp/NPC preflight audits assignment: unassigned harness-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows.
+- [x] Camp/NPC preflight audits assignment: unassigned harness-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows.
 - [x] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
 - [x] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
 - [x] Each entry has short Josef-facing instructions and focused taste questions.
@@ -220,7 +220,7 @@ Canonical docs:
 - Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 - Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Checkpoint: v0 card is usable for six staged rows (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and explicitly withholds bandit camp-threat credit. Camp/NPC audit found loose/unassigned overmap NPC noise (`active_member_ids=[]` while saved overmap scan sees 16 NPC records), so the remaining unchecked success item is the real repair/removal/reassignment work for camp-threat rows.
+Checkpoint: v0 card is usable for six staged rows (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and explicitly withholds broader bandit camp-threat credit from the first Josef card. The post-card repair boundary is now reviewed: low-threat/no-signal has cleaned no-loose-NPC proof (`20260502_134959/`), active-outside camp-pressure assignment has member cross-reference proof (`20260502_144842/`, `active_member_ids=[4,5]`, `active_members_all_found_in_saved_overmap=true`), and high-threat/low-reward hold has green risk/reward artifact proof (`20260502_145429/`). Smoke/fire/basecamp signal remains caveated/manual future unless Schani asks for a second bandit contrast card.
 
 ---
 

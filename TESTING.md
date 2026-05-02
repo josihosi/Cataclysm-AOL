@@ -91,7 +91,7 @@ Interpretation: if `portal_storm_warning.classification = contaminating`, rerun 
 
 ### Active validation target - CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
 
-`CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` is active. Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`; imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`; handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
+`CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` is at a review boundary: the six-entry Josef card is ready, and a second bandit contrast card is optional pending Schani direction. Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`; imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`; handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
 Working playtest card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
@@ -117,7 +117,7 @@ Evidence required before handoff:
 - [x] omitted/blocked entries are labelled with the missing primitive instead of hidden.
 - [x] final Josef-facing card is short enough to play from: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` is the Josef-facing index. It marks six ready staged rows green from fresh inspected reports (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and separately labels bandit contrast/camp-threat rows. The save-pack can be handed to Josef without pretending every old monster postcard got a fresh passport stamp. Later auxiliary bandit no-signal proof `20260502_134959/` repairs the low-threat/no-loose-NPC control; active-outside proof `20260502_144842/` repairs camp-pressure membership assignment; high-threat hold proof `20260502_145429/` repairs the risk/reward hold artifact. These do not expand the first Josef card by themselves unless Schani chooses to add a second bandit contrast card.
+Card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` is the Josef-facing index. It marks six ready staged rows green from fresh inspected reports (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and separately labels bandit contrast/camp-threat rows. The save-pack can be handed to Josef without pretending every old monster postcard got a fresh passport stamp. Later auxiliary bandit no-signal proof `20260502_134959/` repairs the low-threat/no-loose-NPC control; active-outside proof `20260502_144842/` repairs camp-pressure membership assignment; high-threat hold proof `20260502_145429/` repairs the risk/reward hold artifact. These do not expand the first Josef card by themselves unless Schani chooses to add a second bandit contrast card; no current validation target calls for rerunning the six ready rows.
 
 Prior sampler footing: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains useful source material (`doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`), but it is no longer the active deliverable.
 
