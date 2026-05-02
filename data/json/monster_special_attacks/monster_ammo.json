@@ -40,6 +40,18 @@
     "effects": [ "BILE_JET_ADV", "BILE_GLOW", "BILE_BOMB_ADV", "BILE_STINK", "BILE_IRRITATE", "BILE_BLIND" ]
   },
   {
+    "id": "zombie_rider_tainted_bone_arrow",
+    "type": "ITEM",
+    "subtypes": [ "AMMO" ],
+    "copy-from": "arrow_wood",
+    "name": { "str": "tainted bone arrow", "//~": "NO_I18N" },
+    "description": { "str": "A blackened arrow grown from bone and sinew, too warped for a human bow.", "//~": "NO_I18N" },
+    "material": [ { "type": "bone", "portion": 70 }, { "type": "hflesh", "portion": 30 } ],
+    "color": "red",
+    "damage": { "damage_type": "stab", "armor_penetration": 4, "constant_damage_multiplier": 1.75 },
+    "recovery_chance": 0
+  },
+  {
     "id": "BILE_BOMB",
     "type": "ammo_effect",
     "//": "Leaves a pool of bile on detonation",

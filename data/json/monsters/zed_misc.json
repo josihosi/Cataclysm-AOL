@@ -826,7 +826,7 @@
     "vision_night": 20,
     "grab_strength": 20,
     "path_settings": { "max_dist": 45, "avoid_traps": true, "avoid_sharp": true },
-    "starting_ammo": { "arrow_wood": 18 },
+    "starting_ammo": { "zombie_rider_tainted_bone_arrow": 18 },
     "special_attacks": [
       {
         "id": "zombie_rider_bone_bow_shot",
@@ -834,7 +834,7 @@
         "cooldown": 4,
         "move_cost": 90,
         "gun_type": "zombie_rider_bone_bow",
-        "ammo_type": "arrow_wood",
+        "ammo_type": "zombie_rider_tainted_bone_arrow",
         "no_ammo_sound": "",
         "fake_skills": [ [ "archery", 5 ] ],
         "fake_str": 16,

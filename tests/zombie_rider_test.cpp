@@ -19,7 +19,7 @@
 #include "zombie_rider_overmap_ai.h"
 
 static const efftype_id effect_run( "run" );
-static const itype_id arrow_wood( "arrow_wood" );
+static const itype_id zombie_rider_tainted_bone_arrow( "zombie_rider_tainted_bone_arrow" );
 static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
 static const mongroup_id GROUP_ZOMBIE_UPGRADE( "GROUP_ZOMBIE_UPGRADE" );
 static const mtype_id mon_zombie( "mon_zombie" );
@@ -69,8 +69,8 @@ TEST_CASE( "zombie_rider_monster_footing", "[zombie_rider][monster]" )
     CHECK( rider.speed <= 200 );
     CHECK( rider.hp >= 200 );
     CHECK( rider.has_special_attack( "zombie_rider_bone_bow_shot" ) );
-    CHECK( rider.starting_ammo.count( arrow_wood ) == 1 );
-    CHECK( rider.starting_ammo.at( arrow_wood ) >= 12 );
+    CHECK( rider.starting_ammo.count( zombie_rider_tainted_bone_arrow ) == 1 );
+    CHECK( rider.starting_ammo.at( zombie_rider_tainted_bone_arrow ) >= 12 );
     CHECK( rider.has_flag( mon_flag_RANGED_ATTACKER ) );
     CHECK( rider.has_flag( mon_flag_PATH_AVOID_DANGER ) );
     CHECK( rider.has_flag( mon_flag_HARDTOSHOOT ) );
@@ -173,11 +173,11 @@ TEST_CASE( "zombie_rider_local_bow_shot_sets_cooldown_and_repositions", "[zombie
     rider.plan();
     CHECK( rider.get_dest() == you.pos_abs() );
 
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     REQUIRE( rider.special_available( zombie_rider_bone_bow_shot ) );
     rider.move();
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before - 1 );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before - 1 );
     CHECK( rider.has_effect( effect_run ) );
     CHECK_FALSE( rider.special_available( zombie_rider_bone_bow_shot ) );
     CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
@@ -214,11 +214,11 @@ TEST_CASE( "zombie_rider_bow_pressure_marks_avatar_hostile_before_shooting", "[z
     CHECK( rider.get_dest() == you.pos_abs() );
     CHECK( rider.aggro_character );
 
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     REQUIRE( rider.special_available( zombie_rider_bone_bow_shot ) );
     rider.move();
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before - 1 );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before - 1 );
     CHECK_FALSE( rider.special_available( zombie_rider_bone_bow_shot ) );
     clear_map_without_vision();
 }
@@ -251,13 +251,13 @@ TEST_CASE( "zombie_rider_close_pressure_bunny_hops_without_point_blank_bow_shot"
     CHECK( destination_distance <= 6 );
     CHECK( planned_dest.y() != rider_start.y() );
 
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     for( int moves = 0; moves < 2 && rider.pos_bub() == rider_start; ++moves ) {
         rider.set_moves( 100 );
         rider.move();
     }
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before );
     CHECK( rider.pos_bub() != rider_start );
     CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
     clear_map_without_vision();
@@ -278,7 +278,7 @@ TEST_CASE( "zombie_rider_empty_bow_charges_instead_of_kiting_forever", "[zombie_
     monster &rider = spawn_test_monster( mon_zombie_rider.str(), rider_start );
     rider.anger = 100;
     rider.aggro_character = true;
-    rider.ammo[arrow_wood] = 0;
+    rider.ammo[zombie_rider_tainted_bone_arrow] = 0;
     rider.set_special( zombie_rider_bone_bow_shot, 0 );
     rider.set_moves( 100 );
 
@@ -286,7 +286,7 @@ TEST_CASE( "zombie_rider_empty_bow_charges_instead_of_kiting_forever", "[zombie_
     rider.plan();
 
     CHECK( rider.get_dest() == you.pos_abs() );
-    CHECK( rider.ammo[arrow_wood] == 0 );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == 0 );
     clear_map_without_vision();
 }
 
@@ -322,7 +322,7 @@ TEST_CASE( "zombie_rider_close_indoor_pressure_repositions_instead_of_loitering"
     rider.set_moves( 100 );
 
     REQUIRE( rider.sees( here, you ) );
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     rider.plan();
     const tripoint_bub_ms planned_dest = here.get_bub( rider.get_dest() );
 
@@ -337,7 +337,7 @@ TEST_CASE( "zombie_rider_close_indoor_pressure_repositions_instead_of_loitering"
         rider.move();
     }
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before );
     CHECK( rider.pos_bub() != rider_start );
     CHECK( rl_dist( rider.pos_bub(), you.pos_bub() ) >= 4 );
     clear_map_without_vision();
@@ -367,14 +367,14 @@ TEST_CASE( "zombie_rider_injured_withdraws_instead_of_holding_bow_range", "[zomb
     rider.plan();
     CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
 
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     rider.move();
     if( rl_dist( rider.pos_bub(), you.pos_bub() ) == distance_before ) {
         rider.set_moves( 100 );
         rider.move();
     }
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before );
     CHECK( rider.pos_bub() != rider_start );
     CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
     clear_map_without_vision();
@@ -405,10 +405,10 @@ TEST_CASE( "zombie_rider_blocked_los_prevents_bow_shot", "[zombie_rider][monster
     rider.set_moves( 100 );
 
     REQUIRE_FALSE( rider.sees( here, you ) );
-    const int ammo_before = rider.ammo[arrow_wood];
+    const int ammo_before = rider.ammo[zombie_rider_tainted_bone_arrow];
     rider.move();
 
-    CHECK( rider.ammo[arrow_wood] == ammo_before );
+    CHECK( rider.ammo[zombie_rider_tainted_bone_arrow] == ammo_before );
     CHECK( rider.special_available( zombie_rider_bone_bow_shot ) );
     clear_map_without_vision();
 }
