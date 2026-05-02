@@ -57,9 +57,11 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### No active validation target
+### Active validation target - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
-No active validation target is currently promoted. Do not infer the next test lane from old parked material.
+`CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is active/greenlit. Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`; imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`; handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+
+Validation must first name the no-attack cause: why does `zombie_rider live_plan` report `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` while the player sees no attack? Use `.userdata/dev-harness/harness_runs/20260502_015857/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic decision-to-action bridge test, close/indoor pressure or irregular bunny-hop reposition test, existing `[zombie_rider]` regressions for wounded disengagement / cover-LOS / light attraction / no-light controls, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof.
 
 ### Closed validation receipt - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
@@ -145,10 +147,6 @@ When promoted, validation must prove both UI/product path and mechanics: normal 
 ### Queued validation target - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
 When promoted, validation must include portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
-
-### Queued validation target - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
-
-When promoted, validation must first name the no-attack cause: why does `zombie_rider live_plan` report `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` while the player sees no attack? Use `.userdata/dev-harness/harness_runs/20260502_015857/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic decision-to-action bridge test, close/indoor pressure or irregular bunny-hop reposition test, existing `[zombie_rider]` regressions for wounded disengagement / cover-LOS / light attraction / no-light controls, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof. Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
 
 ### Queued validation target - CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
 

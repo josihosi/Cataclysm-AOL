@@ -90,7 +90,7 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0 — Zombie rider close-pressure no-attack fix
 
-Status: GREENLIT / QUEUED / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+Status: ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP
 
 Success state:
 - [ ] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.

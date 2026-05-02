@@ -1,6 +1,6 @@
 # Andi handoff — CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
-Classification: GREENLIT / QUEUED after active camp-locker unless Schani/Josef explicitly promotes it.
+Classification: ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP.
 
 Read first:
 - Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`

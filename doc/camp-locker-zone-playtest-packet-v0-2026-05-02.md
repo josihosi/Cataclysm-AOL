@@ -1,6 +1,8 @@
 # CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0 (2026-05-02)
 
-Status: ACTIVE / GREENLIT / LOCKER-ZONE PLAYTEST PACKET
+Status: CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN
+
+Closure readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
 
 Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 
@@ -32,14 +34,14 @@ The packet should cover, if feasible:
 
 ## Success state
 
-- [ ] The playtest pass chooses a bounded v0 set instead of reopening all locker-zone history.
-- [ ] At least one current-build harness/live row proves real `CAMP_LOCKER` zone footing with a scenario/run id and artifact path, or records the exact harness/UI blocker.
-- [ ] At least one row proves camp locker service behavior from zone stock on the real service path, not only helper classification.
-- [ ] At least one row checks boundary/exclusion behavior such as `NO_NPC_PICKUP`, non-locker stock, or saved zone persistence.
-- [ ] Weather/wait or practical gear behavior is either playtested on a live/harness row or explicitly scoped out with a reason.
-- [ ] Screenshots/OCR/save audits name the visible or persisted fact they prove; raw JSON and startup/load are not credited as gameplay proof.
-- [ ] If the harness cannot honestly prove a required row, `runtime/josef-playtest-package.md` or a repo doc gets a concise Josef manual playtest recipe with expected outcomes and closure criteria.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on the final state before closure.
+- [x] The playtest pass chooses a bounded v0 set instead of reopening all locker-zone history.
+- [x] At least one current-build harness/live row proves real `CAMP_LOCKER` zone footing with a scenario/run id and artifact path, or records the exact harness/UI blocker.
+- [x] At least one row proves camp locker service behavior from zone stock on the real service path, not only helper classification.
+- [x] At least one row checks boundary/exclusion behavior such as `NO_NPC_PICKUP`, non-locker stock, or saved zone persistence.
+- [x] Weather/wait or practical gear behavior is either playtested on a live/harness row or explicitly scoped out with a reason.
+- [x] Screenshots/OCR/save audits name the visible or persisted fact they prove; raw JSON and startup/load are not credited as gameplay proof.
+- [x] If the harness cannot honestly prove a required row, `runtime/josef-playtest-package.md` or a repo doc gets a concise Josef manual playtest recipe with expected outcomes and closure criteria.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on the final state before closure.
 
 ## Non-goals
 

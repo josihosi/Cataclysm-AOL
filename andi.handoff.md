@@ -1,17 +1,22 @@
 # Andi handoff
 
-Current active lane: `CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0`.
+Current active lane: `CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0`.
 
-Josef explicitly wants locker zone playtests after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed green. This is a new concrete locker seam, not permission to reopen open-ended locker ontology archaeology.
+Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
 
-Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
+Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
 
-Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
+Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
 
-Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+Core bug smell: Josef observed a zombie rider in/near the house not attacking at all while trace reportedly showed repeated `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` around distance `4-5`. Name the decision-to-action break before tuning aggression.
 
-Use existing locker scenarios first: `locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, and `locker.package5_robbie_e2e_verified_mcw`.
+Scope:
+- reproduce/minimize close or indoor no-attack, using `.userdata/dev-harness/harness_runs/20260502_015857/` only as yellow seed evidence;
+- identify action-layer cause;
+- fix visible attack pressure or named refusal;
+- add irregular bunny-hop/circle repositioning when shot is blocked/too close;
+- include corrected rider description text.
 
-Required final report: claim, scenario/command, run/artifact path, screen/OCR fact or explicit non-screen evidence class, saved-state/artifact/log excerpt, test/build gate if relevant, and verdict for each credited row.
+Non-goals: do not reopen all zombie rider v0; do not break wounded retreat, cover/LOS, camp-light banding, or no-light controls; no perfect orbit, instant-kill tuning, wall-suicide, stalker/locker/bandit/raptor drift, or release work.
 
-Boundaries: no API-reduction reopen, no broad locker/basecamp redesign, no Smart Zone/basecamp preset work, no bandit/rider/stalker/raptor drift. If harness/UI proof blocks, write the concise Josef manual playtest card with exact steps and closure criteria; do not close green from deterministic helper tests alone.
+Success bar: deterministic bridge/reposition tests + fresh clean live/handoff proof with screenshots/artifacts, plus existing rider guarantees still green.

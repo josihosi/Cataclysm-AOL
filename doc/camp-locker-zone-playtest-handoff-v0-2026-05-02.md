@@ -1,6 +1,8 @@
 # Andi handoff — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
-Classification: ACTIVE / GREENLIT / LOCKER-ZONE PLAYTEST PACKET.
+Classification: CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN.
+
+Closure readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
 
 Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 
@@ -8,11 +10,11 @@ Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
 
 ## Task
 
-Josef explicitly wants locker zone playtests. Run a bounded current-build playtest/proof pass for actual camp locker zone behavior. This is the newly promoted concrete locker seam after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed.
+Josef explicitly wanted locker zone playtests. The bounded current-build playtest/proof pass is complete and preserved as a yellow checkpoint, not a green product-facing claim. This was the newly promoted concrete locker seam after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed.
 
-## Use first
+## Used first
 
-Inspect and use the existing scenario surface before inventing new machinery:
+The pass inspected the existing scenario surface before inventing new machinery:
 
 - `locker.create_zone_probe`
 - `locker.display_toggle_probe`
@@ -22,7 +24,7 @@ Inspect and use the existing scenario surface before inventing new machinery:
 
 ## Success bar
 
-Provide a final packet that says, for each credited row:
+The final packet provides, for each credited row:
 
 - claim
 - scenario/command and run/artifact path
@@ -46,6 +48,6 @@ Must answer at least these questions or name the blocker:
 - No bandit/rider/stalker/raptor drift.
 - No deterministic-only claim if the contract says live/player-facing behavior.
 
-## If blocked
+## Blocker result
 
-If the harness cannot drive or observe the zone path honestly, write a concise Josef playtest card with exact manual steps, expected outcomes, and what result closes the row. Preserve the blocker in canon; do not close green from helper tests alone.
+Harness proof stayed yellow for parts of the player-facing contract: the scenarios lack clean expected-visible-fact ledgers, no separate disk save-file audit captured the newly created probe zone, `locker.package5_robbie_e2e_verified_mcw` blocked before service artifacts, and full weather/wait product feel was not honestly closed. The concise Josef playtest card with exact manual steps, expected outcomes, and closure criteria is in `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
