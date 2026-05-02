@@ -204,6 +204,8 @@ Status: ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
 
 Success state:
 - [ ] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
+- [ ] Stalker contrast rows cover no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or are explicitly caveated/blocked.
+- [ ] Bandit contrast rows cover no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or are explicitly caveated/blocked.
 - [ ] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
 - [ ] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
 - [ ] Each entry has short Josef-facing instructions and focused taste questions.

@@ -21,6 +21,19 @@ Required entries:
 5. Zombie rider predator/counterplay.
 6. Writhing stalker hit-fade / zombie-shadow behavior.
 
+## Added thematic contrast pass
+
+Before the card is final, try paired thematic playtests for stalkers and bandits:
+
+- Stalker no-fire / low-threat: should close, strike, then fade out.
+- Stalker with fire/light: should keep stalking or hesitate rather than committing like an idiot into light.
+- Stalker high-threat player/support: should stalk/pressure rather than rush suicidally.
+- Bandit no obvious fire/smoke/camp signal: should not instantly produce theatrical pressure.
+- Bandit fire/smoke/basecamp signal: should produce visible scout, shakedown, hold-off, or camp pressure quickly enough to judge.
+- Bandit high-threat/resistant setup: should stalk, hold off, back out, or escalate differently rather than replay the same demand branch.
+
+Deliver these as paired save entries, paired handoff reports, or explicit caveated/blocked rows. Do not flatten them into one generic “feature works” claim.
+
 ## Output
 
 Produce a Josef-facing save-pack card under `doc/` with, for each entry:

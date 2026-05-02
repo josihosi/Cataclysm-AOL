@@ -25,6 +25,6 @@ Current checkpoint:
 - Portal-storm warning-light lane is Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`; proof in `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`. Use the warning light while preparing entries; do not rerun portal-storm proof by ritual.
 
 Next execution target:
-- Inventory the six best existing scenario/save footings, decide which need fresh `handoff` versus which can be delivered from existing loadable setup, then write the smallest usable Josef-facing save-pack card.
+- Inventory the six best existing scenario/save footings, add the stalker/bandit thematic contrast pass Josef requested, decide which need fresh `handoff` versus which can be delivered from existing loadable setup, then write the smallest usable Josef-facing save-pack card.
 
 Non-goals: no release packaging, no broad gameplay implementation/tuning, no closed-lane reopen by drift, no log archaeology as Josef's primary playtest activity.

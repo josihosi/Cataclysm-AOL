@@ -29,6 +29,17 @@ V0 should keep the old route labels visible — `/visions/camp-locker`, `/rider/
 5. **Zombie rider** — late-world mounted predator pressure, bow/counterplay, camp-light/no-light or open-field pressure as appropriate.
 6. **Writhing stalker** — current hit-fade retreat rhythm and/or zombie-shadow pressure with clean caveats.
 
+## Thematic contrast Josef wants before playtest
+
+The pack should include paired contrast rows where possible, because these scenes need to feel like different instincts rather than one canned monster/bandit trick:
+
+- Stalker, no fire / low threat: closes, whacks, fades out.
+- Stalker, fire/light present: keeps stalking or hesitates, not a dumb charge into the obvious danger.
+- Stalker, high threat/support: stalks/pressures rather than suiciding.
+- Bandits, no obvious signal: no instant theater.
+- Bandits, fire/smoke/basecamp signal: visible scouting, shakedown, hold-off, or camp pressure.
+- Bandits, high-threat/resistant setup: stalking, holding off, backing out, or different escalation instead of the same demand loop.
+
 ## What must be true
 
 - Every entry has a stable label and path/command the user can run or load.

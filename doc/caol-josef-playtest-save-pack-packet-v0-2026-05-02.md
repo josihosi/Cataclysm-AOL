@@ -44,6 +44,15 @@ Prepare one usable entry each for:
    - Prepare the current hit-fade retreat rhythm and/or zombie-shadow pressure entry.
    - Existing footing should include the fresh hit-fade proof `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_113738/`. Avoid old dirty quiet-side optical footing unless rerun clean.
 
+## Thematic contrast pass
+
+Before Josef's playtest card is called ready, try a small contrast matrix for the two most state-sensitive families:
+
+- **Writhing stalker:** no-fire / low-threat setup should let it close, whack, then fade out; fire/light setup should make it keep stalking or hesitate instead of committing stupidly; high-threat player/support setup should bias toward stalking/pressure rather than a suicidal rush.
+- **Bandits:** no obvious camp signal should avoid instant theatrical pressure; fire/smoke/basecamp signal should pull visible scouting, shakedown, or standoff pressure; high-threat/resistant player/camp setup should bias toward stalking, holding off, or backing out instead of repeating the same demand like a tax office with crossbows.
+
+This matrix is product-taste evidence. It can be delivered as paired save entries, paired handoff reports, or a caveated card if one contrast is blocked, but it must not silently collapse into one generic “bandit/stalker works” row.
+
 ## Deliverable shape
 
 Create a Josef-facing save-pack card under `doc/` and, where useful, a prepared save/handoff artifact directory. Each entry must include:
