@@ -9,19 +9,15 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Relay-ready taste lane: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
 
-Current execution item while visions taste is pending: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
-
-Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
-Proof: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
+Current execution item: none after `CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0` closed green v0.
 
 Current checkpoint:
 - Visions sampler remains relay-ready for Schani/Josef; do not keep revalidating it by ritual.
 - Bandit scenic shakedown chat openings are closed/checkpointed green v0: proof in `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
-- Portal-storm warning-light lane is implemented/proven green v0 and ready for Frau post-crunch review.
+- Portal-storm warning-light lane is Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`; proof in `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`. Do not rerun it by ritual.
+- Writhing stalker hit-fade retreat-distance is closed/checkpointed green v0: proof in `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`; staged live run `.userdata/dev-harness/harness_runs/20260502_113738/` is feature-path green.
 
 Next execution target:
-- Frau no-nudge/post-crunch review of the portal-storm warning-light checkpoint.
-- If accepted, promote the next unblocked greenlit target from `Plan.md` rather than rerunning portal-storm proof by ritual; likely candidate is `writhing stalker hit-fade retreat distance` unless Schani/Josef choose otherwise.
-- Keep evidence classes explicit; do not convert old unrelated feature rows into portal-storm proof by ritual.
+- Schani/plans-aux should confirm or promote the next active item from `Plan.md` greenlit backlog. Do not silently reopen closed portal-storm, bandit, visions, camp-locker, or writhing-stalker lanes by drift.
 
-Non-goals: no portal-storm gameplay/weather redesign, no closed-lane reopen by drift, no bandit/visions/camp-locker work, no release packaging, no broad proof soup.
+Non-goals: no portal-storm gameplay/weather redesign, no closed-lane reopen by drift, no bandit/visions/camp-locker/writhing-stalker rerun by ritual, no release packaging, no broad proof soup.

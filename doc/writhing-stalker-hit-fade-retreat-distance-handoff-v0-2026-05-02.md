@@ -1,6 +1,6 @@
 # Andi handoff — CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
 
-Classification: GREENLIT / QUEUED after active camp-locker unless Schani/Josef explicitly promotes it.
+Classification: CLOSED / CHECKPOINTED GREEN v0. Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`.
 
 Read first:
 - Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`
@@ -23,4 +23,4 @@ Non-goals:
 - no harmless always-flee stalker;
 - preserve no-omniscience, injured retreat, light/focus counterplay, and zombie-shadow/quiet-side guarantees.
 
-Success bar: reference note + deterministic tests + fresh clean live/handoff proof if claiming in-game behavior.
+Closed evidence: reference note + deterministic tests + current-build tiles build + fresh clean staged-live feature proof are recorded in the proof/readout. Optional human taste remains future-only.

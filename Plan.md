@@ -49,9 +49,9 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Recent checkpoint lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
+## Recent closed lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-**Status:** CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP / POST-CRUNCH REVIEW
+**Status:** CHECKPOINTED GREEN V0 / CLOSED / FRAU-ACCEPTED / HARNESS-HARDENING FOLLOW-UP
 
 The visions sampler is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. Josef's harness portal-storm warning-light ask is now implemented/proven as a harness-hardening checkpoint.
 
@@ -62,7 +62,7 @@ Result: probe/handoff reports and repeatability summaries now surface a report-l
 
 Evidence: `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
 
-Next review/action: Frau no-nudge/post-crunch review. If accepted, promote the next unblocked greenlit target from the backlog; current likely candidate is `writhing stalker hit-fade retreat distance` unless Schani/Josef choose otherwise.
+Frau review: accepted green v0 from commits `74ef657057` / `8ea5546107`. Next active execution lane is `CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0`; do not pull future runs back into portal-storm proof by ritual.
 
 Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
@@ -311,21 +311,19 @@ Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RID
 
 ---
 
-## Greenlit backlog — writhing stalker hit-fade retreat distance
+## Closed receipt — CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
 
-**Status:** GREENLIT / QUEUED / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+**Status:** CLOSED / CHECKPOINTED GREEN v0 / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP
 
-Josef live-watched the writhing stalker on 2026-05-02 and greenlit a focused follow-up for its attack/retreat rhythm. The watched handoff seed is `.userdata/dev-harness/harness_runs/20260502_015032/`, but it is yellow/inconclusive due to runtime-version mismatch, so use it as a bug/taste seed rather than closure proof.
+Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`.
 
-Imagination source: `doc/writhing-stalker-hit-fade-retreat-distance-imagination-source-2026-05-02.md`.
+Josef live-watched the writhing stalker on 2026-05-02 and greenlit a focused follow-up for its attack/retreat rhythm. The watched handoff seed `.userdata/dev-harness/harness_runs/20260502_015032/` remains yellow/debug footing because of runtime-version mismatch.
 
-Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+Closed behavior: the stalker no longer uses generic `HIT_AND_RUN`; it owns a bounded burst/fade cadence. Favorable vulnerable pressure can permit a short 2-4 hit burst, while light/focus/allied support/injury push earlier/farther caution. Post-burst live planning targets about `8+` tiles of retreat when pathing allows.
 
-Handoff packet: `doc/writhing-stalker-hit-fade-retreat-distance-handoff-v0-2026-05-02.md`.
+Credited evidence: original flesh-raptor `HIT_AND_RUN` source reference; deterministic `[writhing_stalker]` suite green (`206 assertions in 17 test cases`); current-build `cataclysm-tiles` build green; staged-but-live McWilliams feature proof `.userdata/dev-harness/harness_runs/20260502_113738/` with `feature_proof=true`, `verdict=artifacts_matched`, `decision=strike`, `decision=withdraw`, `decision=cooling_off`, `burst=0/2`, `burst=1/2`, `burst=2/2`, `retreat_distance=8`, and `cooldown=yes`.
 
-Goal: make the stalker attack in a short stress-shaped burst, then back off far enough to create real breathing room. Current taste target: roughly 2-4 attacks depending on stress, then about 8+ tiles of retreat when pathing allows. Reference feel is the original flesh raptor hit-and-run behavior, explicitly not the newer circling raptor retrofit. Light plus allied NPC support should push toward earlier/farther caution.
-
-Boundary: product-tuning/behavior fix only. Do not reopen all stalker v0, do not copy new raptor orbit behavior, do not create constant melee spam or harmless always-flee behavior, and do not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+Caveat: staged-but-live feature proof, not natural random discovery or final human taste for exact scariness/forgiveness.
 
 ---
 

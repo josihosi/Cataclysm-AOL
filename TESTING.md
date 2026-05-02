@@ -57,9 +57,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Checkpointed validation receipt - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
+### Closed validation receipt - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-Portal-storm warning-light is implemented/proven green v0. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`; proof/readout: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
+Portal-storm warning-light is implemented/proven and Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`; proof/readout: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
 
 Validation gate:
 - `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`;
@@ -193,9 +193,17 @@ Credited evidence:
 - `cannibal.live_world_exposed_sight_avoid_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065927/`: feature-path green, `profile=cannibal_camp`, `active_job=stalk`, `shakedown=no`, `combat_forward=no`.
 - Review screenshot copies live under `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/`.
 
-### Queued validation target - CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
+### Closed validation receipt - CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
 
-When promoted, validation must first check the original flesh-raptor hit-and-run reference, then prove the stalker-specific burst/retreat behavior. Use `.userdata/dev-harness/harness_runs/20260502_015032/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic tests for about 8+ tile post-burst retreat where pathing allows, stress/counterpressure shaping of 2-4 attack bursts, no A/B near-player oscillation after burst, existing stalker guarantees, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof. Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+`CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0` is closed/checkpointed green v0. Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`; contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+
+Credited evidence:
+- original flesh-raptor reference checked from current source: flesh raptor still uses generic `HIT_AND_RUN`, whose melee hook adds `effect_run`; stalker intentionally dropped that flag because it forced one-hit fleeing before bounded bursts;
+- `git diff --check && make -j8 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (206 assertions in 17 test cases)`;
+- `./just_build_macos.sh > /tmp/caol-writhing-stalker-hit-fade-tiles-build-current.log 2>&1` exited `0`; `cataclysm-tiles` linked;
+- `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_113738/`: `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`, no runtime warnings, clear weather, and matched `decision=strike`, `decision=withdraw`, `decision=cooling_off`, `burst=0/2`, `burst=1/2`, `burst=2/2`, `retreat_distance=8`, `cooldown=yes`.
+
+Caveats: staged-but-live McWilliams proof, not natural random discovery; yellow watched seed `.userdata/dev-harness/harness_runs/20260502_015032/` remains debug footing only because of runtime-version mismatch; final human taste is optional/future-only.
 
 ### Closed validation receipt - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
