@@ -271,11 +271,13 @@ Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
 
 Handoff packet: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
+Working playtest card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+
 Promoted from: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` and its relay card `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
 Goal: prepare labelled playable entries for Basecamp AI / camp locker usefulness, bandit pressure / shakedown / basecamp contact, cannibal camp pressure, flesh raptor skirmishing, zombie rider predator/counterplay, and writhing stalker hit-fade / zombie-shadow behavior. Each entry needs a short “what to try” card, current-build load/start-state evidence, portal-storm warning status, proof footing, and plain staged-vs-natural caveats. Include Josef's thematic contrast pass for stalker and bandit behavior: no-fire/no-signal, fire/smoke/light signal, and high-threat/resistant setup should produce visibly different reads or be marked caveated/blocked. Before threat-contrast rows are credited, audit camp NPC membership: unassigned current-save NPCs are not camp threat evidence; low-threat rows may remove/kill/despawn extras, while high-threat rows must spawn or repair NPCs as properly camp-assigned members.
 
-Current card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` lists four ready staged rows (cannibal night pressure, zombie rider open-field pressure, writhing stalker hit-fade, camp locker weather/service) and preserves the blocked/caveated rows for fresh flesh raptor, stalker contrast, bandit contrast, and camp/NPC assignment preflight. Next progress is repair of those caveated rows, not rerunning the four green rows by ritual.
+Current card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` now lists five ready staged rows (camp locker weather/service, cannibal night pressure, flesh raptor blocked-corridor skirmisher, zombie rider cover/wounded contrast, writhing stalker light/zombie-side pressure) plus one explicit no-credit bandit row. Camp/NPC assignment audit found loose/unassigned overmap NPC noise, so bandit camp-threat/contrast rows are blocked rather than credited. Next progress after this handoff is repairing camp/NPC assignment plus the bandit contrast matrix and the stalker no-fire time-setup row, not rerunning the five green rows by ritual.
 
 Boundary: save-pack prep and product-taste handoff only. Do not implement new gameplay unless a hard blocker prevents a save from loading or being playable. Do not reopen closed v0 lanes by drift, do not create release packaging, and do not make Josef inspect logs as the primary playtest activity.
 

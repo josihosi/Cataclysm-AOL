@@ -203,22 +203,24 @@ Canonical docs:
 Status: ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
 
 Success state:
-- [ ] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
-- [ ] Stalker contrast rows cover no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or are explicitly caveated/blocked.
-- [ ] Bandit contrast rows cover no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or are explicitly caveated/blocked.
+- [x] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
+- [x] Stalker contrast rows cover no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or are explicitly caveated/blocked.
+- [x] Bandit contrast rows cover no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or are explicitly caveated/blocked.
 - [ ] Camp/NPC preflight audits assignment: unassigned harness-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows.
-- [ ] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
-- [ ] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
-- [ ] Each entry has short Josef-facing instructions and focused taste questions.
-- [ ] Existing proof rows are cited only as footing and staged-vs-natural caveats stay visible.
-- [ ] The final Josef-facing card is short enough to use without log archaeology.
-- [ ] Any blockers become concrete follow-up packets or caveated omissions, not hidden failures.
+- [x] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
+- [x] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
+- [x] Each entry has short Josef-facing instructions and focused taste questions.
+- [x] Existing proof rows are cited only as footing and staged-vs-natural caveats stay visible.
+- [x] The final Josef-facing card is short enough to use without log archaeology.
+- [x] Any blockers become concrete follow-up packets or caveated omissions, not hidden failures.
 
 Canonical docs:
 - Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`.
 - Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
 - Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
-- Current partial Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+- Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+
+Checkpoint: v0 card is usable for five staged rows (locker, cannibal, flesh raptor blocked-corridor, zombie rider cover/wounded, writhing stalker light/zombie-side) and explicitly withholds bandit camp-threat credit. Camp/NPC audit found loose/unassigned overmap NPC noise (`active_member_ids=[]` while saved overmap scan sees 16 NPC records), so the remaining unchecked success item is the real repair/removal/reassignment work for camp-threat rows.
 
 ---
 

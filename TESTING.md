@@ -93,6 +93,8 @@ Interpretation: if `portal_storm_warning.classification = contaminating`, rerun 
 
 `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` is active. Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`; imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`; handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
+Working playtest card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+
 Validation shape: playable save/handoff preparation, not broad proof rerun. Use existing green staged/live rows as footing where possible, but each ready entry needs a current-build load/start-state check, portal-storm warning classification, and a short Josef-facing instruction card.
 
 Required entries:
@@ -104,17 +106,17 @@ Required entries:
 - Writhing stalker hit-fade / zombie-shadow behavior.
 
 Evidence required before handoff:
-- [ ] stalker contrast rows distinguish no-fire/low-threat close-strike-fade, fire/light stalking/hesitation, and high-threat stalking/pressure or mark blocked/caveated;
-- [ ] bandit contrast rows distinguish no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or mark blocked/caveated;
-- [ ] camp/NPC preflight audits membership assignment; unassigned current-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows;
-- [ ] each ready entry has a save path, handoff command, or exact setup/load path;
-- [ ] each ready entry has a current-build load/start-state result from `probe`, `handoff`, startup, or an equivalent narrow check;
-- [ ] each ready entry records `portal_storm_warning` status and any runtime warning caveats;
-- [ ] each entry cites proof footing without laundering staged rows into natural discovery claims;
-- [ ] blocked entries are labelled blocked/no-credit with the missing primitive instead of hidden;
-- [ ] final Josef-facing card is short enough to play from.
+- [ ] stalker contrast rows distinguish no-fire/low-threat close-strike-fade, fire/light counterplay, and zombie/escape-side pressure or mark blocked/caveated. Current ready contrast: campfire/light `20260502_131246/` and escape-side zombie pressure `20260502_131315/`, both portal clear. Current no-fire hit-fade rerun `20260502_131232/` is blocked on time setup.
+- [ ] bandit contrast rows distinguish no-signal, fire/smoke/basecamp signal, and high-threat/resistant setup or mark blocked/caveated. Current state: standoff row `20260502_131536/` is yellow wait proof, high-threat row `20260502_131616/` is blocked on missing hold artifact, and fire/smoke/no-signal rows are not credited until camp/NPC assignment is repaired/audited.
+- [ ] camp/NPC preflight audits membership assignment; unassigned current-save NPCs are removed/neutralized for low-threat rows or replaced/repaired with properly camp-assigned members for high-threat rows. Current audit on `20260502_131616/saved_world/McWilliams` found the saved live-world site has `member_count=5`, `ready_at_home_count=5`, `active_outside_count=0`, and `active_member_ids=[]`, while a full overmap NPC scan sees `observed_npc_count=16` including follower and `hells_raiders` loose NPC records. No camp-threat credit from those loose NPCs.
+- [x] each inventoried entry has a save path, handoff command, or exact setup/load path in `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+- [x] each ready entry has a current-build load/start-state result from `probe`, `handoff`, startup, or an equivalent narrow check. Ready rows: locker `20260502_131015/`, cannibal `20260502_131103/`, flesh raptor blocked-corridor `20260502_132217/`, zombie rider `20260502_131914/` and `20260502_132136/`, writhing stalker `20260502_131246/` and `20260502_131315/`.
+- [x] each ready entry records `portal_storm_warning` status and any runtime warning caveats. All ready rows above are portal clear.
+- [x] each entry cites proof footing without laundering staged rows into natural discovery claims.
+- [x] blocked entries are labelled blocked/no-credit with the missing primitive instead of hidden.
+- [x] final Josef-facing card is short enough to play from: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` is the current partial Josef-facing index. It marks four ready staged rows green from fresh inspected reports: cannibal night local contact `.userdata/dev-harness/harness_runs/20260502_125033/`, zombie rider open-field pressure `.userdata/dev-harness/harness_runs/20260502_125150/`, writhing stalker hit-fade `.userdata/dev-harness/harness_runs/20260502_125231/`, and locker weather/service `.userdata/dev-harness/harness_runs/20260502_125339/`; each records clear/not-observed portal-storm status and runtime warnings `[]`. It also preserves no-credit/caveated status for fresh flesh raptor (`20260502_125055`, `20260502_125447`), stalker campfire/light (`20260502_125651`), rider rerun (`20260502_125537`), stalker time setup (`20260502_125633`), and mostly-green-but-red-screen escape-side stalker (`20260502_125716`). Bandit remains not save-pack ready until camp/NPC assignment preflight and a fresh contrast matrix are audited.
+Card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` is the Josef-facing index. It marks five ready staged rows green from fresh inspected reports (locker, cannibal, flesh raptor blocked-corridor, zombie rider cover/wounded, writhing stalker light/zombie-side) and one no-credit bandit row with the camp/NPC assignment audit caveat. Bandit camp-threat/contrast and stalker no-fire hit-fade remain concrete follow-up repairs rather than hidden failures.
 
 Prior sampler footing: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains useful source material (`doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`), but it is no longer the active deliverable.
 

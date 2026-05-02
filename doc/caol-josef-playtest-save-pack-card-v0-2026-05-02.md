@@ -1,151 +1,184 @@
-# CAOL Josef playtest save-pack card v0 (2026-05-02)
+# C-AOL Josef playtest save pack v0 card (2026-05-02)
 
-Status: PARTIAL JOSEF-FACING CARD / FOUR READY ROWS / CONTRAST + BANDIT + RAPTOR CAVEATED
+Status: CURRENT-BUILD HANDOFF CARD / MIXED GREEN + BLOCKED ROWS
 
-Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
-Handoff packet: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
+Repo/branch/build: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` at `1113e68275`; `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` exited `0`.
 
-This card is the usable index, not a proof pantry. The fresh pass produced four ready staged rows and several honest no-credit/caveated rows. The missing rows are not hidden: flesh raptor needs a fresh clean current-build row, bandit needs a fresh contrast/preflight row, and the stalker contrast matrix is not complete. Na bravo, the soup has labels now.
+Run commands from the repo root. Use `probe` for verification and `handoff` when Josef wants a live session left open.
 
-## How to use this card
+## Use these first
 
-Run commands from the repo root. The probe rows below are the evidence runs; use the matching `handoff` command when Josef wants an enterable live session left open instead of an auto-closed probe.
+### 1. `/visions/camp-locker` — camp locker weather/service
 
-Shared caveat for every ready row: these are staged harness scenes on McWilliams/Sandy Creek footing, not natural random-discovery proof, release packaging, or final balance. Josef's job is taste: readable, fair, fun, alive, gnostic, fake, hollow, annoying.
+Handoff command:
 
-All fresh rows inspected here report `portal_storm_warning.classification = clear` / `status = not_observed`; no silent portal-storm contamination was observed.
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff locker.weather_wait
+```
 
-## Ready entries
+What to try for 2-5 minutes:
+- Open the camp/base screen and look for whether the locker-stock service feels legible.
+- Wait a short chunk and check whether the equipment service reads as useful rather than invisible bookkeeping.
+- Look for whether the camp feels like it has a practical supply rhythm.
 
-### 1. `/horde/camp` — Cannibal camp night pressure
+Expected read: camp locker service should visibly use the locker stock and leave the worker better equipped without magic inventory nonsense.
 
-- **Use:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff cannibal.live_world_night_local_contact_pack_mcw
-  ```
-- **Evidence run:** `.userdata/dev-harness/harness_runs/20260502_125033/`.
-- **Save/world footing:** McWilliams via `.userdata/dev-harness/save/McWilliams`.
-- **Current evidence status:** GREEN feature-path probe: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_summary.status=green_step_local_proof`, `2/2` green rows, runtime warnings `[]`, portal-storm classification `clear`.
-- **What to try for 2-5 minutes:** let the contact unfold, then move/retreat enough to see whether the cannibal pressure reads like a killing pack rather than bandit negotiation theater.
-- **Expected read:** night/local contact produces cannibal `attack_now` pressure with `pack_size=2`, `darkness_or_concealment=yes`, `local_contact=yes`, `shakedown=no`, and `combat_forward=yes`.
-- **Taste questions:**
-  - Does this feel like a cannibal camp mistake turning lethal, or just two spawned enemies?
-  - Is the no-negotiation distinction from bandits readable?
-  - Does the pressure feel scary-fair, or cheap?
-  - Does it have camp/horde wrongness, or just combat bookkeeping?
-- **Caveat:** staged local-contact row; it does not prove broad natural cannibal discovery, every camp roster shape, or long-form pursuit.
+Taste questions:
+- Does this feel like a useful camp service, or like a spreadsheet hiding in a game?
+- Is the locker interaction discoverable enough?
+- Does the weather/wait cadence make the service feel alive or merely delayed?
 
-### 2. `/rider/stalker/raptor` — Zombie rider open-field predator/counterplay
+Current evidence: `locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260502_131015/`; `probe.report.json`: `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`3` green / `0` red), `portal_storm_warning.classification=clear`.
 
-- **Use:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff zombie_rider.live_open_field_pressure_mcw
-  ```
-- **Evidence run:** `.userdata/dev-harness/harness_runs/20260502_125150/`.
-- **Save/world footing:** McWilliams via `.userdata/dev-harness/save/McWilliams`.
-- **Current evidence status:** GREEN feature-path probe: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_summary.status=green_step_local_proof`, `6/6` green rows, runtime warnings `[]`, portal-storm classification `clear`.
-- **What to try for 2-5 minutes:** stay in the open long enough to read bow pressure, then close distance or break line of fire to judge whether the rider feels like a mounted archer instead of a polite statue.
-- **Expected read:** the rider reaches `decision=bow_pressure reason=line_of_fire`, flips `aggro_before=no aggro_after=yes`, consumes arrows, then uses cooldown/too-close repositioning such as `too_close_bunny_hop`.
-- **Taste questions:**
-  - Does it feel like late-world mounted terror, or just a zombie with a gimmick bow?
-  - Is shot/reposition timing visible enough to learn?
-  - Does cover/spacing counterplay feel fair?
-  - Is it exciting pressure or irritating poke-kiting?
-- **Caveat:** staged McWilliams feature proof; not natural spawn/discovery, full siege navigation, or final late-game balance.
+Caveat: staged harness footing, not a natural long-form camp career.
 
-### 3. `/rider/stalker/raptor` — Writhing stalker hit-fade retreat rhythm
+### 2. `/horde/camp/cannibal` — cannibal night local-contact pressure
 
-- **Use:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_hit_fade_retreat_mcw
-  ```
-- **Evidence run:** `.userdata/dev-harness/harness_runs/20260502_125231/`.
-- **Save/world footing:** McWilliams via `.userdata/dev-harness/save/McWilliams`.
-- **Current evidence status:** GREEN feature-path probe: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_summary.status=green_step_local_proof`, `6/6` green rows, runtime warnings `[]`, portal-storm classification `clear`.
-- **What to try for 2-5 minutes:** let the stalker close and hit; watch whether it bursts, withdraws, and cools off instead of doing one-hit generic flee or endless melee spam. Then add light/attention if you want to test the feel, but do not treat that as the proven contrast row.
-- **Expected read:** live plan shows `decision=strike`, `decision=withdraw`, `decision=cooling_off`, burst accounting around `burst=0/2`, `1/2`, `2/2`, and `retreat_distance=8`.
-- **Taste questions:**
-  - Does the hit-fade rhythm breathe, or does it still feel like a cheap goblin in the wall?
-  - Is the retreat readable enough to be fair?
-  - Does the danger feel like dread with counterplay, or just intermittent damage?
-  - Would light/allies make you expect a different behavior?
-- **Caveat:** staged hit-fade proof only. The broader stalker contrast pass is still caveated below.
+Handoff command:
 
-### 4. `/visions/camp-locker` — Camp locker practical usefulness
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff cannibal.live_world_night_local_contact_pack_mcw
+```
 
-- **Use:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff locker.weather_wait
-  ```
-  Optional Zone Manager visibility footing from the closed locker proof:
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff locker.zone_manager_save_probe_mcw
-  ```
-- **Evidence run:** `.userdata/dev-harness/harness_runs/20260502_125339/` for `locker.weather_wait`; prior zone footing `.userdata/dev-harness/harness_runs/20260502_041828/`.
-- **Save/world footing:** Sandy Creek via `.userdata/dev-harness/save/Sandy Creek` for the fresh weather row.
-- **Current evidence status:** GREEN feature-path probe: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_summary.status=green_step_local_proof`, `3/3` green rows, runtime warnings `[]`, portal-storm classification `clear`.
-- **What to try for 2-5 minutes:** inspect the worker/camp state after the cold-service window; optionally open Zone Manager and inspect `CAMP_LOCKER` visibility/persistence in the zone row.
-- **Expected read:** camp locker service uses real locker-zone stock: `camp locker: queued`, `plan for`, `after`, and `serviced`; decisive line includes `locker_tiles=1`, `candidates=1`, `changed_slots=1`, `applied=true`, with the worker ending in `cargo pants` and old `antarvasa` returned to stock.
-- **Taste questions:**
-  - Does the camp feel practically more alive, or still like invisible paperwork?
-  - Is the locker/zone relationship legible enough?
-  - Does gear service feel plausible from communal stock?
-  - What one UI or message cue would make this less magical?
-- **Caveat:** bounded zone/service proof, not a full basecamp UX redesign. Robbie package e2e remains no-credit from the locker lane.
+What to try for 2-5 minutes:
+- Let the scene settle, then wait/move just enough to feel the local-contact pressure.
+- Watch whether the cannibal camp pressure reads as night threat rather than random monster soup.
+- If contact happens, judge the first 30-60 seconds of pressure: readable, scary, fair?
 
-## Blocked or caveated entries
+Expected read: current build reaches the cannibal night local-contact footing cleanly and produces the intended pressure packet.
 
-### 5. `/rider/stalker/raptor` — Flesh raptor skirmisher row is not fresh-ready
+Taste questions:
+- Does the pressure arrive with enough context to feel authored?
+- Is night doing useful mood work, or just reducing visibility?
+- Does the camp pressure feel distinct from ordinary wandering enemies?
 
-- **Best caveated command if Josef explicitly wants the old taste row:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff flesh_raptor.live_equipment_frustration_comparison_mcw
-  ```
-- **Older green footing:** `.userdata/dev-harness/harness_runs/20260501_062300/`, with open/crowded/corridor support from `20260501_052709`, `20260501_053414`, and `20260501_054807`; closure doc `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
-- **Fresh save-pack attempts:**
-  - `.userdata/dev-harness/harness_runs/20260502_125055/` -> `blocked_flesh_raptor_open_field_live_plan_missing`.
-  - `.userdata/dev-harness/harness_runs/20260502_125447/` -> `blocked_flesh_raptor_open_field_live_plan_missing`.
-- **Portal-storm status:** clear/not observed in both fresh blocked rows.
-- **Why blocked:** screen capture failed on the live turn window and the same-run raptor live-plan metadata was missing (`missing_required_items`, `metadata_abort_guard`). The first run at least loaded and proved the saved noon/raptor preconditions; neither fresh row is feature proof.
-- **Expected read from older footing only:** orbit/swoop cadence, under-occupied arc preference, and equipment/frustration consequences should be taste-judged, but this is not a fresh current save-pack green row.
-- **Taste questions when rerun clean:** does it read as a circling predator rather than stab/flee irritation; are swoops telegraphed; are equipment/body consequences fair; would this make Josef keep playing or reload in annoyance?
-- **Next honest step:** rerun or repair the raptor save-pack row until screen capture and live-plan artifact proof both go green, or explicitly deliver it as an older-footing taste-only row.
+Current evidence: `cannibal.live_world_night_local_contact_pack_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131103/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`2` green / `0` red), portal clear.
 
-### 6. `/rider/stalker/raptor` — Writhing stalker contrast pass is incomplete
+Caveat: staged-but-live McWilliams row, not natural map discovery proof.
 
-- **Ready no-fire/low-threat-ish footing:** `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_125231/` is green as listed above.
-- **Fire/light contrast attempt:** `.userdata/dev-harness/harness_runs/20260502_125651/` (`writhing_stalker.live_campfire_counterplay_mcw`) is blocked: `blocked_audit_writhing_stalker_campfire_counterplay_live_plan_missing`, screen capture failed, live-plan metadata missing. Portal-storm classification clear.
-- **Zombie/escape-side pressure attempt:** `.userdata/dev-harness/harness_runs/20260502_125716/` (`writhing_stalker.live_escape_side_zombie_retreat_mcw`) is mostly useful but not green: six of seven ledger rows are green, and same-run metadata proves escape-side cutoff/strike/withdraw/cooling-off; one live-window screen-capture row is red, so the report verdict is `blocked_step_local_proof`. Portal-storm classification clear.
-- **Time setup failed rerun:** `.userdata/dev-harness/harness_runs/20260502_125633/` blocked on missing midnight setup plus screen capture failure.
-- **Taste value:** the green hit-fade row is playable now; the escape-side row can inform agent reasoning but should not be sold as a clean optical card. The fire/light and high-threat contrast matrix still needs a fresh clean pass.
+### 3. `/rider/stalker/raptor` — flesh raptor blocked-corridor skirmisher
 
-### 7. `/horde/camp` — Bandit pressure / shakedown / basecamp contact is not save-pack ready
+Handoff command:
 
-- **Best existing footing, not fresh contrast closure:**
-  ```sh
-  python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_first_demand_pay_mcw
-  python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_reopened_demand_mcw
-  python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw
-  ```
-- **Existing green docs/runs:** `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md` cites first demand `.userdata/dev-harness/harness_runs/20260502_065253/` and reopened demand `.userdata/dev-harness/harness_runs/20260502_065445/`; `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md` cites the older teachable standoff/playthrough surface.
-- **Why not ready for this card:** no fresh bandit contrast row was found for the requested no-signal vs fire/smoke/basecamp signal vs high-threat/resistant matrix. More importantly, Josef's camp/NPC assignment preflight remains required for bandit/basecamp threat rows: unassigned current-save NPCs must not be credited as low/high camp threat evidence. Camp/NPC assignment was not audited in the inspected fresh pass.
-- **Expected read when repaired:** no obvious signal should avoid instant theatrical pressure; fire/smoke/basecamp signal should pull scouting, shakedown, or hold-off pressure quickly enough to judge; high-threat/resistant camp/player setup should stalk/hold off/back out/escalate differently instead of replaying the same tax-office demand branch.
-- **Taste questions when repaired:** does pressure feel scenic and earned; do Pay/Fight/Refuse read as a normal dialogue surface; does the camp feel socially threatened rather than mechanically taxed; does high threat change bandit posture visibly?
-- **Next honest step:** run camp/NPC assignment preflight, repair/neutralize loose NPC footing, then run a small fresh bandit contrast matrix before promoting this row to ready.
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff flesh_raptor.live_blocked_corridor_skirmisher_mcw
+```
 
-### 8. `/visions/camp-locker` and `/horde/camp` — Camp/NPC assignment preflight remains open for threat rows
+What to try for 2-5 minutes:
+- Use the corridor/blocked-space setup to see whether the raptor feels like a skirmisher rather than a straight-line idiot.
+- Step, back up, and change angles; watch whether it pressures around the blocked geometry.
+- Do not judge the open-field version from this row; that footing is blocked below.
 
-The fresh locker utility row is ready, but it is not camp-threat proof. For any bandit/basecamp threat or high-threat contrast claim, the current harness save still needs a camp/NPC assignment audit. Low-threat rows must neutralize loose/unassigned extras; high-threat rows must prove enough properly camp-assigned members tied to the intended camp/faction/overmap-special state. Until that audit exists, do not use random nearby NPCs as threat evidence. Bureaucracy, yes, but at least it is not pretending strangers in the parking lot are your militia.
+Expected read: the raptor should feel opportunistic in constrained terrain, with skirmisher pressure visible through movement rather than pure stat-checking.
 
-## Quick Josef ask
+Taste questions:
+- Is the raptor readable as clever, or merely twitchy?
+- Does the blocked corridor make it more fun or more annoying?
+- Would you want this behavior in a broader open-field encounter once that footing is repaired?
 
-Start with the four ready rows if you want a useful taste pass now:
+Current evidence: `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_132217/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`8` green / `0` red), portal clear.
 
-1. Cannibal night pressure (`/horde/camp`).
-2. Zombie rider open-field pressure (`/rider/stalker/raptor`).
-3. Writhing stalker hit-fade (`/rider/stalker/raptor`).
-4. Camp locker weather/service (`/visions/camp-locker`).
+Caveat: this is the usable raptor row. Current open-field/crowded/equipment rows are blocked or caveated, so do not use this as proof that every raptor setup is healthy.
 
-For each: play 2-5 minutes, point to one moment, and answer whether it reads optically, mechanically, and gnostically; whether it feels fair/fun/alive; and what felt fake, hollow, invisible, or annoying.
+### 4. `/rider/stalker/raptor` — zombie rider cover escape / wounded disengagement
 
-Do **not** judge bandit contrast, fresh flesh raptor, or stalker fire/light contrast from this card yet; those are visibly caveated above.
+Primary handoff command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff zombie_rider.live_cover_escape_mcw
+```
+
+Optional contrast command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff zombie_rider.live_wounded_disengagement_mcw
+```
+
+What to try for 2-5 minutes:
+- In cover escape, move through cover and watch whether the rider pressures without feeling omniscient.
+- In wounded disengagement, push it enough to see whether retreat/disengagement reads as survival, not cowardly pathing failure.
+- Pay attention to whether bow pressure is visibly threatening after the close-pressure fix.
+
+Expected read: the rider should create predator/counterplay pressure, then reposition or disengage under the shaped conditions instead of standing around politely.
+
+Taste questions:
+- Does the bow pressure now feel present and fair?
+- Is the rider’s repositioning legible, or does it look like random hopping?
+- Is wounded disengagement satisfying, or does it drain the encounter?
+
+Current evidence:
+- `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131914/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`9` green / `0` red), portal clear.
+- `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260502_132136/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`6` green / `0` red), portal clear.
+
+Caveat: staged-but-live rows. Open-field pressure rerun at `20260502_131217/` is blocked on time setup in this save-pack pass, so use the two green rows above for playtesting.
+
+### 5. `/rider/stalker/raptor` — writhing stalker light + zombie-side pressure
+
+Primary handoff command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_escape_side_zombie_retreat_mcw
+```
+
+Light/counterplay contrast command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_campfire_counterplay_mcw
+```
+
+What to try for 2-5 minutes:
+- In escape-side zombie retreat, watch whether the stalker uses pressure and retreat around the zombie side without feeling like a wallhack goblin.
+- In campfire counterplay, stand in/near light and judge whether it hesitates/stalks instead of suiciding into the obvious bright danger.
+- If it closes, watch for strike/fade rhythm and breathing room rather than attack spam.
+
+Expected read: the stalker should feel like fair dread: pressure, hesitation around light, and retreat/spacing when the situation stops favoring a strike.
+
+Taste questions:
+- Is the stalker scary in a way you can read and answer?
+- Does fire/light feel like real counterplay, or just a debug flag with graphics?
+- Does the zombie-side pressure feel emergent or contrived?
+
+Current evidence:
+- `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131315/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`7` green / `0` red), portal clear.
+- `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131246/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`7` green / `0` red), portal clear.
+
+Caveat: the pure no-fire/low-threat hit-fade row is blocked in the current save-pack pass (`writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131232/`, `blocked_writhing_stalker_time_setup_missing`). So the card has light/zombie contrast ready, but not a clean current no-fire close-strike-fade handoff.
+
+## Blocked / no-credit rows Josef should not judge as final product
+
+### 6. `/horde/camp/bandit` — bandit pressure / shakedown / basecamp contact
+
+Do **not** use current camp-threat rows as credited pressure evidence yet. This is the one with the loud little warning bell, because otherwise loose NPCs dress up as a camp and everyone pretends that is science. Na bravo.
+
+Caveated handoff command, only if Josef wants to inspect the current broken footing:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw
+```
+
+Current evidence:
+- `bandit.extortion_at_camp_standoff_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131536/`; `feature_proof=false`, `verdict=yellow_wait_step_unverified`, portal clear. The wait path reached a caveated standoff-shaped row but lacks green wait proof.
+- `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_131616/`; saved bandit-live-world preflight rows are `required_state_present`, but final artifact proof is missing: `verdict=blocked_high_threat_hold_artifact_missing`, portal clear.
+- Camp/NPC audit on saved world `.userdata/dev-harness/harness_runs/20260502_131616/saved_world/McWilliams`: bandit live-world site `overmap_special:bandit_camp@140,51,0` has `member_count=5`, `ready_at_home_count=5`, `active_outside_count=0`, and `active_member_ids=[]`; full saved-overmap NPC scan sees `observed_npc_count=16`, including two `your_followers` and multiple `hells_raiders` NPC records with no active-member cross-reference. That is not clean camp-assigned threat proof.
+
+Blocked follow-up required before credit:
+- Low-threat/no-signal row: remove/kill/despawn/neutralize loose extra NPCs, then audit the saved overmap count and absence of unassigned pressure actors before the no-signal row is credited.
+- High-threat/resistant row: spawn or repair active pressure as camp-assigned bandit-live-world members, then require `active_member_ids` plus `active_members_all_found_in_saved_overmap=true` before threat pressure is credited.
+- Fire/smoke/basecamp signal row: rerun with the same assignment audit rather than borrowing older green smoke proof.
+
+## Thematic contrast status
+
+- Stalker fire/light: ready (`writhing_stalker.live_campfire_counterplay_mcw`, `20260502_131246/`).
+- Stalker zombie/escape-side pressure: ready (`writhing_stalker.live_escape_side_zombie_retreat_mcw`, `20260502_131315/`).
+- Stalker no-fire/low-threat close-strike-fade: blocked on current time setup (`20260502_131232/`).
+- Bandit no-signal / signal / high-threat: blocked or caveated pending camp/NPC assignment repair; do not flatten loose NPCs into camp pressure.
+
+## Validation gates run
+
+- `git fetch origin dev`; local `dev` and `origin/dev` both at `1113e68275`.
+- `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` -> exit `0`.
+- Current-build probe summaries:
+  - `/tmp/caol-savepack-assign-probe-summary-20260502_1306_assign.txt`
+  - `/tmp/caol-savepack-bandit-assign-summary-20260502_1320_bandit_assign.txt`
+  - `/tmp/caol-savepack-alt-probe-summary-20260502_1324_alt.txt`
+- Final docs gate: `git diff --check` before commit.
