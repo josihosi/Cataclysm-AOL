@@ -198,9 +198,29 @@ Canonical docs:
 
 ---
 
+## CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0 — Josef playable save/handoff pack
+
+Status: ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
+
+Success state:
+- [ ] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
+- [ ] Each entry has a loadable save/handoff/setup path or is explicitly marked blocked with the missing primitive.
+- [ ] Each ready entry has current-build load/start-state evidence and no silent portal-storm contamination.
+- [ ] Each entry has short Josef-facing instructions and focused taste questions.
+- [ ] Existing proof rows are cited only as footing and staged-vs-natural caveats stay visible.
+- [ ] The final Josef-facing card is short enough to use without log archaeology.
+- [ ] Any blockers become concrete follow-up packets or caveated omissions, not hidden failures.
+
+Canonical docs:
+- Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`.
+- Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
+- Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
+
+---
+
 ## CAOL-VISIONS-PLAYTEST-SAMPLER-v0 — C-AOL visions product-feel sampler
 
-Status: ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
+Status: SUPERSEDED / FOLDED INTO `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0`
 
 Success state:
 - [x] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
@@ -216,7 +236,7 @@ Canonical docs:
 - Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 - Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
-Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, flesh raptor, camp locker), includes handoff commands, screenshot checkpoints, existing artifact footing, taste/gnostic questions, staged-footing caveats, and a compressed Schani/Josef relay packet. Post-crunch correction applied: the stalker postcard uses the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/` as primary footing; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is explicitly dirty/caveated because targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`. Agent-side sampler prep is complete; remaining taste collection is Schani/Josef relay or optional live handoff setup, not more proof.
+Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, flesh raptor, camp locker), includes handoff commands, screenshot checkpoints, existing artifact footing, taste/gnostic questions, staged-footing caveats, and a compressed Schani/Josef relay packet. Post-crunch correction applied: the stalker postcard uses the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/` as primary footing; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is explicitly dirty/caveated because targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`. Agent-side sampler prep is complete and now feeds `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0`; the active deliverable is a playable save/handoff pack rather than a relay-only card.
 
 ---
 

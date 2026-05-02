@@ -259,23 +259,23 @@ Boundary preserved: cleanup/refactor only. This does not redesign bandit live-wo
 
 ---
 
-## Relay-ready lane detail — C-AOL visions playtest sampler
+## Active lane — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
 
-**Status:** GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET / WAITING ON SCHANI-JOSEF TASTE RELAY
+**Status:** ACTIVE / GREENLIT / JOSEF PLAYTEST SAVE-PACK PREP
 
-Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
+Josef greenlit turning the relay-ready visions sampler into a concrete playtest save pack. The product now is not another proof receipt: it is a small labelled set of current-build saves or handoff sessions Josef can actually load and play.
 
-Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`.
 
-Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
 
-Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Handoff packet: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
-Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
+Promoted from: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` and its relay card `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
-Current checkpoint: v0 chooses four postcards — writhing stalker, zombie rider, flesh raptor, camp locker — and defers bandit pressure to v1 or its own queued scenic-shakedown lane unless Josef promotes it now. The card now has a compressed relay packet Schani can send without proof archaeology. The stalker postcard uses `writhing_stalker.live_escape_side_zombie_retreat_mcw` as primary optical footing; `writhing_stalker.live_quiet_side_zombie_pressure_mcw` is caveated/secondary unless rerun clean. Remaining work is Josef/Schani taste relay or optional live handoff setup, not more agent-side proof.
+Goal: prepare labelled playable entries for Basecamp AI / camp locker usefulness, bandit pressure / shakedown / basecamp contact, cannibal camp pressure, flesh raptor skirmishing, zombie rider predator/counterplay, and writhing stalker hit-fade / zombie-shadow behavior. Each entry needs a short “what to try” card, current-build load/start-state evidence, portal-storm warning status, proof footing, and plain staged-vs-natural caveats.
 
-Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, and does not create release packaging. The optical/screenshot playtest condition is required for visual postcards.
+Boundary: save-pack prep and product-taste handoff only. Do not implement new gameplay unless a hard blocker prevents a save from loading or being playable. Do not reopen closed v0 lanes by drift, do not create release packaging, and do not make Josef inspect logs as the primary playtest activity.
 
 ---
 

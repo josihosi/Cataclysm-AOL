@@ -89,25 +89,29 @@ Credited evidence before close:
 
 Interpretation: if `portal_storm_warning.classification = contaminating`, rerun under controlled non-portal-storm weather unless the scenario intentionally tests portal storms.
 
-### Relay-ready validation receipt - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
+### Active validation target - CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
 
-`CAOL-VISIONS-PLAYTEST-SAMPLER-v0` is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`; imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+`CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` is active. Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`; imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`; handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
-Validation shape: product-feel sampler, not broad proof rerun. Use existing green staged/live rows as footing where possible, create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the selected postcards, and keep staged-vs-natural caveats visible.
+Validation shape: playable save/handoff preparation, not broad proof rerun. Use existing green staged/live rows as footing where possible, but each ready entry needs a current-build load/start-state check, portal-storm warning classification, and a short Josef-facing instruction card.
 
-Current sampler checkpoint:
-- Relay-ready card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md` (short Schani/Josef packet plus detailed postcard backup).
-- Bounded v0 set: writhing stalker, zombie rider, flesh raptor, camp locker.
-- The card names each vision, exact handoff/setup commands, 2-5 minute play instruction, screenshot checkpoint, visible/optical fact, taste/gnostic questions, artifact footing, and staged-footing caveat; it now also includes a compressed relay packet short enough to use.
-- Post-crunch correction: do not use `writhing_stalker.live_quiet_side_zombie_pressure_mcw` run `.userdata/dev-harness/harness_runs/20260501_071548/` as clean Josef-facing optical footing. Targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall` in `probe.artifacts.log`. The sampler now makes `writhing_stalker.live_escape_side_zombie_retreat_mcw` run `.userdata/dev-harness/harness_runs/20260501_071940/` the primary stalker footing; targeted grep found no `ERROR GAME` / warning backtrace in the cited log/report/artifact excerpts.
-- Screenshot review copies from existing artifacts live at `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`, with `01-stalker-escape-side-primary.png` as the primary stalker screenshot and `01-stalker-quiet-side.png` dirty/caveated only.
+Required entries:
+- Basecamp AI / camp locker usefulness.
+- Bandit pressure / shakedown / basecamp contact.
+- Cannibal camp pressure.
+- Flesh raptor skirmisher behavior.
+- Zombie rider predator/counterplay.
+- Writhing stalker hit-fade / zombie-shadow behavior.
 
-Required evidence before sampler handoff:
-- [x] bounded v0 set of 3-5 labelled postcards;
-- [x] each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
-- [x] visual postcards include screenshot checkpoints with named expected visible facts;
-- [x] final Josef-facing handoff is compressed enough to use;
-- [x] no fresh handoff/probe rows were required before relay; if any are run later, grep the fresh/cited row logs for runtime `ERROR GAME` / warnings before treating them as clean optical footing, then record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
+Evidence required before handoff:
+- [ ] each ready entry has a save path, handoff command, or exact setup/load path;
+- [ ] each ready entry has a current-build load/start-state result from `probe`, `handoff`, startup, or an equivalent narrow check;
+- [ ] each ready entry records `portal_storm_warning` status and any runtime warning caveats;
+- [ ] each entry cites proof footing without laundering staged rows into natural discovery claims;
+- [ ] blocked entries are labelled blocked/no-credit with the missing primitive instead of hidden;
+- [ ] final Josef-facing card is short enough to play from.
+
+Prior sampler footing: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains useful source material (`doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`), but it is no longer the active deliverable.
 
 ### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
