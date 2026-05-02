@@ -1289,40 +1289,41 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
     for( const std::pair<const tripoint_abs_omt, source_reading> &entry : readings ) {
         const tripoint_abs_omt &source_omt = entry.first;
         const source_reading &reading = entry.second;
-        bandit_mark_generation::smoke_packet packet;
-        packet.id = live_bandit_source_mark_id( "smoke", source_omt );
-        packet.envelope_id = live_bandit_player_target_id( player_omt );
-        packet.region_id = live_bandit_omt_token( source_omt );
-        packet.observed_range_omt = rl_dist( player_omt, source_omt );
-        packet.source_strength = std::clamp( reading.fire_intensity + reading.smoke_intensity, 1, 3 );
-        packet.persistence = reading.smoke_intensity > 0 ? 1 : 0;
-        packet.height_bias = reading.fire_intensity >= 2 ? 1 : 0;
-        packet.spread_bias = 0;
-        packet.weather = weather_band;
-        packet.notes.push_back( "live source hook: fd_fire=" + std::to_string( reading.fire_intensity ) +
-                                ", fd_smoke=" + std::to_string( reading.smoke_intensity ) );
-        packet.notes.push_back( "live source hook: weather=" +
-                                bandit_mark_generation::to_string( weather_band ) );
+        bandit_mark_generation::local_field_signal_reading adapter_reading;
+        adapter_reading.smoke_id = live_bandit_source_mark_id( "smoke", source_omt );
+        adapter_reading.light_id = live_bandit_source_mark_id( "light", source_omt );
+        adapter_reading.envelope_id = live_bandit_player_target_id( player_omt );
+        adapter_reading.region_id = live_bandit_omt_token( source_omt );
+        adapter_reading.observed_range_omt = rl_dist( player_omt, source_omt );
+        adapter_reading.fire_intensity = reading.fire_intensity;
+        adapter_reading.smoke_intensity = reading.smoke_intensity;
+        adapter_reading.outside = reading.outside;
+        adapter_reading.elevated_roof_exposed = reading.elevated_roof_exposed;
+        adapter_reading.smoke_weather = weather_band;
+        adapter_reading.light_time = light_time;
+        adapter_reading.light_weather = light_weather;
 
-        const bandit_mark_generation::smoke_projection projection =
-            bandit_mark_generation::adapt_smoke_packet( packet );
-        if( !projection.viable ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet=" << packet.id
+        const bandit_mark_generation::local_field_signal_projection field_projection =
+            bandit_mark_generation::adapt_local_field_signal_reading( adapter_reading );
+        const bandit_mark_generation::smoke_projection &projection = field_projection.smoke;
+        if( field_projection.has_smoke_packet && !projection.viable ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet="
+                                       << projection.packet.id
                                        << " kind=smoke reason=below_threshold weather="
                                        << bandit_mark_generation::to_string( weather_band )
-                                       << " observed_range_omt=" << packet.observed_range_omt
+                                       << " observed_range_omt=" << projection.packet.observed_range_omt
                                        << " projected_range_omt=" << projection.projected_range_omt
                                        << " visibility_score=" << projection.visibility_score << '\n';
-        } else {
+        } else if( field_projection.has_smoke_packet ) {
             live_bandit_signal_observation observation;
             observation.signal = projection.signal;
             observation.source_omt = source_omt;
             observation.range_cap_omt = projection.projected_range_omt;
             observation.weather_summary = projection.weather_effect.summary;
-            observation.mark.mark_id = packet.id;
+            observation.mark.mark_id = projection.packet.id;
             observation.mark.kind = "smoke";
             observation.mark.source_omt = source_omt;
-            observation.mark.observed_range_omt = packet.observed_range_omt;
+            observation.mark.observed_range_omt = projection.packet.observed_range_omt;
             observation.mark.range_cap_omt = projection.projected_range_omt;
             observation.mark.strength = projection.signal.strength;
             observation.mark.confidence = projection.signal.confidence;
@@ -1332,52 +1333,20 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
             observations.push_back( observation );
         }
 
-        if( reading.fire_intensity <= 0 ) {
+        if( !field_projection.has_light_packet ) {
             continue;
         }
 
-        bandit_mark_generation::light_packet light_packet;
-        light_packet.id = live_bandit_source_mark_id( "light", source_omt );
-        light_packet.envelope_id = live_bandit_player_target_id( player_omt );
-        light_packet.region_id = live_bandit_omt_token( source_omt );
-        light_packet.observed_range_omt = rl_dist( player_omt, source_omt );
-        light_packet.source_strength = std::clamp( reading.fire_intensity, 1, 3 );
-        light_packet.persistence = reading.fire_intensity >= 2 ? 1 : 0;
-        const bool exposed_to_sky = reading.outside || reading.elevated_roof_exposed;
-        light_packet.side_leakage = exposed_to_sky ? 1 : 0;
-        light_packet.time = light_time;
-        light_packet.weather = light_weather;
-        light_packet.exposure = exposed_to_sky ?
-                                bandit_mark_generation::light_exposure_band::exposed :
-                                bandit_mark_generation::light_exposure_band::contained;
-        light_packet.source = bandit_mark_generation::light_source_band::ordinary;
-        light_packet.terrain = exposed_to_sky ? bandit_mark_generation::light_terrain_band::open :
-                               bandit_mark_generation::light_terrain_band::built_cover;
-        if( reading.elevated_roof_exposed ) {
-            light_packet.vertical_sightline = true;
-            light_packet.elevation_bonus = 2;
-        }
-        light_packet.notes.push_back( "live source hook: fd_fire=" +
-                                      std::to_string( reading.fire_intensity ) +
-                                      ", exposure=" +
-                                      bandit_mark_generation::to_string( light_packet.exposure ) +
-                                      ", elevated_roof_exposed=" +
-                                      std::string( reading.elevated_roof_exposed ? "yes" : "no" ) );
-        light_packet.notes.push_back( "live source hook: time=" +
-                                      bandit_mark_generation::to_string( light_time ) +
-                                      ", weather=" +
-                                      bandit_mark_generation::to_string( light_weather ) );
-
-        const bandit_mark_generation::light_projection light_projection =
-            bandit_mark_generation::adapt_light_packet( light_packet );
+        const bandit_mark_generation::light_projection &light_projection = field_projection.light;
         if( !light_projection.viable ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet=" << light_packet.id
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet="
+                                       << light_projection.packet.id
                                        << " kind=light reason=below_threshold time="
                                        << bandit_mark_generation::to_string( light_time )
                                        << " weather=" << bandit_mark_generation::to_string( light_weather )
                                        << " exposure="
-                                       << bandit_mark_generation::to_string( light_packet.exposure )
-                                       << " observed_range_omt=" << light_packet.observed_range_omt
+                                       << bandit_mark_generation::to_string( light_projection.packet.exposure )
+                                       << " observed_range_omt=" << light_projection.packet.observed_range_omt
                                        << " projected_range_omt=" << light_projection.projected_range_omt
                                        << " visibility_score=" << light_projection.visibility_score << '\n';
             continue;
@@ -1388,10 +1357,10 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         light_observation.source_omt = source_omt;
         light_observation.range_cap_omt = light_projection.projected_range_omt;
         light_observation.weather_summary = light_projection.concealment.summary;
-        light_observation.mark.mark_id = light_packet.id;
+        light_observation.mark.mark_id = light_projection.packet.id;
         light_observation.mark.kind = light_projection.signal.kind;
         light_observation.mark.source_omt = source_omt;
-        light_observation.mark.observed_range_omt = light_packet.observed_range_omt;
+        light_observation.mark.observed_range_omt = light_projection.packet.observed_range_omt;
         light_observation.mark.range_cap_omt = light_projection.projected_range_omt;
         light_observation.mark.strength = light_projection.signal.strength;
         light_observation.mark.confidence = light_projection.signal.confidence;

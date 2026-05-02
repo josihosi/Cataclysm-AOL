@@ -295,18 +295,21 @@ Canonical docs:
 
 ## CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0 — Bandit signal adapter reduction
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Success state:
-- [ ] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter over local fields/time/weather.
-- [ ] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
-- [ ] A focused test or harness/log assertion proves horde reactions still go through `overmap_buffer.signal_hordes` / `overmap::signal_hordes` rather than a private horde path.
-- [ ] Existing roof-fire/live-signal expectations remain true, or any changed expectation is explicitly classified as tuning instead of cleanup.
-- [ ] No bandit dispatch, roster, structural-bounty, or camp-map behavior claim is made from adapter refactoring alone.
+- [x] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter over local fields/time/weather.
+- [x] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
+- [x] A focused test/source seam guard proves horde reactions still go through `overmap_buffer.signal_hordes` / `overmap::signal_hordes` rather than a private horde path.
+- [x] Existing roof-fire/live-signal expectations remain true, or any changed expectation is explicitly classified as tuning instead of cleanup.
+- [x] No bandit dispatch, roster, structural-bounty, or camp-map behavior claim is made from adapter refactoring alone.
 
 Canonical docs:
 - Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 - Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+- Closure proof: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`.
+
+Evidence: `git diff --check`; `make -j4 tests/bandit_mark_generation_test.o src/bandit_mark_generation.o obj/do_turn.o LINTJSON=0 ASTYLE=0`; standalone adapter probe; `make -j1 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[bandit][marks]"` -> `All tests passed (236 assertions in 18 test cases)`.
 
 ---
 

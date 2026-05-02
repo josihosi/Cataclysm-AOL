@@ -57,6 +57,20 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Closed validation receipt - CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
+
+`CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` is closed/checkpointed green v0. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`; proof/readout: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Credited evidence:
+- Source path now names `bandit_mark_generation::local_field_signal_reading`, `local_field_signal_projection`, and `adapt_local_field_signal_reading()` as the local field/time/weather adapter from live `fd_fire` / `fd_smoke` readings into existing smoke/light projections.
+- `src/do_turn.cpp::observe_live_bandit_field_signals_near_player()` now builds that adapter reading and consumes the resulting smoke/light projections, rather than open-coding a second packet mapping in the live path.
+- Light observations with positive horde power still flow through `signal_live_hordes_from_light_observations()`, which calls `overmap_buffer.signal_hordes(...)`.
+- Focused tests `bandit_mark_generation_local_field_adapter_preserves_smoke_light_and_horde_seams` and `bandit_mark_generation_local_field_adapter_keeps_smoke_only_from_signaling_light_hordes` prove fire+smoke mapping, smoke-only non-light behavior, and horde-power preservation through the existing light projection seam.
+
+Gates: `git diff --check`; `make -j4 tests/bandit_mark_generation_test.o src/bandit_mark_generation.o obj/do_turn.o LINTJSON=0 ASTYLE=0`; standalone adapter probe linked against `src/bandit_mark_generation.o` / `obj/bandit_dry_run.o`; `make -j1 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[bandit][marks]"` -> `All tests passed (236 assertions in 18 test cases)`.
+
+Caveat: cleanup/refactor only. No new bandit dispatch, horde tuning, roof-fire, structural-bounty, or generic overmap-event-bus claim is made.
+
 ### Closed validation receipt - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
 Portal-storm warning-light is implemented/proven and Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`; proof/readout: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.

@@ -176,6 +176,28 @@ struct light_projection {
     std::string review_summary;
 };
 
+struct local_field_signal_reading {
+    std::string smoke_id;
+    std::string light_id;
+    std::string envelope_id;
+    std::string region_id;
+    int observed_range_omt = 0;
+    int fire_intensity = 0;
+    int smoke_intensity = 0;
+    bool outside = false;
+    bool elevated_roof_exposed = false;
+    smoke_weather_band smoke_weather = smoke_weather_band::clear;
+    light_time_band light_time = light_time_band::night;
+    light_weather_band light_weather = light_weather_band::clear;
+};
+
+struct local_field_signal_projection {
+    bool has_smoke_packet = false;
+    smoke_projection smoke;
+    bool has_light_packet = false;
+    light_projection light;
+};
+
 struct human_route_packet {
     std::string id;
     std::string envelope_id;
@@ -285,6 +307,8 @@ std::string render_report( const ledger_state &state,
                            const std::vector<bandit_dry_run::lead_input> *leads = nullptr );
 smoke_projection adapt_smoke_packet( const smoke_packet &packet );
 light_projection adapt_light_packet( const light_packet &packet );
+local_field_signal_projection adapt_local_field_signal_reading(
+    const local_field_signal_reading &reading );
 int horde_signal_power_from_light_projection( const light_projection &projection );
 human_route_projection adapt_human_route_packet( const human_route_packet &packet );
 std::string to_string( cadence_tier tier );

@@ -392,6 +392,96 @@ TEST_CASE( "bandit_mark_generation_visible_light_horde_bridge_stays_bounded",
     CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( searchlight_projection ) == 26 );
 }
 
+TEST_CASE( "bandit_mark_generation_local_field_adapter_preserves_smoke_light_and_horde_seams",
+           "[bandit][marks][live_signal]" )
+{
+    bandit_mark_generation::local_field_signal_reading reading;
+    reading.smoke_id = "field_smoke";
+    reading.light_id = "field_light";
+    reading.envelope_id = "player@0,0,0";
+    reading.region_id = "omt_3_0_0";
+    reading.observed_range_omt = 6;
+    reading.fire_intensity = 2;
+    reading.smoke_intensity = 1;
+    reading.outside = true;
+    reading.smoke_weather = bandit_mark_generation::smoke_weather_band::clear;
+    reading.light_time = bandit_mark_generation::light_time_band::night;
+    reading.light_weather = bandit_mark_generation::light_weather_band::clear;
+
+    const bandit_mark_generation::local_field_signal_projection projection =
+        bandit_mark_generation::adapt_local_field_signal_reading( reading );
+
+    REQUIRE( projection.has_smoke_packet );
+    REQUIRE( projection.has_light_packet );
+    REQUIRE( projection.smoke.viable );
+    REQUIRE( projection.light.viable );
+    CHECK( projection.smoke.packet.id == "field_smoke" );
+    CHECK( projection.light.packet.id == "field_light" );
+    CHECK( projection.smoke.signal.kind == "smoke" );
+    CHECK( projection.light.signal.kind == "light" );
+    CHECK( projection.smoke.packet.source_strength == 3 );
+    CHECK( projection.light.packet.source_strength == 2 );
+    CHECK( projection.light.packet.exposure == bandit_mark_generation::light_exposure_band::exposed );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( projection.light ) > 0 );
+
+    bandit_mark_generation::smoke_packet direct_smoke;
+    direct_smoke.id = reading.smoke_id;
+    direct_smoke.envelope_id = reading.envelope_id;
+    direct_smoke.region_id = reading.region_id;
+    direct_smoke.observed_range_omt = reading.observed_range_omt;
+    direct_smoke.source_strength = 3;
+    direct_smoke.persistence = 1;
+    direct_smoke.height_bias = 1;
+    direct_smoke.weather = reading.smoke_weather;
+    const bandit_mark_generation::smoke_projection direct_smoke_projection =
+        bandit_mark_generation::adapt_smoke_packet( direct_smoke );
+
+    bandit_mark_generation::light_packet direct_light;
+    direct_light.id = reading.light_id;
+    direct_light.envelope_id = reading.envelope_id;
+    direct_light.region_id = reading.region_id;
+    direct_light.observed_range_omt = reading.observed_range_omt;
+    direct_light.source_strength = 2;
+    direct_light.persistence = 1;
+    direct_light.side_leakage = 1;
+    direct_light.time = reading.light_time;
+    direct_light.weather = reading.light_weather;
+    direct_light.exposure = bandit_mark_generation::light_exposure_band::exposed;
+    direct_light.source = bandit_mark_generation::light_source_band::ordinary;
+    direct_light.terrain = bandit_mark_generation::light_terrain_band::open;
+    const bandit_mark_generation::light_projection direct_light_projection =
+        bandit_mark_generation::adapt_light_packet( direct_light );
+
+    CHECK( projection.smoke.projected_range_omt == direct_smoke_projection.projected_range_omt );
+    CHECK( projection.smoke.signal.strength == direct_smoke_projection.signal.strength );
+    CHECK( projection.smoke.signal.confidence == direct_smoke_projection.signal.confidence );
+    CHECK( projection.light.projected_range_omt == direct_light_projection.projected_range_omt );
+    CHECK( projection.light.signal.strength == direct_light_projection.signal.strength );
+    CHECK( projection.light.signal.confidence == direct_light_projection.signal.confidence );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( projection.light ) ==
+           bandit_mark_generation::horde_signal_power_from_light_projection( direct_light_projection ) );
+}
+
+TEST_CASE( "bandit_mark_generation_local_field_adapter_keeps_smoke_only_from_signaling_light_hordes",
+           "[bandit][marks][live_signal]" )
+{
+    bandit_mark_generation::local_field_signal_reading reading;
+    reading.smoke_id = "smoke_only";
+    reading.light_id = "smoke_only_light";
+    reading.envelope_id = "player@0,0,0";
+    reading.region_id = "omt_1_0_0";
+    reading.observed_range_omt = 3;
+    reading.smoke_intensity = 2;
+    reading.smoke_weather = bandit_mark_generation::smoke_weather_band::clear;
+
+    const bandit_mark_generation::local_field_signal_projection projection =
+        bandit_mark_generation::adapt_local_field_signal_reading( reading );
+
+    CHECK( projection.has_smoke_packet );
+    CHECK_FALSE( projection.has_light_packet );
+    CHECK( projection.smoke.viable );
+}
+
 TEST_CASE( "bandit_mark_generation_portal_storm_light_keeps_bright_exposed_leaks_legible_but_bounded",
            "[bandit][marks]" )
 {

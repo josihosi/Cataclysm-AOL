@@ -240,6 +240,25 @@ Boundary preserved: cleanup/refactor only. This does not redesign basecamp missi
 
 ---
 
+
+## Closed recent lane — CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
+
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
+
+Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+
+Closure proof: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`.
+
+Closure checkpoint: the live `fd_fire` / `fd_smoke` observation path now builds a `bandit_mark_generation::local_field_signal_reading` and routes through `adapt_local_field_signal_reading()` before producing smoke/light projections. Basic field/time/weather/exposure mapping is now adapter-shaped; bandit mark scoring, site memory, live dispatch, and horde tuning remain custom/unchanged.
+
+Evidence: `git diff --check`; `make -j4 tests/bandit_mark_generation_test.o src/bandit_mark_generation.o obj/do_turn.o LINTJSON=0 ASTYLE=0`; standalone adapter probe linked against `src/bandit_mark_generation.o` / `obj/bandit_dry_run.o`; `make -j1 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[bandit][marks]"` -> `All tests passed (236 assertions in 18 test cases)`.
+
+Boundary preserved: cleanup/refactor only. This does not redesign bandit live-world dispatch, roster state, structural bounty, camp-map memory, signal tuning/ranges, horde behavior, or a generic overmap event bus. Existing roof-fire/live-signal expectations remain classified as preserved behavior, not newly tuned behavior.
+
+---
+
 ## Relay-ready lane detail — C-AOL visions playtest sampler
 
 **Status:** GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET / WAITING ON SCHANI-JOSEF TASTE RELAY
@@ -327,15 +346,15 @@ Caveat: staged-but-live feature proof, not natural random discovery or final hum
 
 ---
 
-## Greenlit backlog — targeted anti-redundancy packages
+## Closed backlog receipt — targeted anti-redundancy packages
 
-**Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
+**Status:** CLOSED / CHECKPOINTED GREEN V0 SET / NEEDS FRESH PROMOTION FOR MORE
 
-These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
+These were queued cleanup/refactor contracts with targeted tests; they are not current `TODO.md` work.
 
 Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
-1. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+All originally queued v0 anti-redundancy packages in this block are now closed/checkpointed or need a freshly promoted concrete seam before further work.
 
 Boundary: these packages do not reopen closed writhing-stalker, bandit, horde, Smart Zone, or camp claims by drift. The larger bandit live-world roster/mission-state reduction remains future audit territory, not part of this targeted package set.
 

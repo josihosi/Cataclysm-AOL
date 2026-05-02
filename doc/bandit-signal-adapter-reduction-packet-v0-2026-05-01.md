@@ -1,8 +1,10 @@
 # CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
 
-Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+Closure proof: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`.
 
 ## Summary
 
@@ -25,11 +27,11 @@ Reduce the bandit smoke/light/fire signal layer so it reads as an adapter over e
 
 ## Success state
 
-- [ ] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter.
-- [ ] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
-- [ ] A focused test or harness/log assertion proves horde reactions still go through `overmap_buffer.signal_hordes` rather than a parallel private horde path.
-- [ ] Existing green roof-fire/live-signal expectations remain true or any changed expectation is explicitly classified as tuning, not cleanup.
-- [ ] No new bandit behavior claim is made from adapter refactoring alone.
+- [x] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter.
+- [x] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
+- [x] A focused test or harness/log assertion proves horde reactions still go through `overmap_buffer.signal_hordes` rather than a parallel private horde path.
+- [x] Existing green roof-fire/live-signal expectations remain true or any changed expectation is explicitly classified as tuning, not cleanup.
+- [x] No new bandit behavior claim is made from adapter refactoring alone.
 
 ## Targeted tests
 
