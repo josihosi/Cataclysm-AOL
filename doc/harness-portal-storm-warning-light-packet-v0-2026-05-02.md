@@ -1,6 +1,6 @@
 # CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0 (2026-05-02)
 
-Status: GREENLIT / QUEUED / HARNESS-HARDENING FOLLOW-UP
+Status: CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP
 
 Source: Josef Discord, 2026-05-02: “It seems portal storms sometimes break the harness! Need a flashing light for that.”
 
@@ -31,12 +31,12 @@ Add a prominent harness warning/light for portal storm state:
 
 ## Success state
 
-- [ ] Harness reads the relevant saved/current weather state and recognizes portal storm weather explicitly.
-- [ ] `probe`, `handoff`, and `repeatability` report surfaces include a visible portal-storm warning/light when observed.
-- [ ] Step ledger or report status makes unallowed portal storm contamination yellow/red instead of silent green.
-- [ ] Scenarios can explicitly allow or require portal storms without making every intentional portal-storm test fail.
-- [ ] Negative-control proof shows normal weather does not trigger the warning.
-- [ ] Documentation tells Andi/Schani how to interpret the warning: rerun under controlled weather unless the scenario intentionally tests portal storms.
+- [x] Harness reads the relevant saved/current weather state and recognizes portal storm weather explicitly.
+- [x] `probe`, `handoff`, and `repeatability` report surfaces include a visible portal-storm warning/light when observed.
+- [x] Step ledger or report status makes unallowed portal storm contamination yellow/red instead of silent green.
+- [x] Scenarios can explicitly allow or require portal storms without making every intentional portal-storm test fail.
+- [x] Negative-control proof shows normal weather does not trigger the warning.
+- [x] Documentation tells Andi/Schani how to interpret the warning: rerun under controlled weather unless the scenario intentionally tests portal storms.
 
 ## Non-goals
 

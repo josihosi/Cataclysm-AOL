@@ -57,18 +57,23 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
+### Checkpointed validation receipt - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-When promoted/active, validation must include portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+Portal-storm warning-light is implemented/proven green v0. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`; proof/readout: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
 
-Current checkpoint: contract greenlit/active next; implementation and proof rows not started in this checkpoint.
+Validation gate:
+- `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`;
+- `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py` -> pass;
+- `git diff --check` -> pass.
 
-Required evidence before close:
-- [ ] portal-storm positive detection row;
-- [ ] normal-weather negative control row;
-- [ ] report/summary warning-light output;
-- [ ] unallowed portal-storm contamination affects the step/report ledger visibly;
-- [ ] allowed/intentional portal-storm scenario path stays green when explicitly permitted.
+Credited evidence before close:
+- [x] portal-storm positive detection row from saved `dimension_data.gsav` metadata;
+- [x] normal-weather negative control row;
+- [x] report/summary warning-light output via report-level `portal_storm_warning` and repeatability text summary;
+- [x] unallowed portal-storm contamination affects the step/report ledger visibly as `yellow_step_portal_storm_contamination` and blocks feature proof;
+- [x] allowed/intentional portal-storm scenario path stays green when explicitly permitted as `green_step_portal_storm_expected_allowed`.
+
+Interpretation: if `portal_storm_warning.classification = contaminating`, rerun under controlled non-portal-storm weather unless the scenario intentionally tests portal storms.
 
 ### Relay-ready validation receipt - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
 

@@ -49,19 +49,20 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Current active lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
+## Recent checkpoint lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-**Status:** ACTIVE / GREENLIT / HARNESS-HARDENING FOLLOW-UP / NEXT IMPLEMENTATION TARGET
+**Status:** CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP / POST-CRUNCH REVIEW
 
-The visions sampler is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. The bandit scenic shakedown chat-openings lane is now closed/checkpointed green v0; the next unblocked greenlit execution target is Josef's harness portal-storm warning-light ask.
+The visions sampler is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. Josef's harness portal-storm warning-light ask is now implemented/proven as a harness-hardening checkpoint.
 
 Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+Proof: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
 
-Goal: make portal-storm contamination reviewer-visible in probe/handoff/repeatability reports, with a report-level warning/light, step-ledger contamination status when unallowed, negative controls for normal weather, and an opt-in path for scenarios that intentionally test portal storms.
+Result: probe/handoff reports and repeatability summaries now surface a report-level `portal_storm_warning`; unallowed portal storms add a yellow contamination row to the step ledger and block silent green feature proof; explicitly allowed portal-storm scenarios stay green while retaining visible warning text; required portal-storm scenarios fail red if the required weather is missing/unknown.
 
-Current checkpoint: contract is written and queued; implementation/proof has not started in this checkpoint.
+Evidence: `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
 
-Next proof: portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path.
+Next review/action: Frau no-nudge/post-crunch review. If accepted, promote the next unblocked greenlit target from the backlog; current likely candidate is `writhing stalker hit-fade retreat distance` unless Schani/Josef choose otherwise.
 
 Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
@@ -275,15 +276,16 @@ Boundary: product-UX follow-up only. This does not redesign the bandit economy, 
 
 ---
 
-## Greenlit backlog detail — harness portal-storm warning light
+## Recent closed detail — harness portal-storm warning light
 
-**Status:** GREENLIT / NEXT IMPLEMENTATION TARGET / HARNESS-HARDENING FOLLOW-UP
+**Status:** CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP
 
 Josef reported on 2026-05-02 that portal storms sometimes seem to break harness runs and asked for a “flashing light”.
 
 Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+Proof: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
 
-Goal: make portal-storm contamination reviewer-visible in probe/handoff/repeatability reports, with a report-level warning/light, step-ledger contamination status when unallowed, negative controls for normal weather, and an opt-in path for scenarios that intentionally test portal storms.
+Result: report-level `portal_storm_warning` now lands in probe/handoff reports and repeatability summaries; unallowed portal storms yellow the step ledger as `yellow_step_portal_storm_contamination`; opt-in portal-storm scenarios remain visible but green when explicitly allowed.
 
 Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 

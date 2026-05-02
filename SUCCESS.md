@@ -236,18 +236,20 @@ Canonical docs:
 
 ## CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0 — Harness portal-storm warning light
 
-Status: GREENLIT / QUEUED / HARNESS-HARDENING FOLLOW-UP
+Status: CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP
 
 Success state:
-- [ ] Harness reads the relevant saved/current weather state and recognizes portal storm weather explicitly.
-- [ ] `probe`, `handoff`, and `repeatability` report surfaces include a visible portal-storm warning/light when observed.
-- [ ] Step ledger or report status makes unallowed portal storm contamination yellow/red instead of silent green.
-- [ ] Scenarios can explicitly allow or require portal storms without making every intentional portal-storm test fail.
-- [ ] Negative-control proof shows normal weather does not trigger the warning.
-- [ ] Documentation tells Andi/Schani how to interpret the warning: rerun under controlled weather unless the scenario intentionally tests portal storms.
+- [x] Harness reads the relevant saved/current weather state and recognizes portal storm weather explicitly.
+- [x] `probe`, `handoff`, and `repeatability` report surfaces include a visible portal-storm warning/light when observed.
+- [x] Step ledger or report status makes unallowed portal storm contamination yellow/red instead of silent green.
+- [x] Scenarios can explicitly allow or require portal storms without making every intentional portal-storm test fail.
+- [x] Negative-control proof shows normal weather does not trigger the warning.
+- [x] Documentation tells Andi/Schani how to interpret the warning: rerun under controlled weather unless the scenario intentionally tests portal storms.
 
 Canonical docs:
 - Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+- Proof: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
+- Gate: `python3 tools/openclaw_harness/proof_classification_unit_test.py`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
 
 ---
 
