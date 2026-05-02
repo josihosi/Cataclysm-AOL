@@ -132,6 +132,10 @@ When promoted, validation must include portal-storm positive detection, normal-w
 
 When promoted, validation must first name the no-attack cause: why does `zombie_rider live_plan` report `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` while the player sees no attack? Use `.userdata/dev-harness/harness_runs/20260502_015857/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic decision-to-action bridge test, close/indoor pressure or irregular bunny-hop reposition test, existing `[zombie_rider]` regressions for wounded disengagement / cover-LOS / light attraction / no-light controls, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof. Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
 
+### Queued validation target - CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
+
+When promoted, validation must first check the original flesh-raptor hit-and-run reference, then prove the stalker-specific burst/retreat behavior. Use `.userdata/dev-harness/harness_runs/20260502_015032/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic tests for about 8+ tile post-burst retreat where pathing allows, stress/counterpressure shaping of 2-4 attack bursts, no A/B near-player oscillation after burst, existing stalker guarantees, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof. Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+
 ### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
 `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is active after writhing-stalker seam-reduction closure. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.

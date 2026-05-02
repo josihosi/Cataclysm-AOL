@@ -86,6 +86,26 @@ Canonical docs:
 
 ---
 
+## CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0 — Writhing stalker hit-fade retreat distance
+
+Status: GREENLIT / QUEUED / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP
+
+Success state:
+- [ ] Original flesh-raptor hit-and-run behavior is checked and summarized as the reference baseline, including likely retreat distance/rhythm where evidence allows.
+- [ ] Current stalker burst/retreat behavior is reproduced or minimized, with retreat distance and decision reasons visible.
+- [ ] Stalker post-burst retreat aims for about 8+ tiles when pathing allows, with tested fallback when blocked.
+- [ ] Stress/counterpressure affects burst length and retreat: light plus multiple allies causes earlier/farther caution; high-stress dark/distraction cases may allow 2-4 attacks before disengage.
+- [ ] Deterministic tests cover retreat distance, stress-modulated burst count/caution, and no A/B near-player oscillation after the burst.
+- [ ] Fresh live/handoff validation shows readable attack burst then real disengage, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [ ] Existing stalker guarantees still pass: no omniscience, no constant strike spam, injured retreat, light/focus counterplay, and zombie-shadow/quiet-side behavior.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-hit-fade-retreat-distance-imagination-source-2026-05-02.md`.
+- Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+- Handoff packet: `doc/writhing-stalker-hit-fade-retreat-distance-handoff-v0-2026-05-02.md`.
+
+---
+
 ## CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0 — Flesh raptor circling skirmisher retrofit
 
 Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE

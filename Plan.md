@@ -251,6 +251,24 @@ Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RID
 
 ---
 
+## Greenlit backlog — writhing stalker hit-fade retreat distance
+
+**Status:** GREENLIT / QUEUED / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+
+Josef live-watched the writhing stalker on 2026-05-02 and greenlit a focused follow-up for its attack/retreat rhythm. The watched handoff seed is `.userdata/dev-harness/harness_runs/20260502_015032/`, but it is yellow/inconclusive due to runtime-version mismatch, so use it as a bug/taste seed rather than closure proof.
+
+Imagination source: `doc/writhing-stalker-hit-fade-retreat-distance-imagination-source-2026-05-02.md`.
+
+Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/writhing-stalker-hit-fade-retreat-distance-handoff-v0-2026-05-02.md`.
+
+Goal: make the stalker attack in a short stress-shaped burst, then back off far enough to create real breathing room. Current taste target: roughly 2-4 attacks depending on stress, then about 8+ tiles of retreat when pathing allows. Reference feel is the original flesh raptor hit-and-run behavior, explicitly not the newer circling raptor retrofit. Light plus allied NPC support should push toward earlier/farther caution.
+
+Boundary: product-tuning/behavior fix only. Do not reopen all stalker v0, do not copy new raptor orbit behavior, do not create constant melee spam or harmless always-flee behavior, and do not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+
+---
+
 ## Greenlit backlog — targeted anti-redundancy packages
 
 **Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
