@@ -195,7 +195,7 @@ Canonical docs:
 
 ## CAOL-VISIONS-PLAYTEST-SAMPLER-v0 — C-AOL visions product-feel sampler
 
-Status: ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
+Status: ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
 
 Success state:
 - [x] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
@@ -204,14 +204,14 @@ Success state:
 - [x] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible/gnostic from annoying/fake/unfair/invisible/visually-confusing/hollow.
 - [x] Existing closed proof rows are cited as footing where used, without laundering staged rows into natural discovery claims.
 - [x] If fresh handoff runs are created, each run records artifact dir, cleanup/handoff status, and one visible fact or explicit reason visual proof is not the evidence class. (No fresh handoff runs created for this draft checkpoint; exact handoff commands are listed per postcard.)
-- [ ] The final Josef handoff is short enough to actually use.
+- [x] The final Josef handoff is short enough to actually use.
 
 Canonical docs:
 - Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
 - Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
-- Draft Josef card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+- Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
-Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, flesh raptor, camp locker), includes handoff commands, screenshot checkpoints, existing artifact footing, taste/gnostic questions, and staged-footing caveats. Post-crunch correction applied: the stalker postcard now uses the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/` as primary footing; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is explicitly dirty/caveated because targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`. Remaining blocker is not implementation proof; it is Schani/Josef decision on whether to relay/run live handoffs now or ask for a shorter user-facing packet.
+Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, flesh raptor, camp locker), includes handoff commands, screenshot checkpoints, existing artifact footing, taste/gnostic questions, staged-footing caveats, and a compressed Schani/Josef relay packet. Post-crunch correction applied: the stalker postcard uses the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/` as primary footing; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is explicitly dirty/caveated because targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`. Agent-side sampler prep is complete; remaining taste collection is Schani/Josef relay or optional live handoff setup, not more proof.
 
 ---
 

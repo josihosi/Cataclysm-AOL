@@ -64,9 +64,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Validation shape: product-feel sampler, not broad proof rerun. Use existing green staged/live rows as footing where possible, create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the selected postcards, and keep staged-vs-natural caveats visible.
 
 Current sampler checkpoint:
-- Draft card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+- Relay-ready card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md` (short Schani/Josef packet plus detailed postcard backup).
 - Bounded v0 set: writhing stalker, zombie rider, flesh raptor, camp locker.
-- The card names each vision, exact handoff/setup commands, 2-5 minute play instruction, screenshot checkpoint, visible/optical fact, taste/gnostic questions, artifact footing, and staged-footing caveat.
+- The card names each vision, exact handoff/setup commands, 2-5 minute play instruction, screenshot checkpoint, visible/optical fact, taste/gnostic questions, artifact footing, and staged-footing caveat; it now also includes a compressed relay packet short enough to use.
 - Post-crunch correction: do not use `writhing_stalker.live_quiet_side_zombie_pressure_mcw` run `.userdata/dev-harness/harness_runs/20260501_071548/` as clean Josef-facing optical footing. Targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall` in `probe.artifacts.log`. The sampler now makes `writhing_stalker.live_escape_side_zombie_retreat_mcw` run `.userdata/dev-harness/harness_runs/20260501_071940/` the primary stalker footing; targeted grep found no `ERROR GAME` / warning backtrace in the cited log/report/artifact excerpts.
 - Screenshot review copies from existing artifacts live at `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`, with `01-stalker-escape-side-primary.png` as the primary stalker screenshot and `01-stalker-quiet-side.png` dirty/caveated only.
 
@@ -74,8 +74,8 @@ Required evidence before sampler handoff:
 - [x] bounded v0 set of 3-5 labelled postcards;
 - [x] each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
 - [x] visual postcards include screenshot checkpoints with named expected visible facts;
-- [ ] final Josef-facing handoff is compressed enough to use;
-- [ ] if fresh handoff/probe rows are run, grep the cited row logs for runtime `ERROR GAME` / warnings before treating any postcard as clean optical footing, then record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
+- [x] final Josef-facing handoff is compressed enough to use;
+- [x] no fresh handoff/probe rows were required before relay; if any are run later, grep the fresh/cited row logs for runtime `ERROR GAME` / warnings before treating them as clean optical footing, then record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
 
 ### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 

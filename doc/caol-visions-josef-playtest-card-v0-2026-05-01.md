@@ -1,6 +1,6 @@
 # C-AOL visions — Josef playtest card v0 (2026-05-01)
 
-Status: AGENT-SIDE SAMPLER DRAFT / HANDOFF COMMANDS READY / JOSEF TASTE NOT YET COLLECTED
+Status: AGENT-SIDE SAMPLER READY / SCHANI RELAY PACKET READY / JOSEF TASTE NOT YET COLLECTED
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
@@ -28,6 +28,16 @@ Deferred from v0: bandit/basecamp pressure. Reason: bandit scenic chat openings 
 Runtime screenshot review folder prepared from existing artifacts: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
 
 Post-crunch hygiene note: before any cited row becomes Josef-facing optical footing, grep its logs for runtime `ERROR GAME` / warnings. This sampler is for taste, not proof archaeology; dirty footing must be explicit or replaced.
+
+## Schani relay packet (short)
+
+This is the compressed Josef-facing ask; the detailed postcard notes below are only backup.
+
+> C-AOL visions sampler is ready as four staged, labelled postcards: writhing stalker, zombie rider, flesh raptor, and camp locker. Please try any 2-4 scenes for 2-5 minutes each. For each scene, grab or point to one screenshot moment and answer: did it read optically, mechanically, and gnostically; did it feel fair/fun/alive; what felt fake, hollow, invisible, or annoying; and should it become a follow-up packet?
+>
+> Suggested order: start with the stalker, then rider, raptor, locker. These are staged taste scenes, not natural-discovery proof. The dirty old stalker quiet-side row is not primary footing; use the escape-side stalker row/card unless a fresh clean rerun is requested.
+
+No fresh live handoff rows are required before Schani relays this packet. Run the listed `handoff` commands only when Josef wants an enterable live scene waiting, then record the new run dirs and warning-grep result before treating those fresh rows as clean footing.
 
 ---
 

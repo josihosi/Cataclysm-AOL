@@ -51,7 +51,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ## Current active lane — CAOL-VISIONS-PLAYTEST-SAMPLER-v0
 
-**Status:** ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
+**Status:** ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
 
 After closing the zombie-rider close-pressure follow-up, move the backlog conveyor to Josef's bounded C-AOL visions sampler.
 
@@ -59,11 +59,11 @@ Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
-Draft Josef card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
 Goal: prepare 3-5 labelled live/handoff postcards from existing or near-existing C-AOL visions so Josef can judge fun, fairness, readability, optical/screenshot legibility, aliveness, and gnostic/occult inner meaning without being handed proof archaeology.
 
-Current checkpoint: a four-postcard draft now exists for writhing stalker, zombie rider, flesh raptor, and camp locker. It lists exact handoff commands, 2-5 minute play instructions, screenshot checkpoints, taste/gnostic questions, existing proof footing, and staged-footing caveats. Frau post-crunch correction is applied: stalker primary footing is now the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/`; the old quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is dirty/caveated because its artifact log contains an `ERROR GAME` wall-location backtrace. Next honest boundary is either a short Schani/Josef relay packet or fresh handoff runs for any postcards Josef should enter immediately.
+Current checkpoint: the four-postcard sampler is agent-side relay-ready for writhing stalker, zombie rider, flesh raptor, and camp locker. The card now includes a short Schani/Josef relay packet plus backup postcard details: exact handoff commands, 2-5 minute play instructions, screenshot checkpoints, taste/gnostic questions, existing proof footing, and staged-footing caveats. Frau post-crunch correction is applied: stalker primary footing is the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/`; the old quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is dirty/caveated because its artifact log contains an `ERROR GAME` wall-location backtrace. No fresh handoff rows are required before relay; run them only if Josef wants live sessions waiting.
 
 Boundary: product-taste sampler only. Use existing green staged/live rows as footing where possible, keep staged-vs-natural caveats visible, and do not reopen closed v0 lanes or start release packaging by drift.
 
@@ -243,7 +243,7 @@ Boundary preserved: cleanup/refactor only. This does not redesign basecamp missi
 
 ## Active lane detail — C-AOL visions playtest sampler
 
-**Status:** ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
+**Status:** ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
 
 Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
 
@@ -251,11 +251,11 @@ Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
-Draft Josef card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 
 Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
 
-Current checkpoint: v0 chooses four postcards — writhing stalker, zombie rider, flesh raptor, camp locker — and defers bandit pressure to v1 or its own queued scenic-shakedown lane unless Josef promotes it now. The stalker postcard now uses `writhing_stalker.live_escape_side_zombie_retreat_mcw` as primary optical footing; `writhing_stalker.live_quiet_side_zombie_pressure_mcw` is caveated/secondary unless rerun clean.
+Current checkpoint: v0 chooses four postcards — writhing stalker, zombie rider, flesh raptor, camp locker — and defers bandit pressure to v1 or its own queued scenic-shakedown lane unless Josef promotes it now. The card now has a compressed relay packet Schani can send without proof archaeology. The stalker postcard uses `writhing_stalker.live_escape_side_zombie_retreat_mcw` as primary optical footing; `writhing_stalker.live_quiet_side_zombie_pressure_mcw` is caveated/secondary unless rerun clean. Remaining work is Josef/Schani taste relay or optional live handoff setup, not more agent-side proof.
 
 Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, and does not create release packaging. The optical/screenshot playtest condition is required for visual postcards.
 
