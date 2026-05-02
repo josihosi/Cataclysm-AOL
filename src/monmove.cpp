@@ -63,7 +63,7 @@
 static const damage_type_id damage_bash( "bash" );
 static const damage_type_id damage_cut( "cut" );
 
-static const itype_id arrow_wood( "arrow_wood" );
+static const itype_id zombie_rider_tainted_bone_arrow( "zombie_rider_tainted_bone_arrow" );
 
 static const efftype_id effect_absorbed_acidic( "absorbed_acidic" );
 static const efftype_id effect_bleed( "bleed" );
@@ -1022,7 +1022,7 @@ static bool zombie_rider_line_of_fire( map &here, const tripoint_bub_ms &from,
 
 static int zombie_rider_ammo_remaining( const monster &rider )
 {
-    const auto ammo_it = rider.ammo.find( arrow_wood );
+    const auto ammo_it = rider.ammo.find( zombie_rider_tainted_bone_arrow );
     return ammo_it == rider.ammo.end() ? 0 : ammo_it->second;
 }
 
