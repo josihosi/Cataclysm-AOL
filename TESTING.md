@@ -57,6 +57,26 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
+
+`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is active/greenlit as the next Andi lane. Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`; imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`; handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+
+Validation shape: behavior/scoring and handoff proof first, then current-build staged/live rows. Old watched rows from Josef are debug/taste seeds only, not feature proof.
+
+Evidence required before closure:
+- [ ] Deterministic high-threat retreat/stalk test: day/bright + same OMT/close overmap pressure + about three friendly NPCs chooses retreat/stalking behavior instead of close pressure.
+- [ ] Deterministic stalking-distance/visibility test: overmatched stalker avoids sight tiles and targets about `3` OMT distance where overmap pathing permits.
+- [ ] Deterministic night/opportunity test: night/outside/reachable player cannot become indefinite non-action; it attacks, repositions, retreats, or emits a concrete blocker.
+- [ ] Deterministic zombie/distraction test: zombies or hostile pressure entering the player/NPC tile raises opportunity and enables dark-square approach/strike only with valid evidence/pathing.
+- [ ] Deterministic no-omniscience guard: zombie pressure does not grant target knowledge through opaque walls or missing evidence.
+- [ ] Anti-gnome proof: repeated window/bad-position loiter triggers attack, reposition, retreat, or logged blocker.
+- [ ] Handoff/writeback proof: overmap-to-bubble carries intent/reason/strike budget; bubble-to-overmap preserves spent/retreat/cooldown/threat memory.
+- [ ] Current-build live/staged high-threat row shows retreat/stalk rather than same-tile loiter.
+- [ ] Current-build live/staged night/window/outside row shows attack/reposition/retreat with reason, not static loiter.
+- [ ] Current-build live/staged zombie/distraction row shows dark-square approach/strike or records a precise blocker.
+- [ ] If door opening lands, tests prove unlocked/simple only, bounded cost/noise/interruptibility or equivalent, darkness/distraction/commitment gate, and high-threat suppression.
+- [ ] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
+
 ### Closed validation receipt - CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
 
 `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` is closed/checkpointed green v0. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`; proof/readout: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
@@ -89,7 +109,7 @@ Credited evidence before close:
 
 Interpretation: if `portal_storm_warning.classification = contaminating`, rerun under controlled non-portal-storm weather unless the scenario intentionally tests portal storms.
 
-### Active validation target - CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
+### Handoff-boundary validation receipt - CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
 
 `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` is at a handoff boundary: the six-entry Josef card is ready, and the optional second bandit contrast card now has staged green footing if Schani wants to include it. Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`; imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`; handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 

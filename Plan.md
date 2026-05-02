@@ -62,7 +62,7 @@ Result: probe/handoff reports and repeatability summaries now surface a report-l
 
 Evidence: `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
 
-Frau review: accepted green v0 from commits `74ef657057` / `8ea5546107`. Next active execution lane is `CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0`; do not pull future runs back into portal-storm proof by ritual.
+Frau review: accepted green v0 from commits `74ef657057` / `8ea5546107`. Do not pull future runs back into portal-storm proof by ritual.
 
 Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
@@ -259,9 +259,31 @@ Boundary preserved: cleanup/refactor only. This does not redesign bandit live-wo
 
 ---
 
-## Active lane — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
+## Active lane — CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-**Status:** ACTIVE / GREENLIT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY
+**Status:** ACTIVE / GREENLIT / PRODUCT-BEHAVIOR DEBUG PACKET / NEXT ANDI LANE
+
+Josef live-tested the writhing stalker after the earlier hit-fade and zombie-shadow packets and reported that it is still not satisfactory. The bad contrast is now explicit: with three NPC allies / high visible threat it does not retreat into stalking distance, and at night outside it can stand near a house/window without attacking or making a legible move.
+
+Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
+
+Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+
+Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-watch-20260502/writhing-stalker-live-watch-notes-2026-05-02.md`.
+
+Goal: add/refine stalker overmap threat/opportunity evaluation, reality-bubble anti-loiter behavior, and overmap/bubble handoff memory so high-threat daylight/three-NPC situations retreat into stalking mode about `3` OMTs back, night/outside reachable-player situations attack or reposition instead of garden-gnome loitering, and zombie/distraction entering the player/NPC tile enables dark-square approach/strike without omniscience.
+
+Door-opening line: allowed only as a narrow optional escalation if needed — unlocked/simple doors, slow/noisy/interruptible, darkness/distraction/commitment gated, and suppressed under high threat. Do not turn the stalker into a burglar or locked-door solver.
+
+Boundary: do not reopen all stalker v0 work, flesh raptors, zombie riders, bandits, the save-pack card, or natural random discovery by drift. This is a focused behavior/debug packet.
+
+---
+
+## Handoff boundary — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
+
+**Status:** JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY / NOT CURRENT ANDI LANE
 
 Josef greenlit turning the relay-ready visions sampler into a concrete playtest save pack. The product now is not another proof receipt: it is a small labelled set of current-build saves or handoff sessions Josef can actually load and play.
 

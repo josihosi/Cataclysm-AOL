@@ -17,6 +17,27 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0 — Writhing stalker threat/distraction handoff
+
+Status: ACTIVE / GREENLIT / PRODUCT-BEHAVIOR DEBUG PACKET
+
+Success state:
+- [ ] Day/bright + same OMT or close overmap pressure + about three friendly NPCs produces retreat/stalking behavior instead of close loiter/pressure.
+- [ ] Stalking/retreat behavior records or proves about `3` OMT distance where overmap pathing permits, and avoids direct sight tiles rather than hovering at the defended house.
+- [ ] Night/outside/reachable player no longer produces indefinite non-action: the stalker attacks, repositions to a better dark/covered approach, retreats, or logs a concrete blocker.
+- [ ] Zombie/distraction entering the player/NPC tile raises opportunity and produces dark-square approach/strike behavior without omniscience.
+- [ ] Overmap-to-bubble handoff carries intent/reason/strike-budget state, and bubble-to-overmap writeback preserves spent/retreat/cooldown/threat memory.
+- [ ] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
+- [ ] If door opening is implemented, tests prove it is narrow, unlocked/simple only, noisy/slow/interruptible or equivalently costly, and suppressed under high threat.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on final state before closure.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
+- Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
+- Handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+
+---
+
 ## CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0 — Camp locker zone playtests
 
 Status: CLOSED / CHECKPOINTED GREEN V0
