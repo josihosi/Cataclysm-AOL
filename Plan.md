@@ -49,6 +49,24 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
+
+**Status:** ACTIVE / GREENLIT / LOCKER-ZONE PLAYTEST PACKET
+
+Josef explicitly asked for locker zone playtests after the camp locker API-reduction lane closed. This is the newly promoted concrete locker seam; it does not reopen open-ended locker ontology archaeology.
+
+Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
+
+Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+
+Goal: run a bounded current-build playtest/proof pass for actual camp locker zone behavior: real `CAMP_LOCKER` footing or creation/persistence, camp locker service use from zone stock, zone-boundary/exclusion behavior such as `NO_NPC_PICKUP`, and one practical weather/wait or gear-use row if feasible. Use existing locker scenarios first (`locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, `locker.package5_robbie_e2e_verified_mcw`).
+
+Boundary: player-facing locker-zone playtest only. Do not reopen the closed API-reduction lane, do not redesign basecamp missions/Smart Zones/NPC equipment selection/fashion scoring, and do not drift into bandits, zombie riders, writhing stalkers, flesh raptors, or release packaging. Deterministic tests alone cannot close live zone behavior; if harness/UI proof blocks, produce the concise Josef manual playtest card instead of pretending.
+
+---
+
 ## Recent closed lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 
 **Status:** CLOSED / CHECKPOINTED GREEN V0

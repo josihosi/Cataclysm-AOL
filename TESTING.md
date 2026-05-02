@@ -57,6 +57,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
+
+`CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0` is active/greenlit. Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`; imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`; handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+
+Validation burden: agent-side locker-zone playtests first, using the existing harness scenarios before inventing new machinery: `locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, and `locker.package5_robbie_e2e_verified_mcw`.
+
+Required evidence classes for closure:
+- real `CAMP_LOCKER` zone footing or creation/persistence on current build;
+- camp locker service behavior from zone stock on the real service path;
+- boundary/exclusion behavior such as `NO_NPC_PICKUP`, non-locker stock, or saved zone persistence;
+- weather/wait or practical gear behavior if feasible, otherwise explicit scope-out reason;
+- separated screen/OCR, saved-state/artifact/log, deterministic gate, and verdict per credited row.
+
+Startup/load, raw JSON, or `[camp][locker]` tests alone are not sufficient for live zone behavior. If the harness cannot honestly drive/observe a required row after bounded materially different attempts, write a Josef manual playtest card with exact steps and closure criteria instead of closing green.
+
 ### Closed validation receipt - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 
 `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`; prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`; closure proof: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.

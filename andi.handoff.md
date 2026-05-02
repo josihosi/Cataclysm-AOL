@@ -1,9 +1,17 @@
 # Andi handoff
 
-Current state: `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is closed/checkpointed green v0.
+Current active lane: `CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0`.
 
-Closure summary: camp locker now preserves explicit camp policy while deferring the audited item, wearability, body coverage/layer, reload/ammo, scoring, carried-cleanup, live-state, medical-readiness, and zone-boundary truth to existing APIs where a real equivalent exists. Last code checkpoint: `6a0f003dfe Reduce camp locker armor resistance scoring`.
+Josef explicitly wants locker zone playtests after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed green. This is a new concrete locker seam, not permission to reopen open-ended locker ontology archaeology.
 
-Evidence: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[camp][locker]"` green at closure.
+Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 
-Boundary: no more open-ended locker ontology archaeology. Any future locker cleanup needs a newly promoted concrete seam. Do not drift into bandits/riders/stalkers from this closure packet.
+Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+
+Use existing locker scenarios first: `locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, and `locker.package5_robbie_e2e_verified_mcw`.
+
+Required final report: claim, scenario/command, run/artifact path, screen/OCR fact or explicit non-screen evidence class, saved-state/artifact/log excerpt, test/build gate if relevant, and verdict for each credited row.
+
+Boundaries: no API-reduction reopen, no broad locker/basecamp redesign, no Smart Zone/basecamp preset work, no bandit/rider/stalker/raptor drift. If harness/UI proof blocks, write the concise Josef manual playtest card with exact steps and closure criteria; do not close green from deterministic helper tests alone.
