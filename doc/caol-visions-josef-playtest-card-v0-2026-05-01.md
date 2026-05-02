@@ -27,6 +27,8 @@ Deferred from v0: bandit/basecamp pressure. Reason: bandit scenic chat openings 
 
 Runtime screenshot review folder prepared from existing artifacts: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
 
+Post-crunch hygiene note: before any cited row becomes Josef-facing optical footing, grep its logs for runtime `ERROR GAME` / warnings. This sampler is for taste, not proof archaeology; dirty footing must be explicit or replaced.
+
 ---
 
 ## 1. Writhing stalker — zombie-shadow predator
@@ -35,19 +37,23 @@ Runtime screenshot review folder prepared from existing artifacts: `/Users/josef
 
 **Handoff/setup:**
 
-```sh
-python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_quiet_side_zombie_pressure_mcw
-```
-
-Alternate retreat-angle row:
+Primary clean footing row:
 
 ```sh
 python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_escape_side_zombie_retreat_mcw
 ```
 
+Secondary / caveated quiet-side row, only if rerun clean or explicitly labelled dirty:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_quiet_side_zombie_pressure_mcw
+```
+
 **Try for 2-5 minutes:** move cautiously around the staged zombie pressure; watch whether the stalker appears to pressure the quiet/escape side rather than beelining through everything. Use light/space if you want to test whether it still feels readable.
 
-**Screenshot checkpoint:** capture the moment after the first few turns where zombies are one visible pressure side and the stalker threat/cutoff angle is readable or suspicious. Existing artifact screenshot: `.userdata/dev-harness/harness_runs/20260501_071548/advance_quiet_side_zombie_pressure_window.after.png` (copy: `01-stalker-quiet-side.png`). Expected visible fact: the map state should support “zombies pressure one side; stalker pressure/cutoff reads as another angle,” or else be marked optically ambiguous.
+**Screenshot checkpoint:** capture the moment after the retreat-side setup where zombies are one visible/front pressure side and the stalker threat/cutoff angle is readable or suspicious. Primary existing artifact screenshot: `.userdata/dev-harness/harness_runs/20260501_071940/advance_escape_side_zombie_retreat_window.after.png` (copy: `01-stalker-escape-side-primary.png`). Expected visible fact: the map state should support “zombies pressure one side; stalker pressure/cutoff reads as the escape-side/quiet-side angle,” or else be marked optically ambiguous.
+
+Caveated old screenshot: `.userdata/dev-harness/harness_runs/20260501_071548/advance_quiet_side_zombie_pressure_window.after.png` (copy: `01-stalker-quiet-side.png`) is **not clean primary footing**. Its artifact log contains `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`, so use it only as a dirty/illustrative artifact unless rerun clean.
 
 **Taste questions:**
 
@@ -57,7 +63,9 @@ python3 tools/openclaw_harness/startup_harness.py handoff writhing_stalker.live_
 - Does it carry gnostic wrongness — something watching the pattern — or just a pathfinding trick?
 - Would this make you want another turn, or just make you sigh?
 
-**Agent footing:** `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/`; `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/`. Proof notes: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`, `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
+**Agent footing:** primary row `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/`; targeted grep found no `ERROR GAME` / warning backtrace in the cited `debug.final.log`, `probe.report.json`, or `probe.artifacts.log` excerpts. Proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
+
+Dirty/caveated secondary row: `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/`; proof note `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`. Caveat: targeted grep found `ERROR GAME` backtrace text in `probe.artifacts.log`: `writhing stalker can't move to its location! ... reinforced white concrete wall`. Do not relay that row as clean Josef-facing optical footing without a fresh clean rerun.
 
 **Do not overinterpret:** this proves/tastes local staged zombie-shadow behavior, not natural overmap stalking or every lighting situation.
 

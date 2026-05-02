@@ -67,14 +67,15 @@ Current sampler checkpoint:
 - Draft card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
 - Bounded v0 set: writhing stalker, zombie rider, flesh raptor, camp locker.
 - The card names each vision, exact handoff/setup commands, 2-5 minute play instruction, screenshot checkpoint, visible/optical fact, taste/gnostic questions, artifact footing, and staged-footing caveat.
-- Screenshot review copies from existing artifacts live at `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
+- Post-crunch correction: do not use `writhing_stalker.live_quiet_side_zombie_pressure_mcw` run `.userdata/dev-harness/harness_runs/20260501_071548/` as clean Josef-facing optical footing. Targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall` in `probe.artifacts.log`. The sampler now makes `writhing_stalker.live_escape_side_zombie_retreat_mcw` run `.userdata/dev-harness/harness_runs/20260501_071940/` the primary stalker footing; targeted grep found no `ERROR GAME` / warning backtrace in the cited log/report/artifact excerpts.
+- Screenshot review copies from existing artifacts live at `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`, with `01-stalker-escape-side-primary.png` as the primary stalker screenshot and `01-stalker-quiet-side.png` dirty/caveated only.
 
 Required evidence before sampler handoff:
 - [x] bounded v0 set of 3-5 labelled postcards;
 - [x] each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
 - [x] visual postcards include screenshot checkpoints with named expected visible facts;
 - [ ] final Josef-facing handoff is compressed enough to use;
-- [ ] if fresh handoff/probe rows are run, record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
+- [ ] if fresh handoff/probe rows are run, grep the cited row logs for runtime `ERROR GAME` / warnings before treating any postcard as clean optical footing, then record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
 
 ### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
@@ -234,7 +235,7 @@ Credited deterministic footing:
 - Preservation tests still cover no-evidence/no-magic targetlessness, cooldown anti-spam, light/focus withdrawal, injured retreat, repeated strike rhythm, and old monster/spawn footing.
 
 Credited staged-but-live rows:
-- `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the scoped local-evidence-only first live row: `overmap_interest=no`, `zombie_pressure=3`, east/front pressure (`pressure_x=3`) maps through the live shadow-destination path to west/quiet-side cutoff (`quiet_x=-1`, first matched `chosen_rel_x=-1`, `chosen_rel_y=-4`, reason `quiet_side_cutoff_preferred`). Proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`.
+- `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/` proves the scoped local-evidence-only first live row's logged decision path: `overmap_interest=no`, `zombie_pressure=3`, east/front pressure (`pressure_x=3`) maps through the live shadow-destination path to west/quiet-side cutoff (`quiet_x=-1`, first matched `chosen_rel_x=-1`, `chosen_rel_y=-4`, reason `quiet_side_cutoff_preferred`). Proof note: `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`. Later sampler audit found an `ERROR GAME` wall-location backtrace in this row's `probe.artifacts.log`, so it is dirty/caveated for Josef-facing optical footing unless rerun clean.
 - `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/` proves the scoped local-evidence-only retreat row: after southward retreat input, `overmap_interest=no`, `zombie_pressure=3`, north/front pressure (`pressure_y=-3`) maps through the live shadow-destination path to south/escape-side cutoff (`quiet_y=1`, first matched `chosen_rel_y=4`, reason `quiet_side_cutoff_preferred`). Proof note: `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`.
 
 Green gates:
