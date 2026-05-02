@@ -31,6 +31,7 @@
 #include "clzones.h"
 #include "coordinates.h"
 #include "debug.h"
+#include "dialogue_win.h"
 #include "enums.h"
 #include "event.h"
 #include "event_bus.h"
@@ -523,6 +524,95 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
     }
 }
 
+std::pair<std::string, nc_color> live_bandit_shakedown_speaker( const bandit_live_world::site_record &site )
+{
+    for( const character_id &member_id : site.active_member_ids ) {
+        if( const npc *member_npc = g->find_npc( member_id ) ) {
+            return { member_npc->disp_name(), member_npc->basic_symbol_color() };
+        }
+    }
+    return { _( "Bandit" ), c_red };
+}
+
+enum class live_bandit_shakedown_response : int {
+    pay,
+    fight,
+    refuse
+};
+
+live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::shakedown_surface &surface )
+{
+    dialogue_window d_win;
+    const std::pair<std::string, nc_color> speaker = live_bandit_shakedown_speaker( site );
+    d_win.add_to_history( surface.bark, speaker.first, speaker.second );
+    d_win.add_history_separator();
+    d_win.add_to_history( string_format(
+                              _( "Reachable goods: %1$d\nDemanded toll: %2$d\nOpening: %3$s" ),
+                              surface.reachable_goods_value, surface.demanded_value,
+                              surface.opening_summary ) );
+
+    ui_adaptor ui;
+    const auto resize_cb = [&]( ui_adaptor & ui ) {
+        d_win.resize( ui );
+    };
+    ui.on_screen_resize( resize_cb );
+    resize_cb( ui );
+
+    std::vector<talk_data> responses;
+    responses.push_back( talk_data{ c_light_green, "p", _( "Pay the demanded goods." ) } );
+    responses.push_back( talk_data{ c_light_red, "f", _( "Fight now." ) } );
+    responses.push_back( talk_data{ c_yellow, "r", _( "Refuse the demand." ) } );
+    d_win.set_responses( responses );
+
+    input_context ctxt( "DIALOGUE_CHOOSE_RESPONSE" );
+    d_win.set_up_scrolling( ctxt );
+    ctxt.register_action( "CONFIRM" );
+    ctxt.register_action( "ANY_INPUT" );
+    ctxt.register_action( "QUIT" );
+
+    ui.on_redraw( [&]( const ui_adaptor & ) {
+        d_win.draw( speaker.first );
+    } );
+
+    while( true ) {
+        ui_manager::redraw();
+        std::string action = ctxt.handle_input();
+        const input_event evt = ctxt.get_raw_input();
+        d_win.handle_scrolling( action, ctxt );
+        if( action == "CONFIRM" ) {
+            if( d_win.sel_response == 0 ) {
+                return live_bandit_shakedown_response::pay;
+            }
+            if( d_win.sel_response == 1 ) {
+                return live_bandit_shakedown_response::fight;
+            }
+            return live_bandit_shakedown_response::refuse;
+        }
+        if( action == "QUIT" ) {
+            return live_bandit_shakedown_response::refuse;
+        }
+        if( action == "ANY_INPUT" && ( evt.type == input_event_t::keyboard_char ||
+                                        evt.type == input_event_t::keyboard_code ) &&
+            !evt.sequence.empty() ) {
+            switch( evt.get_first_input() ) {
+                case 'p':
+                case 'P':
+                    return live_bandit_shakedown_response::pay;
+                case 'f':
+                case 'F':
+                    return live_bandit_shakedown_response::fight;
+                case 'r':
+                case 'R':
+                    return live_bandit_shakedown_response::refuse;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
 bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         const bandit_live_world::local_gate_input &input,
         const bandit_live_world::local_gate_decision &decision )
@@ -543,17 +633,13 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     }
     bandit_live_world::mark_shakedown_reopen_used( site );
 
-    uilist shakedown_menu;
-    shakedown_menu.title = _( "Bandit shakedown" );
-    shakedown_menu.text = string_format( _( "\"%1$s\"\n\nReachable goods: %2$d\nDemanded toll: %3$d\n\nChoose now: pay or fight." ),
-                                         surface.bark, surface.reachable_goods_value,
-                                         surface.demanded_value );
-    shakedown_menu.addentry( 0, surface.pay_available, 'p', _( "Pay the demanded goods" ) );
-    shakedown_menu.addentry( 1, surface.fight_available, 'f', _( "Fight" ) );
-    shakedown_menu.allow_cancel = false;
-    shakedown_menu.query();
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
+                               << ( surface.opening_id.empty() ? "none" : surface.opening_id )
+                               << " responses=pay/fight/refuse\n";
+    const live_bandit_shakedown_response response =
+        query_live_bandit_shakedown_dialogue( site, surface );
 
-    if( shakedown_menu.ret == 0 ) {
+    if( response == live_bandit_shakedown_response::pay ) {
         const int surrendered_value = live_bandit_surrender_goods( input, surface, u );
         if( surrendered_value >= surface.demanded_value ) {
             add_msg( m_bad, _( "You surrender goods worth about %1$d to the bandits." ),
@@ -564,7 +650,11 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         add_msg( m_warning, _( "You cannot gather enough reachable goods quickly enough.  The shakedown turns ugly." ) );
     }
 
-    add_msg( m_bad, _( "You refuse the shakedown.  The bandits come at you." ) );
+    if( response == live_bandit_shakedown_response::fight ) {
+        add_msg( m_bad, _( "You choose to fight the shakedown." ) );
+    } else {
+        add_msg( m_bad, _( "You refuse the shakedown.  The bandits come at you." ) );
+    }
     live_bandit_choose_fight( site, surface, u );
     return true;
 }

@@ -14,6 +14,7 @@
     "profile=camp_style",
     "posture=open_shakedown",
     "demanded_toll=22116",
+    "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight/refuse",
     "renegotiation reopen: previous defender loss raises this one bounded demand",
     "pay_option=yes fight_option=yes"
   ],
@@ -39,7 +40,7 @@
       "label": "advance_final_turn_to_reopened_shakedown",
       "count": 1,
       "settle_seconds": 1.0,
-      "expected_visible_fact": "reopened Bandit shakedown menu is visible with player-facing pay/fight choice after the final local-contact turn",
+      "expected_visible_fact": "reopened Bandit shakedown dialogue window is visible with the reopened-demand opening and player-facing pay/fight/refuse choices after the final local-contact turn",
       "capture_after": true
     },
     {
@@ -69,6 +70,9 @@
         ],
         [
           "renegotiation reopen: previous defender loss raises this one bounded demand"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight/refuse"
         ]
       ],
       "abort_on_metadata_failure": true,
