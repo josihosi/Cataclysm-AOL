@@ -21,6 +21,7 @@
 #include "clzones.h"
 #include "color.h"
 #include "crafting.h"
+#include "damage.h"
 #include "debug.h"
 #include "event.h"
 #include "event_bus.h"
@@ -344,11 +345,17 @@ int storage_score(const item &it, int milliliters_per_point) {
          milliliters_per_point;
 }
 
+int armor_resist_score(const resistances &armor_resists,
+                       const damage_type_id &damage_type) {
+  return static_cast<int>(armor_resists.type_resist(damage_type));
+}
+
 int protection_score(const item &it, int bash_weight, int cut_weight,
                      int bullet_weight) {
-  return static_cast<int>(it.resist(damage_bash)) * bash_weight +
-         static_cast<int>(it.resist(damage_cut)) * cut_weight +
-         static_cast<int>(it.resist(damage_bullet)) * bullet_weight;
+  const resistances armor_resists(it);
+  return armor_resist_score(armor_resists, damage_bash) * bash_weight +
+         armor_resist_score(armor_resists, damage_cut) * cut_weight +
+         armor_resist_score(armor_resists, damage_bullet) * bullet_weight;
 }
 
 int generic_clothing_score(const item &it, int storage_divisor,
@@ -380,12 +387,12 @@ int ablative_armor_score(const item &it, const Character *fit_context) {
 }
 
 int total_ballistic_resist_score(const item &it) {
-  int score = static_cast<int>(it.resist(damage_bullet));
+  int score = armor_resist_score(resistances(it), damage_bullet);
   for (const item *ablative : it.all_ablative_armor()) {
     if (ablative == nullptr) {
       continue;
     }
-    score += static_cast<int>(ablative->resist(damage_bullet));
+    score += armor_resist_score(resistances(*ablative), damage_bullet);
   }
   return score;
 }
