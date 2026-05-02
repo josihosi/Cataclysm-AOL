@@ -136,11 +136,11 @@ When promoted, validation must first name the no-attack cause: why does `zombie_
 
 When promoted, validation must first check the original flesh-raptor hit-and-run reference, then prove the stalker-specific burst/retreat behavior. Use `.userdata/dev-harness/harness_runs/20260502_015032/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic tests for about 8+ tile post-burst retreat where pathing allows, stress/counterpressure shaping of 2-4 attack bursts, no A/B near-player oscillation after burst, existing stalker guarantees, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof. Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
 
-### Active validation target - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
+### Closed validation receipt - CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is active after writhing-stalker seam-reduction closure. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is closed/checkpointed green v0 after the scoped camp-locker API-reduction pass. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`; imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
-Current validation burden:
+Credited evidence:
 - Quality-feedback line-id audit is source-inspection only and does not require compile: `basecamp.h:116` / `basecamp.h:122` are legacy basecamp resource/fuel `ammo_id` fields, and `basecamp.h:169` is the LLM craft-request `blockers` vector; none is camp locker equipment API ontology.
 - First coverage-helper reduction is green: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
 - Zone-boundary reduction is green: `collect_camp_locker_zone_items` now defers the pickup boundary to the existing `NO_NPC_PICKUP` zone API before considering `CAMP_LOCKER` stock; `camp_locker_zone_candidate_gathering` covers the overlapped-zone regression; `./tests/cata_test "[camp][locker]"` -> `All tests passed (2062 assertions in 71 test cases)`.
@@ -173,10 +173,8 @@ Current validation burden:
 - Belted-layer leg-accessory reduction is green: camp locker leg-accessory classification now asks existing armor layer data (`item::has_layer({ layer_level::BELTED })`) instead of reading the raw `BELTED` flag for strapped armor, while `BELT_CLIP` remains explicit item clip policy. Gates: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0`; focused classification/leg-accessory service regressions -> `All tests passed (70 assertions in 3 test cases)`; full `./tests/cata_test "[camp][locker]"` -> `All tests passed (2147 assertions in 78 test cases)`.
 - Damage-resistance scoring reduction is green: camp locker protection and ballistic-resistance scoring now consume the shared `resistances` aggregate for bash/cut/bullet armor resistance instead of issuing separate camp-local item-resistance lookups; camp-specific weighting and explicit ablative inclusion policy remain unchanged. Gates: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0`; full `./tests/cata_test "[camp][locker]"` -> `All tests passed (2147 assertions in 78 test cases)`.
 - Final worn-slot equip validation reduction is green: camp locker worn-slot equip application now defers the final wearability decision to existing `Character::wear_item()` instead of doing a camp-local duplicate `can_wear()` precheck first; live candidate filtering still uses explicit worker policy before planning. Gates: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0`; full `./tests/cata_test "[camp][locker]"` -> `All tests passed (2147 assertions in 78 test cases)`.
-- Continue auditing remaining camp locker classification/scoring against existing item, wearability, reload, and zone APIs.
-- Any code refactor must preserve camp locker policy behavior: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns.
-- Targeted tests should continue to cover camp locker classification/upgrade selection, carried cleanup, magazine/ammo readiness, and any newly touched `CAMP_STORAGE` / `NO_NPC_PICKUP` boundary behavior.
-- Do not claim basecamp mission redesign, Smart Zone redesign, or outfit tuning from this cleanup unless separately promoted and proven.
+- Closure gate: `git diff --check`; `make -j4 tests/faction_camp_test.o tests src/basecamp.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[camp][locker]"` -> green.
+- Closure caveat: this is cleanup/refactor only. It does not claim basecamp mission redesign, Smart Zone redesign, outfit tuning, or new product behavior. Further locker work requires a newly promoted concrete seam.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0
 

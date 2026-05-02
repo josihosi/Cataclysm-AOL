@@ -1,6 +1,6 @@
 # CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / DAMAGE-RESISTANCE SCORING API GREEN
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
 
@@ -25,8 +25,8 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 
 ## Success state
 
-- [ ] A short audit note or commit message identifies which camp locker checks now defer to existing item/wear/reload/zone APIs.
-- [ ] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept medical/readiness items.
+- [x] A short audit note or commit message identifies which camp locker checks now defer to existing item/wear/reload/zone APIs.
+- [x] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept medical/readiness items.
 - [x] Carried cleanup still dumps only safe non-kept baggage and preserves kept ammo/magazine/medical/insert readiness items. Current worker/equipped item enumeration and carried-cleanup summaries defer to the existing visitable `items_with()` API instead of local `visit_items()` collection loops.
 - [x] Camp locker medical readiness still uses existing heal use-action metadata, and the direct-use lookup now goes through `item::get_usable_item("heal")` / `item::get_use("heal")` instead of raw type use-function lookup.
 - [x] Ranged weapon readiness still selects compatible magazines/ammo and uses existing reload behavior correctly. Current carried-magazine discovery defers to `Character::find_ammo()` / reload compatibility and regression coverage proves magazines installed in other carried guns are not stolen or double-counted.
@@ -48,7 +48,7 @@ Trim the camp locker implementation where it re-describes item, clothing, ammo, 
 - [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
 - [x] Live service collection now reuses `collect_camp_locker_live_state()` for the pre-service camp-state pass and post-service summary, keeping worker/locker item collection, candidate classification, planning, cleanup, ranged readiness, and medical readiness on one shared aggregation path.
 - [x] Camp storage and camp locker zone tile collection now share one thin `zone_manager::get_near()` adapter plus deterministic sorting, keeping explicit camp zone policy while removing duplicated local zone lookup boilerplate.
-- [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
+- [x] Focused faction/basecamp tests pass for the closed camp-locker API-reduction package without widening the active lane.
 
 ## Targeted tests
 

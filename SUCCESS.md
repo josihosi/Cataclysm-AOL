@@ -223,11 +223,11 @@ Canonical docs:
 
 ## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
 
-Status: ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / DAMAGE-RESISTANCE SCORING API GREEN
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
 
 Success state:
-- [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
-- [ ] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept readiness items.
+- [x] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
+- [x] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept readiness items.
 - [x] Carried cleanup still dumps only safe non-kept baggage and preserves worn/wielded items plus kept ammo/magazine/medical/insert supplies.
 - [x] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
 - [x] Live clothing/armor scoring uses the worker fit context through `item::get_avg_encumber()` for encumbrance penalties, while no-context helper calls keep the prior fallback.
@@ -248,7 +248,7 @@ Success state:
 - [x] Ranged readiness ready/loaded checks use `item::has_ammo()` instead of local `ammo_remaining() > 0` / `<= 0` predicates, while camp policy still decides which magazines and reload supplies to move.
 - [x] Direct medical supply recognition uses `item::get_usable_item()` / `item::get_use()` instead of raw type use lookup, while camp policy still limits readiness stock to direct bandage/bleed supplies.
 - [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
-- [x] Focused faction/basecamp tests pass for the current camp-locker API-reduction slices without widening the active lane.
+- [x] Focused faction/basecamp tests pass for the closed camp-locker API-reduction package without widening the lane.
 
 Canonical docs:
 - Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
