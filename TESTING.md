@@ -57,20 +57,23 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
+### No active validation target
 
-`CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0` is active/greenlit. Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`; imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`; handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+No active validation target is currently promoted. Do not infer the next test lane from old parked material.
 
-Validation burden: agent-side locker-zone playtests first, using the existing harness scenarios before inventing new machinery: `locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, and `locker.package5_robbie_e2e_verified_mcw`.
+### Closed validation receipt - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
-Required evidence classes for closure:
-- real `CAMP_LOCKER` zone footing or creation/persistence on current build;
-- camp locker service behavior from zone stock on the real service path;
-- boundary/exclusion behavior such as `NO_NPC_PICKUP`, non-locker stock, or saved zone persistence;
-- weather/wait or practical gear behavior if feasible, otherwise explicit scope-out reason;
-- separated screen/OCR, saved-state/artifact/log, deterministic gate, and verdict per credited row.
+`CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0` is closed as a yellow v0 checkpoint, not a green product-proof claim. Proof/readout and Josef manual card: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`; contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`; imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`; handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
 
-Startup/load, raw JSON, or `[camp][locker]` tests alone are not sufficient for live zone behavior. If the harness cannot honestly drive/observe a required row after bounded materially different attempts, write a Josef manual playtest card with exact steps and closure criteria instead of closing green.
+Credited evidence:
+- `locker.zone_manager_save_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260502_034812/`: current-build Zone Manager/OCR+trace footing for `Probe Locker` as `type="CAMP_LOCKER"`; same-session save/reopen persistence is credited, but no separate disk save-file audit was captured.
+- `locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260502_035238/`: service-path log proves camp locker stock use on the real service path (`locker_tiles=1`, `candidates=1`, `applied=true`, worker pants swapped to `cargo pants`, old `antarvasa` returned to locker stock).
+- Deterministic gate `./tests/cata_test "[camp][locker]"` passed (`2147 assertions in 78 test cases`) and covers `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion behavior in `camp_locker_zone_candidate_gathering`.
+
+Caveats / manual closure:
+- The harness rows remain yellow where scenario steps lacked expected-visible-fact guards; startup/load and raw logs were not credited as player-facing proof.
+- `locker.package5_robbie_e2e_verified_mcw` -> `.userdata/dev-harness/harness_runs/20260502_034951/` blocked before service artifacts and receives no credit.
+- Full weather/wait product feel is scoped to the Josef manual card in the proof doc; the agent pass only proved practical service/log behavior after forced cold and short turn advancement.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 

@@ -13,41 +13,77 @@
       "kind": "wait",
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "McWilliams gameplay is loaded on the normal map before Zone Manager input; this is startup/load footing only."
     },
     {
       "kind": "press",
       "label": "open_zones_manager",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager UI is open; same-run UI trace must show the existing Basecamp: Locker row with type CAMP_LOCKER."
     },
     {
       "kind": "press",
       "label": "add_zone",
-      "keys": ["a"],
+      "keys": [
+        "a"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The Zone Manager add-zone/type picker flow is open before selecting a zone type."
     },
     {
       "kind": "press",
       "label": "choose_camp_locker_zone_type",
-      "keys": ["down", "down", "down", "enter"],
+      "keys": [
+        "down",
+        "down",
+        "down",
+        "enter"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The Camp Locker zone type selection is submitted and the name/placement flow is reached."
     },
     {
       "kind": "wait",
       "label": "creation_name_prompt_settle",
       "seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The new-zone name prompt is settled before replacing the default name with Probe Locker."
     },
     {
       "kind": "press",
       "label": "clear_creation_zone_name",
-      "keys": ["backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace"],
+      "keys": [
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace",
+        "backspace"
+      ],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The new-zone name field is cleared before typing the probe name."
     },
     {
       "kind": "type",
@@ -55,54 +91,85 @@
       "text": "Probe Locker",
       "submit": true,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The Probe Locker name is submitted and zone-corner placement begins."
     },
     {
       "kind": "press",
       "label": "pick_zone_start",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 0.6,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The first zone corner is accepted through the real placement UI."
     },
     {
       "kind": "press",
       "label": "pick_zone_end",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The second zone corner is accepted; same-run UI trace must show a new Probe Locker CAMP_LOCKER row."
     },
     {
       "kind": "wait",
       "label": "post_creation_settle",
       "seconds": 1.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager remains stable after creating the Probe Locker CAMP_LOCKER zone."
     },
     {
       "kind": "press",
       "label": "open_save_prompt",
-      "keys": ["escape"],
+      "keys": [
+        "escape"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The Zone Manager save-changes prompt is opened after creating the Probe Locker zone."
     },
     {
       "kind": "press",
       "label": "confirm_save_changes",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The save-changes confirmation is accepted, returning toward normal gameplay before saved-zone metadata is audited."
     },
     {
       "kind": "wait",
       "label": "post_save_gameplay_settle",
       "seconds": 2.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Gameplay is stable after saving the Zone Manager change."
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_probe_locker_zone_after_save",
+      "required_zone_type": "CAMP_LOCKER",
+      "required_name_contains": "Probe Locker",
+      "expected_visible_fact": "same-run saved zone metadata contains the created Probe Locker zone with type CAMP_LOCKER after the Zone Manager save confirmation",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved Probe Locker CAMP_LOCKER zone metadata missing after Zone Manager save"
     },
     {
       "kind": "press",
       "label": "reopen_zones_manager_for_persistence_check",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Reopened Zone Manager shows persisted CAMP_LOCKER rows, including the same-run Probe Locker row in UI trace."
     }
+  ],
+  "artifact_patterns": [
+    "openclaw_harness_ui_trace: component=zone_manager_row.*name=\"Basecamp: Locker\" type=\"CAMP_LOCKER\"",
+    "openclaw_harness_ui_trace: component=zone_manager_row.*name=\"Probe Locker\" type=\"CAMP_LOCKER\""
   ]
 }

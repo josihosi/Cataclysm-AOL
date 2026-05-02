@@ -49,11 +49,19 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Active lane — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
+## Current active lane
 
-**Status:** ACTIVE / GREENLIT / LOCKER-ZONE PLAYTEST PACKET
+No active lane is currently promoted in this plan. Do not invent the next item; wait for Schani/Josef/Frau Knackal to promote the next bounded target.
 
-Josef explicitly asked for locker zone playtests after the camp locker API-reduction lane closed. This is the newly promoted concrete locker seam; it does not reopen open-ended locker ontology archaeology.
+---
+
+## Recent closed lane — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
+
+**Status:** CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN
+
+Josef explicitly asked for locker zone playtests after the camp locker API-reduction lane closed. The bounded agent pass is complete and intentionally did not reopen open-ended locker ontology archaeology.
+
+Proof/readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
 
 Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 
@@ -61,9 +69,9 @@ Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
 
 Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
 
-Goal: run a bounded current-build playtest/proof pass for actual camp locker zone behavior: real `CAMP_LOCKER` footing or creation/persistence, camp locker service use from zone stock, zone-boundary/exclusion behavior such as `NO_NPC_PICKUP`, and one practical weather/wait or gear-use row if feasible. Use existing locker scenarios first (`locker.create_zone_probe`, `locker.display_toggle_probe`, `locker.zone_manager_save_probe_mcw`, `locker.weather_wait`, `locker.package5_robbie_e2e_verified_mcw`).
+Result: current-build live/UI+trace evidence proves `CAMP_LOCKER` Zone Manager footing and same-session save/reopen persistence (`locker.zone_manager_save_probe_mcw`, `.userdata/dev-harness/harness_runs/20260502_034812/`); service-path logs prove camp locker stock use on the real service path (`locker.weather_wait`, `.userdata/dev-harness/harness_runs/20260502_035238/`); `[camp][locker]` deterministic tests prove `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion guards. The pass stays yellow, not green, because the harness scenarios lack clean expected-visible-fact ledgers, no disk save-file audit was captured for the newly created probe zone, and the Robbie e2e harness row blocked before service artifacts. The proof doc includes Josef’s concise manual playtest card and closure criteria for the remaining product-facing feel check.
 
-Boundary: player-facing locker-zone playtest only. Do not reopen the closed API-reduction lane, do not redesign basecamp missions/Smart Zones/NPC equipment selection/fashion scoring, and do not drift into bandits, zombie riders, writhing stalkers, flesh raptors, or release packaging. Deterministic tests alone cannot close live zone behavior; if harness/UI proof blocks, produce the concise Josef manual playtest card instead of pretending.
+Boundary preserved: no API-reduction reopen, no broad locker/basecamp redesign, no Smart Zone/basecamp preset work, and no bandit/rider/stalker/raptor drift.
 
 ---
 

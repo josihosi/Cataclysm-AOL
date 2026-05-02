@@ -9,28 +9,36 @@
   "fixture_profile": "dev",
   "replace_existing_worlds": true,
   "settle_seconds": 1.0,
-  "artifact_pattern": "camp locker:",
   "steps": [
     {
       "kind": "wait",
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Sandy Creek locker-ready gameplay is loaded before forcing the cold locker probe state; this is startup/load footing only."
     },
     {
       "kind": "debug_force_temperature",
       "label": "force_cold_temperature",
       "temperature_f": 35,
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Debug force-temperature returns to the live map after setting the probe state to 35F."
     },
     {
       "kind": "advance_turns",
       "label": "wait_for_locker_service",
       "count": 3,
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "A bounded turn window completes on the locker-ready fixture; practical gear proof depends on same-run camp locker queued/plan/after/serviced artifact lines."
     }
   ],
-  "recommended_test_command": "./tests/cata_test \"[camp][locker]\""
+  "recommended_test_command": "./tests/cata_test \"[camp][locker]\"",
+  "artifact_patterns": [
+    "camp locker: queued .*locker_tiles=1",
+    "camp locker: plan for .*locker_tiles=1.*changed_slots=1",
+    "camp locker: after .*applied=true",
+    "camp locker: serviced .*applied=true"
+  ]
 }
