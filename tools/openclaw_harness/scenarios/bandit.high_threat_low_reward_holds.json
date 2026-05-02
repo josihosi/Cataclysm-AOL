@@ -51,7 +51,7 @@
       "failure_rule": "If the high-threat lead footing is missing or malformed, later hold logs cannot be credited as risk/reward product proof."
     },
     {
-      "kind": "long_wait",
+      "kind": "wait_action",
       "label": "wait_30_minutes_for_high_threat_hold_cadence",
       "choice_key": "4",
       "expected_duration": "30m",
@@ -64,12 +64,20 @@
         "hold: high threat or poor reward does not escalate by itself"
       ],
       "expected_visible_fact": "the player waited through the real 30-minute overmap NPC cadence window; feature credit depends on same-run debug artifact lines proving the high-threat hold, not on the wait UI alone",
-      "failure_rule": "If the wait is interrupted or the artifact delta lacks the high-threat hold rejection, this scenario is inconclusive/red."
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the high-threat hold rejection, this scenario is inconclusive/red.",
+      "menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "extract_text_tail_lines": 40,
+      "abort_on_interrupt": true,
+      "abort_verdict": "inconclusive_high_threat_wait_interrupted",
+      "abort_reason": "guarded long wait was interrupted before the high-threat hold artifact could be captured"
     },
     {
       "kind": "press",
       "label": "open_save_quit_prompt_after_high_threat_hold",
-      "keys": ["S"],
+      "keys": [
+        "S"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit prompt is visible after the high-threat hold probe",
@@ -78,7 +86,9 @@
     {
       "kind": "press",
       "label": "confirm_save_quit_after_high_threat_hold",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 4.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit confirmation completed after the high-threat hold probe",

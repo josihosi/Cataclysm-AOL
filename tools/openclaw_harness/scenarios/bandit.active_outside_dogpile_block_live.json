@@ -48,11 +48,12 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_active_outside_dogpile_fixture",
       "abort_reason": "preflight saved bandit_live_world site did not contain the five-member roster with two unresolved outside stalk members plus a remembered camp-map lead",
-      "expected_immediate_state": "saved bandit_live_world contains a five-member camp with two already-outbound stalk members, three still ready at home, and a scout-confirmed remembered lead before live cadence proof starts",
-      "failure_rule": "If the active-outside footing is missing, a later dogpile rejection cannot be credited as live active-pressure blocking."
+      "expected_immediate_state": "saved bandit_live_world contains a five-member camp with two already-outbound stalk members, three still ready at home, and a scout-confirmed remembered lead before live cadence proof starts, with those active_member_ids found in saved overmap NPC records.",
+      "failure_rule": "If the active-outside footing is missing, a later dogpile rejection cannot be credited as live active-pressure blocking. Saved-overmap NPC cross-reference for active_member_ids is required before camp pressure is credited.",
+      "required_active_members_found": true
     },
     {
-      "kind": "long_wait",
+      "kind": "wait_action",
       "label": "wait_30_minutes_for_active_outside_dogpile_block_cadence",
       "choice_key": "4",
       "expected_duration": "30m",
@@ -65,12 +66,20 @@
         "hold: unresolved active outside group/contact blocks dogpile"
       ],
       "expected_visible_fact": "the player waited through the real 30-minute overmap NPC cadence window; feature credit depends on same-run debug artifact lines proving active-outside dogpile blocking, not on the wait UI alone",
-      "failure_rule": "If the wait is interrupted or the artifact delta lacks the active-outside dogpile-block rejection, this scenario is inconclusive/red."
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the active-outside dogpile-block rejection, this scenario is inconclusive/red.",
+      "menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "extract_text_tail_lines": 40,
+      "abort_on_interrupt": true,
+      "abort_verdict": "inconclusive_wait_interrupted",
+      "abort_reason": "guarded long wait was interrupted before the expected cadence artifact could be captured"
     },
     {
       "kind": "press",
       "label": "open_save_quit_prompt_after_active_outside_block",
-      "keys": ["S"],
+      "keys": [
+        "S"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit prompt is visible after the active-outside dogpile-block probe",
@@ -79,7 +88,9 @@
     {
       "kind": "press",
       "label": "confirm_save_quit_after_active_outside_block",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 4.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit confirmation completed after the active-outside dogpile-block probe",
@@ -103,8 +114,9 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_saved_active_outside_block_state_missing",
       "abort_reason": "saved bandit_live_world did not preserve the expected dogpile-block state: the original two active outside members remained and no extra dispatch was spawned",
-      "expected_immediate_state": "after save/quit, saved bandit_live_world still has exactly two active outside stalk members and three ready at home; the cadence did not create another active pressure group",
-      "failure_rule": "If active outside count changes or a different active group appears, same-run rejection logs cannot close dogpile-block proof by themselves."
+      "expected_immediate_state": "after save/quit, saved bandit_live_world still has exactly two active outside stalk members and three ready at home; the cadence did not create another active pressure group, with those active_member_ids found in saved overmap NPC records.",
+      "failure_rule": "If active outside count changes or a different active group appears, same-run rejection logs cannot close dogpile-block proof by themselves. Saved-overmap NPC cross-reference for active_member_ids is required before camp pressure is credited.",
+      "required_active_members_found": true
     },
     {
       "kind": "audit_log_contains",
