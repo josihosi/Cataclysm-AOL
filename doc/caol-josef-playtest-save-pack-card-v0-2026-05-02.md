@@ -2,7 +2,7 @@
 
 Status: CURRENT-BUILD JOSEF HANDOFF CARD / READY ENTRIES + LABELLED CAVEATS
 
-Repo/branch/build: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; gameplay build footing from `1113e68275` passed `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` with exit `0`. Later save-pack changes are harness-scenario/card classification only.
+Repo/branch/build: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; current post-zombie-rider-change gameplay footing from `63225ce2e5` passed `./just_build_macos.sh > /tmp/caol-savepack-post-rider-build-20260502.log 2>&1` with exit `0`. Earlier broad save-pack footing from `1113e68275` passed `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` with exit `0`.
 
 Run commands from the repo root. Use `handoff` when Josef wants a live session left open; use `probe` only to re-check the same setup. Do **not** rerun blocked rows by ritual.
 
@@ -133,8 +133,8 @@ Taste questions:
 - Is wounded disengagement satisfying, or does it drain the encounter?
 
 Current evidence:
-- `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131914/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`9` green / `0` red), portal clear.
-- `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260502_132136/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`6` green / `0` red), portal clear.
+- `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260502_232133/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`9` green / `0` red), portal clear. This is the fresh post-tainted-arrow/post-rider-change current-build refresh.
+- `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260502_232214/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`6` green / `0` red), portal clear. This is the fresh post-tainted-arrow/post-rider-change current-build refresh.
 
 Caveat: staged-but-live rows. Open-field pressure rerun at `20260502_131217/` is blocked on time setup in this save-pack pass, so use the two green rows above for playtesting.
 
@@ -226,7 +226,7 @@ Remaining follow-up before broader bandit-contrast credit:
 - Camp locker: ready (`locker.weather_wait`, `20260502_131015/`).
 - Bandit first-demand/contact: ready (`bandit.extortion_first_demand_fight_mcw`, `20260502_124854/`).
 - Cannibal night contact: ready (`cannibal.live_world_night_local_contact_pack_mcw`, `20260502_131103/`).
-- Zombie rider cover/wounded contrast: ready (`20260502_131914/`, `20260502_132136/`).
+- Zombie rider cover/wounded contrast: ready (`20260502_232133/`, `20260502_232214/`).
 - Writhing stalker hit-fade/light/zombie contrast: ready (`20260502_125231/`, `20260502_131246/`, `20260502_131315/`).
 - Flesh raptor crowded-arc skirmisher: ready (`20260502_141246/`); older open-field/equipment rows remain footing only.
 - Bandit no-signal / smoke-fire signal / active-outside camp-pressure / high-threat hold: auxiliary green (`20260502_134959/`, `20260502_155058/`, `20260502_144842/`, `20260502_145429/`); staged contrast is ready if Schani wants a second bandit card, while natural-discovery/full-raid proof remains future-only.
@@ -234,7 +234,8 @@ Remaining follow-up before broader bandit-contrast credit:
 ## Validation gates run
 
 - `git fetch origin dev`; local `dev` and `origin/dev` were synced before the save-pack documentation pass.
-- `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` -> exit `0` on the gameplay build footing used for these probes.
+- `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` -> exit `0` on the initial gameplay build footing used for the save-pack probes.
+- Post-zombie-rider-change refresh: `./just_build_macos.sh > /tmp/caol-savepack-post-rider-build-20260502.log 2>&1` -> exit `0`; `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260502_232133/` and `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260502_232214/`, both `feature_proof=true`, `verdict=artifacts_matched`, green step ledgers, portal clear.
 - Current-build probe summaries:
   - `/tmp/caol-savepack-assign-probe-summary-20260502_1306_assign.txt`
   - `/tmp/caol-savepack-bandit-assign-summary-20260502_1320_bandit_assign.txt`
