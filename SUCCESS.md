@@ -66,6 +66,26 @@ Canonical docs:
 
 ---
 
+## CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0 — Zombie rider close-pressure no-attack fix
+
+Status: GREENLIT / QUEUED / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+
+Success state:
+- [ ] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
+- [ ] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
+- [ ] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
+- [ ] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
+- [ ] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [ ] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
+- [ ] Zombie rider description text is updated/preserved according to Josef's corrected product image.
+
+Canonical docs:
+- Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+- Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
+- Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+
+---
+
 ## CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0 — Flesh raptor circling skirmisher retrofit
 
 Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE

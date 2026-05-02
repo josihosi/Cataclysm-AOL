@@ -233,6 +233,24 @@ Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign w
 
 ---
 
+## Greenlit backlog — zombie rider close-pressure no-attack fix
+
+**Status:** GREENLIT / QUEUED / BUGFIX + PRODUCT-FEEL FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+
+Josef live-watched `zombie_rider.live_open_field_pressure_mcw` on 2026-05-02 and then quit the game so Andi could get the package. The watched handoff seed is `.userdata/dev-harness/harness_runs/20260502_015857/`, but it is yellow/inconclusive due to runtime-version mismatch, so use it as a bug seed and player-observed taste note rather than closure proof.
+
+Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+
+Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+
+Goal: fix the zombie rider close-pressure/no-attack seam. The important smell is that the trace reportedly repeats `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` at distance around `4-5`, while Josef saw no actual attack. Andi must name the decision-to-action break before tuning aggression. Desired product feel: a scary mounted archer that shoots when possible and otherwise irregularly bunny-hops/circles/repositions around the player group when blocked or too close — not a perfect orbit, not instant unavoidable death, and not polite indoor loitering.
+
+Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RIDER-0.3-v0`, do not break wounded disengagement, cover/LOS counterplay, camp-light banding, or no-light controls, and do not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+
+---
+
 ## Greenlit backlog — targeted anti-redundancy packages
 
 **Status:** GREENLIT / BACKLOG / AFTER ACTIVE CAMP-LOCKER LANE
