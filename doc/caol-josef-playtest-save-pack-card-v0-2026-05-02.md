@@ -177,7 +177,8 @@ python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_ca
 ```
 
 Current evidence:
-- `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_125743/`; `feature_proof=false`, `verdict=yellow_step_local_proof_incomplete`, portal clear.
+- Low-threat/no-loose-NPC no-signal auxiliary proof: `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_134959/`; `feature_proof=true`, `verdict=artifacts_matched`, saved-overmap NPC preflight `observed_npc_count=0`, green wait ledger, matched no-signal cadence artifacts, portal clear. This repairs only the quiet no-signal control; it is not first-card expansion and not camp-threat/high-threat membership proof.
+- Superseded no-signal attempt: `.userdata/dev-harness/harness_runs/20260502_125743/`; `feature_proof=false`, `verdict=yellow_step_local_proof_incomplete`, portal clear.
 - `bandit.extortion_at_camp_standoff_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131536/`; `feature_proof=false`, `verdict=yellow_wait_step_unverified`, portal clear. The wait path reached a caveated standoff-shaped row but lacks green wait proof.
 - `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_131616/`; saved bandit-live-world preflight rows are `required_state_present`, but final artifact proof is missing: `verdict=blocked_high_threat_hold_artifact_missing`, portal clear.
 - Fire/smoke/basecamp signal remains older/manual-package footing only. Do not reopen real-fire/smoke proof after the previous attempt-4/manual-package status unless the method materially changes and the missing proof is essential.
