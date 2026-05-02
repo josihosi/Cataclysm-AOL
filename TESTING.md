@@ -64,18 +64,20 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Validation shape: behavior/scoring and handoff proof first, then current-build staged/live rows. Old watched rows from Josef are debug/taste seeds only, not feature proof.
 
 Evidence required before closure:
-- [ ] Deterministic high-threat retreat/stalk test: day/bright + same OMT/close overmap pressure + about three friendly NPCs chooses retreat/stalking behavior instead of close pressure.
-- [ ] Deterministic stalking-distance/visibility test: overmatched stalker avoids sight tiles and targets about `3` OMT distance where overmap pathing permits.
-- [ ] Deterministic night/opportunity test: night/outside/reachable player cannot become indefinite non-action; it attacks, repositions, retreats, or emits a concrete blocker.
-- [ ] Deterministic zombie/distraction test: zombies or hostile pressure entering the player/NPC tile raises opportunity and enables dark-square approach/strike only with valid evidence/pathing.
-- [ ] Deterministic no-omniscience guard: zombie pressure does not grant target knowledge through opaque walls or missing evidence.
-- [ ] Anti-gnome proof: repeated window/bad-position loiter triggers attack, reposition, retreat, or logged blocker.
-- [ ] Handoff/writeback proof: overmap-to-bubble carries intent/reason/strike budget; bubble-to-overmap preserves spent/retreat/cooldown/threat memory.
+- [x] Deterministic high-threat retreat/stalk test: day/bright + same OMT/close overmap pressure + about three friendly NPCs chooses retreat/stalking behavior instead of close pressure.
+- [x] Deterministic stalking-distance/visibility test: overmatched stalker avoids sight tiles and targets about `3` OMT distance where overmap pathing permits.
+- [x] Deterministic night/opportunity test: night/outside/reachable player cannot become indefinite non-action; it attacks, repositions, retreats, or emits a concrete blocker.
+- [x] Deterministic zombie/distraction test: zombies or hostile pressure entering the player/NPC tile raises opportunity and enables dark-square approach/strike only with valid evidence/pathing.
+- [x] Deterministic no-omniscience guard: zombie pressure does not grant target knowledge through opaque walls or missing evidence.
+- [x] Anti-gnome proof: repeated window/bad-position loiter triggers attack, reposition, retreat, or logged blocker.
+- [x] Handoff/writeback proof: overmap-to-bubble carries intent/reason/strike budget; bubble-to-overmap preserves spent/retreat/cooldown/threat memory.
 - [ ] Current-build live/staged high-threat row shows retreat/stalk rather than same-tile loiter.
 - [ ] Current-build live/staged night/window/outside row shows attack/reposition/retreat with reason, not static loiter.
 - [ ] Current-build live/staged zombie/distraction row shows dark-square approach/strike or records a precise blocker.
 - [ ] If door opening lands, tests prove unlocked/simple only, bounded cost/noise/interruptibility or equivalent, darkness/distraction/commitment gate, and high-threat suppression.
-- [ ] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
+- [x] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
+
+Current checkpoint: deterministic evaluator/live-plan coverage is green for the threat/distraction handoff implementation. Gate: `git diff --check`; `make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`; spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`. Live/staged rows for high-threat allies, night/window/outside, and zombie/distraction remain open before closure.
 
 ### Closed validation receipt - CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
 
@@ -413,13 +415,12 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is the remaining audit/refactor pass for `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` after the coverage-helper, zone-boundary, medical-readiness, ranged-readiness, average-coverage, worker-item collection, direct subpart coverage, item-encumbrance, worker-wearability, service live-state reuse including the post-service summary, weapon-wieldability, ranged-classification, armor-classification, weapon-scoring, worker-context reload-readiness, reload-supply ammo-state, magazine-capacity, reloadability-gate, magazine default-ammo, managed-ranged helper, ablative-insert compatibility, ranged ammo-state readiness, shared zone-tile collection, outer/body-part layer classification, final worn-slot equip validation, direct medical use-action lookup, magazine total-capacity, body-part id, and sub-bodypart id reductions.
+Active same-lane next action is live/staged validation for `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` after the deterministic threat/distraction handoff implementation checkpoint.
 
-Required remaining audit questions:
-- Which scoring, carried cleanup, and ranged ammo/magazine readiness checks are duplicate engine ontology rather than camp policy?
-- Which existing item, wearability, body coverage, reload, and zone APIs can safely own those checks?
-- Which behavior is deliberately camp-specific policy and must remain explicit: enabled slots, bulletproof/weather-sensitive preference, readiness supplies, camp-storage boundaries, and safe leftover returns?
-- What is the smallest focused faction/basecamp/camp-locker gate that proves preservation after the next refactor?
+Required remaining active-lane probes:
+- Current-build high-threat/allies row: day/bright or strong visibility + about three friendly NPCs should produce `live_high_threat_allied_light_retreat_stalk` / overmatched stalking rather than same-tile loiter.
+- Current-build night/window/outside row: reachable night/outside bad-position loiter should produce attack/reposition/retreat with anti-gnome reason, not static window décor.
+- Current-build zombie/distraction row: valid local evidence plus zombie/hostile pressure on the player/NPC tile should produce dark-square approach/strike or a precise blocker, while missing evidence stays no-omniscience/no-credit.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 

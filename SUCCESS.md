@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0 — Writhing stalker threat/distraction handoff
 
-Status: ACTIVE / GREENLIT / PRODUCT-BEHAVIOR DEBUG PACKET
+Status: ACTIVE / DETERMINISTIC IMPLEMENTATION CHECKPOINT GREEN / LIVE-STAGED PROOF NEXT
 
 Success state:
 - [ ] Day/bright + same OMT or close overmap pressure + about three friendly NPCs produces retreat/stalking behavior instead of close loiter/pressure.
@@ -31,10 +31,13 @@ Success state:
 - [ ] If door opening is implemented, tests prove it is narrow, unlocked/simple only, noisy/slow/interruptible or equivalently costly, and suppressed under high threat.
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on final state before closure.
 
+Checkpoint note: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Product success remains open until current-build live/staged high-threat, night/window/outside, and zombie/distraction rows are green or precisely blocked.
+
 Canonical docs:
 - Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
 - Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
 - Handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+- Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
 
 ---
 

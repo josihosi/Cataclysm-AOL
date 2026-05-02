@@ -33,6 +33,24 @@ enum class decision {
     cooling_off
 };
 
+enum class handoff_intent {
+    none,
+    overmatched_stalk,
+    shadowing,
+    opportunity_probe,
+    committed_ambush,
+    spent_disengage
+};
+
+enum class threat_state {
+    none,
+    overmatched_retreat,
+    watching,
+    opportunity_probe,
+    committed_ambush,
+    spent_disengage
+};
+
 struct interest_context {
     bool recent_human_evidence = false;
     int evidence_age_minutes = 0;
@@ -96,6 +114,7 @@ struct opportunity_context {
     bool player_low_stamina = false;
     bool player_distracted = false;
     bool player_noisy = false;
+    bool night_outside_reachable_target = false;
     int zombie_pressure = 0;
     int allied_support_nearby = 0;
     bool near_cover_or_clutter = false;
@@ -182,6 +201,10 @@ struct confidence_report {
 struct live_context {
     bool has_believable_local_evidence = false;
     bool has_overmap_interest_footing = false;
+    handoff_intent overmap_intent = handoff_intent::none;
+    int overmap_stalk_distance_omt = 0;
+    int overmap_cooldown_minutes = 0;
+    int overmap_threat_memory = 0;
     int evidence_age_minutes = 0;
     int distance_to_target = 0;
     bool target_in_bright_exposure = false;
@@ -197,6 +220,7 @@ struct live_context {
     bool player_low_stamina = false;
     bool player_distracted = false;
     bool player_noisy = false;
+    bool night_outside_reachable_target = false;
     int zombie_pressure = 0;
     int allied_support_nearby = 0;
     bool quiet_side_cutoff_available = false;
@@ -204,27 +228,93 @@ struct live_context {
     bool stalker_hurt = false;
     bool on_cooldown = false;
     int burst_strikes = 0;
+    int bad_position_loiter_turns = 0;
 };
 
 struct live_response {
     decision next = decision::ignore;
     approach_class route = approach_class::none;
+    handoff_intent writeback_intent = handoff_intent::none;
     int opportunity = 0;
     int confidence = 0;
     int burst_limit = 1;
     int retreat_distance = 8;
+    int overmap_stalk_distance_omt = 0;
+    int writeback_cooldown_minutes = 0;
+    int writeback_threat_memory = 0;
     bool persistent_state_required = false;
+    bool anti_gnome_triggered = false;
+    std::string reason;
+};
+
+struct threat_context {
+    bool daylight_or_bright = false;
+    bool target_has_focus = false;
+    bool same_or_close_overmap = false;
+    int allied_support_nearby = 0;
+    int zombie_pressure = 0;
+    int burst_strikes = 0;
+    bool close_overmap_pressure = false;
+    bool strong_visibility = false;
+    bool has_distraction = false;
+    bool night_or_dark = false;
+    bool outside_reachable_player = false;
+    bool valid_evidence_or_path = false;
+    int bad_position_loiter_turns = 0;
+    int burst_limit = 2;
+    bool spent_cooldown = false;
+};
+
+struct threat_report {
+    bool overmatched = false;
+    decision next = decision::ignore;
+    handoff_intent intent = handoff_intent::none;
+    int stalk_distance_omt = 0;
+    int threat_memory = 0;
+    bool avoid_sight_tiles = false;
+    threat_state state = threat_state::none;
+    int threat_score = 0;
+    int opportunity_score = 0;
+    int stalking_distance_omt = 0;
+    bool avoids_sight_tiles = false;
+    bool anti_gnome_fired = false;
+    std::string reason;
+};
+
+struct anti_gnome_context {
+    bool night_outside_reachable_target = false;
+    bool has_believable_evidence_or_handoff = false;
+    bool dark_or_covered_route_available = false;
+    bool high_threat = false;
+    int distance_to_target = 0;
+    int loiter_turns = 0;
+};
+
+struct handoff_memory {
+    handoff_intent intent = handoff_intent::none;
+    int strike_budget_spent = 0;
+    int cooldown_minutes = 0;
+    int threat_memory = 0;
+    int stalk_distance_omt = 0;
     std::string reason;
 };
 
 interest_report evaluate_interest( const interest_context &ctx );
 latch_update advance_latch( const latch_context &ctx );
 approach_report choose_approach( const approach_context &ctx );
+// Canonical threat/distraction state machine for packet-level scoring and tests.
+threat_report evaluate_threat_state( const threat_context &ctx );
 opportunity_report evaluate_opportunity( const opportunity_context &ctx );
 quiet_side_report evaluate_quiet_side( const std::vector<relative_point> &zombies );
 quiet_candidate_report choose_quiet_side_cutoff( const std::vector<relative_point> &zombies,
         const std::vector<quiet_candidate> &candidates );
 confidence_report evaluate_confidence( const confidence_context &ctx );
+// Live handoff facade: normalizes older compact threat_context fields, then delegates to
+// evaluate_threat_state so live planning and deterministic threat tests share one scorer.
+threat_report evaluate_threat( const threat_context &ctx );
+live_response resolve_anti_gnome( const anti_gnome_context &ctx );
 live_response evaluate_live_response( const live_context &ctx );
+handoff_memory writeback_handoff_memory( const handoff_memory &incoming,
+        const live_response &response );
 
 } // namespace writhing_stalker

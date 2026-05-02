@@ -725,11 +725,80 @@ static int writhing_stalker_allied_support_nearby( map &here, const Creature &ta
 }
 
 static const std::string writhing_stalker_burst_count_key( "caol_writhing_stalker_burst_count" );
+static const std::string writhing_stalker_bad_loiter_key( "caol_writhing_stalker_bad_loiter_count" );
+static const std::string writhing_stalker_handoff_intent_key( "caol_writhing_stalker_handoff_intent" );
+static const std::string writhing_stalker_handoff_reason_key( "caol_writhing_stalker_handoff_reason" );
+static const std::string writhing_stalker_handoff_cooldown_key( "caol_writhing_stalker_handoff_cooldown" );
+static const std::string writhing_stalker_threat_memory_key( "caol_writhing_stalker_threat_memory" );
+static const std::string writhing_stalker_stalk_omt_key( "caol_writhing_stalker_stalk_omt" );
+
+static int writhing_stalker_int_value( const monster &stalker, const std::string &key )
+{
+    const diag_value *value = stalker.maybe_get_value( key );
+    return value == nullptr ? 0 : std::max( 0, static_cast<int>( value->dbl() ) );
+}
+
+static const char *writhing_stalker_intent_name( const writhing_stalker::handoff_intent intent )
+{
+    switch( intent ) {
+        case writhing_stalker::handoff_intent::none:
+            return "none";
+        case writhing_stalker::handoff_intent::overmatched_stalk:
+            return "overmatched_stalk";
+        case writhing_stalker::handoff_intent::shadowing:
+            return "shadowing";
+        case writhing_stalker::handoff_intent::opportunity_probe:
+            return "opportunity_probe";
+        case writhing_stalker::handoff_intent::committed_ambush:
+            return "committed_ambush";
+        case writhing_stalker::handoff_intent::spent_disengage:
+            return "spent_disengage";
+    }
+    return "none";
+}
+
+static writhing_stalker::handoff_intent writhing_stalker_intent_value( const monster &stalker )
+{
+    const diag_value *value = stalker.maybe_get_value( writhing_stalker_handoff_intent_key );
+    if( value == nullptr || !value->is_str() ) {
+        return writhing_stalker::handoff_intent::none;
+    }
+    const std::string intent = value->str();
+    if( intent == "overmatched_stalk" ) {
+        return writhing_stalker::handoff_intent::overmatched_stalk;
+    }
+    if( intent == "shadowing" ) {
+        return writhing_stalker::handoff_intent::shadowing;
+    }
+    if( intent == "opportunity_probe" ) {
+        return writhing_stalker::handoff_intent::opportunity_probe;
+    }
+    if( intent == "committed_ambush" ) {
+        return writhing_stalker::handoff_intent::committed_ambush;
+    }
+    if( intent == "spent_disengage" ) {
+        return writhing_stalker::handoff_intent::spent_disengage;
+    }
+    return writhing_stalker::handoff_intent::none;
+}
 
 static int writhing_stalker_burst_count( const monster &stalker )
 {
-    const diag_value *value = stalker.maybe_get_value( writhing_stalker_burst_count_key );
-    return value == nullptr ? 0 : std::max( 0, static_cast<int>( value->dbl() ) );
+    return writhing_stalker_int_value( stalker, writhing_stalker_burst_count_key );
+}
+
+static int writhing_stalker_bad_loiter_count( const monster &stalker )
+{
+    return writhing_stalker_int_value( stalker, writhing_stalker_bad_loiter_key );
+}
+
+static void writhing_stalker_set_bad_loiter_count( monster &stalker, const int loiter_count )
+{
+    if( loiter_count <= 0 ) {
+        stalker.remove_value( writhing_stalker_bad_loiter_key );
+    } else {
+        stalker.set_value( writhing_stalker_bad_loiter_key, loiter_count );
+    }
 }
 
 static void writhing_stalker_set_burst_count( monster &stalker, const int burst_count )
@@ -753,6 +822,14 @@ static writhing_stalker::live_context writhing_stalker_live_context( monster &st
                                      rl_dist( stalker.wander_pos, target.pos_abs() ) <= 8;
 
     ctx.has_believable_local_evidence = sees_target || heard_recent_target;
+    ctx.overmap_intent = writhing_stalker_intent_value( stalker );
+    ctx.has_overmap_interest_footing = ctx.overmap_intent != writhing_stalker::handoff_intent::none;
+    ctx.overmap_stalk_distance_omt = writhing_stalker_int_value( stalker,
+                                      writhing_stalker_stalk_omt_key );
+    ctx.overmap_cooldown_minutes = std::max( 0, writhing_stalker_int_value( stalker,
+                                            writhing_stalker_handoff_cooldown_key ) - 1 );
+    ctx.overmap_threat_memory = writhing_stalker_int_value( stalker,
+                                writhing_stalker_threat_memory_key );
     ctx.evidence_age_minutes = sees_target ? 0 : 5;
     ctx.distance_to_target = distance;
     ctx.target_in_bright_exposure = writhing_stalker_bright_exposure( here, target_pos );
@@ -772,8 +849,11 @@ static writhing_stalker::live_context writhing_stalker_live_context( monster &st
                                       ( ctx.cover_route_available || ctx.edge_route_available );
     ctx.near_cover_or_clutter = writhing_stalker_has_cover_or_clutter( here, target_pos );
     ctx.stalker_hurt = stalker.hp_percentage() <= 55;
-    ctx.on_cooldown = stalker.has_effect( effect_run );
+    ctx.on_cooldown = stalker.has_effect( effect_run ) || ctx.overmap_cooldown_minutes > 0;
     ctx.burst_strikes = writhing_stalker_burst_count( stalker );
+    ctx.night_outside_reachable_target = !ctx.target_in_bright_exposure && here.is_outside( target_pos ) &&
+                                         ctx.direct_open_route_available;
+    ctx.bad_position_loiter_turns = writhing_stalker_bad_loiter_count( stalker );
 
     if( Character *target_character = target.as_character() ) {
         ctx.player_bleeding = target_character->has_effect( effect_bleed );
@@ -934,6 +1014,31 @@ static const char *writhing_stalker_approach_name( writhing_stalker::approach_cl
     return "unknown";
 }
 
+
+static void writhing_stalker_writeback_handoff( monster &stalker,
+        const writhing_stalker::live_context &ctx, const writhing_stalker::live_response &response )
+{
+    writhing_stalker::handoff_memory incoming;
+    incoming.intent = ctx.overmap_intent;
+    incoming.strike_budget_spent = ctx.burst_strikes;
+    incoming.cooldown_minutes = ctx.overmap_cooldown_minutes;
+    incoming.threat_memory = ctx.overmap_threat_memory;
+    incoming.stalk_distance_omt = ctx.overmap_stalk_distance_omt;
+
+    const writhing_stalker::handoff_memory out =
+        writhing_stalker::writeback_handoff_memory( incoming, response );
+    if( out.intent == writhing_stalker::handoff_intent::none ) {
+        stalker.remove_value( writhing_stalker_handoff_intent_key );
+    } else {
+        stalker.set_value( writhing_stalker_handoff_intent_key,
+                           writhing_stalker_intent_name( out.intent ) );
+    }
+    stalker.set_value( writhing_stalker_handoff_reason_key, out.reason );
+    stalker.set_value( writhing_stalker_handoff_cooldown_key, out.cooldown_minutes );
+    stalker.set_value( writhing_stalker_threat_memory_key, out.threat_memory );
+    stalker.set_value( writhing_stalker_stalk_omt_key, out.stalk_distance_omt );
+}
+
 static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &target )
 {
     if( stalker.type->id != mon_writhing_stalker ) {
@@ -954,6 +1059,12 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " confidence=" << response.confidence
                                << " evidence=" << ( ctx.has_believable_local_evidence ? "yes" : "no" )
                                << " overmap_interest=" << ( ctx.has_overmap_interest_footing ? "yes" : "no" )
+                               << " handoff_intent=" << writhing_stalker_intent_name( ctx.overmap_intent )
+                               << " writeback_intent=" << writhing_stalker_intent_name( response.writeback_intent )
+                               << " persistent=" << ( response.persistent_state_required ? "yes" : "no" )
+                               << " stalk_omt=" << response.overmap_stalk_distance_omt
+                               << " bad_loiter=" << ctx.bad_position_loiter_turns
+                               << " anti_gnome=" << ( response.anti_gnome_triggered ? "yes" : "no" )
                                << " distance=" << ctx.distance_to_target
                                << " zombie_pressure=" << ctx.zombie_pressure
                                << " allied_support=" << ctx.allied_support_nearby
@@ -964,6 +1075,17 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " target_focus=" << ( ctx.target_has_focus ? "yes" : "no" )
                                << " cooldown=" << ( ctx.on_cooldown ? "yes" : "no" )
                                << " eval_us=" << elapsed_us << '\n';
+
+    if( response.persistent_state_required || ctx.has_overmap_interest_footing ||
+        response.writeback_intent != writhing_stalker::handoff_intent::none ) {
+        writhing_stalker_writeback_handoff( stalker, ctx, response );
+    }
+
+    if( response.next == writhing_stalker::decision::hold && ctx.night_outside_reachable_target ) {
+        writhing_stalker_set_bad_loiter_count( stalker, ctx.bad_position_loiter_turns + 1 );
+    } else if( response.next != writhing_stalker::decision::hold ) {
+        writhing_stalker_set_bad_loiter_count( stalker, 0 );
+    }
 
     switch( response.next ) {
         case writhing_stalker::decision::strike: {

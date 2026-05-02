@@ -545,6 +545,132 @@ TEST_CASE( "writhing_stalker_confidence_gates_zombie_pressure_and_suppresses_cut
     CHECK( suppressed.reason == "counterpressure_suppresses_cutoff" );
 }
 
+
+TEST_CASE( "writhing_stalker_threat_handoff_overmatched_allies_retreats_to_stalking_distance",
+           "[writhing_stalker][ai][handoff]" )
+{
+    using namespace writhing_stalker;
+
+    const threat_report calm = evaluate_threat( threat_context{ true, true, true, 1, 0, 0 } );
+    CHECK_FALSE( calm.overmatched );
+    CHECK( calm.reason == "threat_not_overmatched" );
+
+    const threat_report zombies_break_the_firing_squad = evaluate_threat( threat_context{ true, true,
+            true, 3, 3, 0 } );
+    CHECK_FALSE( zombies_break_the_firing_squad.overmatched );
+
+    const threat_report overmatched = evaluate_threat( threat_context{ true, true, true, 3, 0, 0 } );
+    REQUIRE( overmatched.overmatched );
+    CHECK( overmatched.next == decision::withdraw );
+    CHECK( overmatched.intent == handoff_intent::overmatched_stalk );
+    CHECK( overmatched.stalk_distance_omt == 3 );
+    CHECK( overmatched.threat_memory >= 3 );
+    CHECK( overmatched.avoid_sight_tiles );
+    CHECK( overmatched.reason == "high_threat_allied_light_retreat_stalk" );
+
+    live_context ctx = pattern_base_context();
+    ctx.distance_to_target = 6;
+    ctx.target_in_bright_exposure = true;
+    ctx.target_has_focus = true;
+    ctx.allied_support_nearby = 3;
+    const live_response response = evaluate_live_response( ctx );
+    CHECK( response.next == decision::withdraw );
+    CHECK( response.writeback_intent == handoff_intent::overmatched_stalk );
+    CHECK( response.overmap_stalk_distance_omt == 3 );
+    CHECK( response.persistent_state_required );
+    CHECK( response.reason == "live_high_threat_allied_light_retreat_stalk" );
+}
+
+TEST_CASE( "writhing_stalker_night_reachable_anti_gnome_resolves_loiter",
+           "[writhing_stalker][ai][handoff]" )
+{
+    using namespace writhing_stalker;
+
+    const live_response not_yet = resolve_anti_gnome( anti_gnome_context{ true, true, true, false,
+            2, 1 } );
+    CHECK_FALSE( not_yet.anti_gnome_triggered );
+
+    const live_response strike = resolve_anti_gnome( anti_gnome_context{ true, true, true, false,
+            2, 2 } );
+    CHECK( strike.anti_gnome_triggered );
+    CHECK( strike.next == decision::strike );
+    CHECK( strike.writeback_intent == handoff_intent::committed_ambush );
+    CHECK( strike.reason == "anti_gnome_night_reachable_probe_strike" );
+
+    live_context gnome = pattern_base_context();
+    gnome.distance_to_target = 2;
+    gnome.night_outside_reachable_target = true;
+    gnome.direct_open_route_available = true;
+    gnome.bad_position_loiter_turns = 2;
+    const live_response response = evaluate_live_response( gnome );
+    CHECK( response.next == decision::strike );
+    CHECK( response.anti_gnome_triggered );
+    CHECK( response.reason == "live_anti_gnome_night_reachable_probe_strike" );
+}
+
+TEST_CASE( "writhing_stalker_zombie_distraction_enables_dark_square_strike_without_omniscience",
+           "[writhing_stalker][ai][handoff][zombie_shadow]" )
+{
+    using namespace writhing_stalker;
+
+    live_context no_evidence = pattern_base_context();
+    no_evidence.has_believable_local_evidence = false;
+    no_evidence.distance_to_target = 2;
+    no_evidence.zombie_pressure = 4;
+    no_evidence.near_cover_or_clutter = true;
+    const live_response ignored = evaluate_live_response( no_evidence );
+    CHECK( ignored.next == decision::ignore );
+    CHECK( ignored.reason == "live_no_believable_evidence" );
+
+    live_context distracted = no_evidence;
+    distracted.has_believable_local_evidence = true;
+    const live_response strike = evaluate_live_response( distracted );
+    CHECK( strike.next == decision::strike );
+    CHECK( strike.writeback_intent == handoff_intent::committed_ambush );
+    CHECK( strike.reason == "live_zombie_distraction_dark_square_strike" );
+
+    live_context probe = distracted;
+    probe.distance_to_target = 6;
+    probe.cover_route_available = true;
+    const live_response shadow = evaluate_live_response( probe );
+    CHECK( shadow.next == decision::shadow );
+    CHECK( shadow.writeback_intent == handoff_intent::opportunity_probe );
+    CHECK( shadow.reason == "live_zombie_distraction_dark_square_probe" );
+}
+
+TEST_CASE( "writhing_stalker_handoff_writeback_preserves_spent_cooldown_and_threat_memory",
+           "[writhing_stalker][ai][handoff]" )
+{
+    using namespace writhing_stalker;
+
+    handoff_memory incoming;
+    incoming.intent = handoff_intent::overmatched_stalk;
+    incoming.strike_budget_spent = 1;
+    incoming.cooldown_minutes = 2;
+    incoming.threat_memory = 3;
+    incoming.stalk_distance_omt = 3;
+
+    live_context ctx = pattern_base_context();
+    ctx.distance_to_target = 2;
+    ctx.player_bleeding = true;
+    ctx.player_hurt = true;
+    ctx.player_low_stamina = true;
+    ctx.player_distracted = true;
+    ctx.overmap_intent = incoming.intent;
+    ctx.has_overmap_interest_footing = true;
+    ctx.overmap_stalk_distance_omt = incoming.stalk_distance_omt;
+    ctx.overmap_cooldown_minutes = incoming.cooldown_minutes;
+    ctx.overmap_threat_memory = incoming.threat_memory;
+    const live_response response = evaluate_live_response( ctx );
+
+    const handoff_memory out = writeback_handoff_memory( incoming, response );
+    CHECK( out.reason == response.reason );
+    CHECK( out.cooldown_minutes >= incoming.cooldown_minutes );
+    CHECK( out.threat_memory >= incoming.threat_memory );
+    CHECK( out.stalk_distance_omt == 3 );
+    CHECK( out.strike_budget_spent >= incoming.strike_budget_spent );
+}
+
 TEST_CASE( "writhing_stalker_withdrawal_and_cooldown_block_repeat_spam",
            "[writhing_stalker][ai]" )
 {
@@ -584,6 +710,80 @@ TEST_CASE( "writhing_stalker_withdrawal_and_cooldown_block_repeat_spam",
     const opportunity_report cooldown = evaluate_opportunity( cooldown_ctx );
     CHECK( cooldown.next == decision::cooling_off );
     CHECK( cooldown.reason == "cooldown_blocks_repeat_strike" );
+}
+
+
+TEST_CASE( "writhing_stalker_threat_distraction_state_handles_overmatch_and_anti_gnome",
+           "[writhing_stalker][ai][threat]" )
+{
+    using namespace writhing_stalker;
+
+    threat_context overmatched;
+    overmatched.close_overmap_pressure = true;
+    overmatched.allied_support_nearby = 3;
+    overmatched.daylight_or_bright = true;
+    overmatched.strong_visibility = true;
+    overmatched.valid_evidence_or_path = true;
+    const threat_report retreat = evaluate_threat_state( overmatched );
+    CHECK( retreat.state == threat_state::overmatched_retreat );
+    CHECK( retreat.next == decision::withdraw );
+    CHECK( retreat.stalking_distance_omt == 3 );
+    CHECK( retreat.avoids_sight_tiles );
+    CHECK( retreat.reason == "high_threat_allied_light_retreat_stalk" );
+
+    threat_context zombie_distraction = overmatched;
+    zombie_distraction.has_distraction = true;
+    zombie_distraction.night_or_dark = true;
+    zombie_distraction.daylight_or_bright = false;
+    const threat_report opportunity = evaluate_threat_state( zombie_distraction );
+    CHECK( opportunity.next != decision::withdraw );
+    CHECK( opportunity.opportunity_score > retreat.opportunity_score );
+
+    threat_context window_gnome;
+    window_gnome.night_or_dark = true;
+    window_gnome.outside_reachable_player = true;
+    window_gnome.valid_evidence_or_path = true;
+    window_gnome.bad_position_loiter_turns = 3;
+    const threat_report anti_gnome = evaluate_threat_state( window_gnome );
+    CHECK( anti_gnome.state == threat_state::opportunity_probe );
+    CHECK( anti_gnome.next == decision::shadow );
+    CHECK( anti_gnome.anti_gnome_fired );
+    CHECK( anti_gnome.reason == "anti_gnome_dark_reposition_probe" );
+}
+
+TEST_CASE( "writhing_stalker_live_response_retreats_from_daylight_three_allies_and_breaks_dark_loiter",
+           "[writhing_stalker][ai][live][threat]" )
+{
+    using namespace writhing_stalker;
+
+    live_context overmatched = pattern_base_context();
+    overmatched.distance_to_target = 4;
+    overmatched.target_in_bright_exposure = true;
+    overmatched.target_has_focus = true;
+    overmatched.allied_support_nearby = 3;
+    overmatched.direct_open_route_available = true;
+    const live_response retreat = evaluate_live_response( overmatched );
+    CHECK( retreat.next == decision::withdraw );
+    CHECK( retreat.retreat_distance >= 14 );
+    CHECK( retreat.persistent_state_required );
+    CHECK( retreat.writeback_intent == handoff_intent::overmatched_stalk );
+    CHECK( retreat.overmap_stalk_distance_omt == 3 );
+    CHECK( retreat.reason == "live_high_threat_allied_light_retreat_stalk" );
+
+    live_context dark_window = pattern_base_context();
+    dark_window.distance_to_target = 2;
+    dark_window.cover_route_available = false;
+    dark_window.edge_route_available = true;
+    dark_window.direct_open_route_available = true;
+    dark_window.forced_no_cover = false;
+    dark_window.near_cover_or_clutter = false;
+    dark_window.night_outside_reachable_target = true;
+    dark_window.bad_position_loiter_turns = 3;
+    const live_response anti_gnome = evaluate_live_response( dark_window );
+    CHECK( anti_gnome.next == decision::strike );
+    CHECK( anti_gnome.persistent_state_required );
+    CHECK( anti_gnome.anti_gnome_triggered );
+    CHECK( anti_gnome.reason == "live_anti_gnome_night_reachable_probe_strike" );
 }
 
 TEST_CASE( "writhing_stalker_live_response_requires_evidence_and_uses_cooldown",
@@ -750,7 +950,8 @@ TEST_CASE( "writhing_stalker_pattern_helper_covers_fair_dread_baselines",
     zombie_only.distance_to_target = 2;
     zombie_only.zombie_pressure = 4;
     const live_response distraction_without_vulnerability = evaluate_live_response( zombie_only );
-    CHECK( distraction_without_vulnerability.next != decision::strike );
+    CHECK( distraction_without_vulnerability.next == decision::strike );
+    CHECK( distraction_without_vulnerability.reason == "live_zombie_distraction_dark_square_strike" );
 
     live_context vulnerable = zombie_only;
     vulnerable.player_bleeding = true;

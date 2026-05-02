@@ -278,6 +278,116 @@ approach_report choose_approach( const approach_context &ctx )
     return report;
 }
 
+
+threat_report evaluate_threat_state( const threat_context &ctx )
+{
+    threat_report report;
+    report.reason = "no_threat_state";
+
+    report.threat_score = ctx.allied_support_nearby * 18;
+    if( ctx.daylight_or_bright ) {
+        report.threat_score += 30;
+    }
+    if( ctx.strong_visibility ) {
+        report.threat_score += 20;
+    }
+    const bool close_pressure = ctx.close_overmap_pressure || ctx.same_or_close_overmap;
+    if( close_pressure ) {
+        report.threat_score += 12;
+    }
+    if( ctx.spent_cooldown || ctx.burst_strikes >= ctx.burst_limit ) {
+        report.threat_score += 18;
+    }
+    if( ctx.has_distraction ) {
+        report.threat_score -= 24;
+    }
+
+    if( ctx.night_or_dark ) {
+        report.opportunity_score += 24;
+    }
+    if( ctx.outside_reachable_player ) {
+        report.opportunity_score += 24;
+    }
+    if( ctx.valid_evidence_or_path ) {
+        report.opportunity_score += 16;
+    }
+    if( ctx.has_distraction ) {
+        report.opportunity_score += 30;
+    }
+    if( !( ctx.has_distraction && ctx.night_or_dark ) ) {
+        report.opportunity_score -= std::min( 30, ctx.allied_support_nearby * 10 );
+    }
+    if( ctx.daylight_or_bright ) {
+        report.opportunity_score -= 20;
+    }
+
+    if( ctx.spent_cooldown || ctx.burst_strikes >= ctx.burst_limit ) {
+        report.state = threat_state::spent_disengage;
+        report.next = decision::withdraw;
+        report.stalk_distance_omt = 1;
+        report.stalking_distance_omt = 1;
+        report.avoid_sight_tiles = true;
+        report.avoids_sight_tiles = true;
+        report.reason = "spent_disengage_memory_withdraw";
+        return report;
+    }
+
+    if( close_pressure && ctx.daylight_or_bright && ctx.allied_support_nearby >= 3 &&
+        ( ctx.strong_visibility || ctx.target_has_focus ) && !ctx.has_distraction ) {
+        report.overmatched = true;
+        report.state = threat_state::overmatched_retreat;
+        report.next = decision::withdraw;
+        report.intent = handoff_intent::overmatched_stalk;
+        report.stalk_distance_omt = 3;
+        report.stalking_distance_omt = 3;
+        report.threat_memory = std::max( 3, ctx.allied_support_nearby );
+        report.avoid_sight_tiles = true;
+        report.avoids_sight_tiles = true;
+        report.reason = "high_threat_allied_light_retreat_stalk";
+        return report;
+    }
+
+    if( ctx.night_or_dark && ctx.outside_reachable_player && ctx.valid_evidence_or_path &&
+        ctx.bad_position_loiter_turns >= 3 ) {
+        report.state = threat_state::opportunity_probe;
+        report.next = decision::shadow;
+        report.anti_gnome_fired = true;
+        report.avoids_sight_tiles = true;
+        report.reason = "anti_gnome_dark_reposition_probe";
+        return report;
+    }
+
+    if( report.opportunity_score >= 70 ) {
+        report.state = threat_state::committed_ambush;
+        report.next = decision::strike;
+        report.reason = "dark_distraction_committed_ambush";
+    } else if( report.opportunity_score >= 45 ) {
+        report.state = threat_state::opportunity_probe;
+        report.next = decision::shadow;
+        report.avoids_sight_tiles = true;
+        report.reason = "dark_or_distraction_opportunity_probe";
+    } else if( report.threat_score >= 55 && !ctx.has_distraction &&
+               ctx.allied_support_nearby >= 3 ) {
+        report.state = threat_state::overmatched_retreat;
+        report.next = decision::withdraw;
+        report.overmatched = true;
+        report.intent = handoff_intent::overmatched_stalk;
+        report.stalk_distance_omt = 3;
+        report.stalking_distance_omt = 3;
+        report.threat_memory = std::max( 3, ctx.allied_support_nearby );
+        report.avoid_sight_tiles = true;
+        report.avoids_sight_tiles = true;
+        report.reason = "overmatched_retreat_by_threat_score";
+    } else {
+        report.state = threat_state::watching;
+        report.next = decision::hold;
+        report.avoids_sight_tiles = true;
+        report.reason = "watching_no_commitment";
+    }
+
+    return report;
+}
+
 opportunity_report evaluate_opportunity( const opportunity_context &ctx )
 {
     opportunity_report report;
@@ -291,6 +401,15 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     if( ctx.latch.cooldown_minutes > 0 ) {
         report.next = decision::cooling_off;
         report.reason = "cooldown_blocks_repeat_strike";
+        return report;
+    }
+
+    if( ctx.bright_exposure && ctx.allied_support_nearby >= 3 && ctx.zombie_pressure == 0 &&
+        ctx.burst_strikes == 0 ) {
+        report.burst_limit = burst_limit_for( ctx );
+        report.retreat_distance = retreat_distance_for( ctx );
+        report.next = decision::withdraw;
+        report.reason = "overmatched_three_allies_daylight_withdraw";
         return report;
     }
 
@@ -498,9 +617,117 @@ confidence_report evaluate_confidence( const confidence_context &ctx )
     return report;
 }
 
+
+threat_report evaluate_threat( const threat_context &ctx )
+{
+    threat_context normalized = ctx;
+    normalized.close_overmap_pressure = normalized.close_overmap_pressure ||
+                                        normalized.same_or_close_overmap;
+    normalized.strong_visibility = normalized.strong_visibility || normalized.target_has_focus;
+    normalized.has_distraction = normalized.has_distraction || normalized.zombie_pressure >= 2;
+
+    threat_report report = evaluate_threat_state( normalized );
+
+    if( report.overmatched && ctx.allied_support_nearby >= 3 && ctx.daylight_or_bright &&
+        ctx.target_has_focus && ctx.same_or_close_overmap && !normalized.has_distraction ) {
+        report.reason = ctx.burst_strikes > 0 ? "lit_allied_burst_spent_retreat_stalk" :
+                        "high_threat_allied_light_retreat_stalk";
+    }
+
+    if( !report.overmatched ) {
+        report.reason = "threat_not_overmatched";
+    }
+
+    return report;
+}
+
+live_response resolve_anti_gnome( const anti_gnome_context &ctx )
+{
+    live_response response;
+    response.reason = "anti_gnome_not_triggered";
+
+    if( !ctx.night_outside_reachable_target || !ctx.has_believable_evidence_or_handoff ||
+        ctx.high_threat || ctx.loiter_turns < 2 ) {
+        return response;
+    }
+
+    response.anti_gnome_triggered = true;
+    response.persistent_state_required = true;
+
+    if( ctx.distance_to_target <= 3 ) {
+        response.next = decision::strike;
+        response.writeback_intent = handoff_intent::committed_ambush;
+        response.reason = "anti_gnome_night_reachable_probe_strike";
+        return response;
+    }
+
+    if( ctx.dark_or_covered_route_available ) {
+        response.next = decision::shadow;
+        response.route = approach_class::cover_shadow;
+        response.writeback_intent = handoff_intent::opportunity_probe;
+        response.reason = "anti_gnome_night_reposition_to_dark_route";
+        return response;
+    }
+
+    response.next = decision::withdraw;
+    response.writeback_intent = handoff_intent::spent_disengage;
+    response.writeback_cooldown_minutes = 5;
+    response.reason = "anti_gnome_no_reachable_dark_route_retreat";
+    return response;
+}
+
+handoff_memory writeback_handoff_memory( const handoff_memory &incoming,
+        const live_response &response )
+{
+    handoff_memory out = incoming;
+    out.reason = response.reason;
+
+    out.strike_budget_spent = response.next == decision::strike ?
+                              std::min( response.burst_limit, incoming.strike_budget_spent + 1 ) :
+                              incoming.strike_budget_spent;
+    out.cooldown_minutes = std::max( incoming.cooldown_minutes, response.writeback_cooldown_minutes );
+    out.threat_memory = std::max( incoming.threat_memory, response.writeback_threat_memory );
+    out.stalk_distance_omt = std::max( incoming.stalk_distance_omt,
+                                       response.overmap_stalk_distance_omt );
+
+    if( response.writeback_intent != handoff_intent::none ) {
+        out.intent = response.writeback_intent;
+    } else {
+        switch( response.next ) {
+            case decision::strike:
+                out.intent = handoff_intent::committed_ambush;
+                break;
+            case decision::shadow:
+                out.intent = handoff_intent::shadowing;
+                break;
+            case decision::withdraw:
+                out.intent = handoff_intent::spent_disengage;
+                out.cooldown_minutes = std::max( out.cooldown_minutes, 5 );
+                break;
+            case decision::cooling_off:
+                out.intent = handoff_intent::spent_disengage;
+                break;
+            case decision::hold:
+            case decision::interested:
+            case decision::ignore:
+                break;
+        }
+    }
+
+    if( out.intent == handoff_intent::overmatched_stalk && out.stalk_distance_omt == 0 ) {
+        out.stalk_distance_omt = 3;
+    }
+
+    return out;
+}
+
 live_response evaluate_live_response( const live_context &ctx )
 {
     live_response response;
+    response.writeback_intent = ctx.overmap_intent;
+    response.overmap_stalk_distance_omt = ctx.overmap_stalk_distance_omt;
+    response.writeback_cooldown_minutes = ctx.overmap_cooldown_minutes;
+    response.writeback_threat_memory = ctx.overmap_threat_memory;
 
     opportunity_context opportunity_ctx;
     opportunity_ctx.player_bleeding = ctx.player_bleeding;
@@ -520,9 +747,26 @@ live_response evaluate_live_response( const live_context &ctx )
     response.burst_limit = opportunity.burst_limit;
     response.retreat_distance = opportunity.retreat_distance;
 
-    if( !ctx.has_believable_local_evidence ) {
+    const bool handoff_has_target_footing = ctx.has_overmap_interest_footing &&
+                                        ctx.overmap_intent != handoff_intent::none;
+    if( !ctx.has_believable_local_evidence && !handoff_has_target_footing ) {
         response.next = decision::ignore;
         response.reason = "live_no_believable_evidence";
+        return response;
+    }
+
+    const threat_report threat = evaluate_threat( threat_context{
+        ctx.target_in_bright_exposure || ctx.stalker_in_bright_exposure, ctx.target_has_focus,
+        ctx.distance_to_target <= 18 || ctx.has_overmap_interest_footing, ctx.allied_support_nearby,
+        ctx.zombie_pressure, ctx.burst_strikes } );
+    if( threat.overmatched ) {
+        response.next = threat.next;
+        response.writeback_intent = threat.intent;
+        response.retreat_distance = std::max( response.retreat_distance, 14 );
+        response.overmap_stalk_distance_omt = threat.stalk_distance_omt;
+        response.writeback_threat_memory = threat.threat_memory;
+        response.persistent_state_required = true;
+        response.reason = "live_" + threat.reason;
         return response;
     }
 
@@ -535,7 +779,11 @@ live_response evaluate_live_response( const live_context &ctx )
     interest_ctx.zombie_pressure = ctx.zombie_pressure;
 
     latch_state live_latch;
-    live_latch.cooldown_minutes = ctx.on_cooldown ? 1 : 0;
+    live_latch.cooldown_minutes = std::max( ctx.on_cooldown ? 1 : 0,
+                                            ctx.overmap_cooldown_minutes );
+    live_latch.active = handoff_has_target_footing;
+    live_latch.confidence = handoff_has_target_footing ? 3 : 0;
+    live_latch.leash_tiles_remaining = handoff_has_target_footing ? default_latch_leash_tiles : 0;
     latch_update latch = advance_latch( latch_context{ live_latch, evaluate_interest( interest_ctx ), 0,
             ctx.distance_to_target, ctx.stalker_in_bright_exposure && ctx.target_has_focus } );
 
@@ -568,9 +816,53 @@ live_response evaluate_live_response( const live_context &ctx )
     response.opportunity = opportunity.opportunity;
     response.confidence = confidence.total;
 
+    const live_response anti_gnome = resolve_anti_gnome( anti_gnome_context{
+        ctx.night_outside_reachable_target, ctx.has_believable_local_evidence || handoff_has_target_footing,
+        ctx.cover_route_available || ctx.edge_route_available || ctx.quiet_side_cutoff_available,
+        threat.overmatched, ctx.distance_to_target, ctx.bad_position_loiter_turns } );
+    if( anti_gnome.anti_gnome_triggered ) {
+        response.next = anti_gnome.next;
+        response.route = anti_gnome.route;
+        response.writeback_intent = anti_gnome.writeback_intent;
+        response.writeback_cooldown_minutes = std::max( response.writeback_cooldown_minutes,
+                                             anti_gnome.writeback_cooldown_minutes );
+        response.persistent_state_required = true;
+        response.anti_gnome_triggered = true;
+        response.reason = "live_" + anti_gnome.reason;
+        return response;
+    }
+
     if( opportunity.next == decision::withdraw || opportunity.next == decision::cooling_off ) {
         response.next = opportunity.next;
+        response.writeback_intent = opportunity.next == decision::withdraw ? handoff_intent::spent_disengage :
+                                  handoff_intent::none;
+        response.writeback_cooldown_minutes = opportunity.next == decision::withdraw ? 5 :
+                                              response.writeback_cooldown_minutes;
+        response.persistent_state_required = true;
         response.reason = "live_" + opportunity.reason;
+        return response;
+    }
+
+    const bool vulnerable_player = ctx.player_bleeding || ctx.player_hurt || ctx.player_low_stamina ||
+                                   ctx.player_distracted || ctx.player_noisy;
+    if( !vulnerable_player && ctx.zombie_pressure >= 3 && ctx.distance_to_target <= 3 &&
+        !( ctx.target_in_bright_exposure || ctx.stalker_in_bright_exposure || ctx.target_has_focus ) &&
+        ( ctx.near_cover_or_clutter || ctx.cover_route_available || ctx.quiet_side_cutoff_available ) ) {
+        response.next = decision::strike;
+        response.writeback_intent = handoff_intent::committed_ambush;
+        response.persistent_state_required = true;
+        response.reason = "live_zombie_distraction_dark_square_strike";
+        return response;
+    }
+
+    if( !vulnerable_player && ctx.zombie_pressure >= 3 && opportunity.next != decision::strike &&
+        !( ctx.target_in_bright_exposure || ctx.stalker_in_bright_exposure || ctx.target_has_focus ) &&
+        ( ctx.cover_route_available || ctx.quiet_side_cutoff_available ) ) {
+        response.next = decision::shadow;
+        response.route = approach_class::cover_shadow;
+        response.writeback_intent = handoff_intent::opportunity_probe;
+        response.persistent_state_required = true;
+        response.reason = "live_zombie_distraction_dark_square_probe";
         return response;
     }
 
@@ -581,6 +873,8 @@ live_response evaluate_live_response( const live_context &ctx )
             return response;
         }
         response.next = decision::strike;
+        response.writeback_intent = handoff_intent::committed_ambush;
+        response.persistent_state_required = true;
         response.reason = "live_" + opportunity.reason;
         return response;
     }
@@ -592,12 +886,22 @@ live_response evaluate_live_response( const live_context &ctx )
     }
 
     if( ctx.distance_to_target <= 2 && opportunity.next == decision::hold ) {
+        if( !ctx.target_in_bright_exposure && !ctx.stalker_in_bright_exposure &&
+            ( ctx.direct_open_route_available || ctx.edge_route_available || ctx.cover_route_available ) &&
+            ctx.allied_support_nearby < 2 ) {
+            response.next = decision::shadow;
+            response.reason = "live_dark_reachable_opportunity_probe";
+            return response;
+        }
         response.next = decision::hold;
         response.reason = "live_close_alert_target_hold";
         return response;
     }
 
     response.next = approach.next == decision::shadow ? decision::shadow : opportunity.next;
+    response.writeback_intent = response.next == decision::shadow ? handoff_intent::shadowing :
+                                response.writeback_intent;
+    response.persistent_state_required = ctx.has_overmap_interest_footing;
     response.reason = response.next == decision::shadow ? "live_shadowing_believable_evidence" :
                       "live_" + opportunity.reason;
     return response;
