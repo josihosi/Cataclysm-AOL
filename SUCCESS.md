@@ -113,21 +113,26 @@ Evidence: root cause named as the missing `aggro_character` bridge between rider
 
 ## CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0 — Writhing stalker hit-fade retreat distance
 
-Status: GREENLIT / QUEUED / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP
+Status: CLOSED / CHECKPOINTED GREEN v0 / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP
 
 Success state:
-- [ ] Original flesh-raptor hit-and-run behavior is checked and summarized as the reference baseline, including likely retreat distance/rhythm where evidence allows.
-- [ ] Current stalker burst/retreat behavior is reproduced or minimized, with retreat distance and decision reasons visible.
-- [ ] Stalker post-burst retreat aims for about 8+ tiles when pathing allows, with tested fallback when blocked.
-- [ ] Stress/counterpressure affects burst length and retreat: light plus multiple allies causes earlier/farther caution; high-stress dark/distraction cases may allow 2-4 attacks before disengage.
-- [ ] Deterministic tests cover retreat distance, stress-modulated burst count/caution, and no A/B near-player oscillation after the burst.
-- [ ] Fresh live/handoff validation shows readable attack burst then real disengage, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
-- [ ] Existing stalker guarantees still pass: no omniscience, no constant strike spam, injured retreat, light/focus counterplay, and zombie-shadow/quiet-side behavior.
+- [x] Original flesh-raptor hit-and-run behavior is checked and summarized as the reference baseline, including likely retreat distance/rhythm where evidence allows.
+- [x] Current stalker burst/retreat behavior is reproduced or minimized, with retreat distance and decision reasons visible.
+- [x] Stalker post-burst retreat aims for about 8+ tiles when pathing allows, with tested fallback when blocked.
+- [x] Stress/counterpressure affects burst length and retreat: light plus multiple allies causes earlier/farther caution; high-stress dark/distraction cases may allow 2-4 attacks before disengage.
+- [x] Deterministic tests cover retreat distance, stress-modulated burst count/caution, and no A/B near-player oscillation after the burst.
+- [x] Fresh live/handoff validation shows readable attack burst then real disengage, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [x] Existing stalker guarantees still pass: no omniscience, no constant strike spam, injured retreat, light/focus counterplay, and zombie-shadow/quiet-side behavior.
+
+Evidence: proof/readout `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`; deterministic `[writhing_stalker]` gate green (`206 assertions in 17 test cases`); current-build `cataclysm-tiles` build green; staged-live feature proof `.userdata/dev-harness/harness_runs/20260502_113738/` reports `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`, with strike/withdraw/cooling-off, `burst=0/2`, `burst=1/2`, `burst=2/2`, `retreat_distance=8`, and `cooldown=yes`.
+
+Caveats: staged-but-live McWilliams proof, not natural random discovery; prior watched seed `.userdata/dev-harness/harness_runs/20260502_015032/` remains yellow/debug footing only due to runtime-version mismatch; final human taste is optional/future-only.
 
 Canonical docs:
 - Imagination source: `doc/writhing-stalker-hit-fade-retreat-distance-imagination-source-2026-05-02.md`.
 - Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
 - Handoff packet: `doc/writhing-stalker-hit-fade-retreat-distance-handoff-v0-2026-05-02.md`.
+- Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`.
 
 ---
 
