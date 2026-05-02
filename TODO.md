@@ -3,29 +3,22 @@
 Short execution queue only.
 
 Remove finished items when they are done.
-Do not turn this file into a museum of crossed-off errands.
 If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `CAOL-WRITHING-STALKER-v0` / playable singleton predator v0.
+Relay-ready taste lane: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
 
-Links:
-- receipt: `doc/work-ledger.md`
-- raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`
-- imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
-- contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
-- testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
+Current execution item: none after `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` closed green v0.
 
-Current state boundary: `CAOL-BANDIT-STRUCT-BOUNTY-v0` is closed/checkpointed green for v0 in `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`. Writhing stalker is now greenlit in canon, but Andi cron and Augerl-Frau review cron remain disabled until explicitly re-enabled.
+Current checkpoint:
+- Visions sampler remains relay-ready for Schani/Josef; do not keep revalidating it by ritual.
+- Bandit scenic shakedown chat openings are closed/checkpointed green v0: proof in `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
+- Portal-storm warning-light lane is Frau-accepted green v0 from commits `74ef657057` / `8ea5546107`; proof in `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`. Do not rerun it by ritual.
+- Writhing stalker hit-fade retreat-distance is closed/checkpointed green v0: proof in `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`; staged live run `.userdata/dev-harness/harness_runs/20260502_113738/` is feature-path green.
+- Bandit signal adapter reduction is closed/checkpointed green v0: proof in `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`; live `fd_fire` / `fd_smoke` mapping now goes through `bandit_mark_generation::adapt_local_field_signal_reading()` and preserves the existing `overmap_buffer.signal_hordes` light seam.
 
-1. Add the writhing stalker monster/stat/spawn footing with rarity/singleton guardrails.
-2. Add deterministic stalker-interest/latch/opportunity/withdraw helper tests before live behavior gets fancy.
-3. Wire only the smallest needed live seam for shadow/strike/withdraw behavior; do not inherit bandit camp economy.
-4. Build harness scenarios for:
-   - `writhing_stalker.live_shadow_strike_mcw`
-   - `writhing_stalker.live_no_omniscient_beeline_mcw`
-   - `writhing_stalker.live_exposed_retreat_mcw`
-5. Run the smallest honest gates after each code slice, then update `TESTING.md`, `SUCCESS.md`, and `doc/work-ledger.md` with exact evidence.
+Next execution target:
+- Schani/plans-aux should confirm or promote the next active item from current `Plan.md` canon. Do not silently reopen closed portal-storm, bandit, visions, camp-locker, or writhing-stalker lanes by drift.
 
-Do **not** implement bandit shakedown/camp logic, Basecamp economy hooks, common spawn spam, teleport ambushes, global exact scans, or long-term nemesis arcs in v0.
+Non-goals: no portal-storm gameplay/weather redesign, no closed-lane reopen by drift, no bandit/visions/camp-locker/writhing-stalker rerun by ritual, no release packaging, no broad proof soup.

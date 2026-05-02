@@ -1041,6 +1041,68 @@ light_projection adapt_light_packet( const light_packet &packet )
     return projection;
 }
 
+local_field_signal_projection adapt_local_field_signal_reading(
+    const local_field_signal_reading &reading )
+{
+    local_field_signal_projection result;
+    if( reading.fire_intensity <= 0 && reading.smoke_intensity <= 0 ) {
+        return result;
+    }
+
+    smoke_packet smoke;
+    smoke.id = reading.smoke_id;
+    smoke.envelope_id = reading.envelope_id;
+    smoke.region_id = reading.region_id;
+    smoke.observed_range_omt = reading.observed_range_omt;
+    smoke.source_strength = std::clamp( reading.fire_intensity + reading.smoke_intensity, 1, 3 );
+    smoke.persistence = reading.smoke_intensity > 0 ? 1 : 0;
+    smoke.height_bias = reading.fire_intensity >= 2 ? 1 : 0;
+    smoke.spread_bias = 0;
+    smoke.weather = reading.smoke_weather;
+    smoke.notes.push_back( "live source hook: fd_fire=" +
+                           std::to_string( reading.fire_intensity ) +
+                           ", fd_smoke=" + std::to_string( reading.smoke_intensity ) );
+    smoke.notes.push_back( "live source hook: weather=" +
+                           to_string( reading.smoke_weather ) );
+    smoke.notes.push_back( "local field adapter: fd_fire/fd_smoke -> smoke packet" );
+    result.has_smoke_packet = true;
+    result.smoke = adapt_smoke_packet( smoke );
+
+    if( reading.fire_intensity <= 0 ) {
+        return result;
+    }
+
+    light_packet light;
+    light.id = reading.light_id;
+    light.envelope_id = reading.envelope_id;
+    light.region_id = reading.region_id;
+    light.observed_range_omt = reading.observed_range_omt;
+    light.source_strength = std::clamp( reading.fire_intensity, 1, 3 );
+    light.persistence = reading.fire_intensity >= 2 ? 1 : 0;
+    const bool exposed_to_sky = reading.outside || reading.elevated_roof_exposed;
+    light.side_leakage = exposed_to_sky ? 1 : 0;
+    light.time = reading.light_time;
+    light.weather = reading.light_weather;
+    light.exposure = exposed_to_sky ? light_exposure_band::exposed : light_exposure_band::contained;
+    light.source = light_source_band::ordinary;
+    light.terrain = exposed_to_sky ? light_terrain_band::open : light_terrain_band::built_cover;
+    if( reading.elevated_roof_exposed ) {
+        light.vertical_sightline = true;
+        light.elevation_bonus = 2;
+    }
+    light.notes.push_back( "live source hook: fd_fire=" +
+                           std::to_string( reading.fire_intensity ) +
+                           ", exposure=" + to_string( light.exposure ) +
+                           ", elevated_roof_exposed=" +
+                           std::string( reading.elevated_roof_exposed ? "yes" : "no" ) );
+    light.notes.push_back( "live source hook: time=" + to_string( reading.light_time ) +
+                           ", weather=" + to_string( reading.light_weather ) );
+    light.notes.push_back( "local field adapter: fd_fire/time/weather -> light packet" );
+    result.has_light_packet = true;
+    result.light = adapt_light_packet( light );
+    return result;
+}
+
 int horde_signal_power_from_light_projection( const light_projection &projection )
 {
     if( !projection.viable ) {

@@ -17,31 +17,408 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
-## CAOL-WRITHING-STALKER-v0 — Writhing stalker behavior packet v0
+## CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0 — Camp locker zone playtests
 
-Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
-- [ ] Monster/stat/spawn footing exists and validates.
-- [ ] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
-- [ ] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
-- [ ] Direct player/human evidence can create a bounded latch without permanent omniscience.
-- [ ] Weak/no/stale evidence decays or fails to latch.
-- [ ] Exposed night light, cover/edge terrain, and zombie distraction affect interest/opportunity with named reasons.
-- [ ] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
-- [ ] Strike behavior creates short cut/bleed pressure rather than a tank duel.
-- [ ] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
-- [ ] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
-- [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
-- [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
-- [ ] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
-- [ ] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, or too stupid.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
+- [x] The playtest pass chooses a bounded v0 set instead of reopening all locker-zone history.
+- [x] At least one current-build harness/live row proves real `CAMP_LOCKER` zone footing with a scenario/run id and artifact path, or records the exact harness/UI blocker.
+- [x] At least one row proves camp locker service behavior from zone stock on the real service path, not only helper classification.
+- [x] At least one row checks boundary/exclusion behavior such as `NO_NPC_PICKUP`, non-locker stock, or saved zone persistence.
+- [x] Weather/wait or practical gear behavior is either playtested on a live/harness row or explicitly scoped out with a reason.
+- [x] Screenshots/OCR/save audits name the visible or persisted fact they prove; raw JSON and startup/load are not credited as gameplay proof.
+- [x] If the harness cannot honestly prove a required row, `runtime/josef-playtest-package.md` or a repo doc gets a concise Josef manual playtest recipe with expected outcomes and closure criteria.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on the final state before closure.
+
+Canonical docs:
+- Proof/readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
+- Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
+- Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
+- Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+
+---
+
+## CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0 — Writhing stalker live fun-scenario benchmarks
+
+Status: CLOSED / CHECKPOINTED GREEN V0 LIVE FUN-SCENARIO PACKET
+
+Success state:
+- [x] Scenario A campfire/light counterplay is green: `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/`.
+- [x] Scenario B alley predator/shadow route is green: `writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/`.
+- [x] Scenario C zombie distraction without magic is green: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/`; no-magic guard `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/`.
+- [x] Scenario D door/light escape is green: `writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/`.
+- [x] Scenario E wounded predator retreat is green: `writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/`.
+- [x] At least one repeated-turn trace proves the fun rhythm: shadow/pressure -> strike -> cooldown/reposition -> second strike, plus wounded retreat and escape break.
+- [x] All credited rows include scenario/run ids, decision/reason traces, pass/fail verdicts, and stability/perf notes in `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
+- [x] Smallest behavior/tuning change made: live cooldown no longer refreshes `effect_run` every cooling-off turn, preserving no-omniscience, counterplay, cooldown anti-spam, and injured retreat.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`.
+- Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+- Closure proof: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
+
+---
+
+## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
+
+Status: CLOSED / CHECKPOINTED GREEN V0 INITIAL DEV
+
+Success state:
+- [x] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
+- [x] Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
+- [x] Pre-local-combat counterplay footing proves the actual large rider body rejects `SMALL_PASSAGE` / window-like terrain while normal-sized pathing can use the same passable seam.
+- [x] Local combat tests cover scary-fast movement, ranged shooting, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
+- [x] Overmap light-attraction tests cover mature-world attraction, early-world suppression, no-light/weak/daylight negative controls, temporary light-memory decay, and a max two-rider draw cap.
+- [x] Map-AI tests cover rider convergence, rider-band formation, repeated-interest accumulation caps, and no-convergence after decayed interest.
+- [x] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement. Rows green so far: open-field local-combat pressure via `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/`; wounded disengagement via `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/`; cover/LOS escape via `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260501_021656/`; camp-light convergence/band circle-harass via `zombie_rider.live_camp_light_band_mcw` -> `.userdata/dev-harness/harness_runs/20260501_030432/`; matched no-camp-light negative control via `zombie_rider.live_no_camp_light_control_mcw` -> `.userdata/dev-harness/harness_runs/20260501_032016/`.
+- [x] Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs. Current row metrics are recorded in `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md`, `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`, `doc/zombie-rider-live-funness-cover-escape-proof-v0-2026-05-01.md`, `doc/zombie-rider-live-funness-camp-light-proof-v0-2026-05-01.md`, and `doc/zombie-rider-live-funness-no-camp-light-control-proof-v0-2026-05-01.md`.
+- [x] No unresolved tuning problem surfaced during v0 proof; the smallest landed changes preserve endpoint danger, readable counterplay, no early routine spawn, no omniscient light doom, and no infinite banding.
+- [x] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `TODO.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final closed state; closure readout: `doc/zombie-rider-0.3-closure-readout-v0-2026-05-01.md`.
+
+Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Follow-up deterministic passage-seam proof adds `zombie_rider_large_body_small_passage_pathing`: spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains move-valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Local combat checkpoint `4343dbdad1` proves live `monster::plan()` consumption for bow shot cadence/cooldown, post-shot reposition destination, close-pressure retreat, injured withdrawal, and blocked-LOS no-shot counterplay; gate `./tests/cata_test "[zombie_rider]"` -> `All tests passed (100 assertions in 7 test cases)`. Overmap light-attraction checkpoint `d2ffbd54c3` adds `zombie_rider_overmap_ai` over existing light projection/horde signal footing with mature-world gate, negative controls, memory decay, and `max_riders_drawn_by_light = 2`; gate `make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (135 assertions in 10 test cases)`. Rider convergence/band checkpoint `ce05ef44ec` adds capped deterministic convergence by distance then `rider_id`, decayed-memory/no-eligible/lone-rider controls, and camp pressure posture selection for `none`, `investigate`, `circle_harass`, `direct_attack`, and `withdraw`; gate `git diff --check && make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (170 assertions in 14 test cases)`. First staged-but-live open-field row `zombie_rider.live_open_field_pressure_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_013055/`: one hostile rider at `[0,-5,0]`, noon start, safe mode off, `6/6` step rows green, no abort/runtime warnings, `bow_pressure` then `withdraw` live-plan artifact rows, max observed `eval_us=2`; proof note `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md`. Wounded disengagement row `zombie_rider.live_wounded_disengagement_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_014613/` after forced fresh executable relink: one wounded hostile rider at `[0,-8,0]`, `hp=36`, `6/6` step rows green, no abort/runtime warnings, `withdraw=14`, `bow_pressure=0`, distance widens `7` -> `24`, max observed `eval_us=3`; proof note `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`. Cover/LOS escape row `zombie_rider.live_cover_escape_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_021656/`: one hostile rider at `[10,0,0]` behind a thick `f_locker` wall, noon start, zero overmap NPC targets, `9/9` step rows green, no abort/runtime warnings, feature-path proof, `target_probe=104`, `decision=bow_pressure=0`, `line_of_fire=yes=0`; proof note `doc/zombie-rider-live-funness-cover-escape-proof-v0-2026-05-01.md`. Camp-light convergence/band row `zombie_rider.live_camp_light_band_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_030432/` after the fresh `cataclysm-tiles` relink: mature-world midnight (`world_age_days=735`), zero overmap NPC targets, two hostile riders, four bright `fd_fire` camp lights, `8/8` step rows green, feature-path proof, and same-run artifact row `aggregate_sources=3`, `selected_riders=2`, `band_formed=yes`, `band_size=2`, `posture=circle_harass`; proof note `doc/zombie-rider-live-funness-camp-light-proof-v0-2026-05-01.md`. Matched no-camp-light control row `zombie_rider.live_no_camp_light_control_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_032016/` after refreshing `obj/tiles/version.o`: same mature-world midnight/two-rider footing, zero overmap NPC targets, no `fd_fire` at the four positive-row source offsets, `8/8` step rows green, feature-path proof, and negative artifact guard absence for `zombie_rider camp_light:`, `bandit_live_world horde light signal:`, `selected_riders= && band_formed=yes`, and `posture=circle_harass`; proof note `doc/zombie-rider-live-funness-no-camp-light-control-proof-v0-2026-05-01.md`. Scope caveat: these are staged-but-live rows, not natural discovery or full siege/navigation proof.
+
+Canonical docs:
+- Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+- Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`.
+- Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`.
+
+---
+
+## CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0 — Zombie rider close-pressure no-attack fix
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+
+Success state:
+- [x] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
+- [x] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
+- [x] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
+- [x] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
+- [x] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [x] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
+- [x] Zombie rider description text is updated/preserved according to Josef's corrected product image.
+
+Canonical docs:
+- Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+- Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
+- Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+- Closure proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
+
+Evidence: root cause named as the missing `aggro_character` bridge between rider `bow_pressure` planning and the monster gun actor's avatar-target gate. Gates: `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (199 assertions in 16 test cases)`; `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` -> exit `0`. Fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` is green feature-path proof: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings, saved rider ammo audited as `arrow_wood=18`, live log shows `aggro_before=no aggro_after=yes`, bow ammo decrement, and close `decision=reposition reason=too_close_bunny_hop`. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
+
+---
+
+## CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0 — Writhing stalker hit-fade retreat distance
+
+Status: CLOSED / CHECKPOINTED GREEN v0 / PRODUCT-TUNING + BEHAVIOR FIX FOLLOW-UP
+
+Success state:
+- [x] Original flesh-raptor hit-and-run behavior is checked and summarized as the reference baseline, including likely retreat distance/rhythm where evidence allows.
+- [x] Current stalker burst/retreat behavior is reproduced or minimized, with retreat distance and decision reasons visible.
+- [x] Stalker post-burst retreat aims for about 8+ tiles when pathing allows, with tested fallback when blocked.
+- [x] Stress/counterpressure affects burst length and retreat: light plus multiple allies causes earlier/farther caution; high-stress dark/distraction cases may allow 2-4 attacks before disengage.
+- [x] Deterministic tests cover retreat distance, stress-modulated burst count/caution, and no A/B near-player oscillation after the burst.
+- [x] Fresh live/handoff validation shows readable attack burst then real disengage, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [x] Existing stalker guarantees still pass: no omniscience, no constant strike spam, injured retreat, light/focus counterplay, and zombie-shadow/quiet-side behavior.
+
+Evidence: proof/readout `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`; deterministic `[writhing_stalker]` gate green (`206 assertions in 17 test cases`); current-build `cataclysm-tiles` build green; staged-live feature proof `.userdata/dev-harness/harness_runs/20260502_113738/` reports `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`, with strike/withdraw/cooling-off, `burst=0/2`, `burst=1/2`, `burst=2/2`, `retreat_distance=8`, and `cooldown=yes`.
+
+Caveats: staged-but-live McWilliams proof, not natural random discovery; prior watched seed `.userdata/dev-harness/harness_runs/20260502_015032/` remains yellow/debug footing only due to runtime-version mismatch; final human taste is optional/future-only.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-hit-fade-retreat-distance-imagination-source-2026-05-02.md`.
+- Contract: `doc/writhing-stalker-hit-fade-retreat-distance-packet-v0-2026-05-02.md`.
+- Handoff packet: `doc/writhing-stalker-hit-fade-retreat-distance-handoff-v0-2026-05-02.md`.
+- Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`.
+
+---
+
+## CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0 — Flesh raptor circling skirmisher retrofit
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
+
+Success state:
+- [x] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
+- [x] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
+- [x] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
+- [x] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
+- [x] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage/frustration events, player counterplay, warnings/errors, and perceived fun/annoyance caveats.
+- [x] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+- [x] Frau closure review accepted v0 for agent-side close with staged-but-live caveats; Josef taste/playtest is optional/future, not a blocker.
+
+Evidence: focused `[flesh_raptor]` tests are green; full tiles build is green; `git diff --check` is clean; `astyle-diff` is unavailable on this host because `astyle` is not installed. Credited staged-but-live rows: open field `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/`; crowded arc `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/`; blocked corridor `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_054807/`; old-feeling/equipment-frustration comparison `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/`.
+
+Caveats: staged-but-live McWilliams rows, not natural random discovery; no equipment-damage tuning changed; later Josef taste/tuning feedback would be a follow-up, not a v0 proof failure.
+
+Canonical docs:
+- Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+- Contract / closure evidence: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0 — Writhing stalker zombie-shadow predator shift
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / PREDATOR VARIETY PACKAGE
+
+Success state:
+- [x] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
+- [x] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
+- [x] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
+- [x] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
+- [x] Live/playtest rows prove at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario, scoped to local-evidence-only live footing.
+- [x] Metrics include zombie-pressure side, chosen quiet-side/cutoff tile, confidence reasons, strike timing, counterplay outcome, turn-time cost, warnings/errors, and player fun/fairness notes, with the live overmap-interest caveat preserved.
+
+Evidence: `src/writhing_stalker_ai.*` adds confidence and quiet-side/cutoff evaluators; `src/monmove.cpp` consumes the quiet-side scorer for live shadow destinations and logs confidence plus same-run quiet-cutoff pressure/chosen-tile metrics; `tests/writhing_stalker_test.cpp` covers one-sided zombie pressure, split-pressure ambiguity, retreat-route cutoff bias, pressure gating, and light/focus/open-exposure suppression. Gates: `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` -> `All tests passed (135 assertions in 12 test cases)`; `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (167 assertions in 14 test cases)`. First scoped live row: `writhing_stalker.live_quiet_side_zombie_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071548/`; proof note `doc/writhing-stalker-zombie-shadow-live-quiet-side-proof-v0-2026-05-01.md`; decisive lines include `overmap_interest=no`, `zombie_pressure=3`, `pressure_x=3`, `quiet_x=-1`, `chosen_rel_x=-1`, `chosen_rel_y=-4`, `reason=quiet_side_cutoff_preferred`, max matched `eval_us=38`. Later sampler audit found an `ERROR GAME` wall-location backtrace in this row's `probe.artifacts.log`, so it is dirty/caveated for Josef-facing optical footing unless rerun clean. Second scoped live row: `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260501_071940/`; proof note `doc/writhing-stalker-zombie-shadow-live-escape-side-proof-v0-2026-05-01.md`; decisive lines include `overmap_interest=no`, `zombie_pressure=3`, `pressure_y=-3`, `quiet_y=1`, `chosen_rel_x=-2`, `chosen_rel_y=4`, `reason=quiet_side_cutoff_preferred`, max matched shadow `eval_us=16`, no runtime warnings, no abort.
+
+Canonical docs:
+- Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0 — Writhing stalker behavior seam reduction
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [x] Existing monster behavior/strategy/special-attack seams that can replace bespoke writhing-stalker planning glue are identified in the implementation note or commit message: the refactor reuses `monster::plan()` target acquisition plus generic hostile/flee fallback through a named `targeted_live_plan_adapter`; no behavior-tree or special-attack seam honestly owns this destination-planning response today.
+- [x] The live-facing `monster::plan()` path still consumes the approved stalker behavior current at execution time through a named, test-covered seam.
+- [x] Focused `[writhing_stalker]` tests remain green for the approved zombie-shadow behavior, including no-evidence/no-beeline, quiet-side/cutoff scoring, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+- [x] At least one new or updated seam-consumption test fails if the behavior is only exercised by detached helper code and not by the live planner path.
+- [x] No product tuning or new gameplay claim is mixed into the refactor unless separately promoted and proven.
+
+Evidence: `src/monmove.cpp` replaces three inline live-plan exceptions with `targeted_live_plan_adapter` dispatch for writhing stalker, zombie rider, and flesh raptor before generic destination fallback, while leaving product-specific stalker evaluator and quiet-side scorer custom. Gates: `git diff --check`; `make -j4 tests/writhing_stalker_test.o tests src/writhing_stalker_ai.o LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]"` -> `All tests passed (192 assertions in 15 test cases)`; `./tests/cata_test "[zombie_rider],[flesh_raptor]"` -> `All tests passed (231 assertions in 21 test cases)`.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-VISIONS-PLAYTEST-SAMPLER-v0 — C-AOL visions product-feel sampler
+
+Status: ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
+
+Success state:
+- [x] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.
+- [x] Each postcard has a named vision, a prepared scenario/handoff or exact setup recipe, and a short Josef-facing play instruction.
+- [x] Each visual postcard has at least one screenshot checkpoint with a named expected optical/visible fact.
+- [x] Each postcard has focused taste questions that distinguish fun/readable/fair/alive/optically-legible/gnostic from annoying/fake/unfair/invisible/visually-confusing/hollow.
+- [x] Existing closed proof rows are cited as footing where used, without laundering staged rows into natural discovery claims.
+- [x] If fresh handoff runs are created, each run records artifact dir, cleanup/handoff status, and one visible fact or explicit reason visual proof is not the evidence class. (No fresh handoff runs created for this draft checkpoint; exact handoff commands are listed per postcard.)
+- [x] The final Josef handoff is short enough to actually use.
+
+Canonical docs:
+- Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+- Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+- Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+
+Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, flesh raptor, camp locker), includes handoff commands, screenshot checkpoints, existing artifact footing, taste/gnostic questions, staged-footing caveats, and a compressed Schani/Josef relay packet. Post-crunch correction applied: the stalker postcard uses the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/` as primary footing; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is explicitly dirty/caveated because targeted grep found `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`. Agent-side sampler prep is complete; remaining taste collection is Schani/Josef relay or optional live handoff setup, not more proof.
+
+---
+
+## CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 — Bandit scenic shakedown chat openings
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
+
+Success state:
+- [x] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not. _Implemented via `dialogue_window` in `src/do_turn.cpp`; narrow compile/test green._
+- [x] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration. _Current deterministic set: basecamp pressure, warning from cover, weakness read, roadblock toll, reopened demand._
+- [x] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics. _Dialogue responses are Pay / Fight / Refuse; fight/refuse both enter the hostile branch, pay still surrenders demanded reachable goods._
+- [x] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof. _Green rows: `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065253/`; `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065445/`._
+- [x] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts. _Screenshots: `advance_final_turn_to_first_shakedown.after.png` and `advance_final_turn_to_reopened_shakedown.after.png`, review copies in `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/`._
+- [x] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI. _Green row: `cannibal.live_world_exposed_sight_avoid_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065927/`, with `profile=cannibal_camp`, `shakedown=no`, `combat_forward=no`._
+
+Canonical docs:
+- Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+- Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
+- Gate: `git diff --check`; `make -j4 tests src/do_turn.o src/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][shakedown]"` -> `All tests passed (136 assertions in 4 test cases)`.
+
+---
+
+## CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0 — Harness portal-storm warning light
+
+Status: CHECKPOINTED GREEN V0 / HARNESS-HARDENING FOLLOW-UP
+
+Success state:
+- [x] Harness reads the relevant saved/current weather state and recognizes portal storm weather explicitly.
+- [x] `probe`, `handoff`, and `repeatability` report surfaces include a visible portal-storm warning/light when observed.
+- [x] Step ledger or report status makes unallowed portal storm contamination yellow/red instead of silent green.
+- [x] Scenarios can explicitly allow or require portal storms without making every intentional portal-storm test fail.
+- [x] Negative-control proof shows normal weather does not trigger the warning.
+- [x] Documentation tells Andi/Schani how to interpret the warning: rerun under controlled weather unless the scenario intentionally tests portal storms.
+
+Canonical docs:
+- Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+- Proof: `doc/harness-portal-storm-warning-light-proof-v0-2026-05-02.md`.
+- Gate: `python3 tools/openclaw_harness/proof_classification_unit_test.py`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
+
+---
+
+## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [x] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
+- [x] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept readiness items.
+- [x] Carried cleanup still dumps only safe non-kept baggage and preserves worn/wielded items plus kept ammo/magazine/medical/insert supplies.
+- [x] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
+- [x] Live clothing/armor scoring uses the worker fit context through `item::get_avg_encumber()` for encumbrance penalties, while no-context helper calls keep the prior fallback.
+- [x] Live worn-slot candidate collection uses `Character::can_wear(..., true)` to filter worker-specific unwearable armor/clothing before camp scoring/planning, while no-worker helper classification stays stable.
+- [x] Live service pre-pass and post-service summary use `collect_camp_locker_live_state()` so worker items, locker stock, candidates, planning, cleanup, ranged readiness, and medical readiness share one aggregation path.
+- [x] Live weapon-slot candidate collection uses `Character::can_wield()` to reject worker-specific unwieldable melee/ranged candidates while no-worker helper classification stays stable.
+- [x] Camp locker ranged-weapon classification defers to `item::is_gun()` instead of a firearm-only predicate, preserving primitive ranged weapons as item-owned ranged candidates.
+- [x] Camp locker armor/clothing classification defers its armor boundary to `item::is_armor()` instead of raw armor-slot lookup, preserving camp slot policy while respecting engine armor ontology.
+- [x] Camp locker outerwear/body-armor classification uses existing armor layer APIs, including the body-part-specific `item::has_layer(..., bodypart_id)` overload for torso/arm/leg outer-layer checks, instead of raw `OUTER` flags or global layer checks plus duplicate coverage gates.
+- [x] Camp locker leg-accessory classification uses existing armor layer data (`item::has_layer({ layer_level::BELTED })`) instead of raw `BELTED` flag reads for strapped armor, while `BELT_CLIP` remains explicit item clip policy.
+- [x] Camp locker protection and ballistic-resistance scoring now consume the shared `resistances` aggregate for bash/cut/bullet armor resistance instead of separate camp-local item-resistance lookups; camp weighting policy remains explicit.
+- [x] Camp locker body-part coverage/layer helper callers pass existing `body_part_*` ids and subpart coverage helper callers pass `sub_bodypart_str_id` constants instead of rebuilding body/subpart ids from repeated string literals; camp slot/body/sub-region policy remains explicit.
+- [x] Live melee/ranged weapon scoring defers to `Character::evaluate_weapon(..., true)` when a worker fit context is available, while no-context helper calls retain the prior fallback scoring.
+- [x] Worker-context ammo readiness defers reload viability to `Character::can_reload()`, so engine-owned reload constraints such as ammo-belt linkages gate locker ammo readiness.
+- [x] Locker reload supply selection uses `item::ammo_remaining()` instead of ammo-only `charges`, allowing reload-compatible loaded speedloaders/supplies to ready weapons through existing reload APIs.
+- [x] Compatible magazine total-capacity preference composes existing item ammo-state APIs (`item::ammo_remaining()` plus `item::remaining_ammo_capacity()`) instead of camp-local `ammo_data()` / default-ammo type lookup plumbing.
+- [x] Managed ranged-readiness recognition asks existing `item::is_gun()` directly instead of re-entering camp locker classification, while enabled-slot policy stays explicit.
+- [x] Ranged readiness ready/loaded checks use `item::has_ammo()` instead of local `ammo_remaining() > 0` / `<= 0` predicates, while camp policy still decides which magazines and reload supplies to move.
+- [x] Direct medical supply recognition uses `item::get_usable_item()` / `item::get_use()` instead of raw type use lookup, while camp policy still limits readiness stock to direct bandage/bleed supplies.
+- [x] Carried cleanup armor-insert preservation now asks existing ablative carrier pockets whether they can contain an item instead of using raw `CANT_WEAR` as insert ontology; ordinary carried armor still dumps through camp-storage cleanup.
+- [x] Focused faction/basecamp tests pass for the closed camp-locker API-reduction package without widening the lane.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0 — Bandit signal adapter reduction
+
+Status: CLOSED / CHECKPOINTED GREEN V0 / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [x] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter over local fields/time/weather.
+- [x] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
+- [x] A focused test/source seam guard proves horde reactions still go through `overmap_buffer.signal_hordes` / `overmap::signal_hordes` rather than a private horde path.
+- [x] Existing roof-fire/live-signal expectations remain true, or any changed expectation is explicitly classified as tuning instead of cleanup.
+- [x] No bandit dispatch, roster, structural-bounty, or camp-map behavior claim is made from adapter refactoring alone.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+- Closure proof: `doc/bandit-signal-adapter-reduction-proof-v0-2026-05-02.md`.
+
+Evidence: `git diff --check`; `make -j4 tests/bandit_mark_generation_test.o src/bandit_mark_generation.o obj/do_turn.o LINTJSON=0 ASTYLE=0`; standalone adapter probe; `make -j1 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[bandit][marks]"` -> `All tests passed (236 assertions in 18 test cases)`.
+
+---
+
+## CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 — Multi-camp signal gauntlet
+
+Status: CLOSED / CHECKPOINTED GREEN V0
+
+Success state:
+- [x] A named Challenge A scenario/fixture exists and runs: `bandit.multi_camp_structural_stress_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_204416/`.
+- [x] Challenge A proves at least two camp/site states before/after bounded time and reports active outings/target choices/no-repeat state.
+- [x] Challenge A reports dogpile/spread/hold behavior and timing/log stability.
+- [x] A named Challenge B scenario/fixture exists and runs: `bandit.mixed_signal_coexistence_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203757/`.
+- [x] Challenge B combines structural bounty with live smoke/fire signal footing and reports candidate priority/reasons.
+- [x] Challenge B proves neither signal class silently wipes the other’s state.
+- [x] Reload/resume continuity is green for meaningful active live-signal scout + structural scavenge outings: `bandit.mixed_signal_reload_resume_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203944/`.
+- [x] Metrics include waited time/sampled turns, per-cadence perf counters, active group/site counts, warnings/errors/log spam, and crash status.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
+
+Canonical docs:
+- Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`.
+- Proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
+- Prior structural-bounty closure footing: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md` and `.userdata/dev-harness/harness_runs/20260430_115157/`.
+
+Caveats preserved: two camps rather than four; staged-but-live smoke/fire signal footing; Challenge A proves harvested fixture leads plus east-camp followthrough/no-repeat, not all-camps-idle. No dogpile, stale-state, reload-loss, CPU churn, log spam, or crash failure was observed in the final green runs.
+
+---
+
+
+## CAOL-WRITHING-STALKER-PATTERN-TESTS-v0 — Writhing stalker primitive behavior-pattern tests
+
+Status: CLOSED / CHECKPOINTED GREEN V0
+
+Success state:
+- [x] A named primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper exists in `tests/writhing_stalker_test.cpp` (`stalker_pattern_row`, `trace_rows`, `run_vulnerable_stalker_pattern`).
+- [x] Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
+- [x] Repeated-attack evidence shows a healthy stalker can strike, cool down/reposition, and strike again if the player remains vulnerable and the opportunity remains plausible.
+- [x] Injured-retreat evidence shows badly-injured stalker self-preservation overrides greed even when the player is vulnerable (`hp=50`, `live_stalker_hurt_withdraw`).
+- [x] Current code passes without behavior/tuning change; no-omniscience, cover preference, exposed-withdraw, and cooldown anti-spam constraints remain guarded.
+- [x] Focused writhing-stalker tests were run and recorded; no fresh live-seam probe was needed because this slice changed tests only and the unchanged `monster::plan()` seam already consumes `writhing_stalker::evaluate_live_response`.
+- [x] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final closed state.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
+- Closure proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+- Prior v0 closure footing: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md` and `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+
+Evidence: `make -j4 tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker][ai]"` passed (`97 assertions in 8 test cases`); `./tests/cata_test "[writhing_stalker]"` passed (`129 assertions in 10 test cases`). Trace proof shows `t0 shadow`, `t1 strike`, `t2/t3 cooling_off`, `t4 shadow`, `t5 strike`, `t6/t7 withdraw` with strike count `2`, cooldown anti-spam, retreat at `hp=50`, and jitter count `0`.
+
+---
+
+
+## CAOL-ROOF-HORDE-NICE-FIRE-v0 — Roof-fire horde nice-fire playtest
+
+Status: CLOSED / CHECKPOINTED GREEN V0
+
+Success state:
+- [x] A named scenario/fixture exists for this packet: `bandit.roof_fire_horde_nice_roof_fire_mcw` reuses the honest split fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29`.
+- [x] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain: source run `.userdata/dev-harness/harness_runs/20260429_172847/`, audited again in green run `.userdata/dev-harness/harness_runs/20260430_191556/`.
+- [x] A horde is present before the wait at a plausible distance with saved/metadata footing: `mon_zombie` at offset `[0,-120,0]`, destination self, `tracking_intensity=0`, `last_processed=0`, `moves=0`.
+- [x] Bounded in-game time passes through the wait path: `5m`, observed turn delta `300` (`5266942` -> `5267242`).
+- [x] Same-run artifacts show the roof-fire signal path firing for the elevated fire: `bandit_live_world horde light signal ... source_omt=(140,41,1) horde_signal_power=20 ... elevated_exposure_extended=yes`.
+- [x] Saved/log artifacts show horde response after the wait: destination retargeted to `[3360,984,1]`, `last_processed=5267242`, `moves=8400`.
+- [x] Metrics report cost/stability and labels unavailable horde-specific timing as `not instrumented`: end-to-end harness wall-clock `2:34.72`, `14/14` step rows green, `1/1` wait rows green, no runtime warnings/abort, horde-specific timing `not instrumented`.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match the final state.
+
+Canonical docs:
+- Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`.
+- Closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
+- Green run: `.userdata/dev-harness/harness_runs/20260430_191556/`.
+- Prior footing: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`, source run `.userdata/dev-harness/harness_runs/20260429_172847/`, split proof `.userdata/dev-harness/harness_runs/20260429_180239/`.
+
+---
+
+## CAOL-WRITHING-STALKER-v0 — Writhing stalker behavior packet v0
+
+Status: CLOSED / CHECKPOINTED GREEN V0
+
+Success state:
+- [x] Monster/stat/spawn footing exists and validates.
+- [x] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
+- [x] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
+- [x] Direct player/human evidence can create a bounded latch without permanent omniscience.
+- [x] Weak/no/stale evidence decays or fails to latch.
+- [x] Exposed night light, cover/edge terrain, and zombie distraction affect interest/opportunity with named reasons.
+- [x] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
+- [x] Strike behavior creates short cut/bleed pressure rather than a tank duel.
+- [x] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
+- [x] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
+- [x] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/cooldown scene from the game path.
+- [x] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
+- [x] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
+- [x] Mixed hostile performance playtest `performance.mixed_hostile_stalker_horde_mcw` reports metrics with bandit camp, cannibal camp, one writhing stalker, and horde present, or is explicitly classified follow-up/future-only.
+- [x] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, too stupid, or too expensive under mixed hostile load.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
 
 Notes:
+- Support live footing is green, but not final behavior closure by itself: `.userdata/dev-harness/harness_runs/20260430_161342/` proves debug-spawn/save `active_monsters` footing; `.userdata/dev-harness/harness_runs/20260430_161535/` proves target acquisition plus the live `live_plan` seam.
+- Exposed/focused withdrawal behavior proof is green at `.userdata/dev-harness/harness_runs/20260430_163626/`: harness-only noon fixture `mcwilliams_live_debug_noon_2026-04-30` applies `game_turn=5227200`; saved pre-spawn audit shows `time_of_day_text=12:00:00` and zero noon delta; live-plan artifact proves `decision=withdraw route=hold_exposed reason=live_exposed_and_focused_withdraw ... stalker_bright=yes target_focus=yes cooldown=no`; save/writeback and saved `active_monsters` audits are green.
+- Shadow/strike behavior proof is green at `.userdata/dev-harness/harness_runs/20260430_170528/`: harness-only vulnerable-midnight fixture `mcwilliams_live_debug_vulnerable_2026-04-30` applies `game_turn=5270400`, 60% HP, low stamina, and torso `bleed`; saved pre-spawn audit shows `time_of_day_text=00:00:00`; live-plan artifact proves `decision=shadow route=cover_shadow reason=live_shadowing_before_strike_window ... target_focus=no cooldown=no`, then `decision=strike route=cover_shadow reason=live_vulnerability_window_strike ... distance=3`, then `decision=cooling_off ... cooldown=yes`; save/writeback and saved `active_monsters` audits are green.
+- No-omniscience negative-control proof is green at `.userdata/dev-harness/harness_runs/20260430_173555/`: harness-only clean fixture `mcwilliams_live_debug_no_evidence_clean_2026-04-30` removes overmap NPC/human targets, applies local noon, places one saved active `mon_writhing_stalker` behind an audited thick `f_locker` wall, and requires same-run `target_probe ... target=no ... sees_player=no` while forbidding `target=yes`, `sees_player=yes`, `writhing_stalker live_plan:`, strike, shadow, or cooldown lines; save/writeback and saved `active_monsters` distance audits are green.
+- Strike pressure is green for v0 from combined footing/behavior evidence: monster stats/tests require cut damage plus `scratch`/`bite`, the live shadow/strike proof reaches `decision=strike`, and cooldown/withdraw evidence prevents tank-duel relatch spam.
+- Mixed hostile performance proof is green/yellow at `.userdata/dev-harness/harness_runs/20260430_181748/`: `performance.mixed_hostile_stalker_horde_mcw` proves active bandit and cannibal stalk jobs, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde before measurement; completes `500` sampled turns plus a bounded `30m` wait; records turn cost avg `236.239ms/turn`, hostile cadence `total_us` max `3777`, stalker `eval_us` max `54`, no crash/stderr/debug-error flood, and a tuning readout. Frau accepted the yellow horde-attribution caveat for v0 closure: horde cost is `not instrumented` separately; horde presence is setup proof, not direct horde timing, and stricter horde attribution is future-only unless explicitly promoted.
 - Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
 - Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
 - Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+- Mixed hostile performance packet lives at `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.
 - Raw intake remains preserved at `doc/writhing-stalker-raw-intake-2026-04-30.md`.
 
 
