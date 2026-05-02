@@ -185,24 +185,27 @@ The earlier caveat is superseded for the first Josef card by the current green c
 
 ### Bandit contrast matrix / camp-threat proof
 
-Do **not** use current camp-threat rows as credited pressure evidence yet. This is the one with the loud little warning bell, because otherwise loose NPCs dress up as a camp and everyone pretends that is science.
+The primary six-row Josef card still uses the fast first-demand contact above. Separately, the optional bandit contrast card is now honest enough as staged current-build footing: quiet/no-signal stays quiet, smoke/fire signal produces a camp scout while a separate structural camp can dispatch, and high-threat/low-reward holds instead of replaying the same demand branch. Tiny miracle, after only the usual ceremony with the garden rake.
 
-Caveated handoff command, only if Josef wants to inspect the current broken footing:
+Optional contrast handoff commands:
 
 ```sh
-python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw
+python3 tools/openclaw_harness/startup_harness.py handoff bandit.live_world_nearby_camp_no_signal_control_mcw
+python3 tools/openclaw_harness/startup_harness.py handoff bandit.mixed_signal_coexistence_mcw
+python3 tools/openclaw_harness/startup_harness.py handoff bandit.high_threat_low_reward_holds
 ```
 
 Current evidence:
-- Low-threat/no-loose-NPC no-signal auxiliary proof: `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_134959/`; `feature_proof=true`, `verdict=artifacts_matched`, saved-overmap NPC preflight `observed_npc_count=0`, green wait ledger, matched no-signal cadence artifacts, portal clear. This repairs only the quiet no-signal control; it is not first-card expansion and not camp-threat/high-threat membership proof.
+- Low-threat/no-loose-NPC no-signal auxiliary proof: `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_134959/`; `feature_proof=true`, `verdict=artifacts_matched`, saved-overmap NPC preflight `observed_npc_count=0`, green wait ledger, matched no-signal cadence artifacts, portal clear. This repairs the quiet no-signal control and keeps loose NPCs out of the proof.
+- Fire/smoke signal + separate camp activity proof: `bandit.mixed_signal_coexistence_mcw` -> `.userdata/dev-harness/harness_runs/20260502_155058/`; `feature_proof=true`, `verdict=artifacts_matched`, green wait/step ledgers, portal clear. The live signal camp `overmap_special:bandit_camp@151,39,0` dispatches a `scout` toward `player@140,39,0` from `live_smoke@140,39,0`; the structural camp `overmap_special:bandit_camp@160,39,0` separately dispatches `scavenge` against `fixture_mixed_signal_structural_east_forest`. Manual post-save cross-reference artifacts in the run dir require `active_members_all_found_in_saved_overmap=true` for active member `4` on the signal scout and active member `9` on the structural outing.
 - Active-outside camp-pressure/dogpile-block auxiliary proof: `bandit.active_outside_dogpile_block_live` -> `.userdata/dev-harness/harness_runs/20260502_144842/`; `feature_proof=true`, `verdict=artifacts_matched`, green wait/step ledgers, same-run `hold: unresolved active outside group/contact blocks dogpile`, portal clear, `active_member_ids=[4,5]`, and `active_members_all_found_in_saved_overmap=true`. This repairs camp-pressure assignment footing; it is not automatically added to the first six-row Josef card.
 - High-threat/low-reward hold auxiliary proof: `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_145429/`; `feature_proof=true`, `verdict=artifacts_matched`, green wait/step ledgers, same-run `hold: high threat or poor reward does not escalate by itself`, matching `camp-map dispatch ... selected=hold / chill`, and portal clear. This repairs the old missing-artifact caveat; it is still a staged contrast proof, not a natural-discovery save-pack row.
 - Superseded no-signal attempt: `.userdata/dev-harness/harness_runs/20260502_125743/`; `feature_proof=false`, `verdict=yellow_step_local_proof_incomplete`, portal clear.
 - `bandit.extortion_at_camp_standoff_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131536/`; `feature_proof=false`, `verdict=yellow_wait_step_unverified`, portal clear. The wait path reached a caveated standoff-shaped row but lacks green wait proof.
 - Superseded high-threat attempt: `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_131616/`; saved bandit-live-world preflight rows are `required_state_present`, but final artifact proof is missing: `verdict=blocked_high_threat_hold_artifact_missing`, portal clear.
-- Fire/smoke/basecamp signal remains older/manual-package footing only. Do not reopen real-fire/smoke proof after the previous attempt-4/manual-package status unless the method materially changes and the missing proof is essential.
+- Superseded direct player-lit fire attempt: `bandit.player_lit_fire_signal_wait_mcw` -> `.userdata/dev-harness/harness_runs/20260502_154828/`; blocked before credit because startup did not land on normal map UI before the bounded signal wait. The credited high-signal proof is the materially different guarded `mixed_signal_coexistence` path above.
 
-Manual future recipe: repair the camp/NPC assignment preflight first, then rerun the contrast matrix once as a shaped proof target. Do not borrow older smoke proof into current camp-threat closure.
+Remaining caveat: this is staged current-build contrast evidence, not natural-discovery/full-raid proof and not the older broken `extortion_at_camp_standoff` handoff. Use it to judge contrast feel, not to declare the whole bandit/Basecamp product finished, because apparently we are still pretending precision is optional until the logs bite us.
 
 ### Camp/NPC assignment preflight
 
@@ -212,11 +215,11 @@ Current evidence:
 - `basecamp.package2_assign_camp_state_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131907/`; `feature_proof=false`, `verdict=blocked_step_local_proof`, portal clear.
 - Camp/NPC audit on saved world `.userdata/dev-harness/harness_runs/20260502_131616/saved_world/McWilliams`: bandit live-world site `overmap_special:bandit_camp@140,51,0` has `member_count=5`, `ready_at_home_count=5`, `active_outside_count=0`, and `active_member_ids=[]`; full saved-overmap NPC scan sees `observed_npc_count=16`, including two `your_followers` and multiple `hells_raiders` NPC records with no active-member cross-reference. This stays no-credit for camp pressure because there are no active members to cross-reference.
 - Repaired assignment proof `.userdata/dev-harness/harness_runs/20260502_144842/`: `bandit.active_outside_dogpile_block_live` preflight and post-save audits require `active_member_ids=[4,5]`, `active_members_all_found_in_saved_overmap=true`, and saved-overmap rows for Giuseppe Bachman and Vance Gunderson in `overmaps/o.0.0.zzip`.
+- Repaired mixed-signal assignment proof `.userdata/dev-harness/harness_runs/20260502_155058/`: live-signal camp `@151,39,0` and structural camp `@160,39,0` both preflight as real `overmap_special:bandit_camp` sites with `member_count=5`/`ready_at_home_count=5`; after the wait, manual cross-reference artifacts require active member `4` and active member `9` to exist in the saved overmap. The full saved-overmap scan also sees two `your_followers`; they are explicitly not credited as bandit pressure actors.
 
 Remaining follow-up before broader bandit-contrast credit:
-- Low-threat/no-signal row: already repaired as quiet/no-loose-NPC auxiliary proof in `20260502_134959/`; keep it auxiliary unless Schani wants a second bandit card.
-- Active-outside dogpile block and high-threat risk/reward hold are now green auxiliary contrast proof (`20260502_144842/`, `20260502_145429/`); keep staged-vs-natural caveats explicit.
-- Fire/smoke/basecamp signal row: rerun only through a repaired assignment/wait path if Schani wants it for a second bandit contrast card, not as a ritual retry.
+- No-signal, smoke/fire signal, active-outside dogpile block, and high-threat risk/reward hold are now green auxiliary contrast proof (`20260502_134959/`, `20260502_155058/`, `20260502_144842/`, `20260502_145429/`); keep staged-vs-natural caveats explicit.
+- Natural-discovery/full-raid bandit/Basecamp proof remains future-only unless Josef explicitly promotes it. Do not rerun old blocked rows by ritual.
 
 ## Thematic contrast status
 
@@ -226,7 +229,7 @@ Remaining follow-up before broader bandit-contrast credit:
 - Zombie rider cover/wounded contrast: ready (`20260502_131914/`, `20260502_132136/`).
 - Writhing stalker hit-fade/light/zombie contrast: ready (`20260502_125231/`, `20260502_131246/`, `20260502_131315/`).
 - Flesh raptor crowded-arc skirmisher: ready (`20260502_141246/`); older open-field/equipment rows remain footing only.
-- Bandit no-signal / active-outside camp-pressure / high-threat hold: auxiliary green (`20260502_134959/`, `20260502_144842/`, `20260502_145429/`); smoke-fire signal remains caveated unless Schani asks for a second bandit contrast card.
+- Bandit no-signal / smoke-fire signal / active-outside camp-pressure / high-threat hold: auxiliary green (`20260502_134959/`, `20260502_155058/`, `20260502_144842/`, `20260502_145429/`); staged contrast is ready if Schani wants a second bandit card, while natural-discovery/full-raid proof remains future-only.
 
 ## Validation gates run
 
@@ -237,4 +240,5 @@ Remaining follow-up before broader bandit-contrast credit:
   - `/tmp/caol-savepack-bandit-assign-summary-20260502_1320_bandit_assign.txt`
   - `/tmp/caol-savepack-alt-probe-summary-20260502_1324_alt.txt`
 - Flesh raptor repair/probe: `python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/`, `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear.
+- Bandit mixed-signal contrast repair: `python3 tools/openclaw_harness/startup_harness.py probe bandit.mixed_signal_coexistence_mcw` -> `.userdata/dev-harness/harness_runs/20260502_155058/`, `feature_proof=true`, `verdict=artifacts_matched`, green wait/step ledgers, portal clear; manual saved-world cross-reference artifacts in the same run require active members `4` and `9` found in saved overmap records.
 - Final docs gate for this trim: `git diff --check` before commit.

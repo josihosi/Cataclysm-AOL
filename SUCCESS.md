@@ -200,7 +200,7 @@ Canonical docs:
 
 ## CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0 — Josef playable save/handoff pack
 
-Status: ACTIVE / GREENLIT / SCHANI REVIEW BOUNDARY / JOSEF HANDOFF CARD READY / SECOND BANDIT CARD OPTIONAL
+Status: ACTIVE / GREENLIT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY
 
 Success state:
 - [x] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
@@ -220,7 +220,7 @@ Canonical docs:
 - Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 - Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Checkpoint: v0 card is usable for six staged rows (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and explicitly withholds broader bandit camp-threat credit from the first Josef card. The post-card repair boundary is now reviewed: low-threat/no-signal has cleaned no-loose-NPC proof (`20260502_134959/`), active-outside camp-pressure assignment has member cross-reference proof (`20260502_144842/`, `active_member_ids=[4,5]`, `active_members_all_found_in_saved_overmap=true`), and high-threat/low-reward hold has green risk/reward artifact proof (`20260502_145429/`). Smoke/fire/basecamp signal remains caveated/manual future unless Schani asks for a second bandit contrast card.
+Checkpoint: v0 card is usable for six staged rows (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and explicitly withholds broader bandit camp-threat credit from the first Josef card. The post-card repair boundary is now reviewed: low-threat/no-signal has cleaned no-loose-NPC proof (`20260502_134959/`), smoke/fire signal has guarded mixed-signal proof (`20260502_155058/`, live-signal scout from camp `@151,39,0`, separate structural scavenge from camp `@160,39,0`, active members `4` and `9` cross-referenced in saved overmap records), active-outside camp-pressure assignment has member cross-reference proof (`20260502_144842/`, `active_member_ids=[4,5]`, `active_members_all_found_in_saved_overmap=true`), and high-threat/low-reward hold has green risk/reward artifact proof (`20260502_145429/`). These are staged auxiliary contrast rows for an optional second bandit card; natural-discovery/full-raid bandit/Basecamp proof remains future-only.
 
 ---
 

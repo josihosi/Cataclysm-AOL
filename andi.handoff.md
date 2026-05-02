@@ -8,32 +8,31 @@ Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-0
 
 Handoff packet: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 
-Current repo canon agrees:
-- `Plan.md` active lane: `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0`.
-- `TODO.md` current execution item: prepare a labelled current-build save/handoff pack for Josef to playtest.
-- `TESTING.md` active validation target: `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0`.
+Working Josef card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Recent closed lane:
-- `CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0` is closed/checkpointed green v0.
-- Proof/readout: `doc/writhing-stalker-hit-fade-retreat-distance-proof-v0-2026-05-02.md`.
-- Fresh staged-live proof: `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_113738/`, `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`, no runtime warnings, with strike/withdraw/cooling-off, burst `0/2`, `1/2`, `2/2`, `retreat_distance=8`, `cooldown=yes`.
+Current repo canon now says this lane is at a handoff/review boundary, not at first-prep start:
+- `Plan.md` active lane: `ACTIVE / GREENLIT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY`.
+- `TODO.md` current execution item: the six-entry Josef card is ready, and the optional second bandit contrast card now has staged green footing if Schani wants to include it.
+- `TESTING.md` active validation target: the save-pack handoff card is ready, with optional staged bandit contrast footing if Schani wants to include it.
 
-Task:
-Prepare a labelled set of current-build saves or handoff sessions Josef can actually load and playtest.
+Ready first-card entries:
+1. Basecamp AI / camp locker usefulness — `locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260502_131015/`.
+2. Bandit pressure / shakedown / basecamp contact — `bandit.extortion_first_demand_fight_mcw` -> `.userdata/dev-harness/harness_runs/20260502_124854/`.
+3. Cannibal camp pressure — `cannibal.live_world_night_local_contact_pack_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131103/`.
+4. Flesh raptor skirmisher behavior — `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/`.
+5. Zombie rider predator/counterplay — `zombie_rider.live_cover_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131914/` and `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260502_132136/`.
+6. Writhing stalker hit-fade / zombie-shadow behavior — `writhing_stalker.live_hit_fade_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_125231/`, `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131246/`, and `writhing_stalker.live_escape_side_zombie_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260502_131315/`.
 
-Required entries:
-1. Basecamp AI / camp locker usefulness.
-2. Bandit pressure / shakedown / basecamp contact.
-3. Cannibal camp pressure.
-4. Flesh raptor skirmisher behavior.
-5. Zombie rider predator/counterplay.
-6. Writhing stalker hit-fade / zombie-shadow behavior.
+Optional second bandit contrast footing, if Schani wants to include it:
+- Low-threat/no-signal control: `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_134959/`.
+- Smoke/fire signal through guarded mixed-signal path: `bandit.mixed_signal_coexistence_mcw` -> `.userdata/dev-harness/harness_runs/20260502_155058/`.
+- Active-outside camp-pressure/dogpile block: `bandit.active_outside_dogpile_block_live` -> `.userdata/dev-harness/harness_runs/20260502_144842/`.
+- High-threat/low-reward hold: `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_145429/`.
 
 Next honest move:
-- Inventory the best existing scenario/save footing for the six entries.
-- Decide which entries need fresh `handoff` runs versus which can be delivered from existing loadable setup.
-- For every ready entry, record load/start-state evidence, artifact dir/path, portal-storm warning status, and caveats.
-- Write the smallest usable Josef-facing save-pack card with label, path/command, 2-5 minute play instruction, expected read, and taste questions.
+- Schani decides whether to relay the six-entry Josef card as-is or include the optional staged bandit contrast card.
+- Do **not** restart inventory/prep of the six ready entries by ritual.
+- Do **not** rerun old blocked bandit rows by ritual; use only a materially changed path if Schani explicitly asks for more bandit contrast.
 
 Boundary:
 - Save-pack prep and product-taste handoff only.
