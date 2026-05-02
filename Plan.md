@@ -76,7 +76,7 @@ Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
 
 Result: the close-pressure no-attack seam is fixed. Root cause was the missing `aggro_character` bridge between `decision=bow_pressure reason=line_of_fire` planning and the monster gun actor's avatar-target gate. Current code marks the rider character-aggro before ready bow handoff and chooses named irregular bunny-hop/reposition pressure when too close, cooling down, blocked, or out of ammo.
 
-Evidence: focused `[zombie_rider]` tests are green (`199 assertions in 16 test cases`); `./just_build_macos.sh` now relinks `cataclysm-tiles`; fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` is green feature-path proof with audited rider ammo, bow-pressure aggro bridge, arrow ammo decrement, and close `too_close_bunny_hop` reposition. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
+Evidence: focused `[zombie_rider]` tests are green after the tainted-arrow follow-up (`207 assertions in 17 test cases`); `./just_build_macos.sh` relinked `cataclysm-tiles` for the original close-pressure checkpoint; fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` remains behavior-shape footing for bow-pressure aggro bridge, ammo decrement, and close `too_close_bunny_hop` reposition. The current source lookup now checks `zombie_rider_tainted_bone_arrow` ammo instead of the pre-follow-up `arrow_wood` id. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
 
 ---
 

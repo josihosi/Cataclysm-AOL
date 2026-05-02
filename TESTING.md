@@ -127,12 +127,13 @@ Prior sampler footing: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains useful source 
 
 Credited evidence:
 - root cause named: `bow_pressure + line_of_fire=yes` set a plan destination but did not force `aggro_character`; `gun_actor` refuses non-monster avatar targets when `!z.aggro_character`.
-- `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0` passed.
-- `./tests/cata_test "[zombie_rider]"` passed: `199 assertions in 16 test cases`.
-- `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` exited `0`; `cataclysm-tiles` linked.
-- Fresh live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/`: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings; saved active-monster audit requires `ammo={"arrow_wood":18}`; live plan shows `aggro_before=no aggro_after=yes`, bow ammo decrement, and close `decision=reposition reason=too_close_bunny_hop` pressure.
+- follow-up root cause named: after the tainted-arrow ammo rename, `zombie_rider_ammo_remaining()` still checked `arrow_wood`, causing the planner to treat loaded riders as empty-bow chargers.
+- `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0` passed after the tainted-arrow lookup fix.
+- `./tests/cata_test "[zombie_rider]" --reporter compact` passed: `207 assertions in 17 test cases`.
+- `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` exited `0`; `cataclysm-tiles` linked for the original close-pressure checkpoint.
+- Fresh live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/`: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings; live plan shows `aggro_before=no aggro_after=yes`, bow ammo decrement, and close `decision=reposition reason=too_close_bunny_hop` pressure. Its saved active-monster audit used the pre-follow-up `ammo={"arrow_wood":18}` id and is now behavior-shape footing rather than current ammo-id proof.
 
-Caveat: staged-but-live McWilliams feature proof, not natural random discovery/full siege-navigation proof.
+Caveat: staged-but-live McWilliams feature proof, not natural random discovery/full siege-navigation proof; current post-rename ammo proof is the focused source/test gate above.
 
 ### Closed validation receipt - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
