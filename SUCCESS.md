@@ -220,7 +220,7 @@ Canonical docs:
 - Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
 - Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
-Checkpoint: v0 card is usable for five staged rows (locker, cannibal, flesh raptor blocked-corridor, zombie rider cover/wounded, writhing stalker light/zombie-side) and explicitly withholds bandit camp-threat credit. Camp/NPC audit found loose/unassigned overmap NPC noise (`active_member_ids=[]` while saved overmap scan sees 16 NPC records), so the remaining unchecked success item is the real repair/removal/reassignment work for camp-threat rows.
+Checkpoint: v0 card is usable for six staged rows (locker, bandit first-demand contact, cannibal, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded, writhing stalker hit-fade/light/zombie-side) and explicitly withholds bandit camp-threat credit. Camp/NPC audit found loose/unassigned overmap NPC noise (`active_member_ids=[]` while saved overmap scan sees 16 NPC records), so the remaining unchecked success item is the real repair/removal/reassignment work for camp-threat rows.
 
 ---
 

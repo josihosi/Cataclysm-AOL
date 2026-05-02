@@ -12,7 +12,7 @@
   "artifact_patterns": [
     "flesh_raptor live_plan:",
     "decision=orbit",
-    "chosen_rel=0,5",
+    "chosen_distance=5",
     "chosen_crowding=0",
     "decision=swoop",
     "eval_us=",
@@ -80,13 +80,13 @@
       "artifact_state_patterns": [
         "flesh_raptor live_plan:",
         "decision=orbit",
-        "chosen_rel=0,5",
+        "chosen_distance=5",
         "chosen_crowding=0",
         "decision=swoop",
         "eval_us=",
         "flesh_raptor melee_event:"
       ],
-      "expected_visible_fact": "bounded live turn window records the raptor choosing the under-occupied south/open arc, then periodic swoops and melee outcomes"
+      "expected_visible_fact": "bounded live turn window records the raptor choosing an under-occupied south/open arc tile, then periodic swoops and melee outcomes"
     },
     {
       "kind": "audit_log_contains",
@@ -96,7 +96,6 @@
           "flesh_raptor live_plan:",
           "decision=orbit",
           "reason=best_open_orbit_arc",
-          "chosen_rel=0,5",
           "chosen_distance=5",
           "chosen_crowding=0",
           "eval_us="
@@ -116,7 +115,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_flesh_raptor_crowded_arc_live_plan_missing",
       "abort_reason": "same-run artifact lacked under-occupied arc choice, cadence-swoop, or raptor melee-event lines",
-      "expected_visible_fact": "same-run debug artifact proves crowded-arc raptor planning avoids the zombie-occupied side, keeps bounded swoop cadence, and records concrete melee hit/miss/armor-absorb outcomes for frustration metrics",
+      "expected_visible_fact": "same-run debug artifact proves crowded-arc raptor planning avoids the zombie-occupied side by selecting an uncrowded five-tile orbit arc, keeps bounded swoop cadence, and records concrete melee hit/miss/armor-absorb outcomes for frustration metrics",
       "required_any_line_patterns": [
         [
           "flesh_raptor melee_event:",
@@ -138,7 +137,7 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_crowded_arc_skirmisher_mcw",
   "evidence_contract": {
-    "claim": "a staged live flesh raptor uses the monster::plan seam to choose the under-occupied south/open orbit arc when ordinary zombies crowd the north arc, then periodically swoops and emits concrete combat-result metrics instead of stacking into the blob or behaving only as generic hit-and-run retreat",
+    "claim": "a staged live flesh raptor uses the monster::plan seam to choose an under-occupied open orbit arc when ordinary zombies crowd the north arc, then periodically swoops and emits concrete combat-result metrics instead of stacking into the blob or behaving only as generic hit-and-run retreat",
     "load_only_verdict": "load proof only / inconclusive for flesh-raptor crowded-arc behavior",
     "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan/combat behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim. Equipment-damage frustration stays explicit through raptor melee_event hit/miss/armor-absorb outcomes and any destructive equipment messages if they appear; no equipment damage tuning is changed here."
   }

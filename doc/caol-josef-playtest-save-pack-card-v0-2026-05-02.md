@@ -2,13 +2,13 @@
 
 Status: CURRENT-BUILD JOSEF HANDOFF CARD / READY ENTRIES + LABELLED CAVEATS
 
-Repo/branch/build: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; gameplay build footing from `1113e68275` passed `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` with exit `0`. Later save-pack changes are docs/handoff classification only.
+Repo/branch/build: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; gameplay build footing from `1113e68275` passed `./just_build_macos.sh > /tmp/caol-savepack-build-20260502.log 2>&1` with exit `0`. Later save-pack changes are harness-scenario/card classification only.
 
 Run commands from the repo root. Use `handoff` when Josef wants a live session left open; use `probe` only to re-check the same setup. Do **not** rerun blocked rows by ritual.
 
 ## Use these first
 
-These five entries are the Josef-ready card. They are current-build, portal-clear, and playable enough for taste reads. Everything after this section is intentionally caveated, not a hidden blocker. Na bravo, a card with borders.
+These six entries are the Josef-ready card. They are current-build, portal-clear, and playable enough for taste reads. Everything after this section is intentionally caveated, not a hidden blocker. Na bravo, a card with borders.
 
 ### 1. `/visions/camp-locker` — camp locker weather/service
 
@@ -82,7 +82,31 @@ Current evidence: `cannibal.live_world_night_local_contact_pack_mcw` -> `.userda
 
 Caveat: staged-but-live McWilliams row, not natural map discovery proof.
 
-### 4. `/rider/stalker/raptor` — zombie rider cover escape / wounded disengagement
+### 4. `/rider/stalker/raptor` — flesh raptor crowded-arc skirmisher
+
+Handoff command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py handoff flesh_raptor.live_crowded_arc_skirmisher_mcw
+```
+
+What to try for 2-5 minutes:
+- Watch the raptor as zombies crowd one side and judge whether it circles/flanks instead of stacking into the blob.
+- Let it commit to a swoop and decide whether the cadence feels readable or spammy.
+- Pay attention to whether hit/miss/armor-absorb outcomes feel like annoying equipment nibbling or lively skirmisher pressure.
+
+Expected read: the raptor should choose an uncrowded five-tile orbit arc, periodically swoop, and feel like a visible skirmisher rather than generic hit-and-run retreat.
+
+Taste questions:
+- Does the raptor's circling read as intentional from play?
+- Is the swoop cadence tense without becoming noise?
+- Does the zombie-crowded-side contrast make the behavior feel smarter, or just staged?
+
+Current evidence: `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/`; `feature_proof=true`, `verdict=artifacts_matched`, step ledger `green_step_local_proof` (`6` green / `0` red), `portal_storm_warning.classification=clear`. The repaired scenario contract accepts any uncrowded five-tile open arc rather than the stale exact `chosen_rel=0,5` tile; the run logged `chosen_rel=-1,5`, `chosen_distance=5`, `chosen_crowding=0`, cadence swoops, and melee events.
+
+Caveat: staged-but-live crowded-arc row, not natural random discovery. Older open-field/equipment comparison rows remain footing only; this current entry is the playable save-pack raptor card.
+
+### 5. `/rider/stalker/raptor` — zombie rider cover escape / wounded disengagement
 
 Primary handoff command:
 
@@ -114,7 +138,7 @@ Current evidence:
 
 Caveat: staged-but-live rows. Open-field pressure rerun at `20260502_131217/` is blocked on time setup in this save-pack pass, so use the two green rows above for playtesting.
 
-### 5. `/rider/stalker/raptor` — writhing stalker hit-fade / light / zombie-side pressure
+### 6. `/rider/stalker/raptor` — writhing stalker hit-fade / light / zombie-side pressure
 
 Primary handoff command:
 
@@ -155,16 +179,9 @@ Caveat: the later no-fire/low-threat rerun at `20260502_131232/` is blocked on t
 
 ## Omitted / caveated rows Josef should not judge as final product
 
-### Flesh raptor skirmisher behavior
+### Flesh raptor superseded caveat
 
-Do **not** treat flesh raptor as a first-card ready entry for this save-pack. Older green footing exists and a narrow blocked-corridor row can be inspected, but the current save-pack attempts for the broader raptor taste target did not produce a clean current-ready row.
-
-Evidence footing:
-- Older accepted green rows: `flesh_raptor.live_open_field_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_052709/`; `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260501_053414/`; equipment/frustration comparison -> `.userdata/dev-harness/harness_runs/20260501_062300/`.
-- Current no-credit rows: `.userdata/dev-harness/harness_runs/20260502_131124/` blocked on open-field live plan missing; `.userdata/dev-harness/harness_runs/20260502_131806/` blocked on crowded-arc live plan missing; `.userdata/dev-harness/harness_runs/20260502_131900/` blocked on time setup missing. All were portal clear, so the blocker is not portal-storm contamination.
-- Narrow optional footing: `flesh_raptor.live_blocked_corridor_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_132217/` is green, but it is not enough to make the broader raptor entry first-card ready.
-
-Manual future recipe: if Josef wants raptor taste anyway, play the older open-field/crowded/equipment rows as older footing and explicitly ignore them as current save-pack closure. Otherwise leave raptor for a repaired current live-plan primitive later.
+The earlier caveat is superseded for the first Josef card by the current green crowded-arc row `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/`. Older open-field/crowded/equipment rows remain footing only, and the old no-credit current attempts remain useful failure receipts, but Josef now has one current raptor skirmisher entry above.
 
 ### Bandit contrast matrix / camp-threat proof
 
@@ -205,7 +222,7 @@ Blocked follow-up required before credit:
 - Cannibal night contact: ready (`cannibal.live_world_night_local_contact_pack_mcw`, `20260502_131103/`).
 - Zombie rider cover/wounded contrast: ready (`20260502_131914/`, `20260502_132136/`).
 - Writhing stalker hit-fade/light/zombie contrast: ready (`20260502_125231/`, `20260502_131246/`, `20260502_131315/`).
-- Flesh raptor broader taste target: omitted/caveated; older footing only plus narrow optional blocked-corridor row, not first-card ready.
+- Flesh raptor crowded-arc skirmisher: ready (`20260502_141246/`); older open-field/equipment rows remain footing only.
 - Bandit no-signal / signal / high-threat: blocked or caveated pending camp/NPC assignment repair; do not flatten loose NPCs into camp pressure.
 
 ## Validation gates run
@@ -216,4 +233,5 @@ Blocked follow-up required before credit:
   - `/tmp/caol-savepack-assign-probe-summary-20260502_1306_assign.txt`
   - `/tmp/caol-savepack-bandit-assign-summary-20260502_1320_bandit_assign.txt`
   - `/tmp/caol-savepack-alt-probe-summary-20260502_1324_alt.txt`
+- Flesh raptor repair/probe: `python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/`, `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear.
 - Final docs gate for this trim: `git diff --check` before commit.
