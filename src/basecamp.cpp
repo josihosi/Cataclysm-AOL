@@ -590,7 +590,7 @@ bool is_camp_locker_leg_accessory(const item &it) {
       it, layer_level::OUTER, {body_part_leg_l, body_part_leg_r});
 
   if (covers_upper_leg && !covers_lower_leg && !covers_feet &&
-      (it.has_flag(flag_BELTED) || it.has_flag(flag_BELT_CLIP))) {
+      (it.has_layer({layer_level::BELTED}) || it.has_flag(flag_BELT_CLIP))) {
     return true;
   }
 
