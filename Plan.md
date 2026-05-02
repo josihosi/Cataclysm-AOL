@@ -59,7 +59,11 @@ Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
+Draft Josef card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+
 Goal: prepare 3-5 labelled live/handoff postcards from existing or near-existing C-AOL visions so Josef can judge fun, fairness, readability, optical/screenshot legibility, aliveness, and gnostic/occult inner meaning without being handed proof archaeology.
+
+Current checkpoint: a four-postcard draft now exists for writhing stalker, zombie rider, flesh raptor, and camp locker. It lists exact handoff commands, 2-5 minute play instructions, screenshot checkpoints, taste/gnostic questions, existing proof footing, and staged-footing caveats. Next honest boundary is either a short Schani/Josef relay packet or fresh handoff runs for any postcards Josef should enter immediately.
 
 Boundary: product-taste sampler only. Use existing green staged/live rows as footing where possible, keep staged-vs-natural caveats visible, and do not reopen closed v0 lanes or start release packaging by drift.
 
@@ -247,7 +251,11 @@ Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`
 
 Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
+Draft Josef card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+
 Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
+
+Current checkpoint: v0 chooses four postcards — writhing stalker, zombie rider, flesh raptor, camp locker — and defers bandit pressure to v1 or its own queued scenic-shakedown lane unless Josef promotes it now.
 
 Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, and does not create release packaging. The optical/screenshot playtest condition is required for visual postcards.
 

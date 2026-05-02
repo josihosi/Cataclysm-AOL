@@ -16,9 +16,14 @@ Current checkpoint:
 - `CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is closed green. Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
 - The next active target is a bounded Josef-facing visions sampler, not a broad proof rerun.
 
+Current artifact:
+- Draft card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+- Selected postcards: writhing stalker, zombie rider, flesh raptor, camp locker.
+- Runtime screenshot review copies: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
+
 Next execution target:
-- Read the visions sampler contract and choose a bounded v0 set of 3-5 postcards from existing/near-existing C-AOL scenes.
-- Prefer existing green staged/live rows as footing; create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the postcards.
-- Keep each postcard labelled with the vision, setup/handoff path, visible/optical fact, and Josef taste questions.
+- Decide whether this draft is enough for Schani to relay, or whether to run one or more listed `handoff` commands first to leave a live session waiting for Josef.
+- If relaying, compress the card into a short Josef-facing ask instead of sending the whole proof-heavy doc.
+- If running handoffs, record artifact dir, cleanup/handoff status, and one visible fact per fresh run.
 
 Non-goals: no closed-lane reopen by drift, no natural-discovery laundering, no release packaging, no broad proof soup.

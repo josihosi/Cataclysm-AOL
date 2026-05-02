@@ -63,11 +63,18 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 Validation shape: product-feel sampler, not broad proof rerun. Use existing green staged/live rows as footing where possible, create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the selected postcards, and keep staged-vs-natural caveats visible.
 
+Current sampler checkpoint:
+- Draft card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+- Bounded v0 set: writhing stalker, zombie rider, flesh raptor, camp locker.
+- The card names each vision, exact handoff/setup commands, 2-5 minute play instruction, screenshot checkpoint, visible/optical fact, taste/gnostic questions, artifact footing, and staged-footing caveat.
+- Screenshot review copies from existing artifacts live at `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
+
 Required evidence before sampler handoff:
-- bounded v0 set of 3-5 labelled postcards;
-- each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
-- visual postcards include screenshot checkpoints with named expected visible facts;
-- any fresh handoff/probe row records artifact dir, cleanup/handoff status, and whether it is feature proof, startup/load proof, or taste/setup proof.
+- [x] bounded v0 set of 3-5 labelled postcards;
+- [x] each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
+- [x] visual postcards include screenshot checkpoints with named expected visible facts;
+- [ ] final Josef-facing handoff is compressed enough to use;
+- [ ] if fresh handoff/probe rows are run, record artifact dir, cleanup/handoff status, and whether each row is feature proof, startup/load proof, or taste/setup proof.
 
 ### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
