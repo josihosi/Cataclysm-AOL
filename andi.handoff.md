@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / BODY-PART OUTER-LAYER API GREEN**.
+`CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` is **ACTIVE / GREENLIT / ANTI-REDUNDANCY PACKAGE / BODY/SUB-BODY-PART ID API GREEN**.
 
 `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` is closed/checkpointed green v0. Preserve its caveat: the named `targeted_live_plan_adapter` dispatch reduced inline live-planner exceptions, but no behavior-tree/special-attack seam honestly owns that destination-planning response today, so stalker-specific no-omniscience / quiet-side / light-focus / cooldown / repeated-strike / injured-retreat judgment remains custom and explicit.
 
@@ -42,6 +42,8 @@ Do not repeat these seams unless a later change touches them again:
 - final worn-slot equip validation through `Character::wear_item()` reduction
 - direct medical supply lookup through `item::get_usable_item()` / `item::get_use()` reduction
 - body-part-specific outer-layer classification `item::has_layer( ..., bodypart_id )` reduction for torso/arm/leg checks
+- body-part id helper-call reduction through existing `body_part_*` ids instead of repeated local string-to-bodypart conversions
+- sub-bodypart id helper-call reduction through `sub_bodypart_str_id` constants instead of repeated call-site string-to-sub-bodypart conversions
 
 ## Next executor target
 
