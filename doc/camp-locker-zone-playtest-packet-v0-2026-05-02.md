@@ -1,8 +1,8 @@
 # CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0 (2026-05-02)
 
-Status: CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN
+Status: CLOSED / CHECKPOINTED GREEN V0
 
-Closure readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
+Closure readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md` (green v0 evidence).
 
 Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 

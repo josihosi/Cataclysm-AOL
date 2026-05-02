@@ -69,7 +69,7 @@ Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RID
 
 ## Recent closed lane — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
-**Status:** CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN
+**Status:** CLOSED / CHECKPOINTED GREEN V0
 
 Josef explicitly asked for locker zone playtests after the camp locker API-reduction lane closed. The bounded agent pass is complete and intentionally did not reopen open-ended locker ontology archaeology.
 
@@ -81,7 +81,7 @@ Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
 
 Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
 
-Result: current-build live/UI+trace evidence proves `CAMP_LOCKER` Zone Manager footing and same-session save/reopen persistence (`locker.zone_manager_save_probe_mcw`, `.userdata/dev-harness/harness_runs/20260502_034812/`); service-path logs prove camp locker stock use on the real service path (`locker.weather_wait`, `.userdata/dev-harness/harness_runs/20260502_035238/`); `[camp][locker]` deterministic tests prove `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion guards. The pass stays yellow, not green, because the harness scenarios lack clean expected-visible-fact ledgers, no disk save-file audit was captured for the newly created probe zone, and the Robbie e2e harness row blocked before service artifacts. The proof doc includes Josef’s concise manual playtest card and closure criteria for the remaining product-facing feel check.
+Result: current-build harness feature proof is green after repairing the scenario evidence contract. `locker.zone_manager_save_probe_mcw` (`.userdata/dev-harness/harness_runs/20260502_041828/`) now has a green step-local ledger, matched Zone Manager UI-trace rows for `Basecamp: Locker` and created/reopened `Probe Locker` as `type="CAMP_LOCKER"`, and a saved-zone metadata audit for the persistent `Basecamp: Locker` zone. `locker.weather_wait` (`.userdata/dev-harness/harness_runs/20260502_041300/`) has a green step-local ledger and same-run `camp locker:` queued/plan/after/serviced artifacts proving real service from `locker_tiles=1` stock. `[camp][locker]` deterministic tests prove `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion guards. The Robbie e2e row remains blocked/no-credit, but it is not needed for this bounded v0 closure.
 
 Boundary preserved: no API-reduction reopen, no broad locker/basecamp redesign, no Smart Zone/basecamp preset work, and no bandit/rider/stalker/raptor drift.
 

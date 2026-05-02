@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0 — Camp locker zone playtests
 
-Status: CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
 - [x] The playtest pass chooses a bounded v0 set instead of reopening all locker-zone history.
@@ -32,7 +32,7 @@ Success state:
 - [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on the final state before closure.
 
 Canonical docs:
-- Proof/readout and Josef manual card: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
+- Proof/readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
 - Imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`.
 - Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
 - Handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.

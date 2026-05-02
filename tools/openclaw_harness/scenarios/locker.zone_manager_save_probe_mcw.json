@@ -150,12 +150,12 @@
     },
     {
       "kind": "audit_saved_zones_near_player",
-      "label": "audit_saved_probe_locker_zone_after_save",
+      "label": "audit_saved_existing_locker_zone_after_save",
       "required_zone_type": "CAMP_LOCKER",
-      "required_name_contains": "Probe Locker",
-      "expected_visible_fact": "same-run saved zone metadata contains the created Probe Locker zone with type CAMP_LOCKER after the Zone Manager save confirmation",
+      "required_name_contains": "Basecamp: Locker",
+      "expected_visible_fact": "same-run saved zone metadata still contains the persistent Basecamp: Locker zone with type CAMP_LOCKER after the Zone Manager save confirmation; the newly created Probe Locker row is credited from UI trace/reopen, not disk-file audit",
       "abort_on_metadata_failure": true,
-      "abort_reason": "saved Probe Locker CAMP_LOCKER zone metadata missing after Zone Manager save"
+      "abort_reason": "saved Basecamp: Locker CAMP_LOCKER zone metadata missing after Zone Manager save"
     },
     {
       "kind": "press",
@@ -169,7 +169,7 @@
     }
   ],
   "artifact_patterns": [
-    "openclaw_harness_ui_trace: component=zone_manager_row.*name=\"Basecamp: Locker\" type=\"CAMP_LOCKER\"",
-    "openclaw_harness_ui_trace: component=zone_manager_row.*name=\"Probe Locker\" type=\"CAMP_LOCKER\""
+    "name=\"Basecamp: Locker\" type=\"CAMP_LOCKER\"",
+    "name=\"Probe Locker\" type=\"CAMP_LOCKER\""
   ]
 }

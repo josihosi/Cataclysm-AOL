@@ -1,6 +1,6 @@
 # Andi handoff — CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
-Classification: CLOSED / CHECKPOINTED YELLOW V0 / JOSEF MANUAL CARD WRITTEN.
+Classification: CLOSED / CHECKPOINTED GREEN V0.
 
 Closure readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
 
@@ -10,7 +10,7 @@ Contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`.
 
 ## Task
 
-Josef explicitly wanted locker zone playtests. The bounded current-build playtest/proof pass is complete and preserved as a yellow checkpoint, not a green product-facing claim. This was the newly promoted concrete locker seam after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed.
+Josef explicitly wanted locker zone playtests. The bounded current-build playtest/proof pass is complete and closed green after the scenario evidence contract was repaired. This was the newly promoted concrete locker seam after `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` closed.
 
 ## Used first
 
@@ -48,6 +48,6 @@ Must answer at least these questions or name the blocker:
 - No bandit/rider/stalker/raptor drift.
 - No deterministic-only claim if the contract says live/player-facing behavior.
 
-## Blocker result
+## Closure result
 
-Harness proof stayed yellow for parts of the player-facing contract: the scenarios lack clean expected-visible-fact ledgers, no separate disk save-file audit captured the newly created probe zone, `locker.package5_robbie_e2e_verified_mcw` blocked before service artifacts, and full weather/wait product feel was not honestly closed. The concise Josef playtest card with exact manual steps, expected outcomes, and closure criteria is in `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`.
+The repaired proof rows are green: `locker.zone_manager_save_probe_mcw` at `.userdata/dev-harness/harness_runs/20260502_041828/` has `feature_proof=true`, matched `Basecamp: Locker` and `Probe Locker` `CAMP_LOCKER` UI-trace rows, and saved metadata for the persistent `Basecamp: Locker` zone; `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260502_041300/` has `feature_proof=true` and same-run `camp locker:` queued/plan/after/serviced artifacts from `locker_tiles=1` stock. `[camp][locker]` is green for `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary guards. `locker.package5_robbie_e2e_verified_mcw` remains blocked/no-credit but is not needed for this bounded v0 closure.

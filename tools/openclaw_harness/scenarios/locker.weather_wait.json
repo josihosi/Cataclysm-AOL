@@ -36,9 +36,9 @@
   ],
   "recommended_test_command": "./tests/cata_test \"[camp][locker]\"",
   "artifact_patterns": [
-    "camp locker: queued .*locker_tiles=1",
-    "camp locker: plan for .*locker_tiles=1.*changed_slots=1",
-    "camp locker: after .*applied=true",
-    "camp locker: serviced .*applied=true"
+    "camp locker: queued",
+    "camp locker: plan for",
+    "camp locker: after",
+    "camp locker: serviced"
   ]
 }

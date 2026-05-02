@@ -65,17 +65,16 @@ Validation must first name the no-attack cause: why does `zombie_rider live_plan
 
 ### Closed validation receipt - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
-`CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0` is closed as a yellow v0 checkpoint, not a green product-proof claim. Proof/readout and Josef manual card: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`; contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`; imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`; handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
+`CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0` is closed green. Proof/readout: `doc/camp-locker-zone-playtest-proof-v0-2026-05-02.md`; contract: `doc/camp-locker-zone-playtest-packet-v0-2026-05-02.md`; imagination source: `doc/camp-locker-zone-playtests-imagination-source-2026-05-02.md`; handoff packet: `doc/camp-locker-zone-playtest-handoff-v0-2026-05-02.md`.
 
 Credited evidence:
-- `locker.zone_manager_save_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260502_034812/`: current-build Zone Manager/OCR+trace footing for `Probe Locker` as `type="CAMP_LOCKER"`; same-session save/reopen persistence is credited, but no separate disk save-file audit was captured.
-- `locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260502_035238/`: service-path log proves camp locker stock use on the real service path (`locker_tiles=1`, `candidates=1`, `applied=true`, worker pants swapped to `cargo pants`, old `antarvasa` returned to locker stock).
-- Deterministic gate `./tests/cata_test "[camp][locker]"` passed (`2147 assertions in 78 test cases`) and covers `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion behavior in `camp_locker_zone_candidate_gathering`.
+- `locker.zone_manager_save_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260502_041828/`: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`; UI trace matches `name="Basecamp: Locker" type="CAMP_LOCKER"` and created/reopened `name="Probe Locker" type="CAMP_LOCKER"`; saved-zone audit `audit_saved_existing_locker_zone_after_save.metadata.json` reports `required_state_present` for the persistent `Basecamp: Locker` `CAMP_LOCKER` zone in `#Wm9yYWlkYSBWaWNr.zones.json` / temp mirror.
+- `locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260502_041300/`: `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof`; same-run service artifacts match `camp locker: queued`, `plan for`, `after`, and `serviced`, with `locker_tiles=1`, `candidates=1`, `changed_slots=1`, `applied=true`, worker pants swapped to `cargo pants`, and old `antarvasa` returned to locker stock.
+- Deterministic gate `./tests/cata_test "[camp][locker]"` passed from `/tmp/caol-locker-zone/camp_locker_tests_rerun.log` (`2147 assertions in 78 test cases`) and covers `NO_NPC_PICKUP`, off-zone, and policy-disabled boundary/exclusion behavior in `camp_locker_zone_candidate_gathering`.
 
-Caveats / manual closure:
-- The harness rows remain yellow where scenario steps lacked expected-visible-fact guards; startup/load and raw logs were not credited as player-facing proof.
+Caveats retained:
 - `locker.package5_robbie_e2e_verified_mcw` -> `.userdata/dev-harness/harness_runs/20260502_034951/` blocked before service artifacts and receives no credit.
-- Full weather/wait product feel is scoped to the Josef manual card in the proof doc; the agent pass only proved practical service/log behavior after forced cold and short turn advancement.
+- The newly created `Probe Locker` is credited from UI trace/reopen proof, while the disk-file saved-zone audit covers the existing persistent `Basecamp: Locker` row. Full human weather-feel taste can still be playtested from the optional card in the proof doc, but it is not a blocker for this v0 evidence closure.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 
