@@ -120,6 +120,7 @@ std::vector<stalker_pattern_row> run_vulnerable_stalker_pattern( const int turns
         ctx.distance_to_target = distance;
         ctx.on_cooldown = cooldown_turns > 0;
         ctx.stalker_hurt = hp_percent <= 55;
+        ctx.burst_strikes = strike_count;
 
         const writhing_stalker::live_response response = writhing_stalker::evaluate_live_response( ctx );
         rows.push_back( stalker_pattern_row{ turn, distance, hp_percent, cooldown_turns, strike_count,
@@ -127,11 +128,9 @@ std::vector<stalker_pattern_row> run_vulnerable_stalker_pattern( const int turns
 
         if( response.next == writhing_stalker::decision::strike ) {
             ++strike_count;
-            cooldown_turns = 2;
-            distance = 4;
+            distance = 2;
             if( strike_count == 2 ) {
                 hp_percent = 50;
-                cooldown_turns = 0;
             }
         } else if( response.next == writhing_stalker::decision::cooling_off ) {
             cooldown_turns = std::max( 0, cooldown_turns - 1 );
@@ -205,7 +204,9 @@ TEST_CASE( "writhing_stalker_monster_footing", "[writhing_stalker][monster]" )
     CHECK( stalker.has_flag( mon_flag_KEENNOSE ) );
     CHECK( stalker.has_flag( mon_flag_PATH_AVOID_DANGER ) );
     CHECK( stalker.has_flag( mon_flag_HARDTOSHOOT ) );
-    CHECK( stalker.has_flag( mon_flag_HIT_AND_RUN ) );
+    // The stalker now owns its burst/fade cadence in the custom live planner; the generic
+    // HIT_AND_RUN flag would force one-hit fleeing before the bounded burst can happen.
+    CHECK_FALSE( stalker.has_flag( mon_flag_HIT_AND_RUN ) );
     CHECK_FALSE( stalker.has_flag( mon_flag_UNBREAKABLE_MORALE ) );
     CHECK_FALSE( stalker.has_flag( mon_flag_GRABS ) );
     CHECK_FALSE( stalker.has_flag( mon_flag_GROUP_BASH ) );
@@ -633,6 +634,76 @@ TEST_CASE( "writhing_stalker_live_response_requires_evidence_and_uses_cooldown",
     CHECK( cooldown.reason == "live_latch_cooldown_blocks_relatched_pressure" );
 }
 
+TEST_CASE( "writhing_stalker_burst_limit_is_shaped_by_stress_and_counterpressure",
+           "[writhing_stalker][ai][pattern]" )
+{
+    using namespace writhing_stalker;
+
+    live_context base = pattern_base_context();
+    base.distance_to_target = 2;
+    base.near_cover_or_clutter = true;
+
+    live_context cautious = base;
+    cautious.player_bleeding = true;
+    cautious.player_hurt = true;
+    cautious.player_low_stamina = true;
+    cautious.target_in_bright_exposure = true;
+    cautious.target_has_focus = true;
+    cautious.allied_support_nearby = 2;
+    const live_response cautious_first = evaluate_live_response( cautious );
+    CHECK( cautious_first.next == decision::withdraw );
+    CHECK( cautious_first.burst_limit == 1 );
+    CHECK( cautious_first.retreat_distance >= 11 );
+
+    live_context pressure = base;
+    pressure.player_bleeding = true;
+    pressure.player_hurt = true;
+    pressure.player_low_stamina = true;
+    pressure.player_distracted = true;
+    pressure.player_noisy = true;
+    pressure.zombie_pressure = 4;
+    const live_response pressure_first = evaluate_live_response( pressure );
+    CHECK( pressure_first.next == decision::strike );
+    CHECK( pressure_first.burst_limit == 4 );
+
+    live_context post_burst = pressure;
+    post_burst.burst_strikes = pressure_first.burst_limit;
+    const live_response retreat = evaluate_live_response( post_burst );
+    CHECK( retreat.next == decision::withdraw );
+    CHECK( retreat.reason == "live_burst_limit_reached_withdraw" );
+    CHECK( retreat.retreat_distance >= 8 );
+}
+
+TEST_CASE( "writhing_stalker_live_plan_retreats_about_eight_tiles_after_burst",
+           "[writhing_stalker][monster][map][pattern]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    const tripoint_bub_ms stalker_start = center + point::east * 2;
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( calendar::turn_zero + 0_hours );
+    refresh_writhing_stalker_arena( here );
+
+    monster &stalker = spawn_test_monster( mon_writhing_stalker.str(), stalker_start );
+    stalker.anger = 100;
+    stalker.aggro_character = true;
+    stalker.set_value( "caol_writhing_stalker_burst_count", 2 );
+
+    REQUIRE( stalker.sees( here, you ) );
+    stalker.plan();
+
+    const tripoint_bub_ms dest = here.get_bub( stalker.get_dest() );
+    INFO( "retreat destination=" << dest.to_string() << " player=" << you.pos_bub().to_string() );
+    CHECK( rl_dist( dest, you.pos_bub() ) >= 8 );
+    CHECK( dest.x() > you.pos_bub().x() );
+    CHECK_FALSE( dest == you.pos_bub() );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "writhing_stalker_pattern_helper_covers_fair_dread_baselines",
            "[writhing_stalker][ai][pattern]" )
 {
@@ -703,18 +774,15 @@ TEST_CASE( "writhing_stalker_pattern_helper_traces_repeated_strikes_then_injured
     CHECK( rows[0].next == decision::shadow );
     CHECK( rows[0].route == approach_class::cover_shadow );
     CHECK( rows[1].next == decision::strike );
-    CHECK( rows[2].next == decision::cooling_off );
-    CHECK( rows[3].next == decision::cooling_off );
-    CHECK( rows[4].next == decision::shadow );
-    CHECK( rows[5].next == decision::strike );
-    CHECK( rows[6].hp_percent == 50 );
-    CHECK( rows[6].next == decision::withdraw );
-    CHECK( rows[6].reason == "live_stalker_hurt_withdraw" );
+    CHECK( rows[2].next == decision::strike );
+    CHECK( rows[3].hp_percent == 50 );
+    CHECK( rows[3].next == decision::withdraw );
+    CHECK( rows[3].reason == "live_stalker_hurt_withdraw" );
 
     CHECK( count_decisions( rows, decision::strike ) == 2 );
     CHECK( count_decisions( rows, decision::withdraw ) >= 1 );
-    CHECK_FALSE( rows[2].next == decision::strike );
     CHECK_FALSE( rows[3].next == decision::strike );
+    CHECK_FALSE( rows[4].next == decision::strike );
 
     int jitter_count = 0;
     for( size_t i = 1; i < rows.size(); ++i ) {

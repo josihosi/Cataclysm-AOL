@@ -97,10 +97,13 @@ struct opportunity_context {
     bool player_distracted = false;
     bool player_noisy = false;
     int zombie_pressure = 0;
+    int allied_support_nearby = 0;
     bool near_cover_or_clutter = false;
     bool bright_exposure = false;
     bool player_focused = false;
     bool stalker_hurt = false;
+    int distance_to_target = 0;
+    int burst_strikes = 0;
 };
 
 struct opportunity_report {
@@ -108,6 +111,8 @@ struct opportunity_report {
     int vulnerability = 0;
     int zombie_distraction = 0;
     int exposure_penalty = 0;
+    int burst_limit = 1;
+    int retreat_distance = 8;
     decision next = decision::ignore;
     std::string reason;
 };
@@ -193,10 +198,12 @@ struct live_context {
     bool player_distracted = false;
     bool player_noisy = false;
     int zombie_pressure = 0;
+    int allied_support_nearby = 0;
     bool quiet_side_cutoff_available = false;
     bool near_cover_or_clutter = false;
     bool stalker_hurt = false;
     bool on_cooldown = false;
+    int burst_strikes = 0;
 };
 
 struct live_response {
@@ -204,6 +211,8 @@ struct live_response {
     approach_class route = approach_class::none;
     int opportunity = 0;
     int confidence = 0;
+    int burst_limit = 1;
+    int retreat_distance = 8;
     bool persistent_state_required = false;
     std::string reason;
 };

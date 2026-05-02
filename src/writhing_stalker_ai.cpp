@@ -41,6 +41,88 @@ void keep_strongest( interest_report &best, interest_source source, int score, i
     }
 }
 
+int caution_pressure( const opportunity_context &ctx )
+{
+    int pressure = 0;
+    if( ctx.bright_exposure ) {
+        pressure += 2;
+    }
+    if( ctx.player_focused ) {
+        pressure += 1;
+    }
+    if( ctx.stalker_hurt ) {
+        pressure += 3;
+    }
+    pressure += std::min( 2, std::max( 0, ctx.allied_support_nearby ) );
+    return pressure;
+}
+
+int vulnerability_pressure( const opportunity_context &ctx )
+{
+    int pressure = 0;
+    if( ctx.player_bleeding ) {
+        ++pressure;
+    }
+    if( ctx.player_hurt ) {
+        ++pressure;
+    }
+    if( ctx.player_low_stamina ) {
+        ++pressure;
+    }
+    if( ctx.player_distracted ) {
+        ++pressure;
+    }
+    if( ctx.player_noisy ) {
+        ++pressure;
+    }
+    if( ctx.zombie_pressure >= 2 ) {
+        ++pressure;
+    }
+    if( ctx.zombie_pressure >= 4 ) {
+        ++pressure;
+    }
+    return pressure;
+}
+
+int burst_limit_for( const opportunity_context &ctx )
+{
+    int limit = 2;
+    if( vulnerability_pressure( ctx ) >= 4 && caution_pressure( ctx ) == 0 ) {
+        ++limit;
+    }
+    if( vulnerability_pressure( ctx ) >= 6 && caution_pressure( ctx ) == 0 ) {
+        ++limit;
+    }
+    if( ctx.bright_exposure || ctx.player_focused ) {
+        --limit;
+    }
+    if( ctx.allied_support_nearby >= 2 ) {
+        --limit;
+    }
+    if( ctx.stalker_hurt ) {
+        limit = 1;
+    }
+    return std::max( 1, std::min( 4, limit ) );
+}
+
+int retreat_distance_for( const opportunity_context &ctx )
+{
+    int distance = 8;
+    if( ctx.bright_exposure ) {
+        distance += 2;
+    }
+    if( ctx.player_focused ) {
+        distance += 1;
+    }
+    if( ctx.allied_support_nearby >= 2 ) {
+        distance += 2;
+    }
+    if( ctx.stalker_hurt ) {
+        distance += 2;
+    }
+    return std::min( 14, distance );
+}
+
 } // namespace
 
 interest_report evaluate_interest( const interest_context &ctx )
@@ -236,10 +318,15 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     if( ctx.player_focused ) {
         report.exposure_penalty += 25;
     }
+    if( ctx.allied_support_nearby > 0 ) {
+        report.exposure_penalty += std::min( 36, ctx.allied_support_nearby * 12 );
+    }
     if( ctx.stalker_hurt ) {
         report.exposure_penalty += 45;
     }
 
+    report.burst_limit = burst_limit_for( ctx );
+    report.retreat_distance = retreat_distance_for( ctx );
     report.opportunity = 18 + report.vulnerability + report.zombie_distraction -
                          report.exposure_penalty;
     if( ctx.near_cover_or_clutter ) {
@@ -250,6 +337,13 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
         report.next = decision::withdraw;
         report.reason = ctx.stalker_hurt ? "stalker_hurt_withdraw" :
                         "exposed_and_focused_withdraw";
+    } else if( ctx.burst_strikes >= report.burst_limit &&
+               ( ctx.distance_to_target <= 0 || ctx.distance_to_target < report.retreat_distance ) ) {
+        report.next = decision::withdraw;
+        report.reason = "burst_limit_reached_withdraw";
+    } else if( ctx.bright_exposure && ctx.allied_support_nearby >= 2 && ctx.burst_strikes > 0 ) {
+        report.next = decision::withdraw;
+        report.reason = "lit_allied_support_withdraw";
     } else if( report.opportunity >= 70 ) {
         report.next = decision::strike;
         report.reason = "vulnerability_window_strike";
@@ -408,6 +502,24 @@ live_response evaluate_live_response( const live_context &ctx )
 {
     live_response response;
 
+    opportunity_context opportunity_ctx;
+    opportunity_ctx.player_bleeding = ctx.player_bleeding;
+    opportunity_ctx.player_hurt = ctx.player_hurt;
+    opportunity_ctx.player_low_stamina = ctx.player_low_stamina;
+    opportunity_ctx.player_distracted = ctx.player_distracted;
+    opportunity_ctx.player_noisy = ctx.player_noisy;
+    opportunity_ctx.zombie_pressure = ctx.zombie_pressure;
+    opportunity_ctx.allied_support_nearby = ctx.allied_support_nearby;
+    opportunity_ctx.near_cover_or_clutter = ctx.near_cover_or_clutter;
+    opportunity_ctx.bright_exposure = ctx.stalker_in_bright_exposure || ctx.target_in_bright_exposure;
+    opportunity_ctx.player_focused = ctx.target_has_focus;
+    opportunity_ctx.stalker_hurt = ctx.stalker_hurt;
+    opportunity_ctx.distance_to_target = ctx.distance_to_target;
+    opportunity_ctx.burst_strikes = ctx.burst_strikes;
+    opportunity_report opportunity = evaluate_opportunity( opportunity_ctx );
+    response.burst_limit = opportunity.burst_limit;
+    response.retreat_distance = opportunity.retreat_distance;
+
     if( !ctx.has_believable_local_evidence ) {
         response.next = decision::ignore;
         response.reason = "live_no_believable_evidence";
@@ -442,19 +554,10 @@ live_response evaluate_live_response( const live_context &ctx )
     approach_ctx.forced_no_cover = ctx.forced_no_cover;
     const approach_report approach = choose_approach( approach_ctx );
 
-    opportunity_context opportunity_ctx;
     opportunity_ctx.latch = latch.state;
-    opportunity_ctx.player_bleeding = ctx.player_bleeding;
-    opportunity_ctx.player_hurt = ctx.player_hurt;
-    opportunity_ctx.player_low_stamina = ctx.player_low_stamina;
-    opportunity_ctx.player_distracted = ctx.player_distracted;
-    opportunity_ctx.player_noisy = ctx.player_noisy;
-    opportunity_ctx.zombie_pressure = ctx.zombie_pressure;
-    opportunity_ctx.near_cover_or_clutter = ctx.near_cover_or_clutter;
-    opportunity_ctx.bright_exposure = ctx.stalker_in_bright_exposure || ctx.target_in_bright_exposure;
-    opportunity_ctx.player_focused = ctx.target_has_focus;
-    opportunity_ctx.stalker_hurt = ctx.stalker_hurt;
-    const opportunity_report opportunity = evaluate_opportunity( opportunity_ctx );
+    opportunity = evaluate_opportunity( opportunity_ctx );
+    response.burst_limit = opportunity.burst_limit;
+    response.retreat_distance = opportunity.retreat_distance;
 
     const confidence_report confidence = evaluate_confidence( confidence_context{
         ctx.has_believable_local_evidence, ctx.has_overmap_interest_footing, ctx.zombie_pressure,

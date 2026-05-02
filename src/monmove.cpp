@@ -703,6 +703,44 @@ static int writhing_stalker_zombie_pressure( const monster &stalker, const Creat
     return pressure;
 }
 
+static int writhing_stalker_allied_support_nearby( map &here, const Creature &target )
+{
+    const Character *target_character = target.as_character();
+    if( target_character == nullptr ) {
+        return 0;
+    }
+
+    const Character &player_character = get_player_character();
+    int support = 0;
+    for( const npc &guy : g->all_npcs() ) {
+        if( &guy == target_character || guy.is_dead() ) {
+            continue;
+        }
+        if( guy.is_friendly( player_character ) && rl_dist( guy.pos_bub(), target.pos_bub() ) <= 6 &&
+            guy.sees( here, target ) ) {
+            ++support;
+        }
+    }
+    return support;
+}
+
+static const std::string writhing_stalker_burst_count_key( "caol_writhing_stalker_burst_count" );
+
+static int writhing_stalker_burst_count( const monster &stalker )
+{
+    const diag_value *value = stalker.maybe_get_value( writhing_stalker_burst_count_key );
+    return value == nullptr ? 0 : std::max( 0, static_cast<int>( value->dbl() ) );
+}
+
+static void writhing_stalker_set_burst_count( monster &stalker, const int burst_count )
+{
+    if( burst_count <= 0 ) {
+        stalker.remove_value( writhing_stalker_burst_count_key );
+    } else {
+        stalker.set_value( writhing_stalker_burst_count_key, burst_count );
+    }
+}
+
 static writhing_stalker::live_context writhing_stalker_live_context( monster &stalker,
         map &here, Creature &target )
 {
@@ -729,11 +767,13 @@ static writhing_stalker::live_context writhing_stalker_live_context( monster &st
                           !ctx.edge_route_available;
     ctx.open_exposure = ctx.forced_no_cover;
     ctx.zombie_pressure = writhing_stalker_zombie_pressure( stalker, target );
+    ctx.allied_support_nearby = writhing_stalker_allied_support_nearby( here, target );
     ctx.quiet_side_cutoff_available = ctx.zombie_pressure > 0 &&
                                       ( ctx.cover_route_available || ctx.edge_route_available );
     ctx.near_cover_or_clutter = writhing_stalker_has_cover_or_clutter( here, target_pos );
     ctx.stalker_hurt = stalker.hp_percentage() <= 55;
     ctx.on_cooldown = stalker.has_effect( effect_run );
+    ctx.burst_strikes = writhing_stalker_burst_count( stalker );
 
     if( Character *target_character = target.as_character() ) {
         ctx.player_bleeding = target_character->has_effect( effect_bleed );
@@ -807,6 +847,55 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
     return here.get_abs( stalker.pos_bub() );
 }
 
+static tripoint_abs_ms writhing_stalker_retreat_destination( const monster &stalker, map &here,
+        const Creature &target, const int desired_distance )
+{
+    const tripoint_bub_ms stalker_pos = stalker.pos_bub();
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    const int away_x = sgn( stalker_pos.x() - target_pos.x() );
+    const int away_y = sgn( stalker_pos.y() - target_pos.y() );
+    const int minimum_distance = std::max( 4, desired_distance - 4 );
+    const int maximum_distance = std::max( desired_distance, minimum_distance );
+    creature_tracker &creatures = get_creature_tracker();
+
+    tripoint_bub_ms best = stalker_pos;
+    int best_score = INT_MIN;
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( target_pos, maximum_distance ) ) {
+        if( candidate.z() != stalker.posz() || !here.inbounds( candidate ) ) {
+            continue;
+        }
+        const int target_distance = rl_dist( candidate, target_pos );
+        if( target_distance < minimum_distance || target_distance > maximum_distance ) {
+            continue;
+        }
+        if( !stalker.can_move_to( candidate ) ) {
+            continue;
+        }
+        const Creature *occupant = creatures.creature_at( candidate, true );
+        if( occupant != nullptr && occupant != &stalker ) {
+            continue;
+        }
+
+        const int rel_x = sgn( candidate.x() - target_pos.x() );
+        const int rel_y = sgn( candidate.y() - target_pos.y() );
+        const int alignment = rel_x * away_x + rel_y * away_y;
+        const int distance_score = target_distance <= desired_distance ? target_distance * 12 :
+                                   desired_distance * 12 - ( target_distance - desired_distance ) * 8;
+        const int score = distance_score + alignment * 30 - rl_dist( stalker_pos, candidate );
+        if( score > best_score ) {
+            best_score = score;
+            best = candidate;
+        }
+    }
+
+    if( best_score == INT_MIN ) {
+        tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
+        away.z() = stalker.posz();
+        return away;
+    }
+    return here.get_abs( best );
+}
+
 static const char *writhing_stalker_decision_name( writhing_stalker::decision decision )
 {
     switch( decision ) {
@@ -867,6 +956,9 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " overmap_interest=" << ( ctx.has_overmap_interest_footing ? "yes" : "no" )
                                << " distance=" << ctx.distance_to_target
                                << " zombie_pressure=" << ctx.zombie_pressure
+                               << " allied_support=" << ctx.allied_support_nearby
+                               << " burst=" << ctx.burst_strikes << '/' << response.burst_limit
+                               << " retreat_distance=" << response.retreat_distance
                                << " target_bright=" << ( ctx.target_in_bright_exposure ? "yes" : "no" )
                                << " stalker_bright=" << ( ctx.stalker_in_bright_exposure ? "yes" : "no" )
                                << " target_focus=" << ( ctx.target_has_focus ? "yes" : "no" )
@@ -874,12 +966,17 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " eval_us=" << elapsed_us << '\n';
 
     switch( response.next ) {
-        case writhing_stalker::decision::strike:
+        case writhing_stalker::decision::strike: {
+            const int next_burst_count = ctx.burst_strikes + 1;
+            writhing_stalker_set_burst_count( stalker, next_burst_count );
             stalker.set_dest( target.pos_abs() );
             stalker.anger = std::max( stalker.anger, 80 );
-            stalker.add_effect( effect_run, 5_turns );
             return true;
+        }
         case writhing_stalker::decision::shadow: {
+            if( ctx.burst_strikes > 0 && ctx.distance_to_target >= response.retreat_distance ) {
+                writhing_stalker_set_burst_count( stalker, 0 );
+            }
             bool found_shadow = false;
             const tripoint_abs_ms shadow_dest = writhing_stalker_shadow_destination( stalker, here, target,
                                                 found_shadow );
@@ -891,16 +988,14 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
             return true;
         }
         case writhing_stalker::decision::withdraw: {
-            tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
-            away.z() = stalker.posz();
-            stalker.set_dest( away );
+            stalker.set_dest( writhing_stalker_retreat_destination( stalker, here, target,
+                              response.retreat_distance ) );
             stalker.add_effect( effect_run, 5_turns );
             return true;
         }
         case writhing_stalker::decision::cooling_off: {
-            tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
-            away.z() = stalker.posz();
-            stalker.set_dest( away );
+            stalker.set_dest( writhing_stalker_retreat_destination( stalker, here, target,
+                              response.retreat_distance ) );
             // Do not refresh effect_run here: a cooldown turn should breathe out and expire.
             // Refreshing it every cooling-off plan made the live monster permanently cool down,
             // which contradicted the repeated-strike rhythm proved by the evaluator helper.
@@ -909,6 +1004,9 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
         case writhing_stalker::decision::hold:
         case writhing_stalker::decision::interested:
         case writhing_stalker::decision::ignore:
+            if( ctx.burst_strikes > 0 && ctx.distance_to_target >= response.retreat_distance ) {
+                writhing_stalker_set_burst_count( stalker, 0 );
+            }
             stalker.unset_dest();
             return true;
     }

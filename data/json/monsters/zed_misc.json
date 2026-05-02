@@ -529,7 +529,7 @@
     "fear_triggers": [ "HURT", "BRIGHT_LIGHT", "FIRE" ],
     "upgrades": false,
     "armor": { "bash": 1, "cut": 2, "bullet": 1, "electric": 1 },
-    "extend": { "move_skills": { "climb": 8 }, "flags": [ "SMELLS", "KEENNOSE", "PATH_AVOID_DANGER", "HARDTOSHOOT", "HIT_AND_RUN" ] },
+    "extend": { "move_skills": { "climb": 8 }, "flags": [ "SMELLS", "KEENNOSE", "PATH_AVOID_DANGER", "HARDTOSHOOT" ] },
     "delete": { "flags": [ "STUMBLES", "GRABS", "BASHES", "GROUP_BASH", "UNBREAKABLE_MORALE" ] }
   },
   {
