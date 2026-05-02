@@ -1,15 +1,23 @@
 # Andi handoff
 
-Active lane: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
+Active lane: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
 
-Current artifact: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
 
-Post-crunch nudge handled: Frau flagged that the stalker quiet-side run `.userdata/dev-harness/harness_runs/20260501_071548/` was dirty despite being cited as clean sampler footing. Targeted grep confirms `probe.artifacts.log` contains `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`.
+Current repo canon agrees:
+- `Plan.md` current active lane: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
+- `TODO.md` current execution item while visions taste is pending: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
+- `TESTING.md` active validation target: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
 
-What changed:
-- The stalker postcard now makes `writhing_stalker.live_escape_side_zombie_retreat_mcw` / `.userdata/dev-harness/harness_runs/20260501_071940/` the primary footing.
-- Targeted grep found no `ERROR GAME` / warning backtrace in the cited `071940` log/report/artifact excerpts.
-- The old quiet-side row is explicitly dirty/caveated and should not be relayed as clean Josef-facing optical footing unless rerun clean.
-- Screenshot review copy added: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/01-stalker-escape-side-primary.png`.
+Superseded stale handoff note:
+- The previous `andi.handoff.md` named `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` as active. That was stale after the bandit scenic shakedown lane closed and must not pull the next Andi run back into visions proof churn.
+- `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains relay-ready / waiting on Schani-Josef taste relay, not an Andi proof target.
+- `CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0` is closed/checkpointed green v0 at commits `456ab43d65` and `797725e241` with proof in `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
 
-Remaining state: no fresh handoff sessions were left running. Next honest move remains Schani/Josef decision: relay a shorter user-facing sampler ask now, or have Andi run selected clean `handoff` rows first.
+Next honest move:
+- Start portal-storm warning-light implementation by inspecting the harness report and step-ledger generation seams.
+- Add reviewer-visible portal-storm contamination warning/light surfaces.
+- Prove: portal-storm positive detection, normal-weather negative control, unallowed contamination ledger status, and allowed/intentional portal-storm scenario behavior.
+
+Boundary:
+- Harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old feature packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
