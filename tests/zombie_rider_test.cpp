@@ -263,6 +263,33 @@ TEST_CASE( "zombie_rider_close_pressure_bunny_hops_without_point_blank_bow_shot"
     clear_map_without_vision();
 }
 
+TEST_CASE( "zombie_rider_empty_bow_charges_instead_of_kiting_forever", "[zombie_rider][monster][ai]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    const tripoint_bub_ms rider_start = center + point::east * 6;
+    prepare_zombie_rider_local_arena( here, center );
+    you.setpos( here, center );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( daylight_time( calendar::turn ) + 2_hours );
+
+    monster &rider = spawn_test_monster( mon_zombie_rider.str(), rider_start );
+    rider.anger = 100;
+    rider.aggro_character = true;
+    rider.ammo[arrow_wood] = 0;
+    rider.set_special( zombie_rider_bone_bow_shot, 0 );
+    rider.set_moves( 100 );
+
+    REQUIRE( rider.sees( here, you ) );
+    rider.plan();
+
+    CHECK( rider.get_dest() == you.pos_abs() );
+    CHECK( rider.ammo[arrow_wood] == 0 );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "zombie_rider_close_indoor_pressure_repositions_instead_of_loitering", "[zombie_rider][monster][ai][map]" )
 {
     clear_map_without_vision();

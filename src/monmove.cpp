@@ -1156,6 +1156,23 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         return true;
     }
 
+    if( ammo_remaining <= 0 ) {
+        rider.aggro_character = true;
+        rider.anger = std::max( rider.anger, 80 );
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=melee_pressure reason=bow_empty_charge distance="
+                                   << distance_to_target
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " hp=" << rider.hp_percentage()
+                                   << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " special_ready=" << ( special_ready ? "yes" : "no" )
+                                   << " ammo=0"
+                                   << " aggro_before=" << ( aggro_before ? "yes" : "no" )
+                                   << " aggro_after=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
+        rider.set_dest( target.pos_abs() );
+        return true;
+    }
+
     tripoint_abs_ms pressure_dest;
     bool pressure_line_of_fire = false;
     if( zombie_rider_pressure_destination( rider, here, target, pressure_dest, pressure_line_of_fire ) ) {
