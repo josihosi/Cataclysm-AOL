@@ -218,6 +218,7 @@ Canonical docs:
 - Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`.
 - Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
 - Handoff: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
+- Current partial Josef-facing card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
 
 ---
 

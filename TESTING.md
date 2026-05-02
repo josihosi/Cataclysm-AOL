@@ -114,6 +114,8 @@ Evidence required before handoff:
 - [ ] blocked entries are labelled blocked/no-credit with the missing primitive instead of hidden;
 - [ ] final Josef-facing card is short enough to play from.
 
+Card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` is the current partial Josef-facing index. It marks four ready staged rows green from fresh inspected reports: cannibal night local contact `.userdata/dev-harness/harness_runs/20260502_125033/`, zombie rider open-field pressure `.userdata/dev-harness/harness_runs/20260502_125150/`, writhing stalker hit-fade `.userdata/dev-harness/harness_runs/20260502_125231/`, and locker weather/service `.userdata/dev-harness/harness_runs/20260502_125339/`; each records clear/not-observed portal-storm status and runtime warnings `[]`. It also preserves no-credit/caveated status for fresh flesh raptor (`20260502_125055`, `20260502_125447`), stalker campfire/light (`20260502_125651`), rider rerun (`20260502_125537`), stalker time setup (`20260502_125633`), and mostly-green-but-red-screen escape-side stalker (`20260502_125716`). Bandit remains not save-pack ready until camp/NPC assignment preflight and a fresh contrast matrix are audited.
+
 Prior sampler footing: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` remains useful source material (`doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`), but it is no longer the active deliverable.
 
 ### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
