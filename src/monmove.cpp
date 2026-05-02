@@ -63,6 +63,8 @@
 static const damage_type_id damage_bash( "bash" );
 static const damage_type_id damage_cut( "cut" );
 
+static const itype_id arrow_wood( "arrow_wood" );
+
 static const efftype_id effect_absorbed_acidic( "absorbed_acidic" );
 static const efftype_id effect_bleed( "bleed" );
 static const efftype_id effect_absorbed_electric( "absorbed_electric" );
@@ -113,6 +115,8 @@ static const mfaction_str_id monfaction_player( "player" );
 
 static const species_id species_FUNGUS( "FUNGUS" );
 static const species_id species_ZOMBIE( "ZOMBIE" );
+
+static const std::string zombie_rider_bone_bow_shot( "zombie_rider_bone_bow_shot" );
 
 static const ter_str_id ter_t_lava( "t_lava" );
 static const ter_str_id ter_t_pit( "t_pit" );
@@ -918,6 +922,81 @@ static bool zombie_rider_line_of_fire( map &here, const tripoint_bub_ms &from,
     return here.clear_path( from, target.pos_bub(), 18, 1, 100 );
 }
 
+static int zombie_rider_ammo_remaining( const monster &rider )
+{
+    const auto ammo_it = rider.ammo.find( arrow_wood );
+    return ammo_it == rider.ammo.end() ? 0 : ammo_it->second;
+}
+
+static tripoint_abs_ms zombie_rider_direct_withdraw_destination( const monster &rider,
+        const Creature &target )
+{
+    tripoint_abs_ms away = rider.pos_abs() - target.pos_abs() + rider.pos_abs();
+    away.z() = rider.posz();
+    return away;
+}
+
+static bool zombie_rider_pressure_destination( monster &rider, map &here, Creature &target,
+        tripoint_abs_ms &destination, bool &chosen_line_of_fire )
+{
+    const tripoint_bub_ms target_pos = target.pos_bub();
+    const tripoint_bub_ms rider_pos = rider.pos_bub();
+    const int current_distance = rl_dist( rider_pos, target_pos );
+    const point rider_rel( rider_pos.x() - target_pos.x(), rider_pos.y() - target_pos.y() );
+    const int turn_salt = static_cast<int>( to_turns<int>( calendar::turn - calendar::turn_zero ) % 17 );
+    creature_tracker &creatures = get_creature_tracker();
+
+    int best_score = INT_MIN;
+    tripoint_bub_ms best = rider_pos;
+    chosen_line_of_fire = false;
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( target_pos, 6 ) ) {
+        if( candidate.z() != rider.posz() || !here.inbounds( candidate ) ||
+            candidate == target_pos || candidate == rider_pos ) {
+            continue;
+        }
+        const int target_distance = rl_dist( candidate, target_pos );
+        if( target_distance < 3 || target_distance > 6 ) {
+            continue;
+        }
+        const int hop_distance = rl_dist( rider_pos, candidate );
+        if( hop_distance > 6 || !rider.can_move_to( candidate ) ) {
+            continue;
+        }
+        const Creature *occupant = creatures.creature_at( candidate, true );
+        if( occupant != nullptr && occupant != &rider ) {
+            continue;
+        }
+
+        const point candidate_rel( candidate.x() - target_pos.x(), candidate.y() - target_pos.y() );
+        const bool candidate_line_of_fire = zombie_rider_line_of_fire( here, candidate, target );
+        const int desired_distance = current_distance <= 3 ? 5 : 4;
+        const int distance_score = 20 - 4 * std::abs( target_distance - desired_distance );
+        const int hop_score = 16 - 2 * hop_distance;
+        const int lateral = std::abs( rider_rel.x * candidate_rel.y - rider_rel.y * candidate_rel.x );
+        const int away_alignment = rider_rel.x * candidate_rel.x + rider_rel.y * candidate_rel.y;
+        const int irregular = ( std::abs( candidate.x() * 31 + candidate.y() * 17 + rider_pos.x() * 13 +
+                                          rider_pos.y() * 7 + turn_salt ) % 11 );
+        const int outward_score = current_distance <= 3 ? away_alignment * 2 : away_alignment / 4;
+        const int close_distance_bonus = current_distance <= 3 ? 6 * ( target_distance - current_distance ) : 0;
+        const int score = ( candidate_line_of_fire ? 120 : 0 ) + distance_score + hop_score +
+                          std::min( lateral, 18 ) + outward_score + close_distance_bonus + irregular;
+
+        if( score > best_score ) {
+            best_score = score;
+            best = candidate;
+            chosen_line_of_fire = candidate_line_of_fire;
+        }
+    }
+
+    if( best_score == INT_MIN ) {
+        return false;
+    }
+
+    destination = here.get_abs( best );
+    return true;
+}
+
 static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target )
 {
     if( rider.type->id != mon_zombie_rider ) {
@@ -932,6 +1011,9 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=ignore reason=no_visible_target distance=-1 line_of_fire=no hp="
                                    << rider.hp_percentage()
                                    << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " special_ready=" << ( rider.special_available( zombie_rider_bone_bow_shot ) ? "yes" : "no" )
+                                   << " ammo=" << zombie_rider_ammo_remaining( rider )
+                                   << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
         return false;
     }
@@ -939,42 +1021,74 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     const int distance_to_target = rl_dist( rider.pos_bub(), target.pos_bub() );
     const bool line_of_fire = distance_to_target <= 18 && zombie_rider_line_of_fire( here,
                               rider.pos_bub(), target );
-    const bool retreating = distance_to_target < 4 || rider.hp_percentage() <= 50 ||
-                            rider.has_effect( effect_run );
+    const bool special_ready = rider.special_available( zombie_rider_bone_bow_shot );
+    const int ammo_remaining = zombie_rider_ammo_remaining( rider );
+    const bool bow_action_ready = special_ready && ammo_remaining > 0;
+    const bool aggro_before = rider.aggro_character;
     const auto perf_done = std::chrono::steady_clock::now();
     const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                             perf_started ).count();
 
-    if( retreating ) {
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw reason="
-                                   << ( rider.hp_percentage() <= 50 ? "wounded_or_close" : "post_shot_or_close" )
+    if( rider.hp_percentage() <= 50 ) {
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw reason=wounded_rider_disengages"
                                    << " distance=" << distance_to_target
                                    << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
                                    << " hp=" << rider.hp_percentage()
                                    << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " special_ready=" << ( special_ready ? "yes" : "no" )
+                                   << " ammo=" << ammo_remaining
+                                   << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
-        tripoint_abs_ms away = rider.pos_abs() - target.pos_abs() + rider.pos_abs();
-        away.z() = rider.posz();
-        rider.set_dest( away );
+        rider.set_dest( zombie_rider_direct_withdraw_destination( rider, target ) );
         return true;
     }
 
-    if( line_of_fire ) {
+    if( line_of_fire && distance_to_target >= 4 && bow_action_ready ) {
+        rider.aggro_character = true;
+        rider.anger = std::max( rider.anger, 80 );
         DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=bow_pressure reason=line_of_fire distance="
                                    << distance_to_target
                                    << " line_of_fire=yes hp=" << rider.hp_percentage()
                                    << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " special_ready=yes ammo=" << ammo_remaining
+                                   << " aggro_before=" << ( aggro_before ? "yes" : "no" )
+                                   << " aggro_after=" << ( rider.aggro_character ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( target.pos_abs() );
         return true;
     }
 
-    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=ignore reason=no_line_of_fire distance="
-                               << distance_to_target
-                               << " line_of_fire=no hp=" << rider.hp_percentage()
+    tripoint_abs_ms pressure_dest;
+    bool pressure_line_of_fire = false;
+    if( zombie_rider_pressure_destination( rider, here, target, pressure_dest, pressure_line_of_fire ) ) {
+        const char *reason = distance_to_target < 4 ? "too_close_bunny_hop" :
+                             ( line_of_fire ? ( ammo_remaining <= 0 ? "bow_no_ammo_reposition" :
+                                               "bow_cooldown_reposition" ) : "no_line_of_fire_reposition" );
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=reposition reason=" << reason
+                                   << " distance=" << distance_to_target
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " pressure_line_of_fire=" << ( pressure_line_of_fire ? "yes" : "no" )
+                                   << " hp=" << rider.hp_percentage()
+                                   << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " special_ready=" << ( special_ready ? "yes" : "no" )
+                                   << " ammo=" << ammo_remaining
+                                   << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
+        rider.set_dest( pressure_dest );
+        return true;
+    }
+
+    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw reason=no_pressure_tile"
+                               << " distance=" << distance_to_target
+                               << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                               << " hp=" << rider.hp_percentage()
                                << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                               << " special_ready=" << ( special_ready ? "yes" : "no" )
+                               << " ammo=" << ammo_remaining
+                               << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
                                << " eval_us=" << elapsed_us << '\n';
-    return false;
+    rider.set_dest( zombie_rider_direct_withdraw_destination( rider, target ) );
+    return true;
 }
 
 struct targeted_live_plan_adapter {

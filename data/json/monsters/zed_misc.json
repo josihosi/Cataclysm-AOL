@@ -803,7 +803,7 @@
     "type": "MONSTER",
     "name": { "str": "zombie rider" },
     "description": {
-      "str": "Up on, what can only be described as, a six legged horse - or is it a spider? - a towering figure, with eyes the color of blood, holds a gory bow of wet bones and sinews.\nIt's movement ferocious, as the tumbling feet hasten across the terrain.\nRunning is out of the question.",
+      "str": "Up on a six-legged horse — or is it a spider? — a towering figure with eyes the color of blood holds a gory bow of wet bones and sinews.\nIt moves ferociously, tumbling feet hastening across the terrain.\nRunning is out of the question.",
       "//NOLINT(cata-text-style)": true
     },
     "copy-from": "mon_zombie_predator",

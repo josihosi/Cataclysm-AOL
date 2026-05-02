@@ -56,8 +56,8 @@ TEST_CASE( "zombie_rider_monster_footing", "[zombie_rider][monster]" )
 {
     const mtype &rider = *mon_zombie_rider;
     const std::string exact_description =
-        "Up on, what can only be described as, a six legged horse - or is it a spider? - a towering figure, with eyes the color of blood, holds a gory bow of wet bones and sinews.\n"
-        "It's movement ferocious, as the tumbling feet hasten across the terrain.\n"
+        "Up on a six-legged horse — or is it a spider? — a towering figure with eyes the color of blood holds a gory bow of wet bones and sinews.\n"
+        "It moves ferociously, tumbling feet hastening across the terrain.\n"
         "Running is out of the question.";
 
     CHECK( rider.nname() == "zombie rider" );
@@ -190,7 +190,40 @@ TEST_CASE( "zombie_rider_local_bow_shot_sets_cooldown_and_repositions", "[zombie
     clear_map_without_vision();
 }
 
-TEST_CASE( "zombie_rider_close_pressure_withdraws_without_point_blank_bow_shot", "[zombie_rider][monster][ai]" )
+TEST_CASE( "zombie_rider_bow_pressure_marks_avatar_hostile_before_shooting", "[zombie_rider][monster][ai]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    const tripoint_bub_ms rider_start = center + point::east * 6;
+    prepare_zombie_rider_local_arena( here, center );
+    you.setpos( here, center );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( daylight_time( calendar::turn ) + 2_hours );
+    you.set_all_parts_hp_to_max();
+
+    monster &rider = spawn_test_monster( mon_zombie_rider.str(), rider_start );
+    rider.anger = 100;
+    rider.aggro_character = false;
+    rider.set_special( zombie_rider_bone_bow_shot, 0 );
+    rider.set_moves( 100 );
+
+    REQUIRE( rider.sees( here, you ) );
+    rider.plan();
+    CHECK( rider.get_dest() == you.pos_abs() );
+    CHECK( rider.aggro_character );
+
+    const int ammo_before = rider.ammo[arrow_wood];
+    REQUIRE( rider.special_available( zombie_rider_bone_bow_shot ) );
+    rider.move();
+
+    CHECK( rider.ammo[arrow_wood] == ammo_before - 1 );
+    CHECK_FALSE( rider.special_available( zombie_rider_bone_bow_shot ) );
+    clear_map_without_vision();
+}
+
+TEST_CASE( "zombie_rider_close_pressure_bunny_hops_without_point_blank_bow_shot", "[zombie_rider][monster][ai]" )
 {
     clear_map_without_vision();
     map &here = get_map();
@@ -206,18 +239,80 @@ TEST_CASE( "zombie_rider_close_pressure_withdraws_without_point_blank_bow_shot",
     rider.anger = 100;
     rider.aggro_character = true;
     rider.set_special( zombie_rider_bone_bow_shot, 0 );
+    rider.set_special( "bite", 10 );
     rider.set_moves( 100 );
 
     REQUIRE( rider.sees( here, you ) );
     const int distance_before = rl_dist( rider.pos_bub(), you.pos_bub() );
     rider.plan();
-    CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
+    const tripoint_bub_ms planned_dest = here.get_bub( rider.get_dest() );
+    const int destination_distance = rl_dist( planned_dest, you.pos_bub() );
+    CHECK( destination_distance >= 4 );
+    CHECK( destination_distance <= 6 );
+    CHECK( planned_dest.y() != rider_start.y() );
 
     const int ammo_before = rider.ammo[arrow_wood];
-    rider.move();
+    for( int moves = 0; moves < 2 && rider.pos_bub() == rider_start; ++moves ) {
+        rider.set_moves( 100 );
+        rider.move();
+    }
 
     CHECK( rider.ammo[arrow_wood] == ammo_before );
-    CHECK( rl_dist( rider.pos_bub(), you.pos_bub() ) > distance_before );
+    CHECK( rider.pos_bub() != rider_start );
+    CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
+    clear_map_without_vision();
+}
+
+TEST_CASE( "zombie_rider_close_indoor_pressure_repositions_instead_of_loitering", "[zombie_rider][monster][ai][map]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const ter_id t_floor( "t_floor" );
+    const ter_id t_wall( "t_wall" );
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    const tripoint_bub_ms rider_start = center + point::east * 3;
+
+    prepare_zombie_rider_local_arena( here, center );
+    for( const tripoint_bub_ms &p : here.points_in_rectangle( center + point( -6, -4 ),
+            center + point( 6, 4 ) ) ) {
+        here.ter_set( p, t_wall );
+    }
+    for( const tripoint_bub_ms &p : here.points_in_rectangle( center + point( -5, -3 ),
+            center + point( 5, 3 ) ) ) {
+        here.ter_set( p, t_floor );
+    }
+    refresh_pathing_cache( here );
+    you.setpos( here, center );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( daylight_time( calendar::turn ) + 2_hours );
+
+    monster &rider = spawn_test_monster( mon_zombie_rider.str(), rider_start );
+    rider.anger = 100;
+    rider.aggro_character = true;
+    rider.set_special( zombie_rider_bone_bow_shot, 0 );
+    rider.set_special( "bite", 10 );
+    rider.set_moves( 100 );
+
+    REQUIRE( rider.sees( here, you ) );
+    const int ammo_before = rider.ammo[arrow_wood];
+    rider.plan();
+    const tripoint_bub_ms planned_dest = here.get_bub( rider.get_dest() );
+
+    CHECK( planned_dest != rider_start );
+    CHECK( planned_dest != you.pos_bub() );
+    CHECK( rl_dist( planned_dest, you.pos_bub() ) >= 4 );
+    CHECK( rl_dist( planned_dest, you.pos_bub() ) <= 6 );
+    CHECK( planned_dest.y() != rider_start.y() );
+
+    for( int moves = 0; moves < 2 && rider.pos_bub() == rider_start; ++moves ) {
+        rider.set_moves( 100 );
+        rider.move();
+    }
+
+    CHECK( rider.ammo[arrow_wood] == ammo_before );
+    CHECK( rider.pos_bub() != rider_start );
+    CHECK( rl_dist( rider.pos_bub(), you.pos_bub() ) >= 4 );
     clear_map_without_vision();
 }
 
@@ -247,9 +342,14 @@ TEST_CASE( "zombie_rider_injured_withdraws_instead_of_holding_bow_range", "[zomb
 
     const int ammo_before = rider.ammo[arrow_wood];
     rider.move();
+    if( rl_dist( rider.pos_bub(), you.pos_bub() ) == distance_before ) {
+        rider.set_moves( 100 );
+        rider.move();
+    }
 
     CHECK( rider.ammo[arrow_wood] == ammo_before );
-    CHECK( rl_dist( rider.pos_bub(), you.pos_bub() ) > distance_before );
+    CHECK( rider.pos_bub() != rider_start );
+    CHECK( rl_dist( here.get_bub( rider.get_dest() ), you.pos_bub() ) > distance_before );
     clear_map_without_vision();
 }
 
