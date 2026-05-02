@@ -1,24 +1,25 @@
 # Andi handoff — CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
 
-Classification: ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP.
+Classification: CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP.
 
 Read first:
+- Closure proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`
 - Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`
 - Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`
-- Runtime watch notes: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-watch-20260502/zombie-rider-live-watch-notes-2026-05-02.md`
 
-Core bug smell: player observed rider not attacking at all while trace reportedly showed repeated `decision=bow_pressure`, `reason=line_of_fire`, `line_of_fire=yes`, distance around `4-5`. Name the decision-to-action break before tuning aggression.
+Root cause fixed: `decision=bow_pressure reason=line_of_fire` did not force `aggro_character`, while the monster gun actor refuses avatar shots when the shooter is not character-aggro.
 
-Scope:
-- reproduce/minimize close or indoor no-attack;
-- identify action-layer cause;
-- fix visible attack pressure or named refusal;
-- add irregular bunny-hop/circle repositioning when shot is blocked/too close;
-- include corrected rider description text.
+What landed:
+- bow pressure now marks the rider character-aggro and raises anger before bow handoff when line of fire, bow range, cooldown, and ammo are ready;
+- close/cooldown/no-ammo/no-LOS pressure now chooses named irregular bunny-hop/reposition destinations instead of loitering or point-blank bow shots;
+- rider live traces include `special_ready`, `ammo`, and aggro state;
+- harness active-monster save transforms preserve/audit scripted ammo for staged archer proof;
+- corrected zombie-rider description text is in JSON.
 
-Non-goals:
-- do not reopen all zombie rider v0;
-- do not break wounded retreat, cover/LOS, camp-light banding, no-light controls;
-- no perfect orbit, no instant-kill tuning, no wall-suicide.
+Evidence:
+- `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0` passed.
+- `./tests/cata_test "[zombie_rider]"` passed: `199 assertions in 16 test cases`.
+- `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` exited `0`; `cataclysm-tiles` linked.
+- Fresh live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/`: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings; saved rider starts with `ammo={"arrow_wood":18}`; live log shows `aggro_before=no aggro_after=yes`, arrow ammo decrement after bow pressure, and `decision=reposition reason=too_close_bunny_hop` at close pressure.
 
-Success bar: deterministic bridge/reposition tests + fresh clean live/handoff proof with screenshots/artifacts, plus existing rider guarantees still green.
+Caveat: staged-but-live McWilliams proof only; not natural random discovery or full siege/navigation proof. Do not reopen broader zombie-rider v0 without a fresh promoted follow-up.

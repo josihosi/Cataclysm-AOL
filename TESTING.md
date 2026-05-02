@@ -57,11 +57,30 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
+### Active validation target - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
 
-`CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is active/greenlit. Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`; imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`; handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+`CAOL-VISIONS-PLAYTEST-SAMPLER-v0` is active/greenlit. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`; imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
 
-Validation must first name the no-attack cause: why does `zombie_rider live_plan` report `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` while the player sees no attack? Use `.userdata/dev-harness/harness_runs/20260502_015857/` only as a yellow seed because its handoff has runtime-version mismatch. Required proof: focused deterministic decision-to-action bridge test, close/indoor pressure or irregular bunny-hop reposition test, existing `[zombie_rider]` regressions for wounded disengagement / cover-LOS / light attraction / no-light controls, and a fresh clean live/handoff row with screenshots/artifacts before claiming in-game feature proof.
+Validation shape: product-feel sampler, not broad proof rerun. Use existing green staged/live rows as footing where possible, create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the selected postcards, and keep staged-vs-natural caveats visible.
+
+Required evidence before sampler handoff:
+- bounded v0 set of 3-5 labelled postcards;
+- each postcard names the vision, setup/handoff path or exact recipe, visible/optical fact, and Josef taste questions;
+- visual postcards include screenshot checkpoints with named expected visible facts;
+- any fresh handoff/probe row records artifact dir, cleanup/handoff status, and whether it is feature proof, startup/load proof, or taste/setup proof.
+
+### Closed validation receipt - CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
+
+`CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is closed/checkpointed green v0. Proof/readout: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`; contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
+
+Credited evidence:
+- root cause named: `bow_pressure + line_of_fire=yes` set a plan destination but did not force `aggro_character`; `gun_actor` refuses non-monster avatar targets when `!z.aggro_character`.
+- `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0` passed.
+- `./tests/cata_test "[zombie_rider]"` passed: `199 assertions in 16 test cases`.
+- `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` exited `0`; `cataclysm-tiles` linked.
+- Fresh live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/`: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings; saved active-monster audit requires `ammo={"arrow_wood":18}`; live plan shows `aggro_before=no aggro_after=yes`, bow ammo decrement, and close `decision=reposition reason=too_close_bunny_hop` pressure.
+
+Caveat: staged-but-live McWilliams feature proof, not natural random discovery/full siege-navigation proof.
 
 ### Closed validation receipt - CAOL-CAMP-LOCKER-ZONE-PLAYTESTS-v0
 
@@ -134,10 +153,6 @@ Credited staged-but-live rows:
 - `flesh_raptor.live_equipment_frustration_comparison_mcw` -> `.userdata/dev-harness/harness_runs/20260501_062300/` proves the old-feeling/equipment-damage comparison row with step ledger green (`7/7`), `artifacts_matched`, `feature_proof True`, clean startup, no runtime warnings, cleanup terminated, current orbit/swoop/melee debug metrics, and screenshot/OCR player-facing evidence: `flesh-raptor`, `impales`, `cut!`, `You put pressure on the bleeding wound...`, and `You're bleeding!`.
 
 Closure verdict: Frau accepted v0 for agent-side close with staged-but-live caveats. Optional Josef taste/playtest remains future-only and is not a blocker. No equipment-damage tuning changed; equipment damage remains an observational frustration metric.
-
-### Queued validation target - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
-
-When promoted, validation is a product-feel sampler, not a broad proof rerun: use existing green staged/live rows as footing, create only the missing handoff/startup artifacts needed for Josef to play the selected postcards, and keep staged-vs-natural caveats visible. Visual postcards need optical/screenshot checkpoints with named expected visible facts. Josef's checks are non-blocking taste/readability/fairness/optical-legibility/gnostic-meaning notes unless he explicitly reopens a lane. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
 ### Queued validation target - CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0
 

@@ -90,21 +90,24 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0 — Zombie rider close-pressure no-attack fix
 
-Status: ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+Status: CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP
 
 Success state:
-- [ ] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
-- [ ] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
-- [ ] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
-- [ ] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
-- [ ] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
-- [ ] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
-- [ ] Zombie rider description text is updated/preserved according to Josef's corrected product image.
+- [x] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
+- [x] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
+- [x] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
+- [x] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
+- [x] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [x] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
+- [x] Zombie rider description text is updated/preserved according to Josef's corrected product image.
 
 Canonical docs:
 - Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
 - Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
 - Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+- Closure proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
+
+Evidence: root cause named as the missing `aggro_character` bridge between rider `bow_pressure` planning and the monster gun actor's avatar-target gate. Gates: `git diff --check && make -j4 tests/zombie_rider_test.o tests src/monmove.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (199 assertions in 16 test cases)`; `./just_build_macos.sh > /tmp/caol-zombie-rider-tiles-build3.log 2>&1` -> exit `0`. Fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` is green feature-path proof: `feature_proof=true`, `verdict=artifacts_matched`, `green_step_local_proof`, no abort/runtime warnings, saved rider ammo audited as `arrow_wood=18`, live log shows `aggro_before=no aggro_after=yes`, bow ammo decrement, and close `decision=reposition reason=too_close_bunny_hop`. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
 
 ---
 
@@ -192,7 +195,7 @@ Canonical docs:
 
 ## CAOL-VISIONS-PLAYTEST-SAMPLER-v0 — C-AOL visions product-feel sampler
 
-Status: GREENLIT / QUEUED / PRODUCT-TASTE PLAYTEST PACKET
+Status: ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
 
 Success state:
 - [ ] The sampler chooses a bounded v0 set of 3-5 postcards instead of becoming open-ended “play the whole mod”.

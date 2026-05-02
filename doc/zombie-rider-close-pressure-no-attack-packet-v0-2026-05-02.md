@@ -1,8 +1,10 @@
 # CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0 — packet
 
-Status: GREENLIT / QUEUED / BUGFIX + PRODUCT-FEEL FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+Status: CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP
 
 Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+
+Checkpoint proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
 
 Live-watch notes: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-watch-20260502/zombie-rider-live-watch-notes-2026-05-02.md`.
 
@@ -37,13 +39,13 @@ The intended product feel is a scary mounted archer that shoots when it can and 
 
 ## Success state
 
-- [ ] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
-- [ ] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
-- [ ] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
-- [ ] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
-- [ ] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
-- [ ] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
-- [ ] Zombie rider description text is updated/preserved according to the corrected product image.
+- [x] A focused repro or minimized test/harness scenario demonstrates the original no-attack smell or explains why the yellow seed run cannot be trusted.
+- [x] The root cause of `bow_pressure + line_of_fire=yes` producing no visible attack is named with source evidence.
+- [x] A focused fix makes close/indoor rider pressure visibly hostile: shoot when line of fire and action resources allow; otherwise reposition/bunny-hop/circle irregularly instead of idling.
+- [x] Deterministic tests cover the decision-to-action bridge and at least one close/indoor reposition/pressure case.
+- [x] Fresh live/handoff validation shows a close rider attacking or aggressively repositioning within a few turns, with screenshots/artifacts and no runtime-version mismatch if claiming feature proof.
+- [x] Existing rider guarantees still pass: wounded disengagement, blocked LOS/cover counterplay, overmap light attraction/band cap, no-light negative control, and no wall-suicide/perfect-orbit behavior.
+- [x] Zombie rider description text is updated/preserved according to the corrected product image.
 
 ## Testing and evidence expectations
 

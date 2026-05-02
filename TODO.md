@@ -3,22 +3,22 @@
 Short execution queue only.
 
 Remove finished items when they are done.
-Do not turn this file into a museum of crossed-off errands.
 If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active execution item: `CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0`.
+Active execution item: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
 
-Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
-Handoff: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
-Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
 
-Execution target:
-- Reproduce or minimize the close/indoor no-attack smell, using `.userdata/dev-harness/harness_runs/20260502_015857/` only as yellow seed evidence because it had runtime-version mismatch.
-- Name the decision-to-action break before tuning: why does `bow_pressure + line_of_fire=yes` fail to produce visible shooting/damage/pressure?
-- Fix the smallest honest seam so the rider shoots when possible and otherwise repositions with irregular close pressure instead of polite loitering.
-- Add deterministic bridge/reposition tests and fresh clean live/handoff proof before claiming in-game feature closure.
-- Preserve existing rider guarantees: wounded disengagement, cover/LOS counterplay, camp-light banding, no-light controls, no wall-suicide, and no perfect orbit/instant-kill tuning.
+Current checkpoint:
+- `CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is closed green. Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
+- The next active target is a bounded Josef-facing visions sampler, not a broad proof rerun.
 
-Non-goals: no full zombie-rider v0 reopen, no stalker/locker/bandit/raptor drift, no release work.
+Next execution target:
+- Read the visions sampler contract and choose a bounded v0 set of 3-5 postcards from existing/near-existing C-AOL scenes.
+- Prefer existing green staged/live rows as footing; create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the postcards.
+- Keep each postcard labelled with the vision, setup/handoff path, visible/optical fact, and Josef taste questions.
+
+Non-goals: no closed-lane reopen by drift, no natural-discovery laundering, no release packaging, no broad proof soup.

@@ -49,21 +49,31 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Current active lane — CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
+## Current active lane — CAOL-VISIONS-PLAYTEST-SAMPLER-v0
 
-**Status:** ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+**Status:** ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
 
-After the locker-zone playtest checkpoint, Schani promoted the next queued debug-note packet so Andi stays on the backlog conveyor belt.
+After closing the zombie-rider close-pressure follow-up, move the backlog conveyor to Josef's bounded C-AOL visions sampler.
 
-Imagination source: `doc/zombie-rider-close-pressure-no-attack-imagination-source-2026-05-02.md`.
+Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
 
-Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
+Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
-Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
+Goal: prepare 3-5 labelled live/handoff postcards from existing or near-existing C-AOL visions so Josef can judge fun, fairness, readability, optical/screenshot legibility, aliveness, and gnostic/occult inner meaning without being handed proof archaeology.
 
-Goal: fix the zombie rider close-pressure/no-attack seam. The first job is to name the decision-to-action break: why did `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` at close distance fail to produce visible attack pressure for Josef? Only after that should Andi tune close/indoor pressure and irregular bunny-hop/circle repositioning.
+Boundary: product-taste sampler only. Use existing green staged/live rows as footing where possible, keep staged-vs-natural caveats visible, and do not reopen closed v0 lanes or start release packaging by drift.
 
-Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RIDER-0.3-v0`, do not break wounded disengagement, cover/LOS counterplay, camp-light banding, or no-light controls, and do not drift into stalkers, lockers, bandits, raptors, or release work.
+---
+
+## Recent closed lane — CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0
+
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+
+Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
+
+Result: the close-pressure no-attack seam is fixed. Root cause was the missing `aggro_character` bridge between `decision=bow_pressure reason=line_of_fire` planning and the monster gun actor's avatar-target gate. Current code marks the rider character-aggro before ready bow handoff and chooses named irregular bunny-hop/reposition pressure when too close, cooling down, blocked, or out of ammo.
+
+Evidence: focused `[zombie_rider]` tests are green (`199 assertions in 16 test cases`); `./just_build_macos.sh` now relinks `cataclysm-tiles`; fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` is green feature-path proof with audited rider ammo, bow-pressure aggro bridge, arrow ammo decrement, and close `too_close_bunny_hop` reposition. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
 
 ---
 
@@ -227,9 +237,9 @@ Boundary preserved: cleanup/refactor only. This does not redesign basecamp missi
 
 ---
 
-## Greenlit backlog — C-AOL visions playtest sampler
+## Active lane detail — C-AOL visions playtest sampler
 
-**Status:** GREENLIT / QUEUED / PRODUCT-TASTE PLAYTEST PACKET / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+**Status:** ACTIVE / GREENLIT / PRODUCT-TASTE PLAYTEST PACKET
 
 Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
 
@@ -239,7 +249,7 @@ Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
 
 Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
 
-Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, does not create release packaging, and should not interrupt the active camp-locker cleanup lane unless explicitly promoted. The optical/screenshot playtest condition is required for visual postcards when promoted.
+Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, and does not create release packaging. The optical/screenshot playtest condition is required for visual postcards.
 
 ---
 
@@ -271,9 +281,9 @@ Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign w
 
 ---
 
-## Active lane detail — zombie rider close-pressure no-attack fix
+## Recent closed detail — zombie rider close-pressure no-attack fix
 
-**Status:** ACTIVE / GREENLIT / BUGFIX + PRODUCT-FEEL FOLLOW-UP
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / BUGFIX + PRODUCT-FEEL FOLLOW-UP
 
 Josef live-watched `zombie_rider.live_open_field_pressure_mcw` on 2026-05-02 and then quit the game so Andi could get the package. The watched handoff seed is `.userdata/dev-harness/harness_runs/20260502_015857/`, but it is yellow/inconclusive due to runtime-version mismatch, so use it as a bug seed and player-observed taste note rather than closure proof.
 
@@ -283,9 +293,11 @@ Contract: `doc/zombie-rider-close-pressure-no-attack-packet-v0-2026-05-02.md`.
 
 Handoff packet: `doc/zombie-rider-close-pressure-no-attack-handoff-v0-2026-05-02.md`.
 
-Goal: fix the zombie rider close-pressure/no-attack seam. The important smell is that the trace reportedly repeats `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` at distance around `4-5`, while Josef saw no actual attack. Andi must name the decision-to-action break before tuning aggression. Desired product feel: a scary mounted archer that shoots when possible and otherwise irregularly bunny-hops/circles/repositions around the player group when blocked or too close — not a perfect orbit, not instant unavoidable death, and not polite indoor loitering.
+Goal/result: fixed the zombie rider close-pressure/no-attack seam. The important smell was `decision=bow_pressure`, `reason=line_of_fire`, and `line_of_fire=yes` at distance around `4-5`, while Josef saw no actual attack. The plan seam did not force `aggro_character`, and `gun_actor` refuses avatar shots while `!z.aggro_character`; current code marks aggro before ready bow handoff, and close/indoor pressure chooses irregular bunny-hop/reposition destinations instead of polite loitering.
 
-Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RIDER-0.3-v0`, do not break wounded disengagement, cover/LOS counterplay, camp-light banding, or no-light controls, and do not drift into stalkers, lockers, bandits, raptors, or release work.
+Evidence: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`; live row `.userdata/dev-harness/harness_runs/20260502_050055/`.
+
+Boundary: bugfix/product-feel follow-up only. Do not reopen all `CAOL-ZOMBIE-RIDER-0.3-v0`, and do not break wounded disengagement, cover/LOS counterplay, camp-light banding, or no-light controls.
 
 ---
 
