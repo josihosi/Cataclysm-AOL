@@ -49,23 +49,21 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Current active lane — CAOL-VISIONS-PLAYTEST-SAMPLER-v0
+## Current active lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-**Status:** ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
+**Status:** ACTIVE / GREENLIT / HARNESS-HARDENING FOLLOW-UP / NEXT IMPLEMENTATION TARGET
 
-After closing the zombie-rider close-pressure follow-up, move the backlog conveyor to Josef's bounded C-AOL visions sampler.
+The visions sampler is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. The bandit scenic shakedown chat-openings lane is now closed/checkpointed green v0; the next unblocked greenlit execution target is Josef's harness portal-storm warning-light ask.
 
-Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
 
-Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+Goal: make portal-storm contamination reviewer-visible in probe/handoff/repeatability reports, with a report-level warning/light, step-ledger contamination status when unallowed, negative controls for normal weather, and an opt-in path for scenarios that intentionally test portal storms.
 
-Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Current checkpoint: contract is written and queued; implementation/proof has not started in this checkpoint.
 
-Goal: prepare 3-5 labelled live/handoff postcards from existing or near-existing C-AOL visions so Josef can judge fun, fairness, readability, optical/screenshot legibility, aliveness, and gnostic/occult inner meaning without being handed proof archaeology.
+Next proof: portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path.
 
-Current checkpoint: the four-postcard sampler is agent-side relay-ready for writhing stalker, zombie rider, flesh raptor, and camp locker. The card now includes a short Schani/Josef relay packet plus backup postcard details: exact handoff commands, 2-5 minute play instructions, screenshot checkpoints, taste/gnostic questions, existing proof footing, and staged-footing caveats. Frau post-crunch correction is applied: stalker primary footing is the cleaner escape-side row `.userdata/dev-harness/harness_runs/20260501_071940/`; the old quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is dirty/caveated because its artifact log contains an `ERROR GAME` wall-location backtrace. No fresh handoff rows are required before relay; run them only if Josef wants live sessions waiting.
-
-Boundary: product-taste sampler only. Use existing green staged/live rows as footing where possible, keep staged-vs-natural caveats visible, and do not reopen closed v0 lanes or start release packaging by drift.
+Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
 ---
 
@@ -241,9 +239,9 @@ Boundary preserved: cleanup/refactor only. This does not redesign basecamp missi
 
 ---
 
-## Active lane detail — C-AOL visions playtest sampler
+## Relay-ready lane detail — C-AOL visions playtest sampler
 
-**Status:** ACTIVE / GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET
+**Status:** GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET / WAITING ON SCHANI-JOSEF TASTE RELAY
 
 Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
 
@@ -261,23 +259,25 @@ Boundary: this is product-taste sampling over existing/near-existing vision work
 
 ---
 
-## Greenlit backlog — bandit scenic shakedown chat openings
+## Closed recent lane — bandit scenic shakedown chat openings
 
-**Status:** GREENLIT / QUEUED / PRODUCT-UX FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
 
 Josef asked on 2026-05-01 for the bandit shakedown to use a normal chat window, become more scenic, and have a selection of bandit openings.
 
 Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
 
-Goal: make the visible shakedown read like an in-world bandit encounter rather than a bare proof/menu surface, while preserving pay/fight/refuse clarity, demanded-toll/reachable-goods mechanics, and reopened higher-demand aftermath semantics.
+Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
 
-Boundary: product-UX follow-up only. Do not redesign the whole bandit economy, do not regress cannibal no-shakedown behavior, and do not interrupt the active camp-locker cleanup lane unless explicitly promoted.
+Result: the live shakedown UI now uses the normal `dialogue_window` surface instead of the bare `uilist`, with Pay / Fight / Refuse responses and contextual opening IDs/summaries/barks for basecamp pressure, warning from cover, weakness read, roadblock toll, and reopened higher-demand. First-demand and reopened-demand paths have green staged-but-live McWilliams harness rows, screenshots, and log evidence for `shakedown_surface_dialogue_window opening=<id> responses=pay/fight/refuse`; cannibal/no-shakedown regression proof is green.
+
+Boundary: product-UX follow-up only. This does not redesign the bandit economy, prove natural random discovery, reopen visions, or widen into unrelated bandit/camp-locker work.
 
 ---
 
-## Greenlit backlog — harness portal-storm warning light
+## Greenlit backlog detail — harness portal-storm warning light
 
-**Status:** GREENLIT / QUEUED / HARNESS-HARDENING FOLLOW-UP / AFTER ACTIVE CAMP-LOCKER LANE UNLESS PROMOTED
+**Status:** GREENLIT / NEXT IMPLEMENTATION TARGET / HARNESS-HARDENING FOLLOW-UP
 
 Josef reported on 2026-05-02 that portal storms sometimes seem to break harness runs and asked for a “flashing light”.
 
@@ -285,7 +285,7 @@ Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
 
 Goal: make portal-storm contamination reviewer-visible in probe/handoff/repeatability reports, with a report-level warning/light, step-ledger contamination status when unallowed, negative controls for normal weather, and an opt-in path for scenarios that intentionally test portal storms.
 
-Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or interrupt the active camp-locker cleanup lane unless explicitly promoted.
+Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
 ---
 

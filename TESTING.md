@@ -57,9 +57,22 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
+### Active validation target - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
-`CAOL-VISIONS-PLAYTEST-SAMPLER-v0` is active/greenlit. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`; imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+When promoted/active, validation must include portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+
+Current checkpoint: contract greenlit/active next; implementation and proof rows not started in this checkpoint.
+
+Required evidence before close:
+- [ ] portal-storm positive detection row;
+- [ ] normal-weather negative control row;
+- [ ] report/summary warning-light output;
+- [ ] unallowed portal-storm contamination affects the step/report ledger visibly;
+- [ ] allowed/intentional portal-storm scenario path stays green when explicitly permitted.
+
+### Relay-ready validation receipt - CAOL-VISIONS-PLAYTEST-SAMPLER-v0
+
+`CAOL-VISIONS-PLAYTEST-SAMPLER-v0` is relay-ready and waiting on Schani/Josef taste relay rather than more agent-side proof. Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`; imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
 
 Validation shape: product-feel sampler, not broad proof rerun. Use existing green staged/live rows as footing where possible, create only the missing handoff/startup/screenshot artifacts needed for Josef to play or judge the selected postcards, and keep staged-vs-natural caveats visible.
 
@@ -162,13 +175,18 @@ Credited staged-but-live rows:
 
 Closure verdict: Frau accepted v0 for agent-side close with staged-but-live caveats. Optional Josef taste/playtest remains future-only and is not a blocker. No equipment-damage tuning changed; equipment damage remains an observational frustration metric.
 
-### Queued validation target - CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0
+### Closed validation receipt - CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0
 
-When promoted, validation must prove both UI/product path and mechanics: normal chat/dialogue-window opening where feasible, at least one scenic variant screenshot, retained pay/fight/refuse clarity, retained first-demand/reopened-demand semantics, and no cannibal/no-shakedown regression. Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+`CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0` is closed/checkpointed green v0. Proof/readout: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`; contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
 
-### Queued validation target - CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
-
-When promoted, validation must include portal-storm positive detection, normal-weather negative control, report/summary warning output, unallowed-contamination ledger status, and an allowed/intentional portal-storm scenario path. Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
+Credited evidence:
+- `git diff --check` -> clean.
+- `make -j4 tests src/do_turn.o src/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0` -> green.
+- `./tests/cata_test "[bandit][live_world][shakedown]"` -> `All tests passed (136 assertions in 4 test cases)`.
+- `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065253/`: feature-path green, screenshot `advance_final_turn_to_first_shakedown.after.png`, `opening=basecamp_pressure`, `shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight/refuse`, pay path green.
+- `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065445/`: feature-path green, screenshot `advance_final_turn_to_reopened_shakedown.after.png`, `opening=reopened_demand`, `shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight/refuse`, higher-demand reopen artifact green.
+- `cannibal.live_world_exposed_sight_avoid_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065927/`: feature-path green, `profile=cannibal_camp`, `active_job=stalk`, `shakedown=no`, `combat_forward=no`.
+- Review screenshot copies live under `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/`.
 
 ### Queued validation target - CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0
 

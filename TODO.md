@@ -7,25 +7,20 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active execution item: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
+Relay-ready taste lane: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0`.
 
-Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
-Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+Current execution item while visions taste is pending: `CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0`.
+
+Contract: `doc/harness-portal-storm-warning-light-packet-v0-2026-05-02.md`.
 
 Current checkpoint:
-- `CAOL-ZOMBIE-RIDER-CLOSE-PRESSURE-NO-ATTACK-v0` is closed green. Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
-- The next active target is a bounded Josef-facing visions sampler, not a broad proof rerun.
-
-Current artifact:
-- Relay-ready card: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md` (includes short Schani/Josef relay packet plus detailed postcard backup).
-- Selected postcards: writhing stalker, zombie rider, flesh raptor, camp locker.
-- Runtime screenshot review copies: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-visions-card-review-20260502/`.
-- Post-crunch correction applied: stalker primary footing is now `writhing_stalker.live_escape_side_zombie_retreat_mcw` / `.userdata/dev-harness/harness_runs/20260501_071940/`; the older quiet-side row `.userdata/dev-harness/harness_runs/20260501_071548/` is dirty/caveated because its artifact log contains `ERROR GAME ... writhing stalker can't move to its location! ... reinforced white concrete wall`.
+- Visions sampler remains relay-ready for Schani/Josef; do not keep revalidating it by ritual.
+- Bandit scenic shakedown chat openings are closed/checkpointed green v0: proof in `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
+- Portal-storm warning-light lane is greenlit/active next; implementation has not started in this checkpoint.
 
 Next execution target:
-- The sampler is relay-ready for Schani/Josef; do not keep revalidating it by ritual.
-- If Schani relays now, use the short packet at the top of the card rather than the proof-heavy postcard backup.
-- If Schani/Josef wants live sessions waiting first, run only the selected `handoff` commands, grep the fresh/cited row logs for runtime `ERROR GAME` / warnings, then record artifact dir, cleanup/handoff status, and one visible fact per fresh run.
-- While Josef taste is pending, the next unblocked repo target should be selected from the greenlit backlog by Schani/Plan canon.
+- Inspect harness report/step-ledger generation seams and add reviewer-visible portal-storm contamination warning/light.
+- Prove portal-storm positive detection, normal-weather negative control, unallowed-contamination ledger status, and allowed/intentional portal-storm scenario behavior.
+- Keep evidence classes explicit; do not convert old unrelated feature rows into portal-storm proof by ritual.
 
-Non-goals: no closed-lane reopen by drift, no natural-discovery laundering, no release packaging, no broad proof soup.
+Non-goals: no portal-storm gameplay/weather redesign, no closed-lane reopen by drift, no bandit/visions/camp-locker work, no release packaging, no broad proof soup.

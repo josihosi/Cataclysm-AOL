@@ -217,18 +217,20 @@ Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, fles
 
 ## CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 — Bandit scenic shakedown chat openings
 
-Status: GREENLIT / QUEUED / PRODUCT-UX FOLLOW-UP
+Status: CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
 
 Success state:
-- [ ] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not.
-- [ ] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration.
-- [ ] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics.
-- [ ] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof.
-- [ ] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts.
-- [ ] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI.
+- [x] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not. _Implemented via `dialogue_window` in `src/do_turn.cpp`; narrow compile/test green._
+- [x] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration. _Current deterministic set: basecamp pressure, warning from cover, weakness read, roadblock toll, reopened demand._
+- [x] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics. _Dialogue responses are Pay / Fight / Refuse; fight/refuse both enter the hostile branch, pay still surrenders demanded reachable goods._
+- [x] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof. _Green rows: `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065253/`; `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065445/`._
+- [x] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts. _Screenshots: `advance_final_turn_to_first_shakedown.after.png` and `advance_final_turn_to_reopened_shakedown.after.png`, review copies in `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/`._
+- [x] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI. _Green row: `cannibal.live_world_exposed_sight_avoid_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065927/`, with `profile=cannibal_camp`, `shakedown=no`, `combat_forward=no`._
 
 Canonical docs:
 - Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+- Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
+- Gate: `git diff --check`; `make -j4 tests src/do_turn.o src/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][shakedown]"` -> `All tests passed (136 assertions in 4 test cases)`.
 
 ---
 
