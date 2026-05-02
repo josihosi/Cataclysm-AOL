@@ -840,7 +840,7 @@
         "fake_str": 16,
         "require_targeting_player": false,
         "ranges": [ [ 4, 18, "DEFAULT" ] ],
-        "description": "The zombie rider looses a wet-bone arrow!"
+        "description": "The zombie rider shoots an arrow!"
       },
       {
         "type": "bite",
