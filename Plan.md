@@ -49,6 +49,35 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
+
+**Status:** ACTIVE / GREENLIT DEBUG-PACKET STACK / PACKAGED FROM 2026-05-02 + 2026-05-03 JOSEF LIVE NOTES
+
+Josef finished live testing and asked Schani to package yesterday's and today's debug notes into canon. This lane is the ordered correction stack for bandit shakedown/payment, defended-camp scout/standoff behavior, roof-z/multi-z dispatch stalls, big-camp escalation, all-light-source signaling, patrol aggression/alarm/report hygiene, writhing-stalker threat-drop timing, and NPC sorting retry debounce.
+
+Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
+
+Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
+
+Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
+
+Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
+Raw intake:
+- `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
+- `runtime/josef-bandit-debug-intake-2026-05-03.md`
+- `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
+
+Execution order: shakedown Pay/Fight + trade/debt correction; defended-camp scout/standoff/sight avoidance including bandit/cannibal stalking-mode LoS break and player smoke-out response; multi-z camp identity + roof/first-floor/`z=5` tower routing/throttle; hostile-camp post-scout escalation; all-light/smoke-source adapter; patrol aggression/alarm/report hygiene; writhing-stalker larger-distance/sight-avoid/threat-drop swoop plus boot-out rhythm; NPC sorting debounce; debug spawn horde/stalker/rider options; locker/basecamp equipment consistency; cannibal Monsterbone spear lore item.
+
+Important correction: the 2026-05-02 scenic shakedown proof closed the wrong visible response contract (`Pay / Fight / Refuse`) after Josef had already reported that three choices were wrong and that Pay should open a trade/debt-style surface. Treat this as a reopened correction, not a new feature whim.
+
+Current checkpoint: Slice 1 is green for visible Pay/Fight, actual NPC trade UI opening, whole basecamp-side payment pool, pool-derived debt/toll basis, cancel/refusal mapping, item-offer/autobalance, and paid writeback. The latest three-source proof row `.userdata/dev-harness/harness_runs/20260503_233823/` shows the same open `npc_trading::trade` / `trade_ui` Pay window containing player inventory (`binoculars`), basecamp-assigned NPC inventory (`saxophone`), and basecamp storage-zone inventory (`gold_watch`), then F1/autobalance + case-sensitive acceptance pays the debt (`shakedown_trade_ui result=paid demanded=33542 reachable=95834`). The rebuilt `7e5a506c76` master-profile rows `.userdata/master/harness_runs/20260503_213831/` and `.userdata/master/harness_runs/20260503_214015/` remain the clean master cancel/success receipts; the earlier tight `d1a4f076c8` proof rows remain supporting history. Credited rows are recorded in `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`. Slice 2 has enough current-pass evidence to continue after Josef's own tests: bandits did their thing. Keep deeper sight/smoke playtest as deferred validation/future hardening, not the next Andi blocker. Slice 3 roof/tower-z dispatch fallback is green at `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`: deterministic multi-z identity/routing plus live `bandit.roof_z_dispatch_fallback_mcw` proof show the elevated target id is preserved while the live dispatch goal routes to reachable ground and avoids the old `route_missing` / empty-throttle silence. Slice 4 bandit hostile-camp toll escalation is green at `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`: deterministic roster/risk/cannibal gates plus live `bandit.hostile_camp_toll_escalation_live` run `.userdata/dev-harness/harness_runs/20260503_214648/` prove a scout-confirmed seven-member bandit camp dispatches a three-member `toll` party, preserves reserve, and records `shakedown_capable=yes` while pre-contact `shakedown=no`. Slice 5 has an initial source/test checkpoint: the local live adapter now observes fire/smoke plus terrain/furniture/item/vehicle light sources, maps contained light leakage to screened/open packets, preserves searchlight semantics for bandits, sends only viable exposed light pressure to hordes, and logs raw weather/sight/wind plus current horde light-signal destination metadata. Current execution should continue Slice 5 with a live lamp/household/fire/smoke scenario and horde tracking save inspection before closure.
+
+Boundary: debug correction stack only. Do not reopen unrelated closed predator/rider/locker/save-pack lanes, release packaging, full diplomacy, full vertical assault AI, broad sorting redesign, or a tile-perfect overmap light engine.
+
+---
+
 ## Recent closed lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
 **Status:** CHECKPOINTED GREEN V0 / CLOSED / FRAU-ACCEPTED / HARNESS-HARDENING FOLLOW-UP
@@ -62,7 +91,7 @@ Result: probe/handoff reports and repeatability summaries now surface a report-l
 
 Evidence: `python3 tools/openclaw_harness/proof_classification_unit_test.py` -> `Ran 13 tests ... OK`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`.
 
-Frau review: accepted green v0 from commits `74ef657057` / `8ea5546107`. Next active execution lane is `CAOL-WRITHING-STALKER-HIT-FADE-RETREAT-DISTANCE-v0`; do not pull future runs back into portal-storm proof by ritual.
+Frau review: accepted green v0 from commits `74ef657057` / `8ea5546107`. Do not pull future runs back into portal-storm proof by ritual.
 
 Boundary: harness-hardening only. Do not solve portal-storm gameplay, redesign weather, rerun old packets by ritual, or reopen closed bandit/visions/camp-locker lanes by drift.
 
@@ -76,7 +105,7 @@ Proof: `doc/zombie-rider-close-pressure-no-attack-proof-v0-2026-05-02.md`.
 
 Result: the close-pressure no-attack seam is fixed. Root cause was the missing `aggro_character` bridge between `decision=bow_pressure reason=line_of_fire` planning and the monster gun actor's avatar-target gate. Current code marks the rider character-aggro before ready bow handoff and chooses named irregular bunny-hop/reposition pressure when too close, cooling down, blocked, or out of ammo.
 
-Evidence: focused `[zombie_rider]` tests are green (`199 assertions in 16 test cases`); `./just_build_macos.sh` now relinks `cataclysm-tiles`; fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` is green feature-path proof with audited rider ammo, bow-pressure aggro bridge, arrow ammo decrement, and close `too_close_bunny_hop` reposition. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
+Evidence: focused `[zombie_rider]` tests are green after the tainted-arrow follow-up (`207 assertions in 17 test cases`); `./just_build_macos.sh` relinked `cataclysm-tiles` for the original close-pressure checkpoint; fresh staged-but-live row `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260502_050055/` remains behavior-shape footing for bow-pressure aggro bridge, ammo decrement, and close `too_close_bunny_hop` reposition. The current source lookup now checks `zombie_rider_tainted_bone_arrow` ammo instead of the pre-follow-up `arrow_wood` id. Caveat: staged-but-live McWilliams proof, not natural random discovery/full siege proof.
 
 ---
 
@@ -259,29 +288,63 @@ Boundary preserved: cleanup/refactor only. This does not redesign bandit live-wo
 
 ---
 
-## Relay-ready lane detail — C-AOL visions playtest sampler
+## Recent closed lane — CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-**Status:** GREENLIT / RELAY-READY / PRODUCT-TASTE PLAYTEST PACKET / WAITING ON SCHANI-JOSEF TASTE RELAY
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / FRAU-ACCEPTED
 
-Josef clarified “Visions” on 2026-05-01 after asking whether we can playtest the vision in C-AOL. This means a bounded sampler of C-AOL product-feel scenes, not one giant proof soup.
+Josef live-tested the writhing stalker after the earlier hit-fade and zombie-shadow packets and reported that it is still not satisfactory. The bad contrast is now explicit: with three NPC allies / high visible threat it does not retreat into stalking distance, and at night outside it can stand near a house/window without attacking or making a legible move.
 
-Imagination source: `doc/caol-visions-playtest-imagination-source-2026-05-01.md`.
+Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
 
-Contract: `doc/caol-visions-playtest-sampler-packet-v0-2026-05-01.md`.
+Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
 
-Josef card / short relay packet: `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+Handoff packet: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
 
-Goal: prepare 3-5 labelled live/handoff postcards from the current C-AOL visions — writhing stalker, zombie rider, flesh raptor, camp/basecamp usefulness, and/or bandit pressure — so Josef can judge fun, fairness, readability, optical/screenshot legibility, gnostic/occult inner meaning, annoyance, and whether the game feels alive. Use existing green harness rows as footing where possible, and keep Josef's role to product judgment rather than log archaeology. Josef clarified “gnostic” as a taste axis: whether the scene carries strange inner C-AOL meaning rather than only tactical function.
+Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
 
-Current checkpoint: v0 chooses four postcards — writhing stalker, zombie rider, flesh raptor, camp locker — and defers bandit pressure to v1 or its own queued scenic-shakedown lane unless Josef promotes it now. The card now has a compressed relay packet Schani can send without proof archaeology. The stalker postcard uses `writhing_stalker.live_escape_side_zombie_retreat_mcw` as primary optical footing; `writhing_stalker.live_quiet_side_zombie_pressure_mcw` is caveated/secondary unless rerun clean. Remaining work is Josef/Schani taste relay or optional live handoff setup, not more agent-side proof.
+Live/staged proof: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
 
-Boundary: this is product-taste sampling over existing/near-existing vision work. It does not reopen closed v0 lanes by drift, does not prove natural random discovery, and does not create release packaging. The optical/screenshot playtest condition is required for visual postcards.
+Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-watch-20260502/writhing-stalker-live-watch-notes-2026-05-02.md`.
+
+Goal: add/refine stalker overmap threat/opportunity evaluation, reality-bubble anti-loiter behavior, and overmap/bubble handoff memory so high-threat daylight/three-NPC situations retreat into stalking mode about `3` OMTs back, night/outside reachable-player situations attack or reposition instead of garden-gnome loitering, and zombie/distraction entering the player/NPC tile enables dark-square approach/strike without omniscience.
+
+Current checkpoint: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Current-build live/staged proof is green for all three remaining rows: high-threat/allies retreat/stalk (`writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`), zombie/distraction shadow-then-strike (`writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`), and night/outside reachable bad-loiter anti-gnome strike (`writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`). Frau accepted this as closure-ready agent-side staged/live feature-path evidence; door opening did not land and remains out of scope unless separately promoted.
+
+Door-opening line: allowed only as a narrow optional escalation if needed — unlocked/simple doors, slow/noisy/interruptible, darkness/distraction/commitment gated, and suppressed under high threat. Do not turn the stalker into a burglar or locked-door solver.
+
+Frau review note: safe claims are deterministic seam coverage plus current-build staged/live behavior rows; do not claim natural random discovery, full natural retreat pathing, broad house navigation, door opening, burglar/locked-door solving, or general ecosystem behavior.
+
+Boundary: closed v0 packet. Do not reopen all stalker v0 work, flesh raptors, zombie riders, bandits, the save-pack card, or natural random discovery by drift.
+
+---
+
+## Handoff boundary — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
+
+**Status:** WAITING FOR NEXT GREENLIGHT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY / NOT CURRENT ANDI LANE
+
+Josef greenlit turning the relay-ready visions sampler into a concrete playtest save pack. The product now is not another proof receipt: it is a small labelled set of current-build saves or handoff sessions Josef can actually load and play.
+
+Imagination source: `doc/caol-josef-playtest-save-pack-imagination-source-2026-05-02.md`.
+
+Contract: `doc/caol-josef-playtest-save-pack-packet-v0-2026-05-02.md`.
+
+Handoff packet: `doc/caol-josef-playtest-save-pack-handoff-v0-2026-05-02.md`.
+
+Working playtest card: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md`.
+
+Promoted from: `CAOL-VISIONS-PLAYTEST-SAMPLER-v0` and its relay card `doc/caol-visions-josef-playtest-card-v0-2026-05-01.md`.
+
+Goal: prepare labelled playable entries for Basecamp AI / camp locker usefulness, bandit pressure / shakedown / basecamp contact, cannibal camp pressure, flesh raptor skirmishing, zombie rider predator/counterplay, and writhing stalker hit-fade / zombie-shadow behavior. Each entry needs a short “what to try” card, current-build load/start-state evidence, portal-storm warning status, proof footing, and plain staged-vs-natural caveats. Include Josef's thematic contrast pass for stalker and bandit behavior: no-fire/no-signal, fire/smoke/light signal, and high-threat/resistant setup should produce visibly different reads or be marked caveated/blocked. Before threat-contrast rows are credited, audit camp NPC membership: unassigned current-save NPCs are not camp threat evidence; low-threat rows may remove/kill/despawn extras, while high-threat rows must spawn or repair NPCs as properly camp-assigned members.
+
+Current card checkpoint: `doc/caol-josef-playtest-save-pack-card-v0-2026-05-02.md` now lists six ready staged rows (camp locker weather/service, bandit first-demand contact, cannibal night pressure, flesh raptor crowded-arc skirmisher, zombie rider cover/wounded contrast, writhing stalker hit-fade/light/zombie-side pressure) plus explicit caveated/omitted rows for bandit contrast/camp-threat and camp/NPC assignment. Post-card no-signal repair `bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260502_134959/` proves a cleaned low-threat/no-loose-NPC no-signal control, but it does not claim camp-threat membership and does not expand the first Josef card by itself. Smoke/fire signal is repaired through the materially different guarded `bandit.mixed_signal_coexistence_mcw` path -> `.userdata/dev-harness/harness_runs/20260502_155058/`, with green wait/step ledgers, portal clear, signal scout dispatch from camp `@151,39,0`, separate structural scavenge from camp `@160,39,0`, and manual saved-overmap active-member cross-references for members `4` and `9`; direct `bandit.player_lit_fire_signal_wait_mcw` attempt `20260502_154828/` remains blocked at startup UI and is not credited. Flesh raptor current footing was repaired by relaxing the stale exact crowded-arc tile expectation and rerunning `flesh_raptor.live_crowded_arc_skirmisher_mcw` -> `.userdata/dev-harness/harness_runs/20260502_141246/` green/portal-clear. Camp-pressure assignment is repaired as auxiliary proof: `bandit.active_outside_dogpile_block_live` -> `.userdata/dev-harness/harness_runs/20260502_144842/` is green/portal-clear and requires `active_member_ids=[4,5]` with `active_members_all_found_in_saved_overmap=true`. Pure high-threat hold is repaired as auxiliary proof: `bandit.high_threat_low_reward_holds` -> `.userdata/dev-harness/harness_runs/20260502_145429/` is green/portal-clear with green guarded wait and the same-run risk/reward hold artifact. After the later zombie-rider tainted-arrow/rider behavior commits, the rider cover/wounded card rows were refreshed on current `dev` with `.userdata/dev-harness/harness_runs/20260502_232133/` and `20260502_232214/`, both green and portal-clear after `./just_build_macos.sh > /tmp/caol-savepack-post-rider-build-20260502.log 2>&1` exited `0`. Andi's v0 save-pack prep is now at a state boundary: Schani can relay the six-entry card as-is and may include the optional staged bandit contrast card; no ready rows or old blocked bandit rows need ritual reruns.
+
+Boundary: save-pack prep and product-taste handoff only. Do not implement new gameplay unless a hard blocker prevents a save from loading or being playable. Do not reopen closed v0 lanes by drift, do not create release packaging, and do not make Josef inspect logs as the primary playtest activity.
 
 ---
 
 ## Closed recent lane — bandit scenic shakedown chat openings
 
-**Status:** CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
+**Status:** CLOSED AS SCENIC-UI PROOF / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR SHAKEDOWN RESPONSE + PAYMENT CONTRACT
 
 Josef asked on 2026-05-01 for the bandit shakedown to use a normal chat window, become more scenic, and have a selection of bandit openings.
 
@@ -289,9 +352,9 @@ Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01
 
 Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
 
-Result: the live shakedown UI now uses the normal `dialogue_window` surface instead of the bare `uilist`, with Pay / Fight / Refuse responses and contextual opening IDs/summaries/barks for basecamp pressure, warning from cover, weakness read, roadblock toll, and reopened higher-demand. First-demand and reopened-demand paths have green staged-but-live McWilliams harness rows, screenshots, and log evidence for `shakedown_surface_dialogue_window opening=<id> responses=pay/fight/refuse`; cannibal/no-shakedown regression proof is green.
+Result: the live shakedown UI now uses the normal `dialogue_window` surface instead of the bare `uilist`, with contextual opening IDs/summaries/barks for basecamp pressure, warning from cover, weakness read, roadblock toll, and reopened higher-demand. Its staged proof is still useful for the scenic-dialogue path and cannibal/no-shakedown separation, but its `Pay / Fight / Refuse` response contract and pay-branch behavior are now explicitly superseded by `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`: Josef's stranded 2026-05-02/03 notes require visible Pay/Fight only and a trade/debt-style payment surface.
 
-Boundary: product-UX follow-up only. This does not redesign the bandit economy, prove natural random discovery, reopen visions, or widen into unrelated bandit/camp-locker work.
+Boundary: scenic-dialogue proof only. Do not use this closed proof to claim the final shakedown response/payment contract; that correction now belongs to `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
 
 ---
 
