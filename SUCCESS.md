@@ -37,12 +37,13 @@ Success state:
 - [ ] NPC sorting failures are debounced so impossible/failing sort jobs do not immediately retry/log every turn, while successful sorting and recovery after state change still work.
 - [ ] Debug spawn options can create a medium horde, horde-at-`5`/`10` OMT setups, writhing stalker at `5`/`10` OMT, and zombie rider at `5`/`10` OMT, with clear labels and honest spawn/location proof.
 - [ ] Locker/basecamp equipment cleanup prevents orphan ammo/magazine carry after firearm replacement and can replace broken/`XX` backpacks by transferring stored contents or logging a concrete transfer blocker.
-- [ ] Cannibal camps and selected cannibal NPC loadouts can surface a rare, sturdy-but-not-OP `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded wielder frequency.
+- [ ] Cannibal camps and selected important cannibal NPC loadouts can surface a rare ritual/status `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded elite wielder frequency.
 - [ ] Each live UI/behavior claim has proof that reaches the actual player-facing surface, live dispatch/local-gate path, live signal adapter, monster plan path, patrol path, or NPC activity/job loop it names.
 
 Canonical docs:
 - Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 - Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
+- Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 - Handoff: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 - Raw 2026-05-02 intake: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`.
 - Raw 2026-05-03 bandit intake: `runtime/josef-bandit-debug-intake-2026-05-03.md`.

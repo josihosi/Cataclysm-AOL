@@ -6,6 +6,8 @@ Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
+Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
 Raw intake:
 - `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
@@ -23,7 +25,7 @@ Raw intake:
 8. NPC sorting debounce: failed sorting attempts record cooldown/blocked state instead of per-turn retry/log spam.
 9. Debug spawn options: `spawn horde` creates a medium horde; add horde `5`/`10` OMT options plus writhing stalker and zombie rider spawns at `5` and `10` OMT.
 10. Locker/basecamp equipment consistency: no orphan ammo/mag carry after firearm replacement; broken/`XX` backpack replacement should transfer contents or log the concrete blocker.
-11. Cannibal Monsterbone spear: add a rare sturdy-but-not-OP spear, 1-2 in camps and a few cannibal wielders, carrying the huge-monster-bone / monster-meat madness lore.
+11. Cannibal Monsterbone spear: add a rare ritual/status elite spear, 1-2 in camps and only a couple important cannibal wielders, carrying the huge-monster-bone / monster-meat madness lore.
 
 ## Non-goals
 
@@ -47,4 +49,4 @@ Minimum expected proof families:
 - sorting: blocked retry debounce + recovery;
 - debug spawns: option/menu coverage plus live/save inspection for medium horde size and requested `5`/`10` OMT horde/stalker/rider placement;
 - locker equipment: deterministic compatibility/transfer tests plus narrow locker/basecamp fixture proof if required;
-- Monsterbone spear: JSON validation, stat sanity, rare camp distribution, and selected cannibal wielder proof.
+- Monsterbone spear: JSON validation, stat sanity, rare camp distribution, and selected important/elite cannibal wielder proof.

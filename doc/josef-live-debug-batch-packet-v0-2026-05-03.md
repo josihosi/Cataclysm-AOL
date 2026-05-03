@@ -4,6 +4,8 @@ Status: ACTIVE / GREENLIT DEBUG-PACKET STACK
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
+Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
 Raw intake:
 - `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
@@ -187,15 +189,17 @@ Follow-up lore/equipment request from Josef. This should be a small item/distrib
 
 Scope:
 - add a new item named `Monsterbone spear` / `monsterbone spear` for cannibals;
-- make it a fairly strong spear, sturdier than ordinary improvised wood/bone, but not overpowered against proper late-game weapons;
+- make it a fairly strong elite spear, sturdier than ordinary improvised wood/bone, but not overpowered against proper late-game weapons;
+- make it ritualistic/status-coded rather than an everyday cannibal weapon;
 - its description should carry the lore: it is made from a huge monster bone, implying the cannibals ate monster meat from something vast enough to be a dungeon/brain-world and were changed by it;
 - place rare copies in cannibal camps, roughly `1` or `2` per camp where camp item-group placement supports it;
-- allow a few cannibal NPCs to wield it, biased toward hunters/leaders or an explicit cannibal weapon group rather than every cannibal;
+- allow only a couple important cannibal NPCs to wield it, biased toward leaders/champions/elite hunters or an explicit elite cannibal weapon group rather than every cannibal;
 - preserve cannibal no-shakedown profile and current camp identity; this is flavor/equipment plus combat texture.
 
 Non-goals:
 - no common loot flood;
 - no OP artifact spear;
+- no common/everybody weapon distribution;
 - no full monsterbone crafting economy unless later promoted;
 - no broad cannibal lore rewrite beyond this readable prop.
 
@@ -220,12 +224,12 @@ Non-goals:
 - [ ] NPC sorting failures are debounced; failing sort jobs do not retry/log every turn.
 - [ ] Debug spawn options can create a medium horde, horde-at-`5`/`10` OMT setups, writhing stalker at `5`/`10` OMT, and zombie rider at `5`/`10` OMT, with clear labels and honest spawn/location proof.
 - [ ] Locker/basecamp equipment cleanup prevents orphan ammo/magazine carry after firearm replacement and can replace broken/`XX` backpacks by transferring stored contents or logging a concrete transfer blocker.
-- [ ] Cannibal camps and selected cannibal NPC loadouts can surface a rare, sturdy-but-not-OP `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded wielder frequency.
+- [ ] Cannibal camps and selected important cannibal NPC loadouts can surface a rare ritual/status `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded elite wielder frequency.
 - [ ] Each slice has deterministic coverage and at least one appropriate live/path proof where the product claim is live behavior.
 
 ## Testing impact
 
-This packet changes validation obligations. Each slice needs the smallest honest gate:
+This packet changes validation obligations. Full scenario matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`. Each slice needs the smallest honest gate:
 
 - shakedown: deterministic response-count/payment-bridge tests plus live dialogue/trade proof for first and reopened demand;
 - scout/standoff/routing/escalation: deterministic planner/local-gate tests plus live multi-turn bandit and cannibal rows around defended base, stalking-mode LoS avoidance, cannibal `5` OMT stalk-to-attack escalation, and roof-z routing;
@@ -235,7 +239,7 @@ This packet changes validation obligations. Each slice needs the smallest honest
 - sorting: deterministic failing-sort debounce/recovery tests plus bounded wait/log proof if needed;
 - debug spawn options: deterministic option/menu coverage plus live/save inspection proving medium horde size and requested `5`/`10` OMT horde/stalker/rider placement/state;
 - locker/basecamp equipment: deterministic ammo/firearm compatibility and container-content transfer tests, plus a narrow live/fixture proof if the bug only reproduces through the locker-zone/basecamp flow;
-- Monsterbone spear: JSON validation plus item stat sanity, camp item-group distribution check for rare `1`-or-`2` copies, and NPC weapon-group/loadout proof that only selected cannibals can wield it.
+- Monsterbone spear: JSON validation plus item stat sanity, camp item-group distribution check for rare `1`-or-`2` copies, and NPC weapon-group/loadout proof that only selected important/elite cannibals can wield it.
 
 ## Handoff caution
 

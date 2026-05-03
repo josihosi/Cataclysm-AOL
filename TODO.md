@@ -13,6 +13,8 @@ Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
+Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
 Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
 Raw intake:
@@ -33,6 +35,6 @@ Execution order:
 8. NPC sorting debounce: failed sorting attempts record cooldown/blocked state instead of per-turn retry/log spam.
 9. Debug spawn options: `spawn horde` creates a medium horde; add horde `5`/`10` OMT options plus writhing stalker and zombie rider spawns at `5` and `10` OMT.
 10. Locker/basecamp equipment consistency: no orphan ammo/mag carry after firearm replacement; broken/`XX` backpack replacement should transfer contents or log the concrete blocker.
-11. Cannibal Monsterbone spear: add a rare sturdy-but-not-OP spear, 1-2 in camps and a few cannibal wielders, carrying the huge-monster-bone / monster-meat madness lore.
+11. Cannibal Monsterbone spear: add a rare ritual/status elite spear, 1-2 in camps and only a couple important cannibal wielders, carrying the huge-monster-bone / monster-meat madness lore.
 
 Do not reopen the save-pack handoff, closed predator/rider/locker lanes, release packaging, full diplomacy, full vertical assault AI, broad sorting redesign, or a tile-perfect overmap light engine by drift.

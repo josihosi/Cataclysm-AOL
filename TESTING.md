@@ -58,9 +58,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
 
-Repo canon now has active lane `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`. Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`; imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`; handoff: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
+Repo canon now has active lane `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`. Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`; imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`; scenario matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`; handoff: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
-Use slice-local evidence. Do not close a live UI/behavior claim from deterministic proof alone.
+Use slice-local evidence. Do not close a live UI/behavior claim from deterministic proof alone. Scenario matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 
 Required evidence families:
 - **Shakedown UI/payment:** deterministic response-count/payment-bridge coverage, plus live first-demand and reopened-demand proof that visible choices are Pay/Fight and Pay opens a trade/debt-style payment surface over the honest basecamp/faction-side pool.
@@ -73,7 +73,7 @@ Required evidence families:
 - **NPC sorting debounce:** deterministic blocked-sort cooldown/recovery tests and, if needed, bounded wait/log proof that failing sort jobs do not reassign/log every turn.
 - **Debug spawn options:** deterministic option/menu coverage plus live/save inspection proving medium horde size and requested `5`/`10` OMT horde/stalker/rider placement/state.
 - **Locker/basecamp equipment consistency:** deterministic ammo/firearm compatibility and container-content transfer tests; add a narrow locker/basecamp fixture proof if the bug only appears through the live equipment/locker flow.
-- **Monsterbone spear:** JSON validation, item stat sanity, rare camp item-group distribution check, and selected cannibal NPC weapon/loadout proof.
+- **Monsterbone spear:** JSON validation, item stat sanity, rare camp item-group distribution check, and selected important/elite cannibal NPC weapon/loadout proof.
 
 Do not rerun closed rows as ritual. Use old proof only as footing when the slice explicitly preserves it; if code changed under a live claim, rebuild/probe the relevant current path.
 

@@ -315,3 +315,21 @@ Josef requested a cannibal item: `Monsterbone spear`. Desired read:
 - let a few cannibals wield it, not every cannibal.
 
 Classification: fold into `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` as a bottom equipment/lore slice after the live-behavior/debug-helper work.
+
+### Monsterbone spear refinement — ritual / elite distribution
+
+Josef clarified the Monsterbone spear should be ritualistic/status-coded, not an everyone weapon:
+- elite spear, pretty good and sturdy, but not OP;
+- `1` or `2` in a cannibal camp;
+- maybe wielded by a couple important people from the camp;
+- not common cannibal gear.
+
+## Follow-up request — full deterministic/playtest scenario matrix
+
+Josef asked to think about testing for all package points: deterministic internal switch tests, staged/live playtests, and edge cases across bandits, writhing stalkers, cannibals, zombie riders, hordes/lights, and vertical player positions such as first floor/roof. Specific emphasized questions:
+- does a stalker swoop in when threat drops;
+- what does a stalker do when the player hunts it;
+- what happens when the player is on the first floor/upstairs/roof;
+- which behavior can be covered by deterministic internal switch tests versus playtesting.
+
+Classification: added `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md` as the package validation matrix.

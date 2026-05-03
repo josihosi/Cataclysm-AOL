@@ -61,6 +61,8 @@ Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
 
 Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
+Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
 Raw intake:
 - `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
