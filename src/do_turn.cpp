@@ -1855,11 +1855,11 @@ bool steer_live_bandit_dispatch_toward_player(
         bandit_live_world::local_gate_decision gate_decision =
             bandit_live_world::choose_local_gate_posture( gate_site, gate_input );
 
-        tripoint_abs_omt dispatch_goal = u.pos_abs_omt();
+        tripoint_abs_omt dispatch_goal = plan.target_omt;
         if( gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
             dispatch_goal = bandit_live_world::choose_hold_off_standoff_goal( gate_site.anchor,
-                            u.pos_abs_omt(), 2 );
-            gate_input.standoff_distance = rl_dist( dispatch_goal, u.pos_abs_omt() );
+                            plan.target_omt, 2 );
+            gate_input.standoff_distance = rl_dist( dispatch_goal, plan.target_omt );
         }
 
         std::vector<std::vector<tripoint_abs_omt>> dispatch_paths;

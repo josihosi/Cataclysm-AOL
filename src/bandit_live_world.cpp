@@ -498,6 +498,20 @@ int special_footprint_radius( const std::string &special_id )
     return 0;
 }
 
+std::vector<int> special_footprint_z_levels( const tripoint_abs_omt &origin )
+{
+    std::vector<int> z_levels;
+    z_levels.reserve( 9 );
+    for( int z = -2; z <= 5; ++z ) {
+        z_levels.push_back( z );
+    }
+    if( std::find( z_levels.begin(), z_levels.end(), origin.z() ) == z_levels.end() ) {
+        z_levels.push_back( origin.z() );
+        std::sort( z_levels.begin(), z_levels.end() );
+    }
+    return z_levels;
+}
+
 bool omt_less( const tripoint_abs_omt &lhs, const tripoint_abs_omt &rhs )
 {
     if( lhs.z() != rhs.z() ) {
@@ -1390,11 +1404,13 @@ footprint_snapshot make_special_footprint( const std::string &special_id,
 
     snapshot.footprint.clear();
     const int radius = special_footprint_radius( special_id );
-    for( int dx = -radius; dx <= radius; dx++ ) {
-        for( int dy = -radius; dy <= radius; dy++ ) {
-            const tripoint_abs_omt candidate( origin.x() + dx, origin.y() + dy, origin.z() );
-            if( special_lookup( candidate ) == std::optional<std::string>( special_id ) ) {
-                snapshot.footprint.push_back( candidate );
+    for( const int z : special_footprint_z_levels( origin ) ) {
+        for( int dx = -radius; dx <= radius; dx++ ) {
+            for( int dy = -radius; dy <= radius; dy++ ) {
+                const tripoint_abs_omt candidate( origin.x() + dx, origin.y() + dy, z );
+                if( special_lookup( candidate ) == std::optional<std::string>( special_id ) ) {
+                    snapshot.footprint.push_back( candidate );
+                }
             }
         }
     }
@@ -1797,7 +1813,12 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         const bool target_matches = !target_id.empty() &&
                                     ( lead.target_id == target_id || lead.lead_id == target_id );
         const int radius = std::max( 2, lead.radius_omt );
-        const bool omt_matches = lead.omt.z() == target_omt.z() && rl_dist( lead.omt, target_omt ) <= radius;
+        const tripoint_abs_omt routed_target_omt = reachable_ground_dispatch_target( site, target_omt );
+        const bool direct_omt_matches = lead.omt.z() == target_omt.z() &&
+                                        rl_dist( lead.omt, target_omt ) <= radius;
+        const bool routed_omt_matches = lead.omt.z() == routed_target_omt.z() &&
+                                        rl_dist( lead.omt, routed_target_omt ) <= radius;
+        const bool omt_matches = direct_omt_matches || routed_omt_matches;
         if( !target_matches && !omt_matches ) {
             continue;
         }
@@ -2418,6 +2439,27 @@ std::string render_structural_bounty_maintenance_report(
     return out.str();
 }
 
+tripoint_abs_omt reachable_ground_dispatch_target( const site_record &site,
+        const tripoint_abs_omt &target_omt )
+{
+    if( effective_profile( site ) == hostile_site_profile::none ) {
+        return target_omt;
+    }
+
+    int route_z = site.anchor.z();
+    for( const tripoint_abs_omt &foot : site.footprint ) {
+        if( foot.z() == 0 ) {
+            route_z = 0;
+            break;
+        }
+    }
+    if( route_z > 0 ) {
+        route_z = 0;
+    }
+
+    return tripoint_abs_omt( target_omt.x(), target_omt.y(), route_z );
+}
+
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         const camp_map_lead &lead,
         const camp_map_dispatch_pressure &pressure )
@@ -2427,7 +2469,8 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
     plan.site_id = site.site_id;
     plan.profile = rules.profile;
     plan.target_id = lead.target_id.empty() ? lead.lead_id : lead.target_id;
-    plan.target_omt = lead.omt;
+    const tripoint_abs_omt original_target_omt = lead.omt;
+    plan.target_omt = reachable_ground_dispatch_target( site, original_target_omt );
 
     if( plan.target_id.empty() ) {
         plan.notes.push_back( "camp-map dispatch blocked: missing remembered target id" );
@@ -2470,6 +2513,10 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
                       bandit_pursuit_handoff::contact_certainty::broad;
     plan.entry = bandit_pursuit_handoff::build_entry_payload( plan.group, winner, context );
     plan.notes = plan.entry.notes;
+    if( plan.target_omt != original_target_omt ) {
+        plan.notes.push_back( "vertical dispatch fallback: target " + original_target_omt.to_string() +
+                              " routes via reachable ground " + plan.target_omt.to_string() );
+    }
     if( !plan.entry.valid ) {
         plan.notes.push_back( "camp-map dispatch blocked: entry payload stayed outside the bounded handoff contract" );
         return plan;
@@ -2493,7 +2540,8 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     plan.site_id = site.site_id;
     plan.profile = rules.profile;
     plan.target_id = target_id;
-    plan.target_omt = target_omt;
+    const tripoint_abs_omt original_target_omt = target_omt;
+    plan.target_omt = reachable_ground_dispatch_target( site, original_target_omt );
 
     if( target_id.empty() ) {
         plan.notes.push_back( "dispatch blocked: missing target id" );
@@ -2516,7 +2564,7 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         return plan;
     }
 
-    const bandit_dry_run::lead_input lead = make_nearby_target_lead( site, target_omt, target_id );
+    const bandit_dry_run::lead_input lead = make_nearby_target_lead( site, plan.target_omt, target_id );
     plan.evaluation = bandit_dry_run::evaluate( camp, { lead } );
     const bandit_dry_run::candidate_debug &winner = plan.evaluation.candidates[plan.evaluation.winner_index];
     if( !bandit_pursuit_handoff::supports_pursuit_handoff( winner ) ) {
@@ -2542,11 +2590,15 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
     plan.group = make_dispatch_group( site, plan.member_ids, target_id );
     bandit_pursuit_handoff::entry_context context;
-    context.contact = rl_dist( site.anchor, target_omt ) <= 4 ?
+    context.contact = rl_dist( site.anchor, plan.target_omt ) <= 4 ?
                       bandit_pursuit_handoff::contact_certainty::localized :
                       bandit_pursuit_handoff::contact_certainty::broad;
     plan.entry = bandit_pursuit_handoff::build_entry_payload( plan.group, winner, context );
     plan.notes = plan.entry.notes;
+    if( plan.target_omt != original_target_omt ) {
+        plan.notes.push_back( "vertical dispatch fallback: target " + original_target_omt.to_string() +
+                              " routes via reachable ground " + plan.target_omt.to_string() );
+    }
     if( !plan.entry.valid ) {
         plan.notes.push_back( "dispatch blocked: entry payload stayed outside the bounded handoff contract" );
         return plan;
