@@ -21,7 +21,9 @@ Execute the packaged 2026-05-02 + 2026-05-03 live debug correction stack in orde
 
 ## Execution order
 
-1. Shakedown Pay/Fight only + trade/debt payment over the honest basecamp/faction-side pool; remove/refute misleading `pay/fight/refuse` success expectations.
+Current Slice 1 checkpoint: visible Pay/Fight + Pay opening the real NPC trade window is green at `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; next execution work should start at defended-camp scout/standoff/sight-avoid unless a fresh shakedown payment-writeback row is explicitly promoted.
+
+1. Shakedown Pay/Fight only + the actual NPC trade UI / trade window (`npc_trading::trade` / `trade_ui` shape) over the whole honest basecamp/faction-side inventory pool; it autostarts with demanded debt/toll derived from what that camp side can plausibly pay, and the player dumps items into the offer to satisfy it; not a fixed/stub amount, not player-carried-only inventory, and not a fake selector; remove/refute misleading `pay/fight/refuse` success expectations.
 2. Defended-camp scout/standoff/sight-avoid/hot-loot behavior, including bandits/cannibals/compatible hostiles in stalking mode actually breaking LoS/backing off/rerouting/waiting/escalating when seen or when the player smokes out the suspected stalking tile/approach line.
 3. Multi-z hostile camp identity + roof/tower-z routing/throttle fallback, including first-floor/roof and `z=5` tower-style player camps.
 4. Hostile-camp post-scout escalation into roster-scaled pressure: bandit toll/shakedown, cannibal attack dispatch up to large/whole-camp commitment when odds permit.

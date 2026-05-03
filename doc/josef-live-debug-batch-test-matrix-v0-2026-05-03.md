@@ -64,8 +64,9 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 ### Deterministic
 
 - **Shakedown visible fork:** first-demand and reopened-demand surfaces expose exactly Pay/Fight; Esc/backout/refuse maps to fight/refusal without visible third option.
-- **Pay bridge:** pay branch opens trade/debt-style selector with demanded toll; no direct hidden `live_bandit_surrender_goods()` as visible pay path.
-- **Payment pool:** carried goods, basecamp goods, basecamp NPC carried items, and honest nearby faction/basecamp inventory are eligible; remote magical inventory is not.
+- **Pay bridge:** pay branch opens the actual NPC trade UI / trade window (`npc_trading::trade` / `trade_ui` shape) with demanded debt/toll already applied; no custom fake selector and no direct hidden `live_bandit_surrender_goods()` as visible pay path.
+- **Payment pool:** the whole honest basecamp/faction-side inventory is eligible: carried goods, basecamp goods, basecamp NPC carried items, and honest nearby faction/basecamp inventory; remote magical inventory is not.
+- **Debt basis:** demanded debt/toll is derived from the reachable camp-side pool/value and clamps/fails legibly for poor camps; it is not fixed, stubbed, or based only on the avatar's carried items.
 - **Scout standoff:** defended base/house watch target is about `5` OMT, not 1-2 OMT doorstep.
 - **Sighted stalker/scout:** current LoS from player or hostile camp NPC forces break-LoS/backoff/reroute/escalate; hot tile disables casual casing pickup.
 - **Scout return escalation:** confirmed basecamp contact + ample roster promotes next pressure from lone scout to toll/shakedown-capable party while preserving home reserve.
@@ -80,7 +81,7 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 - **Roof/first-floor/tower player:** player upstairs/roof/`z=5` tower with visible fire/light does not split camp or route to unreachable z; bandit dispatch chooses reachable ground approach and records vertical blocker/access if needed.
 - **Smoke out watcher:** if the player smokes the suspected stalking location or line between camp and watcher, bandit switches to obscured-lead/reposition/probe/escalate logic instead of holding the same visible tile.
 - **Lamp vs searchlight vs fire/smoke:** bandit distinguishes household/fire/smoke occupancy evidence from directional searchlight/active-defense threat.
-- **Payment UI:** selecting Pay visibly enters trade/debt-style UI and success/cancel/insufficient-payment outcomes are distinct.
+- **Payment UI:** selecting Pay visibly enters the real NPC trade window, starts with a debt/toll balance, shows/selects from the whole camp-side pool, and success/cancel/insufficient-payment outcomes are distinct. The proof must show the player can dump items into the trade offer to satisfy the debt.
 
 ### Josef feel playtests
 
@@ -193,7 +194,7 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 ### Deterministic
 
 - first and reopened shakedown visible choices exactly Pay/Fight;
-- Pay opens trade/debt bridge with demanded toll;
+- Pay opens the actual NPC trade window with demanded toll/debt already active and derived from camp-side value;
 - cancel/insufficient payment enters fight/refusal branch without hidden confiscation;
 - successful payment records paid/writeback/send-home;
 - no-shakedown profiles remain no-shakedown.
@@ -201,8 +202,9 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 ### Live
 
 - screenshot/OCR of first demand and reopened demand showing Pay/Fight only;
-- screenshot/OCR of trade/debt-style payment surface;
+- screenshot/OCR of the actual NPC trade window showing initial debt/toll and that it is backed by the whole camp-side inventory pool;
 - save/log proof of successful payment and cancelled/insufficient payment branch.
+- green current checkpoint for visible fork + actual trade-window opening: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`, with first-demand Pay `20260503_171632`, first-demand Fight `20260503_171825`, and reopened demand `20260503_172007`.
 
 ## Locker/basecamp equipment rows
 

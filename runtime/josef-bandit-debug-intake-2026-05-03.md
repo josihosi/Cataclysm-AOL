@@ -351,3 +351,32 @@ Josef asked to include player-vs-hostile edge cases in the active test matrix:
 - keep thinking in deterministic switch tests first, with live/playtest rows for product behavior/feel.
 
 Classification: folded into `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`, `TESTING.md`, `TODO.md`, `SUCCESS.md`, and handoff docs.
+
+## Follow-up correction — Pay must be real whole-camp trade/debt window
+
+Josef reiterated the Slice 1 shakedown contract after seeing the live Pay branch fail:
+- visible Pay/Fight is only half the contract;
+- selecting Pay must open a real trade/payment window;
+- that window must include the whole honest basecamp-side inventory: carried player goods, basecamp goods, basecamp NPC carried items, and nearby honest faction/basecamp inventory;
+- the demanded debt/toll must depend on what the camp has / can plausibly pay, not be a fixed/stub amount and not be based only on player-carried inventory.
+
+Classification: red live-path correction; Slice 1 cannot close until live proof shows Pay opens that window and uses that pool/debt basis.
+
+## Follow-up correction — actual NPC trade window, not playtest guessing
+
+Josef clarified that the answer is not another loose playtest; Andi needs to code the actual trade window path. Meaning:
+- the window is the normal NPC trade window, the one opened when trading with somebody (`npc_trading::trade` / `trade_ui` shape);
+- Pay should autostart that window with a debt/toll already owed;
+- the player then dumps items into the offer to satisfy the debt;
+- the inventory backing it must be the whole honest basecamp/faction-side pool, not a fake selector or player-carried-only list.
+
+## Agent proof checkpoint — Pay/Fight + actual NPC trade UI
+
+Implemented/proven checkpoint: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`.
+
+Credited live/staged rows:
+- first-demand Pay opens actual NPC trade UI: `.userdata/dev-harness/harness_runs/20260503_171632/`;
+- first-demand Fight branch remains distinct: `.userdata/dev-harness/harness_runs/20260503_171825/`;
+- reopened higher demand still shows Pay/Fight and `payment_surface=npc_trade_ui`: `.userdata/dev-harness/harness_runs/20260503_172007/`.
+
+Classification: green feature-path checkpoint for shakedown visible fork + real trade-window opening. Next debug-batch work moves to defended-camp scout/standoff/sight-avoid/hot-loot unless a fresh payment-writeback row is promoted.

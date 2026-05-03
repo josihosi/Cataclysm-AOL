@@ -22,10 +22,10 @@ Raw intake:
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
 - `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
 
-Current execution item: continue Slice 1, **Shakedown UI/payment contract correction**. Code/test checkpoint landed for Pay/Fight visible response contract and a Pay-side payment selector bridge; next honest evidence is live first-demand and reopened-demand proof that the player sees Pay/Fight only and Pay opens the payment surface.
+Current execution item: Slice 2, **Defended-camp scout/standoff/sight-avoid/hot-loot**. Slice 1 visible fork + real NPC trade-window opening is green at `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; do not cite the old fake selector or `pay/fight/refuse` proof. Next honest work is the defended-camp/stalking-mode behavior: about `5` OMT watch distance, sighted or player-smoked-out bandit/cannibal scouts break LoS/back off/reroute/wait/escalate, and hot defended-doorstep actors do not casually loot or smoke-camp the same tile.
 
 Execution order:
-1. Shakedown visible Pay/Fight only; Pay opens trade/debt-style payment over the honest basecamp/faction-side pool; correct misleading `pay/fight/refuse` docs/tests/log expectations.
+1. Shakedown visible Pay/Fight only; Pay opens the actual NPC trade UI / trade window (`npc_trading::trade` / `trade_ui` shape), autostarts with a demanded debt/toll, lets the player dump items into the offer, uses the whole honest basecamp/faction-side inventory pool, and derives debt/toll from what that camp side has rather than a fixed/stub amount or player-carried-only value; correct misleading `pay/fight/refuse` docs/tests/log expectations.
 2. Defended-camp scout/standoff/sight-avoid/hot-loot: about `5` OMT watch distance, sighted or player-smoked-out scouts plus stalking-mode bandits/cannibals/compatible hostiles actually break LoS/back off/reroute/wait/escalate, no casual looting on hot defended doorstep.
 3. Multi-z camp identity + roof-z routing/throttle: one site across z-levels, reachable ground approach target, no `route_missing` -> 30-minute silence.
 4. Hostile-camp escalation after scout confirmation: ample roster can promote next pressure; bandits into toll/shakedown party, cannibals into attack dispatch up to large/whole-camp commitment when they can overpower defenders.

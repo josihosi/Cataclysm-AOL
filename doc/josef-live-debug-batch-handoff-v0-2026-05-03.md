@@ -15,7 +15,9 @@ Raw intake:
 
 ## Execute in this order
 
-1. Shakedown UI/payment correction: Pay + Fight only; Pay opens trade/debt-style selector over the honest basecamp/faction pool; remove misleading `pay/fight/refuse` success expectations.
+Current Slice 1 checkpoint: visible Pay/Fight + Pay opening the real NPC trade window is green at `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; next execution work should start at defended-camp scout/standoff/sight-avoid unless a fresh shakedown payment-writeback row is explicitly promoted.
+
+1. Shakedown UI/payment correction: Pay + Fight only; Pay opens the actual NPC trade UI / trade window (`npc_trading::trade` / `trade_ui` shape) over the whole honest basecamp/faction inventory pool; it autostarts with demanded debt/toll derived from what that camp side has / can plausibly pay, and the player dumps items into the offer to satisfy it; remove misleading `pay/fight/refuse` success expectations.
 2. Defended-camp scout/standoff/sight-avoid/hot-loot: 5 OMT watch distance, sighted or player-smoked-out scouts plus stalking-mode bandits/cannibals/compatible hostiles actually break LoS/back off/reroute/wait/escalate, no casual pickup on hot defended doorstep and no smoke-camping the same tile.
 3. Multi-z camp identity + roof/tower-z routing + throttle: one site across z-levels, reachable ground approach target for first-floor/roof/`z=5` tower cases, no `route_missing` -> 30-minute silence.
 4. Hostile-camp escalation: confirmed scout + ample roster can promote next response; bandits to toll/shakedown party, cannibals to attack dispatch up to large/whole-camp commitment when odds say they can overpower the defenders.
@@ -41,7 +43,7 @@ Raw intake:
 For each slice, use deterministic coverage for the contract and live/path proof for the player-facing/live claim. If proof fails after the normal attempt budget, consult Frau Knackal and then package implemented-but-unproven state for Josef rather than closing it.
 
 Minimum expected proof families:
-- shakedown: first-demand and reopened-demand dialogue + payment proof;
+- shakedown: first-demand and reopened-demand dialogue + payment proof showing the actual NPC trade window, initial debt/toll, item-dump offer flow, whole basecamp-side inventory pool, and debt/toll derived from camp-side value;
 - hostile camps: defended camp, stalking-mode LoS avoidance, player smoke-out of bandit/cannibal watcher locations, cannibal 5 OMT stalk-to-attack escalation, roof/first-floor/`z=5` tower fallback, multi-turn dispatch/retry evidence;
 - light/smoke: fire/lamp/household/searchlight/smoke controls, weather-source sanity, and horde destination/tracking save inspection;
 - patrol: hostile/neutral/alarm/log wait evidence;

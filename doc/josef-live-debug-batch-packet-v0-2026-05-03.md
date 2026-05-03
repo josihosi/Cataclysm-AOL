@@ -30,8 +30,11 @@ Fix the shakedown surface and the stranded-note canon failure.
 Scope:
 - visible choices are exactly **Pay** and **Fight**;
 - Esc/backout/refuse routes to the fight/refusal branch but is not shown as a third response;
-- pay opens a trade/debt-style surface instead of silently calling `live_bandit_surrender_goods()`;
-- basecamp-side payment pool includes carried goods, basecamp goods, basecamp NPC carried items, and nearby honest faction/basecamp inventory;
+- pay opens the actual NPC trade UI / trade window, i.e. the same kind of window opened by normal NPC trading (`talk_function::start_trade` / `npc_trading::trade` / `trade_ui`), not a custom prompt or silent selector;
+- the trade window autostarts with a demanded debt/toll balance (`Pay:`-style owed/cost) and the player must dump enough items into the offer side to satisfy it;
+- it must not silently call `live_bandit_surrender_goods()` before the player sees and uses that window;
+- the payment window is backed by the whole honest basecamp/faction-side pool: carried goods, basecamp goods, basecamp NPC carried items, and nearby honest faction/basecamp inventory;
+- the demanded debt/toll is derived from what that camp side has / can plausibly pay, not a fixed/stub amount and not only the player's carried inventory;
 - preserve reopened higher-demand behavior and cannibal/no-shakedown separation;
 - correct docs/tests/log expectations that currently bless `responses=pay/fight/refuse` as success.
 
@@ -211,9 +214,9 @@ Non-goals:
 
 ## Success state
 
-- [ ] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response.
-- [ ] Pay opens trade/debt-style payment using the honest basecamp/faction-side pool and no silent auto-confiscation.
-- [ ] Misleading `pay/fight/refuse` docs/tests/log expectations are corrected.
+- [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Green rows: `20260503_171632`, `20260503_171825`, `20260503_172007`._
+- [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance, using the whole honest basecamp/faction-side pool; the player must dump items into the offer until the debt is satisfied; debt/toll is derived from what that camp side has, and no silent auto-confiscation / fixed-stub / player-carried-only payment remains. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; Pay row `20260503_171632`._
+- [x] Misleading `pay/fight/refuse` docs/tests/log expectations are corrected.
 - [ ] Defended camp scout/hold-off uses about `5` OMT watch distance; bandits, cannibals, and other compatible stalking-mode hostiles perform real sight avoidance, and sighted/hot doorstep behavior backs off or escalates.
 - [ ] Multi-z bandit camp is one site/owner with z-footprint metadata; roof-z player position does not create route-missing/throttle silence.
 - [ ] Confirmed big-camp contact can escalate from lone scout into roster-scaled pressure when appropriate: bandits into toll/shakedown pressure, cannibals into attack dispatch up to large/whole-camp commitment when they can overpower the defenders.
