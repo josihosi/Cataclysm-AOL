@@ -655,7 +655,7 @@ Success state:
 - [x] A bandit contrast control preserves the shakedown/pay/fight distinction while the credited cannibal day-pressure row remains no-shakedown/no-combat-forward: bandit run `.userdata/dev-harness/harness_runs/20260429_012915/` proves `pay_option=yes fight_option=yes` plus `shakedown_surface fight demanded=15797 reachable=45134`; cannibal day-pressure run `.userdata/dev-harness/harness_runs/20260429_013310/` proves `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, and `combat_forward=no`. Night/contact no-shakedown is also covered by the checked night/contact row above.
 - [x] The final verdict updates confidence honestly: confidence uplift green, with retained caveats that reload support is saved-file/startup support paired with create/save feature proof, and different-footing repeat reduces but does not eliminate fixture-bias risk.
 
-Notes:
+Compact reference:
 - Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
 - This is confidence uplift for the closed cannibal behavior, not a behavior redesign or proof that the old closure failed.
@@ -675,12 +675,11 @@ Success state:
 - [x] The generated Zone Manager list is inspected after live generation and after close/save-changes/reopen; visible relative coordinate labels are captured in live `zone_manager_row` redraw traces with `visible_label` / `compact_label` fields.
 - [x] Generated/reopened row metadata proves zone names/types plus absolute coordinates where available via `start_abs`, `end_abs`, and `center_abs`, showing a multi-position layout rather than one-tile collapse.
 
-Notes:
+Compact reference:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
 - Final green run: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9` (stabilized as `smart_zone.live_coordinate_label_proof_v0`), `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, 18/18 green step-local rows.
 - The proof verdict is green for the live coordinate-label/lumping claim. Screenshot/OCR artifacts support the UI checkpoints but OCR is fallback-quality; row trace metadata is the decisive coordinate-label evidence. Full process-reload disk persistence is not separately claimed.
-- Prior non-green UI-entry runs remain postmortem evidence only and should not be rerun as ritual.
 
 ---
 
@@ -696,7 +695,7 @@ Success state:
 - [x] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
 - [x] Any proposed edits are bounded follow-up items, not silent cleanup drift.
 
-Notes:
+Compact reference:
 - Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
 - Report-only boundary is complete. The only unpromoted queue/watch item is whether to later remove the gated `src/handle_action.cpp` dispatch trace hook; do not reopen Smart Zone live proof without a repaired UI-entry/key-delivery primitive or Josef manual evidence.
@@ -715,19 +714,18 @@ Success state:
 - [x] No optimization is needed for the measured current envelope: the four-site row stayed compact (`total_us` min/median/max `540/560.0/5572`, sum `8360`, one dispatch-due row `dispatch_us=4654`, harness wall-clock `real 39.27s`), and natural three/four-site player-pressure remains a cap/watchlist behavior question rather than a measured performance bottleneck.
 - [x] The final verdict is **green enough for current playtest scale**, with the boundary that pre-staged three/four-site rows are performance-load evidence, not natural multi-site player-pressure dispatch proof.
 
-Notes:
+Compact reference:
 - Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
 - Current matrix progress: one-site and two-site rows are green as natural/live dispatch footing; the three-site row is green only as a labeled pre-staged performance-load row (`.userdata/dev-harness/harness_runs/20260429_040926/`). The natural three-player-pressure recipe remains cap/watchlist evidence at `sites=3 active_sites=2`, not row closure.
 
 ---
 
-
 ## Bandit camp-map risk/reward dispatch planning packet v0
 
 Status: CLOSED / SCOPED LIVE PRODUCT CHECKPOINT GREEN
 
-Scoped checkpoint success state:
+Success state:
 - [x] Camp-map implementation substrate landed: camp-owned `camp_intelligence_map`, save/load serialization, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map leads, and remembered camp-map lead selection through the live dispatch cadence/report path.
 - [x] Deterministic/code support landed for two-OMT ordinary scout stand-off, 720-minute ordinary scout return clock, 2/4/5/7/10 roster/reserve sizing, active-outside dogpile blocking, wounded/unready and killed-member shrinkage, bounded stockpile pressure, high-threat non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing, and no-opening hold/return.
 - [x] Feature-path evidence covers vanished-signal remembered-lead redispatch: `bandit.camp_map_vanished_signal_redispatch` in `.userdata/dev-harness/harness_runs/20260428_185947/`.
@@ -740,18 +738,13 @@ Scoped checkpoint success state:
 - [x] Optional empty-camp live sanity is green: `bandit.empty_camp_retirement_live` in `.userdata/dev-harness/harness_runs/20260428_214542/` proves the fully empty positive retires and home-side/active-outside negatives do not.
 - [x] Product review accepted the scoped live/product matrix as enough for this checkpoint; no second-fixture bias variant is required before closure.
 
-Caveats:
-- The old player-created fire/smoke/light fuel/writeback route receives no credit from this checkpoint; the active wood-source-zone repair is the only reopened bridge for that proof.
-- Repeatability is same-fixture confidence only, not second-fixture anti-bias proof.
-- A later second-fixture bias variant can be queued if Josef wants stronger confidence; it is not a closure blocker for this lane.
-
-Validation recorded: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; relevant scenario/fixture `python3 -m json.tool` checks; `python3 tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`; `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit_live_world]"`; `./tests/cata_test "[bandit][live_world][camp_map]" --success`; and the named feature-path harness probes above. `make astyle-diff` remains locally blocked by missing `astyle`.
-
-Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
-Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
-Bandit live product matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+Compact reference:
+- Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+- Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
+- Bandit live product matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
 
 ---
+
 ## Test-vs-game implementation audit report packet v0
 
 Status: CLOSED / CHECKPOINTED
@@ -765,11 +758,9 @@ Success state:
 - [x] `TESTING.md` gets a compact update summarizing the audit result and preserving the rule that tests cannot impersonate live implementation.
 - [x] The report names the first implementation package Andi should execute next after the audit.
 
-
 Compact reference:
 - Canonical contract lives at `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
 - Closed report lives at `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
-
 
 ---
 
@@ -784,7 +775,7 @@ Success state:
 - [x] Real player source-zone fire -> bandit signal response is superseded/closed by `CAOL-REAL-FIRE-SIGNAL-v0` (`doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`).
 - [ ] Remaining range-matrix/scoring/decay/hold-chill refinements are future-only unless explicitly promoted as a new bounded item.
 
-Notes:
+Compact reference:
 - Receipt lives in `doc/work-ledger.md` as `CAOL-BANDIT-LIVE-SIGNAL-SITE-BOOTSTRAP-v0`.
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 - This section used to look like an active reopened partial lane. It is not active now. Raw-field/synthetic source-hook proof remains historical support/non-credit for player-fire claims; real player-fire signal response is closed by the later actual-playtest proof bundle.
@@ -802,18 +793,14 @@ Success state:
 - [x] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
 - [x] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
-
 
 ---
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
 Status: RECLOSED / CURRENT-RUNTIME PRODUCT PROOF
-
-Fresh 2026-04-27 live evidence from Josef superseded the earlier closure for product purposes: smoke attraction worked, but the local scout/hold-off behavior crowded the player/basecamp too closely and was not visibly timing out/returning home in the current save. The reopened product gap is now reclosed on current runtime: the correction handles timed-out scouts before local-contact gating, preserves five-OMT hold-off standoff, and proves returned scout writeback through the live McWilliams/Basecamp path.
 
 Success state:
 - [x] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight. _(Deterministic coverage plus live/harness proof `.userdata/dev-harness/harness_runs/20260427_061344/`: `bandit_live_world sight_avoid: exposed -> repositioned npc=4 ... reason=repositioning because exposed`.)
@@ -827,10 +814,8 @@ Success state:
 - [x] Bandit hold-off/stalking placement keeps a meaningful stand-off instead of crowding the immediately adjacent/neighboring OMT-scale area unless an explicit shakedown/fight state has started. _(Deterministic five-OMT correction plus live harness proof `.userdata/dev-harness/harness_runs/20260427_152117/`: real `wait_action` 30m path completed, `local_gate ... posture=hold_off ... standoff_distance=5`, `live_dispatch_goal=140,46,0`.)_
 - [x] The scout timeout/return path is proven on the current live-product path. _(Current-runtime live run `.userdata/dev-harness/harness_runs/20260427_154309/`: real `wait_action` path logged `scout_sortie: linger limit reached -> return_home`, `scout_sortie: home footprint observed ... pos=(140,51,0)`, and `scout_report: returned -> pressure refreshed`; copied save later showed a fresh redispatch, not the stale returning-home loop.)_
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
-
 
 ---
 
@@ -849,10 +834,8 @@ Success state:
 - [x] The implementation respects the smart-zone aux-plan separation rules that are deterministic-checkable in the fixture: fire-source / `splintered` / wood placement, readable crafting/food/equipment support separation, clothing/dirty support, outside rotten placement, and a larger unsorted intake area.
 - [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. The old playtest package is superseded for the lumping/layout claim by the green coordinate-label proof; full process-reload disk persistence remains a separate optional future audit if promoted.
 
-
 Compact reference:
 - Canonical contract lives at `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
-
 
 ---
 
@@ -868,10 +851,8 @@ Success state:
 - [x] Deterministic tests cover fresh pickup, carried-item preservation, cap/anti-hoarding behavior, and a negative case for unrelated drugs/items.
 - [x] Live/harness proof is not required for this first slice; deterministic camp/locker tests exercise the actual service path and the focused `[camp][locker]` regression pass covers readiness behavior.
 
-
 Compact reference:
 - Canonical contract lives at `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
-
 
 ---
 
@@ -888,10 +869,8 @@ Success state:
 - [x] Tests prove a clearly superior full-body/protective suit can displace worse blockers, while stronger current ballistic armor is preserved against worse candidates.
 - [x] At least one targeted regression covers the original symptom shape without depending on the exact RM13 item ID as the only proof.
 
-Notes:
+Compact reference:
 - Canonical contract lives at `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`.
-- Closure evidence: `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`, focused armor tests, `./tests/cata_test "[camp][locker]"` (2050 assertions in 70 test cases), and `git diff --check` passed.
-- Josef explicitly said this must not be RM13-specific. Use a metric, not a charm against one cursed item.
 
 ---
 
@@ -908,7 +887,7 @@ Success state:
 - [x] Deterministic tests cover ordinary repeated spam, changed-state reset, locker exception, patrol exception, and a negative case showing unrelated important messages are not swallowed.
 - [x] If practical, a harness/log proof shows the old spam shape is reduced without losing one meaningful locker/patrol message. Local deterministic/log-message gates were sufficient for this narrow message-debounce slice.
 
-Notes:
+Compact reference:
 - Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`.
 
 ---
@@ -925,10 +904,8 @@ Success state:
 - [x] Reviewer-readable output exposes the entry posture, any local rewrite, and the returned abstract-state change clearly enough to debug the seam without guessing from side effects.
 - [x] The slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -946,10 +923,8 @@ Success state:
 - [x] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
 - [x] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -964,10 +939,8 @@ Success state:
 - [x] The honest `500`-turn proof shows the strengthened site cooling back out instead of regrowing forever.
 - [x] The slice stays narrow: no site-type-sensitive branching, no settlement taxonomy pass, no broad visibility rewrite, and no z-level smuggling.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -984,10 +957,8 @@ Success state:
 - [x] The packet is reviewer-readable enough that Schani or Josef can answer plainly whether it is leiwand, actually fun, alive on the map, and showing real emergent activity rather than inert legal-but-boring behavior.
 - [x] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1002,10 +973,8 @@ Success state:
 - [x] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
 - [x] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1020,10 +989,8 @@ Success state:
 - [x] Each scenario carries explicit goals plus scenario-specific benchmark hooks, and the later locked benchmark outcomes stay visible on the same report path.
 - [x] The slice stays bounded: no broad handoff redesign, no tactical local combat AI expansion, and no fresh world-sim jump.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1038,10 +1005,8 @@ Success state:
 - [x] Reviewer-readable output explains how weather changed clue quality, for example reduced range, fuzzier origin, displaced/corridor-ish smoke read, or preserved bright-light legibility under dark storm conditions.
 - [x] The slice stays bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rework.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1057,10 +1022,8 @@ Success state:
 - [x] One small playback/reference scenario packet proves the same rule on the current scenario seam, with explicit goals and tuning metrics.
 - [x] The slice stays bounded: no coalition logic, no fresh visibility family, no broad pathfinding rewrite, and no handoff expansion.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1075,10 +1038,8 @@ Success state:
 - [x] The slice stays bounded: no broad all-signals concealment rewrite, no new fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion.
 - [x] If the concealment adapter starts looking computationally suspicious, the packet carries one small readable cost/probe angle instead of deferring perf truth to later folklore.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1093,10 +1054,8 @@ Success state:
 - [x] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
 - [x] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1111,10 +1070,8 @@ Success state:
 - [x] Reviewer-readable output shows whether a moving lead was refreshed, narrowed, or dropped instead of hiding the memory state in debugger soup.
 - [x] The slice stays computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1129,10 +1086,8 @@ Success state:
 - [x] The proof reuses the current mark-generation / playback / evaluator seams instead of smuggling in a broader overmap simulator or persistence rewrite.
 - [x] The slice stays bounded: no new visibility adapter family, no live-harness-first theater, and no broad AI architecture jump.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-first-500-turn-playback-proof-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1147,10 +1102,8 @@ Success state:
 - [x] Reviewer-readable report output exposes the reinforcement packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
 - [x] The slice stays bounded: no smoke/light/human-route rewrite, no broad concealment implementation, no settlement-signature mythology, and no first 500-turn proof smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-repeated-site-activity-reinforcement-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1165,10 +1118,8 @@ Success state:
 - [x] Reviewer-readable report output exposes the route packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
 - [x] The slice stays bounded: no light/smoke rewrite, no broad concealment implementation, no settlement-signature mythology, and no first 500-turn proof smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-human-route-visibility-mark-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1183,10 +1134,8 @@ Success state:
 - [x] Reviewer-readable report output exposes the light packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
 - [x] The slice stays bounded: no smoke rewrite, no broad concealment implementation, no sound/horde expansion, and no first 500-turn proof smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-light-visibility-mark-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1200,10 +1149,8 @@ Success state:
 - [x] The existing evaluator / playback footing can consume generated mark output reviewer-cleanly instead of relying only on hand-authored leads.
 - [x] The slice stays bounded: no bubble handoff, no broad visibility adapter, and no full hostile-world simulation are smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1217,10 +1164,8 @@ Success state:
 - [x] Entry payload and return packet stay explicit, small, and reviewer-readable.
 - [x] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1234,10 +1179,8 @@ Success state:
 - [x] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
 - [x] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera, and if it does not, the packet says so plainly.
 
-
 Compact reference:
 - Canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1252,10 +1195,8 @@ Success state:
 - [x] Narrow deterministic coverage exists for the first pure reasoning reference cases.
 - [x] The slice stays bounded: no full autonomous bandit world behavior, no broad scenario playback suite, and no broad persistence architecture are smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1269,10 +1210,8 @@ Success state:
 - [x] The scenario packet can answer whether camps stay idle, investigate smoke, stalk edges, peel off under pressure, or mis-upgrade whole regions from moving clues.
 - [x] The suite stays bounded and does not turn into broad worldgen mutation or live-harness-first theater.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1286,10 +1225,8 @@ Success state:
 - [x] Save-size growth has an honest first estimate tied to the actually persisted bandit state shape.
 - [x] The packet can say whether the current design looks cheap enough, suspicious, or clearly too bloated before broader rollout.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1303,10 +1240,8 @@ Success state:
 - [x] The packet answers whether loaded magazines and ordinary container shapes mostly behave like one top-level locker item or create meaningful nested-content pain.
 - [x] The packet can end with a usable verdict: fine for now, watch this, or land a guardrail now, plus the first cheap mitigation order if needed.
 
-
 Compact reference:
 - Canonical contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1321,7 +1256,8 @@ Success state:
 - [x] **Package 5, basecamp carried-item dump lane** is landed: ordinary carried junk gets dumped during locker dressing, the kept carried lane is intentionally limited to `bandages`, `ammo`, and `magazines`, and curated locker stock is not polluted by the dump behavior.
 - [x] The queue stayed controlled while Package 5 ran, and the next slice can now move forward cleanly as Package 4 instead of broadening into unrelated lanes.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1341,7 +1277,8 @@ Success state:
 - [x] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
 - [x] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1360,10 +1297,8 @@ Success state:
 - [x] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
 - [x] Proportional live proof is recorded on the rebuilt current tiles binary.
 
-
 Compact reference:
 - Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
-
 
 ---
 
@@ -1377,7 +1312,8 @@ Success state:
 - [x] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
 - [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as premature delivery of the later chat/ambient feature lanes.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1396,7 +1332,8 @@ Success state:
 - [x] At least one reusable scenario-setup helper exists so repeated probes stop depending on debug-menu folklore.
 - [x] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1412,7 +1349,8 @@ Success state:
 - [x] Proportional runtime validation for V2 is recorded in `TESTING.md`.
 - [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1420,7 +1358,11 @@ Success state:
 
 Status: CHECKPOINTED / DONE FOR NOW
 
+Success state:
+- [x] Older receipt preserved at final state `CHECKPOINTED / DONE FOR NOW`; no active validation target remains here.
 
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1436,10 +1378,8 @@ Success state:
 - [x] Proportional runtime validation for the currently implemented V3 behavior is recorded in `TESTING.md`.
 - [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
-
 Compact reference:
 - Canonical contract lives at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1455,7 +1395,8 @@ Success state:
 - [x] The packet is grounded in current code/tests/evidence strongly enough that later cleanup decisions do not rely on stale folklore.
 - [x] The slice stays bounded and does not mutate into implementation work by accident.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1471,10 +1412,8 @@ Success state:
 - [x] Any blocker is stated as a concrete missing setup/control path rather than vague playtesting hand-wringing.
 - [x] The slice stays bounded and does not turn into open-ended live playtesting theater.
 
-
 Compact reference:
 - Canonical contract lives at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`.
-
 
 ---
 
@@ -1489,10 +1428,8 @@ Success state:
 - [x] The packet says plainly what remains manual or ugly, if anything, instead of laundering it into magic.
 - [x] The slice stays bounded and does not widen into fresh mechanics, zoning-mechanics reopen, encounter/readability judgment, or another generic feasibility lap.
 
-
 Compact reference:
 - Canonical contract lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1508,10 +1445,8 @@ Success state:
 - [x] The packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory.
 - [x] The slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1528,10 +1463,8 @@ Success state:
 - [x] The packet says plainly what still remains ugly or manual instead of laundering it into magic.
 - [x] The slice stays cohesive and bounded rather than mutating into a general harness/world-authoring rewrite.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1548,10 +1481,8 @@ Success state:
 - [x] The packet says plainly what still remains manual, brittle, or not yet fixture-backed.
 - [x] The slice stays about rich prepared fixtures rather than sprawling into a generic world-authoring platform.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`.
-
 
 ---
 
@@ -1572,10 +1503,8 @@ Success state:
 - [x] At least one dirtier later-world disturbance proof exists on that same nearby owned setup beyond the calm return->re-dispatch path, such as loss/missing shrinkage, save/load disturbance, or player-disruption without stale-roster reset.
 - [x] The slice stays bounded: no giant generic map-authoring empire, no full hostile-human rewrite, no fake harness-only integration, and no faction-grand-strategy detour.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1592,10 +1521,8 @@ Success state:
 - [x] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
 - [x] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
 
-
 Compact reference:
 - Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1610,10 +1537,8 @@ Success state:
 - [x] The multi-site scheduler can consume those profiles without regressing the already-honest bandit live-owner footing.
 - [x] The packet stays bounded: no giant faction-AI framework, no singleton stalker implementation, and no broad diplomacy/social-horror widening.
 
-
 Compact reference:
 - Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1621,11 +1546,12 @@ Compact reference:
 
 Status: CHECKPOINTED / DONE FOR NOW.
 
+Success state:
+- [x] Older receipt preserved at final state `CHECKPOINTED / DONE FOR NOW.`; no active validation target remains here.
 
 Compact reference:
 - Canonical contract lives at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
 - Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1641,10 +1567,8 @@ Success state:
 - [x] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities on a real or harnessed travel seam.
 - [x] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1661,10 +1585,8 @@ Success state:
 - [x] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
 - [x] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1681,10 +1603,8 @@ Success state:
 - [x] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
 - [x] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1700,10 +1620,8 @@ Success state:
 - [x] Reviewer-readable reports make it obvious which setup mode ran, which real controlled group was used, and whether the scene reached approach, stand-off, or shakedown state.
 - [x] The slice stays bounded: no generic harness empire and no helper polish masquerading as the robbery chain itself.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1718,10 +1636,8 @@ Success state:
 - [x] The relevant harness skill/docs are updated so another agent can discover the named paths and run them without archaeological guessing.
 - [x] The slice stays bounded: no fake total-automation empire and no feature-redesign side quest hiding inside audit packaging.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
-
 
 ---
 
@@ -1729,10 +1645,12 @@ Compact reference:
 
 Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY
 
-Notes:
+Success state:
+- [x] Older receipt preserved at final state `FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY`; no active validation target remains here.
+
+Compact reference:
 - Canonical helper contract still lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
 - The useful open scenario-surgery / observability work from `v2` was carried forward into `Bandit live-world control + playtest restage packet v0` instead of being killed.
-- `v2` is therefore no longer a standalone roadmap item; it survives only as supporting tooling in service of the newer active lane.
 
 ---
 
@@ -1747,7 +1665,8 @@ Success state:
 - [x] Proportional validation for each finished sub-slice is recorded in `TESTING.md`.
 - [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1761,7 +1680,8 @@ Success state:
 - [x] Spoken `show me the board` stays on the concise spoken bark path.
 - [x] Deterministic evidence for that split is recorded.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1775,10 +1695,8 @@ Success state:
 - [x] Internal routing/debug structure can still exist where needed without leaking into normal in-world speech.
 - [x] The visible answer tone sounds rough, practical, and in-world, like poor survivors making it work for another day while the dead and worse roam outside.
 
-
 Compact reference:
 - Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
-
 
 ---
 
@@ -1793,10 +1711,8 @@ Success state:
 - [x] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
 - [x] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
 
-
 Compact reference:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
-
 
 ---
 
@@ -1811,10 +1727,8 @@ Success state:
 - [x] Each micro-item includes a clear question plus a concrete answer shape, and the packet as a whole includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
 - [x] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
-
 
 ---
 
@@ -1828,10 +1742,8 @@ Success state:
 - [x] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
 - [x] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
 
-
 Compact reference:
 - Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
-
 
 ---
 
@@ -1846,10 +1758,8 @@ Success state:
 - [x] Reviewer-readable report output exposes the smoke packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
 - [x] The slice stays bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no first 500-turn proof smuggled in.
 
-
 Compact reference:
 - Canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`.
-
 
 ---
 
@@ -1877,7 +1787,8 @@ Success state:
 - [x] The broad packet explicitly uses territoriality, distance burden, depletion, sticky threat, and fresh active-pressure penalties to damp repeated multi-camp convergence on the same target region.
 - [x] The whole bandit concept packet is now coherent enough that it can support bounded promotion into greenlit implementation slices without hidden open seams.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1893,7 +1804,8 @@ Success state:
 - [x] The preserved bank explicitly states that current bandit and Basecamp zoning footing still needs honest playtesting before these concepts earn bounded promotion.
 - [x] The bank explicitly requires future revisit to happen one bounded promotion at a time instead of reopening fifty speculative threads at once.
 
-
+Compact reference:
+- Detailed aux/proof references are in git history before `CAOL-DOC-HYGIENE-POST-STALKER-v0`; no current lane depends on this closed receipt.
 
 ---
 
@@ -1908,6 +1820,7 @@ Success state:
 - [x] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
 - [x] The helper can optionally generate the Andi handoff packet from the same classified contract.
 
-
 Compact reference:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
+
+---
