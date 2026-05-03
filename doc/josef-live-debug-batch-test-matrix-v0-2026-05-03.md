@@ -206,7 +206,7 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 - screenshot/OCR of first demand and reopened demand showing Pay/Fight only;
 - screenshot/OCR of the actual NPC trade window showing initial debt/toll and that it is backed by the whole camp-side inventory pool;
 - save/log proof of successful payment and cancelled/insufficient payment branch.
-- green current checkpoint for visible fork + actual trade-window opening + whole basecamp-side pool + pool-derived debt/toll basis + cancel/refusal + successful saved writeback: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`, with first-demand Pay/open `20260503_191704`, reopened Pay/open `20260503_192442`, cancel/refusal `20260503_192911`, successful Pay/save/writeback `20260503_193524`, and deterministic shakedown gate `/tmp/caol_shakedown_contract_tests_20260503.log`.
+- green current checkpoint for visible fork + actual trade-window opening + whole basecamp-side pool + pool-derived debt/toll basis + cancel/refusal + successful saved writeback: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; final UI-first closure is tight cropped-OCR run `20260503_202326` on rebuilt `d1a4f076c8` (`Pay`/`Fight` before selection, immediate post-Pay `Pay:` / `Debt $157.97` / `F1 to auto balance`, same-run `npc_trading::trade` artifact and pool components). Supporting rows: reopened Pay/open `20260503_192442`, cancel/refusal `20260503_192911`, successful Pay/save/writeback `20260503_193524`, plus deterministic shakedown gate `/tmp/caol_shakedown_contract_tests_20260503.log`.
 
 ## Locker/basecamp equipment rows
 
