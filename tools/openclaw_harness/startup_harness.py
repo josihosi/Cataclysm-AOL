@@ -2351,6 +2351,7 @@ def audit_saved_active_monsters(
             "hp": monster.get("hp"),
             "faction": monster.get("faction"),
             "ammo": monster.get("ammo", {}),
+            "values": monster.get("values", {}),
             "unique_name": monster.get("unique_name", ""),
             "nickname": monster.get("nickname", ""),
         })
@@ -2378,6 +2379,12 @@ def audit_saved_active_monsters(
                 str(ammo_type).strip(): int(amount)
                 for ammo_type, amount in raw.get("ammo", {}).items()
                 if str(ammo_type).strip()
+            }
+        if isinstance(raw.get("values"), dict):
+            requirement["values"] = {
+                str(value_key).strip(): value
+                for value_key, value in raw.get("values", {}).items()
+                if str(value_key).strip()
             }
         required.append(requirement)
 
@@ -2409,6 +2416,19 @@ def audit_saved_active_monsters(
                     if int(observed_ammo.get(ammo_type, 0) or 0) < int(amount):
                         return False
                 except (TypeError, ValueError):
+                    return False
+        required_values = requirement.get("values")
+        if isinstance(required_values, dict):
+            observed_values = monster.get("values", {})
+            if not isinstance(observed_values, dict):
+                return False
+            for value_key, required_value in required_values.items():
+                observed_value = observed_values.get(value_key)
+                if isinstance(observed_value, dict) and "str" in observed_value:
+                    observed_value = observed_value.get("str")
+                if isinstance(required_value, dict) and "str" in required_value:
+                    required_value = required_value.get("str")
+                if observed_value != required_value:
                     return False
         return True
 
@@ -5700,6 +5720,30 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     raise SystemExit(
                         f"Fixture save_transforms[{index}].monsters[{monster_index}] ammo values must be positive integers in {manifest_path}"
                     )
+                raw_values = monster_raw.get("values", {})
+                if raw_values is None:
+                    raw_values = {}
+                if not isinstance(raw_values, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] values must be an object in {manifest_path}"
+                    )
+                values: Dict[str, Any] = {}
+                for value_key, value in raw_values.items():
+                    normalized_key = str(value_key).strip()
+                    if not normalized_key:
+                        continue
+                    if isinstance(value, str):
+                        values[normalized_key] = {"str": value}
+                    elif isinstance(value, bool):
+                        values[normalized_key] = 1 if value else 0
+                    elif isinstance(value, (int, float)):
+                        values[normalized_key] = value
+                    elif isinstance(value, dict):
+                        values[normalized_key] = value
+                    else:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].monsters[{monster_index}] values[{normalized_key}] must be string, number, bool, or object in {manifest_path}"
+                        )
                 monsters.append({
                     "typeid": typeid,
                     "offset_ms": offset,
@@ -5711,6 +5755,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     "hallucination": bool(monster_raw.get("hallucination", False)),
                     "dead": bool(monster_raw.get("dead", False)),
                     "ammo": ammo,
+                    "values": values,
                 })
             transforms.append({
                 "kind": kind,
@@ -7573,7 +7618,7 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "pain": 0,
             "effects": {},
             "damage_over_time_map": [],
-            "values": {},
+            "values": dict(raw_monster.get("values", {}) or {}),
             "blocks_left": 1,
             "dodges_left": 1,
             "num_blocks_bonus": 0,

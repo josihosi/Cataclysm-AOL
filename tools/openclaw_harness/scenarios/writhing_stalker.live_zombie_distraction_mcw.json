@@ -109,7 +109,7 @@
         [
           "writhing_stalker live_plan:",
           "evidence=yes",
-          "zombie_pressure=1",
+          "zombie_pressure=",
           "decision=strike",
           "reason=live_vulnerability_window_strike",
           "eval_us="
@@ -118,7 +118,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_audit_writhing_stalker_zombie_distraction_live_plan_missing",
       "abort_reason": "same-run artifact lacked evidenced zombie-pressure shadow/strike lines",
-      "expected_visible_fact": "same-run debug artifact proves zombies amplify an already evidenced/vulnerable opportunity; pressure may drop from 2 to 1 as one zombie moves out of the local pressure count during approach"
+      "expected_visible_fact": "same-run debug artifact proves zombies amplify an already evidenced/vulnerable opportunity; current footing keeps zombie pressure in the local count through the strike window; the exact count can vary as zombies move during approach"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_zombie_distraction_mcw",

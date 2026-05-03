@@ -19,25 +19,26 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0 — Writhing stalker threat/distraction handoff
 
-Status: ACTIVE / DETERMINISTIC IMPLEMENTATION CHECKPOINT GREEN / LIVE-STAGED PROOF NEXT
+Status: ACTIVE / LIVE-STAGED PROOF GREEN / FRAU REVIEW NEXT
 
 Success state:
-- [ ] Day/bright + same OMT or close overmap pressure + about three friendly NPCs produces retreat/stalking behavior instead of close loiter/pressure.
-- [ ] Stalking/retreat behavior records or proves about `3` OMT distance where overmap pathing permits, and avoids direct sight tiles rather than hovering at the defended house.
-- [ ] Night/outside/reachable player no longer produces indefinite non-action: the stalker attacks, repositions to a better dark/covered approach, retreats, or logs a concrete blocker.
-- [ ] Zombie/distraction entering the player/NPC tile raises opportunity and produces dark-square approach/strike behavior without omniscience.
-- [ ] Overmap-to-bubble handoff carries intent/reason/strike-budget state, and bubble-to-overmap writeback preserves spent/retreat/cooldown/threat memory.
-- [ ] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
-- [ ] If door opening is implemented, tests prove it is narrow, unlocked/simple only, noisy/slow/interruptible or equivalently costly, and suppressed under high threat.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on final state before closure.
+- [x] Day/bright + same OMT or close overmap pressure + about three friendly NPCs produces retreat/stalking behavior instead of close loiter/pressure: `.userdata/dev-harness/harness_runs/20260503_021310/`.
+- [x] Stalking/retreat behavior records or proves about `3` OMT distance where overmap pathing permits, and avoids direct sight tiles rather than hovering at the defended house: `.userdata/dev-harness/harness_runs/20260503_021310/` reports `stalk_omt=3`.
+- [x] Night/outside/reachable player no longer produces indefinite non-action: `.userdata/dev-harness/harness_runs/20260503_025712/` reports `decision=strike`, `reason=live_anti_gnome_night_reachable_probe_strike`, `anti_gnome=yes`, `bad_loiter=2`.
+- [x] Zombie/distraction entering the player/NPC tile raises opportunity and produces dark-square approach/strike behavior without omniscience: `.userdata/dev-harness/harness_runs/20260503_025148/` reports cover-shadow then strike with `reason=live_vulnerability_window_strike` and `zombie_pressure=2`.
+- [x] Overmap-to-bubble handoff carries intent/reason/strike-budget state, and bubble-to-overmap writeback preserves spent/retreat/cooldown/threat memory: deterministic checkpoint `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
+- [x] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior; `[writhing_stalker]` remains green at 23 cases / 264 assertions.
+- [x] Door opening was not implemented for this packet; the optional narrow door-opening line remains out of scope unless later promoted.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on live-staged-proof-green / Frau-review-next state before closure.
 
-Checkpoint note: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Product success remains open until current-build live/staged high-threat, night/window/outside, and zombie/distraction rows are green or precisely blocked.
+Checkpoint note: deterministic evaluator/live-plan seam coverage is green and current-build staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are green. Product success is agent-side closure-ready pending Frau review, not another automatic row.
 
 Canonical docs:
 - Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
 - Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
 - Handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
 - Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
+- Live/staged proof: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
 
 ---
 

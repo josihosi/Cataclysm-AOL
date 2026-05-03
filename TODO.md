@@ -19,12 +19,14 @@ Handoff packet: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026
 
 Current footing:
 - Deterministic implementation checkpoint is green: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
-- Current-build high-threat/allies staged-live row is green: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/` (`feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear; same-run live_plan line reports `decision=withdraw`, `reason=live_high_threat_allied_light_retreat_stalk`, `allied_support=3`, `persistent=yes`, `stalk_omt=3`).
-- Gates: `git diff --check`; `make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"`; `./tests/cata_test "[zombie_rider],[flesh_raptor]"`.
+- Current-build live/staged proof packet is green: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
+- High-threat/allies row: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/` (`feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear; same-run live_plan line reports `decision=withdraw`, `reason=live_high_threat_allied_light_retreat_stalk`, `allied_support=3`, `persistent=yes`, `stalk_omt=3`).
+- Zombie/distraction row: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025148/` (`feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear; same-run lines prove `decision=shadow`, `route=cover_shadow`, `zombie_pressure=2`, then `decision=strike`, `reason=live_vulnerability_window_strike`, `persistent=yes`).
+- Night/outside anti-gnome row: `writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/` (`feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear; same-run line proves `decision=strike`, `reason=live_anti_gnome_night_reachable_probe_strike`, `bad_loiter=2`, `anti_gnome=yes`, `distance=3`).
+- Gates: `git diff --check`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; JSON validation for changed scenarios/fixture; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact` -> 23 cases / 264 assertions; `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> 24 cases / 268 assertions.
 - Door opening did not land and remains optional/narrow only if later needed.
 
 Required next work:
-- Current-build night/window/outside row: reachable night/outside bad-position loiter should produce attack/reposition/retreat with anti-gnome reason, not static window décor.
-- Current-build zombie/distraction row: valid local evidence plus zombie/hostile pressure on the player/NPC tile should produce dark-square approach/strike or a precise blocker, while missing evidence stays no-omniscience/no-credit.
+- Frau review of the live/staged proof packet and closure readiness. Do not rerun solved rows by ritual unless Frau flags a concrete evidence defect.
 
 Non-goals: no burglar stalker, no locked-door solving, no omniscience, no closed-lane reopen by drift, no save-pack/card reruns by ritual.

@@ -12,14 +12,16 @@ Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-
 
 ## Current ask
 
-The deterministic implementation checkpoint is green; continue with live/staged validation only.
+The deterministic implementation checkpoint and current-build live/staged proof packet are green; next move is Frau review / closure readiness, not another ritual rerun.
 
-Checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
+Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
 
-Remaining bad cases to prove or precisely block:
-- same OMT / close overmap pressure as three NPC allies and high visible threat should retreat/stalk instead of close loiter;
-- night/outside/reachable-player situation should attack, reposition, retreat, or emit a legible anti-gnome blocker instead of standing near the house/window;
-- zombie/distraction entering the player/NPC tile should produce dark-square approach/strike only with valid local evidence/pathing, not omniscience.
+Live/staged proof: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
+
+Credited rows:
+- high-threat/allies retreat/stalk: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`;
+- zombie/distraction shadow-then-strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025148/`;
+- night/outside anti-gnome bad-loiter strike: `writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`.
 
 ## Required behavior contrast
 
@@ -39,13 +41,9 @@ Optional only. If implemented:
 
 ## Evidence bar
 
-Before closure, produce:
-- current-build staged/live high-threat retreat row;
-- current-build staged/live night/window/outside non-loiter row;
-- current-build staged/live zombie/distraction row, or a precise blocker packet.
-
-Already green at deterministic checkpoint:
-- high-threat retreat, stalking-distance intent, night anti-loiter, zombie-distraction/no-omniscience, handoff/writeback tests;
-- preserved existing stalker guarantees.
+Agent-side evidence is green:
+- deterministic checkpoint covers high-threat retreat, stalking-distance intent, night anti-loiter, zombie-distraction/no-omniscience, handoff/writeback tests, and preserved stalker guarantees;
+- staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are all feature-path green with portal clear;
+- gates: `git diff --check`; harness pycompile/JSON validation; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact`; `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact`.
 
 Do not reopen save-pack prep, zombie rider, flesh raptor, bandit lanes, or old stalker v0 history by drift.
