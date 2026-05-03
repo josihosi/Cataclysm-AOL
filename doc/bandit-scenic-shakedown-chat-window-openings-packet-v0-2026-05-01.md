@@ -1,6 +1,6 @@
 # CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 (2026-05-01)
 
-Status: GREENLIT / QUEUED / PRODUCT-UX FOLLOW-UP
+Status: CLOSED AS SCENIC-UI CONTRACT / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR FINAL RESPONSE + PAYMENT CONTRACT
 
 Source: Josef Discord, 2026-05-01: “the bandit shakedown. Can we make it in normal chat window and more scenic? A selection of bandit openings.”
 
@@ -14,8 +14,8 @@ The desired player experience is not just “a toll menu appears.” The bandits
 
 - Route the visible shakedown/opening through the normal NPC chat/dialogue window path where feasible, or document exactly why a different UI is required.
 - Add a small selection of bandit opening beats, chosen from situation/profile context rather than one generic line.
-- Keep the mechanical fork clear: player can still understand pay/fight/refuse outcomes.
-- Preserve existing shakedown proof semantics: demanded toll, reachable goods, pay option, fight option, and aftermath/reopened-demand behavior.
+- Keep the mechanical fork clear. Historical wording here said pay/fight/refuse, but the active superseding contract requires visible Pay/Fight only; Esc/backout/refuse enters the hostile branch without a third visible response.
+- Preserve scenic shakedown footing: demanded toll context, pay option, fight option, and aftermath/reopened-demand behavior. Historical hidden reachable-goods surrender is superseded by the active trade/debt-style payment contract.
 - Add optical/screenshot proof for at least one normal-chat shakedown opening and one variant opening.
 
 ## Candidate openings
@@ -30,7 +30,7 @@ The desired player experience is not just “a toll menu appears.” The bandits
 
 - [ ] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not.
 - [ ] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration.
-- [ ] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics.
+- [ ] The scenic shakedown fork remains legible. Superseded correction: final visible responses must be Pay/Fight only, and Pay must open the trade/debt-style surface required by `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
 - [ ] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof.
 - [ ] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts.
 - [ ] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI.
@@ -47,4 +47,4 @@ The desired player experience is not just “a toll menu appears.” The bandits
 - Deterministic/UI test for opening selection context.
 - Harness row for first-demand chat-window opening.
 - Harness row for reopened higher-demand scenic opening.
-- Screenshot suite update for Josef: normal chat window, scenic opener, and final pay/fight fork.
+- Screenshot suite update for Josef: normal chat window, scenic opener, and visible fork. Superseded correction: the final fork must be Pay/Fight only under `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.

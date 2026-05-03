@@ -49,6 +49,31 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
+
+**Status:** ACTIVE / GREENLIT DEBUG-PACKET STACK / PACKAGED FROM 2026-05-02 + 2026-05-03 JOSEF LIVE NOTES
+
+Josef finished live testing and asked Schani to package yesterday's and today's debug notes into canon. This lane is the ordered correction stack for bandit shakedown/payment, defended-camp scout/standoff behavior, roof-z/multi-z dispatch stalls, big-camp escalation, all-light-source signaling, patrol aggression/alarm/report hygiene, writhing-stalker threat-drop timing, and NPC sorting retry debounce.
+
+Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
+
+Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
+
+Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
+
+Raw intake:
+- `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
+- `runtime/josef-bandit-debug-intake-2026-05-03.md`
+- `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
+
+Execution order: shakedown Pay/Fight + trade/debt correction; defended-camp scout/standoff/sight avoidance including bandit/cannibal stalking-mode LoS break; multi-z camp identity + roof-z routing/throttle; hostile-camp post-scout escalation; all-light-source adapter; patrol aggression/alarm/report hygiene; writhing-stalker larger-distance/sight-avoid/threat-drop swoop plus boot-out rhythm; NPC sorting debounce; debug spawn horde/stalker/rider options; locker/basecamp equipment consistency; cannibal Monsterbone spear lore item.
+
+Important correction: the 2026-05-02 scenic shakedown proof closed the wrong visible response contract (`Pay / Fight / Refuse`) after Josef had already reported that three choices were wrong and that Pay should open a trade/debt-style surface. Treat this as a reopened correction, not a new feature whim.
+
+Boundary: debug correction stack only. Do not reopen unrelated closed predator/rider/locker/save-pack lanes, release packaging, full diplomacy, full vertical assault AI, broad sorting redesign, or a tile-perfect overmap light engine.
+
+---
+
 ## Recent closed lane — CAOL-HARNESS-PORTAL-STORM-WARNING-LIGHT-v0
 
 **Status:** CHECKPOINTED GREEN V0 / CLOSED / FRAU-ACCEPTED / HARNESS-HARDENING FOLLOW-UP
@@ -315,7 +340,7 @@ Boundary: save-pack prep and product-taste handoff only. Do not implement new ga
 
 ## Closed recent lane — bandit scenic shakedown chat openings
 
-**Status:** CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
+**Status:** CLOSED AS SCENIC-UI PROOF / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR SHAKEDOWN RESPONSE + PAYMENT CONTRACT
 
 Josef asked on 2026-05-01 for the bandit shakedown to use a normal chat window, become more scenic, and have a selection of bandit openings.
 
@@ -323,9 +348,9 @@ Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01
 
 Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
 
-Result: the live shakedown UI now uses the normal `dialogue_window` surface instead of the bare `uilist`, with Pay / Fight / Refuse responses and contextual opening IDs/summaries/barks for basecamp pressure, warning from cover, weakness read, roadblock toll, and reopened higher-demand. First-demand and reopened-demand paths have green staged-but-live McWilliams harness rows, screenshots, and log evidence for `shakedown_surface_dialogue_window opening=<id> responses=pay/fight/refuse`; cannibal/no-shakedown regression proof is green.
+Result: the live shakedown UI now uses the normal `dialogue_window` surface instead of the bare `uilist`, with contextual opening IDs/summaries/barks for basecamp pressure, warning from cover, weakness read, roadblock toll, and reopened higher-demand. Its staged proof is still useful for the scenic-dialogue path and cannibal/no-shakedown separation, but its `Pay / Fight / Refuse` response contract and pay-branch behavior are now explicitly superseded by `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`: Josef's stranded 2026-05-02/03 notes require visible Pay/Fight only and a trade/debt-style payment surface.
 
-Boundary: product-UX follow-up only. This does not redesign the bandit economy, prove natural random discovery, reopen visions, or widen into unrelated bandit/camp-locker work.
+Boundary: scenic-dialogue proof only. Do not use this closed proof to claim the final shakedown response/payment contract; that correction now belongs to `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
 
 ---
 

@@ -1,12 +1,12 @@
 # CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 proof (2026-05-02)
 
-Status: CLOSED / CHECKPOINTED GREEN V0 / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
+Status: CLOSED AS SCENIC-UI PROOF / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR FINAL RESPONSE + PAYMENT CONTRACT
 
 Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
 
 ## Result
 
-The live bandit shakedown surface now uses the normal `dialogue_window` presentation instead of the previous bare `uilist` toll menu. It opens with contextual scenic beats while preserving the existing mechanics: demanded toll, reachable goods, Pay / Fight / Refuse response clarity, pay writeback, fight/refuse hostility, and reopened higher-demand aftermath.
+The live bandit shakedown surface now uses the normal `dialogue_window` presentation instead of the previous bare `uilist` toll menu. It opens with contextual scenic beats. This proof remains credited only for the scenic dialogue-window/opening path and cannibal/no-shakedown regression. Its recorded `Pay / Fight / Refuse` response contract and hidden pay-surrender behavior are now superseded by `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`: Josef's stranded 2026-05-02/03 notes require visible Pay/Fight only, with backout/refuse entering the hostile branch, and Pay opening a trade/debt-style payment surface over the honest basecamp/faction-side pool.
 
 Implemented opening IDs:
 
@@ -48,7 +48,7 @@ Optical artifacts:
 - `.userdata/dev-harness/harness_runs/20260502_065253/advance_final_turn_to_first_shakedown.after.png` (`2560x1440`)
 - Review copy: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/first-demand-dialogue-065253.png`
 
-Visible fact recorded by scenario: bandit shakedown dialogue window visible with the basecamp-pressure opening and player-facing pay/fight/refuse choices after the final local-contact turn.
+Visible fact recorded by scenario: bandit shakedown dialogue window visible with the basecamp-pressure opening after the final local-contact turn. The recorded player-facing `pay/fight/refuse` choices are superseded and must not be cited as final response-contract proof.
 
 ### Reopened higher-demand dialogue-window row
 
@@ -73,7 +73,7 @@ Optical artifacts:
 - `.userdata/dev-harness/harness_runs/20260502_065445/advance_final_turn_to_reopened_shakedown.after.png` (`2560x1440`)
 - Review copy: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/reopened-demand-dialogue-065445.png`
 
-Visible fact recorded by scenario: reopened bandit shakedown dialogue window visible with the reopened-demand opening and player-facing pay/fight/refuse choices after the final local-contact turn.
+Visible fact recorded by scenario: reopened bandit shakedown dialogue window visible with the reopened-demand opening after the final local-contact turn. The recorded player-facing `pay/fight/refuse` choices are superseded and must not be cited as final response-contract proof.
 
 ### No-shakedown regression row
 
@@ -100,4 +100,4 @@ Key matched artifacts:
 
 - This is staged-but-live McWilliams harness feature proof, not a natural random-discovery claim.
 - The change is product-UX presentation plus contextual openings only; it does not redesign bandit economy, toll math, camp risk/reward, cannibal behavior, or release packaging.
-- Pay keeps surrendering demanded reachable goods; Fight and Refuse both remain explicit hostile outcomes.
+- Superseded caveat: Pay must no longer be considered correct if it silently surrenders demanded reachable goods; the active contract requires a trade/debt-style payment surface. Fight/refuse equivalence remains correct, but `Refuse` should not be shown as a third visible response.

@@ -17,6 +17,39 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-JOSEF-LIVE-DEBUG-BATCH-v0 — Josef live debug batch
+
+Status: ACTIVE / GREENLIT DEBUG-PACKET STACK
+
+Success state:
+- [ ] Shakedown visible UI is exactly Pay/Fight; backout/refuse maps to the fight/refusal branch without a third visible `Refuse` response.
+- [ ] Shakedown Pay opens a trade/debt-style payment surface instead of silent auto-confiscation.
+- [ ] Basecamp-side shakedown payment can use the honest faction/basecamp pool: carried goods, basecamp goods, nearby faction inventory, and basecamp NPC carried items.
+- [ ] Misleading scenic-shakedown `pay/fight/refuse` proof/docs/log expectations are corrected so future work cannot cite them as final payment-contract proof.
+- [ ] Defended-camp scout/hold-off behavior uses about `5` OMT watch distance; sighted scouts and bandits/cannibals/compatible hostiles in stalking mode actually break LoS/back off/reroute/escalate instead of staying visible; hot doorstep actors do not loiter or loot casually.
+- [ ] Multi-z bandit camps collapse into one site/owner with z-level footprint metadata, and roof-z player targets no longer cause route-missing/throttle silence.
+- [ ] A confirmed big camp with ample roster can escalate from lone scout into roster-scaled pressure while preserving reserve and high-threat caution: bandits to toll/shakedown, cannibals to attack dispatch up to large/whole-camp commitment when odds permit.
+- [ ] Meaningful light sources beyond `fd_fire`/`fd_smoke` — lamps, household/window light, searchlights, bright appliances, fires — can feed bounded live light signals when brightness/weather/time/exposure justify it, with fog/weather mismatch and stale `tracking=0` horde destinations handled or explained.
+- [ ] Zombies/hordes receive broad exposed-light attraction; bandits distinguish searchlight/threat light from household/fire occupancy evidence.
+- [ ] Camp patrols attack hostile bandits/zombies on sight, avoid neutral false positives, and hostile sighting can alarm patrol-capable camp NPCs independent of shift.
+- [ ] Routine patrol assignment/route reports no longer spill into visible in-game messages during waits.
+- [ ] Writhing stalker high-threat caution is preserved as larger-distance stalking plus real sight avoidance; threat-drop windows quickly produce approach/pounce/short strike pressure, then the stalker boots back out/recovers when threat rises or the burst is spent.
+- [ ] NPC sorting failures are debounced so impossible/failing sort jobs do not immediately retry/log every turn, while successful sorting and recovery after state change still work.
+- [ ] Debug spawn options can create a medium horde, horde-at-`5`/`10` OMT setups, writhing stalker at `5`/`10` OMT, and zombie rider at `5`/`10` OMT, with clear labels and honest spawn/location proof.
+- [ ] Locker/basecamp equipment cleanup prevents orphan ammo/magazine carry after firearm replacement and can replace broken/`XX` backpacks by transferring stored contents or logging a concrete transfer blocker.
+- [ ] Cannibal camps and selected cannibal NPC loadouts can surface a rare, sturdy-but-not-OP `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded wielder frequency.
+- [ ] Each live UI/behavior claim has proof that reaches the actual player-facing surface, live dispatch/local-gate path, live signal adapter, monster plan path, patrol path, or NPC activity/job loop it names.
+
+Canonical docs:
+- Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
+- Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
+- Handoff: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
+- Raw 2026-05-02 intake: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`.
+- Raw 2026-05-03 bandit intake: `runtime/josef-bandit-debug-intake-2026-05-03.md`.
+- Raw 2026-05-03 locker/basecamp intake: `runtime/josef-locker-zone-debug-intake-2026-05-03.md`.
+
+---
+
 ## CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0 — Writhing stalker threat/distraction handoff
 
 Status: CLOSED / CHECKPOINTED GREEN V0 / FRAU-ACCEPTED
@@ -273,18 +306,19 @@ Checkpoint: v0 card selects four postcards (writhing stalker, zombie rider, fles
 
 ## CAOL-BANDIT-SCENIC-SHAKEDOWN-CHAT-OPENINGS-v0 — Bandit scenic shakedown chat openings
 
-Status: CLOSED / CHECKPOINTED GREEN V0 / PRODUCT-UX FOLLOW-UP / STAGED-BUT-LIVE HARNESS OPTICAL PROOF
+Status: CLOSED AS SCENIC-UI PROOF / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR FINAL RESPONSE + PAYMENT CONTRACT
 
 Success state:
 - [x] Shakedown opening reaches a normal chat/dialogue window path where feasible, or an explicit product-path reason says why not. _Implemented via `dialogue_window` in `src/do_turn.cpp`; narrow compile/test green._
 - [x] At least three distinct opening beats exist and are selected from scenario context, not pure random decoration. _Current deterministic set: basecamp pressure, warning from cover, weakness read, roadblock toll, reopened demand._
-- [x] The pay/fight/refuse fork remains legible and preserves existing toll/writeback/aftermath semantics. _Dialogue responses are Pay / Fight / Refuse; fight/refuse both enter the hostile branch, pay still surrenders demanded reachable goods._
+- [x] Scenic proof showed the historical pay/fight/refuse fork legibly, but this response/payment contract is superseded. _Active correction: final visible responses must be Pay/Fight only; fight/refuse/backout enter the hostile branch; Pay must open a trade/debt-style surface instead of silently surrendering demanded reachable goods._
 - [x] First-demand and reopened/higher-demand shakedown paths both retain deterministic/harness proof. _Green rows: `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065253/`; `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065445/`._
 - [x] Snapshot proof includes at least one normal-chat shakedown opening and one scenic variant, with named optical facts. _Screenshots: `advance_final_turn_to_first_shakedown.after.png` and `advance_final_turn_to_reopened_shakedown.after.png`, review copies in `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-scenic-review-20260502/`._
 - [x] No cannibal/no-shakedown profile or unrelated bandit attack posture regresses into polite toll UI. _Green row: `cannibal.live_world_exposed_sight_avoid_mcw` -> `.userdata/dev-harness/harness_runs/20260502_065927/`, with `profile=cannibal_camp`, `shakedown=no`, `combat_forward=no`._
 
 Canonical docs:
-- Contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
+- Superseding correction: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
+- Scenic contract: `doc/bandit-scenic-shakedown-chat-window-openings-packet-v0-2026-05-01.md`.
 - Proof: `doc/bandit-scenic-shakedown-chat-window-openings-proof-v0-2026-05-02.md`.
 - Gate: `git diff --check`; `make -j4 tests src/do_turn.o src/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][shakedown]"` -> `All tests passed (136 assertions in 4 test cases)`.
 

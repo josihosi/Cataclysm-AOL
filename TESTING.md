@@ -56,11 +56,26 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### No active Andi validation target
+### Active validation target - CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
 
-Repo canon currently has no active/greenlit Andi proof target. `TODO.md` says active lane/item are none; `Plan.md` marks `CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0` as a handoff boundary waiting for Schani/Josef packaging or a fresh greenlight, not a current Andi lane.
+Repo canon now has active lane `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`. Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`; imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`; handoff: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
-Do not rerun closed rows as ritual. If Schani/Josef promotes a new target, add only that target's missing evidence here and keep older receipts in `SUCCESS.md`, `doc/work-ledger.md`, linked proof docs, and git history.
+Use slice-local evidence. Do not close a live UI/behavior claim from deterministic proof alone.
+
+Required evidence families:
+- **Shakedown UI/payment:** deterministic response-count/payment-bridge coverage, plus live first-demand and reopened-demand proof that visible choices are Pay/Fight and Pay opens a trade/debt-style payment surface over the honest basecamp/faction-side pool.
+- **Scout/standoff/hot-loot:** local-gate/planner tests for `5` OMT defended watch/backoff and bandit/cannibal/compatible-hostile stalking-mode LoS avoidance; live defended-base proof that sighted scouts/stalkers flee, break LoS, reroute, or escalate instead of doorstep visible loiter/pickup.
+- **Multi-z/roof-z dispatch:** deterministic site-identity/routing fallback tests and live roof/ground proof that multi-z camp is one site and roof-z target no longer yields `route_missing` plus `30_minute_throttle` silence.
+- **Hostile-camp escalation:** deterministic dispatch-size/escalation tests and live or staged multi-turn proof that confirmed ample bandit pressure can become toll/shakedown party, confirmed ample cannibal pressure can become attack dispatch, and weak/high-threat camps stay cautious.
+- **All-light-source adapter:** deterministic source classification for fire/lamp/household/searchlight/daylight/weather/containment plus live lamp/household/fire controls; zombies/hordes treat exposed light broadly, bandits preserve source semantics; include weather-source sanity and horde destination/tracking save inspection.
+- **Patrol aggression/alarm/report hygiene:** focused hostile-vs-neutral patrol tests, alarm-roster proof, and wait/log proof that routine patrol route reports do not spam visible messages.
+- **Writhing stalker distance/sight/threat-drop:** deterministic larger-distance, LoS-avoidance, transition, and boot-out tests; staged/live proof that dropped threat quickly becomes approach/pounce/short strike and then recovery, without breaking high-threat retreat/no-omniscience.
+- **NPC sorting debounce:** deterministic blocked-sort cooldown/recovery tests and, if needed, bounded wait/log proof that failing sort jobs do not reassign/log every turn.
+- **Debug spawn options:** deterministic option/menu coverage plus live/save inspection proving medium horde size and requested `5`/`10` OMT horde/stalker/rider placement/state.
+- **Locker/basecamp equipment consistency:** deterministic ammo/firearm compatibility and container-content transfer tests; add a narrow locker/basecamp fixture proof if the bug only appears through the live equipment/locker flow.
+- **Monsterbone spear:** JSON validation, item stat sanity, rare camp item-group distribution check, and selected cannibal NPC weapon/loadout proof.
+
+Do not rerun closed rows as ritual. Use old proof only as footing when the slice explicitly preserves it; if code changed under a live claim, rebuild/probe the relevant current path.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
@@ -82,9 +97,9 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-No active pending probes for Andi right now.
+Active pending probes are the slice-local proof families for `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`, in the order listed in `TODO.md` and the contract doc. Start with shakedown UI/payment correction.
 
-`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is closed/checkpointed green v0 after Frau review. The previously pending high-threat/allies, night/window/outside anti-gnome, and zombie/distraction staged/live rows are credited in the closed validation receipt above. Do not rerun them by ritual.
+`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is closed/checkpointed green v0 after Frau review. The previously pending high-threat/allies, night/window/outside anti-gnome, and zombie/distraction staged/live rows are credited in the closed validation receipt above. Do not rerun them by ritual unless the new threat-drop slice touches the relevant behavior and names the changed evidence class.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 

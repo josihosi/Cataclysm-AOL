@@ -1,51 +1,38 @@
 # Andi handoff
 
-Active lane: none for Andi. Last closed lane: `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0`.
+Active lane: `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
 
-Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
+Contract: `doc/josef-live-debug-batch-packet-v0-2026-05-03.md`.
 
-Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
+Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
-Handoff packet: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
-Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-watch-20260502/writhing-stalker-live-watch-notes-2026-05-02.md`.
+Raw intake:
+- `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
+- `runtime/josef-bandit-debug-intake-2026-05-03.md`
+- `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
 
 ## Current ask
 
-The deterministic implementation checkpoint and current-build live/staged proof packet are green, and Frau accepted closure readiness. No further Andi rerun is warranted unless Schani/Josef reopens a concrete defect.
+Execute the packaged 2026-05-02 + 2026-05-03 live debug correction stack in order. Start with shakedown UI/payment contract correction.
 
-Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
+## Execution order
 
-Live/staged proof: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
-
-Credited rows:
-- high-threat/allies retreat/stalk: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`;
-- zombie/distraction shadow-then-strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`;
-- night/outside anti-gnome bad-loiter strike: `writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`.
-
-## Required behavior contrast
-
-- Day/bright + three friendly NPCs / high threat: retreat into stalking mode, avoid sight tiles, hold roughly `3` OMTs back where pathing permits.
-- Night/outside/reachable player: attack, reposition into a better dark/covered approach, retreat, or log a concrete blocker; no indefinite garden-gnome loiter.
-- Zombies/threat entering the player/NPC tile: raise opportunity and prefer dark-square approach/strike, without magical target knowledge.
-- After 2-4 strikes depending on opportunity: preserve bounded burst/fade and 8+ local-tile disengage.
-
-## Door-opening boundary
-
-Optional only. If implemented:
-- unlocked/simple doors only;
-- slow/noisy/interruptible or equivalent cost;
-- dark/distraction/commitment gated;
-- suppressed under high threat;
-- no locked doors, no clever house-clearing, no burglar/SWAT-goblin behavior.
+1. Shakedown Pay/Fight only + trade/debt payment over the honest basecamp/faction-side pool; remove/refute misleading `pay/fight/refuse` success expectations.
+2. Defended-camp scout/standoff/sight-avoid/hot-loot behavior, including bandits/cannibals/compatible hostiles in stalking mode actually breaking LoS/backing off/rerouting/escalating when seen.
+3. Multi-z bandit camp identity + roof-z routing/throttle fallback.
+4. Hostile-camp post-scout escalation into roster-scaled pressure: bandit toll/shakedown, cannibal attack dispatch up to large/whole-camp commitment when odds permit.
+5. All-light-source adapter for lamps/household/searchlight/fire with bandit vs zombie interpretation split, plus fog/weather mismatch and stale `tracking=0` horde destination audit.
+6. Camp patrol aggression/alarm plus patrol-report hygiene.
+7. Writhing stalker bigger stalking distance, real sight avoidance, threat-drop fast swoop timing, and post-burst boot-out/recovery.
+8. NPC sorting failure debounce.
+9. Debug spawn horde/stalker/rider options: medium horde default, horde `5`/`10` OMT options, writhing stalker `5`/`10` OMT, zombie rider `5`/`10` OMT.
+10. Locker/basecamp equipment consistency: no orphan ammo/mag carry after firearm replacement; broken/`XX` backpack replacement should transfer contents or log the concrete blocker.
+11. Cannibal Monsterbone spear: add a rare sturdy-but-not-OP spear, 1-2 in camps and a few cannibal wielders, carrying the huge-monster-bone / monster-meat madness lore.
 
 ## Evidence bar
 
-Agent-side evidence is closed/Frau-accepted:
-- deterministic checkpoint covers high-threat retreat, stalking-distance intent, night anti-loiter, zombie-distraction/no-omniscience, handoff/writeback tests, and preserved stalker guarantees;
-- staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are all feature-path green with portal clear;
-- gates: `git diff --check`; harness pycompile/JSON validation; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact`; `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact`.
+Each slice needs deterministic coverage for the contract and live/path proof for player-facing or live-world claims. Do not close a live UI/behavior claim from a test seam alone.
 
-Frau claim boundary: safe to claim deterministic seam coverage plus current-build staged/live behavior rows; do not claim natural random discovery, full natural retreat pathing, broad house navigation, door opening, burglar/locked-door solving, or general ecosystem behavior.
-
-Do not reopen save-pack prep, zombie rider, flesh raptor, bandit lanes, or old stalker v0 history by drift.
+After two same-blocker attempts, consult Frau Knackal before attempt 3. After four unresolved attempts, package implemented-but-unproven state for Josef and move to the next greenlit debug note.
