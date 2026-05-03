@@ -44,13 +44,11 @@
       "label": "advance_final_turn_to_first_shakedown",
       "count": 1,
       "settle_seconds": 2.0,
-      "expected_visible_fact": "Bandit shakedown dialogue window is visible with the basecamp-pressure opening and player-facing Pay/Fight choices after the final local-contact turn",
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 80,
+      "expected_visible_fact": "",
       "abort_verdict": "red_tight_shakedown_prompt_not_pay_fight_only",
       "abort_reason": "tight proof requires a visible Pay/Fight-only prompt before selecting Pay; OCR either missed Pay/Fight or saw a forbidden third/conversation action",
-      "expected_immediate_state": "final turn reaches the shakedown prompt input context; immediate capture is diagnostic only, and a separate delayed no-input capture must prove visible Pay/Fight before Pay is pressed"
+      "expected_immediate_state": "final turn reaches the shakedown prompt input context; proof is deferred to the following delayed no-input cropped OCR guard before Pay is pressed",
+      "proof_deferred_to_label": "delayed_prompt_visible_pay_fight_before_selection"
     },
     {
       "kind": "wait",
