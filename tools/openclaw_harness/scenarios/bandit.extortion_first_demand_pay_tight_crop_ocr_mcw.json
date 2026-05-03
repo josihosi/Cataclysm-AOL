@@ -1,0 +1,173 @@
+{
+  "name": "bandit.extortion_first_demand_pay_tight_crop_ocr_mcw",
+  "description": "TIGHT Slice 1 proof using cropped OCR checkpoints: delayed pre-Pay dialogue crop must show Pay/Fight only; post-Pay trade-title crop must show the real Pay debt trade UI.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface",
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "demanded_toll=15797",
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
+    "pay_option=yes fight_option=yes",
+    "shakedown_trade_ui opened demanded=15797 reachable=45134",
+    "trade_api=npc_trading::trade",
+    "title=Pay:",
+    "player_pool=3211 nearby_npc_pool=5222 scene_pool=36701"
+  ],
+  "capture_world_after": false,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "expected_visible_fact": "post-load gameplay screen for the McWilliams bandit local-contact fixture before toll-control proof begins; this is startup/load footing only",
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_gate_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_first_demand_surface_artifact",
+      "expected_immediate_state": "bounded turn advance reaches the shakedown gate edge; proof is deferred to the same-run demand-surface artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_first_shakedown",
+      "count": 1,
+      "settle_seconds": 2.0,
+      "expected_visible_fact": "Bandit shakedown dialogue window is visible with the basecamp-pressure opening and player-facing Pay/Fight choices after the final local-contact turn",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "abort_verdict": "red_tight_shakedown_prompt_not_pay_fight_only",
+      "abort_reason": "tight proof requires a visible Pay/Fight-only prompt before selecting Pay; OCR either missed Pay/Fight or saw a forbidden third/conversation action",
+      "expected_immediate_state": "final turn reaches the shakedown prompt input context; immediate capture is diagnostic only, and a separate delayed no-input capture must prove visible Pay/Fight before Pay is pressed"
+    },
+    {
+      "kind": "wait",
+      "label": "delayed_prompt_visible_pay_fight_before_selection",
+      "seconds": 2.0,
+      "expected_visible_fact": "Cropped no-input shakedown dialogue shows the actual visible fork before selecting Pay: Pay and Fight only, with no conversation utility/refuse option.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "Pay",
+        "Fight"
+      ],
+      "abort_if_text_contains": [
+        "Refuse",
+        "Look at",
+        "Size up stats",
+        "Assess personality",
+        "Yell",
+        "Check opinion"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "expected_immediate_state": "delayed no-input capture/OCR should show visible Pay/Fight prompt before the Pay key is sent; missing OCR is no-credit but the packet continues to capture the post-Pay state",
+      "abort_verdict": "red_tight_delayed_prompt_not_pay_fight_only",
+      "abort_reason": "tight proof requires delayed pre-selection screenshot/OCR to show Pay/Fight only; OCR missed it or saw a forbidden third/conversation action",
+      "capture_after_crop": {
+        "height": 930,
+        "width": 1560,
+        "offset_y": 250,
+        "offset_x": 500
+      }
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_first_demand_surface_artifact",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=15797",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the bandit camp-style local gate and pay/fight shakedown surface with reachable goods and demanded toll",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
+    },
+    {
+      "kind": "press",
+      "label": "choose_pay",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 2.0,
+      "expected_visible_fact": "Cropped immediate post-Pay trade title/control pane shows real Pay debt trade UI, including Pay:, debt amount, and trade auto-balance control.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "Pay:",
+        "Debt $157.97",
+        "F1 to"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "red_tight_pay_did_not_open_trade_window",
+      "abort_reason": "tight proof requires the immediate post-Pay cropped screenshot/OCR to show the real Pay debt trade/payment window, not a silent/stub/failure state",
+      "capture_after_crop": {
+        "height": 260,
+        "width": 900,
+        "offset_y": 0,
+        "offset_x": 800
+      }
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_trade_ui_opened_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_trade_ui opened",
+          "demanded=15797",
+          "reachable=45134",
+          "player_pool=3211",
+          "nearby_npc_pool=5222",
+          "scene_pool=36701",
+          "trade_api=npc_trading::trade",
+          "title=Pay:"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "red_tight_pay_callback_or_pool_artifact_missing",
+      "abort_reason": "tight proof requires same-run log evidence that Pay fired npc_trading::trade with demanded/reachable values and player/NPC/scene pool components",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, and the honest pool components: player carried, nearby NPC/faction, and scene/basecamp goods"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_tight_crop_ocr_mcw",
+  "evidence_contract": {
+    "claim": "tight current-build proof packet with cropped OCR: visible Pay/Fight-only prompt before Pay, immediate real Pay debt trade UI after Pay, and same-run callback/pool artifact",
+    "load_only_verdict": "load proof only / no Slice 1 credit",
+    "failure_rule": "No Slice 1 credit unless current binary is proven, before-Pay OCR shows Pay/Fight and no forbidden third/conversation actions, after-Pay OCR shows the real trade window, and the same-run artifact proves npc_trading::trade with player/NPC/scene pool components."
+  }
+}
