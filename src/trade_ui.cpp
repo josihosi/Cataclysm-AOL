@@ -133,16 +133,33 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
     _panes[_you]->add_nearby_items( you_nearby_item_radius );
     if( you_basecamp != nullptr ) {
         _panes[_you]->add_basecamp_items( *you_basecamp, you_nearby_item_radius );
-        for( const npc_ptr &assigned : you_basecamp->get_npcs_assigned() ) {
-            if( assigned == nullptr || assigned.get() == &trader || assigned->is_dead() ||
-                !assigned->is_player_ally() ) {
-                continue;
+        std::set<character_id> added_basecamp_workers;
+        const auto add_basecamp_worker_items = [&]( npc &assigned ) {
+            if( &assigned == &trader || assigned.is_dead() || !assigned.is_player_ally() ) {
+                return;
             }
             if( you_nearby_ally_radius >= 0 &&
-                rl_dist( assigned->pos_abs(), you.pos_abs() ) <= you_nearby_ally_radius ) {
+                rl_dist( assigned.pos_abs(), you.pos_abs() ) <= you_nearby_ally_radius ) {
+                return;
+            }
+            if( added_basecamp_workers.insert( assigned.getID() ).second ) {
+                _panes[_you]->add_character_items( assigned );
+            }
+        };
+        for( const npc_ptr &assigned : you_basecamp->get_npcs_assigned() ) {
+            if( assigned == nullptr ) {
                 continue;
             }
-            _panes[_you]->add_character_items( *assigned );
+            add_basecamp_worker_items( *assigned );
+        }
+        for( npc &assigned : g->all_npcs() ) {
+            const bool assigned_to_this_camp = assigned.assigned_camp &&
+                                               *assigned.assigned_camp == you_basecamp->camp_omt_pos();
+            const bool in_basecamp_side_pool = rl_dist( assigned.pos_abs(), you.pos_abs() ) <= 60;
+            if( !assigned_to_this_camp && !in_basecamp_side_pool ) {
+                continue;
+            }
+            add_basecamp_worker_items( assigned );
         }
     }
     if( you_nearby_ally_radius > 0 ) {

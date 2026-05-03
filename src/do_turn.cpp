@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -150,7 +151,25 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
 }
 
 static constexpr int live_bandit_basecamp_reach_radius = 30;
+static constexpr int live_bandit_basecamp_storage_zone_scan_radius = live_bandit_basecamp_reach_radius * 2;
 static constexpr int live_bandit_camp_adjacent_radius_submaps = 24;
+static const faction_id faction_your_followers( "your_followers" );
+static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
+
+void live_bandit_refresh_basecamp_storage_tiles( const avatar &u, basecamp &camp )
+{
+    zone_manager::get_manager().cache_data();
+    std::unordered_set<tripoint_abs_ms> storage_tiles =
+        zone_manager::get_manager().get_near( zone_type_CAMP_STORAGE, u.pos_abs(),
+                live_bandit_basecamp_storage_zone_scan_radius, nullptr, camp.get_owner() );
+    const std::unordered_set<tripoint_abs_ms> follower_storage_tiles =
+        zone_manager::get_manager().get_near( zone_type_CAMP_STORAGE, u.pos_abs(),
+                live_bandit_basecamp_storage_zone_scan_radius, nullptr, faction_your_followers );
+    storage_tiles.insert( follower_storage_tiles.begin(), follower_storage_tiles.end() );
+    if( !storage_tiles.empty() ) {
+        camp.set_storage_tiles( storage_tiles );
+    }
+}
 
 basecamp *live_bandit_nearest_basecamp( const avatar &u )
 {
@@ -315,15 +334,34 @@ int live_bandit_basecamp_assigned_npc_goods_value( const avatar &u, basecamp &ca
         const int nearby_radius_to_skip )
 {
     int value = 0;
+    std::set<character_id> counted;
+    const auto count_assigned = [&]( const npc &assigned, const bool assigned_to_this_camp ) {
+        if( assigned.is_dead() || !assigned.is_player_ally() ) {
+            return;
+        }
+        if( !assigned_to_this_camp && nearby_radius_to_skip >= 0 &&
+            rl_dist( assigned.pos_abs(), u.pos_abs() ) <= nearby_radius_to_skip ) {
+            return;
+        }
+        if( counted.insert( assigned.getID() ).second ) {
+            value += live_bandit_character_goods_value( assigned );
+        }
+    };
     for( const npc_ptr &assigned : camp.get_npcs_assigned() ) {
-        if( assigned == nullptr || assigned->is_dead() || !assigned->is_player_ally() ) {
+        if( assigned == nullptr ) {
             continue;
         }
-        if( nearby_radius_to_skip >= 0 && rl_dist( assigned->pos_abs(), u.pos_abs() ) <=
-            nearby_radius_to_skip ) {
+        count_assigned( *assigned, true );
+    }
+    for( const npc &assigned : g->all_npcs() ) {
+        const bool assigned_to_this_camp = assigned.assigned_camp &&
+                                           *assigned.assigned_camp == camp.camp_omt_pos();
+        const bool in_basecamp_side_pool = rl_dist( assigned.pos_abs(), u.pos_abs() ) <=
+                                           live_bandit_basecamp_storage_zone_scan_radius;
+        if( !assigned_to_this_camp && !in_basecamp_side_pool ) {
             continue;
         }
-        value += live_bandit_character_goods_value( *assigned );
+        count_assigned( assigned, assigned_to_this_camp );
     }
     return value;
 }
@@ -376,12 +414,16 @@ bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
         if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
             continue;
         }
+        if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
+            continue;
+        }
         pool.companion_carried_value += live_bandit_character_goods_value( guy );
     }
 
     if( input.basecamp_or_camp_scene ) {
         pool.reachable_basecamp_value = live_bandit_nearby_ground_goods_value( u );
         if( basecamp *camp = live_bandit_nearest_basecamp( u ) ) {
+            live_bandit_refresh_basecamp_storage_tiles( u, *camp );
             pool.reachable_basecamp_value += live_bandit_basecamp_storage_goods_value( u, *camp,
                                              live_bandit_basecamp_reach_radius );
             pool.companion_carried_value += live_bandit_basecamp_assigned_npc_goods_value( u, *camp,
@@ -413,11 +455,14 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
     }
 
     const int player_value = live_bandit_character_goods_value( u );
-    const int companion_value = [&u]() {
+    const int companion_value = [&u, &input]() {
         int value = 0;
         static constexpr int nearby_companion_radius = 12;
         for( const npc &guy : g->all_npcs() ) {
             if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
+                continue;
+            }
+            if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
                 continue;
             }
             value += live_bandit_character_goods_value( guy );
@@ -426,6 +471,9 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
     }();
     basecamp *payment_basecamp = input.basecamp_or_camp_scene ?
                                  live_bandit_nearest_basecamp( u ) : nullptr;
+    if( payment_basecamp != nullptr ) {
+        live_bandit_refresh_basecamp_storage_tiles( u, *payment_basecamp );
+    }
     const int basecamp_storage_value = payment_basecamp != nullptr ?
                                        live_bandit_basecamp_storage_goods_value( u, *payment_basecamp,
                                                live_bandit_basecamp_reach_radius ) : 0;

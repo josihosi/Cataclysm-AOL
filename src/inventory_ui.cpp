@@ -5287,6 +5287,9 @@ void trade_selector::execute()
     while( !exit ) {
         _ui->invalidate_ui();
         ui_manager::redraw_invalidated();
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
+                "trade_highlight_after_redraw", "trade_selector" );
         std::string const &action = _ctxt_trade.handle_input();
         if( action == ACTION_SWITCH_PANES ) {
             _parent->pushevent( trade_ui::event::SWITCH );
@@ -5307,6 +5310,9 @@ void trade_selector::execute()
             inventory_input const input =
                 process_input( ctxt.input_to_action( iev ), iev.get_first_input() );
             inventory_drop_selector::on_input( input );
+            openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
+            openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", input.action,
+                    "trade_highlight_after_input", "trade_selector" );
             if( input.action == "HELP_KEYBINDINGS" ) {
                 ctxt.display_menu();
             }
