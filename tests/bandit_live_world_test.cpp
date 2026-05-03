@@ -2755,6 +2755,9 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
         bandit_live_world::render_shakedown_surface_report( site, basecamp_surface );
     CHECK( basecamp_report.find( "pay_option=yes" ) != std::string::npos );
     CHECK( basecamp_report.find( "fight_option=yes" ) != std::string::npos );
+    CHECK( basecamp_report.find( "visible_responses=pay/fight" ) != std::string::npos );
+    CHECK( basecamp_report.find( "payment_surface=trade_debt_selector" ) != std::string::npos );
+    CHECK( basecamp_report.find( "pay/fight/refuse" ) == std::string::npos );
     CHECK( basecamp_report.find( "basecamp_inventory=yes" ) != std::string::npos );
     CHECK( basecamp_report.find( "vehicle_inventory=no" ) != std::string::npos );
     CHECK( basecamp_report.find( "opening=basecamp_pressure" ) != std::string::npos );

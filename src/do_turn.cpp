@@ -409,13 +409,9 @@ int live_bandit_surrender_from_current_vehicle( const avatar &u, int &remaining_
     return surrendered_value;
 }
 
-int live_bandit_surrender_goods( const bandit_live_world::local_gate_input &input,
-                                 const bandit_live_world::shakedown_surface &surface,
-                                 avatar &u )
+int live_bandit_surrender_from_nearby_companions( const avatar &u, int &remaining_value )
 {
-    int remaining_value = surface.demanded_value;
-    int surrendered_value = live_bandit_surrender_from_character( u, remaining_value );
-
+    int surrendered_value = 0;
     static constexpr int nearby_companion_radius = 12;
     for( npc &guy : g->all_npcs() ) {
         if( remaining_value <= 0 ) {
@@ -426,15 +422,97 @@ int live_bandit_surrender_goods( const bandit_live_world::local_gate_input &inpu
         }
         surrendered_value += live_bandit_surrender_from_character( guy, remaining_value );
     }
+    return surrendered_value;
+}
 
-    if( remaining_value > 0 ) {
-        if( input.basecamp_or_camp_scene ) {
-            surrendered_value += live_bandit_surrender_from_nearby_ground( u, remaining_value );
-        } else {
-            surrendered_value += live_bandit_surrender_from_current_vehicle( u, remaining_value );
+enum class live_bandit_shakedown_payment_choice : int {
+    player_carried = 1,
+    nearby_companions = 2,
+    scene_inventory = 3,
+    all_reachable = 4,
+    fight = 100,
+};
+
+int live_bandit_select_shakedown_payment( const bandit_live_world::local_gate_input &input,
+        const bandit_live_world::shakedown_surface &surface, avatar &u )
+{
+    const int player_value = live_bandit_character_goods_value( u );
+    const int companion_value = [&u]() {
+        int value = 0;
+        static constexpr int nearby_companion_radius = 12;
+        for( const npc &guy : g->all_npcs() ) {
+            if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
+                continue;
+            }
+            value += live_bandit_character_goods_value( guy );
         }
+        return value;
+    }();
+    const int scene_value = input.basecamp_or_camp_scene ?
+                            live_bandit_nearby_ground_goods_value( u ) :
+                            live_bandit_current_vehicle_goods_value( u );
+    const int total_value = player_value + companion_value + scene_value;
+
+    uilist menu;
+    menu.text = string_format( _( "Shakedown payment\nDemanded toll: %1$d\nReachable goods: %2$d\nChoose what pool to surrender from.  Esc/backout means Fight." ),
+                               surface.demanded_value, surface.reachable_goods_value );
+    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::player_carried ),
+                   player_value >= surface.demanded_value, 'p',
+                   string_format( _( "Pay from your carried goods (%d available)" ), player_value ) );
+    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::nearby_companions ),
+                   companion_value >= surface.demanded_value, 'n',
+                   string_format( _( "Pay from nearby Basecamp NPC / companion carried goods (%d available)" ),
+                                  companion_value ) );
+    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::scene_inventory ),
+                   scene_value >= surface.demanded_value, 's',
+                   input.basecamp_or_camp_scene ?
+                   string_format( _( "Pay from nearby Basecamp/faction goods (%d available)" ), scene_value ) :
+                   string_format( _( "Pay from the current vehicle goods (%d available)" ), scene_value ) );
+    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::all_reachable ),
+                   total_value >= surface.demanded_value, 'a',
+                   string_format( _( "Pay from all reachable goods in order (%d available)" ), total_value ) );
+    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::fight ), true, 'f',
+                   _( "Fight instead" ) );
+    menu.query();
+
+    if( menu.ret == UILIST_CANCEL ||
+        menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::fight ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "shakedown_payment_surface result=fight_or_backout demanded="
+                                   << surface.demanded_value << " reachable="
+                                   << surface.reachable_goods_value << '\n';
+        return 0;
     }
 
+    int remaining_value = surface.demanded_value;
+    int surrendered_value = 0;
+    const auto surrender_scene = [&]() {
+        if( input.basecamp_or_camp_scene ) {
+            return live_bandit_surrender_from_nearby_ground( u, remaining_value );
+        }
+        return live_bandit_surrender_from_current_vehicle( u, remaining_value );
+    };
+
+    if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::player_carried ) ) {
+        surrendered_value += live_bandit_surrender_from_character( u, remaining_value );
+    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::nearby_companions ) ) {
+        surrendered_value += live_bandit_surrender_from_nearby_companions( u, remaining_value );
+    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::scene_inventory ) ) {
+        surrendered_value += surrender_scene();
+    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::all_reachable ) ) {
+        surrendered_value += live_bandit_surrender_from_character( u, remaining_value );
+        surrendered_value += live_bandit_surrender_from_nearby_companions( u, remaining_value );
+        surrendered_value += surrender_scene();
+    }
+
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_payment_surface result="
+                               << ( surrendered_value >= surface.demanded_value ? "paid" : "short" )
+                               << " selected=" << menu.ret
+                               << " toll=" << surrendered_value
+                               << " demanded=" << surface.demanded_value
+                               << " reachable=" << surface.reachable_goods_value
+                               << " player_pool=" << player_value
+                               << " nearby_npc_pool=" << companion_value
+                               << " scene_pool=" << scene_value << '\n';
     return surrendered_value;
 }
 
@@ -537,7 +615,6 @@ std::pair<std::string, nc_color> live_bandit_shakedown_speaker( const bandit_liv
 enum class live_bandit_shakedown_response : int {
     pay,
     fight,
-    refuse
 };
 
 live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
@@ -561,9 +638,8 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     resize_cb( ui );
 
     std::vector<talk_data> responses;
-    responses.push_back( talk_data{ c_light_green, "p", _( "Pay the demanded goods." ) } );
-    responses.push_back( talk_data{ c_light_red, "f", _( "Fight now." ) } );
-    responses.push_back( talk_data{ c_yellow, "r", _( "Refuse the demand." ) } );
+    responses.push_back( talk_data{ c_light_green, "p", _( "Pay." ) } );
+    responses.push_back( talk_data{ c_light_red, "f", _( "Fight." ) } );
     d_win.set_responses( responses );
 
     input_context ctxt( "DIALOGUE_CHOOSE_RESPONSE" );
@@ -585,13 +661,10 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
             if( d_win.sel_response == 0 ) {
                 return live_bandit_shakedown_response::pay;
             }
-            if( d_win.sel_response == 1 ) {
-                return live_bandit_shakedown_response::fight;
-            }
-            return live_bandit_shakedown_response::refuse;
+            return live_bandit_shakedown_response::fight;
         }
         if( action == "QUIT" ) {
-            return live_bandit_shakedown_response::refuse;
+            return live_bandit_shakedown_response::fight;
         }
         if( action == "ANY_INPUT" && ( evt.type == input_event_t::keyboard_char ||
                                         evt.type == input_event_t::keyboard_code ) &&
@@ -603,9 +676,6 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
                 case 'f':
                 case 'F':
                     return live_bandit_shakedown_response::fight;
-                case 'r':
-                case 'R':
-                    return live_bandit_shakedown_response::refuse;
                 default:
                     break;
             }
@@ -635,25 +705,27 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
 
     DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
                                << ( surface.opening_id.empty() ? "none" : surface.opening_id )
-                               << " responses=pay/fight/refuse\n";
+                               << " responses=pay/fight payment_surface=trade_debt_selector\n";
     const live_bandit_shakedown_response response =
         query_live_bandit_shakedown_dialogue( site, surface );
 
+    bool payment_failed = false;
     if( response == live_bandit_shakedown_response::pay ) {
-        const int surrendered_value = live_bandit_surrender_goods( input, surface, u );
+        const int surrendered_value = live_bandit_select_shakedown_payment( input, surface, u );
         if( surrendered_value >= surface.demanded_value ) {
             add_msg( m_bad, _( "You surrender goods worth about %1$d to the bandits." ),
                      surrendered_value );
             live_bandit_send_group_home_after_payment( site, surface, surrendered_value );
             return true;
         }
-        add_msg( m_warning, _( "You cannot gather enough reachable goods quickly enough.  The shakedown turns ugly." ) );
+        payment_failed = true;
+        add_msg( m_warning, _( "You do not complete the shakedown payment.  The demand turns into a fight." ) );
     }
 
     if( response == live_bandit_shakedown_response::fight ) {
         add_msg( m_bad, _( "You choose to fight the shakedown." ) );
-    } else {
-        add_msg( m_bad, _( "You refuse the shakedown.  The bandits come at you." ) );
+    } else if( payment_failed ) {
+        add_msg( m_bad, _( "The bandits come at you." ) );
     }
     live_bandit_choose_fight( site, surface, u );
     return true;
