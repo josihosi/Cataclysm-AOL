@@ -2944,7 +2944,7 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
     }
     surface.notes.push_back( "scenic opening beat: " + surface.opening_summary );
     surface.notes.push_back( "visible responses are Pay/Fight only; backout enters the fight/refusal branch" );
-    surface.notes.push_back( "pay branch opens a trade/debt-style payment selector before any goods are surrendered" );
+    surface.notes.push_back( "pay branch opens the NPC trade UI with the demanded toll as debt before any goods are surrendered" );
     surface.notes.push_back( "fight branch stays explicit whenever this surface is invoked" );
     surface.notes.push_back( "source site " + site.site_id + " opened the surface from " +
                              site.active_group_id );
@@ -2963,7 +2963,7 @@ std::string render_shakedown_surface_report( const site_record &site,
         << " pay_option=" << ( surface.pay_available ? "yes" : "no" )
         << " fight_option=" << ( surface.fight_available ? "yes" : "no" )
         << " visible_responses=pay/fight"
-        << " payment_surface=trade_debt_selector"
+        << " payment_surface=npc_trade_ui"
         << " reachable_goods=" << surface.reachable_goods_value
         << " demanded_toll=" << surface.demanded_value
         << " basecamp_inventory=" << ( surface.includes_basecamp_inventory ? "yes" : "no" )

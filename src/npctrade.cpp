@@ -284,14 +284,16 @@ void npc_trading::update_npc_owed( npc &np, int your_balance, int your_sale_valu
 // op_of_u.owed is the positive when the NPC owes the player, and negative if the player owes the
 // NPC
 // cost is positive when the player owes the NPC money for a service to be performed
-bool npc_trading::trade( npc &np, int cost, const std::string &deal )
+bool npc_trading::trade( npc &np, int cost, const std::string &deal,
+                         const int you_nearby_item_radius, const int you_nearby_ally_radius )
 {
     np.shop_restock();
     //np.drop_items( np.weight_carried() - np.weight_capacity(),
     //               np.volume_carried() - np.volume_capacity() );
     np.drop_invalid_inventory();
 
-    std::unique_ptr<trade_ui> tradeui = std::make_unique<trade_ui>( get_avatar(), np, cost, deal );
+    std::unique_ptr<trade_ui> tradeui = std::make_unique<trade_ui>( get_avatar(), np, cost, deal,
+                                      you_nearby_item_radius, you_nearby_ally_radius );
     trade_ui::trade_result_t trade_result = tradeui->perform_trade();
 
     if( trade_result.traded ) {
