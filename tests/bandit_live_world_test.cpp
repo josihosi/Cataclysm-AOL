@@ -33,6 +33,16 @@ std::optional<std::string> special_lookup( const tripoint_abs_omt &omt )
 
     return std::nullopt;
 }
+
+std::optional<std::string> multi_z_special_lookup( const tripoint_abs_omt &omt )
+{
+    const bool tracked_z = omt.z() == 0 || omt.z() == 1 || omt.z() == 5;
+    if( tracked_z && omt.x() >= 10 && omt.x() <= 11 && omt.y() >= 20 && omt.y() <= 21 ) {
+        return std::string( "bandit_camp" );
+    }
+
+    return std::nullopt;
+}
 void add_bandit_camp_member( bandit_live_world::world_state &world, int index, int id_base = 11000 )
 {
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( id_base + index ),
@@ -112,6 +122,41 @@ TEST_CASE( "bandit_live_world_claims_one_bounded_special_backed_site_ledger", "[
     REQUIRE( site.spawn_tiles.size() == 3 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 1 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
+}
+
+TEST_CASE( "bandit_live_world_collapses_multi_z_special_camp_into_one_site",
+           "[bandit][live_world][multi_z]" )
+{
+    bandit_live_world::world_state world;
+
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 151 ),
+             tripoint_abs_ms( 240, 480, 1 ), std::string( "bandit_camp" ), std::nullopt,
+             multi_z_special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 152 ),
+             tripoint_abs_ms( 241, 480, 5 ), std::string( "bandit_camp" ), std::nullopt,
+             multi_z_special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 153 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             multi_z_special_lookup ) );
+
+    REQUIRE( world.sites.size() == 1 );
+    const bandit_live_world::site_record &site = world.sites.front();
+    CHECK( site.site_id == "overmap_special:bandit_camp@10,20,0" );
+    CHECK( site.anchor == tripoint_abs_omt( 10, 20, 0 ) );
+    CHECK( site.headcount == 3 );
+    REQUIRE( site.footprint.size() == 12 );
+    CHECK( site.footprint.front() == tripoint_abs_omt( 10, 20, 0 ) );
+    CHECK( site.footprint.back() == tripoint_abs_omt( 11, 21, 5 ) );
+    CHECK( std::any_of( site.footprint.begin(), site.footprint.end(), []( const tripoint_abs_omt &omt ) {
+        return omt == tripoint_abs_omt( 10, 20, 1 );
+    } ) );
+    CHECK( std::any_of( site.footprint.begin(), site.footprint.end(), []( const tripoint_abs_omt &omt ) {
+        return omt == tripoint_abs_omt( 10, 20, 5 );
+    } ) );
+    REQUIRE( site.members.size() == 3 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 1 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 5 ) )->headcount == 1 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
 }
 
@@ -2466,6 +2511,69 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK( decision.posture == bandit_live_world::local_gate_posture::abort );
     CHECK_FALSE( decision.opens_shakedown_surface );
     CHECK_FALSE( decision.combat_forward );
+}
+
+TEST_CASE( "bandit_live_world_vertical_targets_route_via_reachable_ground_dispatch_target",
+           "[bandit][live_world][multi_z][dispatch]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 154 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 155 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 156 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt roof_target( 18, 20, 5 );
+    const tripoint_abs_omt ground_target( 18, 20, 0 );
+    CHECK( bandit_live_world::reachable_ground_dispatch_target( site, roof_target ) == ground_target );
+
+    const bandit_live_world::dispatch_plan direct_plan =
+        bandit_live_world::plan_site_dispatch( site, roof_target, "player@18,20,5" );
+    REQUIRE( direct_plan.valid );
+    CHECK( direct_plan.target_id == "player@18,20,5" );
+    CHECK( direct_plan.target_omt == ground_target );
+    CHECK( std::any_of( direct_plan.notes.begin(), direct_plan.notes.end(), []( const std::string &note ) {
+        return note.find( "vertical dispatch fallback" ) != std::string::npos &&
+               note.find( "18,20,5" ) != std::string::npos &&
+               note.find( "18,20,0" ) != std::string::npos;
+    } ) );
+
+    bandit_live_world::camp_map_lead elevated_lead;
+    elevated_lead.lead_id = "elevated_basecamp@18,20,5";
+    elevated_lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    elevated_lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    elevated_lead.target_id = "player@18,20,5";
+    elevated_lead.omt = roof_target;
+    elevated_lead.radius_omt = 2;
+    elevated_lead.bounty = 8;
+    elevated_lead.threat = 1;
+    elevated_lead.confidence = 3;
+    site.intelligence_map.leads.push_back( elevated_lead );
+
+    const bandit_live_world::camp_map_lead *matched_lead =
+        bandit_live_world::find_camp_map_dispatch_lead_for_target( site, roof_target, "" );
+    REQUIRE( matched_lead != nullptr );
+    CHECK( matched_lead->lead_id == elevated_lead.lead_id );
+
+    const bandit_live_world::dispatch_plan camp_map_plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
+    REQUIRE( camp_map_plan.valid );
+    CHECK( camp_map_plan.target_id == "player@18,20,5" );
+    CHECK( camp_map_plan.target_omt == ground_target );
+    CHECK( std::any_of( camp_map_plan.notes.begin(), camp_map_plan.notes.end(), []( const std::string &note ) {
+        return note.find( "vertical dispatch fallback" ) != std::string::npos &&
+               note.find( "18,20,5" ) != std::string::npos &&
+               note.find( "18,20,0" ) != std::string::npos;
+    } ) );
+
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, camp_map_plan ) );
+    CHECK( site.active_target_id == "player@18,20,5" );
+    CHECK( site.active_target_omt == ground_target );
 }
 
 TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",

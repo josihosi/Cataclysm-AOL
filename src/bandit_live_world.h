@@ -461,6 +461,8 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         const camp_map_lead &lead,
         const camp_map_dispatch_pressure &pressure = camp_map_dispatch_pressure() );
+tripoint_abs_omt reachable_ground_dispatch_target( const site_record &site,
+        const tripoint_abs_omt &target_omt );
 camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         const camp_map_lead &lead,
         const camp_map_dispatch_pressure &pressure = camp_map_dispatch_pressure() );
