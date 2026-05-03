@@ -1,0 +1,71 @@
+{
+  "name": "bandit.extortion_first_demand_pay_three_source_trade_window_mcw",
+  "description": "Bandit shakedown Pay proof: choose Pay, keep the actual NPC trade UI open, prove distinct player/basecamp-NPC/basecamp-storage payment markers, then satisfy the debt through the same trade offer.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_pay_trade_pool_markers_v0_2026-05-03",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
+    "shakedown_trade_ui opened",
+    "trade_api=npc_trading::trade",
+    "title=Pay:",
+    "basecamp_npc_pool=",
+    "basecamp_storage_pool=",
+    "shakedown_trade_ui result=paid",
+    "shakedown_surface paid toll="
+  ],
+  "capture_world_after": false,
+  "steps": [
+    { "kind": "wait", "label": "post_load_settle", "seconds": 2.0, "expected_visible_fact": "post-load gameplay screen for the McWilliams bandit local-contact fixture before toll-control proof begins; this is startup/load footing only", "capture_after": true },
+    { "kind": "advance_turns", "label": "advance_299_turns_to_gate_edge", "count": 299, "settle_seconds": 0.5, "capture_after": false, "proof_deferred_to_label": "audit_first_demand_surface_artifact", "expected_immediate_state": "bounded turn advance reaches the shakedown gate edge; proof is deferred to the same-run demand-surface artifact after the final turn" },
+    { "kind": "advance_turns", "label": "advance_final_turn_to_first_shakedown", "count": 1, "settle_seconds": 1.0, "expected_visible_fact": "Bandit shakedown dialogue window is visible with the basecamp-pressure opening and player-facing Pay/Fight choices after the final local-contact turn", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 80, "proof_deferred_to_label": "audit_first_demand_surface_artifact" },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_first_demand_surface_artifact",
+      "required_line_patterns": [
+        ["local_gate site=overmap_special:bandit_camp@140,51,0", "profile=camp_style", "posture=open_shakedown", "basecamp_or_camp=yes", "local_contact=yes", "shakedown=yes", "combat_forward=no"],
+        ["shakedown_surface site=overmap_special:bandit_camp@140,51,0", "profile=camp_style", "posture=open_shakedown", "valid=yes", "pay_option=yes", "fight_option=yes", "basecamp_inventory=yes", "vehicle_inventory=no"],
+        ["shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the bandit camp-style local gate and pay/fight shakedown surface before Pay-window proof",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
+    },
+    {
+      "kind": "press", "label": "choose_pay_open_trade_window", "keys": ["p"], "settle_seconds": 1.0,
+      "expected_visible_fact": "Pay was selected from the visible bandit shakedown dialogue; the actual NPC trade UI / trade window is now open with Pay: debt before any hidden surrender.",
+      "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100,
+      "expected_screen_text_after_contains": ["Filter"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_first_bandit_pay_did_not_open_trade_ui",
+      "abort_reason": "selecting Pay did not visibly open the NPC trade UI / inventory filter surface"
+    },
+    {
+      "kind": "audit_log_contains", "label": "audit_trade_window_debt_and_pool_artifact",
+      "required_line_patterns": [["shakedown_trade_ui opened", "demanded=", "reachable=", "player_pool=", "nearby_npc_pool=", "basecamp_npc_pool=", "scene_pool=", "basecamp_storage_pool=", "trade_api=npc_trading::trade", "title=Pay:"]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_trade_ui_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove choosing Pay opened the actual NPC trade API / trade window with Pay: debt and the honest pool component counters",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, and payment pool components"
+    },
+    { "kind": "press", "label": "switch_to_you_pane_and_open_player_marker_filter", "keys": ["tab", "/"], "settle_seconds": 0.2, "proof_deferred_to_label": "audit_ui_trace_player_marker_binoculars", "expected_immediate_state": "switch to player-side trade pane and open the inventory filter; proof is the following same-run UI-trace for the filtered player-inventory marker" },
+    { "kind": "type", "label": "filter_player_inventory_marker_binoculars", "text": "binoculars", "delay_ms": 20, "submit": true, "submit_key": "enter", "submit_delay_ms": 200, "submit_settle_seconds": 0.3, "settle_seconds": 0.3, "expected_visible_fact": "Same open Pay trade window, filtered to the distinct player-inventory marker item.", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100, "proof_deferred_to_label": "audit_ui_trace_player_marker_binoculars" },
+    { "kind": "audit_log_contains", "label": "audit_ui_trace_player_marker_binoculars", "required_line_patterns": [["openclaw_harness_ui_trace: component=trade_selector_entry", "typeid=\"binoculars\"", "recursive_location_type=\"character\""]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_pay_window_player_marker_binoculars_missing", "abort_reason": "same open Pay trade selector did not trace the player inventory marker binoculars after filtering", "expected_immediate_state": "same-run trade selector UI-trace proves the filtered Pay window contains binoculars from the character/player-side pool" },
+    { "kind": "press", "label": "open_filter_clear_for_basecamp_npc_marker", "keys": ["r", "/"], "settle_seconds": 0.2, "proof_deferred_to_label": "audit_ui_trace_basecamp_npc_marker_saxophone", "expected_immediate_state": "clear the trade filter without closing the Pay trade window; proof is the following same-run UI-trace for the filtered basecamp-NPC marker" },
+    { "kind": "type", "label": "filter_basecamp_npc_marker_saxophone", "text": "saxophone", "delay_ms": 20, "submit": true, "submit_key": "enter", "submit_delay_ms": 200, "submit_settle_seconds": 0.3, "settle_seconds": 0.3, "expected_visible_fact": "Same open Pay trade window, filtered to the distinct basecamp-assigned-NPC inventory marker item.", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100, "proof_deferred_to_label": "audit_ui_trace_basecamp_npc_marker_saxophone" },
+    { "kind": "audit_log_contains", "label": "audit_ui_trace_basecamp_npc_marker_saxophone", "required_line_patterns": [["openclaw_harness_ui_trace: component=trade_selector_entry", "typeid=\"saxophone\"", "location_type=\"character\"", "recursive_location_type=\"character\""]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_pay_window_basecamp_npc_marker_saxophone_missing", "abort_reason": "same open Pay trade selector did not trace the basecamp-assigned NPC marker saxophone after filtering", "expected_immediate_state": "same-run trade selector UI-trace proves the filtered Pay window contains saxophone from a basecamp-assigned NPC inventory" },
+    { "kind": "press", "label": "open_filter_clear_for_storage_marker", "keys": ["r", "/"], "settle_seconds": 0.2, "proof_deferred_to_label": "audit_ui_trace_basecamp_storage_marker_gold_watch", "expected_immediate_state": "clear the trade filter without closing the Pay trade window; proof is the following same-run UI-trace for the filtered basecamp-storage marker" },
+    { "kind": "type", "label": "filter_basecamp_storage_marker_gold_watch", "text": "gold watch", "delay_ms": 20, "submit": true, "submit_key": "enter", "submit_delay_ms": 200, "submit_settle_seconds": 0.3, "settle_seconds": 0.3, "expected_visible_fact": "Same open Pay trade window, filtered to the distinct basecamp storage-zone marker item stack.", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100, "proof_deferred_to_label": "audit_ui_trace_basecamp_storage_marker_gold_watch" },
+    { "kind": "audit_log_contains", "label": "audit_ui_trace_basecamp_storage_marker_gold_watch", "required_line_patterns": [["openclaw_harness_ui_trace: component=trade_selector_entry", "typeid=\"gold_watch\"", "location_type=\"map\"", "recursive_location_type=\"map\""]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_pay_window_basecamp_storage_marker_gold_watch_missing", "abort_reason": "same open Pay trade selector did not trace the basecamp storage-zone marker gold_watch after filtering", "expected_immediate_state": "same-run trade selector UI-trace proves the filtered Pay window contains gold_watch from the basecamp storage-zone map pool" },
+    { "kind": "press", "label": "autobalance_storage_gold_watch_stack", "keys": ["F1"], "settle_seconds": 0.4, "expected_visible_fact": "F1 autobalance selected enough of the filtered basecamp-storage gold watch stack into the player's offer to cover the Pay debt.", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100, "proof_deferred_to_label": "confirm_trade_offer", "expected_immediate_state": "F1 autobalance applies to the filtered basecamp-storage offer; proof is deferred to the following acceptance prompt and paid trade artifact." },
+    { "kind": "press", "label": "confirm_trade_offer", "keys": ["enter"], "settle_seconds": 0.4, "expected_visible_fact": "Balanced shakedown payment offer opened the case-sensitive trade acceptance prompt.", "capture_after": true, "extract_text_after_capture": true, "extract_text_after_capture_tail_lines": 100, "expected_screen_text_after_contains": ["Case Sensitive"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_pay_success_accept_prompt_missing", "abort_reason": "balanced basecamp-pool trade did not show the case-sensitive acceptance prompt" },
+    { "kind": "press", "label": "accept_trade_confirmation", "keys": ["Y"], "delay_ms": 250, "settle_seconds": 1.0, "expected_visible_fact": "confirmed the proven case-sensitive trade prompt; paid outcome proof is deferred to the same-run log gate", "proof_deferred_to_label": "audit_payment_writeback_artifact" },
+    { "kind": "audit_log_contains", "label": "audit_payment_writeback_artifact", "required_line_patterns": [["shakedown_trade_ui result=paid", "demanded=", "reachable="], ["shakedown_surface paid toll=", "demanded=", "reachable="]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_paid_shakedown_log_writeback_missing", "abort_reason": "same-run debug artifact did not prove paid trade result after selecting items from the honest basecamp/faction-side Pay window", "expected_immediate_state": "same-run debug log records paid trade result and shakedown paid outcome after a normal npc_trading::trade offer" }
+  ]
+}

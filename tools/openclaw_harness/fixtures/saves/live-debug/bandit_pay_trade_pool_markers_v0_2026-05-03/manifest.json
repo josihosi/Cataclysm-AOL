@@ -1,0 +1,38 @@
+{
+  "name": "bandit_pay_trade_pool_markers_v0_2026-05-03",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [{ "typeid": "binoculars", "count": 1 }]
+    },
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "assigned_camp_omt": [140, 41, 0],
+      "offset_ms": [16, 0, 0],
+      "items": [{ "typeid": "saxophone", "count": 1, "slot": "weapon" }]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        { "typeid": "gold_watch", "count": 200, "owner": "your_followers", "offset_ms": [31, 6, 0] }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "OpenClaw shakedown pay storage marker zone",
+      "zone_type": "CAMP_STORAGE",
+      "faction": "your_followers",
+      "start_offset_ms": [31, 6, 0],
+      "end_offset_ms": [31, 6, 0],
+      "write_temp": true,
+      "write_global": true
+    }
+  ]
+}

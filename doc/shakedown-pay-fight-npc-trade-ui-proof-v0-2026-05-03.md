@@ -60,6 +60,15 @@ Live/staged harness rows credited after the repair:
   - Item-offer proof: screenshot/OCR guards for `filter_hub_items`, `autobalance_hub_helmets`, and `confirm_trade_offer` show the real Pay trade UI with filtered Hub items, a selected helmet stack in the offer, and `Accept this trade? (Case Sensitive)` before acceptance.
   - Paid writeback: `shakedown_trade_ui result=paid demanded=15797 reachable=45134 trader=4` and `shakedown_surface paid toll=15797 demanded=15797 reachable=45134`, followed by save-mtime and saved bandit-state gates.
 
+- Latest three-source payment-pool + offer/accept row, `bandit.extortion_first_demand_pay_three_source_trade_window_mcw` -> `.userdata/dev-harness/harness_runs/20260503_233823/`
+  - Command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_three_source_trade_window_mcw` from the active repo after rebuilding `cataclysm-tiles` to `eddfca4f10-dirty`; startup gate is green for feature steps with no runtime-relevant version mismatch.
+  - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_status=green_step_local_proof` 19/19.
+  - Fixture/marker footing is explicit in `startup.result.json`: player marker `binoculars`, basecamp-assigned NPC marker `saxophone` on NPC id `2`, and `200` owned `gold_watch` items on a `CAMP_STORAGE` tile.
+  - Immediate post-Pay artifact: `shakedown_trade_ui opened demanded=33542 reachable=95834 player_pool=3711 nearby_npc_pool=2268 basecamp_npc_pool=3154 scene_pool=86701 basecamp_storage_pool=50000 trader=4 trade_api=npc_trading::trade title=Pay:`.
+  - Same-open-window UI traces prove all three source classes in the real trade selector: `typeid="binoculars" recursive_location_type="character"`, `typeid="saxophone" location_type="character" recursive_location_type="character"`, and `typeid="gold_watch" location_type="map" recursive_location_type="map" stack_count=200 available_count=200`.
+  - Screenshot/OCR artifacts: `choose_pay_open_trade_window.after.png` / `.screen_text.txt` show the Pay trade window and filter surface; `confirm_trade_offer.after.png` / `.screen_text.txt` show `F1 to auto balance`, `Pay:`, selected `180 of 200 ++ gold`, and `Accept this trade? (Case Sensitive)`.
+  - Paid artifacts after the same trade path: `shakedown_trade_ui result=paid demanded=33542 reachable=95834 trader=4` and `shakedown_surface paid toll=33542 demanded=33542 reachable=95834`.
+
 - Final tight current-HEAD Pay/Fight + immediate Pay-window row, `bandit.extortion_first_demand_pay_tight_crop_ocr_mcw` -> `/Users/josefhorvath/Schanigarten/Cataclysm-AOL-slice1-proof/.userdata/dev-harness/harness_runs/20260503_202326/`
   - Command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_tight_crop_ocr_mcw` from the clean proof worktree.
   - Current HEAD/binary: proof worktree `d1a4f076c8`; rebuilt `cataclysm-tiles`; build log `/tmp/caol_slice1_tight_clean_build_d1a_20260503.log`.
@@ -125,4 +134,4 @@ Superseded/no-credit rows: the pre-nudge rows `20260503_171632`, `20260503_17182
 
 ## Caveats / next slice boundary
 
-This checkpoint proves the visible Pay/Fight-only fork, real trade-window opening path, whole camp-side pool footing, pool-derived demand basis, cancel/refusal mapping, item-offer/autobalance, and successful-payment saved writeback on rebuilt `7e5a506c76` rows that first reach the same trade UI path. It does not claim full natural-discovery coverage or broad diplomacy/payment redesign, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.
+This checkpoint proves the visible Pay/Fight-only fork, real trade-window opening path, whole camp-side pool footing, pool-derived demand basis, cancel/refusal mapping, item-offer/autobalance, and successful-payment writeback. The latest three-source row `20260503_233823` additionally proves player inventory, basecamp-assigned NPC inventory, and basecamp storage-zone inventory inside the same open Pay trade window before paid acceptance; the rebuilt `7e5a506c76` rows remain the clean master cancel/success receipts. It does not claim full natural-discovery coverage or broad diplomacy/payment redesign, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.

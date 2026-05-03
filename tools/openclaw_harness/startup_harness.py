@@ -5704,6 +5704,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         f"Fixture save_transforms[{index}].items[{item_index}] count must be > 0 in {manifest_path}"
                     )
                 item = {"typeid": typeid, "offset_ms": offset_ms, "count": count}
+                if "owner" in item_raw:
+                    item["owner"] = str(item_raw.get("owner", "") or "").strip()
                 if "charges" in item_raw:
                     item["charges"] = int(item_raw.get("charges"))
                 if "contents" in item_raw:
@@ -5744,6 +5746,88 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "start_offset_ms": normalize_zone_offset("start_offset_ms", [1, -1, 0]),
                 "end_offset_ms": normalize_zone_offset("end_offset_ms", [3, 1, 0]),
                 "write_temp": bool(raw.get("write_temp", True)),
+                "write_global": bool(raw.get("write_global", False)),
+            })
+            continue
+
+        if kind == "basecamp_assigned_npc_items":
+            raw_offset = raw.get("offset_ms", [16, 0, 0])
+            if not isinstance(raw_offset, list) or len(raw_offset) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_assigned_npc_items needs offset_ms=[x,y,z] in {manifest_path}"
+                )
+            try:
+                offset_ms = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
+                npc_id = int(raw.get("npc_id", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_assigned_npc_items needs integer npc_id/offset_ms in {manifest_path}"
+                )
+            raw_camp = raw.get("assigned_camp_omt", [])
+            assigned_camp_omt: Optional[List[int]] = None
+            if raw_camp not in (None, "", []):
+                if not isinstance(raw_camp, list) or len(raw_camp) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] assigned_camp_omt needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    assigned_camp_omt = [int(raw_camp[0]), int(raw_camp[1]), int(raw_camp[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] assigned_camp_omt values must be integers in {manifest_path}"
+                    )
+            items_raw = raw.get("items", [])
+            if not isinstance(items_raw, list) or not items_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_assigned_npc_items needs non-empty items in {manifest_path}"
+                )
+            items: List[Dict[str, Any]] = []
+            for item_index, item_raw in enumerate(items_raw, start=1):
+                if not isinstance(item_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] must be an object in {manifest_path}"
+                    )
+                typeid = str(item_raw.get("typeid", "")).strip()
+                if not typeid:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs typeid in {manifest_path}"
+                    )
+                try:
+                    count = int(item_raw.get("count", 1) or 1)
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be integer in {manifest_path}"
+                    )
+                if count <= 0:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be > 0 in {manifest_path}"
+                    )
+                item = {"typeid": typeid, "count": count}
+                if "slot" in item_raw:
+                    item["slot"] = str(item_raw.get("slot", "inventory") or "inventory").strip().lower()
+                if "charges" in item_raw:
+                    try:
+                        item["charges"] = int(item_raw.get("charges"))
+                    except (TypeError, ValueError):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] charges must be integer in {manifest_path}"
+                        )
+                if "contents" in item_raw:
+                    contents = item_raw.get("contents")
+                    if not isinstance(contents, dict):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] contents must be object in {manifest_path}"
+                        )
+                    item["contents"] = contents
+                items.append(item)
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "npc_id": npc_id,
+                "offset_ms": offset_ms,
+                "assigned_camp_omt": assigned_camp_omt,
+                "items": items,
+                "ensure_follower": bool(raw.get("ensure_follower", True)),
             })
             continue
 
@@ -6045,7 +6129,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
-            "overmap_npcs_near_player, active_monsters_near_player, horde_entity_near_player, game_turn, "
+            "overmap_npcs_near_player, basecamp_assigned_npc_items, active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
@@ -7048,7 +7132,9 @@ def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str,
     }
 
 
-def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = None, contents: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = None,
+                       contents: Optional[Dict[str, Any]] = None,
+                       owner: Optional[str] = None) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "typeid": typeid,
         "bday": int(bday),
@@ -7057,6 +7143,8 @@ def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = N
     }
     if charges is not None:
         payload["charges"] = int(charges)
+    if owner is not None:
+        payload["owner"] = str(owner)
     if isinstance(contents, dict):
         payload["contents"] = contents
     return payload
@@ -7081,6 +7169,7 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
             raise SystemExit(f"Fixture map-item transform count must be positive: {item}")
         charges = item.get("charges")
         contents = item.get("contents") if isinstance(item.get("contents"), dict) else None
+        owner = str(item.get("owner", "") or "").strip()
 
         target_location = [
             int(player_location[0]) + offset_ms[0],
@@ -7128,6 +7217,7 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
                 bday=0,
                 charges=int(charges) if charges is not None else None,
                 contents=contents,
+                owner=owner if owner else None,
             )
             for _ in range(count)
         ]
@@ -7139,6 +7229,7 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
             "typeid": typeid,
             "count": count,
             "charges": int(charges) if charges is not None else None,
+            "owner": owner or None,
             "offset_ms": offset_ms,
             "target_location_ms": target_location,
             "target_abs_omt": list(target_abs_omt),
@@ -7332,6 +7423,10 @@ def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform:
     zone_paths = [world_dir / f"{stem}.zones.json"]
     if bool(transform.get("write_temp", True)):
         zone_paths.append(world_dir / f"{stem}.zoneszmgr-temp.json")
+    if bool(transform.get("write_global", False)):
+        zone_paths.append(world_dir / "zones.json")
+        if bool(transform.get("write_temp", True)):
+            zone_paths.append(world_dir / "zoneszmgr-temp.json")
 
     updated_paths: List[str] = []
     for zone_path in zone_paths:
@@ -7674,6 +7769,131 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
         "placed_npcs": placed,
     }
 
+
+
+def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    selected_player_save = str(transform.get("player_save", "") or "").strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise SystemExit(f"Basecamp assigned NPC transform expected one player save in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
+    offset = [int(value) for value in transform.get("offset_ms", [16, 0, 0])]
+    target_location = [int(player_location[i]) + offset[i] for i in range(3)]
+    requested_npc_id = int(transform.get("npc_id", 0) or 0)
+    assigned_camp_omt = transform.get("assigned_camp_omt")
+
+    selected_npc: Optional[Dict[str, Any]] = None
+    selected_id = requested_npc_id
+    target_overmap_path: Optional[Path] = None
+    plain_path: Optional[Path] = None
+    version_line = ""
+    payload: Dict[str, Any] = {}
+
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.zzip")):
+        candidate_plain: Optional[Path] = None
+        try:
+            candidate_plain, candidate_version, candidate_payload = extract_overmap_payload(overmap_path)
+            npcs = candidate_payload.get("npcs", [])
+            if not isinstance(npcs, list):
+                continue
+            for npc_obj in npcs:
+                if not isinstance(npc_obj, dict):
+                    continue
+                try:
+                    npc_obj_id = int(npc_obj.get("id", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if requested_npc_id and npc_obj_id != requested_npc_id:
+                    continue
+                selected_npc = npc_obj
+                selected_id = npc_obj_id
+                target_overmap_path = overmap_path
+                plain_path = candidate_plain
+                version_line = candidate_version
+                payload = candidate_payload
+                break
+            if selected_npc is not None:
+                break
+        finally:
+            if selected_npc is None and candidate_plain is not None and candidate_plain.exists():
+                cleanup_extracted_overmap(candidate_plain, keep=False)
+
+    if selected_npc is None or target_overmap_path is None or plain_path is None:
+        raise SystemExit(f"Basecamp assigned NPC transform could not find npc_id={requested_npc_id} in {world_dir / 'overmaps'}")
+
+    added_items: List[Dict[str, Any]] = []
+    try:
+        selected_npc["location"] = target_location
+        if assigned_camp_omt not in (None, [], ""):
+            selected_npc["assigned_camp"] = [int(value) for value in assigned_camp_omt]
+        selected_npc["my_fac"] = "your_followers"
+        selected_npc["attitude"] = 3
+        inv = selected_npc.setdefault("inv", [])
+        if not isinstance(inv, list):
+            raise SystemExit(f"NPC {selected_id} inventory is not a list in {target_overmap_path}")
+        for item in transform.get("items", []):
+            typeid = str(item.get("typeid", "") or "").strip()
+            count = int(item.get("count", 1) or 1)
+            charges = item.get("charges")
+            contents = item.get("contents") if isinstance(item.get("contents"), dict) else None
+            slot = str(item.get("slot", "inventory") or "inventory").strip().lower()
+            payload_item = saved_item_payload(typeid, charges=int(charges) if charges is not None else None,
+                                              contents=contents)
+            if slot in {"weapon", "wielded", "held"}:
+                selected_npc["weapon"] = payload_item
+                count = 1
+            else:
+                for _ in range(count):
+                    inv.append(saved_item_payload(typeid,
+                                                  charges=int(charges) if charges is not None else None,
+                                                  contents=contents))
+            added: Dict[str, Any] = {"typeid": typeid, "count": count, "slot": slot}
+            if charges is not None:
+                added["charges"] = int(charges)
+            added_items.append(added)
+        write_overmap_payload(plain_path, version_line, payload)
+    finally:
+        if plain_path is not None and plain_path.exists():
+            cleanup_extracted_overmap(plain_path, keep=False)
+
+    ensured_follower = False
+    if bool(transform.get("ensure_follower", True)):
+        player_save = world_dir / selected_player_save
+        extracted_save = player_save.with_suffix("")
+        run_zzip(player_save)
+        try:
+            player_payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+            player = player_payload.get("player")
+            if not isinstance(player, dict):
+                raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+            followers = player.setdefault("followers", [])
+            if not isinstance(followers, list):
+                raise SystemExit(f"Player followers is not a list in {extracted_save}")
+            if selected_id not in followers:
+                followers.append(selected_id)
+                ensured_follower = True
+            extracted_save.write_text(json.dumps(player_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            run_zzip(extracted_save)
+        finally:
+            if extracted_save.exists():
+                extracted_save.unlink()
+
+    return {
+        "kind": "basecamp_assigned_npc_items",
+        "world": world_dir.name,
+        "player_save": selected_player_save,
+        "npc_id": selected_id,
+        "npc_name": selected_npc.get("name"),
+        "location_ms": target_location,
+        "offset_ms": offset,
+        "assigned_camp_omt": assigned_camp_omt,
+        "added_items": added_items,
+        "ensured_follower": ensured_follower,
+        "overmap": str(target_overmap_path.relative_to(world_dir)),
+    }
 
 def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     selected_player_save = str(transform.get("player_save", "") or "").strip()
@@ -8512,6 +8732,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "overmap_npcs_near_player":
             reports.append(apply_overmap_npcs_near_player_transform(world_dir, transform))
+            continue
+        if kind == "basecamp_assigned_npc_items":
+            reports.append(apply_basecamp_assigned_npc_items_transform(world_dir, transform))
             continue
         if kind == "active_monsters_near_player":
             reports.append(apply_active_monsters_near_player_transform(world_dir, transform))
