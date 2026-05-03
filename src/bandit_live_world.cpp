@@ -303,7 +303,9 @@ bandit_dry_run::candidate_debug make_camp_map_dispatch_candidate( const camp_map
     candidate.family = family_for_camp_map_lead( lead );
     candidate.generated = true;
     candidate.valid = decision.intent == bandit_dry_run::job_template::scout ||
-                      decision.intent == bandit_dry_run::job_template::stalk;
+                      decision.intent == bandit_dry_run::job_template::stalk ||
+                      decision.intent == bandit_dry_run::job_template::toll ||
+                      decision.intent == bandit_dry_run::job_template::raid;
     candidate.winner = candidate.valid;
     candidate.score.lead_bounty_value = lead.bounty;
     candidate.score.lead_confidence_bonus = lead.confidence;
@@ -1685,6 +1687,35 @@ int stalk_pressure_member_count( const int living_roster, const int dispatchable
     return std::clamp( ceil_percent( dispatchable, 40 ), 2, upper_bound );
 }
 
+int toll_pressure_member_count( const int living_roster, const int dispatchable )
+{
+    if( dispatchable < 4 || living_roster < 7 ) {
+        return 0;
+    }
+    const int upper_bound = std::min( dispatchable, ceil_percent( living_roster, 40 ) );
+    if( upper_bound < 2 ) {
+        return 0;
+    }
+    return std::clamp( ceil_percent( dispatchable, 45 ), 2, upper_bound );
+}
+
+int cannibal_attack_member_count( const int living_roster, const int dispatchable,
+                                  const int margin )
+{
+    if( dispatchable < 2 ) {
+        return 0;
+    }
+    if( margin >= 6 ) {
+        return dispatchable;
+    }
+    const int percent = margin >= 4 ? 60 : 45;
+    const int upper_bound = std::min( dispatchable, ceil_percent( living_roster, percent ) );
+    if( upper_bound < 2 ) {
+        return 0;
+    }
+    return std::clamp( upper_bound, 2, dispatchable );
+}
+
 camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         const camp_map_lead &lead, const camp_map_dispatch_pressure &pressure )
 {
@@ -1775,6 +1806,38 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     }
 
     if( decision.margin >= 2 ) {
+        const hostile_site_profile profile = effective_profile( site );
+        const bool scout_confirmed_basecamp = lead.status == camp_lead_status::scout_confirmed &&
+                lead.kind == camp_lead_kind::basecamp_activity;
+        if( profile == hostile_site_profile::cannibal_camp && scout_confirmed_basecamp ) {
+            const int attackers = cannibal_attack_member_count( decision.living_roster,
+                                  decision.dispatchable, decision.margin );
+            if( attackers >= 2 ) {
+                decision.intent = bandit_dry_run::job_template::raid;
+                decision.selected_member_count = attackers;
+                decision.notes.push_back(
+                    "raid: scout-confirmed basecamp lead lets cannibal camp commit an attack pack instead of another scout" );
+                return decision;
+            }
+            decision.intent = bandit_dry_run::job_template::scout;
+            decision.selected_member_count = 1;
+            decision.notes.push_back(
+                "scout: cannibal camp lacks an at-home attack pack after reserve, so it does not dogpile" );
+            return decision;
+        }
+
+        if( profile == hostile_site_profile::camp_style && scout_confirmed_basecamp ) {
+            const int toll_members = toll_pressure_member_count( decision.living_roster,
+                                     decision.dispatchable );
+            if( toll_members >= 2 ) {
+                decision.intent = bandit_dry_run::job_template::toll;
+                decision.selected_member_count = toll_members;
+                decision.notes.push_back(
+                    "toll: scout-confirmed basecamp lead promotes to a shakedown-capable party" );
+                return decision;
+            }
+        }
+
         const int stalkers = stalk_pressure_member_count( decision.living_roster, decision.dispatchable );
         if( stalkers >= 2 ) {
             decision.intent = bandit_dry_run::job_template::stalk;
@@ -2681,6 +2744,13 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     const bool cannibal_attack_intent = profile == hostile_site_profile::cannibal_camp &&
                                         active_job.has_value() &&
                                         cannibal_job_requires_attack_pack( *active_job );
+    decision.shakedown_capable = profile != hostile_site_profile::cannibal_camp &&
+                                  !input.rolling_travel_scene && decision.dispatch_strength >= 1 &&
+                                  decision.pressure_margin >= 2;
+    if( decision.shakedown_capable ) {
+        decision.notes.push_back(
+            "bandit pressure is shakedown-capable once local contact is established" );
+    }
 
     if( input.rolling_travel_scene ) {
         if( profile == hostile_site_profile::cannibal_camp &&
@@ -2851,6 +2921,7 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
                                       ( input.recent_exposure ? "recent" : "none" ) )
         << " local_contact=" << ( input.local_contact_established ? "yes" : "no" )
         << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
+        << " shakedown_capable=" << ( decision.shakedown_capable ? "yes" : "no" )
         << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
         << " combat_forward=" << ( decision.combat_forward ? "yes" : "no" )
         << '\n';

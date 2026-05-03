@@ -12,12 +12,12 @@ bool is_pursuit_job( bandit_dry_run::job_template job )
     switch( job ) {
         case bandit_dry_run::job_template::scout:
         case bandit_dry_run::job_template::stalk:
+        case bandit_dry_run::job_template::toll:
+        case bandit_dry_run::job_template::raid:
             return true;
         case bandit_dry_run::job_template::hold_chill:
         case bandit_dry_run::job_template::scavenge:
-        case bandit_dry_run::job_template::toll:
         case bandit_dry_run::job_template::steal:
-        case bandit_dry_run::job_template::raid:
         case bandit_dry_run::job_template::reinforce:
             return false;
     }
@@ -159,7 +159,7 @@ entry_payload build_entry_payload( const abstract_group_state &group,
 
     if( supports_pursuit_handoff( winner ) ) {
         payload.valid = true;
-        payload.notes.push_back( "pursuit v0 stays on scout/probe/shadow/withdrawal only" );
+        payload.notes.push_back( "hostile handoff v0 stays on scout/probe/shadow/withdrawal entry modes" );
     } else {
         payload.valid = false;
         payload.notes.push_back( "winner is outside the bounded pursuit/investigation handoff contract" );
