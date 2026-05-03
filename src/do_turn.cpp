@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <optional>
@@ -85,6 +86,7 @@
 #include "ui_manager.h"
 #include "units.h"
 #include "vehicle.h"
+#include "veh_type.h"
 #include "vpart_position.h"
 #include "weather.h"
 #include "weather_type.h"
@@ -1152,6 +1154,17 @@ static constexpr int live_bandit_system_envelope_omt = 40;
 static constexpr int live_bandit_direct_player_range_omt = 10;
 static constexpr int live_bandit_local_source_scan_radius_ms = 60;
 
+struct live_bandit_local_source_reading {
+    int fire_intensity = 0;
+    int smoke_intensity = 0;
+    int light_intensity = 0;
+    bandit_mark_generation::light_source_band light_source =
+        bandit_mark_generation::light_source_band::ordinary;
+    bool outside = false;
+    int side_leakage = 0;
+    bool elevated_roof_exposed = false;
+};
+
 npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kind site_kind )
 {
     switch( site_kind ) {
@@ -1316,31 +1329,133 @@ bool live_bandit_fire_source_is_elevated_roof_exposed( const map &here,
     return terrain == ter_t_flat_roof || terrain == ter_t_tile_flat_roof;
 }
 
+int live_bandit_light_intensity_from_luminance( const float luminance )
+{
+    if( luminance >= 25.0f ) {
+        return 3;
+    }
+    if( luminance >= 8.0f ) {
+        return 2;
+    }
+    return luminance > 0.0f ? 1 : 0;
+}
+
+int live_bandit_light_side_leakage_near( const map &here, const tripoint_bub_ms &p )
+{
+    if( here.is_outside( p ) ) {
+        return 0;
+    }
+
+    int leakage = 0;
+    for( int dx = -2; dx <= 2; ++dx ) {
+        for( int dy = -2; dy <= 2; ++dy ) {
+            if( dx == 0 && dy == 0 ) {
+                continue;
+            }
+            const tripoint_bub_ms candidate( p.x() + dx, p.y() + dy, p.z() );
+            if( !here.inbounds( candidate ) || !here.is_outside( candidate ) ) {
+                continue;
+            }
+            const int distance = std::max( std::abs( dx ), std::abs( dy ) );
+            leakage = std::max( leakage, distance <= 1 ? 2 : 1 );
+        }
+    }
+    return leakage;
+}
+
+void live_bandit_note_light_source( live_bandit_local_source_reading &reading,
+                                    const int intensity,
+                                    const bandit_mark_generation::light_source_band source )
+{
+    if( intensity <= 0 ) {
+        return;
+    }
+    if( source == bandit_mark_generation::light_source_band::searchlight &&
+        reading.light_source != bandit_mark_generation::light_source_band::searchlight ) {
+        reading.light_source = source;
+    }
+    reading.light_intensity = std::max( reading.light_intensity, intensity );
+}
+
 std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_near_player()
 {
     avatar &u = get_avatar();
     map &here = get_map();
-    struct source_reading {
-        int fire_intensity = 0;
-        int smoke_intensity = 0;
-        bool outside = false;
-        bool elevated_roof_exposed = false;
-    };
-    std::map<tripoint_abs_omt, source_reading> readings;
+    std::map<tripoint_abs_omt, live_bandit_local_source_reading> readings;
 
     for( const tripoint_bub_ms &p : here.points_in_radius( u.pos_bub(),
             live_bandit_local_source_scan_radius_ms ) ) {
         const int fire_intensity = here.get_field_intensity( p, fd_fire );
         const int smoke_intensity = here.get_field_intensity( p, fd_smoke );
-        if( fire_intensity <= 0 && smoke_intensity <= 0 ) {
+        int light_intensity = 0;
+        bandit_mark_generation::light_source_band light_source =
+            bandit_mark_generation::light_source_band::ordinary;
+
+        for( const std::pair<const field_type_id, field_entry> &field_entry : here.field_at( p ) ) {
+            light_intensity = std::max( light_intensity,
+                                        live_bandit_light_intensity_from_luminance(
+                                            field_entry.second.get_intensity_level().light_emitted ) );
+        }
+
+        light_intensity = std::max( light_intensity,
+                                    live_bandit_light_intensity_from_luminance( here.ter( p )->light_emitted ) );
+        light_intensity = std::max( light_intensity,
+                                    live_bandit_light_intensity_from_luminance( here.furn( p )->light_emitted ) );
+
+        for( const item &it : here.i_at( p ) ) {
+            float luminance = 0.0f;
+            units::angle width = 0_degrees;
+            units::angle direction = 0_degrees;
+            if( it.getlight( luminance, width, direction ) ) {
+                light_intensity = std::max( light_intensity,
+                                            live_bandit_light_intensity_from_luminance( luminance ) );
+                if( width > 0_degrees && luminance >= 8.0f ) {
+                    light_source = bandit_mark_generation::light_source_band::searchlight;
+                }
+            }
+        }
+
+        if( fire_intensity <= 0 && smoke_intensity <= 0 && light_intensity <= 0 ) {
             continue;
         }
         const tripoint_abs_omt source_omt = coords::project_to<coords::omt>( here.get_abs( p ) );
-        source_reading &reading = readings[source_omt];
+        live_bandit_local_source_reading &reading = readings[source_omt];
         reading.fire_intensity = std::max( reading.fire_intensity, fire_intensity );
         reading.smoke_intensity = std::max( reading.smoke_intensity, smoke_intensity );
+        live_bandit_note_light_source( reading, light_intensity, light_source );
         reading.outside |= here.is_outside( p );
+        reading.side_leakage = std::max( reading.side_leakage,
+                                         live_bandit_light_side_leakage_near( here, p ) );
         reading.elevated_roof_exposed |= live_bandit_fire_source_is_elevated_roof_exposed( here, p );
+    }
+
+    for( wrapped_vehicle &wrapped_veh : here.get_vehicles() ) {
+        vehicle *veh = wrapped_veh.v;
+        if( veh == nullptr ) {
+            continue;
+        }
+        for( vehicle_part *part : veh->lights() ) {
+            if( part == nullptr ) {
+                continue;
+            }
+            const tripoint_bub_ms p = veh->bub_part_pos( here, *part );
+            if( !here.inbounds( p ) || rl_dist( u.pos_bub(), p ) > live_bandit_local_source_scan_radius_ms ) {
+                continue;
+            }
+            const vpart_info &info = part->info();
+            const bool directional = info.has_flag( VPFLAG_CONE_LIGHT ) ||
+                                     info.has_flag( VPFLAG_WIDE_CONE_LIGHT );
+            const int light_intensity = live_bandit_light_intensity_from_luminance( info.bonus );
+            const tripoint_abs_omt source_omt = coords::project_to<coords::omt>( here.get_abs( p ) );
+            live_bandit_local_source_reading &reading = readings[source_omt];
+            live_bandit_note_light_source( reading, light_intensity,
+                                           directional ? bandit_mark_generation::light_source_band::searchlight :
+                                           bandit_mark_generation::light_source_band::ordinary );
+            reading.outside |= here.is_outside( p );
+            reading.side_leakage = std::max( reading.side_leakage,
+                                             live_bandit_light_side_leakage_near( here, p ) );
+            reading.elevated_roof_exposed |= live_bandit_fire_source_is_elevated_roof_exposed( here, p );
+        }
     }
 
     std::vector<live_bandit_signal_observation> observations;
@@ -1349,9 +1464,10 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
     const bandit_mark_generation::light_time_band light_time = live_bandit_light_time_band();
     const bandit_mark_generation::light_weather_band light_weather = live_bandit_light_weather_band();
     const tripoint_abs_omt player_omt = u.pos_abs_omt();
-    for( const std::pair<const tripoint_abs_omt, source_reading> &entry : readings ) {
+    const weather_manager &weather = get_weather_const();
+    for( const std::pair<const tripoint_abs_omt, live_bandit_local_source_reading> &entry : readings ) {
         const tripoint_abs_omt &source_omt = entry.first;
-        const source_reading &reading = entry.second;
+        const live_bandit_local_source_reading &reading = entry.second;
         bandit_mark_generation::local_field_signal_reading adapter_reading;
         adapter_reading.smoke_id = live_bandit_source_mark_id( "smoke", source_omt );
         adapter_reading.light_id = live_bandit_source_mark_id( "light", source_omt );
@@ -1360,7 +1476,10 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         adapter_reading.observed_range_omt = rl_dist( player_omt, source_omt );
         adapter_reading.fire_intensity = reading.fire_intensity;
         adapter_reading.smoke_intensity = reading.smoke_intensity;
+        adapter_reading.light_intensity = reading.light_intensity;
+        adapter_reading.light_source = reading.light_source;
         adapter_reading.outside = reading.outside;
+        adapter_reading.side_leakage = reading.side_leakage;
         adapter_reading.elevated_roof_exposed = reading.elevated_roof_exposed;
         adapter_reading.smoke_weather = weather_band;
         adapter_reading.light_time = light_time;
@@ -1453,6 +1572,9 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
                                    << " weather=" << bandit_mark_generation::to_string( weather_band )
                                    << " light_time=" << bandit_mark_generation::to_string( light_time )
                                    << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                   << " raw_weather=" << weather.weather_id.str()
+                                   << " sight_penalty=" << weather.weather_id->sight_penalty
+                                   << " windspeed=" << weather.windspeed
                                    << '\n';
     } else {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
@@ -1463,6 +1585,9 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
                                    << " weather=" << bandit_mark_generation::to_string( weather_band )
                                    << " light_time=" << bandit_mark_generation::to_string( light_time )
                                    << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                   << " raw_weather=" << weather.weather_id.str()
+                                   << " sight_penalty=" << weather.weather_id->sight_penalty
+                                   << " windspeed=" << weather.windspeed
                                    << '\n';
     }
     return observations;
@@ -1616,6 +1741,8 @@ int signal_live_hordes_from_light_observations(
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world horde light signal: packet="
                                    << signal.mark.mark_id << " kind=" << signal.mark.kind
                                    << " source_omt=" << signal.source_omt.to_string()
+                                   << " source_sm=" << source_sm.to_string()
+                                   << " current_signal=yes"
                                    << " horde_signal_power=" << signal.horde_signal_power
                                    << " range_cap_omt=" << signal.range_cap_omt
                                    << " weather=" << signal.weather_summary << '\n';

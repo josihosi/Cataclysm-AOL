@@ -184,7 +184,10 @@ struct local_field_signal_reading {
     int observed_range_omt = 0;
     int fire_intensity = 0;
     int smoke_intensity = 0;
+    int light_intensity = 0;
+    light_source_band light_source = light_source_band::ordinary;
     bool outside = false;
+    int side_leakage = 0;
     bool elevated_roof_exposed = false;
     smoke_weather_band smoke_weather = smoke_weather_band::clear;
     light_time_band light_time = light_time_band::night;

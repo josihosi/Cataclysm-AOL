@@ -482,6 +482,50 @@ TEST_CASE( "bandit_mark_generation_local_field_adapter_keeps_smoke_only_from_sig
     CHECK( projection.smoke.viable );
 }
 
+TEST_CASE( "bandit_mark_generation_local_field_adapter_accepts_non_fire_light_sources",
+           "[bandit][marks][live_signal]" )
+{
+    bandit_mark_generation::local_field_signal_reading window_light;
+    window_light.light_id = "window_lamp";
+    window_light.envelope_id = "player@0,0,0";
+    window_light.region_id = "omt_5_0_0";
+    window_light.observed_range_omt = 5;
+    window_light.light_intensity = 2;
+    window_light.side_leakage = 2;
+    window_light.light_time = bandit_mark_generation::light_time_band::night;
+    window_light.light_weather = bandit_mark_generation::light_weather_band::clear;
+
+    const bandit_mark_generation::local_field_signal_projection window_projection =
+        bandit_mark_generation::adapt_local_field_signal_reading( window_light );
+
+    CHECK_FALSE( window_projection.has_smoke_packet );
+    REQUIRE( window_projection.has_light_packet );
+    REQUIRE( window_projection.light.viable );
+    CHECK( window_projection.light.packet.source_strength == 2 );
+    CHECK( window_projection.light.packet.exposure == bandit_mark_generation::light_exposure_band::screened );
+    CHECK( window_projection.light.signal.kind == "light" );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( window_projection.light ) == 0 );
+
+    bandit_mark_generation::local_field_signal_reading exposed_searchlight = window_light;
+    exposed_searchlight.light_id = "road_searchlight";
+    exposed_searchlight.observed_range_omt = 7;
+    exposed_searchlight.light_intensity = 3;
+    exposed_searchlight.light_source = bandit_mark_generation::light_source_band::searchlight;
+    exposed_searchlight.outside = true;
+    exposed_searchlight.side_leakage = 0;
+
+    const bandit_mark_generation::local_field_signal_projection searchlight_projection =
+        bandit_mark_generation::adapt_local_field_signal_reading( exposed_searchlight );
+
+    REQUIRE( searchlight_projection.has_light_packet );
+    REQUIRE( searchlight_projection.light.viable );
+    CHECK( searchlight_projection.light.packet.exposure == bandit_mark_generation::light_exposure_band::exposed );
+    CHECK( searchlight_projection.light.signal.kind == "searchlight" );
+    CHECK( searchlight_projection.light.signal.threat_add == 1 );
+    CHECK( searchlight_projection.light.signal.bounty_add == 0 );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( searchlight_projection.light ) > 0 );
+}
+
 TEST_CASE( "bandit_mark_generation_portal_storm_light_keeps_bright_exposed_leaks_legible_but_bounded",
            "[bandit][marks]" )
 {
