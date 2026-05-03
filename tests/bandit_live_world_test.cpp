@@ -2408,6 +2408,17 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK( camp_report.find( "posture=hold_off" ) != std::string::npos );
     CHECK( camp_report.find( "strength=1" ) != std::string::npos );
     CHECK( camp_report.find( "threat=3" ) != std::string::npos );
+    CHECK( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, camp_input, decision,
+            character_id( 901 ) ) );
+
+    bandit_live_world::local_gate_input distant_watch_input = camp_input;
+    distant_watch_input.current_exposure = false;
+    distant_watch_input.recent_exposure = false;
+    distant_watch_input.standoff_distance = bandit_live_world::minimum_hold_off_standoff_omt();
+    const bandit_live_world::local_gate_decision distant_watch_decision =
+        bandit_live_world::choose_local_gate_posture( site, distant_watch_input );
+    CHECK_FALSE( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, distant_watch_input,
+                 distant_watch_decision, character_id( 901 ) ) );
 
     bandit_live_world::local_gate_input probe_input;
     probe_input.local_threat = 1;
@@ -2465,14 +2476,14 @@ TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",
     const tripoint_abs_omt goal = bandit_live_world::choose_hold_off_standoff_goal(
                                       camp_anchor, player, 2 );
 
-    CHECK( bandit_live_world::ordinary_scout_watch_standoff_omt() == 2 );
-    CHECK( bandit_live_world::minimum_hold_off_standoff_omt() == 2 );
+    CHECK( bandit_live_world::ordinary_scout_watch_standoff_omt() == 5 );
+    CHECK( bandit_live_world::minimum_hold_off_standoff_omt() == 5 );
     CHECK( rl_dist( goal, player ) >= bandit_live_world::minimum_hold_off_standoff_omt() );
-    CHECK( goal == tripoint_abs_omt( 140, 43, 0 ) );
+    CHECK( goal == tripoint_abs_omt( 140, 46, 0 ) );
 
     const tripoint_abs_omt diagonal_goal = bandit_live_world::choose_hold_off_standoff_goal(
             tripoint_abs_omt( 150, 51, 0 ), player, 2 );
-    CHECK( diagonal_goal == tripoint_abs_omt( 142, 43, 0 ) );
+    CHECK( diagonal_goal == tripoint_abs_omt( 145, 46, 0 ) );
 
     CHECK( bandit_live_world::choose_hold_off_standoff_goal( player, player, 2 ) == player );
 }

@@ -497,6 +497,9 @@ int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
         const tripoint_abs_omt &player_omt, int requested_distance );
+bool hot_defended_doorstep_blocks_pickup( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision,
+        const character_id &member_id );
 int ordinary_scout_sortie_limit_minutes();
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         bool current_exposure, bool recent_exposure,

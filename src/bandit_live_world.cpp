@@ -2723,7 +2723,7 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
 
 int ordinary_scout_watch_standoff_omt()
 {
-    return 2;
+    return 5;
 }
 
 int minimum_hold_off_standoff_omt()
@@ -2744,6 +2744,32 @@ tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anc
     }
     return tripoint_abs_omt( player_omt.x() + dx * desired_distance,
                              player_omt.y() + dy * desired_distance, player_omt.z() );
+}
+
+bool hot_defended_doorstep_blocks_pickup( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision,
+        const character_id &member_id )
+{
+    if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+        return false;
+    }
+    if( std::find( site.active_member_ids.begin(), site.active_member_ids.end(), member_id ) ==
+        site.active_member_ids.end() ) {
+        return false;
+    }
+    if( !input.basecamp_or_camp_scene || input.rolling_travel_scene ) {
+        return false;
+    }
+    if( decision.combat_forward || decision.opens_shakedown_surface ) {
+        return false;
+    }
+    if( decision.posture != local_gate_posture::stalk &&
+        decision.posture != local_gate_posture::hold_off ) {
+        return false;
+    }
+    const bool hot_by_sight_or_doorstep = input.current_exposure || input.recent_exposure ||
+                                          input.standoff_distance <= 1;
+    return hot_by_sight_or_doorstep;
 }
 
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
