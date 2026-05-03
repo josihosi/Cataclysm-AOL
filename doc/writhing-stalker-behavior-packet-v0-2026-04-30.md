@@ -20,7 +20,7 @@ Create the first playable writhing stalker v0: a rare singleton first-generation
 
 Josef's preserved flavor text is documentation truth for the creature description. Do not replace it with generic zombie/predator slop:
 
-> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It's the eyes that do it for you, not it's dripping teeth.
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It’s the eyes that do it for you, not the dripping teeth.
 
 The in-game description may polish grammar, but it must keep the core: inward grey arms, twitching/writhing body, half-crazed/half-panicked eyes, prehensile madness, and the explicit idea that the eyes—not the teeth—are what unsettles the player.
 

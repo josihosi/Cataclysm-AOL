@@ -68,7 +68,7 @@ Raw intake:
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
 - `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
 
-Execution order: shakedown Pay/Fight + trade/debt correction; defended-camp scout/standoff/sight avoidance including bandit/cannibal stalking-mode LoS break; multi-z camp identity + roof-z routing/throttle; hostile-camp post-scout escalation; all-light-source adapter; patrol aggression/alarm/report hygiene; writhing-stalker larger-distance/sight-avoid/threat-drop swoop plus boot-out rhythm; NPC sorting debounce; debug spawn horde/stalker/rider options; locker/basecamp equipment consistency; cannibal Monsterbone spear lore item.
+Execution order: shakedown Pay/Fight + trade/debt correction; defended-camp scout/standoff/sight avoidance including bandit/cannibal stalking-mode LoS break and player smoke-out response; multi-z camp identity + roof/first-floor/`z=5` tower routing/throttle; hostile-camp post-scout escalation; all-light/smoke-source adapter; patrol aggression/alarm/report hygiene; writhing-stalker larger-distance/sight-avoid/threat-drop swoop plus boot-out rhythm; NPC sorting debounce; debug spawn horde/stalker/rider options; locker/basecamp equipment consistency; cannibal Monsterbone spear lore item.
 
 Important correction: the 2026-05-02 scenic shakedown proof closed the wrong visible response contract (`Pay / Fight / Refuse`) after Josef had already reported that three choices were wrong and that Pay should open a trade/debt-style surface. Treat this as a reopened correction, not a new feature whim.
 

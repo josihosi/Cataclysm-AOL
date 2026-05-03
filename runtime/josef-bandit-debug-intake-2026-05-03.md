@@ -333,3 +333,21 @@ Josef asked to think about testing for all package points: deterministic interna
 - which behavior can be covered by deterministic internal switch tests versus playtesting.
 
 Classification: added `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md` as the package validation matrix.
+
+## Follow-up request — writhing stalker final flavor sentence
+
+Josef selected this exact final sentence for the writhing stalker description:
+
+> It’s the eyes that do it for you, not the dripping teeth.
+
+Implementation note: actual JSON may use ASCII apostrophe if needed, but the sentence must keep `do it for you` and `not the dripping teeth`.
+
+## Follow-up request — smoke-out and high-z tower edge cases
+
+Josef asked to include player-vs-hostile edge cases in the active test matrix:
+- what if the player smokes out a suspected bandit stalking location;
+- same for cannibals;
+- what if the camp/player is in a tower around `z=5`;
+- keep thinking in deterministic switch tests first, with live/playtest rows for product behavior/feel.
+
+Classification: folded into `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`, `TESTING.md`, `TODO.md`, `SUCCESS.md`, and handoff docs.

@@ -8,7 +8,7 @@ A slim, shaking figure. Grey arms wrapped around its chest, hugging its twitchin
 
 Josef's original creature flavor is canonical and must not be flattened into generic zombie prose:
 
-> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It's the eyes that do it for you, not it's dripping teeth.
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It’s the eyes that do it for you, not the dripping teeth.
 
 In-game description text may correct grammar or line rhythm, but it must preserve the image: slim and shaking; grey arms wrapped inward; twitching/writhing body; eyes that raise the neck hair; half-crazed / half-panicked motion; prehensile madness; teeth explicitly not being the point.
 

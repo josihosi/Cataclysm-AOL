@@ -22,10 +22,10 @@ Execute the packaged 2026-05-02 + 2026-05-03 live debug correction stack in orde
 ## Execution order
 
 1. Shakedown Pay/Fight only + trade/debt payment over the honest basecamp/faction-side pool; remove/refute misleading `pay/fight/refuse` success expectations.
-2. Defended-camp scout/standoff/sight-avoid/hot-loot behavior, including bandits/cannibals/compatible hostiles in stalking mode actually breaking LoS/backing off/rerouting/escalating when seen.
-3. Multi-z bandit camp identity + roof-z routing/throttle fallback.
+2. Defended-camp scout/standoff/sight-avoid/hot-loot behavior, including bandits/cannibals/compatible hostiles in stalking mode actually breaking LoS/backing off/rerouting/waiting/escalating when seen or when the player smokes out the suspected stalking tile/approach line.
+3. Multi-z hostile camp identity + roof/tower-z routing/throttle fallback, including first-floor/roof and `z=5` tower-style player camps.
 4. Hostile-camp post-scout escalation into roster-scaled pressure: bandit toll/shakedown, cannibal attack dispatch up to large/whole-camp commitment when odds permit.
-5. All-light-source adapter for lamps/household/searchlight/fire with bandit vs zombie interpretation split, plus fog/weather mismatch and stale `tracking=0` horde destination audit.
+5. All-light-source adapter for lamps/household/searchlight/fire/smoke with bandit/cannibal vs zombie interpretation split, plus fog/weather mismatch and stale `tracking=0` horde destination audit.
 6. Camp patrol aggression/alarm plus patrol-report hygiene.
 7. Writhing stalker bigger stalking distance, real sight avoidance, threat-drop fast swoop timing, and post-burst boot-out/recovery.
 8. NPC sorting failure debounce.

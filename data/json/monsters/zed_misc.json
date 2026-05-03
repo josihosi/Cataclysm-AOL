@@ -499,7 +499,7 @@
     "id": "mon_writhing_stalker",
     "type": "MONSTER",
     "name": { "str": "writhing stalker" },
-    "description": "A slim, shaking figure.  Grey arms wrap around its twitching, writhing body, clutching its own chest.  Its eyes make the hairs on your neck stand up: half crazed, half panicked, steering around in prehensile madness.  It is the eyes that do it, not the dripping teeth.",
+    "description": "A slim, shaking figure.  Grey arms wrap around its twitching, writhing body, clutching its own chest.  Its eyes make the hairs on your neck stand up: half crazed, half panicked, steering around in prehensile madness.  It's the eyes that do it for you, not the dripping teeth.",
     "copy-from": "mon_zombie_hunter",
     "species": [ "ZOMBIE", "HUMAN" ],
     "hp": 90,

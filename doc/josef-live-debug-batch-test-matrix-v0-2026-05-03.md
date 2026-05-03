@@ -37,15 +37,27 @@ Deterministic rows:
 
 Expected deterministic seam: planner/local-gate/evaluator tests can assert distance target, LoS flag handling, hot-tile flag, selected posture, and fallback reason.
 
-### Vertical / first-floor / roof target handling
+### Vertical / first-floor / roof / tower target handling
 
 Deterministic rows:
 - player inside ground floor (`z=0`) -> overmap dispatch targets reachable ground approach/standoff OMT;
 - player upstairs / first floor / roof (`z=1`) -> overmap dispatch still targets reachable ground approach/standoff OMT, then local/bubble layer handles stairs/roof/vertical approach;
+- player in tower / very high camp (`z=5`) -> overmap/site identity still collapses to one player camp/site with z-footprint metadata; hostile dispatch targets reachable ground approach/standoff OMT and local layer treats vertical access, sightlines, and blocker reasons explicitly;
 - no known route to target z -> fallback to reachable approach target, not `route_missing` plus long throttle silence;
 - multi-z camp special -> one owner/site with z-footprint metadata, not duplicated camps.
 
-Live rows must include at least one roof/upstairs setup and one ordinary ground-floor/inside setup.
+Live rows must include at least one roof/upstairs setup, one ordinary ground-floor/inside setup, and one high-z/tower (`z=5` or closest supported fixture) setup.
+
+### Player counter-signal / smoke-out behavior
+
+Deterministic rows:
+- player smoke overlaps suspected stalking location -> stalker/scout confidence drops or mark changes from clear visual lead to obscured/uncertain lead;
+- smoke between player camp and hostile watcher -> LoS/exposure becomes blocked/uncertain, not magically transparent;
+- smoke at hostile watcher tile -> compatible bandit/cannibal/stalker profiles reposition, wait, probe around, or escalate based on threat/profile rather than standing in the smoke;
+- smoke from player camp itself -> zombies/hordes may treat exposed smoke/fire broadly as attraction, while bandits/cannibals treat it as occupancy/concealment/threat context and preserve profile-specific response;
+- repeated smoke-out of same stalking spot -> hostile should not retry the exact exposed/obscured tile in a loop without decay/cooldown/reason.
+
+Live rows must include at least one bandit and one cannibal smoke-out case. Writhing stalker smoke-out can be deterministic-first unless a staged local smoke fixture is cheap.
 
 ## Bandit rows
 
@@ -65,8 +77,9 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 - **Defended doorstep:** bandit near camp/house and visibly looked at by player/NPCs breaks LoS or backs off; no stationary doorway/casing goblin behavior.
 - **Scout returns:** scout observes, returns, camp has ample roster, next dispatch is larger/toll-capable rather than another single scout.
 - **High-threat hold:** three armed defenders / camp threat make scout keep binocular distance or abort.
-- **Roof/first-floor player:** player upstairs/roof with visible fire/light does not split camp or route to unreachable z; bandit dispatch chooses reachable approach.
-- **Lamp vs searchlight vs fire:** bandit distinguishes household/fire occupancy evidence from directional searchlight/active-defense threat.
+- **Roof/first-floor/tower player:** player upstairs/roof/`z=5` tower with visible fire/light does not split camp or route to unreachable z; bandit dispatch chooses reachable ground approach and records vertical blocker/access if needed.
+- **Smoke out watcher:** if the player smokes the suspected stalking location or line between camp and watcher, bandit switches to obscured-lead/reposition/probe/escalate logic instead of holding the same visible tile.
+- **Lamp vs searchlight vs fire/smoke:** bandit distinguishes household/fire/smoke occupancy evidence from directional searchlight/active-defense threat.
 - **Payment UI:** selecting Pay visibly enters trade/debt-style UI and success/cancel/insufficient-payment outcomes are distinct.
 
 ### Josef feel playtests
@@ -92,7 +105,8 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 ### Staged/live harness
 
 - **Inside ground floor:** player inside house, stalker outside; it should not stand in front of the window if seen.
-- **Player first floor/upstairs/roof (`z=1`):** stalker should not overmap-route to impossible z; should watch/approach via reachable local layer or log blocker.
+- **Player first floor/upstairs/roof/tower (`z=1`/`z=5`):** stalker should not overmap-route to impossible z; should watch/approach via reachable local layer, stairs/climb access if supported, or log blocker.
+- **Player smokes stalking side:** smoke blocks/obscures the line or suspected hide; stalker shifts hide/approach side or waits instead of freezing in the smoke.
 - **Zombie distraction:** zombie(s) enter house / engage defenders; stalker swoops within bounded cadence.
 - **After zombie death:** stalker boots back out / resumes stalking instead of hanging in melee range.
 - **Player hunts it:** Josef/player exits and pursues or attacks; stalker either fights back briefly, breaks LoS, or retreats with legible reason.
@@ -121,7 +135,8 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 - **Day/high threat:** cannibals stalk/hold from distance; no daylight suicide rush.
 - **Night/concealment favorable:** cannibals attack with a multi-member dispatch.
 - **Defended base contact:** if they believe they can overpower defenders, dispatch scales up; if not, they watch/withdraw.
-- **Player first floor/roof:** cannibal dispatch chooses reachable ground approach; local layer handles verticality or logs blocker.
+- **Player first floor/roof/tower (`z=5`):** cannibal dispatch chooses reachable ground approach; local layer handles verticality or logs blocker.
+- **Smoke out stalking location:** player smoke on suspected cannibal watcher/approach line causes reposition/wait/reroute/attack-decision update, not same-tile smoke camping.
 - **Monsterbone spear camp:** save/load or fixture audit shows 1-2 camp copies and selected important wielders, not every cannibal.
 
 ### Josef feel playtests
@@ -137,7 +152,8 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 - **Spawn helper:** rider can be staged at `5` and `10` OMT; saved state proves placement.
 - **Cover / close pressure:** if player has cover or enters bad close-pressure band, rider repositions instead of inertly failing ranged logic.
 - **Wounded contrast:** wounded/pressured rider behavior remains distinct from healthy confident pressure.
-- **Vertical target:** player first floor/roof/inside does not make rider choose impossible direct line; it circles, holds, dismount/approach if supported, or logs blocker.
+- **Vertical target:** player first floor/roof/inside/`z=5` tower does not make rider choose impossible direct line; it circles, holds, dismount/approach if supported, or logs blocker.
+- **Smoke/blocked line:** smoke or building cover should alter ranged pressure/line-of-fire rather than producing inert no-attack deadlock.
 - **Player hunts rider:** if player closes aggressively, rider either keeps distance, swaps posture, or fights back; no no-attack deadlock.
 - **Light/horde chaos:** rider behavior remains bounded when zombies/hordes/lights are present; no accidental alliance or target confusion.
 
@@ -145,7 +161,8 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 
 - rider spawned 5 OMT away, open field: approaches/pressures within expected cadence;
 - rider spawned 10 OMT away: pathing/dispatch state persists and does not silently vanish;
-- player inside/first floor/roof: rider circles/holds/repositions instead of impossible z-target beeline;
+- player inside/first floor/roof/`z=5` tower: rider circles/holds/repositions instead of impossible z-target beeline;
+- smoke/cover blocks line: rider visibly repositions/holds/swaps posture rather than inertly timing out;
 - player hunts rider: combat/reposition fallback is visible.
 
 ### Josef feel playtests
@@ -207,10 +224,12 @@ Live rows must include at least one roof/upstairs setup and one ordinary ground-
 Only after deterministic and staged rows are shaped, prepare a short Josef-facing playtest packet with 4-6 scenes:
 
 1. Bandit defended camp: scout watches from distance, gets seen, backs off, later escalates.
-2. Writhing stalker house: player inside/first floor, zombies distract defenders, stalker swoops, then boots out.
-3. Cannibal camp: night/concealment attack dispatch vs day/high-threat stalk/hold contrast.
-4. Zombie rider: 5/10 OMT pressure plus inside/first-floor counterplay.
-5. Light/horde debug: medium horde + lamp/fire/searchlight contrast.
-6. Optional Monsterbone spear: find/witness elite cannibal spear without loot flood.
+2. Smoke-out hostile watcher: player smokes suspected bandit/cannibal stalking location or approach line and observes reposition/wait/reroute/escalation.
+3. High-z camp/tower: player camp on first floor/roof and a high tower (`z=5` if feasible) verifies hostile ground approach + vertical blocker/access behavior.
+4. Writhing stalker house: player inside/first floor, zombies distract defenders, stalker swoops, then boots out; second branch where player hunts it.
+5. Cannibal camp: night/concealment attack dispatch vs day/high-threat stalk/hold contrast.
+6. Zombie rider: 5/10 OMT pressure plus inside/first-floor/tower counterplay.
+7. Light/horde debug: medium horde + lamp/fire/searchlight/smoke contrast.
+8. Optional Monsterbone spear: find/witness elite cannibal spear without loot flood.
 
 Each scene should ask Josef only feel questions: readable, scary, fair, alive, too passive, too suicidal, too gamey.

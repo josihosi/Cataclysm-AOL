@@ -26,7 +26,7 @@ Current execution item: continue Slice 1, **Shakedown UI/payment contract correc
 
 Execution order:
 1. Shakedown visible Pay/Fight only; Pay opens trade/debt-style payment over the honest basecamp/faction-side pool; correct misleading `pay/fight/refuse` docs/tests/log expectations.
-2. Defended-camp scout/standoff/sight-avoid/hot-loot: about `5` OMT watch distance, sighted scouts plus stalking-mode bandits/cannibals/compatible hostiles actually break LoS/back off/reroute/escalate, no casual looting on hot defended doorstep.
+2. Defended-camp scout/standoff/sight-avoid/hot-loot: about `5` OMT watch distance, sighted or player-smoked-out scouts plus stalking-mode bandits/cannibals/compatible hostiles actually break LoS/back off/reroute/wait/escalate, no casual looting on hot defended doorstep.
 3. Multi-z camp identity + roof-z routing/throttle: one site across z-levels, reachable ground approach target, no `route_missing` -> 30-minute silence.
 4. Hostile-camp escalation after scout confirmation: ample roster can promote next pressure; bandits into toll/shakedown party, cannibals into attack dispatch up to large/whole-camp commitment when they can overpower defenders.
 5. All-light-source adapter: lamps/household/searchlights/fire can feed bounded live light signals; zombies treat light broadly, bandits distinguish light semantics; audit fog/weather mismatch and stale `tracking=0` horde destinations.
