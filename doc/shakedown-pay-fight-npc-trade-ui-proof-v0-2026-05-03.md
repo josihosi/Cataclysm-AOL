@@ -8,6 +8,7 @@ Status: GREEN FEATURE-PATH CHECKPOINT for the shakedown visible-fork/open-paymen
 - Backout/refuse still maps to the fight/refusal branch, but no third visible response or conversation utility action is shown on this shakedown surface.
 - Selecting `Pay` opens the real NPC trade UI path (`npc_trading::trade` / `trade_ui`) with `Pay:` debt before any hidden surrender.
 - The Pay window is wired to the broader honest camp-side pool: avatar carried goods, nearby ally/NPC carried goods, and nearby scene/basecamp goods.
+- The demanded debt/toll is derived from the reachable camp-side pool and pressure modifier, not a fixed/stub amount or player-carried-only value.
 - Fight remains a distinct branch.
 - Reopened demand still shows Pay/Fight with the higher bounded reopened toll, and reopened `Pay` opens the same real NPC trade UI path.
 - Cancelling/backing out of the Pay trade UI maps to the refusal/fight outcome; it does not silently surrender goods or expose a third visible dialogue answer.
@@ -35,6 +36,7 @@ Build/current-binary gates:
 - `git diff --check`, harness `py_compile`, and edited shakedown scenario JSON parse -> green; logs `/tmp/caol_shakedown_no_extra_actions_quick_gates_20260503.log` and `/tmp/caol_shakedown_post_commit_doc_diff_check_20260503.log`.
 - Final proof windows after the original visible-option repair reported `Cataclysm: Dark Days Ahead - d0476b4407`, `repo_head=d0476b4407`, `captured_head=d0476b4407`, `captured_dirty=false`, `version_matches_runtime_paths=true`.
 - Fresh Pay-bridge/writeback reruns after the later live Pay nudge report `Cataclysm: Dark Days Ahead - 04de6e0f94` on the rebuilt current binary, with no version mismatch.
+- Deterministic shakedown contract gate: `./tests/cata_test "[bandit][live_world][shakedown]" --reporter compact` -> passed 4 test cases / 139 assertions; log `/tmp/caol_shakedown_contract_tests_20260503.log`. This covers the basecamp-vs-offbase pool composition and toll scaling path: basecamp scene pool `100 + 50 + 850 = 1000` produces first demand `350`, offbase ignores remote basecamp value and uses carried/vehicle-local reach, reopened demand raises by modifier, and no-shakedown profiles stay blocked.
 
 Live/staged harness rows credited after the repair:
 
@@ -43,12 +45,14 @@ Live/staged harness rows credited after the repair:
   - Window/build receipt: `Cataclysm: Dark Days Ahead - 04de6e0f94`; no version mismatch.
   - OCR guard after choosing `Pay`: `F1 to auto balance with highlighted item` from `choose_pay.after.screen_text.json`, proving the real trade UI is visibly open.
   - Debug artifact: `shakedown_trade_ui opened demanded=15797 reachable=45134 player_pool=3211 nearby_npc_pool=5222 scene_pool=36701 trader=4 trade_api=npc_trading::trade title=Pay:`.
+  - Pool/basis read: `3211 + 5222 + 36701 = 45134` reachable camp-side value; first demand `15797` is the derived first-demand toll, not a player-carried-only or fixed/stub value.
 
 - Fresh current reopened-demand Pay/open-window row, `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260503_192442/`
   - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 6/6.
   - Window/build receipt: `Cataclysm: Dark Days Ahead - 04de6e0f94`; no version mismatch.
   - OCR guard after choosing reopened `Pay`: `F1 to auto balance with highlighted item`.
   - Debug artifact: `shakedown_trade_ui opened demanded=22116 reachable=45134 player_pool=3211 nearby_npc_pool=5222 scene_pool=36701 trader=4 trade_api=npc_trading::trade title=Pay:`.
+  - Pool/basis read: same reachable camp-side pool, with reopened-demand pressure modifier raising the derived debt to `22116`.
 
 - Fresh current Pay-cancel/refusal row, `tmp.bandit_pay_cancel_fight_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260503_192911/`
   - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 8/8.
@@ -91,4 +95,4 @@ Superseded rows: the pre-nudge rows `20260503_171632`, `20260503_171825`, and `2
 
 ## Caveats / next slice boundary
 
-This checkpoint proves the visible Pay/Fight-only fork, real trade-window opening path, cancel/refusal mapping, and successful-payment saved writeback on a freshly rebuilt current binary. It does not claim full natural-discovery coverage or broad diplomacy/payment redesign, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.
+This checkpoint proves the visible Pay/Fight-only fork, real trade-window opening path, whole camp-side pool footing, pool-derived demand basis, cancel/refusal mapping, and successful-payment saved writeback on a freshly rebuilt current binary. It does not claim full natural-discovery coverage or broad diplomacy/payment redesign, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.

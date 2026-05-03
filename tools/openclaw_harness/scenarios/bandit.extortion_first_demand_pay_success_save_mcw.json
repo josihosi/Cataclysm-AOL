@@ -20,7 +20,8 @@
     "trade_api=npc_trading::trade",
     "title=Pay:",
     "shakedown_trade_ui result=paid demanded=15797 reachable=45134",
-    "shakedown_surface paid toll=15797 demanded=15797 reachable=45134"
+    "shakedown_surface paid toll=15797 demanded=15797 reachable=45134",
+    "player_pool=3211 nearby_npc_pool=5222 scene_pool=36701"
   ],
   "capture_world_after": true,
   "steps": [
@@ -105,15 +106,20 @@
       "label": "audit_trade_ui_opened_artifact",
       "required_line_patterns": [
         [
-          "shakedown_trade_ui opened demanded=15797 reachable=45134",
+          "shakedown_trade_ui opened",
+          "demanded=15797",
+          "reachable=45134",
+          "player_pool=3211",
+          "nearby_npc_pool=5222",
+          "scene_pool=36701",
           "trade_api=npc_trading::trade",
           "title=Pay:"
         ]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_first_bandit_trade_ui_artifact_missing",
-      "abort_reason": "same-run debug artifact did not prove that choosing Pay opened the actual NPC trade API / trade window before goods were surrendered",
-      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, pool values, and the selected bandit trader"
+      "abort_reason": "same-run debug artifact did not prove choosing Pay opened the actual NPC trade API / trade window over the whole honest basecamp-side pool before goods were surrendered",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, and the honest pool components: player carried, nearby NPC/faction, and scene/basecamp goods"
     },
     {
       "kind": "press",

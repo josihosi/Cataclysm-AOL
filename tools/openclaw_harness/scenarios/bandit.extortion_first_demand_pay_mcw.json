@@ -18,7 +18,8 @@
     "pay_option=yes fight_option=yes",
     "shakedown_trade_ui opened demanded=15797 reachable=45134",
     "trade_api=npc_trading::trade",
-    "title=Pay:"
+    "title=Pay:",
+    "player_pool=3211 nearby_npc_pool=5222 scene_pool=36701"
   ],
   "capture_world_after": true,
   "steps": [
@@ -103,21 +104,26 @@
       "label": "audit_trade_ui_opened_artifact",
       "required_line_patterns": [
         [
-          "shakedown_trade_ui opened demanded=15797 reachable=45134",
+          "shakedown_trade_ui opened",
+          "demanded=15797",
+          "reachable=45134",
+          "player_pool=3211",
+          "nearby_npc_pool=5222",
+          "scene_pool=36701",
           "trade_api=npc_trading::trade",
           "title=Pay:"
         ]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_first_bandit_trade_ui_artifact_missing",
-      "abort_reason": "same-run debug artifact did not prove that choosing Pay opened the actual NPC trade API / trade window before goods were surrendered",
-      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, pool values, and the selected bandit trader"
+      "abort_reason": "same-run debug artifact did not prove choosing Pay opened the actual NPC trade API / trade window over the whole honest basecamp-side pool before goods were surrendered",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, and the honest pool components: player carried, nearby NPC/faction, and scene/basecamp goods"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_mcw",
   "evidence_contract": {
-    "claim": "ordinary bandit local contact reaches a player-visible Pay/Fight shakedown surface; choosing Pay opens the actual NPC trade UI / trade window with a demanded Pay: debt before any hidden surrender",
+    "claim": "ordinary bandit local contact reaches a player-visible Pay/Fight shakedown surface; choosing Pay opens the actual NPC trade UI / trade window with a demanded Pay: debt before any hidden surrender, backed by the logged player/NPC/scene camp-side pool",
     "load_only_verdict": "load proof only / inconclusive for shakedown behavior",
-    "failure_rule": "No shakedown/toll-control Pay UI credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, and same-run actual NPC trade-ui-open artifact are all green/matched. Successful item-dump payment remains a separate follow-up if not proven by this scenario."
+    "failure_rule": "No shakedown/toll-control Pay UI credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, and same-run actual NPC trade-ui-open artifact with player/NPC/scene pool components are all green/matched. Successful item-dump payment remains a separate follow-up if not proven by this scenario."
   }
 }
