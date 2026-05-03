@@ -361,6 +361,7 @@ struct local_gate_decision {
     local_gate_posture posture = local_gate_posture::abort;
     int dispatch_strength = 0;
     int pressure_margin = 0;
+    bool shakedown_capable = false;
     bool opens_shakedown_surface = false;
     bool combat_forward = false;
     std::vector<std::string> notes;

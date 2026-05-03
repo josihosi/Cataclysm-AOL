@@ -3279,6 +3279,7 @@ def audit_saved_bandit_live_world_state(
     required_active_member_max_abs_offset_ms: Optional[List[int]] = None,
     player_save: str = "",
     required_remembered_target_or_mark_prefix: str = "",
+    required_remembered_pressure: str = "",
     required_min_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
     required_lead_kind: str = "",
@@ -3442,6 +3443,7 @@ def audit_saved_bandit_live_world_state(
     required_active_target_id_contains = str(required_active_target_id_contains or "").strip()
     required_active_job_type = str(required_active_job_type or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
+    required_remembered_pressure = str(required_remembered_pressure or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
     required_lead_kind = str(required_lead_kind or "").strip()
     required_lead_target_id = str(required_lead_target_id or "").strip()
@@ -3498,6 +3500,8 @@ def audit_saved_bandit_live_world_state(
         if normalized_max_abs_offset is not None and not bool(site.get("active_members_within_required_max_abs_offset_ms")):
             return False
         if required_remembered_target_or_mark_prefix and not str(site.get("remembered_target_or_mark", "")).startswith(required_remembered_target_or_mark_prefix):
+            return False
+        if required_remembered_pressure and str(site.get("remembered_pressure", "")) != required_remembered_pressure:
             return False
         if required_min_leads is not None and int(site.get("lead_count", 0) or 0) < required_min_leads:
             return False
@@ -3577,6 +3581,7 @@ def audit_saved_bandit_live_world_state(
         "required_active_members_found": required_active_members_found,
         "required_active_member_max_abs_offset_ms": normalized_max_abs_offset,
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
+        "required_remembered_pressure": required_remembered_pressure,
         "required_min_leads": required_min_leads,
         "required_lead_source_contains": required_lead_source_contains,
         "required_lead_kind": required_lead_kind,
@@ -8238,6 +8243,8 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     )]
     leads.append(lead)
     selected_site["remembered_target_or_mark"] = target_id
+    if "remembered_pressure" in transform:
+        selected_site["remembered_pressure"] = str(transform.get("remembered_pressure", "") or "").strip()
     selected_site["remembered_threat_estimate"] = int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat"))
     selected_site["remembered_bounty_estimate"] = int(transform.get("bounty", 8) or 8)
     selected_site.setdefault("known_recent_marks", [])
@@ -9304,6 +9311,7 @@ def execute_probe_steps(
                     required_remembered_target_or_mark_prefix=str(
                         step.get("required_remembered_target_or_mark_prefix", "") or ""
                     ).strip(),
+                    required_remembered_pressure=str(step.get("required_remembered_pressure", "") or "").strip(),
                     required_min_leads=required_min_leads,
                     required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
                     required_lead_kind=str(step.get("required_lead_kind", "") or "").strip(),

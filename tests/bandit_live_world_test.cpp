@@ -1956,6 +1956,142 @@ TEST_CASE( "bandit_live_world_two_bandit_camp_commits_buddy_pair_after_scout_con
     CHECK( site.count_members_in_state( bandit_live_world::member_state::at_home ) == 0 );
 }
 
+TEST_CASE( "bandit_live_world_scout_confirmed_basecamp_keeps_small_roster_to_stalk",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 5; ++i ) {
+        add_bandit_camp_member( world, i, 11970 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.dispatchable_member_capacity() == 3 );
+    site.remembered_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "confirmed_basecamp@18,20,0";
+    lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.target_id = "player@18,20,0";
+    lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.bounty = 8;
+    lead.threat = 1;
+    lead.confidence = 3;
+
+    const bandit_live_world::camp_map_dispatch_decision decision =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+    CHECK( decision.intent == bandit_dry_run::job_template::stalk );
+    CHECK( decision.hard_home_reserve == 2 );
+    CHECK( decision.dispatchable == 3 );
+    CHECK( decision.selected_member_count == 2 );
+}
+
+TEST_CASE( "bandit_live_world_scout_confirmed_basecamp_promotes_to_toll_party",
+           "[bandit][live_world][camp_map][shakedown]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 7; ++i ) {
+        add_bandit_camp_member( world, i, 11980 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.dispatchable_member_capacity() == 5 );
+    site.remembered_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "confirmed_basecamp@18,20,0";
+    lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.target_id = "player@18,20,0";
+    lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.bounty = 8;
+    lead.threat = 1;
+    lead.confidence = 3;
+
+    const bandit_live_world::camp_map_dispatch_decision decision =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+    CHECK( decision.intent == bandit_dry_run::job_template::toll );
+    CHECK( decision.hard_home_reserve == 2 );
+    CHECK( decision.dispatchable == 5 );
+    CHECK( decision.selected_member_count == 3 );
+
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, lead );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::toll );
+    CHECK( plan.member_ids.size() == 3 );
+
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "toll" );
+    CHECK( site.active_member_ids.size() == 3 );
+    CHECK( site.count_members_in_state( bandit_live_world::member_state::at_home ) == 4 );
+
+    bandit_live_world::local_gate_input input;
+    input.local_threat = 1;
+    input.local_opportunity = 2;
+    input.local_contact_established = true;
+    const bandit_live_world::local_gate_decision gate =
+        bandit_live_world::choose_local_gate_posture( site, input );
+    CHECK( gate.valid );
+    CHECK( gate.posture == bandit_live_world::local_gate_posture::open_shakedown );
+    CHECK( gate.shakedown_capable );
+    CHECK( gate.opens_shakedown_surface );
+    CHECK_FALSE( gate.combat_forward );
+}
+
+TEST_CASE( "bandit_live_world_cannibal_scout_confirmation_promotes_to_attack_pack",
+           "[bandit][live_world][camp_map][cannibal]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 6; ++i ) {
+        add_cannibal_camp_member( world, i, 11990 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    REQUIRE( site.dispatchable_member_capacity() == 4 );
+
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "confirmed_basecamp@72,80,0";
+    lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.target_id = "player@72,80,0";
+    lead.omt = tripoint_abs_omt( 72, 80, 0 );
+    lead.bounty = 9;
+    lead.threat = 1;
+    lead.confidence = 3;
+
+    const bandit_live_world::camp_map_dispatch_decision decision =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+    CHECK( decision.intent == bandit_dry_run::job_template::raid );
+    CHECK( decision.hard_home_reserve == 2 );
+    CHECK( decision.dispatchable == 4 );
+    CHECK( decision.selected_member_count == 4 );
+
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, lead );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::raid );
+    CHECK( plan.member_ids.size() == 4 );
+
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "raid" );
+    CHECK( site.active_member_ids.size() == 4 );
+    CHECK( site.count_members_in_state( bandit_live_world::member_state::at_home ) == 2 );
+
+    bandit_live_world::local_gate_input input;
+    input.local_threat = 2;
+    input.local_opportunity = 1;
+    input.local_contact_established = true;
+    input.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision gate =
+        bandit_live_world::choose_local_gate_posture( site, input );
+    CHECK( gate.valid );
+    CHECK( gate.posture == bandit_live_world::local_gate_posture::attack_now );
+    CHECK( gate.combat_forward );
+    CHECK_FALSE( gate.opens_shakedown_surface );
+}
+
 TEST_CASE( "bandit_live_world_active_outside_group_blocks_parallel_dispatch",
            "[bandit][live_world][camp_map]" )
 {
@@ -3331,18 +3467,18 @@ TEST_CASE( "bandit_live_world_plans_live_dispatch_from_remembered_camp_map_lead"
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
     REQUIRE( plan.valid );
-    CHECK( plan.entry.job_type == bandit_dry_run::job_template::stalk );
-    CHECK( plan.member_ids.size() == 2 );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::toll );
+    CHECK( plan.member_ids.size() == 3 );
     CHECK( plan.target_omt == lead.omt );
     REQUIRE_FALSE( plan.notes.empty() );
     CHECK( plan.notes.back().find( "profile camp_style" ) != std::string::npos );
 
     REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
-    CHECK( site.active_job_type == "stalk" );
+    CHECK( site.active_job_type == "toll" );
     CHECK( site.active_target_id == lead.target_id );
     CHECK( site.active_target_omt == lead.omt );
     CHECK( site.remembered_bounty_estimate == lead.bounty );
-    CHECK( site.active_member_ids.size() == 2 );
+    CHECK( site.active_member_ids.size() == 3 );
 }
 
 TEST_CASE( "bandit_live_world_remembered_camp_map_lead_can_hold_when_no_opening",
