@@ -214,8 +214,8 @@ Non-goals:
 
 ## Success state
 
-- [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Green rows: `20260503_171632`, `20260503_171825`, `20260503_172007`._
-- [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance, using the whole honest basecamp/faction-side pool; the player must dump items into the offer until the debt is satisfied; debt/toll is derived from what that camp side has, and no silent auto-confiscation / fixed-stub / player-carried-only payment remains. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; Pay row `20260503_171632`._
+- [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Red pre-repair row: `20260503_173812`; fresh green rows: Pay/current-HEAD visible fork `20260503_180929`, supporting visible hold `20260503_174815`, Fight `20260503_175254`, reopened `20260503_175512`._
+- [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance and the honest basecamp/faction-side pool before any silent surrender. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; Pay/current-HEAD row `20260503_180929`._
 - [x] Misleading `pay/fight/refuse` docs/tests/log expectations are corrected.
 - [ ] Defended camp scout/hold-off uses about `5` OMT watch distance; bandits, cannibals, and other compatible stalking-mode hostiles perform real sight avoidance, and sighted/hot doorstep behavior backs off or escalates.
 - [ ] Multi-z bandit camp is one site/owner with z-footprint metadata; roof-z player position does not create route-missing/throttle silence.

@@ -494,6 +494,7 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     const bandit_live_world::shakedown_surface &surface )
 {
     dialogue_window d_win;
+    d_win.is_not_conversation = true;
     const std::pair<std::string, nc_color> speaker = live_bandit_shakedown_speaker( site );
     d_win.add_to_history( surface.bark, speaker.first, speaker.second );
     d_win.add_history_separator();
