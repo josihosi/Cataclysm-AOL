@@ -1,6 +1,8 @@
 # CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-Status: ACTIVE / GREENLIT / PRODUCT-BEHAVIOR DEBUG PACKET
+Status: CLOSED / CHECKPOINTED GREEN V0 / FRAU-ACCEPTED
+
+Closure note: deterministic checkpoint and current-build staged/live proof are now captured in `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md` and `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`. Keep claims bounded to those evidence classes; this packet does not claim natural random discovery, broad house navigation, or door/burglar behavior.
 
 Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
 

@@ -1,6 +1,8 @@
 # Andi handoff — CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-Status: ACTIVE / GREENLIT / NEXT ANDI LANE
+Status: CLOSED / HISTORICAL ANDI HANDOFF / SUPERSEDED BY PROOF PACKETS
+
+Current state: the lane is closed/checkpointed green v0 and Frau-accepted. This handoff is retained as the original task contract; for current evidence and claim boundaries, use `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md` and `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`.
 
 Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
 Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
