@@ -1814,10 +1814,11 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
                                     ( lead.target_id == target_id || lead.lead_id == target_id );
         const int radius = std::max( 2, lead.radius_omt );
         const tripoint_abs_omt routed_target_omt = reachable_ground_dispatch_target( site, target_omt );
+        const tripoint_abs_omt routed_lead_omt = reachable_ground_dispatch_target( site, lead.omt );
         const bool direct_omt_matches = lead.omt.z() == target_omt.z() &&
                                         rl_dist( lead.omt, target_omt ) <= radius;
-        const bool routed_omt_matches = lead.omt.z() == routed_target_omt.z() &&
-                                        rl_dist( lead.omt, routed_target_omt ) <= radius;
+        const bool routed_omt_matches = routed_lead_omt.z() == routed_target_omt.z() &&
+                                        rl_dist( routed_lead_omt, routed_target_omt ) <= radius;
         const bool omt_matches = direct_omt_matches || routed_omt_matches;
         if( !target_matches && !omt_matches ) {
             continue;
@@ -2831,6 +2832,8 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
     out << "local_gate site=" << site.site_id
         << " active_group=" << site.active_group_id
         << " target=" << site.active_target_id
+        << " live_dispatch_goal=" << site.active_target_omt.x() << ',' << site.active_target_omt.y() << ','
+        << site.active_target_omt.z()
         << " active_job=" << ( site.active_job_type.empty() ? "unknown" : site.active_job_type )
         << " profile=" << to_string( effective_profile( site ) )
         << " posture=" << to_string( decision.posture )
