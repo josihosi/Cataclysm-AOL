@@ -637,6 +637,8 @@ SHIFT_SYMBOL_HOTKEYS = {
 
 
 def peekaboo_physical_hotkey_for_key(key: str) -> str:
+    if len(key) == 1 and key.isalpha() and key.isupper():
+        return f"shift,{key.lower()}"
     return SHIFT_SYMBOL_HOTKEYS.get(key, "")
 
 

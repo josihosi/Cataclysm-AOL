@@ -88,7 +88,15 @@
       ],
       "settle_seconds": 1.0,
       "expected_visible_fact": "Pay was selected from the visible bandit shakedown dialogue; the actual NPC trade UI / trade window is now open with Pay: debt before any hidden surrender.",
-      "capture_after": true
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "F1 to auto balance"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_first_bandit_pay_did_not_open_trade_ui",
+      "abort_reason": "selecting Pay did not visibly open the NPC trade UI with auto-balance controls"
     },
     {
       "kind": "audit_log_contains",

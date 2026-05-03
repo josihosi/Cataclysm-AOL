@@ -16,7 +16,10 @@
     "demanded_toll=22116",
     "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui",
     "renegotiation reopen: previous defender loss raises this one bounded demand",
-    "pay_option=yes fight_option=yes"
+    "pay_option=yes fight_option=yes",
+    "shakedown_trade_ui opened demanded=22116 reachable=45134",
+    "trade_api=npc_trading::trade",
+    "title=Pay:"
   ],
   "steps": [
     {
@@ -79,12 +82,45 @@
       "abort_verdict": "blocked_reopened_bandit_demand_surface_artifact_missing",
       "abort_reason": "same-run debug artifact did not prove the reopened bandit camp-style demand surface, bounded higher toll, and pay/fight options",
       "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reopened higher demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
+    },
+    {
+      "kind": "press",
+      "label": "choose_reopened_pay",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Pay was selected from the visible reopened bandit shakedown dialogue; the actual NPC trade UI / trade window is now open with Pay: debt before any hidden surrender.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "F1 to auto balance"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_pay_did_not_open_trade_ui",
+      "abort_reason": "selecting Pay from the reopened demand did not visibly open the NPC trade UI with auto-balance controls"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reopened_trade_ui_opened_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_trade_ui opened demanded=22116 reachable=45134",
+          "trade_api=npc_trading::trade",
+          "title=Pay:"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_trade_ui_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove that choosing reopened Pay opened the actual NPC trade API / trade window before goods were surrendered",
+      "expected_immediate_state": "same-run debug log names the reopened actual NPC trade API, Pay: debt title, demanded/reachable values, pool values, and the selected bandit trader"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw",
   "evidence_contract": {
-    "claim": "a prior defender-loss reopen produces one bounded higher bandit shakedown demand while keeping the player-visible Pay/Fight surface",
+    "claim": "a prior defender-loss reopen produces one bounded higher bandit shakedown demand while keeping the player-visible Pay/Fight surface; choosing Pay opens the actual NPC trade UI / trade window with the higher Pay: debt",
     "load_only_verdict": "load proof only / inconclusive for reopened shakedown behavior",
-    "failure_rule": "No reopened-demand credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, bounded higher demanded toll, and reopen note are all green/matched."
+    "failure_rule": "No reopened-demand Pay credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, bounded higher demanded toll, reopen note, visible NPC trade UI, and same-run actual NPC trade-ui-open artifact are all green/matched."
   }
 }
