@@ -415,12 +415,9 @@ Current important receipts:
 
 ## Pending probes
 
-Active same-lane next action is live/staged validation for `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` after the deterministic threat/distraction handoff implementation checkpoint.
+No active pending probes for Andi right now.
 
-Required remaining active-lane probes:
-- Current-build high-threat/allies row: day/bright or strong visibility + about three friendly NPCs should produce `live_high_threat_allied_light_retreat_stalk` / overmatched stalking rather than same-tile loiter.
-- Current-build night/window/outside row: reachable night/outside bad-position loiter should produce attack/reposition/retreat with anti-gnome reason, not static window décor.
-- Current-build zombie/distraction row: valid local evidence plus zombie/hostile pressure on the player/NPC tile should produce dark-square approach/strike or a precise blocker, while missing evidence stays no-omniscience/no-credit.
+`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is closed/checkpointed green v0 after Frau review. The previously pending high-threat/allies, night/window/outside anti-gnome, and zombie/distraction staged/live rows are credited in the closed validation receipt above. Do not rerun them by ritual.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
