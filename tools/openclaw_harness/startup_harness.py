@@ -11183,6 +11183,13 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
         return proc.returncode, {}, proc.stdout, proc.stderr
     try:
         payload = json.loads(stdout)
+        report_path = str(payload.get("report_path", "")).strip() if isinstance(payload, dict) else ""
+        if report_path:
+            try:
+                payload = json.loads(Path(report_path).read_text(encoding="utf-8"))
+            except Exception:
+                payload = dict(payload)
+                payload.setdefault("report_reload_warning", f"could_not_reload_full_report:{report_path}")
     except Exception:
         payload = {
             "ok": False,
@@ -11224,12 +11231,99 @@ def finalize_probe_report(
     *,
     cleanup_pid: int = 0,
     report_filename: str = "probe.report.json",
+    compact_stdout: bool = False,
 ) -> None:
     if cleanup_pid > 0 and "cleanup" not in report:
         report["cleanup"] = cleanup_game_process(cleanup_pid)
     if run_dir is not None:
         write_json(run_dir / report_filename, report)
-    print(json.dumps(report, indent=2, ensure_ascii=False))
+    stdout_payload = compact_probe_report_for_stdout(
+        report,
+        run_dir=run_dir,
+        report_filename=report_filename,
+    ) if compact_stdout else report
+    print(json.dumps(stdout_payload, indent=2, ensure_ascii=False))
+
+
+def compact_probe_report_for_stdout(
+    report: Dict[str, Any],
+    *,
+    run_dir: Optional[Path],
+    report_filename: str,
+) -> Dict[str, Any]:
+    """Return an agent-safe index card for a full probe/handoff report.
+
+    The complete report still lands on disk. This compact stdout avoids feeding
+    screenshots, OCR payloads, matched-line bundles, step reports, and other
+    review artifacts back into an LLM context window when a caller explicitly
+    asks for compact stdout.
+    """
+
+    startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
+    startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
+    artifacts = report.get("artifacts", {}) if isinstance(report.get("artifacts"), dict) else {}
+    cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
+    abort = report.get("abort", {}) if isinstance(report.get("abort"), dict) else {}
+    step_ledger_summary = report.get("step_ledger_summary", {}) if isinstance(report.get("step_ledger_summary"), dict) else {}
+    step_ledger = report.get("step_ledger", []) if isinstance(report.get("step_ledger"), list) else []
+    non_green_steps = [
+        {
+            "label": str(row.get("label", "")),
+            "kind": str(row.get("kind", "")),
+            "verdict": str(row.get("verdict", "")),
+            "issues": row.get("issues", []),
+            "evidence_artifact": str(row.get("evidence_artifact", "")),
+        }
+        for row in step_ledger
+        if isinstance(row, dict) and not str(row.get("verdict", "")).startswith("green")
+    ][:12]
+    matched_lines = artifacts.get("matched_lines", []) if isinstance(artifacts.get("matched_lines"), list) else []
+    decisive_matched_lines = [str(line) for line in matched_lines[:12]]
+    step_artifact_matches = artifacts.get("step_artifact_matches", []) if isinstance(artifacts.get("step_artifact_matches"), list) else []
+    compact_step_matches = []
+    for item in step_artifact_matches[:12]:
+        if not isinstance(item, dict):
+            continue
+        compact_step_matches.append({
+            "label": str(item.get("label", "")),
+            "matched": bool(item.get("matched")),
+            "missing_patterns": item.get("missing_patterns", []),
+            "matched_lines": [str(line) for line in item.get("matched_lines", [])[:4]]
+            if isinstance(item.get("matched_lines"), list) else [],
+        })
+
+    report_path = str(run_dir / report_filename) if run_dir is not None else ""
+    return {
+        "ok": bool(report.get("ok")),
+        "scenario": str(report.get("scenario", "")),
+        "mode": str(report.get("mode", "")),
+        "profile": str(report.get("profile", "")),
+        "world": str(report.get("world", "")),
+        "fixture": str(report.get("fixture", "")),
+        "run_dir": str(startup.get("run_dir", "") or report.get("run_dir", "") or (run_dir or "")),
+        "report_path": report_path,
+        "verdict": str(report.get("verdict", "")),
+        "evidence_class": str(report.get("evidence_class", "")),
+        "feature_proof": bool(report.get("feature_proof", False)),
+        "startup_screen": {
+            "window_title": str(startup_screen.get("window_title", "")),
+            "screenshot": str(startup_screen.get("screenshot", "")),
+            "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
+        },
+        "artifacts": {
+            "status": str(artifacts.get("status", "")),
+            "path": str(artifacts.get("path", "")),
+            "source_log": str(artifacts.get("source_log", "")),
+            "line_count": artifacts.get("line_count", 0),
+            "matched_lines": decisive_matched_lines,
+            "step_artifact_matches": compact_step_matches,
+        },
+        "step_ledger_summary": step_ledger_summary,
+        "non_green_steps": non_green_steps,
+        "abort": abort,
+        "cleanup": cleanup,
+        "stdout_note": "compact report only; full report is on disk at report_path",
+    }
 
 
 def normalize_repeatability_expectations(raw_value: Any) -> List[Dict[str, Any]]:
@@ -11383,6 +11477,8 @@ def run_repeatability(args: argparse.Namespace) -> int:
         base_cmd.extend(["--fixture", fixture])
     if args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False)):
         base_cmd.append("--replace-existing-worlds")
+    if bool(getattr(args, "compact_stdout", False)):
+        base_cmd.append("--compact-stdout")
 
     summary_run_dir = create_run_dir(profile)
     if args.dry_run:
@@ -11982,10 +12078,21 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "report_path": str(run_dir / report_filename),
         }
         (run_dir / "handoff.pid").write_text(f"{pid}\n", encoding="utf-8")
-        finalize_probe_report(run_dir, report, report_filename=report_filename)
+        finalize_probe_report(
+            run_dir,
+            report,
+            report_filename=report_filename,
+            compact_stdout=bool(getattr(args, "compact_stdout", False)),
+        )
         return 0
 
-    finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
+    finalize_probe_report(
+        run_dir,
+        report,
+        cleanup_pid=pid,
+        report_filename=report_filename,
+        compact_stdout=bool(getattr(args, "compact_stdout", False)),
+    )
     return 0
 
 
@@ -12044,6 +12151,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--settle-seconds", type=float, default=None, help="Override post-action settle time.")
     probe_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
     probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
+    probe_p.add_argument("--compact-stdout", action="store_true", help="Print only a compact report index to stdout; the full report still lands on disk.")
     probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     handoff_p = subparsers.add_parser("handoff", help="Run a packaged live setup and leave the game running for manual playtest handoff.")
@@ -12056,6 +12164,7 @@ def build_parser() -> argparse.ArgumentParser:
     handoff_p.add_argument("--settle-seconds", type=float, default=None, help="Override post-action settle time.")
     handoff_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
     handoff_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
+    handoff_p.add_argument("--compact-stdout", action="store_true", help="Print only a compact report index to stdout; the full report still lands on disk.")
     handoff_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     repeat_p = subparsers.add_parser("repeatability", help="Run the same packaged probe multiple times and summarize screen-first repeatability evidence.")
@@ -12065,6 +12174,7 @@ def build_parser() -> argparse.ArgumentParser:
     repeat_p.add_argument("--world", default="", help="Override scenario world.")
     repeat_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     repeat_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
+    repeat_p.add_argument("--compact-stdout", action="store_true", help="Run child probes with compact stdout to keep repeatability raw logs small.")
     repeat_p.add_argument("--dry-run", action="store_true", help="Resolve the repeatability contract only.")
 
     return parser
