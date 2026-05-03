@@ -380,3 +380,9 @@ Credited live/staged rows:
 - reopened higher demand still shows Pay/Fight and `payment_surface=npc_trade_ui`: `.userdata/dev-harness/harness_runs/20260503_172007/`.
 
 Classification: green feature-path checkpoint for shakedown visible fork + real trade-window opening. Next debug-batch work moves to defended-camp scout/standoff/sight-avoid/hot-loot unless a fresh payment-writeback row is promoted.
+
+## Josef current-pass read — bandits worked, continue debug stack
+
+Josef reported that overall the bandit behavior worked in his tests: bandits did their thing. He said Andi can continue with the debug notes and worry about the deeper sight/smoke playtest later.
+
+Classification: unblock the ordered `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` stack after the Slice 2 current-pass checkpoint. Keep deep sight/smoke behavior as deferred validation/future hardening; do not let it consume the next Andi cycle.

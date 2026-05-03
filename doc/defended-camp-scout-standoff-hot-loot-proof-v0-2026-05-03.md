@@ -79,6 +79,12 @@ Run summary:
 
 Evidence class: current-build live source/harness artifact proof for the five-OMT local-gate standoff goal, with an explicit yellow caveat for scenario-local OCR checkpoint hygiene.
 
-## Honest next proof
+## Josef current-pass playtest read
 
-Do not close Slice 2 from this packet alone. Next useful work is a changed live proof route or harness scenario that directly demonstrates the visible sight/smoke/hot-doorstep behavior: a sighted or smoke-revealed bandit/cannibal/compatible scout breaks LoS, backs off, reroutes, waits, or escalates instead of loitering or casually looting the defended doorstep.
+After this checkpoint, Josef reported his own tests looked good overall: the bandits did their thing. He explicitly said Andi can continue with the debug notes and worry about this deeper playtest later.
+
+Interpretation: the `5` OMT standoff / hot-doorstep pickup checkpoint is good enough to unblock the ordered debug stack. The deeper sight/smoke visible behavior remains real validation debt, but it is deferred hardening, not the next Andi blocker.
+
+## Deferred proof
+
+Do not treat this packet as full closure of every Slice 2 edge case. Deferred useful work is a changed live proof route or harness scenario that directly demonstrates the visible sight/smoke/hot-doorstep behavior: a sighted or smoke-revealed bandit/cannibal/compatible scout breaks LoS, backs off, reroutes, waits, or escalates instead of loitering or casually looting the defended doorstep.
