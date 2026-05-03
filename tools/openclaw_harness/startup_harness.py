@@ -17,6 +17,7 @@ window focus, key presses, and screenshots when not in --dry-run mode.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import re
@@ -616,6 +617,29 @@ def is_printable_text_key(key: str) -> bool:
     return len(key) == 1 and key.isprintable() and key not in {"\n", "\r", "\t"}
 
 
+def peekaboo_hotkey(pid: int, keys: str, hold_ms: int = 50) -> None:
+    cmd = ["peekaboo", "hotkey", "--keys", keys, "--pid", str(pid), "--hold-duration", str(hold_ms)]
+    run_peekaboo_interaction(pid, cmd)
+
+
+SHIFT_SYMBOL_HOTKEYS = {
+    "!": "shift,1",
+    "@": "shift,2",
+    "#": "shift,3",
+    "$": "shift,4",
+    "%": "shift,5",
+    "^": "shift,6",
+    "&": "shift,7",
+    "*": "shift,8",
+    "(": "shift,9",
+    ")": "shift,0",
+}
+
+
+def peekaboo_physical_hotkey_for_key(key: str) -> str:
+    return SHIFT_SYMBOL_HOTKEYS.get(key, "")
+
+
 def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> None:
     if not keys:
         return
@@ -629,6 +653,11 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
 
     for raw_key in keys:
         key = normalize_peekaboo_key(raw_key)
+        hotkey = peekaboo_physical_hotkey_for_key(key)
+        if hotkey:
+            flush_text_buffer()
+            peekaboo_hotkey(pid, hotkey, hold_ms=max(30, min(delay_ms, 200)))
+            continue
         if is_printable_text_key(key):
             text_buffer.append(key)
             continue
@@ -5591,6 +5620,36 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "overmap_npcs_near_player":
+            raw_offsets = raw.get("offsets_ms", raw.get("offset_ms", []))
+            if isinstance(raw_offsets, list) and len(raw_offsets) == 3 and all(not isinstance(value, list) for value in raw_offsets):
+                raw_offsets = [raw_offsets]
+            if not isinstance(raw_offsets, list) or not raw_offsets:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_npcs_near_player needs offsets_ms=[[x,y,z], ...] in {manifest_path}"
+                )
+            offsets: List[List[int]] = []
+            for offset_index, offset_raw in enumerate(raw_offsets):
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].offsets_ms[{offset_index}] needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offsets.append([int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])])
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].offsets_ms[{offset_index}] values must be integers in {manifest_path}"
+                    )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "offsets_ms": offsets,
+                "name_prefix": str(raw.get("name_prefix", "OpenClaw Ally") or "OpenClaw Ally").strip(),
+                "clone_follower_template": bool(raw.get("clone_follower_template", True)),
+                "scan_all_overmaps_for_ids": bool(raw.get("scan_all_overmaps_for_ids", True)),
+            })
+            continue
+
         if kind == "active_monsters_near_player":
             raw_monsters = raw.get("monsters", [])
             if not isinstance(raw_monsters, list) or not raw_monsters:
@@ -5826,7 +5885,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
-            "active_monsters_near_player, horde_entity_near_player, game_turn, "
+            "overmap_npcs_near_player, active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
@@ -7351,6 +7410,111 @@ def apply_remove_overmap_npcs_transform(world_dir: Path, transform: Dict[str, An
     }
 
 
+def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    selected_player_save = str(transform.get("player_save", "") or "").strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise SystemExit(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+    player_abs_omt, player_location_ms = load_player_abs_omt(world_dir, selected_player_save)
+
+    overmaps_dir = world_dir / "overmaps"
+    overmap_x = int(player_abs_omt[0]) // OMAPX
+    overmap_y = int(player_abs_omt[1]) // OMAPY
+    target_overmap_path = overmaps_dir / f"o.{overmap_x}.{overmap_y}.zzip"
+    if not target_overmap_path.exists():
+        raise SystemExit(f"Fixture overmap-npcs transform target overmap not found: {target_overmap_path}")
+
+    existing_ids: List[int] = []
+    if bool(transform.get("scan_all_overmaps_for_ids", True)):
+        candidate_paths = sorted(overmaps_dir.glob("o.*.*.zzip"))
+    else:
+        candidate_paths = [target_overmap_path]
+    for overmap_path in candidate_paths:
+        plain_path: Optional[Path] = None
+        keep_plain = False
+        try:
+            plain_path, _version_line, payload = extract_overmap_payload(overmap_path)
+            keep_plain = not bool(payload.get("_created_plain", False))
+            raw_npcs = payload.get("npcs", [])
+            if isinstance(raw_npcs, list):
+                for npc_payload in raw_npcs:
+                    if isinstance(npc_payload, dict):
+                        try:
+                            existing_ids.append(int(npc_payload.get("id")))
+                        except (TypeError, ValueError):
+                            continue
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(plain_path, keep=keep_plain)
+
+    plain_path: Optional[Path] = None
+    try:
+        plain_path, version_line, payload = extract_overmap_payload(target_overmap_path)
+        raw_npcs = payload.get("npcs", [])
+        if not isinstance(raw_npcs, list):
+            raise SystemExit(f"Overmap has non-list npcs array: {target_overmap_path}")
+        template: Optional[Dict[str, Any]] = None
+        if bool(transform.get("clone_follower_template", True)):
+            for npc_payload in raw_npcs:
+                if not isinstance(npc_payload, dict):
+                    continue
+                if str(npc_payload.get("my_fac", "") or "") == "your_followers":
+                    template = npc_payload
+                    break
+        if template is None:
+            if raw_npcs and isinstance(raw_npcs[0], dict):
+                template = raw_npcs[0]
+            else:
+                raise SystemExit(f"Fixture overmap-npcs transform needs an existing NPC template in {target_overmap_path}")
+
+        next_id = max(existing_ids + [0]) + 1
+        name_prefix = str(transform.get("name_prefix", "OpenClaw Ally") or "OpenClaw Ally").strip()
+        placed: List[Dict[str, Any]] = []
+        for index, offset in enumerate(transform.get("offsets_ms", []), start=1):
+            npc_payload = copy.deepcopy(template)
+            npc_id = next_id
+            next_id += 1
+            location = [
+                int(player_location_ms[0]) + int(offset[0]),
+                int(player_location_ms[1]) + int(offset[1]),
+                int(player_location_ms[2]) + int(offset[2]),
+            ]
+            npc_payload["id"] = npc_id
+            npc_payload["name"] = f"{name_prefix} {index}"
+            npc_payload["location"] = location
+            npc_payload["my_fac"] = "your_followers"
+            npc_payload["attitude"] = 0
+            npc_payload["mission"] = 6
+            npc_payload["marked_for_death"] = False
+            raw_npcs.append(npc_payload)
+            placed.append({
+                "id": npc_id,
+                "name": npc_payload["name"],
+                "location_ms": location,
+                "offset_ms": offset,
+                "my_fac": npc_payload.get("my_fac"),
+                "attitude": npc_payload.get("attitude"),
+                "mission": npc_payload.get("mission"),
+            })
+        payload["npcs"] = raw_npcs
+        write_overmap_payload(plain_path, version_line, payload)
+    finally:
+        if plain_path is not None and plain_path.exists():
+            cleanup_extracted_overmap(plain_path, keep=False)
+
+    return {
+        "kind": "overmap_npcs_near_player",
+        "player_save": selected_player_save,
+        "player_location_ms": player_location_ms,
+        "player_abs_omt": player_abs_omt,
+        "overmap": str(target_overmap_path.relative_to(world_dir)),
+        "placed_count": len(placed),
+        "placed_npcs": placed,
+    }
+
+
 def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     selected_player_save = str(transform.get("player_save", "") or "").strip()
     if not selected_player_save:
@@ -8183,6 +8347,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "remove_overmap_npcs":
             reports.append(apply_remove_overmap_npcs_transform(world_dir, transform))
+            continue
+        if kind == "overmap_npcs_near_player":
+            reports.append(apply_overmap_npcs_near_player_transform(world_dir, transform))
             continue
         if kind == "active_monsters_near_player":
             reports.append(apply_active_monsters_near_player_transform(world_dir, transform))

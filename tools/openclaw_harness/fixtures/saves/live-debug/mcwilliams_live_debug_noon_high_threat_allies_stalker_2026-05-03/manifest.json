@@ -1,0 +1,42 @@
+{
+  "name": "mcwilliams_live_debug_noon_high_threat_allies_stalker_2026-05-03",
+  "source_fixture": "mcwilliams_live_debug_noon_2026-04-30",
+  "source_profile": "live-debug",
+  "description": "Harness-only current-build high-threat/allied writhing-stalker restage without debug-menu GUI setup: local noon, one cloned follower NPC near the player to bring the existing two-follower McWilliams footing to three allies, and one hostile writhing stalker seven tiles east.",
+  "save_transforms": [
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [
+        [
+          2,
+          -2,
+          0
+        ]
+      ],
+      "name_prefix": "OpenClaw Ally",
+      "clone_follower_template": true,
+      "scan_all_overmaps_for_ids": true
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            7,
+            0,
+            0
+          ],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

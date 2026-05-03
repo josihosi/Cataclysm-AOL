@@ -1,0 +1,121 @@
+{
+  "name": "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
+  "description": "Current-build staged/live high-threat row: local noon McWilliams fixture with save-transformed three-follower allied footing and one hostile writhing stalker on a naturally bright/focused tile. The bounded live window must choose overmatched stalking withdrawal with the live_high_threat_allied_light_retreat_stalk reason instead of close loiter.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_noon_high_threat_allies_stalker_2026-05-03",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=withdraw",
+    "reason=live_high_threat_allied_light_retreat_stalk",
+    "allied_support=3",
+    "stalk_omt=3",
+    "persistent=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_high_threat_allied_light_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the harness-only noon/allied/stalker transformed McWilliams live-debug fixture loads to the normal live map before the live-plan window runs"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_high_threat_allied_light",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_noon_setup_missing",
+      "abort_reason": "installed save did not prove local noon before the high-threat/allied writhing-stalker staged row",
+      "expected_visible_fact": "saved-player turn metadata proves the fixture is at local noon before the high-threat/allied writhing-stalker live row"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_saved_three_allied_followers_before_high_threat_light",
+      "required_observed_npc_count": 3,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_high_threat_allied_footing_missing",
+      "abort_reason": "installed save did not contain three saved overmap NPC allies before the high-threat/allied writhing-stalker live row",
+      "expected_visible_fact": "saved-overmap NPC metadata proves the transformed fixture contains three nearby follower NPC allies before the live-plan window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_before_high_threat_allied_scene",
+      "required_typeids": [
+        "mon_writhing_stalker"
+      ],
+      "offset_ms": [
+        7,
+        0,
+        0
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_high_threat_stalker_footing_missing",
+      "abort_reason": "installed save did not contain the transformed hostile mon_writhing_stalker before the high-threat/allied live row",
+      "expected_visible_fact": "saved active_monsters metadata proves the transformed fixture contains the hostile writhing stalker before the live-plan window"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_high_threat_allied_light_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 200,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off after the stalker spawn so the bounded live turn window is not consumed by the safe-mode monster warning prompt"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_high_threat_allied_light_window",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "decision=withdraw",
+        "reason=live_high_threat_allied_light_retreat_stalk",
+        "allied_support=3",
+        "stalk_omt=3",
+        "persistent=yes",
+        "eval_us="
+      ],
+      "expected_visible_fact": "a short live turn window runs after the allied high-threat stalker spawn; feature proof depends on same-run writhing_stalker live_plan debug lines, not the screenshot alone",
+      "failure_rule": "if the artifact delta lacks the high-threat allied withdrawal/stalking live_plan line, this scene is inconclusive rather than green"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_high_threat_allied_light_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=withdraw",
+          "reason=live_high_threat_allied_light_retreat_stalk",
+          "evidence=yes",
+          "allied_support=3",
+          "persistent=yes",
+          "stalk_omt=3",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_high_threat_allied_light_live_plan_missing",
+      "abort_reason": "same-run debug artifact did not contain a live writhing-stalker high-threat/allied withdrawal line with allied_support=3 and stalk_omt=3",
+      "expected_visible_fact": "same-run debug artifact proves the live monster-plan seam evaluated bright/focused contact with about three friendly allies and chose overmatched stalking withdrawal"
+    }
+  ],
+  "recommended_test_command": "make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test \"[writhing_stalker]\" --reporter compact",
+  "evidence_contract": {
+    "claim": "current-build staged/live bright high-threat row with about three friendly allies chooses overmatched stalking withdrawal instead of close loiter",
+    "setup_guard": "the run uses a harness-only local-noon save transform, save-transformed nearby follower NPC allies, and a save-transformed hostile writhing stalker; the live_plan line must independently report allied_support=3 and stalk_omt=3 as live behavior evidence.",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker high-threat behavior",
+    "failure_rule": "No high-threat/allied live-scene credit if startup/load, saved noon guard, transformed allied/stalker footing, safe-mode-off live turn window, and same-run high-threat allied withdrawal/stalk line are not all present and classified separately. Save/writeback is not part of this live decision claim."
+  }
+}
