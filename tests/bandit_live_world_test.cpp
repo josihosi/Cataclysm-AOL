@@ -2560,6 +2560,12 @@ TEST_CASE( "bandit_live_world_vertical_targets_route_via_reachable_ground_dispat
     REQUIRE( matched_lead != nullptr );
     CHECK( matched_lead->lead_id == elevated_lead.lead_id );
 
+    const bandit_live_world::camp_map_lead *ground_matched_lead =
+        bandit_live_world::find_camp_map_dispatch_lead_for_target( site, ground_target,
+                "player@18,20,0" );
+    REQUIRE( ground_matched_lead != nullptr );
+    CHECK( ground_matched_lead->lead_id == elevated_lead.lead_id );
+
     const bandit_live_world::dispatch_plan camp_map_plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
     REQUIRE( camp_map_plan.valid );
