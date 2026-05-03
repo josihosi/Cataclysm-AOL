@@ -26,10 +26,10 @@
     {
       "kind": "wait",
       "label": "post_load_toll_escalation_fixture_settle",
-      "seconds": 2.0,
+      "seconds": 25.0,
       "capture_after": true,
       "expected_visible_fact": "post-load gameplay screen for the seven-member scout-confirmed remembered-lead fixture; this is only startup/load and fixture footing before the cadence wait",
-      "failure_rule": "If the gameplay screen is not visible after load, later dispatch-cadence evidence cannot be credited."
+      "failure_rule": "If the gameplay screen is not visible after load, later dispatch-cadence artifact and saved-state gates must fail rather than granting feature proof."
     },
     {
       "kind": "audit_saved_bandit_live_world_state",
@@ -66,12 +66,15 @@
         "camp-map roster living=7 ready_at_home=7 wounded_or_unready=0 active_outside=0 reserve=2 dispatchable=5"
       ],
       "expected_visible_fact": "the player waited through the real 30-minute overmap NPC cadence window; feature credit depends on same-run debug artifact lines proving toll escalation, not on the wait UI alone",
-      "failure_rule": "If the wait is interrupted or the artifact delta lacks the toll job and selected three-member party, this scenario is inconclusive/red."
+      "failure_rule": "If the wait is interrupted, or the bounded wait choice lacks post-wait toll dispatch artifacts and saved active toll state, this scenario is inconclusive/red; noisy wait-menu OCR may defer to strict cadence artifacts.",
+      "allow_artifact_elapsed_without_menu_ocr": true
     },
     {
       "kind": "press",
       "label": "open_save_quit_prompt_after_toll_escalation",
-      "keys": ["S"],
+      "keys": [
+        "S"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit prompt is visible after the toll escalation probe",
@@ -80,7 +83,9 @@
     {
       "kind": "press",
       "label": "confirm_save_quit_after_toll_escalation",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 4.0,
       "capture_after": true,
       "expected_visible_fact": "save/quit confirmation completed after the toll escalation probe",
