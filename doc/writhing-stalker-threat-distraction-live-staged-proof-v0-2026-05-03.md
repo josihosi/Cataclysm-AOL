@@ -12,11 +12,12 @@ This records the current-build staged/live proof rows that close the remaining a
   - Evidence class: feature-path.
   - Report: `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear.
   - Decisive live-plan shape: `decision=withdraw`, `reason=live_high_threat_allied_light_retreat_stalk`, `allied_support=3`, `persistent=yes`, `stalk_omt=3`.
-- Zombie/distraction strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025148/`.
+- Zombie/distraction strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`.
   - Evidence class: feature-path.
-  - Report: `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear.
+  - Report: `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear, `runtime_warnings=[]`.
+  - Clean-artifact guard: `probe.artifacts.log` and `debug.final.log` were grep-checked for `ERROR GAME`, `BACKTRACE`, `backtrace`, and `can't move`; no matches were present.
   - Decisive lines: first `decision=shadow`, `route=cover_shadow`, `reason=live_shadowing_before_strike_window`, `zombie_pressure=2`; then `decision=strike`, `reason=live_vulnerability_window_strike`, `evidence=yes`, `zombie_pressure=2`, `persistent=yes`.
-  - Repair note: the previous red was a stale proof expectation that required exactly `zombie_pressure=1`; the current behavior keeps zombie pressure present through the strike window, and the scenario now requires pressure presence rather than a brittle exact count.
+  - Repair note: `.userdata/dev-harness/harness_runs/20260503_025148/` is retired as dirty/non-closure evidence because its artifact delta contained `ERROR GAME ... game:monmove: writhing stalker can't move to its location ... reinforced white concrete wall`. The clean rerun moves the fixture stalker from the reinforced wall to a walkable floor tile and adds a saved-map footing guard before crediting the live row.
 - Night/outside anti-gnome bad-loiter strike: `writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`.
   - Evidence class: feature-path.
   - Report: `feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear.
@@ -32,7 +33,7 @@ This records the current-build staged/live proof rows that close the remaining a
 - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
 - `python3 -m json.tool` on the changed/new scenario and fixture manifests
 - `git diff --check`
-- `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025148/`, feature-path green
+- `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`, feature-path green; no movement-error/backtrace markers in `probe.artifacts.log` or `debug.final.log`
 - `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`, feature-path green
 - `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`
 - `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`

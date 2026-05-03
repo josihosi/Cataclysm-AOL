@@ -41,7 +41,7 @@
         {
           "typeid": "mon_writhing_stalker",
           "offset_ms": [
-            8,
+            6,
             0,
             0
           ]
@@ -66,7 +66,25 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
       "abort_reason": "saved active_monsters metadata did not contain required live-scenario footing",
-      "expected_visible_fact": "saved active_monsters proves stalker plus nearby zombies before live window"
+      "expected_visible_fact": "saved active_monsters proves a walkable-floor staged stalker plus nearby zombies before the live window"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_stalker_floor_before_zombie_distraction",
+      "offsets": [
+        [
+          6,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_floor"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_zombie_distraction_stalker_tile_not_walkable_floor",
+      "abort_reason": "installed save placed the staged writhing stalker on a non-floor tile before the zombie-distraction live row",
+      "expected_visible_fact": "saved map metadata proves the staged writhing stalker starts on walkable floor footing, not the reinforced wall that dirtied prior runs"
     },
     {
       "kind": "press",

@@ -20,7 +20,7 @@ Live/staged proof: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0
 
 Credited rows:
 - high-threat/allies retreat/stalk: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`;
-- zombie/distraction shadow-then-strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025148/`;
+- zombie/distraction shadow-then-strike: `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`;
 - night/outside anti-gnome bad-loiter strike: `writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`.
 
 ## Required behavior contrast

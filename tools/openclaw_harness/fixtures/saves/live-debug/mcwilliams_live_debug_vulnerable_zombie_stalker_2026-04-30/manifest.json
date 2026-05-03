@@ -2,7 +2,7 @@
   "name": "mcwilliams_live_debug_vulnerable_zombie_stalker_2026-04-30",
   "source_fixture": "mcwilliams_live_debug_2026-04-07",
   "source_profile": "live-debug",
-  "description": "Harness-only vulnerable-midnight writhing-stalker restage with two nearby zombies to prove zombie pressure only amplifies a plausible evidenced/vulnerable strike window.",
+  "description": "Harness-only vulnerable-midnight writhing-stalker restage with two nearby zombies to prove zombie pressure only amplifies a plausible evidenced/vulnerable strike window. The stalker is staged on a walkable interior floor tile rather than the east reinforced wall so movement-error artifacts cannot masquerade as feature proof.",
   "save_transforms": [
     {
       "kind": "game_turn",
@@ -29,7 +29,7 @@
         {
           "typeid": "mon_writhing_stalker",
           "offset_ms": [
-            8,
+            6,
             0,
             0
           ],
