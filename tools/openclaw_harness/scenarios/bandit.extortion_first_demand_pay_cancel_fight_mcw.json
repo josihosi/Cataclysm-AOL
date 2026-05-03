@@ -21,7 +21,7 @@
     "title=Pay:",
     "shakedown_trade_ui result=cancel_or_short",
     "shakedown_surface fight demanded=15797 reachable=45134",
-    "player_pool=3211 nearby_npc_pool=5222 scene_pool=36701"
+    "player_pool=3211 nearby_npc_pool=5222 basecamp_npc_pool=0 scene_pool=36701"
   ],
   "capture_world_after": true,
   "steps": [
@@ -111,6 +111,7 @@
           "reachable=45134",
           "player_pool=3211",
           "nearby_npc_pool=5222",
+          "basecamp_npc_pool=0",
           "scene_pool=36701",
           "trade_api=npc_trading::trade",
           "title=Pay:"

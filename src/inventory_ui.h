@@ -659,7 +659,7 @@ class inventory_selector
         void add_vehicle_items( const tripoint_bub_ms &target, bool add_efiles = false );
         void add_nearby_items( int radius = 1, bool add_efiles = false );
         void add_remote_map_items( tinymap *remote_map, const tripoint_omt_ms &target );
-        void add_basecamp_items( const basecamp &camp );
+        void add_basecamp_items( const basecamp &camp, int nearby_radius_to_skip = -1 );
         /** Remove all items */
         void clear_items();
         /** Assigns a title that will be shown on top of the menu. */

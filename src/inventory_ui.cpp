@@ -2435,12 +2435,20 @@ void inventory_selector::add_remote_map_items( tinymap *remote_map, const tripoi
     } );
 }
 
-void inventory_selector::add_basecamp_items( const basecamp &camp )
+void inventory_selector::add_basecamp_items( const basecamp &camp, const int nearby_radius_to_skip )
 {
-    std::unordered_set<tripoint_abs_ms> tiles = camp.get_storage_tiles();
+    const std::unordered_set<tripoint_abs_ms> tiles = camp.get_storage_tiles();
     map &here = get_map();
-    for( tripoint_abs_ms tile : tiles ) {
-        add_map_items( here.get_bub( tile ) );
+    for( const tripoint_abs_ms &tile : tiles ) {
+        const tripoint_bub_ms local_tile = here.get_bub( tile );
+        if( nearby_radius_to_skip >= 0 && here.inbounds( local_tile ) &&
+            rl_dist( local_tile, u.pos_bub() ) <= nearby_radius_to_skip &&
+            ( local_tile == u.pos_bub() || here.clear_path( u.pos_bub(), local_tile,
+                    rl_dist( u.pos_bub(), local_tile ), 1, 100 ) ) ) {
+            continue;
+        }
+        add_map_items( local_tile );
+        add_vehicle_items( local_tile );
     }
 }
 

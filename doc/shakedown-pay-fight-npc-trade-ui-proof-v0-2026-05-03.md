@@ -7,7 +7,7 @@ Status: GREEN FEATURE-PATH CHECKPOINT for the shakedown visible-fork/open-paymen
 - First-demand bandit shakedown now shows exactly the player-visible `Pay` / `Fight` fork on the fresh current build.
 - Backout/refuse still maps to the fight/refusal branch, but no third visible response or conversation utility action is shown on this shakedown surface.
 - Selecting `Pay` opens the real NPC trade UI path (`npc_trading::trade` / `trade_ui`) with `Pay:` debt before any hidden surrender.
-- The Pay window is wired to the broader honest camp-side pool: avatar carried goods, nearby ally/NPC carried goods, and nearby scene/basecamp goods.
+- The Pay window is wired to the broader honest camp-side pool: avatar carried goods, nearby ally/NPC carried goods, basecamp storage goods, basecamp assigned-NPC carried goods, and nearby honest scene/basecamp goods.
 - The demanded debt/toll is derived from the reachable camp-side pool and pressure modifier, not a fixed/stub amount or player-carried-only value.
 - Fight remains a distinct branch.
 - Reopened demand still shows Pay/Fight with the higher bounded reopened toll, and reopened `Pay` opens the same real NPC trade UI path.
@@ -37,7 +37,9 @@ Build/current-binary gates:
 - Final proof windows after the original visible-option repair reported `Cataclysm: Dark Days Ahead - d0476b4407`, `repo_head=d0476b4407`, `captured_head=d0476b4407`, `captured_dirty=false`, `version_matches_runtime_paths=true`.
 - Tight Pay/Fight + Pay-window proof after Josef's later no-credit nudge reports `Cataclysm: Dark Days Ahead - d1a4f076c8` on the rebuilt current binary, with no version mismatch; build log `/tmp/caol_slice1_tight_clean_build_d1a_20260503.log`.
 - Earlier Pay-bridge/cancel reruns after the first later live Pay nudge reported `Cataclysm: Dark Days Ahead - 04de6e0f94` on a rebuilt current binary; these remain supporting evidence for reopened/cancel behavior, not the final UI-first closure row.
-- Deterministic shakedown contract gate: `./tests/cata_test "[bandit][live_world][shakedown]" --reporter compact` -> passed 4 test cases / 139 assertions; log `/tmp/caol_shakedown_contract_tests_20260503.log`. This covers the basecamp-vs-offbase pool composition and toll scaling path: basecamp scene pool `100 + 50 + 850 = 1000` produces first demand `350`, offbase ignores remote basecamp value and uses carried/vehicle-local reach, reopened demand raises by modifier, and no-shakedown profiles stay blocked.
+- Deterministic shakedown contract gate after the real trade-window/basecamp-pool code pass: `./tests/cata_test "[bandit][live_world][shakedown]" --reporter compact` -> passed 5 test cases / 162 assertions; log `/tmp/caol_shakedown_contract_tests_20260503.log`.
+- Full bandit live-world focused gate after the same code pass: `./tests/cata_test "[bandit][live_world]" --reporter compact` -> passed 66 test cases / 1365 assertions; log `/tmp/caol_bandit_live_world_tests_20260503.log`.
+- Source-path audit for the bridge: `Pay` calls `npc_trading::trade( *trader, surface.demanded_value, _( "Pay:" ), ... )`; that constructs `trade_ui` with the `Pay:` debt already active. For basecamp/camp scenes, the player pane now receives the expanded honest camp-side pool through normal trade inventory population: carried avatar goods, nearby items/vehicles, nearby allies, basecamp storage (`inventory_selector::add_basecamp_items`) and basecamp-assigned allied NPC carried items. The demanded value is still computed from `surface.reachable_goods_value`, now including basecamp storage and assigned-NPC goods where present rather than using a fixed/stub or avatar-carried-only figure.
 
 Live/staged harness rows credited after the repair:
 

@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "basecamp.h"
 #include "character.h"
 #include "clzones.h"
 #include "color.h"
@@ -118,7 +119,8 @@ bool trade_preset::cat_sort_compare( const inventory_entry &lhs, const inventory
 }
 
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
-                    const int you_nearby_item_radius, const int you_nearby_ally_radius )
+                    const int you_nearby_item_radius, const int you_nearby_ally_radius,
+                    basecamp *you_basecamp )
     : _upreset{ you, trader }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
@@ -129,6 +131,20 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
 {
     _panes[_you]->add_character_items( you );
     _panes[_you]->add_nearby_items( you_nearby_item_radius );
+    if( you_basecamp != nullptr ) {
+        _panes[_you]->add_basecamp_items( *you_basecamp, you_nearby_item_radius );
+        for( const npc_ptr &assigned : you_basecamp->get_npcs_assigned() ) {
+            if( assigned == nullptr || assigned.get() == &trader || assigned->is_dead() ||
+                !assigned->is_player_ally() ) {
+                continue;
+            }
+            if( you_nearby_ally_radius >= 0 &&
+                rl_dist( assigned->pos_abs(), you.pos_abs() ) <= you_nearby_ally_radius ) {
+                continue;
+            }
+            _panes[_you]->add_character_items( *assigned );
+        }
+    }
     if( you_nearby_ally_radius > 0 ) {
         for( npc &guy : g->all_npcs() ) {
             if( &guy == &trader || !guy.is_player_ally() ||

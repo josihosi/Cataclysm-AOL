@@ -24,6 +24,7 @@
 #include "avatar.h"
 #include "bandit_live_world.h"
 #include "bandit_mark_generation.h"
+#include "basecamp.h"
 #include "bionics.h"
 #include "cached_options.h"
 #include "calendar.h"
@@ -148,19 +149,27 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
 }
 
-bool live_bandit_player_at_basecamp( const avatar &u )
+static constexpr int live_bandit_basecamp_reach_radius = 30;
+static constexpr int live_bandit_camp_adjacent_radius_submaps = 24;
+
+basecamp *live_bandit_nearest_basecamp( const avatar &u )
 {
-    return overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value();
+    if( std::optional<basecamp *> bcp = overmap_buffer.find_camp( u.pos_abs_omt().xy() ) ) {
+        return *bcp;
+    }
+
+    const std::vector<camp_reference> camps_near_player = overmap_buffer.get_camps_near(
+                u.pos_abs_sm(), live_bandit_camp_adjacent_radius_submaps );
+    if( !camps_near_player.empty() ) {
+        return camps_near_player.front().camp;
+    }
+
+    return nullptr;
 }
 
 bool live_bandit_player_near_basecamp( const avatar &u )
 {
-    if( live_bandit_player_at_basecamp( u ) ) {
-        return true;
-    }
-
-    static constexpr int camp_adjacent_radius_submaps = 24;
-    return !overmap_buffer.get_camps_near( u.pos_abs_sm(), camp_adjacent_radius_submaps ).empty();
+    return live_bandit_nearest_basecamp( u ) != nullptr;
 }
 
 bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
@@ -260,14 +269,61 @@ int live_bandit_nearby_ground_goods_value( const avatar &u )
 {
     map &here = get_map();
     int value = 0;
-    static constexpr int basecamp_reach_radius = 30;
-    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(), basecamp_reach_radius ) ) {
+    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(),
+            live_bandit_basecamp_reach_radius ) ) {
         if( !here.accessible_items( pt ) ) {
             continue;
         }
         for( const item &it : here.i_at( pt ) ) {
             value += live_bandit_item_value( it );
         }
+    }
+    return value;
+}
+
+int live_bandit_basecamp_storage_goods_value( const avatar &u, const basecamp &camp,
+        const int nearby_radius_to_skip )
+{
+    map &here = get_map();
+    int value = 0;
+    for( const tripoint_abs_ms &storage_tile : camp.get_storage_tiles() ) {
+        if( nearby_radius_to_skip >= 0 &&
+            rl_dist( storage_tile, u.pos_abs() ) <= nearby_radius_to_skip ) {
+            continue;
+        }
+
+        const tripoint_bub_ms local_tile = here.get_bub( storage_tile );
+        if( !here.inbounds( local_tile ) ) {
+            continue;
+        }
+        if( here.accessible_items( local_tile ) ) {
+            for( const item &it : here.i_at( local_tile ) ) {
+                value += live_bandit_item_value( it );
+            }
+        }
+        const std::optional<vpart_reference> cargo_part = here.veh_at( local_tile ).cargo();
+        if( cargo_part ) {
+            for( const item &it : cargo_part->items() ) {
+                value += live_bandit_item_value( it );
+            }
+        }
+    }
+    return value;
+}
+
+int live_bandit_basecamp_assigned_npc_goods_value( const avatar &u, basecamp &camp,
+        const int nearby_radius_to_skip )
+{
+    int value = 0;
+    for( const npc_ptr &assigned : camp.get_npcs_assigned() ) {
+        if( assigned == nullptr || assigned->is_dead() || !assigned->is_player_ally() ) {
+            continue;
+        }
+        if( nearby_radius_to_skip >= 0 && rl_dist( assigned->pos_abs(), u.pos_abs() ) <=
+            nearby_radius_to_skip ) {
+            continue;
+        }
+        value += live_bandit_character_goods_value( *assigned );
     }
     return value;
 }
@@ -325,6 +381,12 @@ bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
 
     if( input.basecamp_or_camp_scene ) {
         pool.reachable_basecamp_value = live_bandit_nearby_ground_goods_value( u );
+        if( basecamp *camp = live_bandit_nearest_basecamp( u ) ) {
+            pool.reachable_basecamp_value += live_bandit_basecamp_storage_goods_value( u, *camp,
+                                             live_bandit_basecamp_reach_radius );
+            pool.companion_carried_value += live_bandit_basecamp_assigned_npc_goods_value( u, *camp,
+                                            nearby_companion_radius );
+        }
     } else {
         pool.vehicle_carried_value = live_bandit_current_vehicle_goods_value( u );
     }
@@ -362,8 +424,17 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
         }
         return value;
     }();
+    basecamp *payment_basecamp = input.basecamp_or_camp_scene ?
+                                 live_bandit_nearest_basecamp( u ) : nullptr;
+    const int basecamp_storage_value = payment_basecamp != nullptr ?
+                                       live_bandit_basecamp_storage_goods_value( u, *payment_basecamp,
+                                               live_bandit_basecamp_reach_radius ) : 0;
+    static constexpr int nearby_companion_radius = 12;
+    const int basecamp_npc_value = payment_basecamp != nullptr ?
+                                   live_bandit_basecamp_assigned_npc_goods_value( u, *payment_basecamp,
+                                           nearby_companion_radius ) : 0;
     const int scene_value = input.basecamp_or_camp_scene ?
-                            live_bandit_nearby_ground_goods_value( u ) :
+                            live_bandit_nearby_ground_goods_value( u ) + basecamp_storage_value :
                             live_bandit_current_vehicle_goods_value( u );
 
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui opened demanded="
@@ -371,15 +442,15 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
                                << surface.reachable_goods_value
                                << " player_pool=" << player_value
                                << " nearby_npc_pool=" << companion_value
+                               << " basecamp_npc_pool=" << basecamp_npc_value
                                << " scene_pool=" << scene_value
+                               << " basecamp_storage_pool=" << basecamp_storage_value
                                << " trader=" << trader->getID().get_value()
                                << " trade_api=npc_trading::trade"
                                << " title=Pay:\n";
-    static constexpr int basecamp_reach_radius = 30;
-    static constexpr int nearby_companion_radius = 12;
     const bool paid = npc_trading::trade( *trader, surface.demanded_value, _( "Pay:" ),
-                                          input.basecamp_or_camp_scene ? basecamp_reach_radius : 1,
-                                          nearby_companion_radius );
+                                          input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
+                                          nearby_companion_radius, payment_basecamp );
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result="
                                << ( paid ? "paid" : "cancel_or_short" )
                                << " demanded=" << surface.demanded_value
