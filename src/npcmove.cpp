@@ -25,6 +25,7 @@
 #include "active_item_cache.h"
 #include "activity_actor_definitions.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "basecamp.h"
 #include "bionics.h"
 #include "body_part_set.h"
@@ -259,6 +260,63 @@ const std::vector<bionic_id> weapon_cbms = {
     {bio_chain_lightning, bio_laser, bio_blade, bio_claws}};
 
 const int avoidance_vehicles_radius = 5;
+
+bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
+{
+    if( who.is_player_ally() || who.is_dead() ) {
+        return false;
+    }
+
+    const avatar &u = get_avatar();
+    const bool near_player_camp = overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value() ||
+                                  !overmap_buffer.get_camps_near( u.pos_abs_sm(), 24 ).empty();
+    if( !near_player_camp ) {
+        return false;
+    }
+
+    const bandit_live_world::world_state &world = overmap_buffer.global_state.bandit_live_world;
+    if( world.sites.empty() ) {
+        return false;
+    }
+
+    const character_id who_id = who.getID();
+    for( const bandit_live_world::site_record &site : world.sites ) {
+        if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            continue;
+        }
+        const bandit_live_world::member_record *member = site.find_member( who_id );
+        if( member == nullptr ) {
+            continue;
+        }
+        if( std::find( site.active_member_ids.begin(), site.active_member_ids.end(), who_id ) ==
+            site.active_member_ids.end() ) {
+            continue;
+        }
+
+        map &here = get_map();
+        bandit_live_world::local_gate_input input;
+        input.basecamp_or_camp_scene = true;
+        input.local_threat = 3;
+        input.local_opportunity = 2;
+        input.standoff_distance = rl_dist( who.pos_abs_omt(), u.pos_abs_omt() );
+        input.current_exposure = get_player_view().sees( here, who.pos_bub( here ) );
+        input.recent_exposure = input.current_exposure;
+        input.local_contact_established = input.standoff_distance <= 1 ||
+                                          member->state == bandit_live_world::member_state::local_contact;
+        const bandit_live_world::local_gate_decision decision =
+            bandit_live_world::choose_local_gate_posture( site, input );
+        if( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, input, decision, who_id ) ) {
+            add_msg_debug( debugmode::DF_NPC_ITEMAI,
+                           "%s skips item pickup on hot defended doorstep: site=%s posture=%s standoff=%d exposed=%s",
+                           who.get_name(), site.site_id,
+                           bandit_live_world::to_string( decision.posture ), input.standoff_distance,
+                           input.current_exposure ? "yes" : "no" );
+            return true;
+        }
+    }
+
+    return false;
+}
 
 bool good_for_pickup(const item &it, npc &who, const tripoint_bub_ms &there) {
   return who.can_take_that(it) && who.wants_take_that(it) &&
@@ -4704,6 +4762,12 @@ void npc::find_item() {
     return;
   }
 
+    if( live_bandit_hot_defended_doorstep_pickup_blocked( *this ) ) {
+        fetching_item = false;
+        wanted_item = {};
+        return;
+    }
+
     fetching_item = false;
     wanted_item = {};
     int best_value = minimum_item_value();
@@ -4912,6 +4976,14 @@ void npc::pick_up_item() {
         mod_moves( -1 );
         return;
   }
+
+    if( !llm_targeted && live_bandit_hot_defended_doorstep_pickup_blocked( *this ) ) {
+        fetching_item = false;
+        wanted_item = {};
+        move_pause();
+        log_look_around_pickup( "canceled by hot defended doorstep" );
+        return;
+    }
 
   map &here = get_map();
   const std::optional<vpart_reference> vp =
