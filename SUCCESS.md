@@ -25,7 +25,7 @@ Success state:
 - [ ] Shakedown visible UI is exactly Pay/Fight; backout/refuse maps to the fight/refusal branch without a third visible `Refuse` response.
 - [ ] Shakedown Pay opens a trade/debt-style payment surface instead of silent auto-confiscation.
 - [ ] Basecamp-side shakedown payment can use the honest faction/basecamp pool: carried goods, basecamp goods, nearby faction inventory, and basecamp NPC carried items.
-- [ ] Misleading scenic-shakedown `pay/fight/refuse` proof/docs/log expectations are corrected so future work cannot cite them as final payment-contract proof.
+- [x] Misleading scenic-shakedown `pay/fight/refuse` proof/docs/log expectations are corrected so future work cannot cite them as final payment-contract proof: source log now emits `responses=pay/fight payment_surface=trade_debt_selector`, the report/test assert `visible_responses=pay/fight` and no `pay/fight/refuse`, and historical proof docs carry superseded caveats.
 - [ ] Defended-camp scout/hold-off behavior uses about `5` OMT watch distance; sighted scouts and bandits/cannibals/compatible hostiles in stalking mode actually break LoS/back off/reroute/escalate instead of staying visible; hot doorstep actors do not loiter or loot casually.
 - [ ] Multi-z bandit camps collapse into one site/owner with z-level footprint metadata, and roof-z player targets no longer cause route-missing/throttle silence.
 - [ ] A confirmed big camp with ample roster can escalate from lone scout into roster-scaled pressure while preserving reserve and high-threat caution: bandits to toll/shakedown, cannibals to attack dispatch up to large/whole-camp commitment when odds permit.

@@ -22,7 +22,7 @@ Raw intake:
 - `runtime/josef-bandit-debug-intake-2026-05-03.md`
 - `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
 
-Current execution item: start with Slice 1, **Shakedown UI/payment contract correction**.
+Current execution item: continue Slice 1, **Shakedown UI/payment contract correction**. Code/test checkpoint landed for Pay/Fight visible response contract and a Pay-side payment selector bridge; next honest evidence is live first-demand and reopened-demand proof that the player sees Pay/Fight only and Pay opens the payment surface.
 
 Execution order:
 1. Shakedown visible Pay/Fight only; Pay opens trade/debt-style payment over the honest basecamp/faction-side pool; correct misleading `pay/fight/refuse` docs/tests/log expectations.
