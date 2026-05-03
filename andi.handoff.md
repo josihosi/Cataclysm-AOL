@@ -1,6 +1,6 @@
 # Andi handoff
 
-Active lane: `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0`.
+Active lane: none for Andi. Last closed lane: `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0`.
 
 Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
 
@@ -12,7 +12,7 @@ Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-
 
 ## Current ask
 
-The deterministic implementation checkpoint and current-build live/staged proof packet are green; next move is Frau review / closure readiness, not another ritual rerun.
+The deterministic implementation checkpoint and current-build live/staged proof packet are green, and Frau accepted closure readiness. No further Andi rerun is warranted unless Schani/Josef reopens a concrete defect.
 
 Deterministic checkpoint: `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
 
@@ -41,9 +41,11 @@ Optional only. If implemented:
 
 ## Evidence bar
 
-Agent-side evidence is green:
+Agent-side evidence is closed/Frau-accepted:
 - deterministic checkpoint covers high-threat retreat, stalking-distance intent, night anti-loiter, zombie-distraction/no-omniscience, handoff/writeback tests, and preserved stalker guarantees;
 - staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are all feature-path green with portal clear;
 - gates: `git diff --check`; harness pycompile/JSON validation; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact`; `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact`.
+
+Frau claim boundary: safe to claim deterministic seam coverage plus current-build staged/live behavior rows; do not claim natural random discovery, full natural retreat pathing, broad house navigation, door opening, burglar/locked-door solving, or general ecosystem behavior.
 
 Do not reopen save-pack prep, zombie rider, flesh raptor, bandit lanes, or old stalker v0 history by drift.

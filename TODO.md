@@ -7,9 +7,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0`.
+Active lane: none for Andi after `CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` closure.
 
-Current execution item: live/staged validation for the writhing-stalker threat/distraction checkpoint.
+Current execution item: no active Andi proof item. The writhing-stalker threat/distraction checkpoint is closed/Frau-accepted; next assignment should come from Schani plans/aux or Josef decision.
 
 Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`.
 
@@ -27,6 +27,6 @@ Current footing:
 - Door opening did not land and remains optional/narrow only if later needed.
 
 Required next work:
-- Frau review of the live/staged proof packet and closure readiness. Do not rerun solved rows by ritual unless Frau flags a concrete evidence defect.
+- None for Andi on this lane unless Schani/Josef explicitly reopens it. Frau verdict: closure-ready / no nudge. Keep claims bounded to deterministic seam coverage plus current-build staged/live feature-path rows; do not claim natural random discovery, full natural retreat pathing, broad house navigation, or door/burglar behavior.
 
 Non-goals: no burglar stalker, no locked-door solving, no omniscience, no closed-lane reopen by drift, no save-pack/card reruns by ritual.

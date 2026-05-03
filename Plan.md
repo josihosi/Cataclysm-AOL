@@ -259,9 +259,9 @@ Boundary preserved: cleanup/refactor only. This does not redesign bandit live-wo
 
 ---
 
-## Active lane — CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
+## Recent closed lane — CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-**Status:** ACTIVE / LIVE-STAGED PROOF GREEN / FRAU REVIEW NEXT
+**Status:** CLOSED / CHECKPOINTED GREEN V0 / FRAU-ACCEPTED
 
 Josef live-tested the writhing stalker after the earlier hit-fade and zombie-shadow packets and reported that it is still not satisfactory. The bad contrast is now explicit: with three NPC allies / high visible threat it does not retreat into stalking distance, and at night outside it can stand near a house/window without attacking or making a legible move.
 
@@ -279,11 +279,13 @@ Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-
 
 Goal: add/refine stalker overmap threat/opportunity evaluation, reality-bubble anti-loiter behavior, and overmap/bubble handoff memory so high-threat daylight/three-NPC situations retreat into stalking mode about `3` OMTs back, night/outside reachable-player situations attack or reposition instead of garden-gnome loitering, and zombie/distraction entering the player/NPC tile enables dark-square approach/strike without omniscience.
 
-Current checkpoint: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Current-build live/staged proof is green for all three remaining rows: high-threat/allies retreat/stalk (`writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`), zombie/distraction shadow-then-strike (`writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`), and night/outside reachable bad-loiter anti-gnome strike (`writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`). Agent-side closure evidence is ready for Frau review; door opening did not land and remains out of scope unless separately promoted.
+Current checkpoint: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Current-build live/staged proof is green for all three remaining rows: high-threat/allies retreat/stalk (`writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`), zombie/distraction shadow-then-strike (`writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260503_031247/`), and night/outside reachable bad-loiter anti-gnome strike (`writhing_stalker.live_anti_gnome_bad_loiter_mcw` -> `.userdata/dev-harness/harness_runs/20260503_025712/`). Frau accepted this as closure-ready agent-side staged/live feature-path evidence; door opening did not land and remains out of scope unless separately promoted.
 
 Door-opening line: allowed only as a narrow optional escalation if needed — unlocked/simple doors, slow/noisy/interruptible, darkness/distraction/commitment gated, and suppressed under high threat. Do not turn the stalker into a burglar or locked-door solver.
 
-Boundary: do not reopen all stalker v0 work, flesh raptors, zombie riders, bandits, the save-pack card, or natural random discovery by drift. This is a focused behavior/debug packet.
+Frau review note: safe claims are deterministic seam coverage plus current-build staged/live behavior rows; do not claim natural random discovery, full natural retreat pathing, broad house navigation, door opening, burglar/locked-door solving, or general ecosystem behavior.
+
+Boundary: closed v0 packet. Do not reopen all stalker v0 work, flesh raptors, zombie riders, bandits, the save-pack card, or natural random discovery by drift.
 
 ---
 

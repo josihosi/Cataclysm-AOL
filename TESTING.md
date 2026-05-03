@@ -57,9 +57,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
+### Closed validation receipt - CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
-`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is active/greenlit as the next Andi lane. Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`; imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`; handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
+`CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0` is closed/checkpointed green v0 after Frau review. Contract: `doc/writhing-stalker-threat-distraction-handoff-packet-v0-2026-05-02.md`; imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`; handoff: `doc/writhing-stalker-threat-distraction-handoff-handoff-v0-2026-05-02.md`.
 
 Validation shape: behavior/scoring and handoff proof first, then current-build staged/live rows. Old watched rows from Josef are debug/taste seeds only, not feature proof.
 
@@ -77,7 +77,7 @@ Evidence required before closure:
 - [x] Door opening did not land and remains out of scope for this packet; if later promoted, tests must prove unlocked/simple only, bounded cost/noise/interruptibility or equivalent, darkness/distraction/commitment gate, and high-threat suppression.
 - [x] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
 
-Current checkpoint: deterministic evaluator/live-plan coverage is green for the threat/distraction handoff implementation, and all current-build live/staged rows are green. Proof packet: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`; high-threat/allies `.userdata/dev-harness/harness_runs/20260503_021310/`; zombie/distraction `.userdata/dev-harness/harness_runs/20260503_031247/`; night/outside anti-gnome `.userdata/dev-harness/harness_runs/20260503_025712/`. Gate: `git diff --check`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; scenario/fixture JSON validation; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`; spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`. Next state: Frau review/closure readiness, not another ritual rerun.
+Current checkpoint: deterministic evaluator/live-plan coverage is green for the threat/distraction handoff implementation, all current-build live/staged rows are green, and Frau accepted closure-ready agent-side staged/live feature-path evidence. Proof packet: `doc/writhing-stalker-threat-distraction-live-staged-proof-v0-2026-05-03.md`; high-threat/allies `.userdata/dev-harness/harness_runs/20260503_021310/`; zombie/distraction `.userdata/dev-harness/harness_runs/20260503_031247/`; night/outside anti-gnome `.userdata/dev-harness/harness_runs/20260503_025712/`. Gate: `git diff --check`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; scenario/fixture JSON validation; `make -j4 tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`; spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`. Next state: none for Andi unless reopened; do not rerun by ritual. Claim boundary: no natural random discovery, full natural retreat pathing, broad house navigation, door opening, burglar/locked-door solving, or general ecosystem claim.
 
 ### Closed validation receipt - CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
 

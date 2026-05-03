@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0 — Writhing stalker threat/distraction handoff
 
-Status: ACTIVE / LIVE-STAGED PROOF GREEN / FRAU REVIEW NEXT
+Status: CLOSED / CHECKPOINTED GREEN V0 / FRAU-ACCEPTED
 
 Success state:
 - [x] Day/bright + same OMT or close overmap pressure + about three friendly NPCs produces retreat/stalking behavior instead of close loiter/pressure: `.userdata/dev-harness/harness_runs/20260503_021310/`.
@@ -29,9 +29,9 @@ Success state:
 - [x] Overmap-to-bubble handoff carries intent/reason/strike-budget state, and bubble-to-overmap writeback preserves spent/retreat/cooldown/threat memory: deterministic checkpoint `doc/writhing-stalker-threat-distraction-deterministic-checkpoint-v0-2026-05-03.md`.
 - [x] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior; `[writhing_stalker]` remains green at 23 cases / 264 assertions.
 - [x] Door opening was not implemented for this packet; the optional narrow door-opening line remains out of scope unless later promoted.
-- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on live-staged-proof-green / Frau-review-next state before closure.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` agree on closed / Frau-accepted state before closure.
 
-Checkpoint note: deterministic evaluator/live-plan seam coverage is green and current-build staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are green. Product success is agent-side closure-ready pending Frau review, not another automatic row.
+Checkpoint note: deterministic evaluator/live-plan seam coverage is green and current-build staged/live high-threat, night/outside anti-gnome, and zombie/distraction rows are green. Frau accepted the packet as closure-ready agent-side staged/live feature-path evidence; keep claims bounded away from natural random discovery, full natural retreat pathing, broad house navigation, and door/burglar behavior.
 
 Canonical docs:
 - Imagination source: `doc/writhing-stalker-threat-distraction-handoff-imagination-source-2026-05-02.md`.
