@@ -1,6 +1,6 @@
 # Shakedown Pay/Fight + NPC trade UI proof — 2026-05-03
 
-Status: GREEN FEATURE-PATH CHECKPOINT for the shakedown visible-fork/open-payment contract inside `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
+Status: GREEN FEATURE-PATH CHECKPOINT for the shakedown visible-fork/open-payment/cancel/successful-writeback contract inside `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
 
 ## Claim proven
 
@@ -9,7 +9,9 @@ Status: GREEN FEATURE-PATH CHECKPOINT for the shakedown visible-fork/open-paymen
 - Selecting `Pay` opens the real NPC trade UI path (`npc_trading::trade` / `trade_ui`) with `Pay:` debt before any hidden surrender.
 - The Pay window is wired to the broader honest camp-side pool: avatar carried goods, nearby ally/NPC carried goods, and nearby scene/basecamp goods.
 - Fight remains a distinct branch.
-- Reopened demand still shows Pay/Fight with the higher bounded reopened toll.
+- Reopened demand still shows Pay/Fight with the higher bounded reopened toll, and reopened `Pay` opens the same real NPC trade UI path.
+- Cancelling/backing out of the Pay trade UI maps to the refusal/fight outcome; it does not silently surrender goods or expose a third visible dialogue answer.
+- Successful payment through the real trade UI records a paid shakedown outcome, advances the saved-player mtime on save, and persists the bandit site back home with no active outside group/target.
 
 ## Red evidence that triggered the repair
 
@@ -25,13 +27,41 @@ Repair: `query_live_bandit_shakedown_dialogue()` now marks the window as non-con
 
 ## Fresh-current evidence
 
+Additional live nudge: after the visible response-count repair, Josef reported that live `Pay` still did not open the trade/payment window. That report is preserved as a product-path red concern: the rows below do not rely on deterministic `payment_surface=...` strings alone; they require OCR/screenshot evidence of the real trade UI plus same-run `npc_trading::trade` artifacts, cancel/fight artifacts, and saved-state writeback.
+
 Build/current-binary gates:
 
 - `make version && make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0` after committing the repair -> green; log `/tmp/caol_tiles_build_post_commit_d047_20260503_andi.log`.
 - `git diff --check`, harness `py_compile`, and edited shakedown scenario JSON parse -> green; logs `/tmp/caol_shakedown_no_extra_actions_quick_gates_20260503.log` and `/tmp/caol_shakedown_post_commit_doc_diff_check_20260503.log`.
-- Final proof windows after the repair commit report `Cataclysm: Dark Days Ahead - d0476b4407`, `repo_head=d0476b4407`, `captured_head=d0476b4407`, `captured_dirty=false`, `version_matches_runtime_paths=true`.
+- Final proof windows after the original visible-option repair reported `Cataclysm: Dark Days Ahead - d0476b4407`, `repo_head=d0476b4407`, `captured_head=d0476b4407`, `captured_dirty=false`, `version_matches_runtime_paths=true`.
+- Fresh Pay-bridge/writeback reruns after the later live Pay nudge report `Cataclysm: Dark Days Ahead - 04de6e0f94` on the rebuilt current binary, with no version mismatch.
 
 Live/staged harness rows credited after the repair:
+
+- Fresh current first-demand Pay/open-window row, `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260503_191704/`
+  - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 6/6.
+  - Window/build receipt: `Cataclysm: Dark Days Ahead - 04de6e0f94`; no version mismatch.
+  - OCR guard after choosing `Pay`: `F1 to auto balance with highlighted item` from `choose_pay.after.screen_text.json`, proving the real trade UI is visibly open.
+  - Debug artifact: `shakedown_trade_ui opened demanded=15797 reachable=45134 player_pool=3211 nearby_npc_pool=5222 scene_pool=36701 trader=4 trade_api=npc_trading::trade title=Pay:`.
+
+- Fresh current reopened-demand Pay/open-window row, `bandit.extortion_reopened_demand_mcw` -> `.userdata/dev-harness/harness_runs/20260503_192442/`
+  - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 6/6.
+  - Window/build receipt: `Cataclysm: Dark Days Ahead - 04de6e0f94`; no version mismatch.
+  - OCR guard after choosing reopened `Pay`: `F1 to auto balance with highlighted item`.
+  - Debug artifact: `shakedown_trade_ui opened demanded=22116 reachable=45134 player_pool=3211 nearby_npc_pool=5222 scene_pool=36701 trader=4 trade_api=npc_trading::trade title=Pay:`.
+
+- Fresh current Pay-cancel/refusal row, `tmp.bandit_pay_cancel_fight_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260503_192911/`
+  - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 8/8.
+  - Promoted stable scenario: `tools/openclaw_harness/scenarios/bandit.extortion_first_demand_pay_cancel_fight_mcw.json`.
+  - OCR guard first proves the Pay trade UI opened (`F1 to auto balance with highlighted item`).
+  - Cancel/backout artifacts: `shakedown_trade_ui result=cancel_or_short demanded=15797 reachable=45134 trader=4` and `shakedown_surface fight demanded=15797 reachable=45134`.
+
+- Fresh current successful Pay/save/writeback row, `tmp.bandit_pay_success_save_no_prompt_guard_probe_mcw` -> `.userdata/dev-harness/harness_runs/20260503_193524/`
+  - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`; step ledger `green_step_local_proof` 17/17.
+  - Promoted stable scenario: `tools/openclaw_harness/scenarios/bandit.extortion_first_demand_pay_success_save_mcw.json`.
+  - OCR guards: `Hub 01 soldier helmets` in the filtered player-side trade pane and `Accept this trade? (Case Sensitive)` before uppercase `Y` acceptance.
+  - Paid artifacts: `shakedown_trade_ui result=paid demanded=15797 reachable=45134 trader=4` and `shakedown_surface paid toll=15797 demanded=15797 reachable=45134`.
+  - Save/writeback gates: saved-player mtime changed after the save request (`2026-05-03T19:37:14.358463`); saved bandit metadata has site `overmap_special:bandit_camp@140,51,0`, `member_count=14`, `ready_at_home_count=14`, `active_outside_count=0`, empty active group, and empty active target.
 
 - Final current-HEAD Pay/Fight + trade UI row, `bandit.extortion_first_demand_pay_mcw` -> `.userdata/dev-harness/harness_runs/20260503_180929/`
   - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`.
@@ -57,8 +87,8 @@ Live/staged harness rows credited after the repair:
   - `probe.report.json`: `evidence_class=feature-path`, `feature_proof=true`, `verdict=artifacts_matched`.
   - Proves reopened `responses=pay/fight payment_surface=npc_trade_ui`, `demanded_toll=22116`, and `renegotiation reopen: previous defender loss raises this one bounded demand`.
 
-Superseded rows: the pre-nudge rows `20260503_171632`, `20260503_171825`, and `20260503_172007` are not credited as final Slice 1 proof because they were stale/insufficient for Josef's live-red visible-options report.
+Superseded rows: the pre-nudge rows `20260503_171632`, `20260503_171825`, and `20260503_172007` are not credited as final Slice 1 proof because they were stale/insufficient for Josef's live-red visible-options report. The older `20260503_180929`/`175512` rows remain useful historical evidence, but the credited current Pay-bridge rows for closing the later live Pay concern are `20260503_191704`, `20260503_192442`, `20260503_192911`, and `20260503_193524`.
 
 ## Caveats / next slice boundary
 
-This checkpoint proves the visible Pay/Fight-only fork and real trade-window opening path on a freshly rebuilt current binary. It does not claim full natural-discovery coverage, broad diplomacy/payment redesign, or a saved successful-payment/writeback row after the player manually balances and accepts the trade. Future rows may extend that, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.
+This checkpoint proves the visible Pay/Fight-only fork, real trade-window opening path, cancel/refusal mapping, and successful-payment saved writeback on a freshly rebuilt current binary. It does not claim full natural-discovery coverage or broad diplomacy/payment redesign, but the previous fake selector / silent-confiscation Pay surface is no longer the active product path.

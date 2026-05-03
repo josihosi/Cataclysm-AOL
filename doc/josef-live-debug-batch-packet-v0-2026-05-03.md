@@ -214,8 +214,8 @@ Non-goals:
 
 ## Success state
 
-- [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Red pre-repair row: `20260503_173812`; fresh green rows: Pay/current-HEAD visible fork `20260503_180929`, supporting visible hold `20260503_174815`, Fight `20260503_175254`, reopened `20260503_175512`._
-- [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance and the honest basecamp/faction-side pool before any silent surrender. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; Pay/current-HEAD row `20260503_180929`._
+- [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Red pre-repair row: `20260503_173812`; fresh credited current rows include first Pay/open `20260503_191704`, reopened Pay/open `20260503_192442`, and Pay cancel/refusal `20260503_192911`._
+- [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance and the honest basecamp/faction-side pool before any silent surrender; successful payment saves/persists the paid writeback. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; successful Pay/save/writeback row `20260503_193524`._
 - [x] Misleading `pay/fight/refuse` docs/tests/log expectations are corrected.
 - [ ] Defended camp scout/hold-off uses about `5` OMT watch distance; bandits, cannibals, and other compatible stalking-mode hostiles perform real sight avoidance, and sighted/hot doorstep behavior backs off or escalates. _Partial checkpoint: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md` credits deterministic/local-gate + live artifact evidence for the `5` OMT hold-off goal and hot-doorstep pickup guard; still missing full live sight/smoke break-LoS/reroute/wait/escalate proof._
 - [ ] Multi-z bandit camp is one site/owner with z-footprint metadata; roof-z player position does not create route-missing/throttle silence.
