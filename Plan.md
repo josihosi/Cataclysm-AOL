@@ -277,7 +277,7 @@ Raw live-watch note: `/Users/josefhorvath/.openclaw/workspace/runtime/caol-live-
 
 Goal: add/refine stalker overmap threat/opportunity evaluation, reality-bubble anti-loiter behavior, and overmap/bubble handoff memory so high-threat daylight/three-NPC situations retreat into stalking mode about `3` OMTs back, night/outside reachable-player situations attack or reposition instead of garden-gnome loitering, and zombie/distraction entering the player/NPC tile enables dark-square approach/strike without omniscience.
 
-Current checkpoint: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Remaining closure bar is current-build live/staged proof for high-threat/allies, night/window/outside, and zombie/distraction rows.
+Current checkpoint: deterministic evaluator/live-plan seam coverage is green for threat retreat, stalking-distance intent, dark reachable anti-loiter, zombie-distraction/no-omniscience, handoff/writeback, and existing stalker guarantees. Current-build live/staged high-threat/allies proof is green via `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/`. Remaining closure bar is current-build live/staged proof for night/window/outside and zombie/distraction rows.
 
 Door-opening line: allowed only as a narrow optional escalation if needed — unlocked/simple doors, slow/noisy/interruptible, darkness/distraction/commitment gated, and suppressed under high threat. Do not turn the stalker into a burglar or locked-door solver.
 

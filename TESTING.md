@@ -71,13 +71,13 @@ Evidence required before closure:
 - [x] Deterministic no-omniscience guard: zombie pressure does not grant target knowledge through opaque walls or missing evidence.
 - [x] Anti-gnome proof: repeated window/bad-position loiter triggers attack, reposition, retreat, or logged blocker.
 - [x] Handoff/writeback proof: overmap-to-bubble carries intent/reason/strike budget; bubble-to-overmap preserves spent/retreat/cooldown/threat memory.
-- [ ] Current-build live/staged high-threat row shows retreat/stalk rather than same-tile loiter.
+- [x] Current-build live/staged high-threat row shows retreat/stalk rather than same-tile loiter: `writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw` -> `.userdata/dev-harness/harness_runs/20260503_021310/` (`feature_proof=true`, `verdict=artifacts_matched`, green step ledger, portal clear; live_plan `decision=withdraw`, `reason=live_high_threat_allied_light_retreat_stalk`, `allied_support=3`, `persistent=yes`, `stalk_omt=3`).
 - [ ] Current-build live/staged night/window/outside row shows attack/reposition/retreat with reason, not static loiter.
 - [ ] Current-build live/staged zombie/distraction row shows dark-square approach/strike or records a precise blocker.
 - [ ] If door opening lands, tests prove unlocked/simple only, bounded cost/noise/interruptibility or equivalent, darkness/distraction/commitment gate, and high-threat suppression.
 - [x] Existing stalker guarantees still pass: no omniscience, light/focus counterplay, injured retreat, cooldown anti-spam, bounded burst/fade, and zombie-shadow/quiet-side behavior.
 
-Current checkpoint: deterministic evaluator/live-plan coverage is green for the threat/distraction handoff implementation. Gate: `git diff --check`; `make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`; spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`. Live/staged rows for high-threat allies, night/window/outside, and zombie/distraction remain open before closure.
+Current checkpoint: deterministic evaluator/live-plan coverage is green for the threat/distraction handoff implementation, and the current-build high-threat/allies staged-live row is green from `.userdata/dev-harness/harness_runs/20260503_021310/`. Gate: `git diff --check`; `make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]" --reporter compact` -> `Passed all 23 test cases with 264 assertions`; spillover guard `./tests/cata_test "[zombie_rider],[flesh_raptor]" --reporter compact` -> `Passed all 24 test cases with 268 assertions`. Live/staged rows for night/window/outside and zombie/distraction remain open before closure.
 
 ### Closed validation receipt - CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0
 
