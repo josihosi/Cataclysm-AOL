@@ -1,0 +1,156 @@
+{
+  "name": "bandit.extortion_first_demand_pay_cancel_fight_mcw",
+  "description": "Bandit shakedown/toll-control regression: choose Pay from first demand, prove the actual NPC trade UI opens, then cancel/back out and prove it maps to fight/refusal semantics.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface",
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "demanded_toll=15797",
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
+    "pay_option=yes fight_option=yes",
+    "shakedown_trade_ui opened demanded=15797 reachable=45134",
+    "trade_api=npc_trading::trade",
+    "title=Pay:",
+    "shakedown_trade_ui result=cancel_or_short",
+    "shakedown_surface fight demanded=15797 reachable=45134"
+  ],
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "expected_visible_fact": "post-load gameplay screen for the McWilliams bandit local-contact fixture before toll-control proof begins; this is startup/load footing only",
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_gate_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_first_demand_surface_artifact",
+      "expected_immediate_state": "bounded turn advance reaches the shakedown gate edge; proof is deferred to the same-run demand-surface artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_first_shakedown",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Bandit shakedown dialogue window is visible with the basecamp-pressure opening and player-facing Pay/Fight choices after the final local-contact turn",
+      "capture_after": true
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_first_demand_surface_artifact",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=15797",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the bandit camp-style local gate and pay/fight shakedown surface with reachable goods and demanded toll",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
+    },
+    {
+      "kind": "press",
+      "label": "choose_pay",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Pay was selected from the visible bandit shakedown dialogue; the actual NPC trade UI / trade window is now open with Pay: debt before any hidden surrender.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "F1 to auto balance"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_first_bandit_pay_did_not_open_trade_ui",
+      "abort_reason": "selecting Pay did not visibly open the NPC trade UI with auto-balance controls"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_trade_ui_opened_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_trade_ui opened demanded=15797 reachable=45134",
+          "trade_api=npc_trading::trade",
+          "title=Pay:"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_trade_ui_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove that choosing Pay opened the actual NPC trade API / trade window before goods were surrendered",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, pool values, and the selected bandit trader"
+    },
+    {
+      "kind": "press",
+      "label": "cancel_pay_trade_ui",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Backed out of the proven NPC trade UI payment surface; refusal/fight aftermath should be visible/logged instead of a third dialogue answer.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "proof_deferred_to_label": "audit_cancel_maps_to_fight_artifact"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_cancel_maps_to_fight_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_trade_ui result=cancel_or_short",
+          "demanded=15797",
+          "reachable=45134"
+        ],
+        [
+          "shakedown_surface fight demanded=15797 reachable=45134"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_pay_cancel_did_not_map_to_fight",
+      "abort_reason": "same-run debug artifact did not prove Pay trade cancellation/shortfall mapped to fight/refusal semantics",
+      "expected_immediate_state": "same-run debug log records trade cancel/shortfall and the shakedown_surface fight outcome"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_cancel_fight_mcw",
+  "evidence_contract": {
+    "claim": "choosing Pay opens the actual trade UI; backing out/cancelling it maps honestly to refusal/fight semantics without exposing a third visible response",
+    "load_only_verdict": "load proof only / inconclusive for cancel/refusal behavior",
+    "failure_rule": "No cancel/refusal credit unless the Pay UI opens visibly first and same-run log proves cancel_or_short plus shakedown_surface fight."
+  }
+}

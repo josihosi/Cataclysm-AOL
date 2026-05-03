@@ -4056,10 +4056,14 @@ def read_log_delta(src: Path, start_size: int, *, filter_debug_noise: bool = Fal
     if not src.exists():
         return ""
     size = src.stat().st_size
-    if size <= start_size:
+    if size == start_size:
         return ""
     with src.open("r", encoding="utf-8", errors="replace") as fh:
-        fh.seek(start_size)
+        # debug.log is rewritten/truncated on some live GUI restarts.  When that
+        # happens the previous byte offset points past EOF; read the new file
+        # from the beginning instead of silently returning an empty delta.
+        if size > start_size:
+            fh.seek(start_size)
         data = fh.read()
     if filter_debug_noise:
         return filter_debug_log_text(data)
