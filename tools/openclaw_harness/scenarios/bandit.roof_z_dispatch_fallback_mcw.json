@@ -1,0 +1,158 @@
+{
+  "name": "bandit.roof_z_dispatch_fallback_mcw",
+  "description": "Live roof/tower-z dispatch fallback proof: a scout-confirmed remembered bandit lead points at an elevated z target id/OMT while the currently reachable approach coordinate is on ground. The scenario waits through the real 30-minute overmap dispatch cadence and requires same-run artifacts plus saved state showing dispatch kept the elevated target id but routed to the ground OMT rather than route_missing/throttle silence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_roof_z_dispatch_fallback_v0_2026-05-03",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world dispatch plan:",
+    "candidate_reason=remembered_camp_map_lead",
+    "target=player@140,39,5",
+    "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,5@140,39,5",
+    "job=stalk",
+    "signal_packet=none",
+    "local_gate site=overmap_special:bandit_camp@140,51,0",
+    "live_dispatch_goal=140,39,0",
+    "live_candidate reason=remembered_camp_map_lead"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_roof_z_lead_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the roof-z remembered-lead fixture; this proves startup/load and fixture footing only"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_saved_roof_z_camp_map_lead",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_min_leads": 1,
+      "required_lead_source_contains": "fixture_roof_z_dispatch_fallback",
+      "required_lead_target_id": "player@140,39,5",
+      "required_lead_status": "scout_confirmed",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_z_lead_fixture",
+      "abort_reason": "preflight saved bandit_live_world site did not contain the persisted roof-z remembered lead contract",
+      "expected_immediate_state": "saved bandit_live_world contains an inactive camp with a scout-confirmed remembered elevated/tower-z lead targeting player@140,39,5 before live cadence proof starts"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_30_minutes_for_roof_z_dispatch_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+      "completion_wait_seconds": 12.0,
+      "artifact_state_patterns": [
+        "bandit_live_world dispatch plan:",
+        "candidate_reason=remembered_camp_map_lead",
+        "target=player@140,39,5",
+        "live_dispatch_goal=140,39,0"
+      ],
+      "expected_visible_fact": "the player chose a bounded 30-minute wait; feature credit is deferred to same-run roof-z dispatch artifacts and saved active-state proof, not OCR of the wait UI alone",
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks roof-z remembered-lead dispatch planning plus a ground live_dispatch_goal, this scenario is inconclusive/red.",
+      "allow_artifact_elapsed_without_menu_ocr": true
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_no_route_missing_for_roof_z_dispatch",
+      "since_label": "wait_30_minutes_for_roof_z_dispatch_cadence",
+      "forbidden_line_patterns": [
+        [
+          "bandit_live_world dispatch rejected:",
+          "site=overmap_special:bandit_camp@140,51,0",
+          "reason=route_missing"
+        ],
+        [
+          "cadence_skip:",
+          "reason=30_minute_throttle",
+          "active_sites=0",
+          "travelling_npcs=0"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_z_dispatch_route_missing_or_throttled_silence",
+      "abort_reason": "same-run debug delta showed route_missing or 30-minute-throttle silence after the roof-z remembered target"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt_after_roof_z_dispatch",
+      "keys": [
+        "S"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit prompt is visible after the roof-z dispatch probe"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit_after_roof_z_dispatch",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit confirmation completed after the roof-z dispatch probe"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_roof_z_dispatch_state",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "overmap_special:bandit_camp@140,51,0#dispatch",
+      "required_active_target_id_exact": "player@140,39,5",
+      "required_active_job_type": "stalk",
+      "required_min_active_member_ids": 2,
+      "required_active_members_found": true,
+      "required_min_leads": 1,
+      "required_lead_source_contains": "fixture_roof_z_dispatch_fallback",
+      "required_lead_target_id": "player@140,39,5",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_saved_roof_z_dispatch_state_missing",
+      "abort_reason": "saved bandit_live_world did not persist an active dispatch for the roof-z remembered target",
+      "expected_immediate_state": "after save/quit, saved bandit_live_world contains an active stalk dispatch for player@140,39,5 with concrete active members"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_roof_z_ground_dispatch_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world dispatch plan:",
+          "site=overmap_special:bandit_camp@140,51,0",
+          "target=player@140,39,5",
+          "candidate_reason=remembered_camp_map_lead",
+          "job=stalk",
+          "signal_packet=none",
+          "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,5@140,39,5"
+        ],
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "active_group=overmap_special:bandit_camp@140,51,0#dispatch",
+          "target=player@140,39,5",
+          "active_job=stalk",
+          "live_dispatch_goal=140,39,0"
+        ],
+        [
+          "live_candidate reason=remembered_camp_map_lead",
+          "signal_packet=none",
+          "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,5@140,39,5"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_z_ground_dispatch_artifact_missing",
+      "abort_reason": "same-run debug artifact did not show roof-z target identity, remembered-lead source, and reachable ground live_dispatch_goal"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.roof_z_dispatch_fallback_mcw",
+  "evidence_contract": {
+    "claim": "a roof/elevated-z remembered target does not strand bandit dispatch on route_missing/throttle silence; the real 30-minute live cadence dispatches to the roof-z target id while routing via reachable ground OMT first",
+    "load_only_verdict": "load proof only / inconclusive for roof-z dispatch behavior",
+    "failure_rule": "No roof-z dispatch credit unless startup/load, saved preflight roof-z lead, real wait/cadence action, same-run dispatch-plan artifact, absent route_missing/throttle-silence guard, save/writeback, and saved active dispatch state are all green/matched."
+  }
+}

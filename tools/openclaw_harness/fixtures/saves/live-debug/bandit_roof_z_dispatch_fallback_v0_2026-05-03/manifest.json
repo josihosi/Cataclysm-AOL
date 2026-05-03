@@ -1,0 +1,52 @@
+{
+  "name": "bandit_roof_z_dispatch_fallback_v0_2026-05-03",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "source_profile": "live-debug",
+  "description": "Roof-z dispatch fallback footing: reuse the current-build McWilliams bandit live-world save, move the player just outside the camp's ground approach range, clear legacy local-contact pressure, and seed a scout-confirmed remembered lead whose target identity is on an elevated/tower z-level. The live proof waits through the real dispatch cadence and requires dispatch to route the elevated remembered target through the reachable ground OMT instead of failing route_missing or falling silent behind the 30-minute throttle.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        -12,
+        0
+      ]
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "target_id": "player@140,39,5",
+      "target_omt": [
+        140,
+        39,
+        5
+      ],
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,5@140,39,5",
+      "lead_kind": "basecamp_activity",
+      "status": "scout_confirmed",
+      "radius_omt": 2,
+      "source_key": "fixture_roof_z_dispatch_fallback",
+      "source_summary": "fixture-backed scout-return memory aimed at an elevated/roof-z target; dispatch must route through reachable ground instead of route_missing",
+      "first_seen_minutes": 0,
+      "last_seen_minutes": 720,
+      "last_checked_minutes": 720,
+      "last_scouted_minutes": 720,
+      "bounty": 8,
+      "threat": 1,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "prior_bandit_losses": 0,
+      "prior_defender_losses": 1,
+      "last_outcome": "still_valid",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": true
+    }
+  ]
+}

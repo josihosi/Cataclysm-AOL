@@ -48,6 +48,8 @@ Deterministic rows:
 
 Live rows must include at least one roof/upstairs setup, one ordinary ground-floor/inside setup, and one high-z/tower (`z=5` or closest supported fixture) setup.
 
+Current roof/tower-z dispatch fallback checkpoint: `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md` credits deterministic multi-z identity/routing and live `bandit.roof_z_dispatch_fallback_mcw` proof for preserving elevated target id while routing the dispatch goal through reachable ground and avoiding the old `route_missing` / empty-throttle silence. Broader local/reality-bubble roof/stair entry remains a separate future/local-layer claim.
+
 ### Player counter-signal / smoke-out behavior
 
 Deterministic rows:
