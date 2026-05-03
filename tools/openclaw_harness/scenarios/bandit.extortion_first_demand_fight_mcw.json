@@ -1,6 +1,6 @@
 {
   "name": "bandit.extortion_first_demand_fight_mcw",
-  "description": "Bandit shakedown/toll-control regression: resume the McWilliams/Basecamp local-contact fixture, prove the bandit-only pay/fight demand surface, choose fight, and require same-run branch logging.",
+  "description": "Bandit shakedown/toll-control regression: resume the McWilliams/Basecamp local-contact fixture, prove the bandit-only Pay/Fight demand surface, choose Fight, and require same-run branch logging.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
@@ -14,6 +14,7 @@
     "profile=camp_style",
     "posture=open_shakedown",
     "demanded_toll=15797",
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
     "pay_option=yes fight_option=yes",
     "shakedown_surface fight demanded=15797 reachable=45134"
   ],
@@ -39,7 +40,7 @@
       "label": "advance_final_turn_to_first_shakedown",
       "count": 1,
       "settle_seconds": 1.0,
-      "expected_visible_fact": "Bandit shakedown menu is visible with player-facing pay/fight choice after the final local-contact turn",
+      "expected_visible_fact": "Bandit shakedown dialogue window is visible with player-facing Pay/Fight choices after the final local-contact turn",
       "capture_after": true
     },
     {
@@ -66,17 +67,23 @@
           "demanded_toll=15797",
           "basecamp_inventory=yes",
           "vehicle_inventory=no"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui"
         ]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_first_bandit_demand_surface_artifact_missing",
       "abort_reason": "same-run debug artifact did not prove the bandit camp-style local gate and pay/fight shakedown surface with reachable goods and demanded toll",
-      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, and both pay/fight options"
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
     },
     {
       "kind": "press",
       "label": "choose_fight",
-      "keys": ["f"],
+      "keys": [
+        "down",
+        "enter"
+      ],
       "settle_seconds": 1.0,
       "expected_visible_fact": "fight branch was selected from the visible bandit shakedown menu; immediate screen should return to gameplay/combat-forward contact rather than silently paying",
       "capture_after": true
@@ -97,8 +104,8 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_fight_mcw",
   "evidence_contract": {
-    "claim": "ordinary bandit local contact reaches a player-visible pay/fight shakedown surface and the fight branch is recorded as a distinct same-run outcome",
+    "claim": "ordinary bandit local contact reaches a player-visible Pay/Fight shakedown surface and the fight branch is recorded as a distinct same-run outcome",
     "load_only_verdict": "load proof only / inconclusive for shakedown behavior",
-    "failure_rule": "No shakedown/toll-control fight credit unless startup/load, visible demand surface, same-run camp_style/open_shakedown artifact, and same-run fight branch artifact are all green/matched."
+    "failure_rule": "No shakedown/toll-control fight credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, and same-run fight branch artifact are all green/matched."
   }
 }

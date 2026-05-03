@@ -61,7 +61,8 @@ std::list<item> transfer_items( trade_selector::select_t &stuff, Character &give
                                 Character &receiver, std::list<item_location *> &from_map,
                                 bool use_escrow );
 double net_price_adjustment( const Character &buyer, const Character &seller );
-bool trade( npc &p, int cost, const std::string &deal );
+bool trade( npc &p, int cost, const std::string &deal, int you_nearby_item_radius = 1,
+            int you_nearby_ally_radius = 0 );
 std::vector<item_pricing> init_selling( npc &p );
 } // namespace npc_trading
 

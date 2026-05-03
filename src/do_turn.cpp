@@ -60,6 +60,7 @@
 #include "mtype.h"
 #include "music.h"
 #include "npc.h"
+#include "npctrade.h"
 #include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
@@ -331,111 +332,24 @@ bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
     return pool;
 }
 
-int live_bandit_surrender_from_character( Character &who, int &remaining_value )
-{
-    int surrendered_value = 0;
-    who.remove_items_with( [&remaining_value, &surrendered_value]( const item & it ) {
-        if( remaining_value <= 0 ) {
-            return false;
-        }
-        const int value = live_bandit_item_value( it );
-        if( value <= 0 ) {
-            return false;
-        }
-        remaining_value -= value;
-        surrendered_value += value;
-        return true;
-    } );
-    return surrendered_value;
-}
-
-int live_bandit_surrender_from_nearby_ground( const avatar &u, int &remaining_value )
-{
-    map &here = get_map();
-    int surrendered_value = 0;
-    static constexpr int basecamp_reach_radius = 30;
-    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(), basecamp_reach_radius ) ) {
-        if( remaining_value <= 0 ) {
-            break;
-        }
-        if( !here.accessible_items( pt ) ) {
-            continue;
-        }
-        map_stack stack = here.i_at( pt );
-        for( map_stack::iterator it = stack.begin(); it != stack.end() && remaining_value > 0; ) {
-            const int value = live_bandit_item_value( *it );
-            if( value <= 0 ) {
-                ++it;
-                continue;
-            }
-            remaining_value -= value;
-            surrendered_value += value;
-            it = stack.erase( it );
-        }
-    }
-    return surrendered_value;
-}
-
-int live_bandit_surrender_from_current_vehicle( const avatar &u, int &remaining_value )
-{
-    if( !u.in_vehicle ) {
-        return 0;
-    }
-
-    map &here = get_map();
-    const optional_vpart_position player_vehicle = here.veh_at( u.pos_bub() );
-    if( !player_vehicle ) {
-        return 0;
-    }
-
-    int surrendered_value = 0;
-    vehicle &veh = player_vehicle->vehicle();
-    for( const vpart_reference &part_ref : veh.get_all_parts() ) {
-        if( remaining_value <= 0 ) {
-            break;
-        }
-        vehicle_stack stack = veh.get_items( part_ref.part() );
-        for( vehicle_stack::iterator it = stack.begin(); it != stack.end() && remaining_value > 0; ) {
-            const int value = live_bandit_item_value( *it );
-            if( value <= 0 ) {
-                ++it;
-                continue;
-            }
-            remaining_value -= value;
-            surrendered_value += value;
-            it = stack.erase( it );
-        }
-    }
-    return surrendered_value;
-}
-
-int live_bandit_surrender_from_nearby_companions( const avatar &u, int &remaining_value )
-{
-    int surrendered_value = 0;
-    static constexpr int nearby_companion_radius = 12;
-    for( npc &guy : g->all_npcs() ) {
-        if( remaining_value <= 0 ) {
-            break;
-        }
-        if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
-            continue;
-        }
-        surrendered_value += live_bandit_surrender_from_character( guy, remaining_value );
-    }
-    return surrendered_value;
-}
-
-enum class live_bandit_shakedown_payment_choice : int {
-    player_carried = 1,
-    nearby_companions = 2,
-    scene_inventory = 3,
-    all_reachable = 4,
-    fight = 100,
-};
-
-int live_bandit_select_shakedown_payment( const bandit_live_world::local_gate_input &input,
+int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &site,
+        const bandit_live_world::local_gate_input &input,
         const bandit_live_world::shakedown_surface &surface, avatar &u )
 {
+    npc *trader = nullptr;
+    for( const character_id &member_id : site.active_member_ids ) {
+        if( npc *candidate = g->find_npc( member_id ) ) {
+            trader = candidate;
+            break;
+        }
+    }
+    if( trader == nullptr ) {
+        DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result=no_trader demanded="
+                                   << surface.demanded_value << " reachable="
+                                   << surface.reachable_goods_value << '\n';
+        return 0;
+    }
+
     const int player_value = live_bandit_character_goods_value( u );
     const int companion_value = [&u]() {
         int value = 0;
@@ -451,69 +365,27 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::local_gate_in
     const int scene_value = input.basecamp_or_camp_scene ?
                             live_bandit_nearby_ground_goods_value( u ) :
                             live_bandit_current_vehicle_goods_value( u );
-    const int total_value = player_value + companion_value + scene_value;
 
-    uilist menu;
-    menu.text = string_format( _( "Shakedown payment\nDemanded toll: %1$d\nReachable goods: %2$d\nChoose what pool to surrender from.  Esc/backout means Fight." ),
-                               surface.demanded_value, surface.reachable_goods_value );
-    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::player_carried ),
-                   player_value >= surface.demanded_value, 'p',
-                   string_format( _( "Pay from your carried goods (%d available)" ), player_value ) );
-    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::nearby_companions ),
-                   companion_value >= surface.demanded_value, 'n',
-                   string_format( _( "Pay from nearby Basecamp NPC / companion carried goods (%d available)" ),
-                                  companion_value ) );
-    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::scene_inventory ),
-                   scene_value >= surface.demanded_value, 's',
-                   input.basecamp_or_camp_scene ?
-                   string_format( _( "Pay from nearby Basecamp/faction goods (%d available)" ), scene_value ) :
-                   string_format( _( "Pay from the current vehicle goods (%d available)" ), scene_value ) );
-    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::all_reachable ),
-                   total_value >= surface.demanded_value, 'a',
-                   string_format( _( "Pay from all reachable goods in order (%d available)" ), total_value ) );
-    menu.addentry( static_cast<int>( live_bandit_shakedown_payment_choice::fight ), true, 'f',
-                   _( "Fight instead" ) );
-    menu.query();
-
-    if( menu.ret == UILIST_CANCEL ||
-        menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::fight ) ) {
-        DebugLog( D_INFO, DC_ALL ) << "shakedown_payment_surface result=fight_or_backout demanded="
-                                   << surface.demanded_value << " reachable="
-                                   << surface.reachable_goods_value << '\n';
-        return 0;
-    }
-
-    int remaining_value = surface.demanded_value;
-    int surrendered_value = 0;
-    const auto surrender_scene = [&]() {
-        if( input.basecamp_or_camp_scene ) {
-            return live_bandit_surrender_from_nearby_ground( u, remaining_value );
-        }
-        return live_bandit_surrender_from_current_vehicle( u, remaining_value );
-    };
-
-    if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::player_carried ) ) {
-        surrendered_value += live_bandit_surrender_from_character( u, remaining_value );
-    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::nearby_companions ) ) {
-        surrendered_value += live_bandit_surrender_from_nearby_companions( u, remaining_value );
-    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::scene_inventory ) ) {
-        surrendered_value += surrender_scene();
-    } else if( menu.ret == static_cast<int>( live_bandit_shakedown_payment_choice::all_reachable ) ) {
-        surrendered_value += live_bandit_surrender_from_character( u, remaining_value );
-        surrendered_value += live_bandit_surrender_from_nearby_companions( u, remaining_value );
-        surrendered_value += surrender_scene();
-    }
-
-    DebugLog( D_INFO, DC_ALL ) << "shakedown_payment_surface result="
-                               << ( surrendered_value >= surface.demanded_value ? "paid" : "short" )
-                               << " selected=" << menu.ret
-                               << " toll=" << surrendered_value
-                               << " demanded=" << surface.demanded_value
-                               << " reachable=" << surface.reachable_goods_value
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui opened demanded="
+                               << surface.demanded_value << " reachable="
+                               << surface.reachable_goods_value
                                << " player_pool=" << player_value
                                << " nearby_npc_pool=" << companion_value
-                               << " scene_pool=" << scene_value << '\n';
-    return surrendered_value;
+                               << " scene_pool=" << scene_value
+                               << " trader=" << trader->getID().get_value()
+                               << " trade_api=npc_trading::trade"
+                               << " title=Pay:\n";
+    static constexpr int basecamp_reach_radius = 30;
+    static constexpr int nearby_companion_radius = 12;
+    const bool paid = npc_trading::trade( *trader, surface.demanded_value, _( "Pay:" ),
+                                          input.basecamp_or_camp_scene ? basecamp_reach_radius : 1,
+                                          nearby_companion_radius );
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result="
+                               << ( paid ? "paid" : "cancel_or_short" )
+                               << " demanded=" << surface.demanded_value
+                               << " reachable=" << surface.reachable_goods_value
+                               << " trader=" << trader->getID().get_value() << '\n';
+    return paid ? surface.demanded_value : 0;
 }
 
 bool live_bandit_shakedown_already_opened( const bandit_live_world::site_record &site )
@@ -705,16 +577,15 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
 
     DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
                                << ( surface.opening_id.empty() ? "none" : surface.opening_id )
-                               << " responses=pay/fight payment_surface=trade_debt_selector\n";
+                               << " responses=pay/fight payment_surface=npc_trade_ui\n";
     const live_bandit_shakedown_response response =
         query_live_bandit_shakedown_dialogue( site, surface );
 
     bool payment_failed = false;
     if( response == live_bandit_shakedown_response::pay ) {
-        const int surrendered_value = live_bandit_select_shakedown_payment( input, surface, u );
+        const int surrendered_value = live_bandit_select_shakedown_payment( site, input, surface, u );
         if( surrendered_value >= surface.demanded_value ) {
-            add_msg( m_bad, _( "You surrender goods worth about %1$d to the bandits." ),
-                     surrendered_value );
+            add_msg( m_bad, _( "You complete the shakedown payment through trade." ) );
             live_bandit_send_group_home_after_payment( site, surface, surrendered_value );
             return true;
         }

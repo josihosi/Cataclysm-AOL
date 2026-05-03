@@ -13,6 +13,7 @@
 #include "clzones.h"
 #include "color.h"
 #include "enums.h"
+#include "game.h"
 #include "game_constants.h"
 #include "inventory_ui.h"
 #include "item.h"
@@ -116,7 +117,8 @@ bool trade_preset::cat_sort_compare( const inventory_entry &lhs, const inventory
     return fudge_rank( lhs ) < fudge_rank( rhs );
 }
 
-trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title )
+trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
+                    const int you_nearby_item_radius, const int you_nearby_ally_radius )
     : _upreset{ you, trader }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
@@ -126,7 +128,16 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
 
 {
     _panes[_you]->add_character_items( you );
-    _panes[_you]->add_nearby_items( 1 );
+    _panes[_you]->add_nearby_items( you_nearby_item_radius );
+    if( you_nearby_ally_radius > 0 ) {
+        for( npc &guy : g->all_npcs() ) {
+            if( &guy == &trader || !guy.is_player_ally() ||
+                rl_dist( guy.pos_abs(), you.pos_abs() ) > you_nearby_ally_radius ) {
+                continue;
+            }
+            _panes[_you]->add_character_items( guy );
+        }
+    }
     _panes[_trader]->add_character_items( trader );
     if( trader.is_shopkeeper() ) {
         _panes[_trader]->categorize_map_items( true );

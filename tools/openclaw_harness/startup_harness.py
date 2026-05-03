@@ -4426,6 +4426,94 @@ def normalize_capture_crop(raw_crop: Any) -> Optional[Dict[str, int]]:
     }
 
 
+def screen_capture_succeeded(screen_summary: Dict[str, Any]) -> bool:
+    return bool(screen_summary.get("capture_success") or screen_summary.get("peekaboo_success"))
+
+
+def fallback_screencapture(
+    png_path: Path,
+    capture_target: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    screencapture_cmd = shutil.which("screencapture") or "/usr/sbin/screencapture"
+    target = capture_target or {}
+    attempts: List[Dict[str, Any]] = []
+    command_variants: List[List[str]] = []
+    if target.get("window_id"):
+        command_variants.append([screencapture_cmd, "-x", "-l", str(target["window_id"]), str(png_path)])
+    command_variants.append([screencapture_cmd, "-x", str(png_path)])
+
+    for cmd in command_variants:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        attempt = {
+            "command": cmd,
+            "returncode": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+            "png_exists": png_path.exists(),
+        }
+        attempts.append(attempt)
+        if proc.returncode == 0 and png_path.exists():
+            return {
+                "ok": True,
+                "backend": "screencapture_window" if "-l" in cmd else "screencapture_fullscreen",
+                "command": cmd,
+                "attempts": attempts,
+            }
+
+    return {
+        "ok": False,
+        "backend": "screencapture",
+        "attempts": attempts,
+        "error": (attempts[-1].get("stderr") or attempts[-1].get("stdout") or "screencapture failed").strip() if attempts else "screencapture not attempted",
+    }
+
+
+def summarize_screencapture_image_capture(
+    png_path: Path,
+    fallback_report: Dict[str, Any],
+    capture_target: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    repo_head = current_head_short()
+    summary: Dict[str, Any] = {
+        "png_path": str(png_path),
+        "peekaboo_json": "",
+        "repo_head": repo_head,
+        "peekaboo_success": False,
+        "capture_success": bool(fallback_report.get("ok")),
+        "capture_backend": str(fallback_report.get("backend", "screencapture")),
+        "window_title": str((capture_target or {}).get("title", "")).strip(),
+        "window_id": int((capture_target or {}).get("window_id") or 0),
+        "window_index": (capture_target or {}).get("index"),
+        "captured_head": "",
+        "captured_dirty": False,
+        "version_matches_repo_head": None,
+        "version_matches_runtime_paths": None,
+        "runtime_relevant_paths": list(RUNTIME_RELEVANT_PATHS),
+        "runtime_relevant_diff_since_capture": [],
+        "runtime_compare_error": "",
+        "parse_error": str(fallback_report.get("error", "")),
+    }
+    build_info = extract_window_build_info(summary["window_title"])
+    summary.update(build_info)
+    if summary["captured_head"]:
+        captured_head = str(summary["captured_head"])
+        summary["version_matches_repo_head"] = captured_head == repo_head
+        if summary["version_matches_repo_head"]:
+            summary["version_matches_runtime_paths"] = True
+        else:
+            runtime_changes, runtime_error = runtime_relevant_changes_since(captured_head)
+            summary["runtime_relevant_diff_since_capture"] = runtime_changes
+            summary["runtime_compare_error"] = runtime_error
+            if not runtime_error:
+                summary["version_matches_runtime_paths"] = not runtime_changes
+    return summary
+
+
 def crop_png_with_sips(source_path: Path, output_path: Path, crop: Dict[str, int]) -> Dict[str, Any]:
     cmd = [
         "sips",
@@ -4477,20 +4565,35 @@ def capture_screenshot(
         text=True,
         check=False,
     )
+    fallback_report: Optional[Dict[str, Any]] = None
+    capture_ok = proc.returncode == 0 and png_path.exists()
+    if not capture_ok:
+        fallback_report = fallback_screencapture(png_path, capture_target=capture_target)
+        capture_ok = bool(fallback_report.get("ok"))
+
     crop_request = normalize_capture_crop(crop)
     crop_report: Optional[Dict[str, Any]] = None
-    if proc.returncode == 0 and crop_request:
+    if capture_ok and crop_request:
         full_png_path = run_dir / f"{label}.full.png"
         shutil.copy2(png_path, full_png_path)
         crop_report = crop_png_with_sips(full_png_path, png_path, crop_request)
         if not crop_report.get("ok"):
             shutil.copy2(full_png_path, png_path)
-    screen_summary = summarize_peekaboo_image_capture(
-        proc.stdout,
-        png_path,
-        json_path,
-        capture_target=capture_target,
-    )
+    if fallback_report and fallback_report.get("ok"):
+        screen_summary = summarize_screencapture_image_capture(
+            png_path,
+            fallback_report,
+            capture_target=capture_target,
+        )
+    else:
+        screen_summary = summarize_peekaboo_image_capture(
+            proc.stdout,
+            png_path,
+            json_path,
+            capture_target=capture_target,
+        )
+        screen_summary["capture_success"] = bool(screen_summary.get("peekaboo_success"))
+        screen_summary["capture_backend"] = "peekaboo"
     if crop_report:
         screen_summary["crop_requested"] = crop_request
         screen_summary["crop_applied"] = bool(crop_report.get("ok"))
@@ -4504,6 +4607,7 @@ def capture_screenshot(
         "returncode": proc.returncode,
         "stdout": proc.stdout,
         "stderr": proc.stderr,
+        "fallback": fallback_report,
         "crop": crop_report,
         "screen_summary": screen_summary,
     }
@@ -4787,7 +4891,7 @@ def screen_checkpoint_verdict(
     issues: List[str] = []
     if not screen_summary:
         return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
-    if not screen_summary.get("peekaboo_success"):
+    if not screen_capture_succeeded(screen_summary):
         return "red_step_screen_capture_failed", ["screen_capture_failed"]
     if screen_summary.get("version_matches_runtime_paths") is False:
         issues.append("runtime_version_mismatch")
@@ -10308,7 +10412,7 @@ def startup_profile_snapshot_verdict(snapshot_name: str, snapshot_result: Dict[s
 
 
 def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
-    if not screen_summary.get("peekaboo_success"):
+    if not screen_capture_succeeded(screen_summary):
         return "red_screen_capture_failed"
     if screen_summary.get("version_matches_runtime_paths") is False:
         return "yellow_runtime_version_mismatch"
@@ -10441,7 +10545,7 @@ def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], fa
     verdict = "startup_load_only"
     clean_for_feature_steps = True
     feature_gate = "startup_clean"
-    if not screen_summary.get("peekaboo_success"):
+    if not screen_capture_succeeded(screen_summary):
         status = "red"
         verdict = "startup_load_only_screen_capture_failed"
         clean_for_feature_steps = False
