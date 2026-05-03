@@ -291,7 +291,7 @@ Boundary: closed v0 packet. Do not reopen all stalker v0 work, flesh raptors, zo
 
 ## Handoff boundary — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0
 
-**Status:** JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY / NOT CURRENT ANDI LANE
+**Status:** WAITING FOR NEXT GREENLIGHT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY / NOT CURRENT ANDI LANE
 
 Josef greenlit turning the relay-ready visions sampler into a concrete playtest save pack. The product now is not another proof receipt: it is a small labelled set of current-build saves or handoff sessions Josef can actually load and play.
 

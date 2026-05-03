@@ -225,7 +225,7 @@ Canonical docs:
 
 ## CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0 — Josef playable save/handoff pack
 
-Status: ACTIVE / GREENLIT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY
+Status: WAITING FOR NEXT GREENLIGHT / JOSEF HANDOFF CARD READY / OPTIONAL BANDIT CONTRAST READY / NOT CURRENT ANDI LANE
 
 Success state:
 - [x] Six labelled playtest entries exist: Basecamp AI/camp locker, bandit pressure, cannibal camp, flesh raptor, zombie rider, writhing stalker.
