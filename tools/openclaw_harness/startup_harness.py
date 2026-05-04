@@ -8226,6 +8226,15 @@ def audit_saved_hordes_near_player(
             requirement["min_moves"] = int(raw.get("min_moves") or 0)
         if "min_last_processed" in raw:
             requirement["min_last_processed"] = int(raw.get("min_last_processed") or 0)
+        for raw_key, normalized_key in (
+            ("min_count", "min_count"),
+            ("min_distance_chebyshev_ms", "min_distance_chebyshev_ms"),
+            ("max_distance_chebyshev_ms", "max_distance_chebyshev_ms"),
+            ("min_distance_ms", "min_distance_chebyshev_ms"),
+            ("max_distance_ms", "max_distance_chebyshev_ms"),
+        ):
+            if raw_key in raw:
+                requirement[normalized_key] = int(raw.get(raw_key) or 0)
         if requirement:
             normalized_required.append(requirement)
 
@@ -8275,12 +8284,20 @@ def audit_saved_hordes_near_player(
             return False
         if "min_last_processed" in requirement and int(entry.get("last_processed") or 0) < int(requirement.get("min_last_processed") or 0):
             return False
+        if "min_distance_chebyshev_ms" in requirement and int(entry.get("distance_chebyshev_ms") or 0) < int(requirement.get("min_distance_chebyshev_ms") or 0):
+            return False
+        if "max_distance_chebyshev_ms" in requirement and int(entry.get("distance_chebyshev_ms") or 0) > int(requirement.get("max_distance_chebyshev_ms") or 0):
+            return False
         return True
 
-    missing_required_hordes = [
-        requirement for requirement in normalized_required
-        if not any(matches_requirement(entry, requirement) for entry in observed)
-    ]
+    missing_required_hordes: List[Dict[str, Any]] = []
+    for requirement in normalized_required:
+        matching_count = sum(1 for entry in observed if matches_requirement(entry, requirement))
+        min_count = int(requirement.get("min_count", 1) or 1)
+        if matching_count < min_count:
+            missing = dict(requirement)
+            missing["observed_matching_count"] = matching_count
+            missing_required_hordes.append(missing)
     if normalized_required and not missing_required_hordes:
         status = "required_state_present"
     elif normalized_required:
@@ -9224,6 +9241,25 @@ def execute_probe_steps(
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "s", "w"],
                 "spawn_target": "inventory",
+            })
+        elif kind == "debug_spawn_overmap_threat":
+            selection_key = str(step.get("selection_key", step.get("option_key", "")) or "").strip()
+            if not selection_key:
+                raise SystemExit(f"Scenario step '{label}' needs selection_key/option_key")
+            delay_ms = int(step.get("delay_ms", 250) or 250)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            run_debug_menu_shortcut_path(
+                pid,
+                ["s", "H", selection_key],
+                delay_ms=delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report.update({
+                "selection_key": selection_key,
+                "delay_ms": delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "debug_menu_path": ["}", "s", "H", selection_key],
+                "spawn_target": "overmap_horde_map",
             })
         elif kind == "debug_spawn_monster":
             monster_query = str(

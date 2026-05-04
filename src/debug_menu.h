@@ -7,8 +7,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "coordinates.h"  // IWYU pragma: keep
+#include "type_id.h"
 
 class Character;
 class Creature;
@@ -17,6 +19,19 @@ template <typename E> struct enum_traits;
 
 namespace debug_menu
 {
+
+struct overmap_spawn_option {
+    std::string id;
+    std::string label;
+    mongroup_id group;
+    int population = 1;
+    int distance_omt = 10;
+    int hotkey = 0;
+};
+
+std::vector<overmap_spawn_option> overmap_spawn_options();
+tripoint_abs_sm overmap_spawn_destination( const tripoint_abs_ms &player_abs_ms, int distance_omt );
+void spawn_overmap_threat( const overmap_spawn_option &option );
 
 enum class debug_menu_index : int {
     WISH,

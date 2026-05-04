@@ -1,0 +1,250 @@
+{
+  "name": "harness.debug_spawn_overmap_threat_options_mcw",
+  "description": "Exercise the debug overmap threat spawn submenu end-to-end: spawn medium hordes plus writhing stalker and zombie rider threats at 5/10 OMT, save, then inspect saved horde_map distance bands and counts.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "settle_loaded_map_before_debug_spawn_options",
+      "seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "the loaded live map is settled before debug menu shortcut input begins"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_medium_horde_5_omt",
+      "selection_key": "5",
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the medium horde 5 OMT option",
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=medium_horde_5_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_medium_horde_5_omt",
+      "since_label": "debug_spawn_medium_horde_5_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=medium_horde_5_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record medium_horde_5_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the medium_horde_5_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_medium_horde_10_omt",
+      "selection_key": "0",
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the medium horde 10 OMT option",
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=medium_horde_10_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_medium_horde_10_omt",
+      "since_label": "debug_spawn_medium_horde_10_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=medium_horde_10_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record medium_horde_10_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the medium_horde_10_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_writhing_stalker_5_omt",
+      "selection_key": "s",
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the writhing stalker 5 OMT option",
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=writhing_stalker_5_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_writhing_stalker_5_omt",
+      "since_label": "debug_spawn_writhing_stalker_5_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=writhing_stalker_5_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record writhing_stalker_5_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the writhing_stalker_5_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_writhing_stalker_10_omt",
+      "selection_key": "S",
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the writhing stalker 10 OMT option",
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=writhing_stalker_10_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_writhing_stalker_10_omt",
+      "since_label": "debug_spawn_writhing_stalker_10_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=writhing_stalker_10_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record writhing_stalker_10_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the writhing_stalker_10_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_zombie_rider_5_omt",
+      "selection_key": "r",
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the zombie rider 5 OMT option",
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=zombie_rider_5_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_zombie_rider_5_omt",
+      "since_label": "debug_spawn_zombie_rider_5_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=zombie_rider_5_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record zombie_rider_5_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the zombie_rider_5_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "debug_spawn_overmap_threat",
+      "label": "debug_spawn_zombie_rider_10_omt",
+      "selection_key": "R",
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "debug overmap threat spawn returns to the live map after selecting the zombie rider 10 OMT option",
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "debug overmap_spawn: id=zombie_rider_10_omt"
+      ]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_log_zombie_rider_10_omt",
+      "since_label": "debug_spawn_zombie_rider_10_omt",
+      "required_patterns": [
+        "debug overmap_spawn: id=zombie_rider_10_omt"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_shortcut",
+      "abort_reason": "debug log did not record zombie_rider_10_omt immediately after the debug spawn submenu selection",
+      "expected_visible_fact": "debug log records the zombie_rider_10_omt spawn option after its submenu shortcut is selected"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_overmap_spawn_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug overmap spawns and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_overmap_spawns",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug overmap spawn save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug overmap spawn steps"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_overmap_spawns",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": true,
+      "expected_visible_fact": "the save confirmation returns to a stable screen before the following mtime gate proves writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_overmap_spawn_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_overmap_spawn_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug overmap spawn save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug overmap spawn save"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_hordes_after_debug_overmap_spawns",
+      "radius_ms": 280,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "min_count": 30,
+          "min_distance_ms": 100,
+          "max_distance_ms": 140
+        },
+        {
+          "monster_id": "mon_zombie",
+          "min_count": 30,
+          "min_distance_ms": 220,
+          "max_distance_ms": 260
+        },
+        {
+          "monster_id": "mon_writhing_stalker",
+          "min_count": 1,
+          "min_distance_ms": 100,
+          "max_distance_ms": 140
+        },
+        {
+          "monster_id": "mon_writhing_stalker",
+          "min_count": 1,
+          "min_distance_ms": 220,
+          "max_distance_ms": 260
+        },
+        {
+          "monster_id": "mon_zombie_rider",
+          "min_count": 1,
+          "min_distance_ms": 100,
+          "max_distance_ms": 140
+        },
+        {
+          "monster_id": "mon_zombie_rider",
+          "min_count": 1,
+          "min_distance_ms": 220,
+          "max_distance_ms": 260
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_overmap_spawn_target_state",
+      "abort_reason": "saved horde_map metadata did not contain the requested medium horde/stalker/rider count and 5/10 OMT distance-band state after same-run debug overmap spawn save/writeback",
+      "expected_visible_fact": "same-run saved horde_map metadata contains 30-zombie medium hordes and exact stalker/rider threats in separate 5/10 OMT distance bands"
+    }
+  ]
+}

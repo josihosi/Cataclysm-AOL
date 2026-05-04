@@ -558,7 +558,25 @@
   {
     "type": "monstergroup",
     "id": "GROUP_DEBUG_EXACTLY_ONE",
-    "//": "Hardcoded reference in debug() (debug_menu.cpp). Used for debugging, duh.",
+    "//": "Legacy exact-one debug group kept for saves/tools that may still reference it.",
     "monsters": [ { "monster": "mon_zombie", "weight": 1, "cost_multiplier": 1, "pack_size": [ 1, 1 ] } ]
+  },
+  {
+    "type": "monstergroup",
+    "id": "GROUP_DEBUG_MEDIUM_HORDE",
+    "//": "Hardcoded reference in debug_menu.cpp. Medium zombie horde for live pressure/debug staging.",
+    "monsters": [ { "monster": "mon_zombie", "weight": 1, "cost_multiplier": 1, "pack_size": [ 1, 1 ] } ]
+  },
+  {
+    "type": "monstergroup",
+    "id": "GROUP_DEBUG_WRITHING_STALKER",
+    "//": "Hardcoded reference in debug_menu.cpp. Exact writhing stalker overmap threat for live debug staging.",
+    "monsters": [ { "monster": "mon_writhing_stalker", "weight": 1, "cost_multiplier": 1, "pack_size": [ 1, 1 ] } ]
+  },
+  {
+    "type": "monstergroup",
+    "id": "GROUP_DEBUG_ZOMBIE_RIDER",
+    "//": "Hardcoded reference in debug_menu.cpp. Exact zombie rider overmap threat for live debug staging.",
+    "monsters": [ { "monster": "mon_zombie_rider", "weight": 1, "cost_multiplier": 1, "pack_size": [ 1, 1 ] } ]
   }
 ]
