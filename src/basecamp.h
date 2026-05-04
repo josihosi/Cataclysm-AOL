@@ -931,6 +931,9 @@ public:
       const character_id &worker_id,
       camp_patrol_interrupt_reason reason =
           camp_patrol_interrupt_reason::explicit_reassignment);
+  bool raise_patrol_alarm(const character_id &spotter_id,
+                          time_duration duration = 30_minutes);
+  bool is_patrol_alarm_active() const;
   void mark_camp_locker_dirty(npc &worker, bool high_priority = false);
   bool process_camp_locker_downtime(npc &worker);
   bool service_camp_locker(npc &worker);
@@ -1003,7 +1006,9 @@ private:
   bool patrol_shift_cache_valid = false;
   int patrol_shift_cache_day = -1;
   camp_patrol_shift patrol_shift_cache_kind = camp_patrol_shift::day;
+  bool patrol_shift_cache_alarm_active = false;
   camp_patrol_shift_plan patrol_shift_cache;
+  time_point patrol_alarm_until = calendar::turn_zero;
   std::vector<character_id> locker_service_queue;
   time_point locker_next_service_turn = calendar::turn_zero;
   std::vector<camp_locker_reservation> locker_reservations; // NOLINT(cata-serialize)

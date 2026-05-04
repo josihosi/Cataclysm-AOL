@@ -31,6 +31,7 @@
 #include "map.h"
 #include "map_helpers.h"
 #include "messages.h"
+#include "monster.h"
 #include "npc.h"
 #include "options_helpers.h"
 #include "overmapbuffer.h"
@@ -847,6 +848,150 @@ TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
   CHECK(night_plan->roster == std::vector<character_id>({replacement_guard.getID()}));
   CHECK(test_camp.is_worker_on_patrol_shift(replacement_guard));
   CHECK_FALSE(test_camp.is_worker_on_patrol_shift(day_guard));
+
+  calendar::turn = sunrise(calendar::turn_zero) + 3_hours;
+  REQUIRE(test_camp.raise_patrol_alarm(day_guard.getID(), 10_minutes));
+  CHECK(test_camp.is_patrol_alarm_active());
+  const camp_patrol_shift_plan *alarm_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE(alarm_plan != nullptr);
+  REQUIRE(alarm_plan->shift == camp_patrol_shift::day);
+  CHECK(alarm_plan->roster == std::vector<character_id>({day_guard.getID(),
+                                                         replacement_guard.getID()}));
+
+  calendar::turn += 11_minutes;
+  CHECK_FALSE(test_camp.is_patrol_alarm_active());
+  CHECK_FALSE(test_camp.is_worker_on_patrol_shift(replacement_guard));
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_positive",
+          "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  const tripoint_bub_ms guard_local{50, 50, 0};
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(patrol_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+  test_camp->set_bb_pos(patrol_abs);
+
+  npc &guard = spawn_npc( guard_local.xy(), "thug" );
+  static const faction_id faction_free_merchants( "free_merchants" );
+  guard.set_fac( faction_free_merchants );
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  test_camp->add_assignee( guard.getID() );
+
+  npc &neutral = spawn_npc( tripoint_bub_ms{50, 51, 0}.xy(), "thug" );
+  static const faction_id faction_no_faction( "no_faction" );
+  neutral.set_fac( faction_no_faction );
+
+  calendar::turn = sunrise(calendar::turn_zero) + 2_hours;
+  guard.regen_ai_cache();
+  CHECK( guard.current_target() == nullptr );
+  CHECK_FALSE( test_camp->is_patrol_alarm_active() );
+  CHECK( guard.attitude_to( neutral ) != Creature::Attitude::HOSTILE );
+
+  npc &raider = spawn_npc( tripoint_bub_ms{52, 50, 0}.xy(), "bandit" );
+  static const faction_id faction_hells_raiders( "hells_raiders" );
+  raider.set_fac( faction_hells_raiders );
+  CHECK( guard.attitude_to( raider ) == Creature::Attitude::HOSTILE );
+  CHECK( here.has_potential_los( guard.pos_bub(), raider.pos_bub() ) );
+  CHECK( guard.sees( here, raider.pos_bub( here ) ) );
+  guard.regen_ai_cache();
+  CHECK( guard.current_target() == &raider );
+  CHECK( test_camp->is_patrol_alarm_active() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  const tripoint_bub_ms guard_local{50, 50, 0};
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(patrol_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+  test_camp->set_bb_pos(patrol_abs);
+
+  npc &guard = spawn_npc( guard_local.xy(), "thug" );
+  static const faction_id faction_free_merchants( "free_merchants" );
+  guard.set_fac( faction_free_merchants );
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  test_camp->add_assignee( guard.getID() );
+
+  calendar::turn = sunrise(calendar::turn_zero) + 2_hours;
+  guard.assess_danger();
+  CHECK( guard.current_target() == nullptr );
+  CHECK_FALSE( test_camp->is_patrol_alarm_active() );
+
+  monster &zombie = spawn_test_monster( "mon_zombie", tripoint_bub_ms{52, 50, 0} );
+  guard.assess_danger();
+  CHECK( guard.current_target() == &zombie );
+  CHECK( test_camp->is_patrol_alarm_active() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_worker_downtime_hides_routine_route_reports",
+          "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms worker_local{10, 10, 0};
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{12, 10, 0});
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{13, 10, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(patrol_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+  test_camp->set_bb_pos(patrol_abs);
+
+  npc &worker = spawn_npc(worker_local.xy(), "thug");
+  worker.set_fac( your_fac );
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+  REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 9));
+  test_camp->add_assignee(worker.getID());
+
+  calendar::turn = sunrise(calendar::turn_zero) + 2_hours;
+  Messages::clear_messages();
+  worker.worker_downtime();
+  CHECK(Messages::recent_messages(0).empty());
 
   zone_manager::get_manager().clear();
 }

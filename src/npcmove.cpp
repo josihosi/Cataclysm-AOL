@@ -965,15 +965,33 @@ void npc::assess_danger() {
                                    llm_state.target_turns_remaining > 0 &&
                                    !llm_state.target_hint.empty();
   bool sees_player = sees(here, player_character.pos_bub(here));
+  basecamp *camp_patrol_response_camp = nullptr;
+  if( assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 ) {
+    if( std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
+        camp && *camp && ( *camp )->has_patrol_zone() ) {
+      camp_patrol_response_camp = *camp;
+    }
+  }
+  const bool camp_patrol_response = camp_patrol_response_camp != nullptr;
+
   const bool self_defense_only =
-      !llm_attack_override && (rules.engagement == combat_engagement::NO_MOVE ||
-                               rules.engagement == combat_engagement::NONE);
+      !llm_attack_override && !camp_patrol_response &&
+      ( rules.engagement == combat_engagement::NO_MOVE ||
+        rules.engagement == combat_engagement::NONE );
   const bool no_fighting =
-      !llm_attack_override && rules.has_flag(ally_rule::forbid_engage);
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::forbid_engage);
   const bool must_retreat =
-      !llm_attack_override && rules.has_flag(ally_rule::follow_close) &&
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::follow_close) &&
       !too_close(pos_bub(), player_character.pos_bub(), follow_distance()) &&
       !is_guarding();
+
+  const auto raise_camp_patrol_alarm = [&]() {
+    if( camp_patrol_response_camp != nullptr ) {
+      camp_patrol_response_camp->raise_patrol_alarm( getID() );
+    }
+  };
 
     if( is_player_ally() ) {
         if( llm_attack_override ) {
@@ -1050,12 +1068,13 @@ void npc::assess_danger() {
       continue;
     }
 
-    if (has_faction_relationship(guy,
+    if( attitude_to( guy ) == Attitude::HOSTILE &&
+        sees( here, guy.pos_bub( here ) ) ) {
+      raise_camp_patrol_alarm();
+      ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
+    } else if (has_faction_relationship(guy,
                                  npc_factions::relationship::watch_your_back)) {
       ai_cache.friends.emplace_back(g->shared_from(guy));
-    } else if (attitude_to(guy) != Attitude::NEUTRAL &&
-               sees(here, guy.pos_bub(here))) {
-      ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
     }
   }
     if( is_friendly( player_character ) && sees_player ) {
@@ -1083,6 +1102,7 @@ void npc::assess_danger() {
             continue;
         }
 
+        raise_camp_patrol_alarm();
         ai_cache.hostile_guys.emplace_back( g->shared_from( critter ) );
         // warn and consider the odds for distant enemies
         int dist = rl_dist( pos_bub(), critter.pos_bub() );
@@ -1179,7 +1199,7 @@ void npc::assess_danger() {
       }
     }
     // ignore distant monsters that our rules prevent us from attacking
-    if (!is_too_close && is_player_ally() &&
+    if (!camp_patrol_response && !is_too_close && is_player_ally() &&
         !ok_by_rules(critter, dist, scaled_distance)) {
       continue;
     }
@@ -1187,6 +1207,9 @@ void npc::assess_danger() {
     // threatening us or an ally
     float priority = std::max(critter_threat - 2.0f * (scaled_distance - 1.0f),
                               is_too_close ? critter_threat : 0.0f);
+    if( camp_patrol_response ) {
+      priority = std::max( priority, critter_threat );
+    }
     cur_threat_map[direction_from(pos_bub(), critter.pos_bub())] += priority;
         if( priority > highest_priority ) {
             highest_priority = priority;
@@ -1243,11 +1266,14 @@ void npc::assess_danger() {
       }
     }
 
-    if (!is_player_ally() || is_too_close ||
+    if (camp_patrol_response || !is_player_ally() || is_too_close ||
         ok_by_rules(foe, dist, scaled_distance)) {
       float priority = std::max(
           foe_threat - 2.0f * (scaled_distance - 1),
           is_too_close ? std::max(foe_threat, NPC_DANGER_VERY_LOW) : 0.0f);
+      if( camp_patrol_response ) {
+        priority = std::max( priority, foe_threat );
+      }
       cur_threat_map[direction_from(pos_bub(), foe.pos_bub())] += priority;
       if (priority > highest_priority) {
         warn_about(warning, 1_minutes);
@@ -4505,14 +4531,6 @@ void npc::worker_downtime() {
                        patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? "loop" : "hold",
                        pos_abs().to_string_writable(), patrol_target.to_string_writable(),
                        route_summary.str() );
-            if( basecamp_ai::should_show_camp_job_report(
-                    *this, basecamp_ai::camp_job_report_kind::patrol_exception, patrol_trace ) ) {
-              add_msg( m_info,
-                       _( "[camp][patrol] %1$s patrol assignment: %2$s route to %3$s." ),
-                       disp_name(),
-                       patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? _( "loop" ) : _( "hold" ),
-                       patrol_target.to_string_writable() );
-            }
             set_value( "camp_patrol_probe_last", patrol_trace );
           }
 
@@ -4527,13 +4545,6 @@ void npc::worker_downtime() {
           return;
         }
 
-        if( get_value( "camp_patrol_probe_last" ).str() != "inactive" &&
-            basecamp_ai::should_show_camp_job_report(
-                *this, basecamp_ai::camp_job_report_kind::patrol_exception, "reserve-or-inactive" ) ) {
-          add_msg( m_info,
-                   _( "[camp][patrol] %s has patrol duty, but no active route is assigned this shift." ),
-                   disp_name() );
-        }
         if( mission == NPC_MISSION_GUARD || mission == NPC_MISSION_GUARD_PATROL ) {
           if( get_value( "camp_patrol_probe_last" ).str() != "inactive" ) {
             DebugLog( D_INFO, DC_ALL )

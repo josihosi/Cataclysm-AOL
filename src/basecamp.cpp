@@ -3573,6 +3573,7 @@ void basecamp::clear_patrol_shift_cache() {
   patrol_shift_cache_valid = false;
   patrol_shift_cache_day = -1;
   patrol_shift_cache_kind = camp_patrol_shift::day;
+  patrol_shift_cache_alarm_active = false;
   patrol_shift_cache = camp_patrol_shift_plan();
 }
 
@@ -3581,8 +3582,10 @@ bool basecamp::refresh_patrol_shift_cache() {
 
   const int current_day = camp_patrol_shift_cache_day(calendar::turn);
   const camp_patrol_shift current_shift = camp_patrol_shift_for_turn(calendar::turn);
+  const bool current_alarm_active = is_patrol_alarm_active();
   if( patrol_shift_cache_valid && patrol_shift_cache_day == current_day &&
-      patrol_shift_cache_kind == current_shift ) {
+      patrol_shift_cache_kind == current_shift &&
+      patrol_shift_cache_alarm_active == current_alarm_active ) {
     return !patrol_shift_cache.clusters.empty() &&
            !patrol_shift_cache.roster.empty();
   }
@@ -3607,16 +3610,27 @@ bool basecamp::refresh_patrol_shift_cache() {
 
   const std::vector<camp_patrol_worker> workers =
       collect_camp_patrol_workers(get_npcs_assigned());
-  const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
-
-  patrol_shift_cache = current_shift == camp_patrol_shift::night ? plan.night : plan.day;
+  if( current_alarm_active ) {
+    std::vector<character_id> alarm_roster;
+    alarm_roster.reserve(workers.size());
+    for( const camp_patrol_worker &worker : workers ) {
+      alarm_roster.push_back(worker.worker_id);
+    }
+    patrol_shift_cache =
+        build_camp_patrol_shift_plan(current_shift, alarm_roster, clusters);
+  } else {
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+    patrol_shift_cache = current_shift == camp_patrol_shift::night ? plan.night : plan.day;
+  }
   patrol_shift_cache_valid = true;
   patrol_shift_cache_day = current_day;
   patrol_shift_cache_kind = current_shift;
+  patrol_shift_cache_alarm_active = current_alarm_active;
   DebugLog( D_INFO, DC_ALL )
       << string_format(
-             "camp patrol: cache camp=%s shift=%s workers=%zu roster=%zu active=%zu reserve=%zu clusters=%s",
-             name, camp_patrol_shift_name( current_shift ), workers.size(),
+             "camp patrol: cache camp=%s shift=%s alarm=%s workers=%zu roster=%zu active=%zu reserve=%zu clusters=%s",
+             name, camp_patrol_shift_name( current_shift ),
+             current_alarm_active ? "true" : "false", workers.size(),
              patrol_shift_cache.roster.size(), patrol_shift_cache.active_guards.size(),
              patrol_shift_cache.reserve_guards.size(),
              summarize_camp_patrol_cluster_tiles( clusters ) );
@@ -3659,6 +3673,31 @@ bool basecamp::interrupt_patrol_worker(
     return false;
   }
   return apply_camp_patrol_guard_interrupt(patrol_shift_cache, worker_id, reason);
+}
+
+bool basecamp::raise_patrol_alarm(const character_id &spotter_id,
+                                  time_duration duration) {
+  if( duration <= 0_turns ) {
+    return false;
+  }
+  const time_point new_until = calendar::turn + duration;
+  if( patrol_alarm_until > calendar::turn &&
+      patrol_alarm_until - calendar::turn > duration / 2 ) {
+    return false;
+  }
+  if( new_until <= patrol_alarm_until ) {
+    return false;
+  }
+  patrol_alarm_until = new_until;
+  clear_patrol_shift_cache();
+  DebugLog( D_INFO, DC_ALL )
+      << string_format( "camp patrol: alarm camp=%s spotter=%d until=%s", name,
+                        spotter_id.get_value(), to_string( patrol_alarm_until ) );
+  return true;
+}
+
+bool basecamp::is_patrol_alarm_active() const {
+  return patrol_alarm_until > calendar::turn;
 }
 
 void basecamp::mark_camp_locker_dirty(npc &worker, bool high_priority) {

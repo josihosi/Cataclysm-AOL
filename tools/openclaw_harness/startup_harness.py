@@ -56,7 +56,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
 )
 
 PATROL_CACHE_RE = re.compile(
-    r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+) workers=(?P<workers>\d+) "
+    r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+)(?: alarm=(?P<alarm>\w+))? workers=(?P<workers>\d+) "
     r"roster=(?P<roster>\d+) active=(?P<active>\d+) reserve=(?P<reserve>\d+) "
     r"clusters=(?P<clusters>.+)$"
 )
@@ -4181,6 +4181,7 @@ def summarize_patrol_artifacts(scenario_name: str, matched_lines: List[str]) -> 
             cache_summary = {
                 "camp": cache_match.group("camp"),
                 "shift": cache_match.group("shift"),
+                "alarm": cache_match.group("alarm") or "unknown",
                 "workers": int(cache_match.group("workers")),
                 "roster": int(cache_match.group("roster")),
                 "active": int(cache_match.group("active")),
@@ -4216,6 +4217,7 @@ def summarize_patrol_artifacts(scenario_name: str, matched_lines: List[str]) -> 
         roster = cache_summary["roster"]
         active = cache_summary["active"]
         shift = cache_summary["shift"]
+        alarm = cache_summary.get("alarm", "unknown")
         reserve = cache_summary["reserve"]
         cluster_count = cache_summary["cluster_count"]
         cluster_tile_count = cache_summary["cluster_tile_count"]
@@ -4238,6 +4240,11 @@ def summarize_patrol_artifacts(scenario_name: str, matched_lines: List[str]) -> 
         else:
             notes.append(
                 f"All {workers} patrol-enabled worker(s) are rostered on the {shift} shift for this packet."
+            )
+
+        if alarm == "true":
+            notes.append(
+                "Camp patrol alarm is active in this packet, so patrol-enabled workers may be pulled into the roster outside the normal shift split."
             )
 
         if reserve > 0:
@@ -4293,6 +4300,7 @@ def write_patrol_summary(run_dir: Path, patrol_summary: Dict[str, Any]) -> Dict[
 
     if cache_summary:
         shift = cache_summary.get("shift", "?")
+        alarm = cache_summary.get("alarm", "unknown")
         workers = int(cache_summary.get("workers", 0))
         roster = int(cache_summary.get("roster", 0))
         active = int(cache_summary.get("active", 0))
@@ -4302,6 +4310,7 @@ def write_patrol_summary(run_dir: Path, patrol_summary: Dict[str, Any]) -> Dict[
         cluster_tile_count = int(cache_summary.get("cluster_tile_count", 0))
         lines.extend([
             f"- shift: {shift}",
+            f"- alarm active: {alarm}",
             f"- patrol-enabled workers: {workers}",
             f"- this-shift roster: {roster} total = {active} active + {reserve} reserve + {off_shift} off-shift",
             f"- patrol layout: {cluster_count} cluster(s) across {cluster_tile_count} painted patrol tile(s)",
