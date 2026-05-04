@@ -1,7 +1,7 @@
 {
   "name": "bandit.all_light_source_live_adapter_mcw",
   "status": "green scenario / Slice 5 horde retarget-persistence proof (no local devirtualization claim)",
-  "description": "Slice 5 all-light-source live adapter proof route: load the staged all-light fixture, audit saved fire/smoke/furniture/portable-item/household-item light and staged ground-z horde footing, run a bounded in-game wait through the real wait UI, require same-run live signal logs for smoke plus multiple exposed light packets, then inspect saved turn/weather and overmap horde destination/tracking metadata from the post-wait persisted state. The fixture and run explicitly keep player/horde footing on ground z=0; local/reality-bubble zombie devirtualization is not claimed here.",
+  "description": "Slice 5 all-light-source live adapter proof route: load the staged all-light fixture, audit saved fire/smoke/furniture/portable-item/household-item light and staged ground-z horde footing, run a bounded in-game wait through the real wait UI, require same-run live signal logs for smoke plus multiple exposed light packets, guard the post-wait save prompt/writeback, then inspect saved turn/weather and overmap horde destination/tracking metadata from the completed saved state. The fixture and run explicitly keep player/horde footing on ground z=0; local/reality-bubble zombie devirtualization is not claimed here.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_all_light_source_live_adapter_v0_2026-05-04",
@@ -159,6 +159,52 @@
       "expected_visible_fact": "same-run debug artifact contains live smoke plus four non-fire/fire light packets, raw weather/light-weather logging, and horde light-signal current-source metadata"
     },
     {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_all_light_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the bounded all-light wait/log gate and before the guarded save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "request_direct_save_after_all_light_signal_wait",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_all_light_source_save_prompt_missing",
+      "abort_reason": "after requesting a save following the bounded all-light wait, OCR did not show the case-sensitive save-and-quit prompt before uppercase-Y confirmation",
+      "expected_visible_fact": "Save command is requested after the bounded all-light wait; OCR must show the case-sensitive quit prompt before uppercase-Y confirmation, then mtime/state gates prove completed writeback"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_direct_save_after_all_light_signal_wait",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_all_light_save",
+      "expected_visible_fact": "uppercase Y confirms the recorded save prompt after the bounded all-light wait; following mtime and saved-state gates prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_all_light_save",
+      "changed_since_label": "audit_player_save_mtime_before_all_light_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_all_light_source_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the all-light post-wait save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed all-light post-wait save, proving the following turn/weather/horde audits read same-run persisted state"
+    },
+    {
       "kind": "audit_saved_game_turn",
       "label": "audit_saved_turn_after_all_light_wait",
       "baseline_label": "audit_saved_turn_before_all_light_wait",
@@ -201,6 +247,6 @@
     "claim": "Prove the Slice 5 live loaded-map adapter observes staged fire, smoke, furniture light, portable item light, and household smart-lamp light; logs weather/source interpretation; delivers exposed light pressure to hordes; and leaves saved horde destination/tracking metadata inspectable after a bounded real wait path.",
     "current_wip_blocker": "resolved by requiring ground-z staged horde footing plus saved overmap destination/last_processed persistence after the bounded wait; local active-monster devirtualization remains outside this Slice 5 checkpoint.",
     "load_only_verdict": "load proof only / inconclusive for all-light-source live adapter response",
-    "failure_rule": "No Slice 5 live proof credit if source metadata, live wait, same-run signal artifacts, post-wait saved turn/weather audit, or saved horde destination/processing metadata is missing or non-green."
+    "failure_rule": "No Slice 5 live proof credit if source metadata, live wait, same-run signal artifacts, save prompt/writeback, post-wait saved turn/weather audit, or saved horde destination/processing metadata is missing or non-green."
   }
 }
