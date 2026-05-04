@@ -49,11 +49,11 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Active lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
+## Checkpointed lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
 
-**Status:** ACTIVE / GREENLIT DEBUG-PACKET STACK / PACKAGED FROM 2026-05-02 + 2026-05-03 JOSEF LIVE NOTES
+**Status:** CHECKPOINTED GREEN DEBUG STACK / AWAITING SCHANI-FRAU BOUNDARY REVIEW / NO ACTIVE ANDI PROBE
 
-Josef finished live testing and asked Schani to package yesterday's and today's debug notes into canon. This lane is the ordered correction stack for bandit shakedown/payment, defended-camp scout/standoff behavior, roof-z/multi-z dispatch stalls, big-camp escalation, all-light-source signaling, patrol aggression/alarm/report hygiene, writhing-stalker threat-drop timing, and NPC sorting retry debounce.
+Josef's 2026-05-02 + 2026-05-03 live-debug batch has reached a clean agent-side checkpoint. All eleven ordered slices have implementation/proof receipts, and the remaining deeper playfeel rows are future promotional hardening rather than current Andi blockers.
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
@@ -63,18 +63,22 @@ Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
 Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 
-Raw intake:
-- `/Users/josefhorvath/.openclaw/workspace/runtime/caol-bandit-playtest-intake-2026-05-02.md`
-- `runtime/josef-bandit-debug-intake-2026-05-03.md`
-- `runtime/josef-locker-zone-debug-intake-2026-05-03.md`
+Proof receipts:
+- Slice 1 shakedown Pay/Fight + actual NPC trade UI/payment pool: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`.
+- Slice 2 defended-camp current-pass standoff/hot-loot checkpoint: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md`; Josef's live read was good enough to continue. Deeper sight/smoke playfeel remains future hardening if promoted.
+- Slice 3 multi-z roof/tower dispatch fallback: `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`.
+- Slice 4 hostile-camp toll/escalation checkpoint: `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`.
+- Slice 5 all-light-source live adapter: `doc/all-light-source-live-adapter-proof-v0-2026-05-04.md`.
+- Slice 6 camp patrol aggression/alarm/report hygiene: `doc/camp-patrol-aggression-alarm-report-hygiene-proof-v0-2026-05-04.md`.
+- Slice 7 writhing-stalker distance/sight/threat-drop rhythm: `doc/writhing-stalker-distance-sight-threat-drop-live-proof-v0-2026-05-04.md`.
+- Slice 8 NPC sorting debounce: `doc/npc-sorting-failure-debounce-proof-v0-2026-05-04.md`.
+- Slice 9 debug horde/stalker/rider spawn options: `doc/debug-spawn-overmap-threat-options-proof-v0-2026-05-04.md`.
+- Slice 10 locker/basecamp equipment consistency: `doc/locker-basecamp-equipment-consistency-proof-v0-2026-05-04.md`.
+- Slice 11 cannibal Monsterbone spear: `doc/monsterbone-spear-proof-v0-2026-05-04.md`.
 
-Execution order: shakedown Pay/Fight + trade/debt correction; defended-camp scout/standoff/sight avoidance including bandit/cannibal stalking-mode LoS break and player smoke-out response; multi-z camp identity + roof/first-floor/`z=5` tower routing/throttle; hostile-camp post-scout escalation; all-light/smoke-source adapter; patrol aggression/alarm/report hygiene; writhing-stalker larger-distance/sight-avoid/threat-drop swoop plus boot-out rhythm; NPC sorting debounce; debug spawn horde/stalker/rider options; locker/basecamp equipment consistency; cannibal Monsterbone spear lore item.
+Boundary: debug correction stack only. Do not reopen unrelated closed predator/rider/locker/save-pack lanes, release packaging, full diplomacy, full vertical assault AI, broad sorting redesign, tile-perfect overmap light engine, or deferred sight/smoke/live-cannibal playfeel rows without Schani/Josef promotion.
 
-Important correction: the 2026-05-02 scenic shakedown proof closed the wrong visible response contract (`Pay / Fight / Refuse`) after Josef had already reported that three choices were wrong and that Pay should open a trade/debt-style surface. Treat this as a reopened correction, not a new feature whim.
-
-Current checkpoint: Slice 1 is green for visible Pay/Fight, actual NPC trade UI opening, whole basecamp-side payment pool, pool-derived debt/toll basis, cancel/refusal mapping, item-offer/autobalance, and paid writeback. The latest three-source proof row `.userdata/dev-harness/harness_runs/20260503_233823/` shows the same open `npc_trading::trade` / `trade_ui` Pay window containing player inventory (`binoculars`), basecamp-assigned NPC inventory (`saxophone`), and basecamp storage-zone inventory (`gold_watch`), then F1/autobalance + case-sensitive acceptance pays the debt (`shakedown_trade_ui result=paid demanded=33542 reachable=95834`). The rebuilt `7e5a506c76` master-profile rows `.userdata/master/harness_runs/20260503_213831/` and `.userdata/master/harness_runs/20260503_214015/` remain the clean master cancel/success receipts; the earlier tight `d1a4f076c8` proof rows remain supporting history. Credited rows are recorded in `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`. Slice 2 has enough current-pass evidence to continue after Josef's own tests: bandits did their thing. Keep deeper sight/smoke playtest as deferred validation/future hardening, not the next Andi blocker. Slice 3 roof/tower-z dispatch fallback is green at `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`: deterministic multi-z identity/routing plus live `bandit.roof_z_dispatch_fallback_mcw` proof show the elevated target id is preserved while the live dispatch goal routes to reachable ground and avoids the old `route_missing` / empty-throttle silence. Slice 4 bandit hostile-camp toll escalation is green at `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`: deterministic roster/risk/cannibal gates plus live `bandit.hostile_camp_toll_escalation_live` run `.userdata/dev-harness/harness_runs/20260503_214648/` prove a scout-confirmed seven-member bandit camp dispatches a three-member `toll` party, preserves reserve, and records `shakedown_capable=yes` while pre-contact `shakedown=no`. Slice 5 all-light-source adapter is green at `doc/all-light-source-live-adapter-proof-v0-2026-05-04.md`: deterministic/source coverage plus rebuilt live run `.userdata/dev-harness/harness_runs/20260504_092840/` prove fire/smoke plus terrain/furniture/item/vehicle light observations, screened leakage, searchlight semantics, raw weather/light-weather logging, four exposed-light horde signal rows with `destination=` / `current_signal=yes` / `horde_signal_power=22`, guarded save/writeback, saved turn advance `5266800 -> 5267100`, and saved ground-z horde retarget-persistence to `destination_ms=[3360,984,0]` with `last_processed=5266836`. Boundary: local active-zombie devirtualization and positive `tracking_intensity` are not claimed. Slice 6 camp patrol aggression/alarm/report hygiene is green at `doc/camp-patrol-aggression-alarm-report-hygiene-proof-v0-2026-05-04.md`: focused source/test coverage proves hostile bandit and zombie targeting on sight, neutral false-positive avoidance, active shakedown/toll/parley contact non-escalation until `fight_unresolved`, patrol alarm roster expansion across shifts, visible routine patrol report suppression, and harness compatibility with the new `alarm=` cache field. Slice 7 writhing stalker distance/sight/threat-drop rhythm is green at `doc/writhing-stalker-distance-sight-threat-drop-live-proof-v0-2026-05-04.md`: deterministic/source coverage plus live `writhing_stalker.live_hit_fade_retreat_mcw` run `.userdata/dev-harness/harness_runs/20260504_113828/` prove overmatched/spent stalk distance writeback at `5` OMT, sighted LoS-break/withdraw handling, pounce/short-strike timing, and post-burst withdraw/cooling-off with `stalk_omt=5`. Slice 8 NPC sorting debounce is green at `doc/npc-sorting-failure-debounce-proof-v0-2026-05-04.md`: source-path tests prove no-progress NPC zone sorting blocks `ACT_MOVE_LOOT`, job scans do not recreate the sort activity until cooldown expiry, cooldowns serialize, and ordinary sorting coverage still passes. Slice 9 debug spawn options is green at `doc/debug-spawn-overmap-threat-options-proof-v0-2026-05-04.md`: deterministic option/destination/group coverage plus live/save `.userdata/dev-harness/harness_runs/20260504_124808/` prove medium horde and writhing-stalker/zombie-rider `5`/`10` OMT debug spawns. Slice 10 locker/basecamp equipment consistency is green at `doc/locker-basecamp-equipment-consistency-proof-v0-2026-05-04.md`: basecamp fixture coverage proves orphan loose magazine/ammo cleanup after ranged-weapon replacement, retained-firearm supply preservation, carried-junk storage, and damaged bag replacement with contents accounted for. Slice 11 cannibal Monsterbone spear is green at `doc/monsterbone-spear-proof-v0-2026-05-04.md`: JSON/loadout coverage proves a bounded ritual spear item, camp-local `1`-or-`2` relic distribution, rare `cannibal_weapons` presence, and selected leader-only elite NPC access.
-
-Boundary: debug correction stack only. Do not reopen unrelated closed predator/rider/locker/save-pack lanes, release packaging, full diplomacy, full vertical assault AI, broad sorting redesign, or a tile-perfect overmap light engine.
+Recommended next action: Schani/Frau boundary review should either close/retitle this lane, promote one specific deferred proof/playfeel row, or hand Andi the next greenlit packet. Until then there is no sensible unblocked Andi execution target in repo canon.
 
 ---
 
@@ -344,7 +348,7 @@ Boundary: save-pack prep and product-taste handoff only. Do not implement new ga
 
 ## Closed recent lane — bandit scenic shakedown chat openings
 
-**Status:** CLOSED AS SCENIC-UI PROOF / SUPERSEDED BY `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` FOR SHAKEDOWN RESPONSE + PAYMENT CONTRACT
+**Status:** CHECKPOINTED / CLOSED / SUPERSEDED
 
 Josef asked on 2026-05-01 for the bandit shakedown to use a normal chat window, become more scenic, and have a selection of bandit openings.
 

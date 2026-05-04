@@ -1,6 +1,6 @@
 # CAOL-JOSEF-LIVE-DEBUG-BATCH-v0 — 2026-05-03
 
-Status: ACTIVE / GREENLIT DEBUG-PACKET STACK
+Status: CHECKPOINTED GREEN DEBUG STACK / AWAITING SCHANI-FRAU BOUNDARY REVIEW
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
@@ -217,7 +217,7 @@ Non-goals:
 - [x] Shakedown visible UI is two-choice Pay/Fight; backout/refuse enters fight/refusal without a third visible response. _Red pre-repair row: `20260503_173812`; final credited UI-first row after Josef's no-credit nudge is tight cropped-OCR proof `20260503_202326` on rebuilt `d1a4f076c8`, showing pre-selection `Pay` and `Fight` only._
 - [x] Pay opens the actual NPC trade UI / trade window with an initial demanded debt/toll balance and the honest basecamp/faction-side pool before any silent surrender; the payment pool and demanded debt/toll basis are proven non-stub/non-player-carried-only; successful payment saves/persists the paid writeback. _Proof: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; final tight row `20260503_202326` proves immediate post-Pay `Pay:` / `Debt $157.97` / `F1 to auto balance` plus `npc_trading::trade` artifacts and pool `3211 + 5222 + 36701 = 45134`; supporting reopened/cancel/save rows: `20260503_192442`, `20260503_192911`, current-HEAD writeback `20260503_203141`; deterministic shakedown gate `/tmp/caol_shakedown_contract_tests_20260503.log`._
 - [x] Misleading `pay/fight/refuse` docs/tests/log expectations are corrected.
-- [ ] Defended camp scout/hold-off uses about `5` OMT watch distance; bandits, cannibals, and other compatible stalking-mode hostiles perform real sight avoidance, and sighted/hot doorstep behavior backs off or escalates. _Partial checkpoint: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md` credits deterministic/local-gate + live artifact evidence for the `5` OMT hold-off goal and hot-doorstep pickup guard; still missing full live sight/smoke break-LoS/reroute/wait/escalate proof._
+- [x] Defended camp current-pass behavior uses about `5` OMT hold-off and blocks hot-doorstep pickup enough for the batch checkpoint. _Proof: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md`; Josef reported his own tests looked good enough that bandits did their thing. Full live sight/smoke break-LoS/reroute/wait/escalate playfeel remains deferred hardening unless promoted._
 - [x] Multi-z bandit camp is one site/owner with z-footprint metadata; roof-z/tower-z player target does not create route-missing/throttle silence. _Proof: `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`; deterministic `[multi_z]` + targeted vertical route fallback tests, and live `bandit.roof_z_dispatch_fallback_mcw` run `.userdata/dev-harness/harness_runs/20260503_201355/` with elevated target id `player@140,39,5`, ground `live_dispatch_goal=140,39,0`, saved active stalk dispatch, and negative `route_missing` / empty-throttle guard._
 - [x] Confirmed big-camp contact can escalate from lone scout into roster-scaled pressure when appropriate: bandits into toll/shakedown pressure, cannibals into attack dispatch up to large/whole-camp commitment when they can overpower the defenders. _Proof: `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`; live/staged bandit toll dispatch row `.userdata/dev-harness/harness_runs/20260503_214648/` plus deterministic cannibal attack-pack/risk gates; full live cannibal raid/contact is not claimed._
 - [x] Lamps/household/searchlight/fire sources can feed bounded live light signals; zombies receive broad light attraction, bandits preserve light-type semantics; weather state used by the adapter matches live conditions or logs the mismatch, and stale `tracking=0` horde destinations are handled or explained. _Proof: `doc/all-light-source-live-adapter-proof-v0-2026-05-04.md`; boundary: local active-zombie devirtualization and positive `tracking_intensity` are not claimed._
@@ -228,7 +228,7 @@ Non-goals:
 - [x] Debug spawn options can create a medium horde, horde-at-`5`/`10` OMT setups, writhing stalker at `5`/`10` OMT, and zombie rider at `5`/`10` OMT, with clear labels and honest spawn/location proof. _Proof: `doc/debug-spawn-overmap-threat-options-proof-v0-2026-05-04.md`._
 - [x] Locker/basecamp equipment cleanup prevents orphan ammo/magazine carry after firearm replacement and can replace broken/`XX` backpacks by transferring stored contents or logging a concrete transfer blocker. _Proof: `doc/locker-basecamp-equipment-consistency-proof-v0-2026-05-04.md`._
 - [x] Cannibal camps and selected important cannibal NPC loadouts can surface a rare ritual/status `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded elite wielder frequency. _Proof: `doc/monsterbone-spear-proof-v0-2026-05-04.md`._
-- [ ] Each slice has deterministic coverage and at least one appropriate live/path proof where the product claim is live behavior.
+- [x] Each credited slice has deterministic coverage and at least one appropriate live/path proof where the product claim is live behavior; deferred rows are explicitly unclaimed/future-only.
 
 ## Testing impact
 
