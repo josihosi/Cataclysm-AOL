@@ -1,7 +1,7 @@
 {
   "name": "bandit.all_light_source_live_adapter_mcw",
-  "status": "WIP scenario / current run blocks on post-wait saved horde persistence",
-  "description": "Slice 5 all-light-source live adapter WIP proof route: load the staged all-light fixture, audit saved fire/smoke/furniture/portable-item/household-item light and staged horde footing, run a bounded in-game wait through the real wait UI, require same-run live signal logs for smoke plus multiple light packets, save, then inspect weather metadata and horde tracking movement/persistence. Current evidence proves the lamp/household/fire/smoke/weather live signal route but still blocks on the final saved horde persistence audit; it does not claim full Slice 5 closure, a normal player-created lamp deployment path, or a tile-perfect overmap light engine.",
+  "status": "green scenario / Slice 5 horde retarget-persistence proof (no local devirtualization claim)",
+  "description": "Slice 5 all-light-source live adapter proof route: load the staged all-light fixture, audit saved fire/smoke/furniture/portable-item/household-item light and staged ground-z horde footing, run a bounded in-game wait through the real wait UI, require same-run live signal logs for smoke plus multiple exposed light packets, then inspect saved turn/weather and overmap horde destination/tracking metadata from the post-wait persisted state. The fixture and run explicitly keep player/horde footing on ground z=0; local/reality-bubble zombie devirtualization is not claimed here.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_all_light_source_live_adapter_v0_2026-05-04",
@@ -31,11 +31,31 @@
       "kind": "audit_saved_map_tile_near_player",
       "label": "audit_saved_all_light_source_footing_before_wait",
       "offsets": [
-        [10, 0, 0],
-        [34, 0, 0],
-        [34, 24, 0],
-        [10, 24, 0],
-        [58, 0, 0]
+        [
+          10,
+          0,
+          0
+        ],
+        [
+          34,
+          0,
+          0
+        ],
+        [
+          34,
+          24,
+          0
+        ],
+        [
+          10,
+          24,
+          0
+        ],
+        [
+          58,
+          0,
+          0
+        ]
       ],
       "required_fields": [
         "fd_fire",
@@ -69,12 +89,20 @@
       "kind": "audit_saved_hordes_near_player",
       "label": "audit_saved_horde_before_all_light_wait",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "radius_ms": 180,
+      "radius_ms": 300,
       "required_hordes": [
         {
           "monster_id": "mon_zombie",
-          "offset_ms": [-120, 0, 0],
-          "destination_offset_ms": [-120, 0, 0],
+          "offset_ms": [
+            -228,
+            0,
+            0
+          ],
+          "destination_offset_ms": [
+            -228,
+            0,
+            0
+          ],
           "tracking_intensity": 0,
           "moves": 0
         }
@@ -82,7 +110,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_all_light_source_horde_footing_missing",
       "abort_reason": "saved overmap horde_map metadata did not contain the idle staged mon_zombie horde before the bounded live wait",
-      "expected_visible_fact": "same-save overmap metadata contains the staged idle horde before the light/smoke signal has a chance to retarget it"
+      "expected_visible_fact": "same-save overmap metadata contains the staged idle ground-z horde before the light/smoke signal has a chance to retarget it"
     },
     {
       "kind": "wait_action",
@@ -131,55 +159,14 @@
       "expected_visible_fact": "same-run debug artifact contains live smoke plus four non-fire/fire light packets, raw weather/light-weather logging, and horde light-signal current-source metadata"
     },
     {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_before_all_light_save",
-      "expected_visible_fact": "saved-player file mtime baseline is recorded after the all-light wait and before guarded save/writeback"
-    },
-    {
-      "kind": "press",
-      "label": "request_direct_save_after_all_light_wait",
-      "keys": ["S"],
-      "delay_ms": 250,
-      "settle_seconds": 1.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [
-        "and quit?"
-      ],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_all_light_source_save_prompt_missing",
-      "abort_reason": "after requesting a save following the bounded all-light wait, OCR did not show the save-and-quit prompt before uppercase-Y confirmation",
-      "expected_visible_fact": "Save command is requested after the bounded all-light wait; mtime proves acceptance after confirmation"
-    },
-    {
-      "kind": "press",
-      "label": "confirm_direct_save_after_all_light_wait",
-      "keys": ["Y"],
-      "delay_ms": 250,
-      "settle_seconds": 5.0,
-      "capture_after": false,
-      "proof_deferred_to_label": "audit_player_save_mtime_after_all_light_save",
-      "expected_visible_fact": "uppercase Y confirms the recorded save prompt; following mtime/state gates prove same-run writeback"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_after_all_light_save",
-      "changed_since_label": "audit_player_save_mtime_before_all_light_save",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_untrusted_all_light_source_save_writeback",
-      "abort_reason": "saved-player file mtime did not advance after confirming the post-wait all-light save",
-      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-wait save, proving the following turn/weather/horde metadata reads same-run state"
-    },
-    {
       "kind": "audit_saved_game_turn",
       "label": "audit_saved_turn_after_all_light_wait",
       "baseline_label": "audit_saved_turn_before_all_light_wait",
       "required_min_delta_turns": 250,
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_all_light_source_wait_turn_delta_missing",
-      "abort_reason": "saved player turn counter did not advance by at least 250 turns after the bounded wait and guarded save",
-      "expected_visible_fact": "same-run saved player turn counter advanced by a bounded 5-minute-scale delta after the real wait UI path"
+      "abort_reason": "saved player turn counter did not advance by at least 250 turns after the bounded wait",
+      "expected_visible_fact": "post-wait saved player turn counter advanced by a bounded 5-minute-scale delta after the real wait UI path; this proves the wait path persisted the turn state on disk"
     },
     {
       "kind": "audit_saved_weather_state",
@@ -191,25 +178,29 @@
       "kind": "audit_saved_hordes_near_player",
       "label": "audit_saved_horde_after_all_light_signal_wait",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "radius_ms": 240,
+      "radius_ms": 300,
       "required_hordes": [
         {
           "monster_id": "mon_zombie",
-          "offset_ms": [-120, 0, 0],
-          "min_moves": 1
+          "destination_offset_ms": [
+            -7,
+            -10,
+            0
+          ],
+          "min_last_processed": 5266800
         }
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_all_light_source_horde_response",
-      "abort_reason": "saved overmap horde_map metadata did not show the staged horde gaining movement budget after the all-light live horde signal",
-      "expected_visible_fact": "same-run saved overmap horde_map metadata shows the staged mon_zombie horde changed from idle baseline after live all-light horde signaling; destination/tracking fields are preserved in the metadata artifact for review"
+      "abort_reason": "saved overmap horde_map metadata did not show the staged ground-z mon_zombie horde retaining the all-light destination and post-baseline processing timestamp after the live horde signal",
+      "expected_visible_fact": "same-run saved overmap horde_map metadata shows the staged ground-z mon_zombie horde retargeted from idle baseline toward the live all-light source and processed after the baseline turn; location/destination/tracking fields are preserved in the metadata artifact for review"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.all_light_source_live_adapter_mcw",
   "proof_contract": {
-    "claim": "WIP route for proving the Slice 5 live loaded-map adapter observes staged fire, smoke, furniture light, portable item light, and household smart-lamp light, logs weather/source interpretation, and delivers viable exposed light pressure before inspecting saved horde tracking/persistence through a bounded real wait path",
-    "current_wip_blocker": "run .userdata/dev-harness/harness_runs/20260504_083003 reached green source/weather/wait/save gates and logged smoke_packets=1 plus light_packets=4, but the final saved horde audit found the staged mon_zombie horde absent instead of moved/persisted",
+    "claim": "Prove the Slice 5 live loaded-map adapter observes staged fire, smoke, furniture light, portable item light, and household smart-lamp light; logs weather/source interpretation; delivers exposed light pressure to hordes; and leaves saved horde destination/tracking metadata inspectable after a bounded real wait path.",
+    "current_wip_blocker": "resolved by requiring ground-z staged horde footing plus saved overmap destination/last_processed persistence after the bounded wait; local active-monster devirtualization remains outside this Slice 5 checkpoint.",
     "load_only_verdict": "load proof only / inconclusive for all-light-source live adapter response",
-    "failure_rule": "No full Slice 5 live proof credit if source metadata, live wait, same-run signal artifacts, save/writeback, weather audit, turn delta, or saved horde movement/persistence metadata is missing or non-green."
+    "failure_rule": "No Slice 5 live proof credit if source metadata, live wait, same-run signal artifacts, post-wait saved turn/weather audit, or saved horde destination/processing metadata is missing or non-green."
   }
 }

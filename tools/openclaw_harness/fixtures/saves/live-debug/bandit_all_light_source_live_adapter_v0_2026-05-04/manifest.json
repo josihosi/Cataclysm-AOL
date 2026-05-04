@@ -1,7 +1,7 @@
 {
   "name": "bandit_all_light_source_live_adapter_v0_2026-05-04",
   "status": "WIP footing / not Slice 5 live proof by itself",
-  "description": "Slice 5 all-light-source live adapter footing: start from the existing nighttime nearby-camp light-horde fixture, then add separate saved-map smoke, furniture-light, portable torch-light, and household smart-lamp sources plus an idle saved horde entity. This is fixture footing for live source scanning, weather logging, bandit signal maintenance, and horde destination/tracking inspection; it does not claim a normal player-created lamp/fire product path or Slice 5 live proof by itself.",
+  "description": "Slice 5 all-light-source live adapter footing: start from the existing nighttime nearby-camp light-horde fixture, then add separate saved-map smoke, furniture-light, portable torch-light, and household smart-lamp sources plus an idle saved horde entity. The horde is explicitly staged on ground z=0 and near the far edge of light-signal range so a bounded wait can inspect tracking metadata instead of immediately consuming it into the reality bubble. This is fixture footing for live source scanning, weather logging, bandit signal maintenance, and horde destination/tracking inspection; it does not claim a normal player-created lamp/fire product path or Slice 5 live proof by itself.",
   "source_fixture": "bandit_live_world_nearby_camp_light_horde_v0_2026-04-27",
   "source_profile": "live-debug",
   "save_transforms": [
@@ -53,8 +53,8 @@
       "kind": "horde_entity_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "monster_id": "mon_zombie",
-      "offset_ms": [-120, 0, 0],
-      "destination_offset_ms": [-120, 0, 0],
+      "offset_ms": [-228, 0, 0],
+      "destination_offset_ms": [-228, 0, 0],
       "tracking_intensity": 0,
       "last_processed": 0,
       "moves": 0

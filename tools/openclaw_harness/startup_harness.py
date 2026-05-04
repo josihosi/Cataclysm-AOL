@@ -1953,6 +1953,9 @@ def audit_player_save_mtime(
     *,
     player_save: str = "",
     changed_since: Optional[Dict[str, Any]] = None,
+    wait_for_change_seconds: float = 0.0,
+    stable_after_change_seconds: float = 0.0,
+    poll_interval_seconds: float = 0.5,
 ) -> Dict[str, Any]:
     """Read-only saved-player file mtime audit for post-action save/writeback gates."""
     if not world_dir.exists():
@@ -1967,9 +1970,6 @@ def audit_player_save_mtime(
     if not save_path.exists():
         raise FileNotFoundError(f"Player save not found: {save_path}")
 
-    stat = save_path.stat()
-    save_mtime_ns = int(stat.st_mtime_ns)
-    save_mtime = float(stat.st_mtime)
     required_change = changed_since is not None
     baseline_mtime_ns: Optional[int] = None
     baseline_label = ""
@@ -1979,6 +1979,45 @@ def audit_player_save_mtime(
             baseline_mtime_ns = int(changed_since.get("save_mtime_ns"))
         except (TypeError, ValueError):
             baseline_mtime_ns = None
+
+    wait_started = time.time()
+    waited_for_change = False
+    stable_observed_seconds = 0.0
+
+    def current_stat() -> os.stat_result:
+        return save_path.stat()
+
+    stat = current_stat()
+    if required_change and baseline_mtime_ns is not None and wait_for_change_seconds > 0:
+        deadline = wait_started + max(0.0, wait_for_change_seconds)
+        poll_interval = max(0.05, poll_interval_seconds)
+        while int(stat.st_mtime_ns) <= baseline_mtime_ns and time.time() < deadline:
+            waited_for_change = True
+            time.sleep(min(poll_interval, max(0.0, deadline - time.time())))
+            stat = current_stat()
+
+    if required_change and baseline_mtime_ns is not None and int(stat.st_mtime_ns) > baseline_mtime_ns and stable_after_change_seconds > 0:
+        stable_target = max(0.0, stable_after_change_seconds)
+        poll_interval = max(0.05, poll_interval_seconds)
+        stable_started = time.time()
+        last_mtime_ns = int(stat.st_mtime_ns)
+        while True:
+            elapsed = time.time() - stable_started
+            if elapsed >= stable_target:
+                stable_observed_seconds = elapsed
+                break
+            time.sleep(min(poll_interval, stable_target - elapsed))
+            latest_stat = current_stat()
+            latest_mtime_ns = int(latest_stat.st_mtime_ns)
+            if latest_mtime_ns != last_mtime_ns:
+                stat = latest_stat
+                last_mtime_ns = latest_mtime_ns
+                stable_started = time.time()
+            else:
+                stat = latest_stat
+
+    save_mtime_ns = int(stat.st_mtime_ns)
+    save_mtime = float(stat.st_mtime)
 
     if required_change and baseline_mtime_ns is not None and save_mtime_ns > baseline_mtime_ns:
         status = "required_state_present"
@@ -1995,6 +2034,10 @@ def audit_player_save_mtime(
         "save_mtime": save_mtime,
         "save_mtime_ns": save_mtime_ns,
         "save_mtime_iso": datetime.fromtimestamp(save_mtime).isoformat(timespec="microseconds"),
+        "wait_for_change_seconds": wait_for_change_seconds,
+        "waited_for_change": waited_for_change,
+        "stable_after_change_seconds": stable_after_change_seconds,
+        "stable_observed_seconds": stable_observed_seconds,
         "required_change_since_label": baseline_label,
         "required_change_since_mtime_ns": baseline_mtime_ns,
         "mtime_changed_since_required_label": (
@@ -2277,6 +2320,7 @@ def audit_saved_active_monsters(
     player_save: str = "",
     required_monsters: Optional[List[Dict[str, Any]]] = None,
     required_typeids: Optional[List[str]] = None,
+    forbidden_typeids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Read-only saved-player audit for active monster type/location state.
 
@@ -2390,6 +2434,12 @@ def audit_saved_active_monsters(
             }
         required.append(requirement)
 
+    forbidden: List[Dict[str, Any]] = []
+    for typeid in forbidden_typeids or []:
+        normalized = str(typeid).strip()
+        if normalized:
+            forbidden.append({"typeid": normalized})
+
     def matches_requirement(monster: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
         if monster.get("typeid") != requirement.get("typeid"):
             return False
@@ -2439,10 +2489,19 @@ def audit_saved_active_monsters(
         for requirement in required
         if not any(matches_requirement(monster, requirement) for monster in monsters)
     ]
-    if required and not missing_required_monsters:
+    observed_forbidden_monsters = [
+        monster
+        for monster in monsters
+        if any(matches_requirement(monster, requirement) for requirement in forbidden)
+    ]
+    if observed_forbidden_monsters:
+        status = "required_state_missing"
+    elif required and not missing_required_monsters:
         status = "required_state_present"
     elif required:
         status = "required_state_missing"
+    elif forbidden:
+        status = "required_state_present"
     else:
         status = "scanned"
 
@@ -2452,10 +2511,12 @@ def audit_saved_active_monsters(
         "player_save": selected_player_save,
         "player_location_ms": player_location,
         "required_monsters": required,
+        "forbidden_monsters": forbidden,
         "observed_monster_typeids": sorted(counts),
         "active_monster_counts": dict(sorted(counts.items())),
         "active_monsters": monsters,
         "missing_required_monsters": missing_required_monsters,
+        "observed_forbidden_monsters": observed_forbidden_monsters,
         "status": status,
     }
 
@@ -4854,6 +4915,7 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             "observed_forbidden_furniture",
             "observed_forbidden_traps",
             "observed_forbidden_radiation",
+            "observed_forbidden_monsters",
         ):
             if metadata.get(forbidden_key):
                 issues.append(forbidden_key)
@@ -9860,11 +9922,17 @@ def execute_probe_steps(
                     changed_since = {"label": changed_since_label}
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
+            wait_for_change_seconds = float(step.get("wait_for_change_seconds", 0.0) or 0.0)
+            stable_after_change_seconds = float(step.get("stable_after_change_seconds", 0.0) or 0.0)
+            poll_interval_seconds = float(step.get("poll_interval_seconds", 0.5) or 0.5)
             try:
                 metadata = audit_player_save_mtime(
                     world_dir,
                     player_save=player_save,
                     changed_since=changed_since,
+                    wait_for_change_seconds=wait_for_change_seconds,
+                    stable_after_change_seconds=stable_after_change_seconds,
+                    poll_interval_seconds=poll_interval_seconds,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -9973,6 +10041,11 @@ def execute_probe_steps(
                 for monster in step.get("required_typeids", step.get("required_monster_typeids", []))
                 if str(monster).strip()
             ]
+            forbidden_typeids = [
+                str(monster).strip()
+                for monster in step.get("forbidden_typeids", step.get("forbidden_monster_typeids", []))
+                if str(monster).strip()
+            ]
             required_monsters_raw = step.get("required_monsters", [])
             if not isinstance(required_monsters_raw, list):
                 raise SystemExit(f"Scenario step '{label}' required_monsters must be a list")
@@ -9987,6 +10060,7 @@ def execute_probe_steps(
                     player_save=player_save,
                     required_monsters=required_monsters,
                     required_typeids=required_typeids,
+                    forbidden_typeids=forbidden_typeids,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -9996,6 +10070,7 @@ def execute_probe_steps(
                     "world_dir": str(world_dir),
                     "required_monsters": required_monsters,
                     "required_typeids": required_typeids,
+                    "forbidden_typeids": forbidden_typeids,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
