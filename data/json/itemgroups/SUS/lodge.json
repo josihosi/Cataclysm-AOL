@@ -50,7 +50,11 @@
     "type": "item_group",
     "//": "items found in a most dangerous game space",
     "subtype": "distribution",
-    "entries": [ { "group": "guns_shotgun_common", "prob": 30 }, { "group": "SUS_hunting_rifle", "prob": 20 } ]
+    "entries": [
+      { "group": "guns_shotgun_common", "prob": 30 },
+      { "group": "SUS_hunting_rifle", "prob": 20 },
+      { "item": "monsterbone_spear", "prob": 2 }
+    ]
   },
   {
     "id": "cannibal_food",

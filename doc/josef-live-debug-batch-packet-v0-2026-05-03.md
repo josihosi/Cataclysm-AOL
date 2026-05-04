@@ -227,7 +227,7 @@ Non-goals:
 - [x] NPC sorting failures are debounced; failing sort jobs do not retry/log every turn. _Proof: `doc/npc-sorting-failure-debounce-proof-v0-2026-05-04.md`; deterministic/local tests cover no-progress `ACT_MOVE_LOOT` cooldown, no reassignment while blocked, retry after expiry with priority preserved, and job-data serialization of cooldown state._
 - [x] Debug spawn options can create a medium horde, horde-at-`5`/`10` OMT setups, writhing stalker at `5`/`10` OMT, and zombie rider at `5`/`10` OMT, with clear labels and honest spawn/location proof. _Proof: `doc/debug-spawn-overmap-threat-options-proof-v0-2026-05-04.md`._
 - [x] Locker/basecamp equipment cleanup prevents orphan ammo/magazine carry after firearm replacement and can replace broken/`XX` backpacks by transferring stored contents or logging a concrete transfer blocker. _Proof: `doc/locker-basecamp-equipment-consistency-proof-v0-2026-05-04.md`._
-- [ ] Cannibal camps and selected important cannibal NPC loadouts can surface a rare ritual/status `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded elite wielder frequency.
+- [x] Cannibal camps and selected important cannibal NPC loadouts can surface a rare ritual/status `Monsterbone spear` that reads as monster-meat/huge-bone lore, with only about `1` or `2` camp copies and bounded elite wielder frequency. _Proof: `doc/monsterbone-spear-proof-v0-2026-05-04.md`._
 - [ ] Each slice has deterministic coverage and at least one appropriate live/path proof where the product claim is live behavior.
 
 ## Testing impact

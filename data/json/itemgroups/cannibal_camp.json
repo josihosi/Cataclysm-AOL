@@ -27,6 +27,12 @@
   },
   {
     "type": "item_group",
+    "id": "cannibal_camp_monsterbone_relic",
+    "subtype": "collection",
+    "items": [ { "item": "monsterbone_spear", "prob": 100, "count": [ 1, 2 ] } ]
+  },
+  {
+    "type": "item_group",
     "id": "cannibal_camp_refuse",
     "subtype": "collection",
     "entries": [

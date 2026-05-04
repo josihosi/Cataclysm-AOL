@@ -68,7 +68,7 @@
     "bonus_per": { "rng": [ 1, 3 ] },
     "worn_override": "NC_CANNIBAL_worn",
     "carry_override": "NC_CANNIBAL_LEADER_carry",
-    "weapon_override": "NC_CANNIBAL_BUTCHER_weapon",
+    "weapon_override": "NC_CANNIBAL_ELITE_weapon",
     "skills": [
       { "skill": "ALL", "level": { "sum": [ { "dice": [ 3, 2 ] }, { "constant": -4 } ] } },
       { "skill": "dodge", "bonus": { "rng": [ 2, 4 ] } },
@@ -127,5 +127,11 @@
       { "item": "machete", "prob": 35 },
       { "item": "survivor_machete_qt", "prob": 15 }
     ]
+  },
+  {
+    "type": "item_group",
+    "id": "NC_CANNIBAL_ELITE_weapon",
+    "subtype": "distribution",
+    "items": [ { "item": "monsterbone_spear", "prob": 25 }, { "group": "NC_CANNIBAL_BUTCHER_weapon", "prob": 75 } ]
   }
 ]
