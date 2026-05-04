@@ -110,8 +110,8 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 - **Inside ground floor:** player inside house, stalker outside; it should not stand in front of the window if seen.
 - **Player first floor/upstairs/roof/tower (`z=1`/`z=5`):** stalker should not overmap-route to impossible z; should watch/approach via reachable local layer, stairs/climb access if supported, or log blocker.
 - **Player smokes stalking side:** smoke blocks/obscures the line or suspected hide; stalker shifts hide/approach side or waits instead of freezing in the smoke.
-- **Zombie distraction:** zombie(s) enter house / engage defenders; stalker swoops within bounded cadence.
-- **After zombie death:** stalker boots back out / resumes stalking instead of hanging in melee range.
+- **Zombie distraction / threat-drop timing:** credited staged/live timing checkpoint `doc/writhing-stalker-distance-sight-threat-drop-live-proof-v0-2026-05-04.md` proves distant shadow -> short strike -> spent withdraw/cooling-off with `stalk_omt=5`; richer house/zombie-entry playfeel remains a future Josef/hardening variant.
+- **After burst / threat recovery:** credited live row above proves boot-out/cooling-off after the spent burst; after-zombie-death playfeel remains a future variant unless promoted.
 - **Player hunts it:** Josef/player exits and pursues or attacks; stalker either fights back briefly, breaks LoS, or retreats with legible reason.
 - **Light/camp pressure:** fire/lamp/searchlight plus defenders changes stalker confidence; no omniscient backstab through impossible exposure.
 
