@@ -889,13 +889,18 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   test_camp->set_bb_pos(patrol_abs);
 
   npc &guard = spawn_npc( guard_local.xy(), "thug" );
+  clear_character( guard, true );
+  guard.setpos( here, guard_local );
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
 
-  npc &neutral = spawn_npc( tripoint_bub_ms{50, 51, 0}.xy(), "thug" );
+  const tripoint_bub_ms neutral_local{50, 51, 0};
+  npc &neutral = spawn_npc( neutral_local.xy(), "thug" );
+  clear_character( neutral, true );
+  neutral.setpos( here, neutral_local );
   static const faction_id faction_no_faction( "no_faction" );
   neutral.set_fac( faction_no_faction );
 
@@ -905,7 +910,10 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   CHECK_FALSE( test_camp->is_patrol_alarm_active() );
   CHECK( guard.attitude_to( neutral ) != Creature::Attitude::HOSTILE );
 
-  npc &raider = spawn_npc( tripoint_bub_ms{52, 50, 0}.xy(), "bandit" );
+  const tripoint_bub_ms raider_local{52, 50, 0};
+  npc &raider = spawn_npc( raider_local.xy(), "bandit" );
+  clear_character( raider, true );
+  raider.setpos( here, raider_local );
   static const faction_id faction_hells_raiders( "hells_raiders" );
   raider.set_fac( faction_hells_raiders );
   CHECK( guard.attitude_to( raider ) == Creature::Attitude::HOSTILE );
@@ -940,6 +948,8 @@ TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
   test_camp->set_bb_pos(patrol_abs);
 
   npc &guard = spawn_npc( guard_local.xy(), "thug" );
+  clear_character( guard, true );
+  guard.setpos( here, guard_local );
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );

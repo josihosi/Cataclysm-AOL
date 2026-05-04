@@ -17,6 +17,7 @@ Camp patrol workers now respond to visible hostiles instead of passively obeying
 Changed source classes:
 
 - `src/npcmove.cpp`: patrol-assigned camp NPCs with an active patrol zone bypass passive/self-defense-only engagement restrictions for visible hostiles, raise `basecamp::raise_patrol_alarm`, and suppress routine visible patrol route/inactive reports.
+- `src/npctalk.cpp`: patrol-duty camp workers reuse the existing `NPC_MISSION_GUARD_PATROL` noise-investigation primitive even if their default follower rules say `ignore_noise`; noise by itself only queues investigation, while normal hostile/LoS combat still decides attacks.
 - `src/basecamp.cpp` / `src/basecamp.h`: camp patrol alarm state is tracked, invalidates the shift cache, and expands the current shift roster to all patrol-enabled camp workers while active.
 - `tools/openclaw_harness/startup_harness.py`: patrol cache artifact parser accepts both old cache lines and new `alarm=` cache lines, and explains alarm-expanded rosters in patrol summaries.
 - `tests/faction_camp_test.cpp`: focused Slice 6 coverage for alarm roster behavior, hostile-bandit vs neutral targeting, zombie targeting, and visible-report hygiene.
@@ -28,7 +29,7 @@ Local gate run after current edits:
 ```text
 git diff --check
 python3 -m py_compile tools/openclaw_harness/startup_harness.py
-make -j4 obj/basecamp.o obj/npcmove.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0
+make -j4 obj/basecamp.o obj/npcmove.o obj/npctalk.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0
 ./tests/cata_test "[camp][patrol]" --reporter compact
 ```
 
@@ -71,4 +72,4 @@ patrol parser compatibility ok: unknown true
 
 ## Boundary
 
-This is a focused deterministic/source-path checkpoint for camp patrol aggression, alarm roster, and report hygiene. It does not claim a broader military command simulation, hostile classification by vibe, or full live overmap combat-playfeel coverage.
+This is a focused deterministic/source-path checkpoint for camp patrol aggression, alarm roster, patrol-duty sound investigation, and report hygiene. It does not claim a broader military command simulation, hostile classification by vibe, or full live overmap combat-playfeel coverage.

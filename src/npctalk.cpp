@@ -184,6 +184,8 @@ static const trait_id trait_HALLUCINATION( "HALLUCINATION" );
 static const trait_id trait_PROF_CHURL( "PROF_CHURL" );
 static const trait_id trait_PROF_FOODP( "PROF_FOODP" );
 
+static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+
 static const zone_type_id zone_type_NPC_INVESTIGATE_ONLY( "NPC_INVESTIGATE_ONLY" );
 static const zone_type_id zone_type_NPC_NO_INVESTIGATE( "NPC_NO_INVESTIGATE" );
 
@@ -1935,7 +1937,9 @@ void npc::handle_sound( const sounds::sound_t spriority, const std::string &desc
     if( mission == NPC_MISSION_GUARD_ALLY || mission == NPC_MISSION_GUARD_PATROL ) {
         investigate_dist = 50;
     }
-    if( rules.has_flag( ally_rule::ignore_noise ) ) {
+    const bool camp_patrol_investigates_noise = mission == NPC_MISSION_GUARD_PATROL &&
+            assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0;
+    if( rules.has_flag( ally_rule::ignore_noise ) && !camp_patrol_investigates_noise ) {
         investigate_dist = 0;
     }
     if( ai_cache.total_danger < 1.0f ) {
