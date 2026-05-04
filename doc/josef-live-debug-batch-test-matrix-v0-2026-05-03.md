@@ -208,6 +208,22 @@ Live rows must include at least one bandit and one cannibal smoke-out case. Writ
 - save/log proof of successful payment and cancelled/insufficient payment branch.
 - green current checkpoint for visible fork + actual trade-window opening + whole basecamp-side pool + pool-derived debt/toll basis + cancel/refusal + successful saved writeback: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`; final UI-first closure is tight cropped-OCR run `20260503_202326` on rebuilt `d1a4f076c8` (`Pay`/`Fight` before selection, immediate post-Pay `Pay:` / `Debt $157.97` / `F1 to auto balance`, same-run `npc_trading::trade` artifact and pool components). Supporting rows: reopened Pay/open `20260503_192442`, cancel/refusal `20260503_192911`, current-HEAD successful Pay/save/writeback `20260503_203141`, plus deterministic shakedown gate `/tmp/caol_shakedown_contract_tests_20260503.log`.
 
+## NPC sorting rows
+
+### Deterministic
+
+- no-progress NPC zone sort records a temporary `ACT_MOVE_LOOT` cooldown instead of immediately recreating the same job;
+- blocked `ACT_MOVE_LOOT` is skipped by `npc::find_job_to_perform()` until cooldown expiry;
+- the configured job priority remains intact and the job retries after cooldown expiry;
+- cooldown state serializes/deserializes with `job_data`;
+- successful ordinary sorting clears the block and does not lower/remove NPC sorting priority.
+
+Current checkpoint: `doc/npc-sorting-failure-debounce-proof-v0-2026-05-04.md` credits deterministic/local code-path coverage for the no-progress cooldown, blocked no-reassignment, retry-after-expiry, and serialization rows. Live wait/log cadence proof remains optional/future-only unless fresh live spam appears.
+
+### Live/fixture
+
+- optional only if needed: bounded basecamp wait/log fixture showing a bad sort setup does not emit per-turn `ACT_MOVE_LOOT` reassignment/log spam.
+
 ## Locker/basecamp equipment rows
 
 ### Deterministic

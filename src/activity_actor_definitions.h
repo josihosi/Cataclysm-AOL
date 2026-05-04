@@ -4102,6 +4102,9 @@ class zone_sort_activity_actor : public zone_activity_actor
         // Tracks whether current batch used virtual pickup (items left on cart).
         // Batch-scoped: captured and cleared in pre-loop section of stage_do.
         bool virtual_pickup_active = false;
+        // True once this activity actually moved at least one item. NPC workers
+        // use the no-progress case to debounce impossible sort jobs.
+        bool sorted_anything = false;
         // Source tiles where routing failed or cart blocked pickup this cycle.
         // Cleared when player position or grab state changes (per stage_think).
         // Destination reachability is probed fresh per-source in stage_do.

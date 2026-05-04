@@ -13,6 +13,7 @@
 #include "avatar.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character_attire.h"
 #include "clzones.h"
 #include "coordinates.h"
@@ -22,6 +23,7 @@
 #include "json_loader.h"
 #include "map.h"
 #include "map_helpers.h"
+#include "npc.h"
 #include "player_activity.h"
 #include "player_helpers.h"
 #include "pocket_type.h"
@@ -60,6 +62,8 @@ static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_UNSORTED( "LOOT_UNSORTED" );
 static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
+
+static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 
 namespace
 {
@@ -401,6 +405,50 @@ TEST_CASE( "zone_sorting_skips_items_with_unreachable_destinations",
     CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     // Activity should have completed (no hang)
     CHECK( !dummy.activity );
+}
+
+TEST_CASE( "npc_zone_sorting_no_progress_blocks_move_loot_job",
+           "[zones][items][activities][sorting][npc]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms worker_pos{ 5, 5, 0 };
+
+    npc &worker = spawn_npc( worker_pos.xy(), "thug" );
+    clear_character( worker, true );
+    worker.setpos( here, worker_pos );
+
+    worker.assign_activity( zone_sort_activity_actor() );
+    process_activity( worker );
+
+    CHECK( !worker.activity );
+    CHECK( worker.job.is_job_blocked( ACT_MOVE_LOOT ) );
+}
+
+TEST_CASE( "npc_blocked_move_loot_job_is_not_recreated_until_cooldown_expires",
+           "[zones][items][activities][sorting][npc]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms worker_pos{ 5, 5, 0 };
+
+    npc &worker = spawn_npc( worker_pos.xy(), "thug" );
+    clear_character( worker, true );
+    worker.setpos( here, worker_pos );
+    REQUIRE( worker.job.set_task_priority( ACT_MOVE_LOOT, 6 ) );
+    worker.job.block_job_until( ACT_MOVE_LOOT, calendar::turn + 30_minutes );
+
+    CHECK_FALSE( worker.find_job_to_perform() );
+    CHECK( !worker.activity );
+
+    calendar::turn += 31_minutes;
+    CHECK( worker.find_job_to_perform() );
+    CHECK( worker.activity.id() == ACT_MOVE_LOOT );
 }
 
 TEST_CASE( "zone_sorting_leaves_camp_locker_tiles_alone",

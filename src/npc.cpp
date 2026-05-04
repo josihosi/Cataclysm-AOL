@@ -211,6 +211,22 @@ int job_data::get_priority_of_job( const activity_id &req_job ) const
     }
 }
 
+bool job_data::is_job_blocked( const activity_id &req_job ) const
+{
+    const auto it = activity_cooldowns.find( req_job.str() );
+    return it != activity_cooldowns.end() && it->second > calendar::turn;
+}
+
+void job_data::block_job_until( const activity_id &req_job, const time_point &until )
+{
+    activity_cooldowns[req_job.str()] = until;
+}
+
+void job_data::clear_job_block( const activity_id &req_job )
+{
+    activity_cooldowns.erase( req_job.str() );
+}
+
 std::vector<activity_id> job_data::get_prioritised_vector() const
 {
     std::vector<std::pair<activity_id, int>> pairs( begin( task_priorities ), end( task_priorities ) );

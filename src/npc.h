@@ -156,12 +156,19 @@ class job_data
     public:
         // Multi activity fetchs something to complete task. To avoid infinite loop, remember what is tried to fetch already.
         std::unordered_map<std::string, time_point> fetch_history;
+        // Failed job attempts can block a worker without changing priority. This
+        // keeps impossible jobs from being recreated on every scan while still
+        // allowing a normal retry after the cooldown expires.
+        std::unordered_map<std::string, time_point> activity_cooldowns;
 
         bool set_task_priority( const activity_id &task, int new_priority );
         void set_all_priorities( int new_priority );
         void clear_all_priorities();
         bool has_job() const;
         int get_priority_of_job( const activity_id &req_job ) const;
+        bool is_job_blocked( const activity_id &req_job ) const;
+        void block_job_until( const activity_id &req_job, const time_point &until );
+        void clear_job_block( const activity_id &req_job );
         std::vector<activity_id> get_prioritised_vector() const;
         void serialize( JsonOut &json ) const;
         void deserialize( const JsonValue &jv );

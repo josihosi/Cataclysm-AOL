@@ -2088,6 +2088,7 @@ void job_data::serialize( JsonOut &json ) const
     json.start_object();
     json.member( "task_priorities", task_priorities );
     json.member( "fetch_history", fetch_history );
+    json.member( "activity_cooldowns", activity_cooldowns );
     json.end_object();
 }
 
@@ -2098,6 +2099,7 @@ void job_data::deserialize( const JsonValue &jv )
         jo.allow_omitted_members();
         jo.read( "task_priorities", task_priorities );
         jo.read( "fetch_history", fetch_history );
+        jo.read( "activity_cooldowns", activity_cooldowns );
 
         const job_data default_job;
         for( const auto &entry : default_job.task_priorities ) {

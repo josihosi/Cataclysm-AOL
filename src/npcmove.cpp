@@ -4418,9 +4418,17 @@ bool npc::find_job_to_perform() {
             fetch_itr++;
         }
     }
+    auto cooldown_itr = job.activity_cooldowns.begin();
+    while( cooldown_itr != job.activity_cooldowns.end() ) {
+        if( cooldown_itr->second <= calendar::turn ) {
+            cooldown_itr = job.activity_cooldowns.erase( cooldown_itr );
+        } else {
+            cooldown_itr++;
+        }
+    }
 
     for( activity_id &elem : job.get_prioritised_vector() ) {
-        if( job.get_priority_of_job( elem ) == 0 ) {
+        if( job.get_priority_of_job( elem ) == 0 || job.is_job_blocked( elem ) ) {
             continue;
         }
         if( elem != ACT_CAMP_PATROL && assigned_camp ) {

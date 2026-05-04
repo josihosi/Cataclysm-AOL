@@ -560,6 +560,29 @@ TEST_CASE("legacy_job_data_load_adds_missing_patrol_priority_surface",
   CHECK(loaded.get_priority_of_job(ACT_CAMP_PATROL) == 3);
 }
 
+TEST_CASE("job_data_serializes_activity_cooldowns", "[camp][jobs]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  static const activity_id ACT_MOVE_LOOT("ACT_MOVE_LOOT");
+
+  job_data saved;
+  REQUIRE(saved.set_task_priority(ACT_MOVE_LOOT, 6));
+  saved.block_job_until(ACT_MOVE_LOOT, calendar::turn + 30_minutes);
+
+  std::ostringstream os;
+  JsonOut jsout(os);
+  saved.serialize(jsout);
+
+  JsonValue jsin = json_loader::from_string(os.str());
+  job_data loaded;
+  loaded.deserialize(jsin);
+
+  CHECK(loaded.get_priority_of_job(ACT_MOVE_LOOT) == 6);
+  CHECK(loaded.is_job_blocked(ACT_MOVE_LOOT));
+
+  calendar::turn += 31_minutes;
+  CHECK_FALSE(loaded.is_job_blocked(ACT_MOVE_LOOT));
+}
+
 TEST_CASE("camp_patrol_worker_pool_uses_patrol_priority_surface",
           "[camp][patrol]") {
   clear_avatar();
