@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "bandit_live_world.h"
 #include "basecamp.h"
 #include "calendar.h"
 #include "cata_catch.h"
@@ -945,6 +946,77 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   guard.regen_ai_cache();
   CHECK( guard.current_target() == &raider );
   CHECK( test_camp->is_patrol_alarm_active() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_escalation",
+          "[camp][patrol][bandit][live_world]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  restore_on_out_of_scope restore_bandit_world( overmap_buffer.global_state.bandit_live_world );
+  clear_avatar();
+  clear_map();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  overmap_buffer.global_state.bandit_live_world.clear();
+
+  map &here = get_map();
+  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  const tripoint_bub_ms guard_local{50, 50, 0};
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{52, 50, 0} );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>( patrol_abs );
+  here.add_camp( camp_omt, "faction_camp" );
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
+  REQUIRE( !!bcp );
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner( your_fac );
+  test_camp->set_bb_pos( patrol_abs );
+
+  npc &guard = spawn_npc( guard_local.xy(), "thug" );
+  clear_character( guard, true );
+  guard.setpos( here, guard_local );
+  static const faction_id faction_free_merchants( "free_merchants" );
+  guard.set_fac( faction_free_merchants );
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  test_camp->add_assignee( guard.getID() );
+
+  const tripoint_bub_ms raider_local{52, 50, 0};
+  npc &raider = spawn_npc( raider_local.xy(), "bandit" );
+  clear_character( raider, true );
+  raider.setpos( here, raider_local );
+  static const faction_id faction_hells_raiders( "hells_raiders" );
+  raider.set_fac( faction_hells_raiders );
+
+  bandit_live_world::site_record site;
+  site.site_id = "test:active_toll_parley";
+  site.site_kind = bandit_live_world::owned_site_kind::bandit_camp;
+  site.profile = bandit_live_world::hostile_site_profile::camp_style;
+  site.anchor = raider.pos_abs_omt();
+  site.active_group_id = "test_active_toll_group";
+  site.active_job_type = "toll";
+  site.active_target_id = "player_basecamp_nearby";
+  site.active_member_ids.push_back( raider.getID() );
+  bandit_live_world::member_record member;
+  member.npc_id = raider.getID();
+  member.state = bandit_live_world::member_state::local_contact;
+  site.members.push_back( member );
+  overmap_buffer.global_state.bandit_live_world.sites.push_back( site );
+
+  CHECK( guard.attitude_to( raider ) == Creature::Attitude::HOSTILE );
+  CHECK( here.has_potential_los( guard.pos_bub(), raider.pos_bub() ) );
+  CHECK( guard.sees( here, raider.pos_bub( here ) ) );
+  calendar::turn = sunrise( calendar::turn_zero ) + 2_hours;
+  guard.regen_ai_cache();
+  CHECK( guard.current_target() == nullptr );
+  CHECK( test_camp->is_patrol_alarm_active() );
+
+  site.last_shakedown_outcome = "fight_unresolved";
+  overmap_buffer.global_state.bandit_live_world.sites.front() = site;
+  guard.regen_ai_cache();
+  CHECK( guard.current_target() == &raider );
 
   zone_manager::get_manager().clear();
 }

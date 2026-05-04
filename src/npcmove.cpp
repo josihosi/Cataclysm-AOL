@@ -1071,7 +1071,17 @@ void npc::assess_danger() {
     if( attitude_to( guy ) == Attitude::HOSTILE &&
         sees( here, guy.pos_bub( here ) ) ) {
       raise_camp_patrol_alarm();
-      ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
+      const bool shakedown_parley_member = camp_patrol_response &&
+          bandit_live_world::is_active_shakedown_parley_member(
+              overmap_buffer.global_state.bandit_live_world, guy.getID() );
+      if( shakedown_parley_member ) {
+        ai_cache.neutral_guys.emplace_back( g->shared_from( guy ) );
+        add_msg_debug( debugmode::DF_NPC_COMBATAI,
+                       "%s watches active shakedown contact %s without escalating patrol alarm to combat.",
+                       name, guy.disp_name() );
+      } else {
+        ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
+      }
     } else if (has_faction_relationship(guy,
                                  npc_factions::relationship::watch_your_back)) {
       ai_cache.friends.emplace_back(g->shared_from(guy));
