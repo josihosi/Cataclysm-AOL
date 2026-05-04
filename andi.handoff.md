@@ -8,6 +8,8 @@ Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md
 
 Test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 
+Standing build cadence: `doc/andi-build-cadence-note.md`.
+
 Handoff packet: `doc/josef-live-debug-batch-handoff-v0-2026-05-03.md`.
 
 Raw intake:
@@ -17,11 +19,11 @@ Raw intake:
 
 ## Current ask
 
-Execute the packaged 2026-05-02 + 2026-05-03 live debug correction stack in order. Start with shakedown UI/payment contract correction.
+Execute the packaged 2026-05-02 + 2026-05-03 live debug correction stack in order. Continue at Slice 6 patrol aggression/alarm/report hygiene; Slices 1-5 have checkpoint proof.
 
 ## Execution order
 
-Current checkpoints: Slice 1 visible Pay/Fight + Pay opening the real NPC trade window is green at `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`. Latest three-source row `.userdata/dev-harness/harness_runs/20260503_233823/` proves the same open Pay trade window contains player `binoculars`, basecamp-assigned NPC `saxophone`, and basecamp storage-zone `gold_watch`, then accepts a balanced offer and records paid writeback. The rebuilt `7e5a506c76` master rows remain the clean cancel/success receipts. Slice 2 has enough current-pass evidence to continue: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md` plus Josef's own test read that bandits did their thing. Slice 3 multi-z / roof-tower routing is green at `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`. Slice 4 bandit toll escalation is green at `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`. Do not block on deferred Slice 2 sight/smoke, broader local roof pathing, or full cannibal live raid/contact now; continue at Slice 5 all-light-source adapter unless a fresh higher-priority debug note appears.
+Current checkpoints: Slice 1 visible Pay/Fight + Pay opening the real NPC trade window is green at `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`. Latest three-source row `.userdata/dev-harness/harness_runs/20260503_233823/` proves the same open Pay trade window contains player `binoculars`, basecamp-assigned NPC `saxophone`, and basecamp storage-zone `gold_watch`, then accepts a balanced offer and records paid writeback. The rebuilt `7e5a506c76` master rows remain the clean cancel/success receipts. Slice 2 has enough current-pass evidence to continue: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md` plus Josef's own test read that bandits did their thing. Slice 3 multi-z / roof-tower routing is green at `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`. Slice 4 bandit toll escalation is green at `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`. Slice 5 all-light-source adapter is green only for source/weather/log adapter proof at `doc/all-light-source-live-adapter-proof-v0-2026-05-04.md`; horde-response/devirtualization is explicitly not green after the guarded completed-save retry still found `active_monsters=[]` / no nearby active `mon_zombie`. Do not block on deferred Slice 2 sight/smoke, broader local roof pathing, full cannibal live raid/contact, or local devirtualization now; continue at Slice 6 patrol aggression/alarm/report hygiene unless a fresh higher-priority debug note appears.
 
 1. Shakedown Pay/Fight only + the actual NPC trade UI / trade window (`npc_trading::trade` / `trade_ui` shape) over the whole honest basecamp/faction-side inventory pool; it autostarts with demanded debt/toll derived from what that camp side can plausibly pay, and the player dumps items into the offer to satisfy it; not a fixed/stub amount, not player-carried-only inventory, and not a fake selector; remove/refute misleading `pay/fight/refuse` success expectations.
 2. Defended-camp scout/standoff/sight-avoid/hot-loot behavior, including bandits/cannibals/compatible hostiles in stalking mode actually breaking LoS/backing off/rerouting/waiting/escalating when seen or when the player smokes out the suspected stalking tile/approach line.
@@ -38,5 +40,7 @@ Current checkpoints: Slice 1 visible Pay/Fight + Pay opening the real NPC trade 
 ## Evidence bar
 
 Each slice needs deterministic coverage for the contract and live/path proof for player-facing or live-world claims. Do not close a live UI/behavior claim from a test seam alone.
+
+Use `doc/andi-build-cadence-note.md` when choosing build scope. Build when the next claim depends on current compiled code; avoid ritual clean rebuilds unless the note's clean-rebuild triggers are actually met.
 
 After two same-blocker attempts, consult Frau Knackal before attempt 3. After four unresolved attempts, package implemented-but-unproven state for Josef and move to the next greenlit debug note.
