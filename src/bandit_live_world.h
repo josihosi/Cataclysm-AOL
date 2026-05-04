@@ -520,6 +520,7 @@ shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_r
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
 bool record_live_signal_mark( site_record &site, const live_signal_mark &mark );
+bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
 std::string render_empty_site_retirement_report( const site_record &site );
 int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );

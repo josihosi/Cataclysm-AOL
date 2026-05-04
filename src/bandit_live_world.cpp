@@ -3128,6 +3128,29 @@ std::string render_shakedown_surface_report( const site_record &site,
     return out.str();
 }
 
+bool is_active_shakedown_parley_member( const world_state &state, const character_id npc_id )
+{
+    for( const site_record &site : state.sites ) {
+        if( site.retired_empty_site || site.active_group_id.empty() ||
+            site.active_member_ids.empty() || site.active_job_type != "toll" ) {
+            continue;
+        }
+        if( site.last_shakedown_outcome.rfind( "fight", 0 ) == 0 ) {
+            continue;
+        }
+        if( std::find( site.active_member_ids.begin(), site.active_member_ids.end(), npc_id ) ==
+            site.active_member_ids.end() ) {
+            continue;
+        }
+        const member_record *member = site.find_member( npc_id );
+        if( member == nullptr || member->state == member_state::dead ||
+            member->state == member_state::missing ) {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
 
 shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome )
