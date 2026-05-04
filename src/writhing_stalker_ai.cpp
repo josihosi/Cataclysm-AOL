@@ -17,6 +17,7 @@ constexpr int latch_timeout_minutes = 30;
 constexpr int default_latch_leash_tiles = 60;
 constexpr int withdrawal_cooldown_minutes = 10;
 constexpr int faded_latch_cooldown_minutes = 5;
+constexpr int cautious_stalk_distance_omt = 5;
 
 int signum( const int value )
 {
@@ -324,8 +325,8 @@ threat_report evaluate_threat_state( const threat_context &ctx )
     if( ctx.spent_cooldown || ctx.burst_strikes >= ctx.burst_limit ) {
         report.state = threat_state::spent_disengage;
         report.next = decision::withdraw;
-        report.stalk_distance_omt = 1;
-        report.stalking_distance_omt = 1;
+        report.stalk_distance_omt = cautious_stalk_distance_omt;
+        report.stalking_distance_omt = cautious_stalk_distance_omt;
         report.avoid_sight_tiles = true;
         report.avoids_sight_tiles = true;
         report.reason = "spent_disengage_memory_withdraw";
@@ -338,8 +339,8 @@ threat_report evaluate_threat_state( const threat_context &ctx )
         report.state = threat_state::overmatched_retreat;
         report.next = decision::withdraw;
         report.intent = handoff_intent::overmatched_stalk;
-        report.stalk_distance_omt = 3;
-        report.stalking_distance_omt = 3;
+        report.stalk_distance_omt = cautious_stalk_distance_omt;
+        report.stalking_distance_omt = cautious_stalk_distance_omt;
         report.threat_memory = std::max( 3, ctx.allied_support_nearby );
         report.avoid_sight_tiles = true;
         report.avoids_sight_tiles = true;
@@ -372,8 +373,8 @@ threat_report evaluate_threat_state( const threat_context &ctx )
         report.next = decision::withdraw;
         report.overmatched = true;
         report.intent = handoff_intent::overmatched_stalk;
-        report.stalk_distance_omt = 3;
-        report.stalking_distance_omt = 3;
+        report.stalk_distance_omt = cautious_stalk_distance_omt;
+        report.stalking_distance_omt = cautious_stalk_distance_omt;
         report.threat_memory = std::max( 3, ctx.allied_support_nearby );
         report.avoid_sight_tiles = true;
         report.avoids_sight_tiles = true;
@@ -715,7 +716,7 @@ handoff_memory writeback_handoff_memory( const handoff_memory &incoming,
     }
 
     if( out.intent == handoff_intent::overmatched_stalk && out.stalk_distance_omt == 0 ) {
-        out.stalk_distance_omt = 3;
+        out.stalk_distance_omt = cautious_stalk_distance_omt;
     }
 
     return out;
@@ -838,6 +839,10 @@ live_response evaluate_live_response( const live_context &ctx )
                                   handoff_intent::none;
         response.writeback_cooldown_minutes = opportunity.next == decision::withdraw ? 5 :
                                               response.writeback_cooldown_minutes;
+        if( opportunity.next == decision::withdraw ) {
+            response.overmap_stalk_distance_omt = std::max( response.overmap_stalk_distance_omt,
+                                                  cautious_stalk_distance_omt );
+        }
         response.persistent_state_required = true;
         response.reason = "live_" + opportunity.reason;
         return response;
@@ -845,7 +850,7 @@ live_response evaluate_live_response( const live_context &ctx )
 
     const bool vulnerable_player = ctx.player_bleeding || ctx.player_hurt || ctx.player_low_stamina ||
                                    ctx.player_distracted || ctx.player_noisy;
-    if( !vulnerable_player && ctx.zombie_pressure >= 3 && ctx.distance_to_target <= 3 &&
+    if( !vulnerable_player && ctx.zombie_pressure >= 2 && ctx.distance_to_target <= 3 &&
         !( ctx.target_in_bright_exposure || ctx.stalker_in_bright_exposure || ctx.target_has_focus ) &&
         ( ctx.near_cover_or_clutter || ctx.cover_route_available || ctx.quiet_side_cutoff_available ) ) {
         response.next = decision::strike;
@@ -855,7 +860,7 @@ live_response evaluate_live_response( const live_context &ctx )
         return response;
     }
 
-    if( !vulnerable_player && ctx.zombie_pressure >= 3 && opportunity.next != decision::strike &&
+    if( !vulnerable_player && ctx.zombie_pressure >= 2 && opportunity.next != decision::strike &&
         !( ctx.target_in_bright_exposure || ctx.stalker_in_bright_exposure || ctx.target_has_focus ) &&
         ( ctx.cover_route_available || ctx.quiet_side_cutoff_available ) ) {
         response.next = decision::shadow;
@@ -863,6 +868,27 @@ live_response evaluate_live_response( const live_context &ctx )
         response.writeback_intent = handoff_intent::opportunity_probe;
         response.persistent_state_required = true;
         response.reason = "live_zombie_distraction_dark_square_probe";
+        return response;
+    }
+
+    if( ctx.target_has_focus && !vulnerable_player && ctx.zombie_pressure == 0 ) {
+        if( approach.next == decision::shadow && approach.route != approach_class::direct_forced ) {
+            response.next = decision::shadow;
+            response.route = approach.route;
+            response.writeback_intent = handoff_intent::shadowing;
+            response.overmap_stalk_distance_omt = std::max( response.overmap_stalk_distance_omt,
+                                                  cautious_stalk_distance_omt );
+            response.persistent_state_required = true;
+            response.reason = "live_sighted_stalker_breaks_los_shadow";
+            return response;
+        }
+        response.next = decision::withdraw;
+        response.writeback_intent = handoff_intent::spent_disengage;
+        response.writeback_cooldown_minutes = std::max( response.writeback_cooldown_minutes, 5 );
+        response.overmap_stalk_distance_omt = std::max( response.overmap_stalk_distance_omt,
+                                              cautious_stalk_distance_omt );
+        response.persistent_state_required = true;
+        response.reason = "live_sighted_stalker_no_cover_withdraw";
         return response;
     }
 

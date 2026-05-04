@@ -563,7 +563,7 @@ TEST_CASE( "writhing_stalker_threat_handoff_overmatched_allies_retreats_to_stalk
     REQUIRE( overmatched.overmatched );
     CHECK( overmatched.next == decision::withdraw );
     CHECK( overmatched.intent == handoff_intent::overmatched_stalk );
-    CHECK( overmatched.stalk_distance_omt == 3 );
+    CHECK( overmatched.stalk_distance_omt == 5 );
     CHECK( overmatched.threat_memory >= 3 );
     CHECK( overmatched.avoid_sight_tiles );
     CHECK( overmatched.reason == "high_threat_allied_light_retreat_stalk" );
@@ -576,9 +576,39 @@ TEST_CASE( "writhing_stalker_threat_handoff_overmatched_allies_retreats_to_stalk
     const live_response response = evaluate_live_response( ctx );
     CHECK( response.next == decision::withdraw );
     CHECK( response.writeback_intent == handoff_intent::overmatched_stalk );
-    CHECK( response.overmap_stalk_distance_omt == 3 );
+    CHECK( response.overmap_stalk_distance_omt == 5 );
     CHECK( response.persistent_state_required );
     CHECK( response.reason == "live_high_threat_allied_light_retreat_stalk" );
+}
+
+TEST_CASE( "writhing_stalker_sighted_stalk_uses_cover_or_withdraws_to_far_watch",
+           "[writhing_stalker][ai][live][sight]" )
+{
+    using namespace writhing_stalker;
+
+    live_context covered = pattern_base_context();
+    covered.distance_to_target = 6;
+    covered.target_has_focus = true;
+    covered.cover_route_available = true;
+    const live_response shadow = evaluate_live_response( covered );
+    CHECK( shadow.next == decision::shadow );
+    CHECK( shadow.route == approach_class::cover_shadow );
+    CHECK( shadow.writeback_intent == handoff_intent::shadowing );
+    CHECK( shadow.overmap_stalk_distance_omt == 5 );
+    CHECK( shadow.persistent_state_required );
+    CHECK( shadow.reason == "live_sighted_stalker_breaks_los_shadow" );
+
+    live_context exposed = covered;
+    exposed.cover_route_available = false;
+    exposed.edge_route_available = false;
+    exposed.direct_open_route_available = true;
+    exposed.forced_no_cover = false;
+    const live_response withdrawal = evaluate_live_response( exposed );
+    CHECK( withdrawal.next == decision::withdraw );
+    CHECK( withdrawal.writeback_intent == handoff_intent::spent_disengage );
+    CHECK( withdrawal.overmap_stalk_distance_omt == 5 );
+    CHECK( withdrawal.persistent_state_required );
+    CHECK( withdrawal.reason == "live_sighted_stalker_no_cover_withdraw" );
 }
 
 TEST_CASE( "writhing_stalker_night_reachable_anti_gnome_resolves_loiter",
@@ -638,6 +668,29 @@ TEST_CASE( "writhing_stalker_zombie_distraction_enables_dark_square_strike_witho
     CHECK( shadow.reason == "live_zombie_distraction_dark_square_probe" );
 }
 
+TEST_CASE( "writhing_stalker_threat_drop_strikes_on_low_zombie_pressure_then_boots_out",
+           "[writhing_stalker][ai][live][threat]" )
+{
+    using namespace writhing_stalker;
+
+    live_context dropped = pattern_base_context();
+    dropped.distance_to_target = 2;
+    dropped.zombie_pressure = 2;
+    const live_response strike = evaluate_live_response( dropped );
+    CHECK( strike.next == decision::strike );
+    CHECK( strike.writeback_intent == handoff_intent::committed_ambush );
+    CHECK( strike.reason == "live_zombie_distraction_dark_square_strike" );
+
+    live_context spent = dropped;
+    spent.burst_strikes = strike.burst_limit;
+    const live_response boot_out = evaluate_live_response( spent );
+    CHECK( boot_out.next == decision::withdraw );
+    CHECK( boot_out.writeback_intent == handoff_intent::spent_disengage );
+    CHECK( boot_out.overmap_stalk_distance_omt == 5 );
+    CHECK( boot_out.persistent_state_required );
+    CHECK( boot_out.reason == "live_burst_limit_reached_withdraw" );
+}
+
 TEST_CASE( "writhing_stalker_handoff_writeback_preserves_spent_cooldown_and_threat_memory",
            "[writhing_stalker][ai][handoff]" )
 {
@@ -648,7 +701,7 @@ TEST_CASE( "writhing_stalker_handoff_writeback_preserves_spent_cooldown_and_thre
     incoming.strike_budget_spent = 1;
     incoming.cooldown_minutes = 2;
     incoming.threat_memory = 3;
-    incoming.stalk_distance_omt = 3;
+    incoming.stalk_distance_omt = 5;
 
     live_context ctx = pattern_base_context();
     ctx.distance_to_target = 2;
@@ -667,7 +720,7 @@ TEST_CASE( "writhing_stalker_handoff_writeback_preserves_spent_cooldown_and_thre
     CHECK( out.reason == response.reason );
     CHECK( out.cooldown_minutes >= incoming.cooldown_minutes );
     CHECK( out.threat_memory >= incoming.threat_memory );
-    CHECK( out.stalk_distance_omt == 3 );
+    CHECK( out.stalk_distance_omt == 5 );
     CHECK( out.strike_budget_spent >= incoming.strike_budget_spent );
 }
 
@@ -727,7 +780,7 @@ TEST_CASE( "writhing_stalker_threat_distraction_state_handles_overmatch_and_anti
     const threat_report retreat = evaluate_threat_state( overmatched );
     CHECK( retreat.state == threat_state::overmatched_retreat );
     CHECK( retreat.next == decision::withdraw );
-    CHECK( retreat.stalking_distance_omt == 3 );
+    CHECK( retreat.stalking_distance_omt == 5 );
     CHECK( retreat.avoids_sight_tiles );
     CHECK( retreat.reason == "high_threat_allied_light_retreat_stalk" );
 
@@ -767,7 +820,7 @@ TEST_CASE( "writhing_stalker_live_response_retreats_from_daylight_three_allies_a
     CHECK( retreat.retreat_distance >= 14 );
     CHECK( retreat.persistent_state_required );
     CHECK( retreat.writeback_intent == handoff_intent::overmatched_stalk );
-    CHECK( retreat.overmap_stalk_distance_omt == 3 );
+    CHECK( retreat.overmap_stalk_distance_omt == 5 );
     CHECK( retreat.reason == "live_high_threat_allied_light_retreat_stalk" );
 
     live_context dark_window = pattern_base_context();
