@@ -1,6 +1,6 @@
 # Andi handoff
 
-Active lane: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`.
+Checkpointed lane pending Frau/Augerl review: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`.
 
 Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
 
@@ -12,15 +12,15 @@ Parent test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 
 Standing build cadence: `doc/andi-build-cadence-note.md`.
 
-## Current ask
+## Current review ask
 
-Execute the bounded defended-camp sight/smoke hardening packet. The old eleven-slice debug stack is checkpointed green; do not rerun those rows as comfort work.
+Do not execute or rerun this packet as routine work. The bounded defended-camp sight/smoke hardening packet is agent-side green and waiting on Frau/Augerl review; if accepted, Schani should close or retitle it and promote the next specific greenlit lane.
 
-The promoted target is the deferred Slice 2 hardening row: bandit watchers and compatible cannibal stalking/attack-pressure profiles should react honestly to current LoS and player smoke instead of standing visible, casing hot defended doorsteps, or camping inside smoke.
+The checkpointed target was the deferred Slice 2 hardening row: bandit watchers and compatible cannibal stalking/attack-pressure profiles should react honestly to current LoS and player smoke instead of standing visible, casing hot defended doorsteps, or camping inside smoke.
 
-## Evidence boundary
+## Checkpoint evidence boundary
 
-Minimum proof:
+Credited proof:
 - deterministic/source-path gates for current LoS, recent LoS, cover/no-cover fallback, and smoke-obscured lead handling;
 - staged/live bandit sighted-watcher row;
 - staged/live bandit smoke-out row;
