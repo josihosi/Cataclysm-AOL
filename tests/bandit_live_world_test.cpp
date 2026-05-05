@@ -289,6 +289,10 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
     CHECK( site.remembered_threat_estimate == 0 );
     REQUIRE( site.known_recent_marks.size() == 1 );
     CHECK( site.known_recent_marks.front() == "live_smoke@18,20,0" );
+    REQUIRE( site.intelligence_map.leads.size() == 1 );
+    CHECK( site.intelligence_map.leads.front().kind == bandit_live_world::camp_lead_kind::smoke_signal );
+    CHECK( site.intelligence_map.leads.front().source_summary.find( "obscured/uncertain" ) !=
+           std::string::npos );
 
     CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
     CHECK( site.known_recent_marks.size() == 1 );
@@ -2601,6 +2605,44 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK_FALSE( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, distant_watch_input,
                  distant_watch_decision, character_id( 901 ) ) );
 
+    bandit_live_world::local_gate_input smoked_watcher_input = camp_input;
+    smoked_watcher_input.current_exposure = false;
+    smoked_watcher_input.recent_exposure = false;
+    smoked_watcher_input.smoke_obscured_lead = true;
+    smoked_watcher_input.smoke_on_watcher_tile = true;
+    const bandit_live_world::local_gate_decision smoked_watcher_decision =
+        bandit_live_world::choose_local_gate_posture( site, smoked_watcher_input );
+    CHECK( smoked_watcher_decision.valid );
+    CHECK( smoked_watcher_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( smoked_watcher_decision.opens_shakedown_surface );
+    CHECK_FALSE( smoked_watcher_decision.combat_forward );
+    const std::string smoke_report = bandit_live_world::render_local_gate_report( site,
+                                      smoked_watcher_input, smoked_watcher_decision );
+    CHECK( smoke_report.find( "smoke_obscured=yes" ) != std::string::npos );
+    CHECK( smoke_report.find( "smoke_on_watcher=yes" ) != std::string::npos );
+    CHECK( smoke_report.find( "camping the smoked tile" ) != std::string::npos );
+    CHECK( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, smoked_watcher_input,
+            smoked_watcher_decision, character_id( 901 ) ) );
+
+    bandit_live_world::local_gate_input smoked_sightline_contact_input = camp_input;
+    smoked_sightline_contact_input.current_exposure = false;
+    smoked_sightline_contact_input.recent_exposure = false;
+    smoked_sightline_contact_input.local_contact_established = true;
+    smoked_sightline_contact_input.smoke_obscured_lead = true;
+    smoked_sightline_contact_input.smoke_between_watcher_and_camp = true;
+    const bandit_live_world::local_gate_decision smoked_sightline_contact_decision =
+        bandit_live_world::choose_local_gate_posture( site, smoked_sightline_contact_input );
+    CHECK( smoked_sightline_contact_decision.valid );
+    CHECK( smoked_sightline_contact_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( smoked_sightline_contact_decision.opens_shakedown_surface );
+    CHECK_FALSE( smoked_sightline_contact_decision.combat_forward );
+    const std::string smoked_sightline_contact_report = bandit_live_world::render_local_gate_report(
+                site, smoked_sightline_contact_input, smoked_sightline_contact_decision );
+    CHECK( smoked_sightline_contact_report.find( "smoke_obscured=yes" ) != std::string::npos );
+    CHECK( smoked_sightline_contact_report.find( "smoke_sightline=yes" ) != std::string::npos );
+    CHECK( smoked_sightline_contact_report.find( "shakedown=no" ) != std::string::npos );
+    CHECK( smoked_sightline_contact_report.find( "backs off/waits" ) != std::string::npos );
+
     bandit_live_world::local_gate_input probe_input;
     probe_input.local_threat = 1;
     probe_input.local_opportunity = 1;
@@ -2771,6 +2813,41 @@ TEST_CASE( "bandit_live_world_sight_avoid_uses_only_bounded_local_reposition_can
         bandit_live_world::choose_sight_avoid_reposition( current, true, true, hollow_candidates );
     CHECK( no_good_step.valid );
     CHECK_FALSE( no_good_step.repositions );
+
+    const std::vector<bandit_live_world::sight_avoid_candidate> smoke_blocked_candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), false, true, true, 0, true },
+        { tripoint_abs_ms( 99, 100, 0 ), false, true, true, 0, true },
+    };
+    const bandit_live_world::sight_avoid_decision smoke_blocked =
+        bandit_live_world::choose_sight_avoid_reposition( current, false, false,
+                smoke_blocked_candidates, true );
+    CHECK( smoke_blocked.valid );
+    CHECK_FALSE( smoke_blocked.repositions );
+    CHECK( smoke_blocked.reason == "blocked: smoke-obscured no adjacent passable reposition candidate" );
+
+    const std::vector<bandit_live_world::sight_avoid_candidate> smoked_candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), true, true, true, 0, false },
+        { tripoint_abs_ms( 99, 100, 0 ), true, true, true, 0, true },
+    };
+    const bandit_live_world::sight_avoid_decision smoked_tile =
+        bandit_live_world::choose_sight_avoid_reposition( current, false, false, smoked_candidates,
+                true );
+    CHECK( smoked_tile.valid );
+    REQUIRE( smoked_tile.repositions );
+    CHECK( smoked_tile.destination == tripoint_abs_ms( 101, 100, 0 ) );
+    CHECK( smoked_tile.reason == "repositioning because smoke obscures lead" );
+
+    const std::vector<bandit_live_world::sight_avoid_candidate> smoky_no_clear_candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), true, true, true, 0, true },
+        { tripoint_abs_ms( 99, 100, 0 ), true, true, true, 0, true },
+    };
+    const bandit_live_world::sight_avoid_decision smoky_no_clear =
+        bandit_live_world::choose_sight_avoid_reposition( current, false, false,
+                smoky_no_clear_candidates, true );
+    CHECK( smoky_no_clear.valid );
+    REQUIRE( smoky_no_clear.repositions );
+    CHECK( rl_dist( smoky_no_clear.destination, current ) == 1 );
+    CHECK( smoky_no_clear.reason == "repositioning because smoke obscures lead" );
 }
 
 TEST_CASE( "bandit_live_world_scout_sortie_has_finite_return_home_clock",
@@ -2928,6 +3005,42 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
     CHECK( exposed_report.find( "current_exposure=yes" ) != std::string::npos );
     CHECK( exposed_report.find( "sight_exposure=current" ) != std::string::npos );
     CHECK( exposed_report.find( "visible beeline" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input smoked_cannibal_input = favorable_input;
+    smoked_cannibal_input.local_contact_established = false;
+    smoked_cannibal_input.smoke_obscured_lead = true;
+    smoked_cannibal_input.smoke_on_watcher_tile = true;
+    const bandit_live_world::local_gate_decision smoked_cannibal_decision =
+        bandit_live_world::choose_local_gate_posture( site, smoked_cannibal_input );
+    CHECK( smoked_cannibal_decision.valid );
+    CHECK( smoked_cannibal_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( smoked_cannibal_decision.opens_shakedown_surface );
+    CHECK_FALSE( smoked_cannibal_decision.combat_forward );
+    const std::string smoked_cannibal_report =
+        bandit_live_world::render_local_gate_report( site, smoked_cannibal_input,
+                smoked_cannibal_decision );
+    CHECK( smoked_cannibal_report.find( "profile=cannibal_camp" ) != std::string::npos );
+    CHECK( smoked_cannibal_report.find( "smoke_obscured=yes" ) != std::string::npos );
+    CHECK( smoked_cannibal_report.find( "smoke_on_watcher=yes" ) != std::string::npos );
+    CHECK( smoked_cannibal_report.find( "shakedown=no" ) != std::string::npos );
+    CHECK( smoked_cannibal_report.find( "camping the smoked tile" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input smoked_contact_cannibal_input = favorable_input;
+    smoked_contact_cannibal_input.smoke_obscured_lead = true;
+    smoked_contact_cannibal_input.smoke_between_watcher_and_camp = true;
+    const bandit_live_world::local_gate_decision smoked_contact_cannibal_decision =
+        bandit_live_world::choose_local_gate_posture( site, smoked_contact_cannibal_input );
+    CHECK( smoked_contact_cannibal_decision.valid );
+    CHECK( smoked_contact_cannibal_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( smoked_contact_cannibal_decision.opens_shakedown_surface );
+    CHECK_FALSE( smoked_contact_cannibal_decision.combat_forward );
+    const std::string smoked_contact_cannibal_report =
+        bandit_live_world::render_local_gate_report( site, smoked_contact_cannibal_input,
+                smoked_contact_cannibal_decision );
+    CHECK( smoked_contact_cannibal_report.find( "profile=cannibal_camp" ) != std::string::npos );
+    CHECK( smoked_contact_cannibal_report.find( "smoke_sightline=yes" ) != std::string::npos );
+    CHECK( smoked_contact_cannibal_report.find( "shakedown=no" ) != std::string::npos );
+    CHECK( smoked_contact_cannibal_report.find( "camping the smoked tile" ) != std::string::npos );
 
     const tripoint_abs_ms current_tile( 100, 100, 0 );
     const std::vector<bandit_live_world::sight_avoid_candidate> exposed_candidates = {

@@ -1,0 +1,144 @@
+{
+  "name": "bandit_local_sight_avoid_smoked_scout_v0_2026-05-05",
+  "source_fixture": "bandit_local_sight_avoid_exposed_scout_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Alias for the active exposed-scout sight-avoid fixture with real saved fd_smoke seeded on the saved active watcher tile, proving the live local gate and sight-avoid path sees smoke on the watcher instead of treating the lead as clear.",
+  "save_transforms": [
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            -1,
+            -38,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            -1,
+            -37,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            -1,
+            -36,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -40,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -39,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -38,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -37,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -36,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -35,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            0,
+            -34,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            1,
+            -38,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            1,
+            -37,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            1,
+            -36,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        }
+      ]
+    }
+  ]
+}

@@ -2751,6 +2751,12 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         decision.notes.push_back(
             "bandit pressure is shakedown-capable once local contact is established" );
     }
+    if( input.smoke_obscured_lead ) {
+        decision.notes.push_back( std::string( "smoke-obscured lead: watcher_tile=" ) +
+                                  ( input.smoke_on_watcher_tile ? "yes" : "no" ) +
+                                  " sightline=" +
+                                  ( input.smoke_between_watcher_and_camp ? "yes" : "no" ) );
+    }
 
     if( input.rolling_travel_scene ) {
         if( profile == hostile_site_profile::cannibal_camp &&
@@ -2774,6 +2780,43 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         decision.posture = local_gate_posture::abort;
         decision.valid = false;
         decision.notes.push_back( "local gate aborts because local threat overwhelms dispatched pressure" );
+        return decision;
+    }
+
+    if( input.smoke_obscured_lead ) {
+        if( profile == hostile_site_profile::cannibal_camp ) {
+            if( input.basecamp_or_camp_scene ) {
+                decision.posture = local_gate_posture::hold_off;
+                decision.notes.push_back(
+                    "smoke/sight obscurity makes cannibal camp hold off instead of camping the smoked tile" );
+                return decision;
+            }
+            if( input.local_opportunity > 0 && decision.pressure_margin >= 0 ) {
+                decision.posture = local_gate_posture::probe;
+                decision.notes.push_back(
+                    "smoke-obscured cannibal lead probes around the concealment without opening a shakedown" );
+                return decision;
+            }
+            decision.posture = local_gate_posture::stalk;
+            decision.notes.push_back(
+                "smoke-obscured cannibal lead stays cautious until the killing window is clearer" );
+            return decision;
+        }
+        if( input.basecamp_or_camp_scene ) {
+            decision.posture = local_gate_posture::hold_off;
+            decision.notes.push_back(
+                "smoke-obscured defended-camp watcher backs off/waits instead of camping the smoked tile" );
+            return decision;
+        }
+        if( input.local_opportunity > 0 && decision.pressure_margin >= 0 ) {
+            decision.posture = local_gate_posture::probe;
+            decision.notes.push_back(
+                "smoke-obscured bandit lead becomes uncertain probe-around pressure rather than a clear beeline" );
+            return decision;
+        }
+        decision.posture = local_gate_posture::stalk;
+        decision.notes.push_back(
+            "smoke-obscured bandit lead stays in cautious stalking until the lead clears" );
         return decision;
     }
 
@@ -2890,9 +2933,9 @@ bool hot_defended_doorstep_blocks_pickup( const site_record &site,
         decision.posture != local_gate_posture::hold_off ) {
         return false;
     }
-    const bool hot_by_sight_or_doorstep = input.current_exposure || input.recent_exposure ||
-                                          input.standoff_distance <= 1;
-    return hot_by_sight_or_doorstep;
+    const bool hot_by_sight_smoke_or_doorstep = input.current_exposure || input.recent_exposure ||
+            input.smoke_obscured_lead || input.standoff_distance <= 1;
+    return hot_by_sight_smoke_or_doorstep;
 }
 
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
@@ -2919,6 +2962,9 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " recent_exposure=" << ( input.recent_exposure ? "yes" : "no" )
         << " sight_exposure=" << ( input.current_exposure ? "current" :
                                       ( input.recent_exposure ? "recent" : "none" ) )
+        << " smoke_obscured=" << ( input.smoke_obscured_lead ? "yes" : "no" )
+        << " smoke_on_watcher=" << ( input.smoke_on_watcher_tile ? "yes" : "no" )
+        << " smoke_sightline=" << ( input.smoke_between_watcher_and_camp ? "yes" : "no" )
         << " local_contact=" << ( input.local_contact_established ? "yes" : "no" )
         << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
         << " shakedown_capable=" << ( decision.shakedown_capable ? "yes" : "no" )
@@ -2933,15 +2979,17 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
 
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         const bool current_exposure, const bool recent_exposure,
-        const std::vector<sight_avoid_candidate> &candidates )
+        const std::vector<sight_avoid_candidate> &candidates,
+        const bool current_smoke_obscured )
 {
     sight_avoid_decision decision;
     decision.valid = true;
     decision.destination = current_tile;
 
-    if( !current_exposure && !recent_exposure ) {
+    if( !current_exposure && !recent_exposure && !current_smoke_obscured ) {
         decision.reason = "still stalking";
-        decision.notes.push_back( "sight_avoid: no current or recent exposure, no reposition needed" );
+        decision.notes.push_back(
+            "sight_avoid: no current/recent exposure or smoke-obscured tile, no reposition needed" );
         return decision;
     }
 
@@ -2958,6 +3006,12 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
         if( !candidate.visible_to_camp ) {
             score += 40;
         }
+        if( current_smoke_obscured && !candidate.smoke_obscured ) {
+            score += 60;
+        }
+        if( candidate.smoke_obscured ) {
+            score -= 40;
+        }
         if( candidate.visible_to_player && candidate.visible_to_camp ) {
             score -= 60;
         }
@@ -2968,26 +3022,38 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
     }
 
     if( !best_candidate.has_value() ) {
-        decision.reason = "still stalking";
-        decision.notes.push_back( "sight_avoid: exposed but no adjacent passable local reposition candidate" );
+        decision.reason = current_smoke_obscured ?
+                          "blocked: smoke-obscured no adjacent passable reposition candidate" :
+                          "blocked: exposed no adjacent passable reposition candidate";
+        decision.notes.push_back(
+            current_smoke_obscured ?
+            "sight_avoid: smoke-obscured but no adjacent passable local reposition candidate" :
+            "sight_avoid: exposed but no adjacent passable local reposition candidate" );
         return decision;
     }
 
     const bool breaks_player_sight = !best_candidate->visible_to_player;
     const bool breaks_camp_sight = !best_candidate->visible_to_camp;
-    if( !breaks_player_sight && !breaks_camp_sight && best_candidate->cover_score <= 0 ) {
+    const bool clears_smoke = current_smoke_obscured && !best_candidate->smoke_obscured;
+    if( !breaks_player_sight && !breaks_camp_sight && !clears_smoke && best_candidate->cover_score <= 0 &&
+        !current_smoke_obscured ) {
         decision.reason = "still stalking";
-        decision.notes.push_back( "sight_avoid: exposed but adjacent candidates do not improve cover or line of sight" );
+        decision.notes.push_back(
+            "sight_avoid: exposed but adjacent candidates do not improve cover or line of sight" );
         return decision;
     }
 
     decision.repositions = true;
     decision.destination = best_candidate->tile;
-    decision.reason = "repositioning because exposed";
-    decision.notes.push_back( "sight_avoid: exposed -> bounded adjacent reposition" );
+    decision.reason = current_smoke_obscured && !current_exposure ?
+                      "repositioning because smoke obscures lead" : "repositioning because exposed";
+    decision.notes.push_back( current_smoke_obscured && !current_exposure ?
+                              "sight_avoid: smoke-obscured -> bounded adjacent reposition" :
+                              "sight_avoid: exposed -> bounded adjacent reposition" );
     decision.notes.push_back( std::string( "sight_avoid: breaks_player_los=" ) +
                               ( breaks_player_sight ? "yes" : "no" ) +
                               " breaks_camp_los=" + ( breaks_camp_sight ? "yes" : "no" ) +
+                              " clears_smoke=" + ( clears_smoke ? "yes" : "no" ) +
                               " cover_score=" + std::to_string( best_candidate->cover_score ) );
     return decision;
 }
@@ -3280,6 +3346,9 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     lead.radius_omt = mark.range_cap_omt;
     lead.source_key = mark.mark_id;
     lead.source_summary = "live " + mark.kind + " signal mark";
+    if( mark.kind == "smoke" ) {
+        lead.source_summary += " (obscured/uncertain lead)";
+    }
     lead.last_seen_minutes = -1;
     lead.bounty = std::max( 0, mark.bounty_add );
     lead.threat = std::max( 0, mark.threat_add );
@@ -3291,7 +3360,8 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     const camp_map_lead *old_lead = site.intelligence_map.find_lead( lead.lead_id );
     changed |= old_lead == nullptr || old_lead->bounty != lead.bounty ||
                old_lead->threat != lead.threat || old_lead->confidence != lead.confidence ||
-               old_lead->radius_omt != lead.radius_omt;
+               old_lead->radius_omt != lead.radius_omt ||
+               old_lead->source_summary != lead.source_summary;
     upsert_camp_map_lead( site.intelligence_map, lead );
 
     return changed;
