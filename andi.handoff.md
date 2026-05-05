@@ -31,10 +31,10 @@ Claim only what the evidence reaches: staged/live feature-path proof is enough f
 
 ## Current checkpoint
 
-2026-05-05 smoke-out checkpoint is green. Code now feeds live `fd_smoke` into local-gate/sight-avoid decisions; deterministic/source-path `bandit_live_world*` is green at 43 cases / 1002 assertions; tiles build is green; staged/live `bandit.scout_stalker_smoked_watcher_live` run `.userdata/dev-harness/harness_runs/20260505_101407/` is `feature-path` / `feature_proof=true` with 11/11 green step-local rows and same-run smoke-obscured `local_gate` hold-off plus bounded adjacent sight-avoid reposition.
+2026-05-05 defended-camp sight/smoke packet is agent-side green pending Frau/Augerl review. Code feeds live `fd_smoke` into local-gate/sight-avoid decisions and keeps smoke-obscured sight-avoid reasons explicit; deterministic/source-path `bandit_live_world*` is green at 43 cases / 1002 assertions; tiles build and `git diff --check` are green. Staged/live current-sight row `bandit.scout_stalker_sight_avoid_live` run `.userdata/dev-harness/harness_runs/20260505_102525/` is `feature-path` / `feature_proof=true` with 10/10 green step-local rows and bounded adjacent exposed-scout reposition. Staged/live smoke row `bandit.scout_stalker_smoked_watcher_live` run `.userdata/dev-harness/harness_runs/20260505_102629/` is `feature-path` / `feature_proof=true` with 11/11 green step-local rows and smoke-obscured hold-off plus bounded adjacent sight-avoid reposition.
 
-Remaining active proof before closure: staged/live currently-sighted bandit watcher row.
+Remaining action: Frau/Augerl review; if accepted, Schani should close/retitle this packet and promote the next greenlit lane. No routine Andi reprobe is pending.
 
 ## Next review/action
 
-Move this lane to its next honest state boundary, update canon/evidence docs, commit/push if a clean state boundary is reached, then leave a concise `agent-visible only` report for Augerl/Frau review.
+Frau/Augerl should review the checkpointed proof and claim boundary. If accepted, Schani should close/retitle this packet and promote the next specific greenlit lane; no routine Andi reprobe is pending.
