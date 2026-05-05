@@ -49,7 +49,27 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Checkpointed lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
+## Current active lane — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
+
+**Status:** ACTIVE / GREENLIT / DEFERRED DEBUG-STACK HARDENING
+
+Schani promoted the next bounded Andi target from the deferred rows of `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`: prove and harden defended-camp sight/smoke behavior for bandit watchers and compatible cannibal stalking profiles.
+
+Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
+
+Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
+
+Parent matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
+Scope: when player or camp NPCs can currently see a hostile watcher, the watcher should break LoS, back off, reroute through cover/darkness, escalate/report, or record a concrete blocker instead of visible garden-gnome stalking. Smoke on the watcher tile or sightline should make the lead obscured/uncertain and cause reposition/wait/probe/escalation/blocker behavior, not same-tile smoke camping. Bandits keep bandit outcomes; cannibals keep cannibal outcomes and never gain shakedown UI by drift.
+
+Boundary: one hardening packet. Do not reopen completed shakedown, light adapter, patrol, sorting, debug-spawn, locker, Monsterbone, or full cannibal raid/contact rows unless Schani/Josef promotes them separately.
+
+Recommended next action: Andi should execute the packet to the next honest state boundary with deterministic/source-path gates plus staged/live proof rows, then hand it to Augerl/Frau for review.
+
+---
+
+## Recent checkpointed lane — CAOL-JOSEF-LIVE-DEBUG-BATCH-v0
 
 **Status:** CHECKPOINTED GREEN DEBUG STACK / AWAITING SCHANI-FRAU BOUNDARY REVIEW / NO ACTIVE ANDI PROBE
 

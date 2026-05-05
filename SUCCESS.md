@@ -17,6 +17,25 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0 — Defended-camp sight/smoke hardening
+
+Status: ACTIVE / GREENLIT / DEFERRED DEBUG-STACK HARDENING
+
+Success state:
+- [ ] Sighted bandit watcher near a defended camp/house chooses a real break-LoS/backoff/reroute/escalate/blocker path and does not continue visible doorway/casing-goblin pickup behavior.
+- [ ] Bandit smoke-out proof shows smoke on the watcher tile or sightline changes the lead/posture and avoids same-tile smoke camping.
+- [ ] Cannibal sight/smoke proof consumes the shared discipline while preserving cannibal outcome split: no shakedown, cautious stalk/withdraw under bad odds, attack/contact only when justified.
+- [ ] Deterministic or source-path gates cover current-LoS, recent-LoS, cover/no-cover fallback, and smoke-obscured lead handling.
+- [ ] Credited live/staged rows name run ids, actor/profile, distance/threat/LoS/smoke footing, decision/reason traces, warning/debug status, and claim boundary.
+- [ ] `Plan.md`, `TODO.md`, `TESTING.md`, `SUCCESS.md`, `andi.handoff.md`, and `doc/work-ledger.md` agree before closure.
+
+Canonical docs:
+- Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
+- Parent imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
+- Parent matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+
+---
+
 ## CAOL-JOSEF-LIVE-DEBUG-BATCH-v0 — Josef live debug batch
 
 Status: CHECKPOINTED GREEN DEBUG STACK / AWAITING SCHANI-FRAU BOUNDARY REVIEW

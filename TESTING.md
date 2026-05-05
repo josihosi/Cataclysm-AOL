@@ -56,23 +56,22 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### No active validation target
+### Active validation target — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
 
-`CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` is checkpointed green agent-side and awaiting Schani/Frau boundary review. Its slice receipts are:
+Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
 
-- shakedown UI/payment: `doc/shakedown-pay-fight-npc-trade-ui-proof-v0-2026-05-03.md`
-- defended-camp current-pass standoff/hot-loot: `doc/defended-camp-scout-standoff-hot-loot-proof-v0-2026-05-03.md`
-- multi-z/roof-z dispatch fallback: `doc/multi-z-roof-dispatch-fallback-proof-v0-2026-05-03.md`
-- hostile-camp escalation: `doc/hostile-camp-toll-escalation-proof-v0-2026-05-03.md`
-- all-light-source adapter: `doc/all-light-source-live-adapter-proof-v0-2026-05-04.md`
-- patrol aggression/alarm/report hygiene: `doc/camp-patrol-aggression-alarm-report-hygiene-proof-v0-2026-05-04.md`
-- writhing stalker distance/sight/threat-drop: `doc/writhing-stalker-distance-sight-threat-drop-live-proof-v0-2026-05-04.md`
-- NPC sorting debounce: `doc/npc-sorting-failure-debounce-proof-v0-2026-05-04.md`
-- debug spawn options: `doc/debug-spawn-overmap-threat-options-proof-v0-2026-05-04.md`
-- locker/basecamp equipment consistency: `doc/locker-basecamp-equipment-consistency-proof-v0-2026-05-04.md`
-- Monsterbone spear: `doc/monsterbone-spear-proof-v0-2026-05-04.md`
+Parent matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
 
-Deferred hardening/watchlist rows such as deeper defended-camp sight/smoke playfeel, full live cannibal raid/contact, local active-zombie devirtualization, positive `tracking_intensity`, and Monsterbone live camp feel are future-only unless Schani/Josef promotes a specific target. Do not rerun closed rows as ritual.
+Current proof target: defended-camp sight/smoke hardening for bandit watchers and compatible cannibal stalking profiles.
+
+Required evidence shape:
+- deterministic or source-path gates for current LoS, recent LoS, cover/no-cover fallback, and smoke-obscured lead handling;
+- staged/live bandit defended-camp row where a currently sighted watcher breaks LoS, backs off, reroutes, escalates/reports, or logs a concrete blocker and does not keep hot-doorstep pickup behavior;
+- staged/live bandit smoke-out row where smoke on the watcher tile or sightline changes lead/posture and avoids same-tile smoke camping;
+- cannibal staged/live or source-path proof that consumes the same sight/smoke discipline while preserving cannibal outcome split: no shakedown, cautious stalk/withdraw under bad odds, attack/contact only when justified;
+- feature-path proof must have no stale-binary/runtime-version mismatch.
+
+Boundary: staged/live rows may close this bounded hardening packet if they reach the real dispatch/local gate/profile path and claim only staged/live behavior. Do not claim natural random discovery, full vertical assault, full cannibal raid/contact, or tile-perfect smoke physics.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-THREAT-DISTRACTION-HANDOFF-v0
 
@@ -94,7 +93,7 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-No active Andi-side probe is queued in current repo canon. `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0` is at a review boundary after Slice 11; further proof requires Schani/Josef promotion of a named deferred row or a new greenlit packet.
+Active Andi-side probe is queued: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`. Start from the packet, use the shared hostile standoff/sight-avoidance and smoke-out matrix rows, and do not rerun completed eleven-slice debug-stack proof as ritual.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
