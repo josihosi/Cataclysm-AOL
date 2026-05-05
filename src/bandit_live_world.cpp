@@ -1606,7 +1606,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
 }
 
 
-int ready_at_home_member_count( const bandit_live_world::site_record &site )
+static int ready_at_home_member_count( const bandit_live_world::site_record &site )
 {
     return static_cast<int>( std::count_if( site.members.begin(), site.members.end(),
     []( const bandit_live_world::member_record & member ) {
@@ -1614,7 +1614,7 @@ int ready_at_home_member_count( const bandit_live_world::site_record &site )
     } ) );
 }
 
-int wounded_or_unready_member_count( const bandit_live_world::site_record &site )
+static int wounded_or_unready_member_count( const bandit_live_world::site_record &site )
 {
     return static_cast<int>( std::count_if( site.members.begin(), site.members.end(),
     []( const bandit_live_world::member_record & member ) {
@@ -1622,7 +1622,7 @@ int wounded_or_unready_member_count( const bandit_live_world::site_record &site 
     } ) );
 }
 
-int active_outside_member_count( const bandit_live_world::site_record &site )
+static int active_outside_member_count( const bandit_live_world::site_record &site )
 {
     std::vector<character_id> outside_members;
     outside_members.reserve( site.active_member_ids.size() );
@@ -1642,7 +1642,7 @@ int active_outside_member_count( const bandit_live_world::site_record &site )
     return static_cast<int>( outside_members.size() );
 }
 
-int ceil_percent( const int value, const int percent )
+static int ceil_percent( const int value, const int percent )
 {
     if( value <= 0 || percent <= 0 ) {
         return 0;
@@ -1650,7 +1650,7 @@ int ceil_percent( const int value, const int percent )
     return ( value * percent + 99 ) / 100;
 }
 
-int camp_map_home_reserve_for_lead( const bandit_live_world::site_record &site,
+static int camp_map_home_reserve_for_lead( const bandit_live_world::site_record &site,
                                     const bandit_live_world::camp_map_lead &lead,
                                     const int stockpile_pressure )
 {
@@ -1672,7 +1672,7 @@ int camp_map_home_reserve_for_lead( const bandit_live_world::site_record &site,
     return std::clamp( reserve, 0, living_roster );
 }
 
-int stalk_pressure_member_count( const int living_roster, const int dispatchable )
+static int stalk_pressure_member_count( const int living_roster, const int dispatchable )
 {
     if( dispatchable < 2 ) {
         return 0;
@@ -1687,7 +1687,7 @@ int stalk_pressure_member_count( const int living_roster, const int dispatchable
     return std::clamp( ceil_percent( dispatchable, 40 ), 2, upper_bound );
 }
 
-int toll_pressure_member_count( const int living_roster, const int dispatchable )
+static int toll_pressure_member_count( const int living_roster, const int dispatchable )
 {
     if( dispatchable < 4 || living_roster < 7 ) {
         return 0;
@@ -1699,7 +1699,7 @@ int toll_pressure_member_count( const int living_roster, const int dispatchable 
     return std::clamp( ceil_percent( dispatchable, 45 ), 2, upper_bound );
 }
 
-int cannibal_attack_member_count( const int living_roster, const int dispatchable,
+static int cannibal_attack_member_count( const int living_roster, const int dispatchable,
                                   const int margin )
 {
     if( dispatchable < 2 ) {
@@ -1980,7 +1980,7 @@ bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &i
     return false;
 }
 
-bool structural_bounty_scan_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
+static bool structural_bounty_scan_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
         const tripoint_abs_omt &omt, const std::string &terrain_class, const int now_minutes )
 {
     if( structural_bounty_memory_suppresses_refresh( intelligence_map, omt, terrain_class ) ) {

@@ -850,7 +850,18 @@
     ],
     "upgrades": false,
     "armor": { "bash": 6, "cut": 6, "bullet": 5, "electric": 1 },
-    "extend": { "flags": [ "SMELLS", "KEENNOSE", "GOODHEARING", "PATH_AVOID_DANGER", "HARDTOSHOOT", "HIT_AND_RUN", "RANGED_ATTACKER", "PUSH_VEH" ] },
+    "extend": {
+      "flags": [
+        "SMELLS",
+        "KEENNOSE",
+        "GOODHEARING",
+        "PATH_AVOID_DANGER",
+        "HARDTOSHOOT",
+        "HIT_AND_RUN",
+        "RANGED_ATTACKER",
+        "PUSH_VEH"
+      ]
+    },
     "delete": { "flags": [ "STUMBLES", "GRABS", "BASHES", "GROUP_BASH", "UNBREAKABLE_MORALE" ] }
   },
   {

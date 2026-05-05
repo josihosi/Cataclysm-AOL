@@ -113,9 +113,7 @@ CXX_WARNINGS = \
   -Wold-style-cast \
   -Woverloaded-virtual \
   -Wsuggest-override \
-  -Wzero-as-null-pointer-constant \
-  -Wno-dangling-reference \
-  -Wno-c++20-compat
+  -Wzero-as-null-pointer-constant
 ifeq ($(NATIVE), emscripten)
   # The EM_ASM macro triggers this warning.
   WARNINGS += -Wno-gnu-zero-variadic-macro-arguments
@@ -387,6 +385,8 @@ ifneq ($(CLANG), 0)
     LD  = $(CROSS)$(CLANGCMD)
     CC  = $(CROSS)$(subst ++,,$(CLANGCMD))
   endif
+  CXX_WARNINGS += -Wno-dangling-reference
+  CXX_WARNINGS += -Wno-c++20-compat
   CXX_WARNINGS += -Wno-unknown-warning-option
   WARNINGS += -Wno-unknown-warning-option
 else
@@ -412,11 +412,9 @@ else
     CXX = $(CROSS)$(OS_COMPILER)
     LD  = $(CROSS)$(OS_LINKER)
   endif
-  CXX_WARNINGS += -Wno-unknown-warning
   # GCC 15 emits free-nonheap-object false positives in some std::vector paths
   # (seen in input_context.cpp with MinGW/UCRT). Keep this diagnostic as warning.
   CXX_WARNINGS += -Wno-error=free-nonheap-object
-  WARNINGS += -Wno-unknown-warning
 endif
 
 STRIP = $(CROSS)strip
