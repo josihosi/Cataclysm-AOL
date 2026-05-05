@@ -56,7 +56,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
+### Checkpointed validation target — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
 
 Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
 
@@ -95,7 +95,7 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-Active Andi-side probe is queued: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`. Start from the packet, use the shared hostile standoff/sight-avoidance and smoke-out matrix rows, and do not rerun completed eleven-slice debug-stack proof as ritual.
+No active Andi-side probe is queued. `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0` is checkpointed green pending Frau/Augerl review; do not rerun its sight/smoke rows unless review finds a concrete evidence gap or the code/claim changes.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
