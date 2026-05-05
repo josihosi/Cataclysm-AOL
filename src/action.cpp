@@ -712,16 +712,16 @@ bool can_examine_at( map &here, const tripoint_bub_ms &p, bool with_pickup )
     if( with_pickup && !here.has_flag( ter_furn_flag::TFLAG_SEALED, p ) && here.has_items( p ) ) {
         return true;
     }
-    const furn_t &xfurn_t = here.furn( p ).obj();
-    const ter_t &xter_t = here.ter( p ).obj();
+    const furn_id xfurn = here.furn( p );
+    const ter_id xter = here.ter( p );
 
-    if( here.has_furn( p ) && xfurn_t.can_examine( p ) ) {
+    if( here.has_furn( p ) && xfurn->can_examine( p ) ) {
         return true;
     }
     if( here.partial_con_at( p ) != nullptr ) {
         return true;
     }
-    if( xter_t.can_examine( p ) ) {
+    if( xter->can_examine( p ) ) {
         return true;
     }
 
