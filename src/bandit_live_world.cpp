@@ -3045,9 +3045,9 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
 
     decision.repositions = true;
     decision.destination = best_candidate->tile;
-    decision.reason = current_smoke_obscured && !current_exposure ?
+    decision.reason = current_smoke_obscured ?
                       "repositioning because smoke obscures lead" : "repositioning because exposed";
-    decision.notes.push_back( current_smoke_obscured && !current_exposure ?
+    decision.notes.push_back( current_smoke_obscured ?
                               "sight_avoid: smoke-obscured -> bounded adjacent reposition" :
                               "sight_avoid: exposed -> bounded adjacent reposition" );
     decision.notes.push_back( std::string( "sight_avoid: breaks_player_los=" ) +

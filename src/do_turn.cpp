@@ -874,7 +874,9 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
 
     const tripoint_bub_ms destination_bub = here.get_bub( decision.destination );
     member_npc.move_to( destination_bub, true );
-    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: exposed -> repositioned"
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: "
+                               << ( gate_input.smoke_obscured_lead ? "smoke-obscured" : "exposed" )
+                               << " -> repositioned"
                                << " site=" << site.site_id
                                << " active_group=" << site.active_group_id
                                << " active_job=" << site.active_job_type

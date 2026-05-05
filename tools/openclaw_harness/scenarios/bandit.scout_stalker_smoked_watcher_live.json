@@ -16,7 +16,7 @@
     "profile=camp_style",
     "posture=hold_off",
     "smoke_obscured=yes",
-    "smoke_sightline=yes",
+    "smoke_on_watcher=yes",
     "shakedown=no",
     "combat_forward=no",
     "bandit_live_world sight_avoid:"
@@ -132,7 +132,7 @@
           "profile=camp_style",
           "posture=hold_off",
           "smoke_obscured=yes",
-          "smoke_sightline=yes",
+          "smoke_on_watcher=yes",
           "shakedown=no",
           "combat_forward=no"
         ]
@@ -142,7 +142,7 @@
       "abort_reason": "same-run live path did not emit claim-scoped smoke-obscured local_gate plus bounded sight_avoid reposition or explicit no-passable-candidate blocker artifact on the watcher tile/sightline smoke path",
       "required_any_line_patterns": [
         [
-          "bandit_live_world sight_avoid: exposed -> repositioned",
+          "bandit_live_world sight_avoid: smoke-obscured -> repositioned",
           "site=overmap_special:bandit_camp@",
           "active_group=overmap_special:bandit_camp@",
           "active_job=scout",
@@ -151,7 +151,7 @@
           "distance=1",
           "reason=repositioning because smoke obscures lead",
           "smoke_obscured=yes",
-          "smoke_sightline=yes",
+          "smoke_on_watcher=yes",
           "shakedown=no",
           "combat_forward=no"
         ],
@@ -168,7 +168,7 @@
           "passable_candidates=0",
           "smoke_clear_candidates=0",
           "smoke_obscured=yes",
-          "smoke_sightline=yes",
+          "smoke_on_watcher=yes",
           "shakedown=no",
           "combat_forward=no"
         ]

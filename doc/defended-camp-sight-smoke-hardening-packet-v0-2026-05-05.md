@@ -1,6 +1,6 @@
 # CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0 — 2026-05-05
 
-Status: ACTIVE / SMOKE-OUT ROW GREEN / SIGHTED BANDIT ROW REMAINS
+Status: CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW
 
 Imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
 
@@ -49,13 +49,14 @@ Minimum expected evidence:
 
 ## Current evidence receipts
 
-2026-05-05 smoke-out checkpoint:
-- Implementation/source-path: `src/bandit_live_world.*` and `src/do_turn.cpp` now carry smoke-obscured local-gate input from live `fd_smoke` on the watcher tile or between player/camp and watcher; smoke-obscured camp watchers hold off/probe/stalk cautiously instead of opening shakedown/combat-forward, hot defended-doorstep pickup treats smoke-obscured leads as hot, and sight-avoid candidates prefer smoke-clear adjacent reposition or emit an explicit blocked/no-passable-candidate reason.
-- Deterministic/source-path gate: `./tests/cata_test "bandit_live_world*" --reporter compact` -> 43 test cases / 1002 assertions, covering bandit current/recent sight discipline, no-cover fallback, smoke-obscured lead handling, and cannibal outcome split with no shakedown leakage.
-- Staged/live smoke row: `.userdata/dev-harness/harness_runs/20260505_101407/`, scenario `bandit.scout_stalker_smoked_watcher_live`, evidence class `feature-path`, `feature_proof=true`, 11/11 step-local rows green. Same-run artifacts show `local_gate ... posture=hold_off ... smoke_obscured=yes ... smoke_sightline=yes ... shakedown=no ... combat_forward=no` and bounded adjacent `bandit_live_world sight_avoid: exposed -> repositioned ... distance=1 ... reason=repositioning because smoke obscures lead`.
-- Build/format footing: `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`; `git diff --check`; scenario/fixture JSON validation.
+2026-05-05 checkpoint:
+- Implementation/source-path: `src/bandit_live_world.*` and `src/do_turn.cpp` carry live `fd_smoke` into local-gate input from the watcher tile or the watcher/player-camp sightline; smoke-obscured camp watchers hold off/probe/stalk cautiously instead of opening shakedown/combat-forward, hot defended-doorstep pickup treats smoke-obscured leads as hot, and sight-avoid candidates prefer bounded adjacent reposition or emit an explicit blocked/no-passable-candidate reason. The sight-avoid reason now reports smoke when `smoke_obscured=yes`, even if the same actor is otherwise visible.
+- Deterministic/source-path gate: `./tests/cata_test "bandit_live_world*" --reporter compact` -> 43 test cases / 1002 assertions, covering bandit current/recent sight discipline, hot-doorstep pickup blocking, no-cover fallback, smoke-obscured lead handling, and cannibal outcome split with no shakedown leakage.
+- Staged/live currently-sighted bandit row: `.userdata/dev-harness/harness_runs/20260505_102525/`, scenario `bandit.scout_stalker_sight_avoid_live`, evidence class `feature-path`, `feature_proof=true`, 10/10 step-local rows green. Same-run artifacts show `local_gate ... active_job=scout ... posture=hold_off ... local_contact=yes ... current_exposure=yes ... shakedown=no ... combat_forward=no` and two bounded adjacent `bandit_live_world sight_avoid: exposed -> repositioned ... distance=1 ... reason=repositioning because exposed` moves.
+- Staged/live smoke row: `.userdata/dev-harness/harness_runs/20260505_102629/`, scenario `bandit.scout_stalker_smoked_watcher_live`, evidence class `feature-path`, `feature_proof=true`, 11/11 step-local rows green. Same-run artifacts show `local_gate ... posture=hold_off ... smoke_obscured=yes ... smoke_on_watcher=yes ... smoke_sightline=yes ... shakedown=no ... combat_forward=no` and bounded adjacent `bandit_live_world sight_avoid: exposed -> repositioned ... distance=1 ... reason=repositioning because smoke obscures lead`.
+- Build/format footing: `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "bandit_live_world*" --reporter compact`; `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`; `git diff --check`; scenario/fixture JSON validation.
 
-Claim boundary: this credits source-path/deterministic smoke and cannibal split plus one staged/live bandit smoke-out feature-path row. It does not yet close the separate staged/live currently-sighted bandit watcher row, natural random discovery, full vertical assault, full cannibal raid/contact, or tile-perfect smoke physics.
+Claim boundary: this closes the bounded agent-side staged/live feature-path packet for current sight and smoke-obscured defended-camp watcher behavior plus source-path cannibal split. It does not claim natural random discovery, full vertical assault, full cannibal raid/contact, or tile-perfect smoke physics.
 
 Useful matrix footing:
 - `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md` — shared hostile standoff / sight-avoidance switch;
@@ -64,9 +65,9 @@ Useful matrix footing:
 
 ## Success state
 
-- [ ] Sighted bandit watcher near a defended camp/house chooses a real break-LoS/backoff/reroute/escalate/blocker path and does not continue visible doorway/casing-goblin pickup behavior.
-- [x] Bandit smoke-out proof shows smoke on the watcher tile or sightline changes the lead/posture and avoids same-tile smoke camping. _Credited staged/live row: `bandit.scout_stalker_smoked_watcher_live`, run `.userdata/dev-harness/harness_runs/20260505_101407/`, evidence class `feature-path`, 11/11 step-local rows green, `feature_proof=true`._
+- [x] Sighted bandit watcher near a defended camp/house chooses a real break-LoS/backoff/reroute/escalate/blocker path and does not continue visible doorway/casing-goblin pickup behavior. _Credited staged/live row: `bandit.scout_stalker_sight_avoid_live`, run `.userdata/dev-harness/harness_runs/20260505_102525/`, evidence class `feature-path`, 10/10 step-local rows green, `feature_proof=true`; same-run scout/current-exposure/local-contact artifacts show hold-off/no-shakedown/no-combat plus bounded adjacent `distance=1` reposition. Hot-doorstep pickup blocking remains covered by the deterministic/source-path gate._
+- [x] Bandit smoke-out proof shows smoke on the watcher tile or sightline changes the lead/posture and avoids same-tile smoke camping. _Credited staged/live row: `bandit.scout_stalker_smoked_watcher_live`, run `.userdata/dev-harness/harness_runs/20260505_102629/`, evidence class `feature-path`, 11/11 step-local rows green, `feature_proof=true`._
 - [x] Cannibal sight/smoke proof consumes the shared discipline while preserving cannibal outcome split: no shakedown, cautious stalk/withdraw under bad odds, attack/contact only when justified. _Credited source-path/deterministic `bandit_live_world*` gate._
 - [x] Deterministic or source-path gates cover current-LoS, recent-LoS, cover/no-cover fallback, and smoke-obscured lead handling. _Credited `bandit_live_world*` -> 43 cases / 1002 assertions._
-- [ ] Credited live/staged rows name run ids, actor/profile, distance/threat/LoS/smoke footing, decision/reason traces, warning/debug status, and claim boundary.
-- [ ] `Plan.md`, `TODO.md`, `TESTING.md`, `SUCCESS.md`, `andi.handoff.md`, and `doc/work-ledger.md` agree before closure.
+- [x] Credited live/staged rows name run ids, actor/profile, distance/threat/LoS/smoke footing, decision/reason traces, warning/debug status, and claim boundary.
+- [x] `Plan.md`, `TODO.md`, `TESTING.md`, `SUCCESS.md`, `andi.handoff.md`, and `doc/work-ledger.md` agree before closure.
