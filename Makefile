@@ -415,6 +415,16 @@ else
   # GCC 15 emits free-nonheap-object false positives in some std::vector paths
   # (seen in input_context.cpp with MinGW/UCRT). Keep this diagnostic as warning.
   CXX_WARNINGS += -Wno-error=free-nonheap-object
+
+  # GCC 15 warns on int_id<T>::obj() references taken from temporary id wrappers,
+  # even though the returned objects live in the global factories.  Suppress the
+  # false-positive diagnostic when the compiler knows the flag.
+  ifeq ($(shell echo 'int main(){return 0;}' | $(CXX) -Wno-dangling-reference -Werror -x c++ - -c -o /dev/null >/dev/null 2>&1 && echo yes),yes)
+    CXX_WARNINGS += -Wno-dangling-reference
+  endif
+  ifeq ($(shell echo 'int main(){return 0;}' | $(CXX) -Wno-c++20-compat -Werror -x c++ - -c -o /dev/null >/dev/null 2>&1 && echo yes),yes)
+    CXX_WARNINGS += -Wno-c++20-compat
+  endif
 endif
 
 STRIP = $(CROSS)strip
