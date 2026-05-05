@@ -353,6 +353,9 @@ struct local_gate_input {
     bool rolling_travel_scene = false;
     bool current_exposure = false;
     bool recent_exposure = false;
+    bool smoke_obscured_lead = false;
+    bool smoke_on_watcher_tile = false;
+    bool smoke_between_watcher_and_camp = false;
     bool local_contact_established = false;
 };
 
@@ -373,6 +376,7 @@ struct sight_avoid_candidate {
     bool visible_to_player = false;
     bool visible_to_camp = false;
     int cover_score = 0;
+    bool smoke_obscured = false;
 };
 
 struct sight_avoid_decision {
@@ -506,7 +510,7 @@ bool hot_defended_doorstep_blocks_pickup( const site_record &site,
 int ordinary_scout_sortie_limit_minutes();
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         bool current_exposure, bool recent_exposure,
-        const std::vector<sight_avoid_candidate> &candidates );
+        const std::vector<sight_avoid_candidate> &candidates, bool current_smoke_obscured = false );
 bool note_active_sortie_started( site_record &site, int current_minutes );
 bool note_active_sortie_local_contact( site_record &site, int current_minutes );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,

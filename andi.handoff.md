@@ -29,6 +29,12 @@ Minimum proof:
 
 Claim only what the evidence reaches: staged/live feature-path proof is enough for this packet, but not natural random discovery, full vertical assault, full cannibal raid/contact, or tile-perfect smoke physics.
 
+## Current checkpoint
+
+2026-05-05 smoke-out checkpoint is green. Code now feeds live `fd_smoke` into local-gate/sight-avoid decisions; deterministic/source-path `bandit_live_world*` is green at 43 cases / 1002 assertions; tiles build is green; staged/live `bandit.scout_stalker_smoked_watcher_live` run `.userdata/dev-harness/harness_runs/20260505_101407/` is `feature-path` / `feature_proof=true` with 11/11 green step-local rows and same-run smoke-obscured `local_gate` hold-off plus bounded adjacent sight-avoid reposition.
+
+Remaining active proof before closure: staged/live currently-sighted bandit watcher row.
+
 ## Next review/action
 
 Move this lane to its next honest state boundary, update canon/evidence docs, commit/push if a clean state boundary is reached, then leave a concise `agent-visible only` report for Augerl/Frau review.

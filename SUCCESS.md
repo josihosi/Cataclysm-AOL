@@ -19,13 +19,13 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0 — Defended-camp sight/smoke hardening
 
-Status: ACTIVE / GREENLIT / DEFERRED DEBUG-STACK HARDENING
+Status: ACTIVE / SMOKE-OUT ROW GREEN / SIGHTED BANDIT ROW REMAINS
 
 Success state:
 - [ ] Sighted bandit watcher near a defended camp/house chooses a real break-LoS/backoff/reroute/escalate/blocker path and does not continue visible doorway/casing-goblin pickup behavior.
-- [ ] Bandit smoke-out proof shows smoke on the watcher tile or sightline changes the lead/posture and avoids same-tile smoke camping.
-- [ ] Cannibal sight/smoke proof consumes the shared discipline while preserving cannibal outcome split: no shakedown, cautious stalk/withdraw under bad odds, attack/contact only when justified.
-- [ ] Deterministic or source-path gates cover current-LoS, recent-LoS, cover/no-cover fallback, and smoke-obscured lead handling.
+- [x] Bandit smoke-out proof shows smoke on the watcher tile or sightline changes the lead/posture and avoids same-tile smoke camping. _Credited staged/live row: `bandit.scout_stalker_smoked_watcher_live`, run `.userdata/dev-harness/harness_runs/20260505_101407/`, evidence class `feature-path`, 11/11 step-local rows green, `feature_proof=true`; same-run artifacts show smoke-obscured `local_gate` hold-off/no-shakedown/no-combat plus bounded adjacent `sight_avoid` reposition at `distance=1` for `reason=repositioning because smoke obscures lead`._
+- [x] Cannibal sight/smoke proof consumes the shared discipline while preserving cannibal outcome split: no shakedown, cautious stalk/withdraw under bad odds, attack/contact only when justified. _Credited source-path/deterministic gate in `bandit_live_world*`: cannibal favorable attack remains non-shakedown, exposed/smoked camp leads hold off cautiously, and smoke-obscured cannibal lead does not open bandit shakedown UI._
+- [x] Deterministic or source-path gates cover current-LoS, recent-LoS, cover/no-cover fallback, and smoke-obscured lead handling. _Credited gate: `./tests/cata_test "bandit_live_world*" --reporter compact` -> 43 cases / 1002 assertions after focused compile._
 - [ ] Credited live/staged rows name run ids, actor/profile, distance/threat/LoS/smoke footing, decision/reason traces, warning/debug status, and claim boundary.
 - [ ] `Plan.md`, `TODO.md`, `TESTING.md`, `SUCCESS.md`, `andi.handoff.md`, and `doc/work-ledger.md` agree before closure.
 

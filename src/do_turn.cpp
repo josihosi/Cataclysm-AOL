@@ -58,6 +58,7 @@
 #include "memorial_logger.h"
 #include "messages.h"
 #include "llm_intent.h"
+#include "line.h"
 #include "mission.h"
 #include "monster.h"
 #include "mtype.h"
@@ -205,6 +206,25 @@ bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
 bool live_bandit_seen_by_nearby_ally( const map &here, const avatar &u,
                                       const tripoint_bub_ms &target );
 
+bool live_bandit_tile_has_smoke( const map &here, const tripoint_bub_ms &tile )
+{
+    return here.get_field_intensity( tile, fd_smoke ) > 0;
+}
+
+bool live_bandit_smoke_between( const map &here, const tripoint_bub_ms &from,
+                                const tripoint_bub_ms &to )
+{
+    for( const tripoint_bub_ms &pt : line_to( from, to ) ) {
+        if( pt == from || pt == to ) {
+            continue;
+        }
+        if( live_bandit_tile_has_smoke( here, pt ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bandit_live_world::local_gate_input live_bandit_make_gate_input(
     const bandit_live_world::site_record &site, const avatar &u )
 {
@@ -232,6 +252,11 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
         const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
         input.current_exposure |= get_player_view().sees( here, member_pos ) ||
                                   live_bandit_seen_by_nearby_ally( here, u, member_pos );
+        const bool smoke_on_member = live_bandit_tile_has_smoke( here, member_pos );
+        const bool smoke_on_sightline = live_bandit_smoke_between( here, u.pos_bub( here ), member_pos );
+        input.smoke_on_watcher_tile |= smoke_on_member;
+        input.smoke_between_watcher_and_camp |= smoke_on_sightline;
+        input.smoke_obscured_lead |= smoke_on_member || smoke_on_sightline;
         const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
         closest_member_distance = std::min( closest_member_distance, distance );
         const bandit_live_world::member_record *member = site.find_member( member_id );
@@ -784,7 +809,7 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
     const bool current_player_exposure = get_player_view().sees( here, current );
     const bool current_camp_exposure = live_bandit_seen_by_nearby_ally( here, u, current );
     const bool current_exposure = current_player_exposure || current_camp_exposure;
-    if( !current_exposure && !gate_input.recent_exposure ) {
+    if( !current_exposure && !gate_input.recent_exposure && !gate_input.smoke_obscured_lead ) {
         return false;
     }
 
@@ -800,25 +825,47 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
         candidate.visible_to_player = get_player_view().sees( here, candidate_tile );
         candidate.visible_to_camp = live_bandit_seen_by_nearby_ally( here, u, candidate_tile );
         candidate.cover_score = rl_dist( candidate_tile, u.pos_bub( here ) ) - current_player_distance;
+        candidate.smoke_obscured = live_bandit_tile_has_smoke( here, candidate_tile );
         candidates.push_back( candidate );
+    }
+
+    int passable_candidate_count = 0;
+    int smoke_clear_candidate_count = 0;
+    for( const bandit_live_world::sight_avoid_candidate &candidate : candidates ) {
+        if( candidate.passable ) {
+            passable_candidate_count++;
+            if( !candidate.smoke_obscured ) {
+                smoke_clear_candidate_count++;
+            }
+        }
     }
 
     const bandit_live_world::sight_avoid_decision decision =
         bandit_live_world::choose_sight_avoid_reposition( member_npc.pos_abs(), current_exposure,
-                gate_input.recent_exposure, candidates );
+                gate_input.recent_exposure, candidates, gate_input.smoke_obscured_lead );
     if( !decision.repositions ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: still stalking"
+        const bool blocked_reposition = decision.reason.rfind( "blocked:", 0 ) == 0;
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: "
+                                   << ( blocked_reposition ? "blocked" : "still stalking" )
                                    << " site=" << site.site_id
                                    << " active_group=" << site.active_group_id
                                    << " active_job=" << site.active_job_type
                                    << " profile=" << bandit_live_world::to_string( site.profile )
                                    << " posture=" << bandit_live_world::to_string( gate_decision.posture )
                                    << " npc=" << member_npc.getID().get_value() << " reason=" << decision.reason
-                                   << " blocked_no_cover=" << ( current_exposure || gate_input.recent_exposure ? "yes" : "no" )
+                                   << " blocked_reposition=" << ( blocked_reposition ? "yes" : "no" )
+                                   << " blocked_no_cover=" << ( current_exposure || gate_input.recent_exposure ||
+                                          gate_input.smoke_obscured_lead ? "yes" : "no" )
+                                   << " candidates=" << candidates.size()
+                                   << " passable_candidates=" << passable_candidate_count
+                                   << " smoke_clear_candidates=" << smoke_clear_candidate_count
                                    << " current_exposure=" << ( current_exposure ? "yes" : "no" )
                                    << " player_exposure=" << ( current_player_exposure ? "yes" : "no" )
                                    << " camp_exposure=" << ( current_camp_exposure ? "yes" : "no" )
                                    << " recent_exposure=" << ( gate_input.recent_exposure ? "yes" : "no" )
+                                   << " smoke_obscured=" << ( gate_input.smoke_obscured_lead ? "yes" : "no" )
+                                   << " smoke_on_watcher=" << ( gate_input.smoke_on_watcher_tile ? "yes" : "no" )
+                                   << " smoke_sightline=" << ( gate_input.smoke_between_watcher_and_camp ? "yes" : "no" )
                                    << " shakedown=" << ( gate_decision.opens_shakedown_surface ? "yes" : "no" )
                                    << " combat_forward=" << ( gate_decision.combat_forward ? "yes" : "no" )
                                    << '\n';
@@ -842,6 +889,9 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
                                << " player_exposure=" << ( current_player_exposure ? "yes" : "no" )
                                << " camp_exposure=" << ( current_camp_exposure ? "yes" : "no" )
                                << " recent_exposure=" << ( gate_input.recent_exposure ? "yes" : "no" )
+                               << " smoke_obscured=" << ( gate_input.smoke_obscured_lead ? "yes" : "no" )
+                               << " smoke_on_watcher=" << ( gate_input.smoke_on_watcher_tile ? "yes" : "no" )
+                               << " smoke_sightline=" << ( gate_input.smoke_between_watcher_and_camp ? "yes" : "no" )
                                << " shakedown=" << ( gate_decision.opens_shakedown_surface ? "yes" : "no" )
                                << " combat_forward=" << ( gate_decision.combat_forward ? "yes" : "no" ) << '\n';
     return true;
