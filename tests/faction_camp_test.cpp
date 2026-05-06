@@ -159,6 +159,14 @@ static void create_tile_zone(const std::string &name,
                                   pos, nullptr, false);
 }
 
+static void block_test_avatar_patrol_los( map &here )
+{
+  static const ter_id ter_t_wall( "t_wall" );
+  for( int offset = 20; offset <= 40; ++offset ) {
+    here.ter_set( tripoint_bub_ms{ offset, offset, 0 }, ter_t_wall );
+  }
+}
+
 static void create_rect_zone(const std::string &name,
                              const zone_type_id &zone_type,
                              const tripoint_abs_ms &start,
@@ -900,6 +908,7 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
 
   map &here = get_map();
   get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
+  block_test_avatar_patrol_los( here );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
   create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
@@ -963,6 +972,7 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
 
   map &here = get_map();
   get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
+  block_test_avatar_patrol_los( here );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{52, 50, 0} );
   create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
@@ -1032,6 +1042,7 @@ TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
 
   map &here = get_map();
   get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
+  block_test_avatar_patrol_los( here );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
   create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);

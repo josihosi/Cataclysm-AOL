@@ -188,7 +188,7 @@ TEST_CASE( "flesh_raptor_live_plan_does_not_rewrite_other_hit_and_run_monsters",
     map &here = get_map();
     Character &you = get_player_character();
     const tripoint_bub_ms center{ 65, 65, 0 };
-    const tripoint_bub_ms eigenspectre_start = center + point::east * 5;
+    const tripoint_bub_ms eigenspectre_start = center + point::east * 2;
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
     set_time( daylight_time( calendar::turn ) + 2_hours );
     prepare_flesh_raptor_arena( here, center );
