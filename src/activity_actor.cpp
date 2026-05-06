@@ -12781,9 +12781,14 @@ void zone_sort_activity_actor::update_other_activity_items()
 void zone_sort_activity_actor::do_turn( player_activity &act, Character &you )
 {
     update_other_activity_items();
+    // zone_activity_actor::do_turn() can end an NPC activity via
+    // npc::revert_after_activity(), which destroys this actor before returning.
+    // Preserve the completion signal before that call and do not read members
+    // afterward.
+    const bool sorted_before_turn = sorted_anything;
     zone_activity_actor::do_turn( act, you );
     if( you.is_npc() && act.is_null() ) {
-        if( sorted_anything ) {
+        if( sorted_before_turn ) {
             you.as_npc()->job.clear_job_block( ACT_MOVE_LOOT );
         } else {
             you.as_npc()->job.block_job_until( ACT_MOVE_LOOT, calendar::turn + 30_minutes );
