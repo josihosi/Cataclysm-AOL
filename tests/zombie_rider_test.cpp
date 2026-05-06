@@ -20,6 +20,7 @@
 
 static const efftype_id effect_run( "run" );
 static const itype_id zombie_rider_tainted_bone_arrow( "zombie_rider_tainted_bone_arrow" );
+static const mongroup_id GROUP_DEBUG_ZOMBIE_RIDER( "GROUP_DEBUG_ZOMBIE_RIDER" );
 static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
 static const mongroup_id GROUP_ZOMBIE_UPGRADE( "GROUP_ZOMBIE_UPGRADE" );
 static const mtype_id mon_zombie( "mon_zombie" );
@@ -446,19 +447,27 @@ TEST_CASE( "zombie_rider_endpoint_spawn_and_evolution_gate", "[zombie_rider][mon
     CHECK( rider_entry->pack_maximum == 1 );
     CHECK( rider_entry->starts >= mature_world_gate );
 
-    int all_direct_entries = 0;
+    int natural_direct_entries = 0;
+    int debug_direct_entries = 0;
     for( const auto &group_pair : MonsterGroupManager::Get_all_Groups() ) {
         for( const MonsterGroupEntry &entry : group_pair.second.monsters ) {
             if( entry.is_group() || entry.mtype != mon_zombie_rider ) {
                 continue;
             }
-            all_direct_entries++;
+            if( group_pair.first == GROUP_DEBUG_ZOMBIE_RIDER ) {
+                debug_direct_entries++;
+                CHECK( entry.pack_minimum == 1 );
+                CHECK( entry.pack_maximum == 1 );
+                continue;
+            }
+            natural_direct_entries++;
             CHECK( entry.starts >= mature_world_gate );
             CHECK( entry.pack_minimum == 1 );
             CHECK( entry.pack_maximum == 1 );
         }
     }
-    CHECK( all_direct_entries == 1 );
+    CHECK( natural_direct_entries == 1 );
+    CHECK( debug_direct_entries == 1 );
 }
 
 TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",

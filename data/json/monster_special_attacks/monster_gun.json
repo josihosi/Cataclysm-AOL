@@ -59,7 +59,7 @@
     "ammo": [ "arrow" ],
     "clip_size": 1,
     "weight": "9 kg",
-    "volume": "6 L",
+    "volume": "8 L",
     "longest_side": "160 cm",
     "to_hit": { "grip": "solid", "length": "long", "surface": "any", "balance": "neutral" },
     "reload_noise_volume": 1,
