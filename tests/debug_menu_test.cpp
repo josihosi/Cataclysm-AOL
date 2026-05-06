@@ -3,7 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "coordinate_conversions.h"
 #include "debug_menu.h"
 #include "mongroup.h"
@@ -21,6 +23,10 @@ static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 static std::map<mtype_id, int> spawn_counts_for_option(
     const debug_menu::overmap_spawn_option &option )
 {
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero + 800_days;
+    CAPTURE( option.id );
+    CAPTURE( option.group.str() );
     std::map<mtype_id, int> counts;
     int remaining_population = option.population;
     while( remaining_population > 0 ) {

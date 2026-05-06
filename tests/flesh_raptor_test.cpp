@@ -158,10 +158,10 @@ TEST_CASE( "flesh_raptor_live_plan_consumes_orbit_scorer_for_spawn_raptor", "[fl
     Character &you = get_player_character();
     const tripoint_bub_ms center{ 65, 65, 0 };
     const tripoint_bub_ms raptor_start = center + point::east * 5;
-    prepare_flesh_raptor_arena( here, center );
-    you.setpos( here, center );
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
     set_time( daylight_time( calendar::turn ) + 2_hours );
+    prepare_flesh_raptor_arena( here, center );
+    you.setpos( here, center );
 
     monster &raptor = spawn_test_monster( mon_spawn_raptor.str(), raptor_start );
     raptor.anger = 100;
@@ -186,10 +186,10 @@ TEST_CASE( "flesh_raptor_live_plan_does_not_rewrite_other_hit_and_run_monsters",
     Character &you = get_player_character();
     const tripoint_bub_ms center{ 65, 65, 0 };
     const tripoint_bub_ms eigenspectre_start = center + point::east * 5;
-    prepare_flesh_raptor_arena( here, center );
-    you.setpos( here, center );
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
     set_time( daylight_time( calendar::turn ) + 2_hours );
+    prepare_flesh_raptor_arena( here, center );
+    you.setpos( here, center );
 
     monster &eigenspectre = spawn_test_monster( mon_eigenspectre_1.str(), eigenspectre_start );
     REQUIRE( eigenspectre.type->has_flag( mon_flag_HIT_AND_RUN ) );

@@ -917,6 +917,7 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   guard.setpos( here, guard_local );
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
+  guard.set_attitude( NPCATT_NULL );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
@@ -979,6 +980,7 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
   guard.setpos( here, guard_local );
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
+  guard.set_attitude( NPCATT_NULL );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
@@ -1047,6 +1049,7 @@ TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
   guard.setpos( here, guard_local );
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
+  guard.set_attitude( NPCATT_NULL );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
