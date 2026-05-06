@@ -7,17 +7,20 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Recent checkpointed lane: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`.
+Active lane: `CAOL-CI-RED-TRIAGE-v0`.
 
-Status: CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW.
+Status: ACTIVE / GREENLIT / ANDI NEXT.
 
-Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
+Contract: `doc/ci-red-triage-packet-v0-2026-05-06.md`.
 
-Current checkpoint: deterministic/source-path gates plus staged/live currently-sighted bandit watcher and smoke-out rows are green. Latest live receipts: `.userdata/dev-harness/harness_runs/20260505_102525/` (`bandit.scout_stalker_sight_avoid_live`, `feature-path`, `feature_proof=true`, 10/10) and `.userdata/dev-harness/harness_runs/20260505_103517/` (`bandit.scout_stalker_smoked_watcher_live`, `feature-path`, `feature_proof=true`, 11/11).
+Current problem: `dev` CI is red. Latest observed run `25371458600` on `5043f2c32c` failed `General build matrix` across multiple jobs. First suspicious clusters from `/tmp/caol-ci-25371458600/failed.log` are `faction_camp_test` current-target/patrol-alarm failures, `debug_menu_test` missing entry, `flesh_raptor_test` sight setup, `item_test` density for `zombie_rider_bone_bow`, `uncraft_test` yield drift, and `zombie_rider_test` mature-gate/direct-entry failures.
 
 Next concrete steps:
-- Frau/Augerl review the checkpointed proof and claim boundary;
-- if accepted, Schani should close or retitle this packet and promote the next specific greenlit lane;
-- Andi should not rerun the green smoke/sight rows unless review finds a concrete evidence gap or code/claim changes.
+- classify every current red CI cluster with exact job/test/log evidence;
+- reproduce locally where practical or identify source/data/test cause where CI-only;
+- make the smallest honest repair(s), preserving product contracts;
+- run focused local gates plus broader gate when practical;
+- push to `origin/dev` and verify the follow-up GitHub Actions run;
+- if still red, park with exact remaining run/job/log evidence and the next bounded fix target.
 
-Do not rerun completed eleven-slice debug-stack proof as ritual.
+Do not rerun completed defended-camp sight/smoke rows as ritual. CI repair owns the active slot until branch health is green or precisely parked.

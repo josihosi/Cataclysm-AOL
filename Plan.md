@@ -49,6 +49,22 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane — CAOL-CI-RED-TRIAGE-v0
+
+**Status:** ACTIVE / GREENLIT / ANDI NEXT
+
+GitHub Actions is red on `dev`; this blocks honest branch/release-health claims and should be repaired as a separate bounded triage lane before any release or branch-health statement.
+
+Contract: `doc/ci-red-triage-packet-v0-2026-05-06.md`.
+
+Initial evidence: latest observed red run `25371458600` on `5043f2c32c` (`General build matrix`, title `Retitle Andi handoff for checkpointed camp smoke proof`) failed across GCC/Clang/Linux/macOS/CMake jobs. First log clusters include `faction_camp_test` patrol-alarm/current-target failures, `debug_menu_test` missing entry, `flesh_raptor_test` sight setup failure, `item_test` density for `zombie_rider_bone_bow`, `uncraft_test` yield drift, and `zombie_rider_test` mature-gate/direct-entry failures.
+
+Scope: classify and fix the current `dev` CI failures with the smallest honest repairs, push to `origin/dev`, and verify the follow-up Actions run. Do not reopen the defended-camp sight/smoke packet or other closed product lanes by ritual.
+
+Recommended next action: Andi should execute the CI-red triage packet now. Frau/Augerl review of the defended-camp smoke proof remains useful, but CI repair temporarily owns the active execution slot.
+
+---
+
 ## Recent checkpointed lane — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
 
 **Status:** CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW

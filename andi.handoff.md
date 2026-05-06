@@ -1,40 +1,40 @@
 # Andi handoff
 
-Checkpointed lane pending Frau/Augerl review: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`.
+Active lane: `CAOL-CI-RED-TRIAGE-v0`.
 
-Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
+Status: ACTIVE / GREENLIT / ANDI NEXT.
 
-Parent checkpoint: `CAOL-JOSEF-LIVE-DEBUG-BATCH-v0`.
-
-Parent imagination source: `doc/josef-live-debug-batch-imagination-source-2026-05-03.md`.
-
-Parent test matrix: `doc/josef-live-debug-batch-test-matrix-v0-2026-05-03.md`.
+Contract: `doc/ci-red-triage-packet-v0-2026-05-06.md`.
 
 Standing build cadence: `doc/andi-build-cadence-note.md`.
 
-## Current review ask
+## Current ask
 
-Do not execute or rerun this packet as routine work. The bounded defended-camp sight/smoke hardening packet is agent-side green and waiting on Frau/Augerl review; if accepted, Schani should close or retitle it and promote the next specific greenlit lane.
+Repair red `dev` GitHub Actions as its own bounded CI-health lane. This temporarily owns the active execution slot because branch/release-health claims are dishonest while CI is red.
 
-The checkpointed target was the deferred Slice 2 hardening row: bandit watchers and compatible cannibal stalking/attack-pressure profiles should react honestly to current LoS and player smoke instead of standing visible, casing hot defended doorsteps, or camping inside smoke.
+Do not reopen `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0` or rerun its sight/smoke rows by ritual. That packet remains checkpointed green pending Frau/Augerl review.
 
-## Checkpoint evidence boundary
+## Initial CI evidence
 
-Credited proof:
-- deterministic/source-path gates for current LoS, recent LoS, cover/no-cover fallback, and smoke-obscured lead handling;
-- staged/live bandit sighted-watcher row;
-- staged/live bandit smoke-out row;
-- cannibal sight/smoke outcome-split proof with no shakedown leakage;
-- no stale-binary/runtime-version mismatch for feature-path claims.
+Latest observed red run:
+- Run: `25371458600`
+- Workflow: `General build matrix`
+- Head: `5043f2c32c`
+- Title: `Retitle Andi handoff for checkpointed camp smoke proof`
+- URL: https://github.com/josihosi/Cataclysm-AOL/actions/runs/25371458600
 
-Claim only what the evidence reaches: staged/live feature-path proof is enough for this packet, but not natural random discovery, full vertical assault, full cannibal raid/contact, or tile-perfect smoke physics.
+Failed jobs included GCC 9/LTO, Clang 18 ASan, macOS 15 universal, oldest-supported Clang, GCC 14, and GCC 9 CMake.
 
-## Current checkpoint
+First log clusters from `/tmp/caol-ci-25371458600/failed.log`:
+- `faction_camp_test.cpp` current-target/patrol-alarm failures;
+- `debug_menu_test.cpp` missing expected entry;
+- `flesh_raptor_test.cpp` sight assertion false;
+- `item_test.cpp` density failure for `zombie_rider_bone_bow`;
+- `uncraft_test.cpp` yield drift;
+- `zombie_rider_test.cpp` mature-gate/direct-entry failures.
 
-2026-05-05 defended-camp sight/smoke packet is agent-side green pending Frau/Augerl review. Code feeds live `fd_smoke` into local-gate/sight-avoid decisions and keeps smoke-obscured sight-avoid reasons explicit; deterministic/source-path `bandit_live_world*` is green at 43 cases / 1002 assertions; tiles build and `git diff --check` are green. Staged/live current-sight row `bandit.scout_stalker_sight_avoid_live` run `.userdata/dev-harness/harness_runs/20260505_102525/` is `feature-path` / `feature_proof=true` with 10/10 green step-local rows and bounded adjacent exposed-scout reposition. Staged/live smoke row `bandit.scout_stalker_smoked_watcher_live` run `.userdata/dev-harness/harness_runs/20260505_103517/` is `feature-path` / `feature_proof=true` with 11/11 green step-local rows and smoke-on-watcher/sightline hold-off plus bounded adjacent `sight_avoid: smoke-obscured -> repositioned`.
+## Success bar
 
-Remaining action: Frau/Augerl review; if accepted, Schani should close/retitle this packet and promote the next greenlit lane. No routine Andi reprobe is pending.
+Classify the current red CI set, fix the concrete branch-caused failures with the smallest honest changes, run focused local gates plus broader tests when practical, push to `origin/dev`, and verify the follow-up Actions run.
 
-## Next review/action
-
-Frau/Augerl should review the checkpointed proof and claim boundary. If accepted, Schani should close/retitle this packet and promote the next specific greenlit lane; no routine Andi reprobe is pending.
+If CI remains red, park with exact run/job/log evidence and the next bounded target rather than declaring branch health from local tests.

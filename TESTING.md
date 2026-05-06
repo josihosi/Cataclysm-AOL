@@ -56,6 +56,23 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target — CAOL-CI-RED-TRIAGE-v0
+
+Contract: `doc/ci-red-triage-packet-v0-2026-05-06.md`.
+
+Current proof target: repair red `dev` GitHub Actions without weakening product/test contracts or mixing CI health into the completed defended-camp sight/smoke packet.
+
+Initial CI evidence: run `25371458600` on `5043f2c32c`, workflow `General build matrix`, failed GCC/Clang/Linux/macOS/CMake jobs. First failing clusters seen in `/tmp/caol-ci-25371458600/failed.log`: `faction_camp_test` current-target/patrol-alarm assertions, `debug_menu_test` missing entry, `flesh_raptor_test` sight assertion, `item_test` density for `zombie_rider_bone_bow`, `uncraft_test` yield drift, and `zombie_rider_test` mature-gate/direct-entry assertions.
+
+Required evidence shape:
+- exact classification of current red jobs/tests;
+- local/narrow reproduction or source-level cause for each fixed cluster;
+- focused local gates for every touched area;
+- broader `make -j4 tests LINTJSON=0 ASTYLE=0` when practical before branch-health claims;
+- follow-up GitHub Actions verification after push.
+
+Claim boundary: green local focused tests are not enough to claim CI repaired. Branch-health repair requires the follow-up Actions run green, or a precise remaining-red parked report.
+
 ### Checkpointed validation target — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
 
 Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
@@ -95,7 +112,7 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-No active Andi-side probe is queued. `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0` is checkpointed green pending Frau/Augerl review; do not rerun its sight/smoke rows unless review finds a concrete evidence gap or the code/claim changes.
+Active Andi-side probe is `CAOL-CI-RED-TRIAGE-v0`: classify and repair the red `dev` CI run before branch/release-health claims. `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0` remains checkpointed green pending Frau/Augerl review; do not rerun its sight/smoke rows unless review finds a concrete evidence gap or the code/claim changes.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 
