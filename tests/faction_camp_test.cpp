@@ -899,7 +899,7 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   zone_manager::get_manager().clear();
 
   map &here = get_map();
-  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
   create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
@@ -962,7 +962,7 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
   overmap_buffer.global_state.bandit_live_world.clear();
 
   map &here = get_map();
-  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{52, 50, 0} );
   create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
@@ -1031,7 +1031,7 @@ TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
   zone_manager::get_manager().clear();
 
   map &here = get_map();
-  get_player_character().setpos( here, tripoint_bub_ms{50, 49, 0} );
+  get_player_character().setpos( here, tripoint_bub_ms{10, 10, 0} );
   const tripoint_bub_ms guard_local{50, 50, 0};
   const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{52, 50, 0});
   create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);

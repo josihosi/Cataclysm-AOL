@@ -13,6 +13,7 @@
 #include "map_helpers.h"
 #include "monster.h"
 #include "mtype.h"
+#include "player_helpers.h"
 #include "type_id.h"
 
 static const efftype_id effect_run( "run" );
@@ -154,6 +155,7 @@ TEST_CASE( "flesh_raptor_orbit_corridor_falls_back_when_no_readable_arc", "[fles
 TEST_CASE( "flesh_raptor_live_plan_consumes_orbit_scorer_for_spawn_raptor", "[flesh_raptor][monster][map]" )
 {
     clear_map_without_vision();
+    clear_avatar();
     map &here = get_map();
     Character &you = get_player_character();
     const tripoint_bub_ms center{ 65, 65, 0 };
@@ -182,6 +184,7 @@ TEST_CASE( "flesh_raptor_live_plan_consumes_orbit_scorer_for_spawn_raptor", "[fl
 TEST_CASE( "flesh_raptor_live_plan_does_not_rewrite_other_hit_and_run_monsters", "[flesh_raptor][monster][map]" )
 {
     clear_map_without_vision();
+    clear_avatar();
     map &here = get_map();
     Character &you = get_player_character();
     const tripoint_bub_ms center{ 65, 65, 0 };
