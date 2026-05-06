@@ -162,9 +162,11 @@ static void create_tile_zone(const std::string &name,
 static void block_test_avatar_patrol_los( map &here )
 {
   static const ter_id ter_t_wall( "t_wall" );
-  for( int offset = 20; offset <= 40; ++offset ) {
-    here.ter_set( tripoint_bub_ms{ offset, offset, 0 }, ter_t_wall );
+  for( int y = 0; y <= 60; ++y ) {
+    here.ter_set( tripoint_bub_ms{ 30, y, 0 }, ter_t_wall );
   }
+  here.invalidate_map_cache( 0 );
+  here.build_map_cache( 0, true );
 }
 
 static void create_rect_zone(const std::string &name,
