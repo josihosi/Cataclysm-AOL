@@ -2,7 +2,7 @@
 
 Date: 2026-05-06
 Owner: Andi
-Status: ACTIVE / GREENLIT
+Status: CLOSED / CHECKPOINTED GREEN
 
 ## Why this exists
 
@@ -68,11 +68,28 @@ Out of scope:
 
 ## Success state
 
-- [ ] Latest relevant `dev` CI failure set is classified with exact failing jobs/tests.
-- [ ] Local/narrow reproduction or source-level cause is recorded for each fixed cluster.
-- [ ] Concrete fixes are committed and pushed to `origin/dev`.
-- [ ] At minimum, local gates cover every touched cluster; broader gate is run when practical.
-- [ ] GitHub Actions on the pushed fix is green for the relevant branch-health workflows, or the remaining red state is parked with exact run/job/log evidence and the next bounded fix target.
+- [x] Latest relevant `dev` CI failure set is classified with exact failing jobs/tests.
+- [x] Local/narrow reproduction or source-level cause is recorded for each fixed cluster.
+- [x] Concrete fixes are committed and pushed to `origin/dev`.
+- [x] At minimum, local gates cover every touched cluster; broader gate is run when practical.
+- [x] GitHub Actions on the pushed fix is green for the relevant branch-health workflows.
+
+Final checkpoint: code head `cb21294168` (`Allow items under layered bedroom terrain`) has green branch-health Actions: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845` both completed success on `dev`.
+
+## Closure evidence
+
+Repair commits from `29cb5bbb97` through `cb21294168` fixed the current branch-caused CI clusters with narrow changes:
+- zombie rider CI triage failures: `data/json/monster_special_attacks/monster_gun.json`, `tests/zombie_rider_test.cpp`;
+- remaining camp/debug-menu/flesh-raptor CI-sensitive tests: `tests/faction_camp_test.cpp`, `tests/debug_menu_test.cpp`, `tests/flesh_raptor_test.cpp`;
+- overmap terrain coverage whitelist drift: `data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`;
+- NPC zone-sort ASan completion: `src/activity_actor.cpp`;
+- layered bedroom terrain item allowance: `data/json/mapgen/nested/house_nested.json`.
+
+Final GitHub Actions verification on `cb21294168`:
+- `General build matrix` run `25462728843` completed success across all jobs.
+- `Cataclysm Windows build` run `25462728845` completed success.
+
+Claim boundary: this closes CI repair only; it does not extend defended-camp sight/smoke or any other product proof lane.
 
 ## Evidence bar
 
