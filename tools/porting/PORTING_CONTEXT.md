@@ -8,11 +8,15 @@ upstream targets:
 - `upstream/0.I-branch`
 - `upstream-ctlg/master`
 
-The orchestration model is:
+The normal release orchestration model is:
 1. Develop on `dev`.
 2. Merge `dev` into `master`.
-3. Recreate `port/*` from fresh upstream tips.
-4. Replay AOL patchset commits (curated queue from `master`) via cherry-pick.
+3. From `master`, audit `port/cdda-master` against `upstream/master` and the AOL source lane.
+4. Update `port/cdda-master` merge-first: merge upstream, then sync AOL source changes with the selected strategy.
+5. Playtest on `port/cdda-master`.
+6. After `port/cdda-master` is green, evaluate the remaining `port/*` branches against their upstream counterparts.
+
+Destructive recreate-from-upstream is a fallback, not the default. Use it only when the audit/merge path is blocked and a backup plus explicit approval exist.
 
 ## Preserve These Behaviors
 - Player sentence shout triggers asynchronous LLM intent processing for allied NPCs.

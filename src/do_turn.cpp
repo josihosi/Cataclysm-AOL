@@ -1802,14 +1802,70 @@ int signal_live_hordes_from_light_observations(
     return signaled_sources;
 }
 
+void advance_zombie_rider_light_memories()
+{
+    std::map<tripoint_abs_omt, zombie_rider_overmap_ai::rider_light_memory> &memories =
+        overmap_buffer.global_state.zombie_rider_light_memory;
+    time_point &last_turn = overmap_buffer.global_state.zombie_rider_light_memory_last_turn;
+    if( last_turn == calendar::turn_zero && memories.empty() ) {
+        last_turn = calendar::turn;
+        return;
+    }
+    if( calendar::turn < last_turn ) {
+        memories.clear();
+        last_turn = calendar::turn;
+        return;
+    }
+
+    const int elapsed_turns = to_turns<int>( calendar::turn - last_turn );
+    if( elapsed_turns <= 0 ) {
+        return;
+    }
+
+    for( auto iter = memories.begin(); iter != memories.end(); ) {
+        zombie_rider_overmap_ai::advance_light_memory( iter->second, elapsed_turns );
+        if( !iter->second.active() ) {
+            iter = memories.erase( iter );
+        } else {
+            ++iter;
+        }
+    }
+    last_turn = calendar::turn;
+}
+
+int command_live_zombie_riders_to_light(
+    const zombie_rider_overmap_ai::rider_convergence_result &convergence,
+    const std::unordered_map<std::string, monster *> &live_riders_by_id,
+    const tripoint_abs_ms &light_source, int memory_turns )
+{
+    int commanded = 0;
+    if( !convergence.should_converge ) {
+        return commanded;
+    }
+    const int wander_interest = std::max( 1, memory_turns );
+    for( const std::string &rider_id : convergence.rider_ids ) {
+        const auto rider_iter = live_riders_by_id.find( rider_id );
+        if( rider_iter == live_riders_by_id.end() || rider_iter->second == nullptr ) {
+            continue;
+        }
+        monster &rider = *rider_iter->second;
+        rider.wander_to( light_source, wander_interest );
+        rider.anger = std::max( rider.anger, 100 );
+        commanded++;
+    }
+    return commanded;
+}
+
 int signal_live_zombie_riders_from_light_observations(
     const std::vector<live_bandit_signal_observation> &signals )
 {
+    advance_zombie_rider_light_memories();
     int signaled_sources = 0;
     const int world_age_days = std::max( 0, to_days<int>( calendar::turn -
                                          calendar::start_of_cataclysm ) );
 
     std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders;
+    std::unordered_map<std::string, monster *> live_riders_by_id;
     int wounded_riders = 0;
     for( monster &critter : g->all_monsters() ) {
         if( critter.type->id != mon_zombie_rider || critter.is_dead() ) {
@@ -1822,6 +1878,7 @@ int signal_live_zombie_riders_from_light_observations(
         rider.already_in_band = false;
         rider.cooldown_turns = critter.has_effect( effect_run ) ? 1 : 0;
         riders.push_back( rider );
+        live_riders_by_id.emplace( rider.rider_id, &critter );
         if( critter.hp_percentage() <= 50 ) {
             wounded_riders++;
         }
@@ -1871,11 +1928,16 @@ int signal_live_zombie_riders_from_light_observations(
             bandit_mark_generation::horde_signal_power_from_light_projection( aggregate_projection );
         const zombie_rider_overmap_ai::rider_light_interest interest =
             zombie_rider_overmap_ai::evaluate_light_attraction( aggregate_projection, world_age_days,
-                    static_cast<int>( riders.size() ) );
-        zombie_rider_overmap_ai::rider_light_memory memory;
+                    std::max( 1, static_cast<int>( riders.size() ) ) );
+        zombie_rider_overmap_ai::rider_light_memory &memory =
+            overmap_buffer.global_state.zombie_rider_light_memory[signal.source_omt];
         zombie_rider_overmap_ai::refresh_light_memory( memory, interest );
         const zombie_rider_overmap_ai::rider_convergence_result convergence =
             zombie_rider_overmap_ai::evaluate_rider_convergence( memory, signal.source_omt, riders );
+        const int live_riders_commanded = command_live_zombie_riders_to_light(
+                                              convergence, live_riders_by_id,
+                                              coords::project_to<coords::ms>( signal.source_omt ),
+                                              memory.turns_remaining );
 
         zombie_rider_overmap_ai::rider_camp_pressure_input pressure_input;
         pressure_input.light_memory_active = memory.active();
@@ -1897,8 +1959,10 @@ int signal_live_zombie_riders_from_light_observations(
                                    << " interest_reason=" << interest.reason
                                    << " interest_score=" << interest.interest_score
                                    << " memory_active=" << ( memory.active() ? "yes" : "no" )
+                                   << " memory_turns=" << memory.turns_remaining
                                    << " riders_observed=" << riders.size()
                                    << " selected_riders=" << convergence.selected_riders
+                                   << " live_riders_commanded=" << live_riders_commanded
                                    << " cap=" << convergence.cap
                                    << " band_formed=" << ( convergence.band_formed ? "yes" : "no" )
                                    << " band_size=" << convergence.band_size
@@ -1906,6 +1970,9 @@ int signal_live_zombie_riders_from_light_observations(
                                    << " posture=" << zombie_rider_overmap_ai::to_string( pressure.posture )
                                    << " posture_reason=" << pressure.reason
                                    << " wounded_riders=" << wounded_riders << '\n';
+        if( !memory.active() ) {
+            overmap_buffer.global_state.zombie_rider_light_memory.erase( signal.source_omt );
+        }
         signaled_sources++;
     }
     return signaled_sources;

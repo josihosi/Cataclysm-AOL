@@ -109,6 +109,7 @@ class horde_map
                                                ( &p ) ), outer_map( &m ),
                     outer_iter( oi ), inner_iter( ii ) {}
                 void next_map();
+                void skip_empty_buckets();
                 void insure_valid();
                 iterator &operator++();
                 iterator operator++( int );

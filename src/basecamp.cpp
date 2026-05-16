@@ -63,6 +63,11 @@ static const zone_type_id zone_type_NO_NPC_PICKUP("NO_NPC_PICKUP");
 
 static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
 
+static faction_id camp_effective_owner( const faction_id &owner )
+{
+  return owner.is_valid() && !owner.is_null() ? owner : your_fac;
+}
+
 static const damage_type_id damage_bash("bash");
 static const damage_type_id damage_bullet("bullet");
 static const damage_type_id damage_cut("cut");
@@ -3705,13 +3710,17 @@ void basecamp::set_owner(faction_id new_owner) {
 faction_id basecamp::get_owner() { return owner; }
 
 bool basecamp::has_locker_zone() const {
-  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
-  return zone_manager::get_manager().has_defined(zone_type_CAMP_LOCKER, fac_id);
+  const faction_id fac_id = camp_effective_owner( owner );
+  tripoint_abs_ms origin = get_bb_pos_abs();
+  if( origin.raw() == tripoint::zero ) {
+    origin = project_to<coords::ms>(omt_pos);
+  }
+  return !collect_sorted_camp_locker_tiles(origin, fac_id).empty();
 }
 
 bool basecamp::has_patrol_zone() const {
-  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
-  return zone_manager::get_manager().has_defined(zone_type_CAMP_PATROL, fac_id);
+  const faction_id fac_id = camp_effective_owner( owner );
+  return !collect_sorted_camp_patrol_tiles(patrol_origin(), fac_id).empty();
 }
 
 tripoint_abs_ms basecamp::patrol_origin() const {
@@ -3751,7 +3760,7 @@ bool basecamp::refresh_patrol_shift_cache() {
     return false;
   }
 
-  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const faction_id fac_id = camp_effective_owner( owner );
   const std::vector<camp_patrol_cluster> clusters =
       collect_camp_patrol_clusters(patrol_origin(), fac_id);
   if( clusters.empty() ) {
@@ -3935,7 +3944,7 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
                static_cast<int>(assigned_npcs.size()));
   }
 
-  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const faction_id fac_id = camp_effective_owner( owner );
   const camp_locker_live_state live_state = collect_camp_locker_live_state(
       worker, fac_id, locker_policy, locker_reservations);
   const std::string locker_state_signature =
@@ -4031,7 +4040,7 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
 bool basecamp::service_camp_locker_impl(npc &worker,
                                        camp_locker_service_probe *probe,
                                        bool verbose_logging) {
-  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const faction_id fac_id = camp_effective_owner( owner );
   const std::vector<tripoint_abs_ms> locker_tiles =
       collect_sorted_camp_locker_tiles(worker.pos_abs(), fac_id);
   if (probe != nullptr) {

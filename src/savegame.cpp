@@ -2021,6 +2021,20 @@ void overmap_global_state::serialize( JsonOut &json ) const
     json.member( "overmap_highway_intersection_grid", highway_intersections );
     json.member( "major_river_count", major_river_count );
     json.member( "bandit_live_world", bandit_live_world );
+    json.member( "zombie_rider_light_memory" );
+    json.start_array();
+    for( const std::pair<const tripoint_abs_omt, zombie_rider_overmap_ai::rider_light_memory> &entry :
+         zombie_rider_light_memory ) {
+        json.start_object();
+        json.member( "source_omt", entry.first );
+        json.member( "interest_score", entry.second.interest_score );
+        json.member( "turns_remaining", entry.second.turns_remaining );
+        json.member( "max_riders_drawn", entry.second.max_riders_drawn );
+        json.member( "reason", entry.second.reason );
+        json.end_object();
+    }
+    json.end_array();
+    json.member( "zombie_rider_light_memory_last_turn", zombie_rider_light_memory_last_turn );
 
     json.end_object();
 }
@@ -2054,6 +2068,25 @@ void overmap_global_state::deserialize( const JsonObject &json )
         json.read( "bandit_live_world", bandit_live_world );
     } else {
         bandit_live_world.clear();
+    }
+    zombie_rider_light_memory.clear();
+    if( json.has_array( "zombie_rider_light_memory" ) ) {
+        for( JsonObject memory_json : json.get_array( "zombie_rider_light_memory" ) ) {
+            memory_json.allow_omitted_members();
+            tripoint_abs_omt source_omt;
+            zombie_rider_overmap_ai::rider_light_memory memory;
+            memory_json.read( "source_omt", source_omt );
+            memory_json.read( "interest_score", memory.interest_score );
+            memory_json.read( "turns_remaining", memory.turns_remaining );
+            memory_json.read( "max_riders_drawn", memory.max_riders_drawn );
+            memory_json.read( "reason", memory.reason );
+            if( memory.active() ) {
+                zombie_rider_light_memory.emplace( source_omt, memory );
+            }
+        }
+    }
+    if( !json.read( "zombie_rider_light_memory_last_turn", zombie_rider_light_memory_last_turn ) ) {
+        zombie_rider_light_memory_last_turn = calendar::turn;
     }
 }
 
@@ -2144,4 +2177,3 @@ void npc::export_to( const cata_path &path ) const
         serialize( jsout );
     } );
 }
-

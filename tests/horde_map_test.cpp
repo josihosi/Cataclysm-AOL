@@ -135,3 +135,22 @@ TEST_CASE( "horde_map_corner_cases", "[hordes]" )
     }
 
 }
+
+TEST_CASE( "horde_map_signal_entities_culls_empty_idle_buckets", "[hordes]" )
+{
+    horde_map test_horde;
+    const point_abs_om om_origin( 42, 42 );
+    test_horde.set_location( om_origin );
+    const tripoint_om_ms relative_source( 10, 10, 0 );
+    const tripoint_abs_ms signal_source = project_combine( om_origin, relative_source );
+
+    test_horde.spawn_entity( signal_source, mon_zombie );
+    REQUIRE( count_entities( test_horde, horde_map_flavors::idle ) == 1 );
+    REQUIRE( count_entities( test_horde, horde_map_flavors::active ) == 0 );
+
+    test_horde.signal_entities( signal_source, 100 );
+
+    CHECK( count_entities( test_horde, horde_map_flavors::idle ) == 0 );
+    CHECK( count_entities( test_horde, horde_map_flavors::active ) == 1 );
+    CHECK( count_entities( test_horde, horde_map_flavors::active | horde_map_flavors::idle ) == 1 );
+}

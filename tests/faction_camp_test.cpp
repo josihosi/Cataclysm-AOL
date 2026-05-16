@@ -336,6 +336,58 @@ TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
         static_cast<int>(all_camp_locker_slots().size()) - 5);
 }
 
+TEST_CASE( "camp_locker_and_patrol_zone_presence_is_camp_local", "[camp][locker][patrol]" )
+{
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms camp_abs = here.get_abs( tripoint_bub_ms{ 5, 5, 0 } );
+  const tripoint_abs_ms far_locker_abs =
+      here.get_abs( tripoint_bub_ms{ 5 + MAX_VIEW_DISTANCE + 10, 5, 0 } );
+  const tripoint_abs_ms far_patrol_abs =
+      here.get_abs( tripoint_bub_ms{ 5, 5 + MAX_VIEW_DISTANCE + 10, 0 } );
+
+  create_tile_zone( "Far Locker", zone_type_CAMP_LOCKER, far_locker_abs );
+  create_tile_zone( "Far Patrol", zone_type_CAMP_PATROL, far_patrol_abs );
+
+  basecamp test_camp( "Local Zone Camp", project_to<coords::omt>( camp_abs ) );
+  CHECK_FALSE( test_camp.has_locker_zone() );
+  CHECK_FALSE( test_camp.has_patrol_zone() );
+
+  create_tile_zone( "Local Locker", zone_type_CAMP_LOCKER, camp_abs );
+  create_tile_zone( "Local Patrol", zone_type_CAMP_PATROL, camp_abs );
+
+  CHECK( test_camp.has_locker_zone() );
+  CHECK( test_camp.has_patrol_zone() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE( "camp_patrol_alarm_serialization", "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  calendar::turn = calendar::turn_zero + 1_hours;
+
+  basecamp saved( "Alarm Camp", tripoint_abs_omt( 8, 8, 0 ) );
+  REQUIRE( saved.raise_patrol_alarm( character_id( 101 ), 30_minutes ) );
+  REQUIRE( saved.is_patrol_alarm_active() );
+
+  std::ostringstream os;
+  JsonOut jsout( os );
+  saved.serialize( jsout );
+
+  JsonValue jsin = json_loader::from_string( os.str() );
+  JsonObject jo = jsin.get_object();
+  basecamp loaded;
+  loaded.deserialize( jo );
+
+  CHECK( loaded.is_patrol_alarm_active() );
+  calendar::turn += 31_minutes;
+  CHECK_FALSE( loaded.is_patrol_alarm_active() );
+}
+
 TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_briefs)) ==
         camp_locker_slot::underwear);
