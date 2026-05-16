@@ -9,10 +9,12 @@
 #include <set>
 #include <unordered_set>
 
+#include "basecamp.h"
 #include "character.h"
 #include "clzones.h"
 #include "color.h"
 #include "enums.h"
+#include "game.h"
 #include "game_constants.h"
 #include "inventory_ui.h"
 #include "item.h"
@@ -116,7 +118,9 @@ bool trade_preset::cat_sort_compare( const inventory_entry &lhs, const inventory
     return fudge_rank( lhs ) < fudge_rank( rhs );
 }
 
-trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title )
+trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
+                    const int you_nearby_item_radius, const int you_nearby_ally_radius,
+                    basecamp *you_basecamp )
     : _upreset{ you, trader }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
@@ -126,7 +130,47 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
 
 {
     _panes[_you]->add_character_items( you );
-    _panes[_you]->add_nearby_items( 1 );
+    _panes[_you]->add_nearby_items( you_nearby_item_radius );
+    if( you_basecamp != nullptr ) {
+        _panes[_you]->add_basecamp_items( *you_basecamp, you_nearby_item_radius );
+        std::set<character_id> added_basecamp_workers;
+        const auto add_basecamp_worker_items = [&]( npc &assigned ) {
+            if( &assigned == &trader || assigned.is_dead() || !assigned.is_player_ally() ) {
+                return;
+            }
+            if( you_nearby_ally_radius >= 0 &&
+                rl_dist( assigned.pos_abs(), you.pos_abs() ) <= you_nearby_ally_radius ) {
+                return;
+            }
+            if( added_basecamp_workers.insert( assigned.getID() ).second ) {
+                _panes[_you]->add_character_items( assigned );
+            }
+        };
+        for( const npc_ptr &assigned : you_basecamp->get_npcs_assigned() ) {
+            if( assigned == nullptr ) {
+                continue;
+            }
+            add_basecamp_worker_items( *assigned );
+        }
+        for( npc &assigned : g->all_npcs() ) {
+            const bool assigned_to_this_camp = assigned.assigned_camp &&
+                                               *assigned.assigned_camp == you_basecamp->camp_omt_pos();
+            const bool in_basecamp_side_pool = rl_dist( assigned.pos_abs(), you.pos_abs() ) <= 60;
+            if( !assigned_to_this_camp && !in_basecamp_side_pool ) {
+                continue;
+            }
+            add_basecamp_worker_items( assigned );
+        }
+    }
+    if( you_nearby_ally_radius > 0 ) {
+        for( npc &guy : g->all_npcs() ) {
+            if( &guy == &trader || !guy.is_player_ally() ||
+                rl_dist( guy.pos_abs(), you.pos_abs() ) > you_nearby_ally_radius ) {
+                continue;
+            }
+            _panes[_you]->add_character_items( guy );
+        }
+    }
     _panes[_trader]->add_character_items( trader );
     if( trader.is_shopkeeper() ) {
         _panes[_trader]->categorize_map_items( true );

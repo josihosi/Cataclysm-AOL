@@ -1,0 +1,52 @@
+{
+  "name": "bandit.basecamp_prepared_base_audit_mcw",
+  "description": "Prepared-base v1 load audit on the named management-ready pack: reinstall the richer McWilliams camp footing and capture immediate local/base state without any hostile restage.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "game::load: Finalizing end"
+  ],
+  "recommended_test_command": "none (prepared-base load audit; the missing evidence is current-build install/load plus visible camp footing)",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "capture",
+      "label": "prepared_base_full_view",
+      "extract_text": false
+    },
+    {
+      "kind": "capture",
+      "label": "prepared_base_local_view",
+      "capture_crop": {
+        "x": 120,
+        "y": 60,
+        "width": 1840,
+        "height": 1320
+      },
+      "extract_text": false
+    },
+    {
+      "kind": "capture",
+      "label": "prepared_base_right_panel",
+      "capture_crop": {
+        "x": 1960,
+        "y": 40,
+        "width": 580,
+        "height": 1340
+      },
+      "extract_text": true,
+      "extract_text_tail_lines": 28
+    }
+  ]
+}

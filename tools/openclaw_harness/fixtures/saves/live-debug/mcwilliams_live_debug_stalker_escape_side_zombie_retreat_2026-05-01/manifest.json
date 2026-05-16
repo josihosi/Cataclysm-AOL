@@ -1,0 +1,84 @@
+{
+  "name": "mcwilliams_live_debug_stalker_escape_side_zombie_retreat_2026-05-01",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only local-evidence writhing-stalker zombie-shadow restage: vulnerable midnight player retreats south from north/front zombies while a stalker uses the south/escape side as a cutoff. This fixture deliberately does not wire overmap-interest footing.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5270400
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 60,
+      "stamina": 1000,
+      "effects": [
+        "bleed"
+      ],
+      "effect_body_part": "torso",
+      "effect_duration": 600,
+      "effect_intensity": 1
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            0,
+            8,
+            0
+          ],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            0,
+            -3,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            -1,
+            -4,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            1,
+            -4,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

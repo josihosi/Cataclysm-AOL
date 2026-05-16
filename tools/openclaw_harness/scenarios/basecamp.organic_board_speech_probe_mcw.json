@@ -1,0 +1,108 @@
+{
+  "name": "basecamp.organic_board_speech_probe_mcw",
+  "description": "Narrow live proof on the McWilliams fixture for the organic bulletin-board speech polish: restage Katharina through the real camp-assignment dialogue seam, let the stationed state settle, ask for board status with an organic phrase, and capture screen plus routing artifacts separately.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "llm_intent.log",
+  "artifact_patterns": [
+    "camp routing check",
+    "camp heard",
+    "camp board reply",
+    "player utterance:",
+    "prompt Katharina Leach",
+    "response Katharina Leach",
+    "response Robbie Knox",
+    "heard=show_board",
+    "board=show_board"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "assign_nearby_npc_to_camp_dialog",
+      "label": "assign_katharina_to_camp_dialog",
+      "npc_selector": "1",
+      "interaction_keys": ["C", "t"],
+      "lets_talk_key": "b",
+      "assignment_keys": ["d", "n", "a"],
+      "exit_dialog_keys": ["q", "c"],
+      "stage_settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_1",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_2",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_3",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_4",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_5",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_freeform_chat_for_board",
+      "keys": ["C", "b"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "ask_for_board_with_organic_phrase",
+      "text": "what needs making",
+      "submit": true,
+      "settle_seconds": 1.2,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_board_reply",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 2120,
+        "y": 220,
+        "width": 430,
+        "height": 920
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[camp][basecamp_ai]\""
+}

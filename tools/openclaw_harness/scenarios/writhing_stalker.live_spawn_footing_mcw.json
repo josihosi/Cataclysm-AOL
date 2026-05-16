@@ -1,0 +1,103 @@
+{
+  "name": "writhing_stalker.live_spawn_footing_mcw",
+  "description": "Spawn-footing proof for the first writhing-stalker live scene: debug-spawn exactly one writhing stalker one tile east in the McWilliams live-debug fixture, prove same-run save/writeback, and require saved active_monsters metadata for mon_writhing_stalker at offset [1,0,0]. This proves fixture/spawn footing only, not writhing-stalker behavior.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_spawn_monster",
+      "label": "debug_spawn_writhing_stalker_one_east",
+      "monster_query": "writhing stalker",
+      "target_keys": [
+        "right"
+      ],
+      "friendly": false,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_writhing_stalker_after_debug_spawn",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug spawn monster primitive starts from the main map screen",
+      "expected_visible_fact": "debug spawn monster helper returns to the live map after selecting writhing stalker and confirming the target tile one square east",
+      "expected_immediate_state": "one hostile mon_writhing_stalker should exist one tile east of the player, but this row is credited only through the later same-run saved active_monsters metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved active_monsters mon_writhing_stalker metadata after save makes this debug-spawn row non-green",
+      "next_step_gate": "do not credit the debug-spawn writhing-stalker footing unless audit_saved_writhing_stalker_after_debug_spawn is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_writhing_stalker_spawn_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug-spawn writhing stalker and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_writhing_stalker_spawn",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_spawn_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the writhing-stalker spawn save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug-spawn writhing-stalker step; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_writhing_stalker_spawn",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_writhing_stalker_spawn_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved active-monster metadata may be credited only when audit_player_save_mtime_after_writhing_stalker_spawn_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_writhing_stalker_spawn_save",
+      "changed_since_label": "audit_player_save_mtime_before_writhing_stalker_spawn_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_spawn_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the writhing-stalker spawn save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed writhing-stalker spawn save, proving the following active_monsters audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_after_debug_spawn",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            1,
+            0,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_spawn_target_state",
+      "abort_reason": "saved active_monsters metadata did not contain mon_writhing_stalker at player-relative offset [1,0,0] after same-run debug-spawn save/writeback",
+      "expected_visible_fact": "same-run saved active_monsters metadata contains mon_writhing_stalker one tile east of the player after the debug-spawn monster primitive"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_spawn_footing_mcw",
+  "evidence_contract": {
+    "claim": "the harness can spawn a real mon_writhing_stalker in the current McWilliams live fixture and persist/audit it by saved active_monsters metadata",
+    "load_only_verdict": "load proof only / inconclusive for spawn footing",
+    "failure_rule": "No spawn-footing credit without startup/load, debug-spawn, save prompt, save mtime advance, and exact saved active_monsters metadata. This is not live behavior proof."
+  }
+}

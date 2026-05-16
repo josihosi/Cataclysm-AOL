@@ -1,0 +1,52 @@
+{
+  "name": "cannibal.live_world_night_local_contact_pack_mcw",
+  "description": "Scenario 2 for cannibal camp night-raid live matrix: night/darkness plus local contact should promote a cannibal_camp to a multi-member pack attack through the real live dispatch and local-gate path, with no bandit shakedown surface. The fixture reuses the reviewer-visible camp-shaped source footprint, relabels it as cannibal_camp, places it one OMT from the player, and sets the save to a night 30-minute dispatch cadence boundary so one proven pass-turn can exercise dispatch/local-contact instead of relying on fragile long waits.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "local_gate site=overmap_special:cannibal_camp@",
+    "active_job=stalk",
+    "profile=cannibal_camp",
+    "posture=attack_now",
+    "pack_size=2",
+    "darkness_or_concealment=yes",
+    "local_contact=yes",
+    "shakedown=no",
+    "combat_forward=yes",
+    "live_candidate reason=direct_player_range"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_night_pack_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for McWilliams cannibal night local-contact fixture; this is startup/load evidence plus before-action screen proof, not feature closure by itself",
+      "failure_rule": "If the gameplay screen is not visible after load, later dispatch/local-contact artifacts cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "pass_one_turn_on_night_dispatch_boundary",
+      "keys": [
+        "."
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "one player pass-turn input has completed on the night local-contact fixture; feature credit depends on the same-run debug artifact showing cannibal_camp posture=attack_now, pack_size=2, darkness_or_concealment=yes, local_contact=yes, shakedown=no, and combat_forward=yes",
+      "failure_rule": "If the pass-turn input is unproven or the same-run artifact lacks the cannibal attack-now local-gate line, this scenario is not product proof."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_night_local_contact_pack_mcw",
+  "evidence_contract": {
+    "claim": "night darkness plus local contact creates confirmed multi-member cannibal pack attack through real dispatch/local-contact",
+    "load_only_verdict": "load proof only / inconclusive for cannibal behavior",
+    "failure_rule": "No feature-proof credit if startup/load, pass-turn ledger, cannibal site match, night/concealment gate, local contact, pack-size, attack-now posture, non-shakedown artifact, or combat-forward artifact is missing or non-green."
+  }
+}

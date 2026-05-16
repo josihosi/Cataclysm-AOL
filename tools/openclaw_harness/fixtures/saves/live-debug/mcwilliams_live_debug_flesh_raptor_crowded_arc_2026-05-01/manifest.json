@@ -1,0 +1,56 @@
+{
+  "name": "mcwilliams_live_debug_flesh_raptor_crowded_arc_2026-05-01",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only flesh-raptor crowded-arc restage: hostile zombies occupy the north arc while one flesh raptor starts east at skirmish range, proving the live raptor picks the under-occupied south/open arc before bounded swoops.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5227200
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_spawn_raptor",
+          "offset_ms": [5, 0, 0],
+          "hp": 45,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [0, -5, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [1, -5, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [-1, -5, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

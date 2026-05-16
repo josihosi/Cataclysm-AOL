@@ -1,0 +1,54 @@
+{
+  "name": "cannibal.live_world_daylight_high_threat_negative_mcw",
+  "description": "Scenario 4 for cannibal camp night-raid live matrix: on the same daylight/no-cover McWilliams/Basecamp footing as the day-smoke pressure proof, the live local gate must classify maximum camp-adjacent threat as hold_off/non-combat instead of cannibal suicide-rush behavior. The fixture uses the already documented reviewer-visible relabeled camp-shaped cannibal_camp source footprint and daylight dispatch-cadence boundary; this scenario is a separated negative/control claim, not a new smoke-source breadth claim.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_live_world_day_smoke_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "local_gate site=overmap_special:cannibal_camp@",
+    "active_job=stalk",
+    "profile=cannibal_camp",
+    "posture=hold_off",
+    "threat=3",
+    "opportunity=2",
+    "darkness_or_concealment=no",
+    "recent_exposure=yes",
+    "sight_exposure=recent",
+    "shakedown=no",
+    "combat_forward=no"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_daylight_high_threat_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for McWilliams cannibal daylight/high-threat negative fixture; this is startup/load evidence plus before-action screen proof, not feature closure by itself",
+      "failure_rule": "If the gameplay screen is not visible after load, later daylight/high-threat local-gate artifacts cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "pass_one_turn_on_daylight_high_threat_boundary",
+      "keys": [
+        "."
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "one player pass-turn input has completed on the daylight/no-cover high-threat fixture; feature credit depends on the same-run debug artifact showing cannibal_camp posture=hold_off with threat=3, darkness_or_concealment=no, shakedown=no, and combat_forward=no",
+      "failure_rule": "If the pass-turn input is unproven or the same-run artifact lacks the cannibal daylight/high-threat hold_off local-gate line, this scenario is not product proof."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_daylight_high_threat_negative_mcw",
+  "evidence_contract": {
+    "claim": "daylight/no-cover camp-adjacent high-threat pressure makes cannibals hold off instead of opening combat-forward or shakedown behavior",
+    "load_only_verdict": "load proof only / inconclusive for cannibal behavior",
+    "failure_rule": "No feature-proof credit if startup/load, pass-turn ledger, cannibal site match, daylight/no-cover state, threat=3 local-gate report, hold_off posture, non-shakedown artifact, or non-combat-forward artifact is missing or non-green."
+  }
+}

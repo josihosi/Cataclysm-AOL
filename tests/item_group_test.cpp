@@ -15,12 +15,23 @@
 #include "options_helpers.h"
 #include "type_id.h"
 
+static const damage_type_id damage_bash( "bash" );
+static const damage_type_id damage_stab( "stab" );
+static const item_group_id Item_spawn_data_cannibal_camp_monsterbone_relic( "cannibal_camp_monsterbone_relic" );
+static const item_group_id Item_spawn_data_cannibal_weapons( "cannibal_weapons" );
+static const item_group_id Item_spawn_data_NC_CANNIBAL_BUTCHER_weapon( "NC_CANNIBAL_BUTCHER_weapon" );
+static const item_group_id Item_spawn_data_NC_CANNIBAL_ELITE_weapon( "NC_CANNIBAL_ELITE_weapon" );
+static const item_group_id Item_spawn_data_NC_CANNIBAL_HUNTER_weapon( "NC_CANNIBAL_HUNTER_weapon" );
 static const itype_id itype_40x46mm_m1006( "40x46mm_m1006" );
 static const itype_id itype_glock_19( "glock_19" );
 static const itype_id itype_longbow( "longbow" );
+static const itype_id itype_monsterbone_spear( "monsterbone_spear" );
+static const itype_id itype_qiang( "qiang" );
 static const itype_id itype_match( "match" );
 static const itype_id itype_matches( "matches" );
 static const itype_id itype_rock( "rock" );
+static const itype_id itype_spear_steel( "spear_steel" );
+static const itype_id itype_spear_wood( "spear_wood" );
 static const itype_id itype_test_balloon( "test_balloon" );
 static const itype_id itype_test_rock( "test_rock" );
 
@@ -268,4 +279,35 @@ TEST_CASE( "Event-based_item_spawns_do_not_spawn_outside_event", "[item_group]" 
         CHECK( items.size() == 1 );
         CHECK( items[0].typeId() == test_rock );
     }
+}
+
+
+TEST_CASE( "monsterbone_spear_is_bounded_elite_cannibal_gear", "[item_group][item][cannibal]" )
+{
+    const item monsterbone_spear( itype_monsterbone_spear );
+    const item wooden_spear( itype_spear_wood );
+    const item steel_spear( itype_spear_steel );
+    const item qiang( itype_qiang );
+
+    REQUIRE( monsterbone_spear.typeId() == itype_monsterbone_spear );
+    CHECK( monsterbone_spear.has_flag( flag_DURABLE_MELEE ) );
+    CHECK( monsterbone_spear.has_flag( flag_SPEAR ) );
+    CHECK( monsterbone_spear.has_flag( flag_REACH_ATTACK ) );
+    CHECK_FALSE( monsterbone_spear.has_flag( flag_FRAGILE_MELEE ) );
+
+    CHECK( monsterbone_spear.damage_melee( damage_stab ) > wooden_spear.damage_melee( damage_stab ) );
+    CHECK( monsterbone_spear.damage_melee( damage_stab ) >= steel_spear.damage_melee( damage_stab ) );
+    CHECK( monsterbone_spear.damage_melee( damage_stab ) < qiang.damage_melee( damage_stab ) );
+    CHECK( monsterbone_spear.damage_melee( damage_bash ) > steel_spear.damage_melee( damage_bash ) );
+
+    CHECK( item_group::group_contains_item( Item_spawn_data_cannibal_camp_monsterbone_relic,
+                                            itype_monsterbone_spear ) );
+    CHECK( item_group::group_contains_item( Item_spawn_data_cannibal_weapons,
+                                            itype_monsterbone_spear ) );
+    CHECK( item_group::group_contains_item( Item_spawn_data_NC_CANNIBAL_ELITE_weapon,
+                                            itype_monsterbone_spear ) );
+    CHECK_FALSE( item_group::group_contains_item( Item_spawn_data_NC_CANNIBAL_HUNTER_weapon,
+                 itype_monsterbone_spear ) );
+    CHECK_FALSE( item_group::group_contains_item( Item_spawn_data_NC_CANNIBAL_BUTCHER_weapon,
+                 itype_monsterbone_spear ) );
 }

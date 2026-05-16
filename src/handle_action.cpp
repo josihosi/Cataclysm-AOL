@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <initializer_list>
 #include <list>
 #include <map>
@@ -147,6 +148,39 @@ static const move_mode_id move_mode_walk( "walk" );
 static const quality_id qual_CUT( "CUT" );
 
 static const skill_id skill_melee( "melee" );
+
+static bool openclaw_harness_action_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+static std::string openclaw_harness_quote_action_value( const std::string &value )
+{
+    std::string out = "\"";
+    for( const char c : value ) {
+        if( c == '\\' || c == '"' ) {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += "\"";
+    return out;
+}
+
+static void openclaw_harness_trace_default_action_dispatch( const std::string &event,
+        const std::string &raw_action, const action_id act )
+{
+    if( !openclaw_harness_action_trace_enabled() ) {
+        return;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=default_action_dispatch"
+            << " event=" << event
+            << " raw_action=" << openclaw_harness_quote_action_value( raw_action )
+            << " action_id=" << openclaw_harness_quote_action_value( action_ident( act ) );
+}
 
 static const trait_id trait_BRAWLER( "BRAWLER" );
 static const trait_id trait_GUNSHY( "GUNSHY" );
@@ -2633,6 +2667,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_ZONES:
+            openclaw_harness_trace_default_action_dispatch( "invoke_zone_manager", action_ident( act ), act );
             zone_manager_ui::display_zone_manager();
             break;
 
@@ -3221,6 +3256,7 @@ bool game::handle_action()
 
     if( act == ACTION_NULL ) {
         act = look_up_action( action );
+        openclaw_harness_trace_default_action_dispatch( "lookup", action, act );
 
         if( act == ACTION_KEYBINDINGS ) {
             // already handled by input context

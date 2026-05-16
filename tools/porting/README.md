@@ -16,8 +16,12 @@ This folder contains automation for recurring AOL port refreshes across:
 - Ensures `upstream-ctlg` exists and tracks only `master` with no tags.
 - Fetches remotes (`origin`, `upstream`, `upstream-ctlg`) with `--prune`.
 - Creates a dated backup branch from `master`.
-- Recreates `port/*` branches from upstream targets.
-- Replays AOL commits via patchset cherry-picks onto each `port/*` branch.
+- Updates existing `port/*` branches by merging their upstream targets first.
+- Syncs AOL source changes with a selected strategy:
+  - Default: delta-cherry-pick only the missing source commits.
+  - Optional: native merge from the AOL source branch.
+  - Fallback: recreate a target branch from upstream only when destructive fallback is explicitly allowed.
+- Replays curated patchset commits when the delta plan is skipped or judged too noisy.
   - Base queue: `tools/porting/patchsets/common.txt`
   - Optional target queues: `tools/porting/patchsets/<target>.txt`
   - Optional ad-hoc source: `-PatchsetCommitRange` (+ optional `-PatchsetPathFilter`)
@@ -87,6 +91,7 @@ tools/porting/patchsets/
 - You are on `master`.
 - `dev` may differ from `master` while development continues.
 - Before release cycle, merge `dev -> master`.
+- Audit first when planning a release refresh, especially for `port/cdda-master`.
 - You are logged in for Git remotes and (if used) Codex CLI.
 
 ## Manual Release Packaging (after orchestration)

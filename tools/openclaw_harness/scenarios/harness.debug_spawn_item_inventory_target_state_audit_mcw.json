@@ -1,0 +1,87 @@
+{
+  "name": "harness.debug_spawn_item_inventory_target_state_audit_mcw",
+  "description": "Audit one debug-spawn item primitive end-to-end under the proof-freeze rules: spawn a uniquely named item into inventory, prove the case-sensitive save/writeback gate, then require same-run saved-player metadata for the spawned item. This is harness primitive/process evidence, not product-feature proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_spawn_item",
+      "label": "debug_spawn_electric_toothbrush_inventory",
+      "item_query": "electric toothbrush",
+      "count": 1,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_player_items_after_debug_spawn",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug spawn item primitive starts from the main map screen",
+      "expected_visible_fact": "debug spawn item helper returns to the live map after selecting electric toothbrush from the wish menu",
+      "expected_immediate_state": "one electric toothbrush should be added to live player inventory, but this row is only credited through the later same-run saved-player metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing saved-player toothbrush_electric metadata after save makes this debug-spawn row non-green",
+      "next_step_gate": "do not credit the debug-spawn primitive unless audit_saved_player_items_after_debug_spawn is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_spawn_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug spawn and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_spawn_item",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "and quit?",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug-spawn save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug-spawn item step; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_spawn_item",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_debug_spawn_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved-player item metadata may be credited only when audit_player_save_mtime_after_debug_spawn_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_spawn_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_spawn_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug-spawn save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug-spawn save, proving the following saved-player audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_player_items_after_debug_spawn",
+      "required_items": [
+        "toothbrush_electric"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_item_target_state",
+      "abort_reason": "saved-player metadata did not contain the spawned toothbrush_electric item after same-run debug-spawn save/writeback",
+      "expected_visible_fact": "same-run saved-player metadata contains toothbrush_electric after the debug-spawn item primitive"
+    }
+  ]
+}

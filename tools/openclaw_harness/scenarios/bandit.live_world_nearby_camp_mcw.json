@@ -1,0 +1,21 @@
+{
+  "name": "bandit.live_world_nearby_camp_mcw",
+  "description": "Live-world nearby camp restage seam on McWilliams footing: fast-reinstall the base pack, seed a real nearby bandit_camp about 10 OMT from the existing player/basecamp footing, load current build there, and capture the nearby owned-site restage setup for probe or manual handoff.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "nearby_camp_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "none (live-world nearby-restage helper packet; missing evidence is current-build setup + probe/handoff behavior)"
+}

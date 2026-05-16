@@ -1,0 +1,144 @@
+{
+  "name": "writhing_stalker.live_hit_fade_retreat_mcw",
+  "description": "Live hit-fade-retreat row: vulnerable midnight scene records a bounded strike burst followed by withdraw/cooling-off retreat with about 8+ tile retreat intent visible in current-build live-plan logs.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=strike",
+    "decision=withdraw",
+    "decision=cooling_off",
+    "burst=0/2",
+    "burst=1/2",
+    "burst=2/2",
+    "retreat_distance=8",
+    "cooldown=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_hit_fade_retreat_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "vulnerable-midnight saved-active-stalker fixture loads to live map for the hit-fade retreat window"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_before_hit_fade_retreat",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_time_setup_missing",
+      "abort_reason": "installed save did not prove expected midnight time before live writhing-stalker hit-fade window",
+      "expected_visible_fact": "saved turn proves local midnight before hit-fade retreat window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_before_hit_fade_retreat",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            0,
+            8,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required live hit-fade scenario footing",
+      "expected_visible_fact": "one hostile stalker starts eight tiles south on a clean lane with cover-route opportunity before current-build live turns advance"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_hit_fade_retreat",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_hit_fade_retreat_window",
+      "count": 180,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "decision=strike",
+        "decision=withdraw",
+        "decision=cooling_off",
+        "burst=0/2",
+        "burst=1/2",
+        "burst=2/2",
+        "retreat_distance=8",
+        "cooldown=yes",
+        "eval_us="
+      ],
+      "expected_visible_fact": "long bounded live turn window records at least two strikes followed by current-build retreat/cooling-off intent rather than one-hit flee or endless melee spam"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_hit_fade_retreat_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike",
+          "reason=live_vulnerability_window_strike",
+          "burst=0/2",
+          "retreat_distance=8",
+          "evidence=yes",
+          "cooldown=no",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike",
+          "reason=live_vulnerability_window_strike",
+          "burst=1/2",
+          "retreat_distance=8",
+          "evidence=yes",
+          "cooldown=no",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=withdraw",
+          "reason=live_burst_limit_reached_withdraw",
+          "burst=2/2",
+          "retreat_distance=8",
+          "cooldown=no",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=cooling_off",
+          "retreat_distance=8",
+          "cooldown=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_audit_writhing_stalker_hit_fade_retreat_live_plan_missing",
+      "abort_reason": "same-run artifact lacked the current-build strike/burst/cooling-off retreat-distance live-plan sequence",
+      "expected_visible_fact": "same-run debug artifact proves two-strike burst accounting and about-eight-tile withdraw/retreat intent after the burst limit"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_hit_fade_retreat_mcw",
+  "evidence_contract": {
+    "claim": "current-build writhing stalker uses its live monster::plan seam for bounded hit-fade rhythm: at least two close strikes in a vulnerable dark scene, burst counter reaches its limit, then cooldown/retreat intent targets about eight tiles instead of A/B hovering or endless melee spam",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker hit-fade retreat behavior",
+    "writeback_note": "No save/writeback gate: this row proves bounded current-run live-plan behavior from logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}

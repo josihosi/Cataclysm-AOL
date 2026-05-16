@@ -1,0 +1,24 @@
+{
+  "name": "bandit_live_world_nearby_camp_real_fire_v0_2026-04-27",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Real player-action fire proof footing: reuse the McWilliams/Basecamp playtest-kit save, set the save to nighttime, seed a real bandit_camp just beyond direct-player range, then let the scenario deploy a brazier, drop wood fuel, and light it through the normal lighter/firestarter UI. No raw map fields are injected by this fixture.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5266800
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        11,
+        0
+      ]
+    }
+  ]
+}

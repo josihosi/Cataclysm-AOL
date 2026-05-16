@@ -61,6 +61,21 @@ Implication:
 
 ## Design principles
 
+### Evidence-class firewall
+
+The harness must never let startup/load evidence impersonate feature evidence.
+
+- **Startup/load proof** means the game launched, reached a screen, and could be captured or closed.
+- **Deterministic proof** means a focused test asserted the code contract directly.
+- **Live/UI proof** means the scenario visibly drove the intended UI/action path and captured the resulting game state.
+- **Artifact/log proof** means an exact report, debug line, saved field, or inspected file shows the requested state.
+
+If a packaged probe only loads the game and auto-closes after artifact capture, the verdict for any feature behavior is `load proof only / inconclusive for feature`. Auto-close is normal harness machinery; it is not proof that the scenario reached the feature path.
+
+For GUI/live feature claims, each screenshot checkpoint needs a named expected visible fact in the scenario/report. At minimum, capture the state before the action, the relevant menu/UI opened, the action/result checkpoint, and the final inspected state. A screenshot that only proves “loaded into game” must stay startup/load evidence and must not be reused as “feature works”.
+
+Smart Zone layout proof has the stricter shape Josef called out on 2026-04-27: deterministic `tests/clzones_test.cpp` geometry and overlap-allowlist assertions first, then live/UI proof only if screenshots show the actual generated zone positions after Smart Zone generation/reopen. If the harness cannot reliably drive or observe the Zone Manager path, stop and write a Josef manual playtest packet instead of upgrading serialization or load screenshots into layout proof.
+
 1. **Structured observation first, raw screen second**
    - Do not make the harness depend primarily on generic terminal vision.
    - Prefer a compact, agent-facing frame assembled from game state.

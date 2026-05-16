@@ -2088,6 +2088,7 @@ void job_data::serialize( JsonOut &json ) const
     json.start_object();
     json.member( "task_priorities", task_priorities );
     json.member( "fetch_history", fetch_history );
+    json.member( "activity_cooldowns", activity_cooldowns );
     json.end_object();
 }
 
@@ -2098,6 +2099,7 @@ void job_data::deserialize( const JsonValue &jv )
         jo.allow_omitted_members();
         jo.read( "task_priorities", task_priorities );
         jo.read( "fetch_history", fetch_history );
+        jo.read( "activity_cooldowns", activity_cooldowns );
 
         const job_data default_job;
         for( const auto &entry : default_job.task_priorities ) {
@@ -4509,6 +4511,7 @@ static void serialize( const camp_locker_policy &value, JsonOut &jsout )
         }
     }
     jsout.end_array();
+    jsout.member( "prefer_bulletproof", value.prefers_bulletproof() );
     jsout.end_object();
 }
 
@@ -4527,6 +4530,11 @@ static void deserialize( camp_locker_policy &value, const JsonObject &jo )
             }
         }
     }
+
+    bool prefer_bulletproof = value.prefers_bulletproof();
+    if( jo.read( "prefer_bulletproof", prefer_bulletproof ) ) {
+        value.set_prefers_bulletproof( prefer_bulletproof );
+    }
 }
 
 // basecamp
@@ -4542,6 +4550,7 @@ void basecamp::serialize( JsonOut &json ) const
         json.member( "liquid_dumping_spots", liquid_dumping_spots );
         json.member( "camp_requests", camp_requests );
         json.member( "locker_policy", locker_policy );
+        json.member( "patrol_alarm_until", patrol_alarm_until );
         json.member( "locker_service_queue", locker_service_queue );
         json.member( "locker_next_service_turn", locker_next_service_turn );
         json.member( "next_camp_request_id", next_camp_request_id );
@@ -4636,6 +4645,7 @@ void basecamp::deserialize( const JsonObject &data )
     data.read( "liquid_dumping_spots", liquid_dumping_spots );
     data.read( "camp_requests", camp_requests );
     data.read( "locker_policy", locker_policy );
+    data.read( "patrol_alarm_until", patrol_alarm_until );
     data.read( "locker_service_queue", locker_service_queue );
     data.read( "locker_next_service_turn", locker_next_service_turn );
     data.read( "next_camp_request_id", next_camp_request_id );

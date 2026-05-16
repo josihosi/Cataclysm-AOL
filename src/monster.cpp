@@ -151,6 +151,14 @@ static const efftype_id effect_venom_weaken( "venom_weaken" );
 static const efftype_id effect_webbed( "webbed" );
 static const efftype_id effect_worked_on( "worked_on" );
 
+static const mtype_id mon_fungal_raptor( "mon_fungal_raptor" );
+static const mtype_id mon_spawn_raptor( "mon_spawn_raptor" );
+static const mtype_id mon_spawn_raptor_dusted( "mon_spawn_raptor_dusted" );
+static const mtype_id mon_spawn_raptor_electric( "mon_spawn_raptor_electric" );
+static const mtype_id mon_spawn_raptor_fungalize( "mon_spawn_raptor_fungalize" );
+static const mtype_id mon_spawn_raptor_shady( "mon_spawn_raptor_shady" );
+static const mtype_id mon_spawn_raptor_unstable( "mon_spawn_raptor_unstable" );
+
 static const emit_id emit_emit_shock_cloud( "emit_shock_cloud" );
 static const emit_id emit_emit_shock_cloud_big( "emit_shock_cloud_big" );
 
@@ -2133,6 +2141,16 @@ bool monster::melee_attack( Creature &target )
     return melee_attack( target, get_hit() );
 }
 
+static bool is_flesh_raptor_type( const mtype_id &id )
+{
+    return id == mon_spawn_raptor || id == mon_spawn_raptor_shady ||
+           id == mon_spawn_raptor_unstable ||
+           id == mon_spawn_raptor_electric ||
+           id == mon_spawn_raptor_dusted ||
+           id == mon_spawn_raptor_fungalize ||
+           id == mon_fungal_raptor;
+}
+
 bool monster::melee_attack( Creature &target, float accuracy )
 {
     map &here = get_map();
@@ -2183,6 +2201,14 @@ bool monster::melee_attack( Creature &target, float accuracy )
     }
 
     const int total_dealt = dealt_dam.total_damage();
+    if( target.is_avatar() && is_flesh_raptor_type( type->id ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "flesh_raptor melee_event: result="
+                                   << ( hitspread < 0 ? "miss" : total_dealt > 0 ? "hit" : "armor_absorb" )
+                                   << " damage=" << total_dealt
+                                   << " hitspread=" << hitspread
+                                   << " target_hp_percent=" << target.hp_percentage()
+                                   << " run_after=" << ( has_effect( effect_run ) ? "yes" : "no" ) << '\n';
+    }
     if( hitspread < 0 ) {
         bool monster_missed = monster_hit_roll < 0.0;
         // Miss

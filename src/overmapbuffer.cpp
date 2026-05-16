@@ -270,6 +270,9 @@ void overmap_global_state::clear()
     placed_unique_specials.clear();
     unique_special_count.clear();
     highway_intersections.clear();
+    bandit_live_world.clear();
+    zombie_rider_light_memory.clear();
+    zombie_rider_light_memory_last_turn = calendar::turn_zero;
     overmap_count = 0;
     major_river_count = 0;
 }
@@ -1171,6 +1174,16 @@ std::optional<overmap_special_id> overmapbuffer::overmap_special_at(
     const tripoint_abs_omt &loc )
 {
     const overmap_with_local_coords om_loc = get_om_global( loc );
+    return om_loc.om->overmap_special_at( om_loc.local );
+}
+
+std::optional<overmap_special_id> overmapbuffer::overmap_special_at_existing(
+    const tripoint_abs_omt &loc )
+{
+    const overmap_with_local_coords om_loc = get_existing_om_global( loc );
+    if( !om_loc ) {
+        return std::nullopt;
+    }
     return om_loc.om->overmap_special_at( om_loc.local );
 }
 

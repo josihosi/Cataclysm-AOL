@@ -1,0 +1,45 @@
+{
+  "name": "mcwilliams_live_debug_anti_gnome_bad_loiter_stalker_2026-05-03",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only current-build anti-gnome writhing-stalker restage: local midnight, player moved onto the east sidewalk/outside line, one hostile stalker three tiles farther east with a pre-existing bad-position loiter counter, no synthetic player vulnerability, so the live plan must resolve the night/outside/reachable loiter into an anti-gnome strike instead of continuing window decor.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5270400
+    },
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [
+        9,
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            3,
+            0,
+            0
+          ],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "values": {
+            "caol_writhing_stalker_bad_loiter_count": 2
+          }
+        }
+      ]
+    }
+  ]
+}

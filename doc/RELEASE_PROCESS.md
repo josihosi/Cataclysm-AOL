@@ -1,3 +1,16 @@
+### macOS DMG dependency portability
+
+The macOS app bundle launches `cataclysm` / `cataclysm-tiles` from `Cataclysm.app/Contents/Resources` through `build-data/osx/Cataclysm.sh`, so bundled dylibs must be rewritten to `@executable_path/...` before the DMG is created.
+
+`make ... dmgdist` runs `build-data/osx/bundle_portable_dependencies.sh` during the `app` target.  The helper runs `dylibbundler` and then fails the package if any Mach-O binary in the launcher-visible app surface still links against local package-manager paths such as `/opt/local`, `/opt/homebrew`, or `/usr/local`.  Do not bypass that failure for release builds: an app that only launches on the build machine is not a valid release artifact.
+
+For a release-candidate app bundle, the verifier can also be run directly:
+
+```sh
+bash build-data/osx/bundle_portable_dependencies.sh --verify-only \
+  Cataclysm.app Cataclysm.app/Contents/Resources/cataclysm-tiles
+```
+
 ### Changelog Summary
 
 #### Diffstat

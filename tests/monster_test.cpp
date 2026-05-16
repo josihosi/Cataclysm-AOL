@@ -1016,8 +1016,16 @@ static void walk_toward_monster_off_the_map( tripoint_abs_omt origin, point offs
     }
 
     // Retry materialization in case placement failed due to terrain.
+    // The horde bucket can sit on a neighboring submap edge after repeated map
+    // shifts, so wake the exact submap and its immediate neighbors instead of
+    // relying on one edge-sensitive bucket lookup.
     wipe_map_terrain();
-    overmap_buffer.spawn_monster( project_to<coords::sm>( monster_pos ) );
+    const tripoint_abs_sm retry_submap = project_to<coords::sm>( monster_pos );
+    for( int dx = -1; dx <= 1; ++dx ) {
+        for( int dy = -1; dy <= 1; ++dy ) {
+            overmap_buffer.spawn_monster( retry_submap + point( dx, dy ) );
+        }
+    }
 
     // place_critter_around() uses radius=1, so if the exact tile was blocked
     // during the map shift the monster may have materialized up to 1 tile away.

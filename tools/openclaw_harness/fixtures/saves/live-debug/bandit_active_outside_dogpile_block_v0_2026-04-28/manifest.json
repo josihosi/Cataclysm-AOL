@@ -1,0 +1,18 @@
+{
+  "name": "bandit_active_outside_dogpile_block_v0_2026-04-28",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed camp-map dogpile guardrail footing: reuse the remembered-lead camp, then shape the owning camp to five living members with two already outbound so the real 30-minute cadence must hold rather than spawn another outside pressure group.",
+  "save_transforms": [
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 2,
+      "active_job_type": "stalk",
+      "active_target_id": "player@140,39,0"
+    }
+  ]
+}

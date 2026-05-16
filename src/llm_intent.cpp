@@ -1361,9 +1361,11 @@ std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size
     return entries;
 }
 
+constexpr size_t look_around_selection_limit = 4;
+
 std::string default_look_around_prompt_template()
 {
-    return R"(<System>Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.
+    return R"(<System>Select up to four nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.Return only up to four item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.
 /no_think
 Answer directly. No reasoning.</System>
 <UserUtterance>{{player_utterance}}</UserUtterance>
@@ -1502,7 +1504,7 @@ std::vector<look_around_selection> parse_look_around_response( const std::string
         } );
         if( existing == results.end() ) {
             results.push_back( look_around_selection{ normalized, quantity } );
-            if( results.size() >= 3 ) {
+            if( results.size() >= look_around_selection_limit ) {
                 break;
             }
         } else {
@@ -4170,6 +4172,28 @@ std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &snapshot )
 {
     return build_prompt( npc_name, player_utterance, snapshot );
+}
+
+size_t look_around_selection_limit_for_test()
+{
+    return look_around_selection_limit;
+}
+
+std::vector<std::string> parse_look_around_response_for_test( const std::string &text,
+        const std::vector<std::string> &allowed_names )
+{
+    std::unordered_map<std::string, std::string> allowed;
+    allowed.reserve( allowed_names.size() * 2 );
+    for( size_t i = 0; i < allowed_names.size(); ++i ) {
+        const std::string id = string_format( "item_%d", static_cast<int>( i + 1 ) );
+        allowed.emplace( lower_copy( id ), allowed_names[i] );
+        allowed.emplace( lower_copy( allowed_names[i] ), allowed_names[i] );
+    }
+    std::vector<std::string> results;
+    for( const look_around_selection &selection : parse_look_around_response( text, allowed ) ) {
+        results.push_back( selection.name );
+    }
+    return results;
 }
 
 bool parse_move_field_for_test( const std::string &field, point &delta,

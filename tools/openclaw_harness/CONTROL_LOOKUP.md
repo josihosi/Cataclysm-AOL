@@ -5,6 +5,9 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 ## Principles
 - These are **pragmatic automation notes**, not authoritative game documentation.
 - Context matters. The same key may do something slightly different depending on UI state, quest prompts, nearby NPCs, or branch-specific menu differences.
+- Keep evidence classes separate: startup/load, deterministic test, live/screen behavior, and artifact/log proof are not interchangeable. A probe that only loads a save and closes is `load proof only / inconclusive for feature`, even when auto-close and artifact capture worked correctly.
+- For GUI/live feature probes, every screenshot checkpoint should name the expected visible fact it is supposed to prove. If the screenshot only shows “the game loaded”, do not reuse it as proof that Smart Zones, bandit standoff, fire setup, or another feature worked.
+- Probe/handoff reports now write `<mode>.step_ledger.json` plus embedded `step_ledger_summary`. `artifacts_matched` is feature proof only when startup is clean, every scenario step ledger row is green, and wait ledgers are not yellow/blocked. Use `expected_visible_fact` plus `expected_screen_text_contains` / `expected_screen_text_after_contains` on capture checkpoints when OCR text is the guard.
 - Prefer **observables + logs** over blind faith. If possible, confirm the resulting state from `llm_intent.log`, screenshots, or another artifact.
 - Beware raw keybind semantics: gameplay `t` is throw, so accidental hotkey mismatches can produce surreal results like trying to throw boxer shorts at a cow. Typed characters and raw keybinds are not always interchangeable for harness work.
 
@@ -15,6 +18,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | New Game -> Play Now! (default path on current `master`) | `n`, `d` | Current harness Phase-0 uses this minimal sequence. Branch-specific variants may diverge later. |
 | Ignore debug popup | `i` | Popup text says `I/i` to ignore in the future. Timing/focus still matters. |
 | Pass one turn / let queued output resolve | `.` | Current `dev` keybindings map pause/pass-turn to `.` (also `5` / keypad 5). Use this for deterministic one-turn advancement in harness probes. |
+| Wait for several minutes | <kbd>&#124;</kbd> (`Shift+\`) then menu choice | Current `dev` keybindings map action id `wait` / `ACTION_WAIT` to <kbd>&#124;</kbd>. The menu currently offers `1`=20s, `2`=1m, `3`=5m, `4`=30m, and with a watch `5`=1h, `6`=2h, `7`=3h, `8`=6h, plus daylight/noon/night/midnight/weather options. Use this for long time-passage probes instead of hundreds of `.` turns, but only after proving interruption/prompt handling for the scenario. |
 | Let queued NPC answer injection resolve after `C+b` | `.` x1-2 | The current practical path is to burn one or two real turns, not `Tab`; on this branch `Tab` opens the main menu and sabotages live probes. |
 
 ## In-game interaction probes
@@ -25,12 +29,36 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Assign nearby NPC to camp (current McWilliams Katharina restage) | `C`, `t`, `1`, `b`, `d`, `n`, `a`, `q`, `c` | Current Package 2 restaging helper path. This is the real nearby-hearer camp-assignment seam on the McWilliams fixture today. `1` is branch/save-order specific. |
 | Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`, then usually `Tab` x1-2 to let the response inject. |
 | Open ruleset window from chat UI | `a` (sometimes `a`, then `a` again) | Quest-first chat variants may consume the first `a`; if so, press `a` again to reach the ruleset window. |
-| Drop item from inventory | `d` | Harness helper path for `drop_item`. Current helper opens the normal drop inventory, then either selects a one-character inventory slot directly or uses the inventory filter (`/` + query), confirms the amount prompt, and exits back to gameplay. Queries should match visible item text; one-character selectors are treated as raw inventory slots. |
+| Drop item from inventory | `d` | Harness helper path for `drop_item`. Current helper opens the normal drop inventory, then either selects a one-character inventory slot directly or uses the inventory filter (`/` + query) plus inventory `TOGGLE_ENTRY` (`l`) / optional `MARK_WITH_COUNT` (`!`) before `Enter`. Queries should match visible item text; one-character selectors are treated as raw inventory slots. Current caveat: exact fuel runs through `20260427_232220` fail the filtered multidrop primitive. The latest UI trace shows filter `plank` redraws to zero visible rows/no `typeid="2x4"` row before `TOGGLE_ENTRY`/`MARK_WITH_COUNT`; do not trust this path for fuel proof until the fixture/live inventory primitive is repaired. |
 | Spawn item wish menu from debug path | `}`, `s`, `w` | Harness helper path for `debug_spawn_item`. Current helper drives the wish-menu text filter (`/` + query) and amount prompt, then exits the menu. Because the uilist filter matches displayed entry text, practical queries should be item names / visible text, not raw item ids. |
 | Spawn monster wish menu from debug path | `}`, `s`, `m` | Harness helper path for `debug_spawn_monster`. Current helper drives the wish-menu text filter (`/` + query), optional friendly/hallucination toggles, then confirms the look-around target. Practical queries should be monster names / visible text, not raw monster ids. |
 | Spawn random follower NPC from debug path | `}`, `s`, `f` | Landed harness helper path (`debug_spawn_follower_npc`). Spawns a random follower near the player with current debug-menu hotkeys. |
 | Force temperature from debug path | `}`, `m`, `T`, `Down`, `Enter` | Landed harness helper path (`debug_force_temperature`). The current submenu lists `Reset` first and `Set` second, so the harness explicitly moves to `Set` before filling the numeric prompt. The shipped dev/dev-harness probe path currently assumes Fahrenheit. |
+| Paint furniture with debug map editor | `}`, `m`, `M`, optional target movement, `r`, `/` + query, `Enter`, `Enter`, `Esc` | Landed harness helper path (`debug_map_editor_place_furniture`). Current green proof uses target `right` and query `f_chair`; the following save/writeback plus `audit_saved_map_tile_near_player` gate is the proof, not the keypath alone. |
+| Paint field with debug map editor | `}`, `m`, `M`, optional target movement, `e`, `/` + query, `Enter`, `Enter`, `Enter`, `Esc` | Landed harness helper path (`debug_map_editor_place_field`). Current green proof uses target `right` and query `fd_smoke`; the extra `Enter` accepts the field-intensity menu before applying the brush. The following save/writeback plus `audit_saved_map_tile_near_player` gate is the proof, not the keypath alone. |
 | Spawn Rubik from debug path | `}`, `s`, `p`, `O` | Current remembered path only; treat as provisional until reverified in automation. |
+
+### Multidrop source/control lookup (2026-04-27)
+
+| Question | Source-backed answer | Proof consequence |
+|---|---|---|
+| Filter semantics | `inventory_selector::query_set_filter()` stores the typed filter via `set_filter()`. `inventory_column::prepare_paging()` applies `inventory_selector_preset::get_filter()`, which delegates to `basic_item_filter(filter)` against item text, and reveals matching contained entries while a non-empty filter is active. | Filter text alone is not selection proof; the harness must trace the filtered Multidrop rows and show a visible/selectable `2x4`/plank row. |
+| Active cursor / highlighted row | `inventory_column::prepare_paging()` resets invalid paging and calls `highlight(...)`; `inventory_selector::get_highlighted_position()` plus each column's highlighted row identifies the active cursor after redraw/input. | The drop proof must include row trace after filter and after input: active column, highlighted row, selectable state, type/name, location, available count, and chosen count. |
+| Mark/count command | `inventory_multiselector` registers `MARK_WITH_COUNT` (`!`) and `TOGGLE_ENTRY` (`l`/Right/6). `MARK_WITH_COUNT` calls `query_count()` then `toggle_entries(query_result, SELECTED)`; `TOGGLE_ENTRY` calls `toggle_entries(count, SELECTED)`. `set_chosen_count()` clamps to available count and fills `to_use`; non-charge stacks add one `drop_location` per selected item. | A green count primitive requires `total_selected_qty=20` after `MARK_WITH_COUNT` / selected row `chosen_count=20`, not just the keypress. If the row is visible but selected quantity stays zero, classify `blocked_untrusted_drop_mark_count_primitive`. |
+| Confirm / return-to-map condition | `inventory_drop_selector::execute()` only returns on `CONFIRM` when `to_use` is non-empty and stealing/liquid checks do not cancel; if `to_use` is empty it shows the no-items popup and remains in Multidrop. | A green exit primitive requires `inventory_drop_selector event=return title="Multidrop" action="CONFIRM" total_selected_qty=20` before any save key is sent. If selection is correct but no return appears, classify `blocked_untrusted_drop_menu_exit_primitive`. |
+
+### Brazier deploy source/control lookup (2026-04-27)
+
+This is a harness-primitive blocker, not a real-fire product failure. The normal player-action deploy primitive remains untrusted until a live confirmation proves the deploy prompt/selector state and saved target tile.
+
+Source-backed facts:
+- `data/json/items/tool/deployable.json` gives `brazier` `use_action: { "type": "deploy_furn", "furn_type": "f_brazier" }`.
+- `game_menus::inv::use()` opens the `Use item` inventory via `activatable_inventory_preset`; activatable items include tool use methods such as the brazier.
+- `inventory_pick_selector::execute()` returns the highlighted selectable item on `CONFIRM`, or an item selected by invlet/`SELECT`; filtering alone is not proof that the intended entry was returned.
+- `deploy_furn_actor` calls `choose_adjacent( "Deploy where?" )` when deploying at the player position.
+- `choose_adjacent` uses `choose_direction`, which registers `RIGHT`; default keybindings include right arrow and `l` for `RIGHT`. So `right` is valid only after the harness has really entered the `Deploy where?` direction prompt.
+
+Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userdata/dev-harness/harness_runs/20260427_200100/` proves the fixture inventory exists (`brazier=1`, `2x4=20`, `lighter=1`) but the saved east tile remains empty/missing `f_brazier`; run `.userdata/dev-harness/harness_runs/20260427_200919/` adds checked GUI-as-text guards and blocks at the first `Use item` menu proof. Run `.userdata/dev-harness/harness_runs/20260427_202434/` adds harness-gated selector/direction traces and richer saved-item metadata: it proves the `Use item` selector opens and the saved `brazier` definition is `deploy_furn -> f_brazier`, but after filter text `brazier` the post-redraw selector state does not prove a highlighted brazier row. Run `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry tracing: the live `Use item` selector shows only `smart_phone` before filtering and zero visible entries after filter `brazier`, even though saved `player.inv` contains `brazier`. Do not try more blind key variants. Next acceptable proof must explain/repair that fixture-to-live inventory availability gap before another confirm/right attempt.
 
 ### Debug-menu caution for Package 2
 - The shorthand `}`, `p`, `p`, `b`, `A` is **not** the current camp-state seam on the McWilliams fixture.
@@ -38,6 +66,14 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 - For visible post-restage state inspection, the useful current debug-editor path is `}`, `p`, `p`, `2`, `Enter` on McWilliams (Katharina-specific index), which exposes the header with attitude / mission / faction after the real dialogue-side camp assignment path above.
 
 ## Important caveats learned live
+
+### Long wait is a real primitive, not accelerated dot spam
+- `.` / `5` is one-turn pause. It is appropriate for tiny deterministic turn burns and queued UI resolution.
+- `|` is the real long-wait action. It creates an `ACT_WAIT` activity through the wait menu, and should be preferred for minutes/hours of live-world time passage once the scenario has verified the menu path.
+- Treat any interruption as evidence, not noise: safe mode, hostile sightings, noises, hunger/thirst/sleep, damage, activity cancellation prompts, and wrong-screen focus can all invalidate a long-wait proof.
+- Do not type `I`, `N`, `Y`, or `Esc` through prompts blindly. Capture the prompt/screen, classify it, and only ignore/cancel when the proof contract says that is the expected branch.
+- A long-wait proof should record before/after game clock or turn, expected elapsed duration, whether the wait completed or interrupted, the typed choice, and the artifact/screenshot path. If elapsed time or prompt handling is missing, the verdict is not green.
+- Harness scenario primitive: use `{"kind":"wait_action","choice_key":"3"}` for a 5m proof or `choice_key":"4"` for 30m. It captures `<label>.before`, `<label>.initial_wait_menu` when an alarm/watch pre-menu appears, `<label>.wait_menu`, and `<label>.after` screenshots/OCR, records expected duration plus prompt classification, and writes `<label>.before_wait.artifacts.log` / `<label>.after_wait.artifacts.log` deltas when artifact patterns are configured. It also writes a `wait_step_ledger` and top-level `wait_step_summary`; artifact matches no longer turn a wait probe green when the wait ledger is yellow/blocked. It does not type through interruption prompts.
 
 ### `C+b` recipient selection is situational
 A live probe in the current `master` / `Sandy Creek` save showed:
@@ -56,6 +92,22 @@ Instead assume:
 - startup harness run artifacts under `.userdata/<profile>/harness_runs/...`
 - screenshots where UI state matters more than logs
 - for live in-game probes, `peekaboo see` is currently more useful than plain `peekaboo image`; the raw `see` command may time out on element detection, but it still leaves behind a readable screenshot path in its debug logs
+
+## Bandit extortion audit probes
+
+Current named tiered probes for `Bandit extortion playthrough audit + harness-skill packet v0`:
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw` — controlled-site stand-off setup / local-gate proof, not the shakedown menu.
+- `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw` — leaves the live stand-off session running for manual review.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_fight_mcw` — first Basecamp demand, `pay` / `fight`, then fight-forward message.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_mcw` — first Basecamp demand, pay branch, saved-world writeback inspection.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw` — controlled defender-loss reopen tier; proves the raised second demand still has `pay` / `fight`.
+
+Keep the evidence classes split: screen/OCR for the visible menu, `probe.artifacts.log` for `shakedown_surface` fields, saved-world inspection for branch writeback, and deterministic `./tests/cata_test "[bandit][live_world][shakedown]"` for contract law.
+
+## Bandit local sight-avoid / scout-return probes
+
+Current named probe for `Bandit local sight-avoid + scout return cadence packet v0`:
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.local_scout_return_preaged_mcw` — real nearby-owned-site local-contact footing plus the narrow `bandit_active_sortie_clock` fixture transform; proves the current runtime return-home decision and local-gate/shakedown skip while returning. Evidence class: return-home decision proof, not full walked-home/writeback proof and not live sight-avoid reposition proof.
 
 ## Practical live-probe recipe (current best cheap method)
 1. focus the game window

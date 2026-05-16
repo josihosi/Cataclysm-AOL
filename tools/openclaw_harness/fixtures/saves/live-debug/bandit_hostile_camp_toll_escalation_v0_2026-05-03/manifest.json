@@ -1,0 +1,27 @@
+{
+  "name": "bandit_hostile_camp_toll_escalation_v0_2026-05-03",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed Slice 4 hostile-camp escalation footing: reuse the remembered scout-confirmed camp-map lead, shape the owning camp to seven ready members, so the real 30-minute live dispatch cadence can prove promotion from repeated scout/stalk pressure into a toll/shakedown-capable party.",
+  "save_transforms": [
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 7,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "source_key": "fixture_scout_return_vanished_signal",
+      "source_summary": "fixture-backed vanished-signal remembered scout lead for Slice 4 toll escalation proof",
+      "bounty": 8,
+      "threat": 1,
+      "confidence": 3,
+      "clear_active_pressure": false
+    }
+  ]
+}

@@ -79,6 +79,7 @@ static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
 static const zone_type_id zone_type_LOOT_IGNORE( "LOOT_IGNORE" );
 static const zone_type_id zone_type_LOOT_ITEM_GROUP( "LOOT_ITEM_GROUP" );
 static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
+static const zone_type_id zone_type_LOOT_MANUALS( "LOOT_MANUALS" );
 static const zone_type_id zone_type_LOOT_PDRINK( "LOOT_PDRINK" );
 static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_SEEDS( "LOOT_SEEDS" );
@@ -2016,6 +2017,9 @@ void mapgen_place_zone( tripoint_abs_ms const &start, tripoint_abs_ms const &end
             dynamic_cast<loot_options *>( &*options )->set_mark( filter );
         }
     }
+    if( const auto ignorable = dynamic_cast<ignorable_options *>( &*options ) ) {
+        ignorable->set_ignore_contents( false );
+    }
     mgr.add( name, type, fac, false, true, s_, e_, options, true, pmap );
 }
 
@@ -2067,7 +2071,7 @@ bool smart_zone_id_has_any( const std::string &id,
 bool smart_zone_has_non_storage_zone_at( zone_manager &mgr, const faction_id &fac,
         const tripoint_abs_ms &p )
 {
-    for( const zone_manager::ref_const_zone_data zone_ref : mgr.get_zones( fac ) ) {
+    for( const zone_manager::ref_zone_data zone_ref : mgr.get_zones( fac ) ) {
         const zone_data &zone = zone_ref.get();
         if( zone.get_type() != zone_type_CAMP_STORAGE && zone.has_inside( p ) ) {
             return true;
@@ -2366,23 +2370,13 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     }
     smart_zone_reserve_tile( ctx, *splintered_tile );
 
-    const std::optional<tripoint_abs_ms> wood_tile = smart_zone_pick_near( ctx, *fire_anchor, 1 );
-    const std::optional<tripoint_abs_ms> tools_tile = wood_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> parts_tile = tools_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> books_tile = parts_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> containers_tile = books_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> magazines_tile = containers_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> chemical_tile = magazines_tile ? smart_zone_pick_near( ctx, *fire_anchor, 2 ) : std::nullopt;
-    const std::optional<tripoint_abs_ms> drugs_tile = chemical_tile ? smart_zone_pick_near( ctx, *fire_anchor, 2 ) : std::nullopt;
-    if( !wood_tile || !tools_tile || !parts_tile || !books_tile || !containers_tile ||
-        !magazines_tile || !chemical_tile || !drugs_tile ) {
-        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
-    }
-    for( const tripoint_abs_ms &p : { *wood_tile, *tools_tile, *parts_tile, *books_tile,
-                                      *containers_tile, *magazines_tile, *chemical_tile,
-                                      *drugs_tile } ) {
-        smart_zone_reserve_tile( ctx, p );
-    }
+    const auto pick_and_reserve_near = [&]( const tripoint_abs_ms &origin, const int min_dist ) {
+        const std::optional<tripoint_abs_ms> picked = smart_zone_pick_near( ctx, origin, min_dist );
+        if( picked ) {
+            smart_zone_reserve_tile( ctx, *picked );
+        }
+        return picked;
+    };
 
     const std::optional<tripoint_abs_ms> food_anchor = smart_zone_pick_point( ctx, pick_food_anchor );
     if( !food_anchor ) {
@@ -2390,11 +2384,10 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     }
     smart_zone_reserve_tile( ctx, *food_anchor );
     ctx.main_anchors.push_back( *food_anchor );
-    const std::optional<tripoint_abs_ms> drink_tile = smart_zone_pick_near( ctx, *food_anchor, 1 );
+    const std::optional<tripoint_abs_ms> drink_tile = pick_and_reserve_near( *food_anchor, 1 );
     if( !drink_tile ) {
         return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
     }
-    smart_zone_reserve_tile( ctx, *drink_tile );
 
     const std::optional<tripoint_abs_ms> equipment_anchor = smart_zone_pick_point( ctx, pick_equipment_anchor );
     if( !equipment_anchor ) {
@@ -2402,11 +2395,10 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     }
     smart_zone_reserve_tile( ctx, *equipment_anchor );
     ctx.main_anchors.push_back( *equipment_anchor );
-    const std::optional<tripoint_abs_ms> ammo_tile = smart_zone_pick_near( ctx, *equipment_anchor, 1 );
+    const std::optional<tripoint_abs_ms> ammo_tile = pick_and_reserve_near( *equipment_anchor, 1 );
     if( !ammo_tile ) {
         return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
     }
-    smart_zone_reserve_tile( ctx, *ammo_tile );
 
     const std::optional<tripoint_abs_ms> clothing_anchor = smart_zone_pick_point( ctx, pick_clothing_anchor );
     if( !clothing_anchor ) {
@@ -2414,17 +2406,37 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     }
     smart_zone_reserve_tile( ctx, *clothing_anchor );
     ctx.main_anchors.push_back( *clothing_anchor );
-    const std::optional<tripoint_abs_ms> dirty_tile = smart_zone_pick_near( ctx, *clothing_anchor, 1 );
+    const std::optional<tripoint_abs_ms> dirty_tile = pick_and_reserve_near( *clothing_anchor, 1 );
     if( !dirty_tile ) {
         return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
     }
-    smart_zone_reserve_tile( ctx, *dirty_tile );
+
+    const std::optional<tripoint_abs_ms> wood_tile = pick_and_reserve_near( *fire_anchor, 1 );
+    const std::optional<tripoint_abs_ms> tools_tile = wood_tile ?
+            pick_and_reserve_near( *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> parts_tile = tools_tile ?
+            pick_and_reserve_near( *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> books_tile = parts_tile ?
+            pick_and_reserve_near( *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> containers_tile = books_tile ?
+            pick_and_reserve_near( *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> magazines_tile = containers_tile ?
+            pick_and_reserve_near( *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> chemical_tile = magazines_tile ?
+            pick_and_reserve_near( *fire_anchor, 2 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> drugs_tile = chemical_tile ?
+            pick_and_reserve_near( *fire_anchor, 2 ) : std::nullopt;
+    if( !wood_tile || !tools_tile || !parts_tile || !books_tile || !containers_tile ||
+        !magazines_tile || !chemical_tile || !drugs_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
 
     const std::vector<tripoint_abs_ms> beds = smart_zone_beds_inside( ctx );
     for( const tripoint_abs_ms &bed : beds ) {
         if( smart_zone_has_non_storage_zone_at( ctx.mgr, ctx.fac, bed ) ) {
             return { false, _( "Smart zoning would overwrite existing non-basecamp zones, so it was cancelled." ), 0 };
         }
+        smart_zone_reserve_tile( ctx, bed );
     }
 
     const auto unsorted_rect = smart_zone_pick_unsorted_rect( ctx );
@@ -2452,10 +2464,12 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
                             _( "Basecamp spare parts" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_BOOKS, *books_tile,
                             _( "Basecamp books" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_MANUALS, *books_tile,
+                            _( "Basecamp manuals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CONTAINERS, *containers_tile,
                             _( "Basecamp containers" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *magazines_tile,
-                            _( "Basecamp magazines" ) );
+                            _( "Basecamp weapon magazines" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CHEMICAL, *chemical_tile,
                             _( "Basecamp chemicals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_DRUGS, *drugs_tile,
@@ -2482,6 +2496,12 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     smart_zone_plan_rect( ctx, zone_type_LOOT_UNSORTED,
                           unsorted_rect->first, unsorted_rect->second,
                           _( "Basecamp unsorted" ) );
+    smart_zone_plan_rect( ctx, zone_type_AUTO_EAT,
+                          ctx.start, ctx.end,
+                          _( "Basecamp auto eat" ) );
+    smart_zone_plan_rect( ctx, zone_type_AUTO_DRINK,
+                          ctx.start, ctx.end,
+                          _( "Basecamp auto drink" ) );
 
     for( const tripoint_abs_ms &bed : beds ) {
         smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,

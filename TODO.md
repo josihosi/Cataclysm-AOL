@@ -3,21 +3,14 @@
 Short execution queue only.
 
 Remove finished items when they are done.
-Do not turn this file into a museum of crossed-off errands.
 If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active greenlit implementation queue.
+No active Andi code target is currently promoted in repo canon.
 
-Current truth:
-- Smart Zone Manager v1 is checkpointed and freshly rechecked on rebuilt current HEAD
-- the assigned-camp board/log leak fix is also freshly rechecked on rebuilt current HEAD
-- do **not** open Package 4 or 5 during the current freeze-prep window
-- the current repo should not invent more smart-zone or locker/basecamp follow-up on its own
-- the next action is Josef's final debug round plus a freeze decision, not new behavior work
+`CAOL-CI-RED-TRIAGE-v0` is closed/checkpointed green at code head `cb21294168`: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845` both completed success on `dev`.
 
-If Josef explicitly reopens work after that, the best concrete candidates are:
-1. either keep the leftover locker/basecamp follow-through stack parked after freeze, or consciously reopen it instead of letting it drift back into a fake active queue
-2. reopen Locker Package 4 surface/control cleanup
-3. pull one parked future lane such as organic bulletin-board speech polish or the Plan/Aux pipeline helper
+If this docs-only closure alignment commit triggered a new GitHub Actions run, Andi should only verify that run and then disable the temporary CI-repair cron. Do not make churn commits while Actions is merely queued/running, and do not reopen completed product proof rows by ritual.
+
+Next product move is Schani/Frau review or a fresh greenlit lane.

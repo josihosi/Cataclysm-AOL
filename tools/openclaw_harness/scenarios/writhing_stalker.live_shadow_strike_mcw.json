@@ -1,0 +1,196 @@
+{
+  "name": "writhing_stalker.live_shadow_strike_mcw",
+  "description": "Live writhing-stalker shadow/strike scene proof: install a harness-only vulnerable-midnight McWilliams fixture, guard saved midnight before spawn, spawn one hostile writhing stalker at seven east, turn safe mode off, require live monster-plan shadow-before-strike, strike, and immediate cooldown lines, then save/audit same-run active-monster state.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_vulnerable_2026-04-30",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=shadow",
+    "reason=live_shadowing_before_strike_window",
+    "decision=strike",
+    "reason=live_vulnerability_window_strike",
+    "decision=cooling_off",
+    "cooldown=yes",
+    "target_focus=no",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_stalker_shadow_strike_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the harness-only vulnerable-midnight McWilliams live-debug fixture loads to the normal live map before the writhing stalker is spawned"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_before_writhing_stalker_spawn",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_midnight_setup_missing",
+      "abort_reason": "installed save did not prove local midnight before the writhing-stalker shadow/strike spawn",
+      "expected_visible_fact": "saved-player turn metadata proves the fixture is at local midnight before spawning the writhing stalker; the fixture also applies player vulnerability state for this live opportunity scene"
+    },
+    {
+      "kind": "debug_spawn_monster",
+      "label": "debug_spawn_writhing_stalker_shadow_east",
+      "monster_query": "writhing stalker",
+      "target_keys": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "friendly": false,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "preconditions": "vulnerable-midnight dev-harness/McWilliams fixture is loaded and focused; debug spawn monster primitive starts from the main map screen",
+      "expected_visible_fact": "debug spawn monster helper returns to the live map after selecting writhing stalker and confirming a target tile seven squares east of the vulnerable player",
+      "expected_immediate_state": "one hostile mon_writhing_stalker should exist at plausible visible distance, not on top of the player",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing later same-run shadow/strike artifact lines makes this row non-green"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_shadow_strike_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off after the writhing stalker spawn so the live turn window is not consumed by the safe-mode monster warning prompt"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_shadow_strike_window",
+      "count": 80,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "decision=shadow",
+        "reason=live_shadowing_before_strike_window",
+        "decision=strike",
+        "reason=live_vulnerability_window_strike",
+        "decision=cooling_off",
+        "cooldown=yes",
+        "target_focus=no",
+        "eval_us="
+      ],
+      "expected_visible_fact": "a live turn window runs after the midnight vulnerable-player stalker spawn; feature proof depends on same-run writhing_stalker live_plan debug lines, not the screenshot alone",
+      "failure_rule": "if the artifact delta lacks shadow-before-strike, strike, and cooldown live_plan lines from the same turn window, this scene is inconclusive rather than green"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_shadow_strike_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=shadow",
+          "reason=live_shadowing_before_strike_window",
+          "evidence=yes",
+          "target_focus=no",
+          "cooldown=no",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike",
+          "reason=live_vulnerability_window_strike",
+          "evidence=yes",
+          "target_focus=no",
+          "cooldown=no",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=cooling_off",
+          "reason=live_latch_cooldown_blocks_relatched_pressure",
+          "evidence=yes",
+          "cooldown=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_shadow_strike_live_plan_missing",
+      "abort_reason": "same-run debug artifact did not contain live writhing-stalker shadow-before-strike, strike, and cooldown lines",
+      "expected_visible_fact": "same-run debug artifact proves the live monster-plan seam shadowed outside focused view, struck when close enough, and then entered cooldown"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_writhing_stalker_shadow_strike_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the shadow/strike live-plan window and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_writhing_stalker_shadow_strike_window",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_shadow_strike_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the writhing-stalker shadow/strike save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the live-plan window; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_writhing_stalker_shadow_strike_window",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_writhing_stalker_shadow_strike_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_writhing_stalker_shadow_strike_save",
+      "changed_since_label": "audit_player_save_mtime_before_writhing_stalker_shadow_strike_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_shadow_strike_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the writhing-stalker shadow/strike save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed writhing-stalker shadow/strike save, proving the following active_monsters audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_after_shadow_strike_scene",
+      "required_typeids": [
+        "mon_writhing_stalker"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_shadow_strike_target_state",
+      "abort_reason": "saved active_monsters metadata did not contain mon_writhing_stalker after same-run shadow/strike proof",
+      "expected_visible_fact": "same-run saved active_monsters metadata contains the live writhing stalker after the shadow/strike window"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_shadow_strike_mcw",
+  "evidence_contract": {
+    "claim": "a spawned writhing stalker reaches the live monster-plan seam at midnight, shadows outside focused view while the strike window is still distant, strikes the vulnerable player when close enough, and then cooldown blocks immediate relatching pressure",
+    "setup_guard": "the run uses harness-only game_turn and player_condition save transforms plus a saved-turn/time audit before spawn; it does not synthesize stalker state, map light, fields, or artificial lamps",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker live behavior",
+    "failure_rule": "No shadow/strike live-scene credit if startup/load, saved midnight guard, debug-spawn footing, safe-mode-off live turn window, same-run shadow/strike/cooldown lines, save/writeback, and active-monster metadata are not all present and classified separately."
+  }
+}

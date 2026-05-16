@@ -659,7 +659,7 @@ class inventory_selector
         void add_vehicle_items( const tripoint_bub_ms &target, bool add_efiles = false );
         void add_nearby_items( int radius = 1, bool add_efiles = false );
         void add_remote_map_items( tinymap *remote_map, const tripoint_omt_ms &target );
-        void add_basecamp_items( const basecamp &camp );
+        void add_basecamp_items( const basecamp &camp, int nearby_radius_to_skip = -1 );
         /** Remove all items */
         void clear_items();
         /** Assigns a title that will be shown on top of the menu. */
@@ -685,6 +685,10 @@ class inventory_selector
         void set_filter( const std::string &str );
         /** Get last filter string set by set_filter or entered by player */
         std::string get_filter() const;
+        /** Get the selector title shown in the menu header. */
+        std::string get_title() const {
+            return title;
+        }
 
         enum selector_invlet_type {
             SELECTOR_INVLET_DEFAULT,

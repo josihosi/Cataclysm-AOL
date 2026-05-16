@@ -1,0 +1,124 @@
+{
+  "name": "writhing_stalker.live_wounded_predator_mcw",
+  "description": "Live wounded-predator row: badly injured stalker withdraws from a vulnerable/evidenced scene and avoids withdraw->strike jitter.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_wounded_stalker_2026-04-30",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=withdraw",
+    "reason=live_stalker_hurt_withdraw",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_wounded_predator_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "wounded vulnerable-midnight stalker fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_before_wounded_predator",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_time_setup_missing",
+      "abort_reason": "installed save did not prove expected time before live writhing-stalker window",
+      "expected_visible_fact": "saved turn proves local midnight before wounded predator window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_before_wounded_predator",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            4,
+            0,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required live-scenario footing",
+      "expected_visible_fact": "saved active_monsters proves one badly injured stalker starts at close plausible distance"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_wounded_predator",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_wounded_predator_window",
+      "count": 60,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "decision=withdraw",
+        "reason=live_stalker_hurt_withdraw",
+        "eval_us="
+      ],
+      "expected_visible_fact": "bounded live turn window runs with badly injured stalker and vulnerable player"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_wounded_predator_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=withdraw",
+          "reason=live_stalker_hurt_withdraw",
+          "evidence=yes",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=cooling_off",
+          "reason=live_latch_cooldown_blocks_relatched_pressure",
+          "cooldown=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_audit_writhing_stalker_wounded_predator_live_plan_missing",
+      "abort_reason": "same-run artifact lacked injured withdraw/cooling lines",
+      "expected_visible_fact": "same-run debug artifact proves injured retreat overrides greed"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_writhing_stalker_wounded_predator_no_strike_snapback",
+      "forbidden_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "red_audit_writhing_stalker_wounded_predator_no_strike_snapback_present",
+      "abort_reason": "wounded stalker snapped back into strike during injured-retreat window",
+      "expected_visible_fact": "same-run debug artifact does not contain forbidden magic-target or strike lines"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_wounded_predator_mcw",
+  "evidence_contract": {
+    "claim": "injured stalker self-preservation overrides greed with no immediate withdraw-to-strike snapback",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker live fun behavior",
+    "writeback_note": "No save/writeback gate: these scenarios prove bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}

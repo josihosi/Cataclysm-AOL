@@ -1,0 +1,48 @@
+{
+  "name": "tmp.bandit_offbase_shakedown_fight_probe",
+  "description": "Disposable live proof: move the player to non-road/non-Basecamp footing near the claimed owned site, advance through dispatch/contact until the shakedown menu opens, then choose fight.  The proof target is the off-base goods-pool report: basecamp_inventory=no and vehicle/current-carried reach only.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_offbase_field_probe_2026-04-24",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 16
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_2600_turns_to_offbase_open_shakedown",
+      "count": 2600,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24
+    },
+    {
+      "kind": "press",
+      "label": "choose_fight",
+      "keys": ["f"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24
+    }
+  ]
+}

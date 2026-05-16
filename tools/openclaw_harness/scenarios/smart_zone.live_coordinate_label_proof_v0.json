@@ -1,0 +1,283 @@
+{
+  "name": "smart_zone.live_coordinate_label_proof_v0",
+  "description": "Smart Zone Manager live coordinate-label proof: open real Zone Manager UI, create Basecamp storage, accept Smart Zone generation, close/reopen, and audit generated row coordinate labels.",
+  "profile": "smart-zone-audit-live-20260429e",
+  "world": "Sandy Creek",
+  "fixture": "basecamp_dev_manual_2026-04-02",
+  "fixture_profile": "dev",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "[harness][smart_zone] prompt accepted",
+    "[harness][smart_zone] result success=1",
+    "openclaw_harness_ui_trace: component=zone_manager_row"
+  ],
+  "steps": [
+    {
+      "label": "gameplay_loaded_screen_gate",
+      "kind": "wait",
+      "seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "normal gameplay is loaded before Zone Manager input"
+    },
+    {
+      "label": "disable_safe_mode_before_zone_setup",
+      "kind": "press",
+      "keys": [
+        "!"
+      ],
+      "proof_deferred_to_label": "open_zones_manager"
+    },
+    {
+      "label": "open_zones_manager",
+      "kind": "press",
+      "keys": [
+        "f1"
+      ],
+      "capture_after": true,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Zone Manager UI is visibly open through profile-local F1 binding for DEFAULTMODE zones",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_screen_text_after_contains": [
+        "Zones manage"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_zone_manager_ui_entry_guard_failed",
+      "abort_reason": "Zone Manager title text missing after open-zones key; stop before generation keys."
+    },
+    {
+      "label": "add_zone",
+      "kind": "press",
+      "keys": [
+        "f2"
+      ],
+      "capture_after": true,
+      "settle_seconds": 0.8,
+      "expected_visible_fact": "Zone Manager add-zone/type picker is open through profile-local F2 binding; Basecamp storage appears in the sorted list",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_screen_text_after_contains": [
+        "Auto Drink",
+        "Basecamp"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_zone_type_picker_not_open",
+      "abort_reason": "ADD_ZONE did not produce the visible zone type picker."
+    },
+    {
+      "label": "navigate_to_basecamp_storage_zone_type",
+      "kind": "press",
+      "keys": [
+        "home",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "delay_ms": 150,
+      "settle_seconds": 0.6,
+      "capture_after": true,
+      "expected_visible_fact": "Basecamp: Storage is selected in the real zone type picker before confirmation",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "basecamp",
+        "inventory"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_storage_zone_type_not_selected",
+      "abort_reason": "Home + Down x5 did not leave the picker on Basecamp: Storage / inventory description."
+    },
+    {
+      "label": "confirm_basecamp_storage_zone_type",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "delay_ms": 150,
+      "settle_seconds": 0.6,
+      "proof_deferred_to_label": "confirm_zone_end",
+      "expected_visible_fact": "Zone name prompt is reached for Basecamp: Storage; default name will be accepted next."
+    },
+    {
+      "label": "accept_default_storage_zone_name",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "delay_ms": 150,
+      "settle_seconds": 0.6,
+      "expected_visible_fact": "Default Basecamp: Storage name accepted; placement look-around UI begins.",
+      "proof_deferred_to_label": "confirm_zone_end"
+    },
+    {
+      "label": "pick_zone_start",
+      "kind": "press",
+      "keys": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "enter"
+      ],
+      "delay_ms": 120,
+      "settle_seconds": 0.8,
+      "expected_visible_fact": "First zone corner is selected through real look-around placement; screenshot archived, next guard is Smart Zone prompt after second corner.",
+      "abort_verdict": "blocked_zone_first_corner_not_selected",
+      "abort_reason": "After selecting the first corner, the UI did not advance to Select second point.",
+      "proof_deferred_to_label": "confirm_zone_end"
+    },
+    {
+      "label": "move_to_zone_end",
+      "kind": "press",
+      "keys": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "delay_ms": 120,
+      "settle_seconds": 0.8,
+      "proof_deferred_to_label": "confirm_zone_end"
+    },
+    {
+      "label": "confirm_zone_end",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "capture_after": true,
+      "settle_seconds": 0.8,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 40,
+      "expected_visible_fact": "Second zone corner accepted and Smart Zone Manager confirmation prompt is visible before pressing Yes",
+      "expected_screen_text_after_contains": [
+        "Smart Zone Manager"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_smart_zone_prompt_not_visible",
+      "abort_reason": "After confirming the second corner, the Smart Zone Manager prompt was not visible."
+    },
+    {
+      "label": "accept_smart_zone_prompt",
+      "kind": "press",
+      "keys": [
+        "f4"
+      ],
+      "capture_after": true,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "After Yes, generated Smart Zone rows are visible in the real Zone Manager list.",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 40,
+      "abort_on_screen_text_expectation_failure": true,
+      "expected_screen_text_after_contains": [
+        "Basecamp food"
+      ],
+      "abort_verdict": "blocked_generated_zone_rows_not_visible_after_yes"
+    },
+    {
+      "label": "post_generation_settle",
+      "kind": "wait",
+      "seconds": 1.0,
+      "proof_deferred_to_label": "placed_layout_debug_trace"
+    },
+    {
+      "label": "placed_layout_debug_trace",
+      "kind": "audit_log_contains",
+      "required_patterns": [
+        "[harness][smart_zone] result success=1"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_missing_live_smart_zone_generation_trace",
+      "expected_immediate_state": "debug log contains accepted prompt and successful generated-zone result from this probe's log delta"
+    },
+    {
+      "label": "exit_zones_manager",
+      "kind": "press",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 0.8,
+      "proof_deferred_to_label": "reopen_zones_manager_for_layout_inspection"
+    },
+    {
+      "label": "confirm_save_changes",
+      "kind": "press",
+      "keys": [
+        "f4"
+      ],
+      "settle_seconds": 1.0,
+      "proof_deferred_to_label": "reopen_zones_manager_for_layout_inspection"
+    },
+    {
+      "label": "post_save_gameplay_settle",
+      "kind": "wait",
+      "seconds": 1.0,
+      "proof_deferred_to_label": "reopen_zones_manager_for_layout_inspection"
+    },
+    {
+      "label": "reopen_zones_manager_for_layout_inspection",
+      "kind": "press",
+      "keys": [
+        "f1"
+      ],
+      "capture_after": true,
+      "settle_seconds": 0.8,
+      "expected_visible_fact": "Zone Manager UI is visibly open after saving/reopening, with generated Smart Zone rows visible.",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "Basecamp auto drink"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_reopened_generated_zone_rows_not_visible"
+    },
+    {
+      "label": "zone_manager_row_trace_audit",
+      "kind": "audit_log_contains",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=zone_manager_row",
+        "visible_label=",
+        "compact_label="
+      ],
+      "expected_immediate_state": "debug log contains Zone Manager row trace entries with relative coordinate labels for generated Smart Zones"
+    }
+  ]
+}

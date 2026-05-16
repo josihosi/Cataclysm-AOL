@@ -1,0 +1,6 @@
+{
+  "name": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Thin bandit/Basecamp playtest-kit fixture pack for the active v0 lane: reuse the captured McWilliams Basecamp save through a stable pack name so later scenario family entries can fast-reinstall one named footing instead of pointing at chat-lore fixture names."
+}

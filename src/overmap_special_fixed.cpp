@@ -249,6 +249,7 @@ special_placement_result fixed_overmap_special_data::place(
     const city &cit, bool must_be_unexplored ) const
 {
     special_placement_result result;
+    result.placement_origin = origin;
 
     for( const overmap_special_terrain &elem : terrains ) {
         const tripoint_om_omt location = origin + om_direction::rotate( elem.p, dir );

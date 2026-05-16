@@ -655,6 +655,24 @@
   },
   {
     "type": "overmap_terrain",
+    "id": [ "cannibal_camp_1", "cannibal_camp_2", "cannibal_camp_3", "cannibal_camp_4" ],
+    "vision_levels": "isolated_building",
+    "travel_cost_type": "structure",
+    "name": "cannibal camp",
+    "sym": "+",
+    "color": "red",
+    "see_cost": "high",
+    "//": "Rare camp-shaped hostile-site adopter with explicit cannibal theming; risk/safety still depends on spawned NPCs.",
+    "flags": [ "RISK_LOW", "SOURCE_SAFETY" ]
+  },
+  {
+    "type": "overmap_terrain",
+    "id": [ "cannibal_camp_1_roof", "cannibal_camp_2_roof", "cannibal_camp_3_roof", "cannibal_camp_4_roof" ],
+    "copy-from": "cannibal_camp_1",
+    "travel_cost_type": "roof"
+  },
+  {
+    "type": "overmap_terrain",
     "id": [
       "bandit_farm_3",
       "bandit_farm_3_roof",

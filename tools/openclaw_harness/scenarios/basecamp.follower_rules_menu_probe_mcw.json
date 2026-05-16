@@ -1,0 +1,90 @@
+{
+  "name": "basecamp.follower_rules_menu_probe_mcw",
+  "description": "Focused proof-freeze primitive for the McWilliams follower rules menu path after the scoped talker-selector recipe: prove the dialogue response surface has the [rules] option visible before using its source-backed first alpha hotkey, then prove the rules UI opens.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "McWilliams gameplay is loaded with the nearby follower roster visible before dialogue input.",
+      "expected_screen_text_after_contains": ["Katharina Leach"],
+      "failure_rule": "If the loaded screen does not OCR a known nearby follower name, this scenario cannot prove follower dialogue/rules navigation."
+    },
+    {
+      "kind": "press",
+      "label": "open_interaction_menu",
+      "keys": ["C"],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The nearby-creature interaction chooser is open.",
+      "expected_screen_text_after_contains": ["What do you want to do"],
+      "failure_rule": "If the interaction chooser text is absent after pressing C, later talker/dialogue keys are wrong-screen evidence."
+    },
+    {
+      "kind": "press",
+      "label": "open_talker_selector",
+      "keys": ["t"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The interaction-menu Talk to hotkey opens the creature talk selector.",
+      "expected_screen_text_after_contains": ["Talk to whom"],
+      "abort_if_text_contains": ["What do you want to do"],
+      "abort_verdict": "blocked_still_on_interaction_menu",
+      "abort_reason": "still on the nearby-creature interaction chooser after the talk-to key",
+      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as talker-selector proof."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_highlighted_talker",
+      "keys": ["enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Confirming the highlighted Talk to whom row opens Katharina Leach's dialogue response surface.",
+      "expected_screen_text_after_contains": ["Your response"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_still_on_talk_selector",
+      "abort_reason": "still on a selector screen after confirming the highlighted talker",
+      "failure_rule": "If the talker selector remains visible, do not treat later dialogue/rules keys as proven."
+    },
+    {
+      "kind": "press",
+      "label": "reveal_dialogue_options",
+      "keys": ["a"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The dialogue response list is visible and includes the follower rules response before selecting it.",
+      "expected_screen_text_after_contains": ["rules", "work together"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_wrong_screen_before_rules_response",
+      "abort_reason": "not on the follower dialogue response list before selecting the rules response",
+      "failure_rule": "Do not press a response hotkey unless the response list visibly contains the rules/work-together option."
+    },
+    {
+      "kind": "press",
+      "label": "select_rules_response",
+      "keys": ["a"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Selecting the visible first dialogue response opens the follower rules UI.",
+      "expected_screen_text_after_contains": ["Rules for your follower"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_wrong_screen_after_rules_response",
+      "abort_reason": "rules response did not open the follower rules UI",
+      "failure_rule": "If the rules UI text is absent, this scenario remains process-audit evidence only and must not close follower-rules/package-dialogue behavior."
+    }
+  ]
+}

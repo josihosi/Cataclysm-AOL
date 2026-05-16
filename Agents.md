@@ -40,11 +40,22 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - When adding new automation, keep paths and commands portable across Linux and Windows.
 - Do not disable CI workflows; fix the root cause instead.
 
+### C-AOL release branch flow
+- Do active development on `dev`.
+- When a dev cycle is ready, commit and verify on `dev`, then merge `dev` into `master`.
+- For release playtesting, update `port/cdda-master` against `upstream/master` and the AOL source branch through the porting orchestrator, then playtest on `port/cdda-master`.
+- After `port/cdda-master` is green, evaluate the other `port/*` branches against their upstream counterparts instead of assuming every master-only change is branch-safe.
+
 ### Porting orchestrator usage
-- Use `tools/porting/orchestrate_ports.ps1` for branch recreation, upstream merges, and build checks.
+- Use `tools/porting/orchestrate_ports.ps1` for port branch upstream merges, AOL source sync, destructive fallback only when approved, and build checks.
 - Start it from `master` only; it errors out on other branches by design.
-- Treat `master` as the source of truth for shared auxiliary files: `README.md`, `Plan.md`, `TechnicalTome.md`, `Agents.md`, and `tools/porting/orchestrate_ports.ps1`. Port branches should sync these from `master` instead of carrying branch-local edits.
+- Treat `master` as the source of truth for shared auxiliary files: `README.md`, `Plan.md`, `TechnicalTome.md`, `Agents.md`, `AGENTS.md`, and `tools/porting/orchestrate_ports.ps1`. Port branches should sync these from `master` instead of carrying branch-local edits.
+- Run audit mode before changing port branches when planning a release refresh:
+  - `.\tools\porting\orchestrate_ports.ps1 -AuditMode -Targets cdda-master -NoBackup`
+- For the first release target, prefer `cdda-master` with the default `delta-cherry-pick` AOL lane unless the audit shows a clean native merge.
 - Do not switch the orchestrator default `AolSourceRef` to `port/cdda-master` until `port/cdda-master` has passed real in-game AOL smoke tests. Until then, keep the default on `master` and pass `-AolSourceRef port/cdda-master` only deliberately.
+- Use destructive fallback only with an explicit backup and explicit approval, since it can delete/recreate existing `port/*` branches.
+- Treat docs, local agent notes, `.gitignore`, and `tools/porting/**` as porting metadata, not gameplay payload.
 - First-run safety check:
   - `.\tools\porting\orchestrate_ports.ps1 -DryRun -AllowDirty`
 - Typical run with Codex merge/build fixing:
@@ -97,6 +108,12 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - Linux/WSL: `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
 - For LLM runner changes, run `tools/llm_runner/runner.py --self-test` from your venv.
 - Batch Josef playtest asks where practical instead of drip-feeding tiny single-purpose pings.
+
+### Playtest harness
+- The startup/live probe harness is `tools/openclaw_harness/startup_harness.py`.
+- List packaged scenarios with `python3 tools/openclaw_harness/startup_harness.py list-scenarios --profile dev-harness`.
+- Use probe runs for artifact evidence and handoff runs when Josef needs to continue manual play from a staged setup.
+- Keep evidence classes honest: a startup/load screenshot is not feature proof unless the scenario report reaches the feature path.
 
 ## Build (MSYS2 UCRT64)
 - Josef needs to use the MSYS2 UCRT64 shell for Windows builds.

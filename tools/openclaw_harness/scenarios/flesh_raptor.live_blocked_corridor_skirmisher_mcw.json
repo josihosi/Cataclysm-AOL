@@ -1,0 +1,185 @@
+{
+  "name": "flesh_raptor.live_blocked_corridor_skirmisher_mcw",
+  "description": "Live blocked/corridor raptor row: lateral orbit tiles are sealed by impassable racks while a straight east lane remains open, so the staged flesh raptor records graceful fallback/counterplay rather than jittery orbit selection.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_flesh_raptor_blocked_corridor_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "flesh_raptor live_plan:",
+    "decision=fallback",
+    "reason=no_readable_lateral_orbit",
+    "candidates=3",
+    "eval_us=",
+    "flesh_raptor melee_event:"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_raptor_blocked_corridor_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "staged flesh-raptor blocked-corridor fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_raptor_blocked_corridor",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon turn before live flesh-raptor blocked-corridor window",
+      "expected_visible_fact": "saved turn proves local noon before blocked-corridor raptor window"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_blocked_corridor_racks_before_raptor",
+      "offsets": [
+        [
+          0,
+          -4,
+          0
+        ],
+        [
+          0,
+          4,
+          0
+        ],
+        [
+          -4,
+          0,
+          0
+        ]
+      ],
+      "required_furniture": [
+        "f_rack"
+      ],
+      "forbidden_furniture": [],
+      "abort_on_metadata_failure": true,
+      "expected_visible_fact": "saved map samples show lateral and behind orbit tiles blocked by racks before the raptor turn window",
+      "abort_verdict": "blocked_flesh_raptor_corridor_blockers_missing",
+      "abort_reason": "saved map did not prove impassable lateral/behind orbit blockers before live blocked-corridor row"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_blocked_corridor_east_lane_open_before_raptor",
+      "offsets": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          6,
+          0,
+          0
+        ]
+      ],
+      "forbidden_furniture": [
+        "f_rack"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_corridor_lane_blocked",
+      "abort_reason": "saved map did not prove the east approach/retreat lane was open before live blocked-corridor row",
+      "expected_visible_fact": "saved map samples prove the straight east approach lane remains free of rack blockers"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_flesh_raptor_before_blocked_corridor",
+      "required_monsters": [
+        {
+          "typeid": "mon_spawn_raptor",
+          "offset_ms": [
+            5,
+            0,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_blocked_corridor_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required blocked-corridor raptor footing",
+      "expected_visible_fact": "one hostile flesh raptor starts five tiles east down the only open lane"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_raptor_blocked_corridor",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor blocked-corridor window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_raptor_blocked_corridor_window",
+      "count": 80,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "flesh_raptor live_plan:",
+        "decision=fallback",
+        "reason=no_readable_lateral_orbit",
+        "eval_us=",
+        "flesh_raptor melee_event:"
+      ],
+      "expected_visible_fact": "bounded live turn window records blocked-corridor fallback planning and concrete raptor melee outcomes instead of orbit jitter"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_flesh_raptor_blocked_corridor_live_plan",
+      "required_line_patterns": [
+        [
+          "flesh_raptor live_plan:",
+          "decision=fallback",
+          "reason=no_readable_lateral_orbit",
+          "candidates=3",
+          "eval_us="
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "target_hp_percent=",
+          "run_after=yes"
+        ]
+      ],
+      "required_any_line_patterns": [
+        [
+          "flesh_raptor melee_event:",
+          "result=hit",
+          "damage="
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "result=miss",
+          "damage=0"
+        ],
+        [
+          "flesh_raptor melee_event:",
+          "result=armor_absorb",
+          "damage=0"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_flesh_raptor_blocked_corridor_live_plan_missing",
+      "abort_reason": "same-run artifact lacked blocked-corridor fallback or raptor melee-event lines",
+      "expected_visible_fact": "same-run debug artifact proves blocked/corridor footing falls back gracefully through the live monster::plan seam and still records combat/frustration metrics"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_blocked_corridor_skirmisher_mcw",
+  "evidence_contract": {
+    "claim": "a staged live flesh raptor with lateral orbit tiles blocked by impassable racks does not jitter or force open-field circling; the live monster::plan seam emits fallback/no-readable-lateral-orbit and the encounter continues through ordinary corridor pressure with concrete combat-result metrics",
+    "load_only_verdict": "load proof only / inconclusive for flesh-raptor blocked-corridor fallback behavior",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan/combat behavior from current-run logs plus saved start-state map/monster footing. Equipment-damage frustration remains observational only through melee_event outcomes and any player-facing equipment messages; no equipment damage tuning is changed here."
+  }
+}

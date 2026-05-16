@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -12,14 +13,17 @@
 #include "avatar.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character_attire.h"
 #include "clzones.h"
 #include "coordinates.h"
 #include "enums.h"
 #include "item.h"
 #include "item_pocket.h"
+#include "json_loader.h"
 #include "map.h"
 #include "map_helpers.h"
+#include "npc.h"
 #include "player_activity.h"
 #include "player_helpers.h"
 #include "pocket_type.h"
@@ -58,6 +62,8 @@ static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_UNSORTED( "LOOT_UNSORTED" );
 static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
+
+static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 
 namespace
 {
@@ -399,6 +405,50 @@ TEST_CASE( "zone_sorting_skips_items_with_unreachable_destinations",
     CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     // Activity should have completed (no hang)
     CHECK( !dummy.activity );
+}
+
+TEST_CASE( "npc_zone_sorting_no_progress_blocks_move_loot_job",
+           "[zones][items][activities][sorting][npc]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms worker_pos{ 5, 5, 0 };
+
+    npc &worker = spawn_npc( worker_pos.xy(), "thug" );
+    clear_character( worker, true );
+    worker.setpos( here, worker_pos );
+
+    worker.assign_activity( zone_sort_activity_actor() );
+    process_activity( worker );
+
+    CHECK( !worker.activity );
+    CHECK( worker.job.is_job_blocked( ACT_MOVE_LOOT ) );
+}
+
+TEST_CASE( "npc_blocked_move_loot_job_is_not_recreated_until_cooldown_expires",
+           "[zones][items][activities][sorting][npc]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms worker_pos{ 5, 5, 0 };
+
+    npc &worker = spawn_npc( worker_pos.xy(), "thug" );
+    clear_character( worker, true );
+    worker.setpos( here, worker_pos );
+    REQUIRE( worker.job.set_task_priority( ACT_MOVE_LOOT, 6 ) );
+    worker.job.block_job_until( ACT_MOVE_LOOT, calendar::turn + 30_minutes );
+
+    CHECK_FALSE( worker.find_job_to_perform() );
+    CHECK( !worker.activity );
+
+    calendar::turn += 31_minutes;
+    CHECK( worker.find_job_to_perform() );
+    CHECK( worker.activity.id() == ACT_MOVE_LOOT );
 }
 
 TEST_CASE( "zone_sorting_leaves_camp_locker_tiles_alone",
@@ -2258,6 +2308,8 @@ TEST_CASE( "route_cache_invalidation_on_mass_change",
 
 namespace
 {
+static const zone_type_id zone_type_AUTO_DRINK( "AUTO_DRINK" );
+static const zone_type_id zone_type_AUTO_EAT( "AUTO_EAT" );
 static const zone_type_id zone_type_LOOT_AMMO( "LOOT_AMMO" );
 static const zone_type_id zone_type_LOOT_BOOKS( "LOOT_BOOKS" );
 static const zone_type_id zone_type_LOOT_CHEMICAL( "LOOT_CHEMICAL" );
@@ -2267,6 +2319,7 @@ static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
 static const zone_type_id zone_type_LOOT_DRUGS( "LOOT_DRUGS" );
 static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
 static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
+static const zone_type_id zone_type_LOOT_MANUALS( "LOOT_MANUALS" );
 static const zone_type_id zone_type_LOOT_SPARE_PARTS( "LOOT_SPARE_PARTS" );
 static const zone_type_id zone_type_LOOT_TOOLS( "LOOT_TOOLS" );
 static const zone_type_id zone_type_LOOT_WOOD( "LOOT_WOOD" );
@@ -2374,6 +2427,75 @@ const zone_data *find_single_zone( const zone_type_id &type, const std::string &
     return found;
 }
 
+std::string smart_zone_filter( const zone_data &zone )
+{
+    if( const auto *loot = dynamic_cast<const loot_options *>( &zone.get_options() ) ) {
+        return loot->get_mark();
+    }
+    return {};
+}
+
+std::string smart_zone_debug_name( const zone_data &zone )
+{
+    return zone.get_type().str() + "|" + smart_zone_filter( zone ) + "|" + zone.get_name();
+}
+
+bool smart_zones_overlap( const zone_data &lhs, const zone_data &rhs )
+{
+    return lhs.get_start_point().z() == rhs.get_start_point().z() &&
+           lhs.get_start_point().x() <= rhs.get_end_point().x() &&
+           lhs.get_end_point().x() >= rhs.get_start_point().x() &&
+           lhs.get_start_point().y() <= rhs.get_end_point().y() &&
+           lhs.get_end_point().y() >= rhs.get_start_point().y();
+}
+
+bool smart_zone_overlap_is_allowed( const zone_data &lhs, const zone_data &rhs )
+{
+    const zone_type_id lhs_type = lhs.get_type();
+    const zone_type_id rhs_type = rhs.get_type();
+    if( lhs_type == zone_type_AUTO_EAT || lhs_type == zone_type_AUTO_DRINK ||
+        rhs_type == zone_type_AUTO_EAT || rhs_type == zone_type_AUTO_DRINK ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_SOURCE_FIREWOOD && rhs_type == zone_type_LOOT_CUSTOM &&
+          smart_zone_filter( rhs ) == "splintered" ) ||
+        ( rhs_type == zone_type_SOURCE_FIREWOOD && lhs_type == zone_type_LOOT_CUSTOM &&
+          smart_zone_filter( lhs ) == "splintered" ) ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_LOOT_BOOKS && rhs_type == zone_type_LOOT_MANUALS ) ||
+        ( rhs_type == zone_type_LOOT_BOOKS && lhs_type == zone_type_LOOT_MANUALS ) ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_LOOT_AMMO && rhs_type == zone_type_LOOT_MAGAZINES ) ||
+        ( rhs_type == zone_type_LOOT_AMMO && lhs_type == zone_type_LOOT_MAGAZINES ) ) {
+        return true;
+    }
+    if( lhs_type == zone_type_LOOT_CUSTOM && rhs_type == zone_type_LOOT_CUSTOM ) {
+        const std::set<std::string> filters = { smart_zone_filter( lhs ), smart_zone_filter( rhs ) };
+        return filters == std::set<std::string> { "blanket", "quilt" };
+    }
+    return false;
+}
+
+void check_no_unplanned_smart_zone_overlaps()
+{
+    std::vector<const zone_data *> zones;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        zones.push_back( &zone_ref.get() );
+    }
+    for( size_t i = 0; i < zones.size(); ++i ) {
+        for( size_t j = i + 1; j < zones.size(); ++j ) {
+            if( !smart_zones_overlap( *zones[i], *zones[j] ) ) {
+                continue;
+            }
+            CAPTURE( smart_zone_debug_name( *zones[i] ) );
+            CAPTURE( smart_zone_debug_name( *zones[j] ) );
+            CHECK( smart_zone_overlap_is_allowed( *zones[i], *zones[j] ) );
+        }
+    }
+}
+
 std::vector<std::string> snapshot_zone_layout()
 {
     std::vector<std::string> snapshot;
@@ -2432,14 +2554,99 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     CHECK( find_single_zone( zone_type_LOOT_WOOD ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_TOOLS ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_SPARE_PARTS ) != nullptr );
-    CHECK( find_single_zone( zone_type_LOOT_BOOKS ) != nullptr );
+    const zone_data *books = find_single_zone( zone_type_LOOT_BOOKS );
+    REQUIRE( books != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_MANUALS, books->get_center_point() ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_CONTAINERS ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_CHEMICAL ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_DRUGS ) != nullptr );
 
+    const zone_data *splintered = find_single_zone( zone_type_LOOT_CUSTOM, "splintered" );
+    REQUIRE( splintered != nullptr );
+    const std::vector<const zone_data *> crafting_supports = {
+        find_single_zone( zone_type_LOOT_WOOD ),
+        find_single_zone( zone_type_LOOT_TOOLS ),
+        find_single_zone( zone_type_LOOT_SPARE_PARTS ),
+        find_single_zone( zone_type_LOOT_BOOKS ),
+        find_single_zone( zone_type_LOOT_CONTAINERS ),
+        find_single_zone( zone_type_LOOT_CHEMICAL ),
+        find_single_zone( zone_type_LOOT_DRUGS )
+    };
+    for( const zone_data *zone : crafting_supports ) {
+        REQUIRE( zone != nullptr );
+        CAPTURE( smart_zone_debug_name( *zone ) );
+        CHECK( zone->get_start_point() == zone->get_end_point() );
+        CHECK( zone->get_center_point() != fixture.fire_anchor );
+        CHECK( zone->get_center_point() != splintered->get_center_point() );
+    }
+    for( size_t i = 0; i < crafting_supports.size(); ++i ) {
+        for( size_t j = i + 1; j < crafting_supports.size(); ++j ) {
+            CAPTURE( smart_zone_debug_name( *crafting_supports[i] ) );
+            CAPTURE( smart_zone_debug_name( *crafting_supports[j] ) );
+            CHECK( crafting_supports[i]->get_center_point() != crafting_supports[j]->get_center_point() );
+        }
+    }
+    const auto fire_dist = [&]( const tripoint_abs_ms &point ) {
+        return std::abs( point.x() - fixture.fire_anchor.x() ) +
+               std::abs( point.y() - fixture.fire_anchor.y() );
+    };
+    CHECK( fire_dist( find_single_zone( zone_type_LOOT_CHEMICAL )->get_center_point() ) >= 2 );
+    CHECK( fire_dist( find_single_zone( zone_type_LOOT_DRUGS )->get_center_point() ) >= 2 );
+
+    const zone_data *weapon_magazines = nullptr;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        if( zone.get_type() == zone_type_LOOT_MAGAZINES ) {
+            CHECK( zone.get_name() == "Basecamp weapon magazines" );
+            weapon_magazines = &zone;
+        }
+    }
+    REQUIRE( weapon_magazines != nullptr );
+
+    const zone_data *auto_eat = find_single_zone( zone_type_AUTO_EAT );
+    REQUIRE( auto_eat != nullptr );
+    CHECK( auto_eat->get_start_point() == fixture.start );
+    CHECK( auto_eat->get_end_point() == fixture.end );
+    const auto *eat_options = dynamic_cast<const ignorable_options *>( &auto_eat->get_options() );
+    REQUIRE( eat_options != nullptr );
+    CHECK( !eat_options->get_ignore_contents() );
+
+    const zone_data *auto_drink = find_single_zone( zone_type_AUTO_DRINK );
+    REQUIRE( auto_drink != nullptr );
+    CHECK( auto_drink->get_start_point() == fixture.start );
+    CHECK( auto_drink->get_end_point() == fixture.end );
+    const auto *drink_options = dynamic_cast<const ignorable_options *>( &auto_drink->get_options() );
+    REQUIRE( drink_options != nullptr );
+    CHECK( !drink_options->get_ignore_contents() );
+
     const zone_data *unsorted = find_single_zone( zone_type_LOOT_UNSORTED );
     REQUIRE( unsorted != nullptr );
     CHECK( unsorted->get_start_point() != unsorted->get_end_point() );
+
+    check_no_unplanned_smart_zone_overlaps();
+
+    std::ostringstream serialized_zones;
+    JsonOut jsout( serialized_zones );
+    zone_manager::get_manager().serialize( jsout );
+    zone_manager::get_manager().clear();
+    JsonValue jsin = json_loader::from_string( serialized_zones.str() );
+    zone_manager::get_manager().deserialize( jsin );
+
+    const zone_data *reloaded_books = find_single_zone( zone_type_LOOT_BOOKS );
+    REQUIRE( reloaded_books != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_MANUALS, reloaded_books->get_center_point() ) != nullptr );
+    const zone_data *reloaded_auto_eat = find_single_zone( zone_type_AUTO_EAT );
+    REQUIRE( reloaded_auto_eat != nullptr );
+    const auto *reloaded_eat_options = dynamic_cast<const ignorable_options *>(
+            &reloaded_auto_eat->get_options() );
+    REQUIRE( reloaded_eat_options != nullptr );
+    CHECK( !reloaded_eat_options->get_ignore_contents() );
+    const zone_data *reloaded_auto_drink = find_single_zone( zone_type_AUTO_DRINK );
+    REQUIRE( reloaded_auto_drink != nullptr );
+    const auto *reloaded_drink_options = dynamic_cast<const ignorable_options *>(
+            &reloaded_auto_drink->get_options() );
+    REQUIRE( reloaded_drink_options != nullptr );
+    CHECK( !reloaded_drink_options->get_ignore_contents() );
 
     const zone_data *rotten = find_single_zone( zone_type_LOOT_CUSTOM, "rotten" );
     REQUIRE( rotten != nullptr );

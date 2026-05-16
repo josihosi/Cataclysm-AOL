@@ -1,0 +1,245 @@
+{
+  "name": "basecamp.follower_rules_toggle_probe_mcw",
+  "description": "Focused proof-freeze primitive for a McWilliams follower-rules checkbox toggle: prove the rules UI path, toggle the first checkbox hotkey from four-pace to two-pace follow distance, save with a guarded case-sensitive prompt, then prove the same-run saved overmap NPC rule metadata changed.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "McWilliams gameplay is loaded with Katharina Leach visible before follower-rule input.",
+      "expected_screen_text_after_contains": [
+        "Katharina Leach"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "failure_rule": "If the loaded screen does not OCR Katharina Leach, this scenario cannot prove her follower-rule toggle."
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_katharina_follow_distance_before_toggle",
+      "required_npcs": [
+        {
+          "name": "Katharina Leach",
+          "my_fac": "your_followers",
+          "rules": {
+            "rule_follow_distance_2": false
+          }
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "expected_visible_fact": "saved overmap NPC metadata starts with Katharina Leach as a follower whose two-pace follow-distance rule is off",
+      "failure_rule": "If the copied fixture does not contain Katharina with rule_follow_distance_2=false, the later toggle would not prove the intended rule boundary."
+    },
+    {
+      "kind": "press",
+      "label": "open_interaction_menu",
+      "keys": [
+        "C"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The nearby-creature interaction chooser is open.",
+      "expected_screen_text_after_contains": [
+        "What do you want to do"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "failure_rule": "If the interaction chooser text is absent after pressing C, later talker/dialogue keys are wrong-screen evidence."
+    },
+    {
+      "kind": "press",
+      "label": "open_talker_selector",
+      "keys": [
+        "t"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The interaction-menu Talk to hotkey opens the creature talk selector.",
+      "expected_screen_text_after_contains": [
+        "Talk to whom"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "What do you want to do"
+      ],
+      "abort_verdict": "blocked_still_on_interaction_menu",
+      "abort_reason": "still on the nearby-creature interaction chooser after the talk-to key",
+      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as talker-selector proof."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_highlighted_talker",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Confirming the highlighted Talk to whom row opens Katharina Leach's dialogue response surface.",
+      "expected_screen_text_after_contains": [
+        "Your response"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "What do you want to do",
+        "Talk to whom"
+      ],
+      "abort_verdict": "blocked_still_on_talk_selector",
+      "abort_reason": "still on a selector screen after confirming the highlighted talker",
+      "failure_rule": "If the talker selector remains visible, do not treat later dialogue/rules keys as proven."
+    },
+    {
+      "kind": "press",
+      "label": "reveal_dialogue_options",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The dialogue response list is visible and includes the follower rules response before selecting it.",
+      "expected_screen_text_after_contains": [
+        "rules",
+        "work together"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "What do you want to do",
+        "Talk to whom"
+      ],
+      "abort_verdict": "blocked_wrong_screen_before_rules_response",
+      "abort_reason": "not on the follower dialogue response list before selecting the rules response",
+      "failure_rule": "Do not press a response hotkey unless the response list visibly contains the rules/work-together option."
+    },
+    {
+      "kind": "press",
+      "label": "open_rules_window",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Selecting the visible first dialogue response opens the follower rules UI.",
+      "expected_screen_text_after_contains": [
+        "Rules for your follower",
+        "four paces"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "What do you want to do",
+        "Talk to whom"
+      ],
+      "abort_verdict": "blocked_rules_window_not_opened",
+      "abort_reason": "rules response did not open the follower rules UI",
+      "failure_rule": "If the rules UI text is absent, this scenario cannot prove rule-toggle behavior."
+    },
+    {
+      "kind": "press",
+      "label": "toggle_first_follow_distance_checkbox",
+      "keys": [
+        "b"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The first follower-rules checkbox hotkey toggles Katharina from four-pace to two-pace following in the visible rules UI.",
+      "expected_screen_text_after_contains": [
+        "Rules for your follower",
+        "two paces"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "failure_rule": "If pressing b on the proven rules UI does not visibly change the follow-distance row to about two paces, do not credit the toggle or saved metadata."
+    },
+    {
+      "kind": "press",
+      "label": "exit_rules_window_to_map",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Exiting the follower rules UI returns to the gameplay map before requesting save-and-quit.",
+      "expected_screen_text_after_contains": [
+        "Katharina Leach"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "failure_rule": "If dialogue/rules text remains visible, the following save keys are wrong-screen evidence.",
+      "abort_if_text_contains": [
+        "Your response",
+        "Rules for your follower"
+      ],
+      "abort_verdict": "blocked_still_in_dialogue_or_rules_ui",
+      "abort_reason": "not back on the gameplay map after exiting the follower rules UI"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_rule_toggle_save"
+    },
+    {
+      "kind": "press",
+      "label": "request_save_after_rule_toggle",
+      "keys": [
+        "S"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The case-sensitive Save and quit prompt is open after the visible follower-rule toggle.",
+      "expected_screen_text_after_contains": [
+        "and quit?",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_rule_toggle_save_prompt",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the rule-toggle save",
+      "failure_rule": "Do not press uppercase Y unless the case-sensitive Save and quit prompt is proven."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_rule_toggle_save",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_rule_toggle_save",
+      "expected_visible_fact": "The proven case-sensitive Save and quit prompt is confirmed with uppercase Y so the following mtime and saved-overmap metadata gates can prove same-run writeback."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_rule_toggle_save",
+      "changed_since_label": "audit_player_save_mtime_before_rule_toggle_save",
+      "abort_on_metadata_failure": true,
+      "expected_visible_fact": "saved-player mtime advances after confirming the follower-rule toggle save/writeback",
+      "failure_rule": "If saved-player mtime does not advance after the proven prompt and uppercase Y, saved follower-rule metadata cannot be credited."
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_katharina_follow_distance_after_toggle",
+      "required_npcs": [
+        {
+          "name": "Katharina Leach",
+          "my_fac": "your_followers",
+          "rules": {
+            "rule_follow_distance_2": true
+          }
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "expected_visible_fact": "same-run saved overmap NPC metadata contains Katharina Leach with rule_follow_distance_2=true after the visible rules-UI toggle and guarded save/writeback",
+      "failure_rule": "If saved overmap NPC metadata does not show Katharina's rule_follow_distance_2=true, the rule-toggle primitive remains non-green."
+    }
+  ]
+}

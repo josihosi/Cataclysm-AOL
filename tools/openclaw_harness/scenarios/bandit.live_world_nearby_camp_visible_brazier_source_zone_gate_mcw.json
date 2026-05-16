@@ -1,0 +1,284 @@
+{
+  "name": "bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw",
+  "description": "Visible deployed-brazier/source-zone gate: normal Apply inventory -> filter/select brazier -> Deploy where? -> east/right, then player-facing look/OCR must name brazier at the east target before saved f_brazier/log/SOURCE_FIREWOOD audits. No lighter/fire action keys.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "fuel_visible_brazier_deploy_source_zone_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan:"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "exact_items_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "The exact-items McWilliams fixture is loaded on the map before the focused deploy primitive audit."
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_inventory_has_brazier_before_apply",
+      "required_items": [
+        "brazier"
+      ],
+      "expected_visible_fact": "saved player live-accessible carried/worn inventory contains the exact brazier item before the Apply inventory is opened",
+      "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+      "next_step_gate": "do not credit any Apply/deploy UI step if the exact brazier item is missing from live-accessible saved-player inventory",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "exact brazier fixture item missing from live-accessible saved-player inventory before player-action deploy primitive audit"
+    },
+    {
+      "kind": "press",
+      "label": "open_apply_inventory_for_brazier_text_guard",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The source-backed Apply key is sent; the following harness UI trace gate must prove the Use item inventory opened before another unsafe key fires."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_apply_inventory_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=open title=\"Use item\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the Use item inventory opened",
+      "preconditions": "open_apply_inventory_for_brazier_text_guard sent the source-backed Apply key.",
+      "next_step_gate": "do not type inventory filter keys unless the Use item inventory-open trace is present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove the Use item inventory opened before filtering"
+    },
+    {
+      "kind": "press",
+      "label": "filter_apply_inventory_for_brazier_text_guard",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green; OCR is not used as the selector proof for this step."
+    },
+    {
+      "kind": "type",
+      "label": "type_brazier_filter_for_apply_text_guard",
+      "text": "brazier",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The brazier filter text is submitted only after the Apply inventory-open trace is green; the following UI trace gate proves the highlighted filtered row."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_filtered_brazier_selected",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=state title=\"Use item\" filter=\"brazier\" action=\"redraw\" selection_method=\"highlight_after_redraw\"",
+        "selection_method=\"highlight_after_redraw\" selected_item=yes typeid=\"brazier\" name=\"brazier\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace after redraw proves the Apply inventory filter is brazier and the highlighted row is the brazier item",
+      "preconditions": "the Use item inventory is open and the brazier filter text was typed.",
+      "next_step_gate": "do not press confirm unless the highlighted filtered row is proven as brazier",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove filtered highlighted item was brazier before confirm"
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_brazier_expect_deploy_prompt",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "The filtered inventory row is confirmed; following harness UI trace gates must prove the returned item is brazier and Deploy where? opened."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_brazier_selected_and_deploy_prompt_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=return title=\"Use item\"",
+        "selection_method=\"highlight_confirm\" selected_item=yes typeid=\"brazier\" name=\"brazier\"",
+        "openclaw_harness_ui_trace: component=direction_prompt event=open message=\"Deploy where?\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the selector returned brazier and opened Deploy where?",
+      "preconditions": "select_filtered_brazier_expect_deploy_prompt confirmed the filtered Apply inventory row.",
+      "next_step_gate": "do not send right/east unless the returned item is brazier and the Deploy where? prompt is open",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove selected brazier plus Deploy where? before right/east"
+    },
+    {
+      "kind": "press",
+      "label": "place_prompted_brazier_east",
+      "keys": [
+        "right"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map; the following UI trace gate proves right/east was consumed by that prompt."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_deploy_prompt_consumed_right",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=direction_prompt event=return message=\"Deploy where?\"",
+        "chosen_direction=yes dx=1 dy=0 dz=0"
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves right/east was consumed by the Deploy where? direction prompt",
+      "preconditions": "audit_ui_trace_brazier_selected_and_deploy_prompt_open proved Deploy where? was open.",
+      "next_step_gate": "do not save/audit east tile unless right/east was consumed by the Deploy where? prompt",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove right/east was consumed by Deploy where?"
+    },
+    {
+      "kind": "press",
+      "label": "open_look_after_prompted_brazier_deploy",
+      "keys": [
+        "x"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_visible_fact": "The player-facing look/inspect surface is opened after normal Apply->brazier->Deploy where?->east placement; OCR sees the look panel header/body (e.g. Survivor) before the cursor is moved east.",
+      "expected_screen_text_after_contains": [
+        "Survivor"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_visible_deployed_brazier_look_not_open",
+      "abort_reason": "look/inspect surface did not visibly open after brazier deployment; do not continue to lighter/fire proof"
+    },
+    {
+      "kind": "press",
+      "label": "look_east_at_deployed_brazier",
+      "keys": [
+        "right"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 96,
+      "expected_screen_text_after_contains": [
+        "hraz",
+        "burn things"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_visible_deployed_brazier_not_named",
+      "abort_reason": "look/inspect east after normal brazier deployment did not OCR/name or describe a brazier; do not continue to lighter/fire proof from metadata-only f_brazier",
+      "expected_visible_fact": "Player-facing look/inspect east of the player names/describes the deployed brazier after the normal deployment action; OCR may read brazier as hraz\u0131er, so the guard requires the name fragment plus the brazier description `burn things`."
+    },
+    {
+      "kind": "press",
+      "label": "close_look_after_visible_brazier_gate",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "The player-facing look/inspect surface is closed after the visible deployed-brazier gate, returning toward normal map/save flow."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_post_deploy_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the Deploy where? prompt consumed right/east and before the post-action save is requested"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_text_guarded_brazier_deploy",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "and quit?",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_post_action_save_writeback",
+      "abort_reason": "screen text did not prove the Save and quit prompt existed before confirming post-action save",
+      "expected_visible_fact": "The Save and quit prompt is open after the text-guarded brazier deploy checkpoint; confirmation must not be sent before this prompt is proven."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_text_guarded_brazier_deploy",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_post_deploy_save",
+      "failure_rule": "the uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "feature proof may proceed only when audit_player_save_mtime_after_post_deploy_save is green",
+      "expected_visible_fact": "The proven case-sensitive Save and quit prompt is confirmed with uppercase Y so the following saved-file mtime gate can prove same-run writeback."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_post_deploy_save",
+      "changed_since_label": "audit_player_save_mtime_before_post_deploy_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_post_action_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after the post-deploy save confirmation",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-deploy save, proving the following saved-map audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_target_tile_for_visible_brazier_logs",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "expected_visible_fact": "same-run saved target tile east of player contains f_brazier plus real log item metadata after visible player-action deployment",
+      "preconditions": "save_after_text_guarded_brazier_deploy wrote a same-run save immediately after normal item activation placement.",
+      "next_step_gate": "do not run or credit fuel/lighter/fire proof unless visible brazier gate plus saved f_brazier/log row are green",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "visible player-action brazier deploy or log metadata missing before fuel/lighter/fire steps",
+      "required_items": [
+        "log"
+      ]
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_source_firewood_zone_after_visible_brazier_deploy",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_zone_type": "SOURCE_FIREWOOD",
+      "required_faction": "your_followers",
+      "required_name_contains": "OpenClaw visible brazier source firewood proof zone",
+      "expected_visible_fact": "saved zone metadata contains SOURCE_FIREWOOD over/around the visibly deployed brazier/log target after the normal deploy gate",
+      "preconditions": "look_east_at_deployed_brazier and audit_saved_target_tile_for_visible_brazier_logs are green",
+      "next_step_gate": "do not run or credit lighter/fire proof unless source-firewood zone metadata is green after visible brazier deployment",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved SOURCE_FIREWOOD zone metadata missing after visible brazier deployment"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw (visible deployed-brazier/source-zone gate only; no lighter/fire keys)"
+}

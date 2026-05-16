@@ -25,6 +25,7 @@
 #include "active_item_cache.h"
 #include "activity_actor_definitions.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "basecamp.h"
 #include "bionics.h"
 #include "body_part_set.h"
@@ -259,6 +260,63 @@ const std::vector<bionic_id> weapon_cbms = {
     {bio_chain_lightning, bio_laser, bio_blade, bio_claws}};
 
 const int avoidance_vehicles_radius = 5;
+
+bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
+{
+    if( who.is_player_ally() || who.is_dead() ) {
+        return false;
+    }
+
+    const avatar &u = get_avatar();
+    const bool near_player_camp = overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value() ||
+                                  !overmap_buffer.get_camps_near( u.pos_abs_sm(), 24 ).empty();
+    if( !near_player_camp ) {
+        return false;
+    }
+
+    const bandit_live_world::world_state &world = overmap_buffer.global_state.bandit_live_world;
+    if( world.sites.empty() ) {
+        return false;
+    }
+
+    const character_id who_id = who.getID();
+    for( const bandit_live_world::site_record &site : world.sites ) {
+        if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            continue;
+        }
+        const bandit_live_world::member_record *member = site.find_member( who_id );
+        if( member == nullptr ) {
+            continue;
+        }
+        if( std::find( site.active_member_ids.begin(), site.active_member_ids.end(), who_id ) ==
+            site.active_member_ids.end() ) {
+            continue;
+        }
+
+        map &here = get_map();
+        bandit_live_world::local_gate_input input;
+        input.basecamp_or_camp_scene = true;
+        input.local_threat = 3;
+        input.local_opportunity = 2;
+        input.standoff_distance = rl_dist( who.pos_abs_omt(), u.pos_abs_omt() );
+        input.current_exposure = get_player_view().sees( here, who.pos_bub( here ) );
+        input.recent_exposure = input.current_exposure;
+        input.local_contact_established = input.standoff_distance <= 1 ||
+                                          member->state == bandit_live_world::member_state::local_contact;
+        const bandit_live_world::local_gate_decision decision =
+            bandit_live_world::choose_local_gate_posture( site, input );
+        if( bandit_live_world::hot_defended_doorstep_blocks_pickup( site, input, decision, who_id ) ) {
+            add_msg_debug( debugmode::DF_NPC_ITEMAI,
+                           "%s skips item pickup on hot defended doorstep: site=%s posture=%s standoff=%d exposed=%s",
+                           who.get_name(), site.site_id,
+                           bandit_live_world::to_string( decision.posture ), input.standoff_distance,
+                           input.current_exposure ? "yes" : "no" );
+            return true;
+        }
+    }
+
+    return false;
+}
 
 bool good_for_pickup(const item &it, npc &who, const tripoint_bub_ms &there) {
   return who.can_take_that(it) && who.wants_take_that(it) &&
@@ -907,15 +965,33 @@ void npc::assess_danger() {
                                    llm_state.target_turns_remaining > 0 &&
                                    !llm_state.target_hint.empty();
   bool sees_player = sees(here, player_character.pos_bub(here));
+  basecamp *camp_patrol_response_camp = nullptr;
+  if( assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 ) {
+    if( std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
+        camp && *camp && ( *camp )->has_patrol_zone() ) {
+      camp_patrol_response_camp = *camp;
+    }
+  }
+  const bool camp_patrol_response = camp_patrol_response_camp != nullptr;
+
   const bool self_defense_only =
-      !llm_attack_override && (rules.engagement == combat_engagement::NO_MOVE ||
-                               rules.engagement == combat_engagement::NONE);
+      !llm_attack_override && !camp_patrol_response &&
+      ( rules.engagement == combat_engagement::NO_MOVE ||
+        rules.engagement == combat_engagement::NONE );
   const bool no_fighting =
-      !llm_attack_override && rules.has_flag(ally_rule::forbid_engage);
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::forbid_engage);
   const bool must_retreat =
-      !llm_attack_override && rules.has_flag(ally_rule::follow_close) &&
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::follow_close) &&
       !too_close(pos_bub(), player_character.pos_bub(), follow_distance()) &&
       !is_guarding();
+
+  const auto raise_camp_patrol_alarm = [&]() {
+    if( camp_patrol_response_camp != nullptr ) {
+      camp_patrol_response_camp->raise_patrol_alarm( getID() );
+    }
+  };
 
     if( is_player_ally() ) {
         if( llm_attack_override ) {
@@ -992,12 +1068,23 @@ void npc::assess_danger() {
       continue;
     }
 
-    if (has_faction_relationship(guy,
+    if( attitude_to( guy ) == Attitude::HOSTILE &&
+        sees( here, guy.pos_bub( here ) ) ) {
+      raise_camp_patrol_alarm();
+      const bool shakedown_parley_member = camp_patrol_response &&
+          bandit_live_world::is_active_shakedown_parley_member(
+              overmap_buffer.global_state.bandit_live_world, guy.getID() );
+      if( shakedown_parley_member ) {
+        ai_cache.neutral_guys.emplace_back( g->shared_from( guy ) );
+        add_msg_debug( debugmode::DF_NPC_COMBATAI,
+                       "%s watches active shakedown contact %s without escalating patrol alarm to combat.",
+                       name, guy.disp_name() );
+      } else {
+        ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
+      }
+    } else if (has_faction_relationship(guy,
                                  npc_factions::relationship::watch_your_back)) {
       ai_cache.friends.emplace_back(g->shared_from(guy));
-    } else if (attitude_to(guy) != Attitude::NEUTRAL &&
-               sees(here, guy.pos_bub(here))) {
-      ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
     }
   }
     if( is_friendly( player_character ) && sees_player ) {
@@ -1025,6 +1112,7 @@ void npc::assess_danger() {
             continue;
         }
 
+        raise_camp_patrol_alarm();
         ai_cache.hostile_guys.emplace_back( g->shared_from( critter ) );
         // warn and consider the odds for distant enemies
         int dist = rl_dist( pos_bub(), critter.pos_bub() );
@@ -1121,7 +1209,7 @@ void npc::assess_danger() {
       }
     }
     // ignore distant monsters that our rules prevent us from attacking
-    if (!is_too_close && is_player_ally() &&
+    if (!camp_patrol_response && !is_too_close && is_player_ally() &&
         !ok_by_rules(critter, dist, scaled_distance)) {
       continue;
     }
@@ -1129,6 +1217,9 @@ void npc::assess_danger() {
     // threatening us or an ally
     float priority = std::max(critter_threat - 2.0f * (scaled_distance - 1.0f),
                               is_too_close ? critter_threat : 0.0f);
+    if( camp_patrol_response ) {
+      priority = std::max( priority, critter_threat );
+    }
     cur_threat_map[direction_from(pos_bub(), critter.pos_bub())] += priority;
         if( priority > highest_priority ) {
             highest_priority = priority;
@@ -1185,11 +1276,14 @@ void npc::assess_danger() {
       }
     }
 
-    if (!is_player_ally() || is_too_close ||
+    if (camp_patrol_response || !is_player_ally() || is_too_close ||
         ok_by_rules(foe, dist, scaled_distance)) {
       float priority = std::max(
           foe_threat - 2.0f * (scaled_distance - 1),
           is_too_close ? std::max(foe_threat, NPC_DANGER_VERY_LOW) : 0.0f);
+      if( camp_patrol_response ) {
+        priority = std::max( priority, foe_threat );
+      }
       cur_threat_map[direction_from(pos_bub(), foe.pos_bub())] += priority;
       if (priority > highest_priority) {
         warn_about(warning, 1_minutes);
@@ -4334,9 +4428,17 @@ bool npc::find_job_to_perform() {
             fetch_itr++;
         }
     }
+    auto cooldown_itr = job.activity_cooldowns.begin();
+    while( cooldown_itr != job.activity_cooldowns.end() ) {
+        if( cooldown_itr->second <= calendar::turn ) {
+            cooldown_itr = job.activity_cooldowns.erase( cooldown_itr );
+        } else {
+            cooldown_itr++;
+        }
+    }
 
     for( activity_id &elem : job.get_prioritised_vector() ) {
-        if( job.get_priority_of_job( elem ) == 0 ) {
+        if( job.get_priority_of_job( elem ) == 0 || job.is_job_blocked( elem ) ) {
             continue;
         }
         if( elem != ACT_CAMP_PATROL && assigned_camp ) {
@@ -4689,6 +4791,12 @@ void npc::find_item() {
     return;
   }
 
+    if( live_bandit_hot_defended_doorstep_pickup_blocked( *this ) ) {
+        fetching_item = false;
+        wanted_item = {};
+        return;
+    }
+
     fetching_item = false;
     wanted_item = {};
     int best_value = minimum_item_value();
@@ -4897,6 +5005,14 @@ void npc::pick_up_item() {
         mod_moves( -1 );
         return;
   }
+
+    if( !llm_targeted && live_bandit_hot_defended_doorstep_pickup_blocked( *this ) ) {
+        fetching_item = false;
+        wanted_item = {};
+        move_pause();
+        log_look_around_pickup( "canceled by hot defended doorstep" );
+        return;
+    }
 
   map &here = get_map();
   const std::optional<vpart_reference> vp =
@@ -5429,9 +5545,14 @@ bool npc::do_player_activity() {
             backlog.pop_front();
       current_activity_id = activity.id();
     } else {
-      if (is_player_ally()) {
-        add_msg(m_info, string_format(_("%s completed the assigned task."),
-                                      disp_name()));
+      if( is_player_ally() ) {
+        const std::string completion_message = string_format( _( "%s completed the assigned task." ),
+                                               disp_name() );
+        if( !assigned_camp || basecamp_ai::should_show_camp_job_report(
+                *this, basecamp_ai::camp_job_report_kind::completion,
+                string_format( "activity=%s", current_activity_id.str() ) ) ) {
+          add_msg( m_info, "%s", completion_message );
+        }
       }
       current_activity_id = activity_id::NULL_ID();
       revert_after_activity();

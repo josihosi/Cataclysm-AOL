@@ -233,13 +233,17 @@ if (NOT MSVC)
              -Wpedantic \
              -Wsuggest-override \
              -Wunused-macros \
-             -Wzero-as-null-pointer-constant \
-             -Wno-dangling-reference \
-             -Wno-c++20-compat")
+             -Wzero-as-null-pointer-constant")
+    check_cxx_compiler_flag(-Wdangling-reference HAVE_DANGLING_REFERENCE)
+    if (HAVE_DANGLING_REFERENCE)
+        set(CATA_WARNINGS "${CATA_WARNINGS} -Wno-dangling-reference")
+    endif ()
+    check_cxx_compiler_flag(-Wc++20-compat HAVE_CXX20_COMPAT)
+    if (HAVE_CXX20_COMPAT)
+        set(CATA_WARNINGS "${CATA_WARNINGS} -Wno-c++20-compat")
+    endif ()
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
         set(CATA_WARNINGS "${CATA_WARNINGS} -Wno-unknown-warning-option")
-    else()
-        set(CATA_WARNINGS "${CATA_WARNINGS} -Wno-unknown-warning")
     endif()
     if (NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
         set(CATA_WARNINGS "${CATA_WARNINGS} -Wredundant-decls")

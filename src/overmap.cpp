@@ -1307,6 +1307,7 @@ void overmap::clear_mon_groups()
 void overmap::clear_overmap_special_placements()
 {
     overmap_special_placements.clear();
+    overmap_special_placement_origins.clear();
 }
 
 void overmap::clear_connections_out()
@@ -2759,6 +2760,17 @@ std::optional<overmap_special_id> overmap::overmap_special_at( const tripoint_om
     return it->second;
 }
 
+std::optional<tripoint_om_omt> overmap::overmap_special_origin_at( const tripoint_om_omt &p ) const
+{
+    auto it = overmap_special_placement_origins.find( p );
+
+    if( it == overmap_special_placement_origins.end() ) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
 bool overmap::is_river_node( const point_om_omt &p ) const
 {
     return !!get_river_node_at( p );
@@ -3044,8 +3056,11 @@ std::vector<tripoint_om_omt> overmap::place_special(
     for( const std::pair<om_pos_dir, std::string> &join : result.joins_used ) {
         joins_used[join.first] = join.second;
     }
+    const tripoint_om_omt placement_origin = result.placement_origin == tripoint_om_omt::invalid ? p :
+                                             result.placement_origin;
     for( const tripoint_om_omt &location : result.omts_used ) {
         overmap_special_placements[location] = special.id;
+        overmap_special_placement_origins[location] = placement_origin;
         mapgen_args_index[location] = mapgen_args_p;
         if( is_safe_zone ) {
             safe_at_worldgen.emplace( location );

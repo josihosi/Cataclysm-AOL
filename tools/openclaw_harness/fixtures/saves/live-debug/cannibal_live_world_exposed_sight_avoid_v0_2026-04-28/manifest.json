@@ -1,0 +1,20 @@
+{
+  "name": "cannibal_live_world_exposed_sight_avoid_v0_2026-04-28",
+  "source_fixture": "bandit_local_sight_avoid_exposed_v0_2026-04-27",
+  "source_profile": "live-debug",
+  "description": "Cannibal live-world exposed-scout footing for audited product-proof scenario 3: inherit the existing local sight-avoid player placement, then seed a camp-shaped cannibal_camp over the same nearby hostile-site footprint. This keeps the proof bounded to the shared hostile-site substrate while requiring the same-run artifact to show cannibal_camp exposure/hold-off/sight-avoid behavior instead of a visible beeline or teleport.",
+  "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        8,
+        0
+      ]
+    }
+  ]
+}

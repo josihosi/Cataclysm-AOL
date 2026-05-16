@@ -1,0 +1,138 @@
+{
+  "name": "writhing_stalker.live_anti_gnome_bad_loiter_mcw",
+  "description": "Current-build staged/live night anti-gnome row: local-midnight McWilliams fixture moves the player onto the east outside sidewalk, with one hostile writhing stalker already at the bad-position loiter threshold on a reachable outside line. The bounded live window must emit anti_gnome=yes and resolve into a strike/reposition/retreat reason instead of passive window decor.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_anti_gnome_bad_loiter_stalker_2026-05-03",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "anti_gnome=yes",
+    "bad_loiter=2",
+    "reason=live_anti_gnome_night_reachable_probe_strike",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_anti_gnome_bad_loiter_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the harness-only midnight/bad-loiter writhing-stalker fixture loads to the normal live map before the anti-gnome window runs"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_midnight_before_anti_gnome_bad_loiter",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_anti_gnome_midnight_setup_missing",
+      "abort_reason": "installed save did not prove local midnight before the anti-gnome bad-loiter writhing-stalker staged row",
+      "expected_visible_fact": "saved-player turn metadata proves the fixture is at local midnight before the anti-gnome live row"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_outside_line_before_anti_gnome_scene",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_sidewalk",
+        "t_pavement"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_anti_gnome_outside_line_missing",
+      "abort_reason": "installed save did not contain the staged outside sidewalk/pavement line before the anti-gnome live row",
+      "expected_visible_fact": "saved map metadata proves the transformed player/stalker line is on outside sidewalk/pavement terrain before the anti-gnome live-plan window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_bad_loiter_stalker_before_anti_gnome_scene",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            3,
+            0,
+            0
+          ],
+          "values": {
+            "caol_writhing_stalker_bad_loiter_count": 2
+          }
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_anti_gnome_stalker_footing_missing",
+      "abort_reason": "installed save did not contain the transformed hostile writhing stalker with bad-loiter footing before the anti-gnome live row",
+      "expected_visible_fact": "saved active_monsters metadata proves the transformed fixture contains the hostile writhing stalker plus bad-position loiter counter before the live-plan window"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_anti_gnome_bad_loiter_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 200,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded anti-gnome live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_anti_gnome_bad_loiter_window",
+      "count": 12,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker live_plan:",
+        "anti_gnome=yes",
+        "bad_loiter=2",
+        "reason=live_anti_gnome_night_reachable_probe_strike",
+        "eval_us="
+      ],
+      "expected_visible_fact": "a short live turn window runs after the anti-gnome bad-loiter stalker fixture; feature proof depends on same-run writhing_stalker live_plan debug lines, not the screenshot alone",
+      "failure_rule": "if the artifact delta lacks an anti_gnome=yes live_plan line, this scene is inconclusive rather than green"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_anti_gnome_bad_loiter_live_plan",
+      "required_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike",
+          "reason=live_anti_gnome_night_reachable_probe_strike",
+          "evidence=yes",
+          "persistent=yes",
+          "bad_loiter=2",
+          "anti_gnome=yes",
+          "distance=3",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_anti_gnome_bad_loiter_live_plan_missing",
+      "abort_reason": "same-run debug artifact did not contain a live anti-gnome bad-loiter resolution line",
+      "expected_visible_fact": "same-run debug artifact proves the live monster-plan seam saw reachable midnight bad-position loiter and resolved it with the anti-gnome strike reason"
+    }
+  ],
+  "recommended_test_command": "make -j4 src/writhing_stalker_ai.o obj/monmove.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test \"[writhing_stalker]\" --reporter compact",
+  "evidence_contract": {
+    "claim": "current-build staged/live night/outside reachable bad-position loiter resolves into an anti-gnome action instead of passive window decor",
+    "setup_guard": "the run uses a harness-only local-midnight save transform plus a save-transformed hostile writhing stalker with bad-position loiter memory; the live_plan line must independently report anti_gnome=yes and the anti-gnome reason as live behavior evidence.",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker anti-gnome behavior",
+    "failure_rule": "No anti-gnome live-scene credit if startup/load, saved midnight guard, transformed stalker/bad-loiter footing, safe-mode-off live turn window, and same-run anti_gnome=yes live_plan line are not all present and classified separately."
+  }
+}

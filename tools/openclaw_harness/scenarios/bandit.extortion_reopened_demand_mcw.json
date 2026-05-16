@@ -1,0 +1,133 @@
+{
+  "name": "bandit.extortion_reopened_demand_mcw",
+  "description": "Bandit shakedown/toll-control regression: resume the McWilliams/Basecamp local-contact fixture with defender-loss reopen fields set, then prove the higher reopened demand still shows bounded Pay/Fight options for the bandit camp profile.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface",
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "demanded_toll=22116",
+    "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui",
+    "renegotiation reopen: previous defender loss raises this one bounded demand",
+    "pay_option=yes fight_option=yes",
+    "shakedown_trade_ui opened demanded=22116 reachable=45134",
+    "trade_api=npc_trading::trade",
+    "title=Pay:",
+    "player_pool=3211 nearby_npc_pool=5222 basecamp_npc_pool=0 scene_pool=36701"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "expected_visible_fact": "post-load gameplay screen for the reopened McWilliams bandit shakedown fixture; this is startup/load footing only",
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_gate_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_reopened_demand_surface_artifact",
+      "expected_immediate_state": "bounded turn advance reaches the reopened shakedown gate edge; proof is deferred to the same-run reopened demand artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_reopened_shakedown",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "reopened Bandit shakedown dialogue window is visible with the reopened-demand opening and player-facing Pay/Fight choices after the final local-contact turn",
+      "capture_after": true
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reopened_demand_surface_artifact",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=22116",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ],
+        [
+          "renegotiation reopen: previous defender loss raises this one bounded demand"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the reopened bandit camp-style demand surface, bounded higher toll, and pay/fight options",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reopened higher demanded toll, visible Pay/Fight responses, and the NPC trade UI payment bridge"
+    },
+    {
+      "kind": "press",
+      "label": "choose_reopened_pay",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Pay was selected from the visible reopened bandit shakedown dialogue; the actual NPC trade UI / trade window is now open with Pay: debt before any hidden surrender.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 80,
+      "expected_screen_text_after_contains": [
+        "F1 to auto balance"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_pay_did_not_open_trade_ui",
+      "abort_reason": "selecting Pay from the reopened demand did not visibly open the NPC trade UI with auto-balance controls"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reopened_trade_ui_opened_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_trade_ui opened",
+          "demanded=22116",
+          "reachable=45134",
+          "player_pool=3211",
+          "nearby_npc_pool=5222",
+          "basecamp_npc_pool=0",
+          "scene_pool=36701",
+          "trade_api=npc_trading::trade",
+          "title=Pay:"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_trade_ui_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove choosing Pay opened the actual NPC trade API / trade window over the whole honest basecamp-side pool before goods were surrendered",
+      "expected_immediate_state": "same-run debug log names the actual NPC trade API, Pay: debt title, demanded/reachable values, and the honest pool components: player carried, nearby NPC/faction, and scene/basecamp goods"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw",
+  "evidence_contract": {
+    "claim": "a prior defender-loss reopen produces one bounded higher bandit shakedown demand while keeping the player-visible Pay/Fight surface; choosing Pay opens the actual NPC trade UI / trade window with the higher Pay: debt",
+    "load_only_verdict": "load proof only / inconclusive for reopened shakedown behavior",
+    "failure_rule": "No reopened-demand Pay credit unless startup/load, visible Pay/Fight demand surface, same-run camp_style/open_shakedown artifact, bounded higher demanded toll, reopen note, visible NPC trade UI, and same-run actual NPC trade-ui-open artifact with player/NPC/scene pool components are all green/matched."
+  }
+}

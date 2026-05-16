@@ -20,6 +20,7 @@
 
 #include "all_enum_values.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "calendar.h"
 #include "cata_assert.h"
 #include "cata_utility.h"
@@ -6933,9 +6934,31 @@ character_id map::place_npc( const point_bub_ms &p, const string_id<npc_template
     shared_ptr_fast<npc> temp = make_shared_fast<npc>();
     temp->normalize();
     temp->load_npc_template( type );
-    temp->spawn_at_precise( get_abs( { p, abs_sub.z() } ) );
+    const tripoint_abs_ms spawn_abs = get_abs( { p, abs_sub.z() } );
+    temp->spawn_at_precise( spawn_abs );
     temp->toggle_trait( trait_NPC_STATIC_NPC );
     overmap_buffer.insert_npc( temp );
+
+    const tripoint_abs_omt spawn_omt = project_to<coords::omt>( spawn_abs );
+    std::optional<std::string> overmap_special_string;
+    if( const auto special = overmap_buffer.overmap_special_at( spawn_omt ) ) {
+        overmap_special_string = special->str();
+    }
+
+    std::optional<std::string> map_extra_id;
+    if( overmap_buffer.has_extra( spawn_omt ) ) {
+        map_extra_id = overmap_buffer.extra( spawn_omt ).str();
+    }
+
+    bandit_live_world::claim_tracked_spawn( overmap_buffer.global_state.bandit_live_world,
+                                            type.str(), temp->getID(), spawn_abs,
+                                            overmap_special_string, map_extra_id,
+                                            [&]( const tripoint_abs_omt & candidate ) -> std::optional<std::string> {
+        if( const auto candidate_special = overmap_buffer.overmap_special_at( candidate ) ) {
+            return candidate_special->str();
+        }
+        return std::nullopt;
+    } );
     return temp->getID();
 }
 

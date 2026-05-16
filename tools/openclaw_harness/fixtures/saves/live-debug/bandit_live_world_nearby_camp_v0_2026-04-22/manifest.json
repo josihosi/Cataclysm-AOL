@@ -1,0 +1,19 @@
+{
+  "name": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Nearby controlled-camp restage footing for the live-world packet: reuse the thin McWilliams/Basecamp playtest-kit save and seed a real bandit_camp overmap-special placement about 10 OMT from the existing player/basecamp footing so current-build load generates a nearby owned hostile site without throwing the old camp out of bubble.",
+  "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        10,
+        0
+      ]
+    }
+  ]
+}

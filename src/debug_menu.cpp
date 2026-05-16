@@ -156,7 +156,9 @@ static const itype_id itype_debug_backpack( "debug_backpack" );
 
 static const matype_id style_none( "style_none" );
 
-static const mongroup_id GROUP_DEBUG_EXACTLY_ONE( "GROUP_DEBUG_EXACTLY_ONE" );
+static const mongroup_id GROUP_DEBUG_MEDIUM_HORDE( "GROUP_DEBUG_MEDIUM_HORDE" );
+static const mongroup_id GROUP_DEBUG_WRITHING_STALKER( "GROUP_DEBUG_WRITHING_STALKER" );
+static const mongroup_id GROUP_DEBUG_ZOMBIE_RIDER( "GROUP_DEBUG_ZOMBIE_RIDER" );
 
 static const morale_type morale_perm_debug( "morale_perm_debug" );
 
@@ -516,6 +518,37 @@ void write_min_archive()
 
 namespace debug_menu
 {
+
+std::vector<overmap_spawn_option> overmap_spawn_options()
+{
+    return {
+        { "medium_horde_5_omt", _( "Medium zombie horde — 5 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 5, '5' },
+        { "medium_horde_10_omt", _( "Medium zombie horde — 10 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 10, '0' },
+        { "writhing_stalker_5_omt", _( "Writhing stalker — 5 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 5, 's' },
+        { "writhing_stalker_10_omt", _( "Writhing stalker — 10 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 10, 'S' },
+        { "zombie_rider_5_omt", _( "Zombie rider — 5 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 5, 'r' },
+        { "zombie_rider_10_omt", _( "Zombie rider — 10 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 10, 'R' },
+    };
+}
+
+tripoint_abs_sm overmap_spawn_destination( const tripoint_abs_ms &player_abs_ms, const int distance_omt )
+{
+    const int distance_ms = distance_omt * coords::map_squares_per( coords::scale::overmap_terrain );
+    return project_to<coords::sm>( player_abs_ms + point{ 0, -distance_ms } );
+}
+
+void spawn_overmap_threat( const overmap_spawn_option &option )
+{
+    const tripoint_abs_sm destination = overmap_spawn_destination( get_player_character().pos_abs(),
+                                         option.distance_omt );
+    overmap_buffer.spawn_mongroup( destination, option.group, option.population );
+    add_msg( m_good, _( "Spawned %s." ), option.label );
+    DebugLog( D_INFO, DC_ALL ) << "debug overmap_spawn: id=" << option.id
+                               << " group=" << option.group.str()
+                               << " population=" << option.population
+                               << " distance_omt=" << option.distance_omt
+                               << " destination_sm=" << destination.to_string();
+}
 
 class mission_debug
 {
@@ -1050,7 +1083,7 @@ static int spawning_uilist()
         { uilist_entry( debug_menu_index::SPAWN_VEHICLE, true, 'v', _( "Spawn a vehicle" ) ) },
         { uilist_entry( debug_menu_index::SPAWN_ARTIFACT, true, 'a', _( "Spawn artifact" ) ) },
         { uilist_entry( debug_menu_index::SPAWN_CLAIRVOYANCE, true, 'c', _( "Spawn clairvoyance artifact" ) ) },
-        { uilist_entry( debug_menu_index::SPAWN_HORDE, true, 'H', _( "Spawn a dummy horde twenty submaps(10 OMTs) to the north" ) ) },
+        { uilist_entry( debug_menu_index::SPAWN_HORDE, true, 'H', _( "Spawn overmap horde/stalker/rider threat…" ) ) },
     };
 
     return uilist( _( "Spawning…" ), uilist_initializer );
@@ -4149,9 +4182,18 @@ void debug()
         break;
 
         case debug_menu_index::SPAWN_HORDE: {
-            const tripoint_abs_ms &player_abs_ms = get_player_character().pos_abs();
-            tripoint_abs_sm horde_dest = project_to<coords::sm>( player_abs_ms + point{0, -240} );
-            overmap_buffer.spawn_mongroup( horde_dest, GROUP_DEBUG_EXACTLY_ONE, 1 );
+            const std::vector<debug_menu::overmap_spawn_option> options =
+                debug_menu::overmap_spawn_options();
+            uilist spawn_query;
+            spawn_query.title = _( "Spawn which overmap threat?" );
+            for( size_t i = 0; i < options.size(); ++i ) {
+                spawn_query.addentry( i, true, options[i].hotkey, options[i].label );
+            }
+            spawn_query.query();
+            if( spawn_query.ret < 0 || static_cast<size_t>( spawn_query.ret ) >= options.size() ) {
+                break;
+            }
+            debug_menu::spawn_overmap_threat( options[spawn_query.ret] );
         }
         break;
 

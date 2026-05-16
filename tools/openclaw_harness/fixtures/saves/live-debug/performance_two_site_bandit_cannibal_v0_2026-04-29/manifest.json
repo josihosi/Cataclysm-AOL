@@ -1,0 +1,20 @@
+{
+  "name": "performance_two_site_bandit_cannibal_v0_2026-04-29",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Two-site performance-audit footing: starts from the green one-site remembered-lead bandit fixture, then seeds a second camp-shaped cannibal_camp 10 OMT east of the player. It deliberately does not seed smoke/fire/map fields, so the row measures mixed bandit+cannibal active hostile-site cadence with signals=0 rather than signal responsiveness or blocked player-lit fire behavior.",
+  "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        10,
+        0,
+        0
+      ]
+    }
+  ]
+}

@@ -668,6 +668,10 @@ class overmap
         // can be used after placement to lookup whether a given location was created
         // as part of a special.
         std::unordered_map<tripoint_om_omt, overmap_special_id> overmap_special_placements;
+        // Records the placement origin for each overmap-special OMT so callers can
+        // distinguish one site instance from another instead of flattening every
+        // copy of the same special into one anonymous bucket.
+        std::unordered_map<tripoint_om_omt, tripoint_om_omt> overmap_special_placement_origins;
         // Records location where mongroups are not allowed to spawn during worldgen.
         // Reconstructed on load, so need not be serialized.
         std::unordered_set<tripoint_om_omt> safe_at_worldgen; // NOLINT(cata-serialize)
@@ -915,6 +919,7 @@ class overmap
         bool check_overmap_special_type( const overmap_special_id &id,
                                          const tripoint_om_omt &location ) const;
         std::optional<overmap_special_id> overmap_special_at( const tripoint_om_omt &p ) const;
+        std::optional<tripoint_om_omt> overmap_special_origin_at( const tripoint_om_omt &p ) const;
 
         //gets border OMT points of this overmap in cardinal direction
         std::vector<tripoint_om_omt> get_border( const point_rel_om &direction, int z,

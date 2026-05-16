@@ -1,0 +1,108 @@
+{
+  "name": "bandit.basecamp_playtestkit_restage_mcw",
+  "description": "Playtest-kit base restage seam on the named bandit/Basecamp pack alias: fast reinstall the stable pack, restage one hostile named bandit, and capture the menu plus immediate post-spawn proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_named_npc_spawn_path",
+      "keys": [
+        "}",
+        "s",
+        "p"
+      ],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "capture",
+      "label": "capture_named_npc_spawn_menu",
+      "capture_crop": {
+        "x": 1080,
+        "y": 10,
+        "width": 420,
+        "height": 1080
+      },
+      "extract_text": true,
+      "extract_text_tail_lines": 10
+    },
+    {
+      "kind": "press",
+      "label": "open_menu_filter",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "filter_bandit_template",
+      "text": "bandit",
+      "submit": true,
+      "settle_seconds": 0.75,
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 1080,
+        "y": 10,
+        "width": 420,
+        "height": 1080
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 10
+    },
+    {
+      "kind": "press",
+      "label": "confirm_filtered_entry",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "wait",
+      "label": "post_spawn_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 2080,
+        "y": 140,
+        "width": 440,
+        "height": 1160
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 18
+    }
+  ],
+  "repeatability_count": 3,
+  "repeatability_expectations": [
+    {
+      "label": "filter_bandit_template.after",
+      "contains": [
+        "Choose NPC:",
+        "3 bandit",
+        "bandit_trader",
+        "bandit_mechanic",
+        "bandit_quartermaster"
+      ]
+    },
+    {
+      "label": "post_spawn_settle.after",
+      "contains": [
+        "Bandit gets angry!"
+      ]
+    }
+  ],
+  "recommended_test_command": "none (playtest-kit helper packet; the missing evidence is live restage/report/fixture usability)"
+}

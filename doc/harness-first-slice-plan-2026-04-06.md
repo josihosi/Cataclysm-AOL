@@ -1,6 +1,6 @@
 # Harness first-slice plan (2026-04-06)
 
-Status: active auxiliary for the current `Plan.md` hackathon-runway lane.
+Status: historical auxiliary for the earlier stabilization/harness lane in `Plan.md`.
 
 ## Why this exists
 

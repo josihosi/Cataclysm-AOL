@@ -1,6 +1,9 @@
 {
   "name": "smart_zone.live_probe_mcw_prepped",
-  "description": "Smart Zone Manager v1 live proof on a freshly prepared McWilliams save: deploy a brazier fire-source anchor, add a Basecamp storage zone over the camp area, accept the one-shot smart-zoning prompt, and capture the resulting stamped layout. Requires the McWilliams dev-harness save to be prepped with existing zones cleared before launch.",
+  "description": "BLOCKED legacy Smart Zone Manager v1 probe on the old McWilliams footing. Do not rerun for closure: the save can be bandit/safe-mode contaminated, and repeated Zone Manager macro failures here are inconclusive rather than product evidence.",
+  "status": "blocked",
+  "blocked_reason": "Smart Zone live probe failure #2: McWilliams footing can be bandit-adjacent and safe-mode contaminated. Use smart_zone.live_probe_safe_clean instead; if safe mode triggers before zone setup, stop as inconclusive_safe_mode.",
+  "required_helpers": ["smart_zone.live_probe_safe_clean"],
   "profile": "dev-harness",
   "world": "McWilliams",
   "artifact_pattern": "Smart Zone Manager",

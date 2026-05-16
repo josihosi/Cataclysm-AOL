@@ -113,9 +113,7 @@ CXX_WARNINGS = \
   -Wold-style-cast \
   -Woverloaded-virtual \
   -Wsuggest-override \
-  -Wzero-as-null-pointer-constant \
-  -Wno-dangling-reference \
-  -Wno-c++20-compat
+  -Wzero-as-null-pointer-constant
 ifeq ($(NATIVE), emscripten)
   # The EM_ASM macro triggers this warning.
   WARNINGS += -Wno-gnu-zero-variadic-macro-arguments
@@ -387,6 +385,8 @@ ifneq ($(CLANG), 0)
     LD  = $(CROSS)$(CLANGCMD)
     CC  = $(CROSS)$(subst ++,,$(CLANGCMD))
   endif
+  CXX_WARNINGS += -Wno-dangling-reference
+  CXX_WARNINGS += -Wno-c++20-compat
   CXX_WARNINGS += -Wno-unknown-warning-option
   WARNINGS += -Wno-unknown-warning-option
 else
@@ -412,11 +412,19 @@ else
     CXX = $(CROSS)$(OS_COMPILER)
     LD  = $(CROSS)$(OS_LINKER)
   endif
-  CXX_WARNINGS += -Wno-unknown-warning
   # GCC 15 emits free-nonheap-object false positives in some std::vector paths
   # (seen in input_context.cpp with MinGW/UCRT). Keep this diagnostic as warning.
   CXX_WARNINGS += -Wno-error=free-nonheap-object
-  WARNINGS += -Wno-unknown-warning
+
+  # GCC 15 warns on int_id<T>::obj() references taken from temporary id wrappers,
+  # even though the returned objects live in the global factories.  Suppress the
+  # false-positive diagnostic when the compiler knows the flag.
+  ifeq ($(shell echo 'int main(){return 0;}' | $(CXX) -Wno-dangling-reference -Werror -x c++ - -c -o /dev/null >/dev/null 2>&1 && echo yes),yes)
+    CXX_WARNINGS += -Wno-dangling-reference
+  endif
+  ifeq ($(shell echo 'int main(){return 0;}' | $(CXX) -Wno-c++20-compat -Werror -x c++ - -c -o /dev/null >/dev/null 2>&1 && echo yes),yes)
+    CXX_WARNINGS += -Wno-c++20-compat
+  endif
 endif
 
 STRIP = $(CROSS)strip
@@ -1367,7 +1375,7 @@ ifeq ($(SOUND), 1)
 	cp -R $(FRAMEWORKSDIR)/SDL2_mixer.framework $(APPRESOURCESDIR)/
 endif  # ifeq ($(SOUND), 1)
 endif  # ifdef FRAMEWORK
-	dylibbundler -of -b -x $(APPRESOURCESDIR)/$(APPTARGET) -d $(APPRESOURCESDIR)/ -p @executable_path/ || true
+	bash build-data/osx/bundle_portable_dependencies.sh $(APPTARGETDIR) $(APPRESOURCESDIR)/$(APPTARGET)
 
 dmgdistclean:
 	rm -rf Cataclysm

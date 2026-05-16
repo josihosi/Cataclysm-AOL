@@ -173,6 +173,7 @@ struct camp_llm_request {
 enum class camp_locker_slot : int {
   underwear,
   socks,
+  gloves,
   shoes,
   pants,
   shirt,
@@ -180,6 +181,9 @@ enum class camp_locker_slot : int {
   body_armor,
   helmet,
   glasses,
+  mask,
+  belt,
+  holster,
   bag,
   melee_weapon,
   ranged_weapon,
@@ -189,10 +193,13 @@ enum class camp_locker_slot : int {
 struct camp_locker_policy {
   std::array<bool, static_cast<size_t>(camp_locker_slot::num_slots)>
       enabled_slots{};
+  bool prefer_bulletproof = false;
 
   camp_locker_policy();
   bool is_enabled(camp_locker_slot slot) const;
   void set_enabled(camp_locker_slot slot, bool enabled);
+  bool prefers_bulletproof() const;
+  void set_prefers_bulletproof( bool enabled );
   int enabled_count() const;
 };
 
@@ -211,6 +218,37 @@ struct camp_locker_reservation {
 
 using camp_locker_candidate_map =
     std::map<camp_locker_slot, std::vector<const item *>>;
+
+struct camp_locker_service_metrics {
+  int zone_item_collection_calls = 0;
+  int zone_tile_visits = 0;
+  int zone_top_level_items_seen = 0;
+  int zone_reserved_items_skipped = 0;
+  int zone_items_returned = 0;
+  int candidate_item_checks = 0;
+  int candidate_items_accepted = 0;
+  int compatible_magazine_item_checks = 0;
+  int compatible_ammo_item_checks = 0;
+};
+
+struct camp_locker_service_probe {
+  camp_locker_service_metrics metrics;
+  bool applied_changes = false;
+  int locker_tile_count = 0;
+  int current_item_count = 0;
+  int worker_item_count = 0;
+  int locker_item_count = 0;
+  int candidate_item_count = 0;
+  int changed_slot_count = 0;
+  int cleanup_item_count = 0;
+  int magazines_to_take = 0;
+  int magazines_to_reload = 0;
+  int medical_supplies_to_take = 0;
+};
+
+std::string render_camp_locker_service_probe(
+    const camp_locker_service_probe &probe);
+
 using camp_patrol_cluster = std::vector<tripoint_abs_ms>;
 
 enum class camp_patrol_shift : int {
@@ -292,11 +330,14 @@ using camp_locker_plan = std::map<camp_locker_slot, camp_locker_slot_plan>;
 
 std::optional<camp_locker_slot> classify_camp_locker_item(const item &it);
 int score_camp_locker_item(
-    camp_locker_slot slot, const item &it,
-    const std::optional<units::temperature> &local_temperature = std::nullopt);
+    camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
+    const std::optional<units::temperature> &local_temperature = std::nullopt,
+    bool wet_weather = false, const Character *fit_context = nullptr);
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
-    const std::optional<units::temperature> &local_temperature = std::nullopt);
+    const camp_locker_policy &policy,
+    const std::optional<units::temperature> &local_temperature = std::nullopt,
+    bool wet_weather = false, const Character *fit_context = nullptr);
 camp_locker_candidate_map
 collect_camp_locker_candidates(const std::vector<const item *> &items,
                                const camp_locker_policy &policy);
@@ -314,7 +355,8 @@ plan_camp_locker_loadout(
     const std::vector<const item *> &current_items,
     const camp_locker_candidate_map &locker_candidates,
     const camp_locker_policy &policy,
-    const std::optional<units::temperature> &local_temperature = std::nullopt);
+    const std::optional<units::temperature> &local_temperature = std::nullopt,
+    bool wet_weather = false, const Character *fit_context = nullptr);
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_patrol_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,
@@ -387,7 +429,7 @@ struct camp_craft_recipe_candidate {
 };
 
 struct resolved_camp_craft_recipe {
-    recipe_id recipe_id;
+    recipe_id recipe;
     std::string subject;
     camp_craft_recipe_candidate candidate;
 };
@@ -397,6 +439,14 @@ enum class camp_craft_resolution_outcome {
     MATCH_BLOCKED,
     MATCH_AMBIGUOUS,
     NO_MATCH,
+};
+
+enum class camp_job_report_kind {
+    completion,
+    missing_tool,
+    no_progress,
+    locker_exception,
+    patrol_exception,
 };
 
 struct camp_craft_resolution {
@@ -475,6 +525,10 @@ camp_craft_resolution resolve_camp_craft_query(
     std::string_view query,
     const std::function<camp_craft_recipe_candidate(const recipe &)>
         &evaluate_recipe);
+std::string camp_job_report_kind_token( camp_job_report_kind kind );
+bool should_show_camp_job_report( const npc &worker, camp_job_report_kind kind,
+                                  std::string_view stable_cause );
+void reset_camp_job_report_debounce();
 
 } // namespace basecamp_ai
 
@@ -877,11 +931,17 @@ public:
       const character_id &worker_id,
       camp_patrol_interrupt_reason reason =
           camp_patrol_interrupt_reason::explicit_reassignment);
+  bool raise_patrol_alarm(const character_id &spotter_id,
+                          time_duration duration = 30_minutes);
+  bool is_patrol_alarm_active() const;
   void mark_camp_locker_dirty(npc &worker, bool high_priority = false);
   bool process_camp_locker_downtime(npc &worker);
   bool service_camp_locker(npc &worker);
+  camp_locker_service_probe measure_camp_locker_service(npc &worker);
   bool is_locker_slot_enabled(camp_locker_slot slot) const;
   void set_locker_slot_enabled(camp_locker_slot slot, bool enabled);
+  bool locker_prefers_bulletproof() const;
+  void set_locker_prefers_bulletproof( bool enabled );
   const camp_locker_policy &get_locker_policy() const { return locker_policy; }
   void form_storage_zones(map &here, const tripoint_abs_ms &abspos);
   map &get_camp_map();
@@ -900,6 +960,9 @@ private:
   bool can_assign_crafting_worker(const npc &worker, const recipe &making,
                                   bool require_available,
                                   std::string *reason = nullptr) const;
+  bool service_camp_locker_impl(npc &worker,
+                                camp_locker_service_probe *probe,
+                                bool verbose_logging = true);
   npc_ptr resolve_crafting_worker(
       const recipe &making, int batch_size,
       const character_id &preferred_worker_id = character_id(),
@@ -943,7 +1006,9 @@ private:
   bool patrol_shift_cache_valid = false;
   int patrol_shift_cache_day = -1;
   camp_patrol_shift patrol_shift_cache_kind = camp_patrol_shift::day;
+  bool patrol_shift_cache_alarm_active = false;
   camp_patrol_shift_plan patrol_shift_cache;
+  time_point patrol_alarm_until = calendar::turn_zero;
   std::vector<character_id> locker_service_queue;
   time_point locker_next_service_turn = calendar::turn_zero;
   std::vector<camp_locker_reservation> locker_reservations; // NOLINT(cata-serialize)

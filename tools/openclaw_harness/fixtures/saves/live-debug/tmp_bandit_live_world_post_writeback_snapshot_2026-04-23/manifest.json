@@ -1,0 +1,13 @@
+{
+  "name": "tmp_bandit_live_world_post_writeback_snapshot_2026-04-23",
+  "description": "Disposable follow-through footing copied from harness run 20260423_055255 after the nearby scout wrote back home; used to test whether the same owned site can re-dispatch once the player is brought back to basecamp footing.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, -10, 0]
+    }
+  ]
+}
