@@ -39,6 +39,8 @@
 #include "color.h"
 #include "construction.h"
 #include "coordinates.h"
+#include "crafting.h"
+#include "crafting_enums.h"
 #include "creature.h"
 #include "creature_tracker.h"
 #include "cuboid_rectangle.h"
@@ -53,6 +55,7 @@
 #include "field.h"
 #include "field_type.h"
 #include "flag.h"
+#include "flat_set.h" // IWYU pragma: keep
 #include "flexbuffer_json.h"
 #include "fungal_effects.h"
 #include "game.h"
@@ -102,6 +105,7 @@
 #include "pocket_type.h"
 #include "point.h"
 #include "popup.h" // For play_game
+#include "proficiency.h"
 #include "recipe.h"
 #include "recipe_dictionary.h"
 #include "requirements.h"
@@ -247,7 +251,11 @@ static const efftype_id effect_weak_antibiotic_visible( "weak_antibiotic_visible
 static const efftype_id effect_webbed( "webbed" );
 static const efftype_id effect_weed_high( "weed_high" );
 
+static const flag_id json_flag_NO_MANUAL_ACTIVATION( "NO_MANUAL_ACTIVATION" );
+
 static const furn_str_id furn_f_translocator_buoy( "f_translocator_buoy" );
+
+static const gun_mode_id gun_mode_DEFAULT( "DEFAULT" );
 
 static const itype_id itype_advanced_ecig( "advanced_ecig" );
 static const itype_id itype_apparatus( "apparatus" );
@@ -311,6 +319,7 @@ static const itype_id itype_water_purifying_active( "water_purifying_active" );
 static const itype_id itype_wax( "wax" );
 static const itype_id itype_weather_reader( "weather_reader" );
 
+static const json_character_flag json_flag_CANNOT_USE_COMPUTERS( "CANNOT_USE_COMPUTERS" );
 static const json_character_flag json_flag_ENHANCED_VISION( "ENHANCED_VISION" );
 static const json_character_flag json_flag_HYPEROPIC( "HYPEROPIC" );
 static const json_character_flag json_flag_PAIN_IMMUNE( "PAIN_IMMUNE" );
@@ -2039,7 +2048,7 @@ class exosuit_interact
             if( !pkt->get_pocket_data()->pocket_name.empty() ) {
                 return pkt->get_pocket_data()->pocket_name.translated();
             }
-            const std::set<flag_id> flags = pkt->get_pocket_data()->get_flag_restrictions();
+            const pocket_data::FlagsSetType &flags = pkt->get_pocket_data()->get_flag_restrictions();
             return enumerate_as_string( flags, []( const flag_id & fid ) {
                 if( fid->name().empty() ) {
                     return fid.str();
@@ -2181,7 +2190,7 @@ class exosuit_interact
         int insert_replace_activate_mod( item_pocket *pkt, item *it ) {
             Character &c = get_player_character();
             map &here = get_map();
-            const std::set<flag_id> flags = pkt->get_pocket_data()->get_flag_restrictions();
+            const pocket_data::FlagsSetType &flags = pkt->get_pocket_data()->get_flag_restrictions();
             if( flags.empty() ) {
                 //~ Modular exoskeletons require pocket restrictions to insert modules. %s = pocket name.
                 popup( _( "%s doesn't define any restrictions for modules!" ), get_pocket_name( pkt ) );
@@ -2945,10 +2954,10 @@ std::optional<int> iuse::dig( Character *p, item *it, const tripoint_bub_ms & )
 
     std::vector<construction> const &cnstr = get_constructions();
     auto const build = std::find_if( cnstr.begin(), cnstr.end(), []( const construction & it ) {
-        return it.str_id == construction_constr_pit;
+        return it.id == construction_constr_pit;
     } );
     auto const build_shallow = std::find_if( cnstr.begin(), cnstr.end(), []( const construction & it ) {
-        return it.str_id == construction_constr_pit_shallow;
+        return it.id == construction_constr_pit_shallow;
     } );
 
     place_construction( { build->group, build_shallow->group } );
@@ -2969,7 +2978,7 @@ std::optional<int> iuse::dig_channel( Character *p, item *it, const tripoint_bub
 
     std::vector<construction> const &cnstr = get_constructions();
     auto const build = std::find_if( cnstr.begin(), cnstr.end(), []( const construction & it ) {
-        return it.str_id == construction_constr_water_channel;
+        return it.id == construction_constr_water_channel;
     } );
 
     place_construction( { build->group } );
@@ -2989,7 +2998,7 @@ std::optional<int> iuse::fill_pit( Character *p, item *it, const tripoint_bub_ms
 
     std::vector<construction> const &cnstr = get_constructions();
     auto const build = std::find_if( cnstr.begin(), cnstr.end(), []( const construction & it ) {
-        return it.str_id == construction_constr_fill_pit;
+        return it.id == construction_constr_fill_pit;
     } );
 
     place_construction( { build->group } );
@@ -3009,7 +3018,7 @@ std::optional<int> iuse::clear_rubble( Character *p, item *it, const tripoint_bu
 
     std::vector<construction> const &cnstr = get_constructions();
     auto const build = std::find_if( cnstr.begin(), cnstr.end(), []( const construction & it ) {
-        return it.str_id == construction_constr_clear_rubble;
+        return it.id == construction_constr_clear_rubble;
     } );
 
     place_construction( { build->group } );
@@ -4787,7 +4796,18 @@ std::optional<int> iuse::hacksaw( Character *p, item *it, const tripoint_bub_ms 
     const std::string time_string = colorize( to_string( required_time, true ), c_light_gray );
     query += time_string;
 
-    if( it->ammo_required() ) {
+    if( it->uses_firing_requirements() ) {
+        const int per_turn = std::max( 1, static_cast<int>( p->get_speed() * weary_mult ) );
+        const int first_tick = std::min( required_moves,
+                                         std::max( 1, static_cast<int>( p->get_moves() * weary_mult ) ) );
+        const int remaining = std::max( 0, required_moves - first_tick );
+        const int turns = 1 + ( remaining + per_turn - 1 ) / per_turn;
+        query += "\n";
+        query += string_format( _( "This will require: %s." ),
+                                it->format_consumption_requirements( "HACKSAW",
+                                        gun_mode_DEFAULT,
+                                        std::max( 1, turns ) ) );
+    } else if( it->ammo_required() ) {
         const int charges_needed = it->ammo_required() * required_moves / 100;
         query += "\n";
         if( it->ammo_current()->nname( charges_needed ) == "battery" ) {
@@ -5423,6 +5443,11 @@ std::optional<int> iuse::robotcontrol( Character *p, item *it, const tripoint_bu
             return std::nullopt;
         }
 
+        if( p->has_flag( json_flag_CANNOT_USE_COMPUTERS ) ) {
+            p->add_msg_if_player( m_info, _( "You don't have any idea how to operate that." ) );
+            return std::nullopt;
+        }
+
         if( p->has_flag( json_flag_HYPEROPIC ) && !p->worn_with_flag( flag_FIX_FARSIGHT ) &&
             !p->has_effect( effect_contacts ) && !p->has_effect( effect_transition_contacts ) &&
             !p->has_flag( json_flag_ENHANCED_VISION ) ) {
@@ -5586,6 +5611,11 @@ std::optional<int> iuse::efiledevice( Character *p, item *it, const tripoint_bub
         return std::nullopt;
     }
     if( p->cant_do_underwater() ) {
+        return std::nullopt;
+    }
+    if( p->has_flag( json_flag_CANNOT_USE_COMPUTERS ) ) {
+        p->add_msg_if_player( m_info,
+                              _( "You push some buttons but have no idea how to get it to work." ) );
         return std::nullopt;
     }
     if( p->has_trait( trait_ILLITERATE ) ) {
@@ -6474,6 +6504,7 @@ void item::write_extended_photos( const std::vector<extended_photo_def> &extende
     JsonOut json( extended_photos_data );
     json.write( extended_photos );
     set_var( var_name, extended_photos_data.str() );
+    set_var( var_name + "_count", static_cast<int>( extended_photos.size() ) );
 }
 
 static bool show_photo_selection( Character &p, item &it, const std::string &var_name )
@@ -6534,6 +6565,7 @@ static bool show_photo_selection( Character &p, item &it, const std::string &var
 
 std::optional<int> iuse::camera( Character *p, item *it, const tripoint_bub_ms & )
 {
+
     enum {c_shot, c_view};
 
     // From item processing
@@ -7634,9 +7666,9 @@ std::optional<int> iuse::multicooker( Character *p, item *it, const tripoint_bub
             const recipe *meal = dishes[choice];
             int mealtime;
             if( it->get_var( "MULTI_COOK_UPGRADE" ) == "UPGRADE" ) {
-                mealtime = meal->time_to_craft_moves( *p, recipe_time_flag::ignore_proficiencies );
+                mealtime = meal->time_to_craft_moves( *p, {}, recipe_time_flag::ignore_proficiencies );
             } else {
-                mealtime = meal->time_to_craft_moves( *p, recipe_time_flag::ignore_proficiencies ) * 2;
+                mealtime = meal->time_to_craft_moves( *p, {}, recipe_time_flag::ignore_proficiencies ) * 2;
             }
 
             const int all_charges = charges_to_start + mealtime * units::to_watt(
@@ -8623,9 +8655,11 @@ std::optional<int> iuse::wash_items( Character *p, bool soft_items, bool hard_it
                               crafting_inv.charges_of( itype_water, INT_MAX, is_liquid ),
                               crafting_inv.charges_of( itype_water_clean, INT_MAX, is_liquid )
                           );
-    int available_cleanser = std::max( crafting_inv.charges_of( itype_soap ),
-                                       std::max( crafting_inv.charges_of( itype_detergent ),
-                                               crafting_inv.charges_of( itype_liquid_soap, INT_MAX, is_liquid ) ) );
+    int available_cleanser = std::max( {
+        crafting_inv.charges_of( itype_soap ),
+        crafting_inv.charges_of( itype_detergent ),
+        crafting_inv.charges_of( itype_liquid_soap, INT_MAX, is_liquid )
+    } );
 
     const inventory_filter_preset preset( [soft_items, hard_items]( const item_location & location ) {
         return location->has_flag( flag_FILTHY ) && !location->has_flag( flag_NO_CLEAN ) &&
@@ -8716,11 +8750,11 @@ std::optional<int> iuse::break_stick( Character *p, item *it, const tripoint_bub
 
     if( p->get_str() < 5 ) {
         p->add_msg_if_player( _( "You are too weak to even try." ) );
-        return 0;
+        return std::nullopt;
     } else if( p->get_str() <= rng( 5, 11 ) ) {
         p->add_msg_if_player(
             _( "You use all your strength, but the stick won't break.  Perhaps try again?" ) );
-        return 0;
+        return std::nullopt;
     }
     std::vector<item_comp> comps;
     comps.emplace_back( it->typeId(), 1 );
@@ -8730,16 +8764,13 @@ std::optional<int> iuse::break_stick( Character *p, item *it, const tripoint_bub
     if( chance <= 20 ) {
         p->add_msg_if_player( _( "You try to break the stick in two, but it shatters into splinters." ) );
         here.spawn_item( p->pos_bub(), itype_splinter, 2 );
-        return 1;
     } else if( chance <= 40 ) {
         p->add_msg_if_player( _( "The stick breaks clean into two parts." ) );
         here.spawn_item( p->pos_bub(), itype_stick, 2 );
-        return 1;
     } else if( chance <= 100 ) {
         p->add_msg_if_player( _( "You break the stick, but one half shatters into splinters." ) );
         here.spawn_item( p->pos_bub(), itype_stick, 1 );
         here.spawn_item( p->pos_bub(), itype_splinter, 1 );
-        return 1;
     }
     return 0;
 }
@@ -8802,10 +8833,25 @@ std::optional<int> iuse::craft( Character *p, item *it, const tripoint_bub_ms & 
         return std::nullopt;
     }
 
+    item_location craft_loc( *p, it );
+    craft_resolve_overdue_passive( *it, calendar::turn, craft_loc );
+    if( !craft_loc || !craft_loc.get_item() ) {
+        return std::nullopt;
+    }
+    it = craft_loc.get_item();
+    const recipe &rec = it->get_making();
+    std::optional<std::vector<attention_plan>> chosen;
+    if( rec.has_remaining_attention_steps( it->get_current_step() ) && p->is_avatar() ) {
+        chosen = show_craft_planning_modal( rec, *p, it->get_making_batch_size(),
+                                            it->get_current_step(),
+                                            it->get_step_plans(), it );
+        if( !chosen ) {
+            return std::nullopt;
+        }
+    }
     if( !p->can_continue_craft( *it ) ) {
         return std::nullopt;
     }
-    const recipe &rec = it->get_making();
     if( !p->has_recipe( &rec ) ) {
         p->add_msg_player_or_npc(
             _( "You don't know the recipe for the %s and can't continue crafting." ),
@@ -8813,10 +8859,14 @@ std::optional<int> iuse::craft( Character *p, item *it, const tripoint_bub_ms & 
             rec.result_name() );
         return 0;
     }
+    if( chosen ) {
+        it->set_step_plans( std::move( *chosen ) );
+        it->set_crafter_id( p->getID() );
+        craft_apply_resume_replan( craft_loc );
+    }
     p->add_msg_player_or_npc(
         pgettext( "in progress craft", "You start working on the %s." ),
         pgettext( "in progress craft", "<npcname> starts working on the %s." ), craft_name );
-    item_location craft_loc = item_location( *p, it );
     p->assign_activity( craft_activity_actor( craft_loc, false ) );
 
     return 0;
@@ -9023,7 +9073,7 @@ std::optional<int> iuse::measure_resonance( Character *p, item *it, const tripoi
     // Different messages for different resonance levels? Dangerous resonance levels are in suffer::from_artifact_resonance
     popup( _( "Detected resonance approximately equal to %i units." ), detected_resonance );
 
-    p->consume_charges( *it, it->type->charges_to_use() );
+    it->consume_tool_uses( 1, get_map(), p->pos_bub(), p );
     p->mod_moves( -to_moves<int>( 2_minutes ) );
 
 
@@ -9045,6 +9095,10 @@ std::optional<int> iuse::change_outfit( Character *p, item *it, const tripoint_b
 
 std::optional<int> iuse::ebooksave( Character *p, item *it, const tripoint_bub_ms & )
 {
+    if( p->has_flag( json_flag_CANNOT_USE_COMPUTERS ) ) {
+        p->add_msg_if_player( m_info, _( "You push some buttons but it's all meaningless to you." ) );
+        return std::nullopt;
+    }
     if( !p ) {
         debugmsg( "%s called action ebooksave that requires character but no character is present",
                   it->typeId().str() );
@@ -9121,10 +9175,16 @@ std::optional<int> iuse::binder_add_recipe( Character *p, item *binder, const tr
     const std::vector<const recipe *> recipes( res.begin(), res.end() );
     const auto enough_writing_tool_charges = [&writing_tools]( int pages ) {
         for( const item *it : writing_tools ) {
-            if( it->ammo_required() == 0 ) {
+            if( !it->needs_charges_to_use() ) {
                 return true;
             }
-            pages -= it->ammo_remaining( ) / it->ammo_required();
+            if( it->uses_firing_requirements() ) {
+                // Match the local-only crafting drain path so the precheck
+                // doesn't count externals that the consume side ignores.
+                pages -= it->tool_uses_remaining_local();
+            } else {
+                pages -= it->ammo_remaining( ) / it->ammo_required();
+            }
             if( pages <= 0 ) {
                 return true;
             }
@@ -9264,6 +9324,9 @@ ret_val<void> use_function::can_call( const Character &p, const item &it,
                                             it.tname() );
     } else if( it.is_broken() ) {
         return ret_val<void>::make_failure( _( "Your %s is broken and won't activate." ),
+                                            it.tname() );
+    } else if( it.has_flag( json_flag_NO_MANUAL_ACTIVATION ) ) {
+        return ret_val<void>::make_failure( _( "You can't do anything interesting with your %s." ),
                                             it.tname() );
     }
     return actor->can_use( p, it, here, pos );

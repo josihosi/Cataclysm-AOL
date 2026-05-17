@@ -1034,8 +1034,7 @@ reference at least one body part or sub body part.
 |---                     |---
 | `id`                   | (_mandatory_) Unique ID. Must be one continuous word, use underscores if necessary.
 | `name`                 | (_mandatory_) In-game name displayed.
-| `limb_type`            | (_mandatory_) Type of limb, as defined by `bodypart.h`. Certain functions will check only a given bodypart type for their purposes. Currently implemented types are: `head, torso, sensor, mouth, arm, hand, leg, foot, wing, tail, other`.
-| `limb_types`           | (_optional_) (Can be used instead of `limb_type`) Weighted list of limb types this body part can emulate. The weights are modifiers that determine how good this body part is at acting like the given limb type. (Ex: `[ [ "foot", 1.0 ], [ "hand", 0.15 ] ]`)
+| `limb_types`           | (_mandatory_) Type(s) of limb, as defined by `bodypart.h`. Certain functions will check only a given bodypart type for their purposes. Currently implemented types are: `head, torso, sensor, mouth, arm, hand, leg, foot, wing, tail, other`. Weighted list of limb types this body part can emulate. The weights are modifiers that determine how good this body part is at acting like the given limb type. (Ex: `[ [ "foot", 1.0 ], [ "hand", 0.15 ] ]`)
 | `secondary_types`      | (_optional_) List of secondary limb types for the bodypart, to include it in relevant calculations.
 | `accusative`           | (_mandatory_) Accusative form for this bodypart.
 | `heading`              | (_mandatory_) How it's displayed in headings.
@@ -1060,11 +1059,15 @@ reference at least one body part or sub body part.
 | `squeamish_penalty`    | (_optional_) Mood effect of wearing filthy clothing on this part. (default: `0`)
 | `fire_warmth_bonus`    | (_optional_) How effectively you can warm yourself at a fire with this part. (default: `0`)
 | `temp_mod`             | (_optional array_) Intrinsic temperature modifier of the bodypart.  The first value (in the same "temperature unit" as mutations' `bodytemp_modifier`) is always applied, the second value is applied on top when the bodypart isn't overheated.
+| `feels_discomfort`     | (_optional ) Whether the limb will suffer from chafing if rigid armor is worn directly on it (default: `true`)
 | `env_protection`       | (_optional_) Innate environmental protection of this part. (default: `0`)
 | `stat_hp_mods`         | (_optional_) Values modifying hp_max of this part following this formula: `hp_max += int_mod*int_max + dex_mod*dex_max + str_mod*str_max + per_mod*per_max + health_mod*get_healthy()` with X_max being the unmodified value of the X stat and get_healthy() being the hidden health stat of the character.
 | `heal_bonus`           | (_optional_) Innate amount of HP the bodypart heals every successful healing roll. See the `ALWAYS_HEAL` and `HEAL_OVERRIDE` flags.
 | `mend_rate`            | (_optional_) Innate mending rate of the limb, should it get broken. Default `1.0`, used as a multiplier on the healing factor after other factors are calculated.
 | `health_limit`         | (_optional_) Amount of limb HP necessary for the limb to provide its melee `techniques` and `conditional_flags`.  Defaults to 1, meaning broken limbs don't contribute.
+| `windage_effect`       | (_optional_) Effect applied to the limb when out of stamina.
+| `no_power_effect`      | (_optional_) Effect applied to the limb if a bionic limb is out of power.
+| `power_efficiency`     | (_optional_) Power usage of bionic limbs, measured in joules per stamina
 | `ugliness`             | (_optional_) Ugliness of the part that can be covered up, negatives confer beauty bonuses.
 | `ugliness_mandatory`   | (_optional_) Inherent ugliness that can't be covered up by armor.
 | `bionic_slots`         | (_optional_) How many bionic slots does this part have.
@@ -1101,7 +1104,7 @@ reference at least one body part or sub body part.
   "opposite_part": "arm_r",
   "hit_size": 9,
   "hit_difficulty": 0.95,
-  "limb_type": "arm",
+  "limb_types": "arm",
   "limb_scores": [ [ "manip", 0.1, 0.2 ], [ "lift", 0.5 ], [ "block", 1.0 ], [ "swim", 0.1 ] ],
   "armor": { "electric": 2, "stab": 1 },
   "side": "left",
@@ -1668,6 +1671,7 @@ Faults can be defined for more specialized damage of an item.
   "message": "%s has it's handle broken!", // Message, that would be shown when such fault is applied, unless supressed
   "fault_type": "gun_mechanical_simple", // type of a fault, code may call for a random fault in a group instead of specific fault
   "affected_by_degradation": false, // default false. If true, the item degradation value would be added to fault weight on roll
+  "instant_damage": 500,  // default 0. Instantly applies this much damage to the item when the fault is applied. (A "full health" item has 4000 "HP" currently)
   "degradation_mod": 50,  // default 0. Having this fault would add this amount of temporary degradation on the item, resulting in higher chance to trigger faults with "affected_by_degradation": true. Such degradation will be removed when fault is fixed
   "price_modifier": 0.4, // (Optional, double) Defaults to 1 if not specified. A multiplier on the price of an item when this fault is present. Values above 1.0 will increase the item's value.
   "melee_damage_mod": [ { "damage_id": "cut", "add": -5, "multiply": 0.8 } ], // (Optional) alters the melee damage of this type for item, if fault of this type is presented. `damage_id` is mandatory, `add` is 0 by default, `multiply` is 1 by default
@@ -2694,6 +2698,14 @@ definitions in the json files by adding a `"qualities":` line.
 For example: `"qualities": [ [ "ANVIL", 2 ] ],` associates the `ANVIL` quality
 at level `2` to the item.
 
+Qualities also accept an object format with an optional `speed` field:
+`"qualities": [ { "id": "SEW", "level": 2, "speed": 0.3 } ]`.
+The `speed` value (default 1.0) is a multiplier applied to recipe steps that
+require this quality. Values below 1.0 make the step faster (e.g. a sewing
+machine with speed 0.3 completes sewing steps in 30% of the base time).
+Both array and object formats can be mixed freely. `charged_qualities` accepts
+the same format.
+
 ### Traits/Mutations
 
 See [MUTATIONS.md](MUTATIONS.md)
@@ -3070,14 +3082,14 @@ A thin container for weakpoint definitions. The only unique fields for this obje
       "effects": [
         {
           "effect": "stunned",
-          "duration": [ 1, 2 ],
+          "duration": [ "1 seconds", "2 seconds" ],
           "chance": 5,
           "message": "The %s is stunned!",
           "damage_required": [ 1, 10 ]
         },
         {
           "effect": "stunned",
-          "duration": [ 1, 2 ],
+          "duration": [ "1 seconds", "2 seconds" ],
           "chance": 25,
           "message": "The %s is stunned!",
           "damage_required": [ 11, 100 ]
@@ -4439,6 +4451,7 @@ Fields can exist on top of terrain/furniture, and support different intensity le
     "decay_amount_factor": 2, // The field's rain decay amount is divided by this when processing the field, the rain decay is a function of the weather type's precipitation class: very_light = 5s, light = 15s, heavy = 45 s
     "half_life": "3 minutes", // If above 0 the field will disappear after two half-lifes on average
     "underwater_age_speedup": "25 minutes", // Increase the field's age by this time every tick if it's on a terrain with the SWIMMABLE flag
+    "block_mtypes": [ "zombie", "animal" ], // these monster types cannot move on tile with this field
     "linear_half_life": "true", // If true the half life decay is converted to a non-random, linear wait based on the defined half_life time. 
     "outdoor_age_speedup": "20 minutes", // Increase the field's age by this duration if it's on an outdoor tile
     "accelerated_decay": true, // If the field should use a more simple decay calculation, used for cosmetic fields like gibs

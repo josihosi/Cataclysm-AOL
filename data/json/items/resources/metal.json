@@ -14,6 +14,7 @@
     "qualities": [ [ "HAMMER", 1 ] ],
     "techniques": [ "WBLOCK_2", "RAPID", "PRECISE" ],
     "weapon_category": [ "BATONS", "FENCING_WEAPONRY" ],
+    "faults": [ { "fault_group": "steel_pipe_short", "weight_mult": 2 } ],
     "volume": "370 ml",
     "price": "38 USD",
     "price_postapoc": "10 cent",
@@ -457,7 +458,6 @@
   },
   {
     "type": "ITEM",
-    "subtypes": [ "AMMO" ],
     "id": "solder_wire",
     "category": "spare_parts",
     "price": "50 USD",
@@ -470,8 +470,6 @@
     "volume": "50 ml",
     "weight": "2 g",
     "//": "Density ~ 8g/cm³ ~ 2000kg/250ml @ stack 1000 = 2g/unit",
-    "ammo_type": "components",
-    "count": 200,
     "flags": [ "UNRECOVERABLE" ]
   },
   {

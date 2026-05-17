@@ -28,6 +28,8 @@
 #include "construction_group.h"
 #include "coordinates.h"
 #include "craft_command.h"
+#include "crafting.h"
+#include "crafting_enums.h"
 #include "creature.h"
 #include "creature_tracker.h"
 #include "cursesdef.h"
@@ -39,6 +41,7 @@
 #include "faction.h"
 #include "field_type.h"
 #include "flag.h"
+#include "flat_set.h" // IWYU pragma: keep
 #include "fungal_effects.h"
 #include "game.h"
 #include "game_constants.h"
@@ -67,6 +70,7 @@
 #include "mtype.h"
 #include "mutation.h"
 #include "npc.h"
+#include "npc_class.h"
 #include "omdata.h"
 #include "options.h"
 #include "output.h"
@@ -134,6 +138,8 @@ static const efftype_id effect_strong_antibiotic_visible( "strong_antibiotic_vis
 static const efftype_id effect_teleglow( "teleglow" );
 static const efftype_id effect_tetanus( "tetanus" );
 static const efftype_id effect_weak_antibiotic( "weak_antibiotic" );
+
+static const faction_id faction_robofac( "robofac" );
 
 static const furn_str_id furn_f_arcfurnace_empty( "f_arcfurnace_empty" );
 static const furn_str_id furn_f_arcfurnace_full( "f_arcfurnace_full" );
@@ -300,6 +306,7 @@ static const trait_id trait_ESPER_ADVANCEMENT_OKAY( "ESPER_ADVANCEMENT_OKAY" );
 static const trait_id trait_ESPER_STARTER_ADVANCEMENT_OKAY( "ESPER_STARTER_ADVANCEMENT_OKAY" );
 static const trait_id trait_ILLITERATE( "ILLITERATE" );
 static const trait_id trait_INSECT_ARMS_OK( "INSECT_ARMS_OK" );
+static const trait_id trait_INTERCOM_OPERATOR( "INTERCOM_OPERATOR" );
 static const trait_id trait_M_DEFENDER( "M_DEFENDER" );
 static const trait_id trait_M_DEPENDENT( "M_DEPENDENT" );
 static const trait_id trait_M_FERTILE( "M_FERTILE" );
@@ -1364,7 +1371,7 @@ bool iexamine::try_start_hacking( Character &you, const tripoint_bub_ms &examp )
         return false;
     } else {
         item_location hacking_tool = item_location{you, &you.best_item_with_quality( qual_HACK )};
-        hacking_tool->ammo_consume( hacking_tool->ammo_required(), hacking_tool.pos_bub( here ), &you );
+        hacking_tool->consume_tool_uses( 1, here, hacking_tool.pos_bub( here ), &you );
         you.assign_activity( hacking_activity_actor( hacking_tool ) );
         you.activity.placement = here.get_abs( examp );
         return true;
@@ -1447,16 +1454,48 @@ void iexamine::intercom_balthazar( Character &you, const tripoint_bub_ms &examp 
     }
 }
 
+npc *find_intercom_operator( const trait_id &marker_trait,
+                             const faction_id &fac_id )
+{
+    npc *fallback = nullptr;
+    for( npc *guy : g->get_npcs_if( [&marker_trait, &fac_id]( const npc & n ) {
+    return n.has_trait( marker_trait ) &&
+               n.get_faction() && n.get_faction()->id == fac_id &&
+               !n.in_sleep_state();
+    } ) ) {
+        if( !guy->myclass.is_null() ) {
+            const auto &[start, end] = guy->myclass.obj().get_work_hours();
+            const int hour = to_hours<int>( time_past_midnight( calendar::turn ) );
+            if( is_within_work_hours( hour, start, end ) ) {
+                return guy;
+            }
+        }
+        if( !fallback ) {
+            fallback = guy;
+        }
+    }
+    return fallback;
+}
+
 void iexamine::intercom( Character &you, const tripoint_bub_ms &examp )
 {
-    const std::vector<npc *> intercom_npcs = g->get_npcs_if( [examp]( const npc & guy ) {
-        return guy.myclass == NC_ROBOFAC_INTERCOM && rl_dist( guy.pos_bub(), examp ) < 10;
-    } );
-    if( intercom_npcs.empty() ) {
+    // Prefer trait-based operators (new worlds with shift rotation)
+    npc *op = find_intercom_operator( trait_INTERCOM_OPERATOR, faction_robofac );
+    if( !op ) {
+        // Legacy fallback: old class-based NPC (existing saves).
+        // Preserves original 10-tile distance check.
+        const std::vector<npc *> legacy = g->get_npcs_if( [examp]( const npc & n ) {
+            return n.myclass == NC_ROBOFAC_INTERCOM && rl_dist( n.pos_bub(), examp ) < 10;
+        } );
+        if( !legacy.empty() ) {
+            op = legacy.front();
+        }
+    }
+    if( !op ) {
         you.add_msg_if_player( m_info, _( "No one responds." ) );
     } else {
-        // TODO: This needs to be converted a talker_console or something
-        get_avatar().talk_to( get_talker_for( *intercom_npcs.front() ), false );
+        get_avatar().talk_to( get_talker_for( *op ), false, false, false, "",
+                              _( "the intercom" ) );
     }
 }
 
@@ -2251,13 +2290,41 @@ void iexamine_helper::handle_harvest( Character &you, const itype_id &itemid, bo
     if( harvest.has_temperature() ) {
         harvest.set_item_temperature( get_weather().get_temperature( you.pos_bub() ) );
     }
-    if( !force_drop && you.can_pickVolume( harvest, true ) &&
-        you.can_pickWeight( harvest, !get_option<bool>( "DANGEROUS_PICKUPS" ) ) ) {
+    // Only auto-eat when the NPC is actively seeking food or water
+    // (self-care need execution). Generic harvest jobs (farming zones,
+    // player-assigned tasks) should collect, not consume.
+    bool npc_self_care = false;
+    if( you.is_npc() ) {
+        const npc &n = dynamic_cast<const npc &>( you );
+        const std::string &goal = n.get_committed_goal();
+        npc_self_care = ( goal == "eat_food" || goal == "drink_water" );
+    }
+    if( npc_self_care && harvest.is_food() &&
+        ( you.get_hunger() > 0 || you.has_calorie_deficit() ) &&
+        you.will_eat( harvest ).success() ) {
+        const time_duration consume_time = you.get_consume_time( harvest );
+        trinary result = you.consume( harvest );
+        if( result != trinary::NONE ) {
+            you.mod_moves( -to_moves<int>( consume_time ) );
+        }
+        if( result == trinary::SOME ) {
+            // Partial consumption: stash or drop the remainder.
+            if( !force_drop && you.can_pickVolume( harvest, true ) &&
+                you.can_pickWeight( harvest, true ) ) {
+                you.i_add( harvest );
+            } else {
+                get_map().add_item_or_charges( you.pos_bub(), harvest );
+            }
+        }
+    } else if( !force_drop && you.can_pickVolume( harvest, true ) &&
+               you.can_pickWeight( harvest, !get_option<bool>( "DANGEROUS_PICKUPS" ) ) ) {
         you.i_add( harvest );
         you.add_msg_if_player( _( "You harvest: %s." ), harvest.tname() );
+        you.add_msg_if_npc( _( "<npcname> harvests: %s." ), harvest.tname() );
     } else {
         get_map().add_item_or_charges( you.pos_bub(), harvest );
         you.add_msg_if_player( _( "You harvest and drop: %s." ), harvest.tname() );
+        you.add_msg_if_npc( _( "<npcname> harvests and drops: %s." ), harvest.tname() );
     }
 }
 
@@ -2393,7 +2460,8 @@ void iexamine::flower_dahlia( Character &you, const tripoint_bub_ms &examp )
 static bool query_pick( Character &who, const tripoint_bub_ms &target )
 {
     if( !who.is_avatar() ) {
-        return false;
+        // NPCs already decided to harvest via address_needs.
+        return true;
     }
 
     map &here = get_map();
@@ -4590,8 +4658,10 @@ void iexamine::tree_marloss( Character &you, const tripoint_bub_ms &examp )
 void iexamine::shrub_wildveggies( Character &you, const tripoint_bub_ms &examp )
 {
     map &here = get_map();
-    // Ask if there's something possibly more interesting than this shrub here
-    if( ( !here.i_at( examp ).empty() ||
+    // Ask if there's something possibly more interesting than this shrub here.
+    // NPCs skip the prompt - they already decided to forage via address_needs.
+    if( !you.is_npc() &&
+        ( !here.i_at( examp ).empty() ||
           here.veh_at( examp ) ||
           here.can_see_trap_at( examp, you ) ||
           get_creature_tracker().creature_at( examp ) != nullptr ) &&
@@ -4600,7 +4670,8 @@ void iexamine::shrub_wildveggies( Character &you, const tripoint_bub_ms &examp )
         return;
     }
 
-    add_msg( _( "You forage through the %s." ), here.tername( examp ) );
+    you.add_msg_if_player( _( "You forage through the %s." ), here.tername( examp ) );
+    you.add_msg_if_npc( _( "<npcname> forages through the %s." ), here.tername( examp ) );
     ///\EFFECT_SURVIVAL speeds up foraging
     int move_cost = 100000 / ( 2 * you.get_skill_level( skill_survival ) + 5 );
     ///\EFFECT_PER randomly speeds up foraging
@@ -5712,8 +5783,8 @@ static Character &best_installer( Character &you, Character &null_player, int di
 }
 
 template<typename ...Args>
-inline void popup_player_or_npc( Character &you, const char *player_mes, const char *npc_mes,
-                                 Args &&... args )
+static inline void popup_player_or_npc( Character &you, const char *player_mes, const char *npc_mes,
+                                        Args &&... args )
 {
     if( you.is_avatar() ) {
         popup( player_mes, std::forward<Args>( args )... );
@@ -7363,16 +7434,38 @@ void iexamine::workbench_internal( Character &you, const tripoint_bub_ms &examp,
             if( selected_craft->typeId() == itype_disassembly ) {
                 you.disassemble( crafts[amenu2.ret], true );
             } else {
+                craft_resolve_overdue_passive( *selected_craft, calendar::turn, crafts[amenu2.ret] );
+                if( !crafts[amenu2.ret] || !crafts[amenu2.ret].get_item() ) {
+                    break;
+                }
+                selected_craft = crafts[amenu2.ret].get_item();
+                const recipe &rec = selected_craft->get_making();
+                std::optional<std::vector<attention_plan>> chosen;
+                if( rec.has_remaining_attention_steps( selected_craft->get_current_step() )
+                    && you.is_avatar() ) {
+                    chosen = show_craft_planning_modal( rec, you,
+                                                        selected_craft->get_making_batch_size(),
+                                                        selected_craft->get_current_step(),
+                                                        selected_craft->get_step_plans(),
+                                                        selected_craft );
+                    if( !chosen ) {
+                        break;
+                    }
+                }
                 if( !you.can_continue_craft( *selected_craft ) ) {
                     break;
                 }
-                const recipe &rec = selected_craft->get_making();
                 if( !you.has_recipe( &rec ) ) {
                     you.add_msg_player_or_npc(
                         _( "You don't know the recipe for the %s and can't continue crafting." ),
                         _( "<npcname> doesn't know the recipe for the %s and can't continue crafting." ),
                         rec.result_name() );
                     break;
+                }
+                if( chosen ) {
+                    selected_craft->set_step_plans( std::move( *chosen ) );
+                    selected_craft->set_crafter_id( you.getID() );
+                    craft_apply_resume_replan( crafts[amenu2.ret] );
                 }
                 you.add_msg_player_or_npc(
                     pgettext( "in progress craft", "You start working on the %s." ),

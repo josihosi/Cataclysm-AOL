@@ -1091,25 +1091,6 @@
     ]
   },
   {
-    "result": "broken_molebot",
-    "type": "uncraft",
-    "activity_level": "MODERATE_EXERCISE",
-    "skill_used": "electronics",
-    "difficulty": 3,
-    "time": "3 h",
-    "using": [ [ "welding_standard", 6 ] ],
-    "qualities": [ { "id": "SAW_M", "level": 1 } ],
-    "components": [
-      [ [ "ai_module", 1 ] ],
-      [ [ "sensor_module", 1 ] ],
-      [ [ "memory_module", 1 ] ],
-      [ [ "pathfinding_module", 1 ] ],
-      [ [ "medium_storage_battery", 1 ] ],
-      [ [ "robot_controls", 1 ] ],
-      [ [ "ch_steel_chunk", 20 ] ]
-    ]
-  },
-  {
     "result": "broken_secubot",
     "type": "uncraft",
     "activity_level": "MODERATE_EXERCISE",
@@ -6009,7 +5990,7 @@
     "activity_level": "MODERATE_EXERCISE",
     "time": "2 s",
     "qualities": [ { "id": "HAMMER", "level": 1 } ],
-    "components": [ [ [ "silver_small", 6 ] ] ]
+    "components": [ [ [ "silver_small", 2 ] ] ]
   },
   {
     "result": "coin_gold",
@@ -6111,14 +6092,14 @@
     "type": "uncraft",
     "activity_level": "NO_EXERCISE",
     "time": "2 s",
-    "components": [ [ [ "cardboard", 20 ] ] ],
+    "components": [ [ [ "cardboard", 5 ] ] ],
     "flags": [ "BLIND_EASY" ]
   },
   {
     "result": "deck_of_tarot_cards",
     "copy-from": "deck_of_cards",
     "type": "uncraft",
-    "components": [ [ [ "cardboard", 20 ] ] ]
+    "components": [ [ [ "cardboard", 5 ] ] ]
   },
   {
     "result": "kevlar_shears",
@@ -6442,7 +6423,7 @@
     "skill_used": "tailor",
     "time": "1 m",
     "qualities": [ { "id": "CUT", "level": 2 } ],
-    "components": [ [ [ "sheet_denim_patchwork", 2 ] ], [ [ "button_steel", 1 ] ], [ [ "zipper_short_plastic", 1 ] ] ],
+    "components": [ [ [ "sheet_denim_patchwork", 2 ] ], [ [ "button_plastic", 1 ] ], [ [ "zipper_short_plastic", 1 ] ] ],
     "flags": [ "BLIND_HARD" ]
   },
   {
@@ -6462,7 +6443,7 @@
     "skill_used": "tailor",
     "time": "2 m",
     "qualities": [ { "id": "CUT", "level": 2 } ],
-    "components": [ [ [ "sheet_denim_patchwork", 4 ] ], [ [ "button_steel", 5 ] ] ],
+    "components": [ [ [ "sheet_denim_patchwork", 4 ] ], [ [ "button_plastic", 5 ] ] ],
     "flags": [ "BLIND_HARD" ]
   },
   {
@@ -6472,7 +6453,7 @@
     "skill_used": "tailor",
     "time": "1 m 30 s",
     "qualities": [ { "id": "CUT", "level": 2 } ],
-    "components": [ [ [ "sheet_denim_patchwork", 3 ] ], [ [ "button_steel", 5 ] ] ],
+    "components": [ [ [ "sheet_denim_patchwork", 3 ] ], [ [ "button_plastic", 5 ] ] ],
     "flags": [ "BLIND_HARD" ]
   },
   {
@@ -6482,7 +6463,7 @@
     "skill_used": "tailor",
     "time": "1 m",
     "qualities": [ { "id": "CUT", "level": 2 } ],
-    "components": [ [ [ "sheet_denim_patchwork", 2 ] ], [ [ "button_steel", 5 ] ] ],
+    "components": [ [ [ "sheet_denim_patchwork", 2 ] ], [ [ "button_plastic", 5 ] ] ],
     "flags": [ "BLIND_HARD" ]
   },
   {

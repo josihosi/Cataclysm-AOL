@@ -1592,7 +1592,7 @@ static std::string trim( std::string_view s, Predicate pred )
 }
 
 template<typename Prep>
-std::string trim_trailing( std::string_view s, Prep prep )
+static std::string trim_trailing( std::string_view s, Prep prep )
 {
     return std::string( s.begin(), std::find_if_not(
     s.rbegin(), s.rend(), [&prep]( int c ) {
@@ -2083,8 +2083,8 @@ bool scrollbar::handle_dragging( const std::string &action, const std::optional<
         // We don't want to accidentally select something on mouse-up after dragging the scrollbar, so if
         // there's a mouse-up event, tell the UI that we've handled it
         return action == "SELECT";
-    } else  if( action == "CLICK_AND_DRAG" && coord.has_value() &&
-                scrollbar_area.contains( coord.value() ) ) {
+    } else if( action == "CLICK_AND_DRAG" && coord.has_value() &&
+               scrollbar_area.contains( coord.value() ) ) {
         // Started dragging the scrollbar
         dragging = true;
         return true;
@@ -2751,11 +2751,12 @@ using RatingVector = std::vector<std::tuple<double, char, std::string>>;
 template std::string get_labeled_bar<RatingVector::iterator>( const double val, const int width,
         const std::string &label,
         RatingVector::iterator begin, RatingVector::iterator end,
-        std::function<std::string( RatingVector::iterator, int )> printer );
+        const std::function<std::string( RatingVector::iterator, int )> &printer );
 
 template<typename BarIterator>
 std::string get_labeled_bar( const double val, const int width, const std::string &label,
-                             BarIterator begin, BarIterator end, std::function<std::string( BarIterator, int )> printer )
+                             BarIterator begin, BarIterator end,
+                             const std::function<std::string( BarIterator, int )> &printer )
 {
     std::string result;
 

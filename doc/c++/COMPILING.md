@@ -21,6 +21,7 @@
   * [Troubleshooting](#mac-os-x-troubleshooting)
 * [Windows](#windows)
   * [Building with Visual Studio](#building-with-visual-studio)
+  * [Building with Visual Studio Code (MSBuild)](#building-with-visual-studio-code-msbuild)
   * [Building with MSYS2](#building-with-msys2)
   * [Building with CYGWIN](#building-with-cygwin)
   * [Building with Clang and MinGW64](#building-with-clang-and-mingw64)
@@ -50,7 +51,7 @@ Most distros seem to package essential build tools as either a single package (D
 
 Besides the essentials you will need `git`.
 
-If you plan on keeping up with experimentals you should also install `ccache`, which  will considerably speed-up partial builds.
+If you plan on keeping up with experimentals you should also install `ccache`, which will considerably speed-up partial builds.
 
 ## Dependencies
 
@@ -161,6 +162,32 @@ A more comprehensive alternative is:
 
     make -j2 TILES=1 SOUND=1 RELEASE=1 USE_HOME_DIR=1
 
+### SDL3 lane
+
+The SDL3 build (`SDL3=1`) needs SDL3 >= 3.4.0 plus a shader toolchain on top of the SDL2 deps.
+
+Dependencies:
+
+  * SDL3, SDL3_image, SDL3_ttf, SDL3_mixer (>= 3.4.0)
+  * `glslangValidator` from glslang (GLSL to SPIR-V)
+  * `SDL_shadercross` (SPIR-V to DXIL on Windows, MSL on macOS). Build from <https://github.com/libsdl-org/SDL_shadercross> if your distribution does not package it.
+
+Install (Debian/Ubuntu):
+
+    sudo apt-get install glslang-tools
+
+Install (macOS via Homebrew):
+
+    brew install glslang
+
+Put `shadercross` on `PATH` (or set `SDL_SHADERCROSS=/path/to/shadercross`). `BUILD_SHADER_FORMATS` picks which artifacts get built: `spv` on Linux, `msl` on macOS, `dxil` on Windows by default. Override with a comma list for a multi-platform bindist. The GPU shader path stays inert at runtime if its artifact format is missing; the game falls back to the pre-baked atlas variants.
+
+Build:
+
+    make -j2 TILES=1 SOUND=1 SDL3=1 RELEASE=1 USE_HOME_DIR=1
+
+The Windows MSVC lane uses a vcpkg overlay-port at `vcpkg/overlay-ports/sdl3/` (configured via `msvc-full-features/vcpkg-configuration.json`) to pin SDL3 >= 3.4.0 above the registry baseline.
+
 The -j2 flag means it will compile with two parallel processes. It can be omitted or changed to -j4 in a more modern processor. If there is no desire to have sound, those flags can also be omitted. The USE_HOME_DIR flag places the user files, like configurations and saves, into the home folder, making it easier for backups, and can also be omitted.
 
 # Gentoo
@@ -263,7 +290,7 @@ Installation
 sudo apt install astyle autoconf automake autopoint bash bison bzip2 cmake flex gettext git g++ gperf intltool libffi-dev libgdk-pixbuf2.0-dev libtool libltdl-dev libssl-dev libxml-parser-perl lzip make mingw-w64 openssl p7zip-full patch perl pkg-config python3 ruby scons sed unzip wget xz-utils g++-multilib libc6-dev-i386 libtool-bin
 mkdir -p ~/src/libbacktrace
 cd ~/src
-git clone https://github.com/CleverRaven/Cataclysm-DDA.git 
+git clone https://github.com/CleverRaven/Cataclysm-DDA.git
 git clone https://github.com/mxe/mxe.git
 cd mxe
 make -j$((`nproc`+0)) MXE_TARGETS='x86_64-w64-mingw32.static i686-w64-mingw32.static' MXE_PLUGIN_DIRS=plugins/gcc11 sdl2 sdl2_ttf sdl2_image sdl2_mixer gettext
@@ -652,6 +679,22 @@ This is probably the easiest solution for someone used to working with Visual St
 
 For an alternative setup using [CMake](../../CMakeLists.txt), please read [COMPILING-CMAKE-VCPKG.md](COMPILING-CMAKE-VCPKG.md).
 
+## Building with Visual Studio Code (MSBuild)
+
+This method uses Visual Studio's MSBuild toolchain without needing to open Visual Studio itself.
+
+### Setup
+
+Follow the instructions in the [Building with Visual Studio](#building-with-visual-studio) section.
+
+### Running a build
+
+1. Open the repository using the `Cataclysm-DDA.code-workspace` file in VS Code. Opening the bare folder is not sufficient, as the workspace file configures the build tasks and settings.
+2. Press **Ctrl+Shift+B** (or go to **Terminal → Run Build Task**) to open the build task picker.
+3. Select the desired configuration.
+
+Build output and errors will appear in the **Terminal** panel.
+
 ## Building with MSYS2
 
 See [COMPILING-MSYS.md](COMPILING-MSYS.md) for instructions on how to set up and use a build environment using MSYS2 on windows.
@@ -729,7 +772,7 @@ First, install g++, gmake, and libexecinfo from packages (g++ 4.8 or 4.9 should 
 
     pkg_add g++ gmake libexecinfo
 
-Then you should  be able to build with something like:
+Then you should be able to build with something like:
 
     CXX=eg++ gmake
 

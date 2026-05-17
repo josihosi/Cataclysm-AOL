@@ -41,6 +41,7 @@
 #include "harvest.h"
 #include "imgui/imgui.h"
 #include "item.h"
+#include "item_contents.h"
 #include "item_factory.h"
 #include "item_group.h"
 #include "item_location.h"
@@ -136,6 +137,7 @@ static const efftype_id effect_pet( "pet" );
 static const efftype_id effect_photophobia( "photophobia" );
 static const efftype_id effect_poison( "poison" );
 static const efftype_id effect_psi_stunned( "psi_stunned" );
+static const efftype_id effect_revived_marker( "revived_marker" );
 static const efftype_id effect_ridden( "ridden" );
 static const efftype_id effect_run( "run" );
 static const efftype_id effect_spooked( "spooked" );
@@ -160,7 +162,6 @@ static const flag_id json_flag_DISABLE_FLIGHT( "DISABLE_FLIGHT" );
 static const flag_id json_flag_FILTHY( "FILTHY" );
 static const flag_id json_flag_GRAB( "GRAB" );
 static const flag_id json_flag_GRAB_FILTER( "GRAB_FILTER" );
-static const flag_id json_flag_PRESERVE_SPAWN_LOC( "PRESERVE_SPAWN_LOC" );
 
 static const itype_id itype_beartrap( "beartrap" );
 static const itype_id itype_milk( "milk" );
@@ -340,6 +341,12 @@ void monster::on_move( const tripoint_abs_ms &old_pos )
         return;
     }
     g->update_zombie_pos( *this, old_pos, pos_abs() );
+    if( has_effect( effect_onfire ) ||
+        calculate_by_enchantment( type->luminance, enchant_vals::mod::LUMINATION, true ) > 0 ) {
+        map &here = get_map();
+        here.set_lightmap_cache_dirty( old_pos.z() );
+        here.set_lightmap_cache_dirty( pos_bub().z() );
+    }
     if( has_effect( effect_ridden ) && mounted_player &&
         mounted_player->pos_abs() != pos_abs() ) {
         add_msg_debug( debugmode::DF_MONSTER, "Ridden monster %s moved independently and dumped player",
@@ -348,6 +355,15 @@ void monster::on_move( const tripoint_abs_ms &old_pos )
     }
     if( has_dest() && pos_abs() == get_dest() ) {
         unset_dest();
+    }
+}
+
+void monster::on_effect_int_change( const efftype_id &/*eid*/, int /*intensity*/,
+                                    const bodypart_id &/*bp*/ )
+{
+    map &here = get_map();
+    if( here.inbounds( pos_bub() ) ) {
+        here.set_lightmap_cache_dirty( posz() );
     }
 }
 
@@ -844,6 +860,11 @@ int monster::print_info( const catacurses::window &w, int vStart, int vLines, in
     const int max_width = getmaxx( w ) - column - 1;
     std::ostringstream oss;
 
+    // This header specifically refers to them as a somewhat-misleading "Creatures" instead of "Monsters".
+    // This is because many of our "Monster" objects do not represent things that are pejorative monsters.
+    // Therefore the header is intentionally *neutral* on the language.
+    mvwprintz( w, point( column, vStart++ ), c_light_blue, _( "-----CREATURE-----" ) );
+
     oss << get_tag_from_color( c_white ) << get_origin( type->src ) << "</color>" << "\n";
 
     if( debug_mode ) {
@@ -1081,19 +1102,7 @@ std::vector<std::string> monster::extended_description() const
     if( debug_mode ) {
         difficulty_str = _( "Difficulty " ) + std::to_string( type->get_total_difficulty() );
     } else {
-        if( type->get_total_difficulty() < 3 ) {
-            difficulty_str = _( "<color_light_gray>Minimal threat.</color>" );
-        } else if( type->get_total_difficulty() < 10 ) {
-            difficulty_str = _( "<color_light_gray>Mildly dangerous.</color>" );
-        } else if( type->get_total_difficulty() < 20 ) {
-            difficulty_str = _( "<color_light_red>Dangerous.</color>" );
-        } else if( type->get_total_difficulty() < 30 ) {
-            difficulty_str = _( "<color_red>Very dangerous.</color>" );
-        } else if( type->get_total_difficulty() < 50 ) {
-            difficulty_str = _( "<color_red>Extremely dangerous.</color>" );
-        } else {
-            difficulty_str = _( "<color_red>Fatally dangerous!</color>" );
-        }
+        difficulty_str = type->get_difficulty_description();
     }
     tmp.emplace_back( difficulty_str );
 
@@ -1643,7 +1652,23 @@ bool monster::is_fleeing( Character &u ) const
         return false;
     }
     monster_attitude att = attitude( &u );
-    return att == MATT_FLEE || ( att == MATT_FOLLOW && rl_dist( pos_bub(), u.pos_bub() ) <= 4 );
+    if( att == MATT_FLEE ) {
+        return true;
+    }
+    if( att != MATT_FOLLOW ) {
+        return false;
+    }
+    // Scale vertical separation for fliers (one z is roughly four meters).
+    constexpr int FLIER_Z_PENALTY = 4;
+    int effective;
+    if( flies() ) {
+        const int xy = rl_dist( pos_bub().xy(), u.pos_bub().xy() );
+        const int z_diff = std::abs( pos_abs().z() - u.pos_abs().z() );
+        effective = xy + z_diff * FLIER_Z_PENALTY;
+    } else {
+        effective = rl_dist( pos_bub(), u.pos_bub() );
+    }
+    return effective <= 4;
 }
 
 Creature::Attitude monster::attitude_to( const Creature &other ) const
@@ -2144,6 +2169,12 @@ bool monster::melee_attack( Creature &target, float accuracy )
     }
     if( !sees( here, target ) && !target.is_hallucination() ) {
         debugmsg( "Z-Level view violation: %s tried to attack %s.", disp_name(), target.disp_name() );
+        return false;
+    }
+    // Prevent monsters from attacking THROUGH terrain if they are submerged under it & target isn't.
+    if( is_underwater() && !target.is_underwater() &&
+        ( here.has_flag( ter_furn_flag::TFLAG_SWIM_UNDER, pos_bub() ) ||
+          here.has_flag( ter_furn_flag::TFLAG_SWIM_UNDER, target.pos_bub() ) ) ) {
         return false;
     }
 
@@ -3028,8 +3059,10 @@ void monster::die( map *here, Creature *nkiller )
             ch = get_killer()->get_summoner()->as_character();
         }
         if( !is_hallucination() && ch != nullptr ) {
+            // Revived creatures never grant any kill xp.
+            const int kill_xp = has_effect( effect_revived_marker ) ? 0 : compute_kill_xp( type->id );
             cata::event e = cata::event::make<event_type::character_kills_monster>( ch->getID(), type->id,
-                            compute_kill_xp( type->id ) );
+                            kill_xp );
             get_event_bus().send_with_talker( ch, this, e );
         }
     }
@@ -3177,8 +3210,10 @@ void monster::die( map *here, Creature *nkiller )
         }
     }
 
-    if( death_drops && !no_extra_death_drops ) {
-        drop_items_on_death( here, corpse.get_item() );
+    if( death_drops ) {
+        if( !no_extra_death_drops ) {
+            drop_items_on_death( here, corpse.get_item() );
+        }
         spawn_dissectables_on_death( corpse.get_item() );
     }
     if( death_drops && !is_hallucination() ) {
@@ -3292,6 +3327,9 @@ void monster::generate_inventory( bool disableDrops )
             if( ( it.is_armor() || it.is_pet_armor() ) && !it.is_gun() ) {
                 // handle wearable guns as a special case
                 it.set_flag( json_flag_FILTHY );
+                for( item *pocket : it.get_contents().get_added_pockets_mutable() ) {
+                    pocket->set_flag( json_flag_FILTHY );
+                }
             }
         }
         inv.push_back( it );
@@ -3299,7 +3337,7 @@ void monster::generate_inventory( bool disableDrops )
     no_extra_death_drops = disableDrops;
 }
 
-void monster::drop_items_on_death( map *here, item *corpse )
+void monster::drop_items_on_death( map *here, item *corpse ) const
 {
     if( is_hallucination() ) {
         return;
@@ -3314,6 +3352,7 @@ void monster::drop_items_on_death( map *here, item *corpse )
 
     for( item &e : new_items ) {
         e.randomize_rot();
+        e.preserve_location( pos_abs() );
     }
 
     // for non corpses this is much simpler
@@ -3330,6 +3369,9 @@ void monster::drop_items_on_death( map *here, item *corpse )
             if( ( it.is_armor() || it.is_pet_armor() ) && !it.is_gun() ) {
                 // handle wearable guns as a special case
                 it.set_flag( json_flag_FILTHY );
+                for( item *pocket : it.get_contents().get_added_pockets_mutable() ) {
+                    pocket->set_flag( json_flag_FILTHY );
+                }
             }
         }
 
@@ -3362,25 +3404,6 @@ void monster::drop_items_on_death( map *here, item *corpse )
             }
         }
     }
-
-    // Check if item has PRESERVE_SPAWN_LOC and set it if necessary
-    // This probably needs to be encapsulated in some generic function
-    for( item &it : new_items ) {
-        if( it.has_flag( json_flag_PRESERVE_SPAWN_LOC ) &&
-            !it.has_var( "spawn_location" ) ) {
-            it.set_var( "spawn_location", pos_abs().to_string_writable() );
-        }
-
-        // since efiles are not in standard pocket, check it separately
-        if( it.has_pocket_type( pocket_type::E_FILE_STORAGE ) ) {
-            for( item *it_software : it.all_items_top( pocket_type::E_FILE_STORAGE ) ) {
-                if( it_software->has_flag( json_flag_PRESERVE_SPAWN_LOC ) &&
-                    !it_software->has_var( "spawn_location" ) ) {
-                    it_software->set_var( "spawn_location", pos_abs().to_string_writable() );
-                }
-            }
-        }
-    };
 }
 
 void monster::spawn_dissectables_on_death( item *corpse ) const
@@ -3466,8 +3489,6 @@ void monster::process_one_effect( effect &it, bool is_new )
         effect_cache[VISION_IMPAIRED] = true;
     } else if( ( id == effect_bleed || id == effect_dripping_mechanical_fluid ) &&
                x_in_y( it.get_intensity(), it.get_max_intensity() ) ) {
-        // this is for balance only
-        it.mod_duration( -rng( 1_turns, it.get_int_dur_factor() / 2 ) );
         bleed( here );
         if( id == effect_bleed ) {
             // monsters are simplified so they just take damage from bleeding
@@ -3864,6 +3885,9 @@ void monster::init_from_item( item &itm )
         for( item *it : itm.all_items_top( pocket_type::CONTAINER ) ) {
             if( it->is_armor() ) {
                 it->set_flag( json_flag_FILTHY );
+                for( item *pocket : it->get_contents().get_added_pockets_mutable() ) {
+                    pocket->set_flag( json_flag_FILTHY );
+                }
             }
             inv.push_back( *it );
             itm.remove_item( *it );
@@ -4076,7 +4100,22 @@ void monster::hear_sound( const tripoint_bub_ms &source, const int vol, const in
         // TODO: make the destination scale with the sound and handle
         // the case when (x,y) is the same by picking a random direction
         tripoint_abs_ms away = pos_abs() + ( pos_abs() - target );
-        away.z() = posz();
+        // Aloft fliers descend, grounded fliers take off; non-fliers stay at
+        // current z. Mirror in monster::plan.
+        int chosen_z = posz();
+        if( flies() ) {
+            map &here = get_map();
+            const tripoint_bub_ms here_bub = pos_bub();
+            const bool grounded = here.has_floor_or_water( here_bub );
+            if( !grounded &&
+                here.valid_move( here_bub, here_bub + tripoint::below, false, true ) ) {
+                chosen_z = posz() - 1;
+            } else if( grounded &&
+                       here.valid_move( here_bub, here_bub + tripoint::above, false, true ) ) {
+                chosen_z = posz() + 1;
+            }
+        }
+        away.z() = chosen_z;
         wander_to( away, wander_turns );
     }
 }

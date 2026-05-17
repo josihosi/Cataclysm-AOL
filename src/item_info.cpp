@@ -1312,11 +1312,19 @@ void item::gun_info( const item *mod, std::vector<iteminfo> &info, const iteminf
                            "<info>" + skill.name() + "</info>" );
     }
 
-    if( mod->magazine_integral() || mod->magazine_current() ) {
-        if( mod->magazine_current() && parts->test( iteminfo_parts::GUN_MAGAZINE ) ) {
-            info.emplace_back( "GUN", _( "Magazine: " ),
-                               string_format( "<stat>%s</stat>",
-                                              mod->magazine_current()->tname() ) );
+    if( mod->magazine_integral() || !mod->magazines_current().empty() ) {
+        const std::vector<const item *> loaded_mags = mod->magazines_current();
+        if( !loaded_mags.empty() && parts->test( iteminfo_parts::GUN_MAGAZINE ) ) {
+            std::string mag_names;
+            for( size_t i = 0; i < loaded_mags.size(); ++i ) {
+                if( i > 0 ) {
+                    mag_names += ", ";
+                }
+                mag_names += loaded_mags[i]->tname();
+            }
+            info.emplace_back( "GUN",
+                               n_gettext( "Magazine: ", "Magazines: ", loaded_mags.size() ),
+                               string_format( "<stat>%s</stat>", mag_names ) );
         }
         if( !mod->ammo_types().empty() && parts->test( iteminfo_parts::GUN_CAPACITY ) ) {
             for( const ammotype &at : mod->ammo_types() ) {
@@ -1976,6 +1984,8 @@ void item::pet_armor_protection_info( std::vector<iteminfo> &info,
     }
 }
 
+namespace
+{
 // simple struct used for organizing encumbrance in an ordered set
 struct armor_encumb_data {
     int encumb;
@@ -1995,10 +2005,11 @@ struct armor_encumb_data {
     }
 };
 
-static bool operator<( const armor_encumb_data &lhs, const armor_encumb_data &rhs )
+bool operator<( const armor_encumb_data &lhs, const armor_encumb_data &rhs )
 {
     return lhs.encumb < rhs.encumb;
 }
+} // namespace
 
 void item::armor_info( std::vector<iteminfo> &info, const iteminfo_query *parts, int batch,
                        bool debug ) const
@@ -2728,9 +2739,18 @@ void item::tool_info( std::vector<iteminfo> &info, const iteminfo_query *parts, 
     }
 
     if( !magazine_integral() ) {
-        if( magazine_current() && parts->test( iteminfo_parts::TOOL_MAGAZINE_CURRENT ) ) {
-            info.emplace_back( "TOOL", _( "Magazine: " ),
-                               string_format( "<stat>%s</stat>", magazine_current()->tname() ) );
+        const std::vector<const item *> loaded_mags = magazines_current();
+        if( !loaded_mags.empty() && parts->test( iteminfo_parts::TOOL_MAGAZINE_CURRENT ) ) {
+            std::string mag_names;
+            for( size_t i = 0; i < loaded_mags.size(); ++i ) {
+                if( i > 0 ) {
+                    mag_names += ", ";
+                }
+                mag_names += loaded_mags[i]->tname();
+            }
+            info.emplace_back( "TOOL",
+                               n_gettext( "Magazine: ", "Magazines: ", loaded_mags.size() ),
+                               string_format( "<stat>%s</stat>", mag_names ) );
         }
 
         if( parts->test( iteminfo_parts::TOOL_MAGAZINE_COMPATIBLE ) ) {
@@ -3172,7 +3192,7 @@ void item::repair_info( std::vector<iteminfo> &info, const iteminfo_query *parts
 
         const std::string repairs_with = enumerate_as_string( type->repairs_with,
         []( const material_id & e ) {
-            return string_format( "<info>%s</info>", e->name() );
+            return string_format( "<info>%s</info>", e->repaired_with()->nname( 1 ) );
         } );
         if( !repairs_with.empty() ) {
             info.emplace_back( "DESCRIPTION", string_format( _( "<bold>With</bold> %s." ), repairs_with ) );
@@ -3202,7 +3222,7 @@ void item::disassembly_info( std::vector<iteminfo> &info, const iteminfo_query *
     const requirement_data &req = dis.disassembly_requirements();
     if( !req.is_empty() ) {
         const std::string approx_time = to_string_approx( dis.time_to_craft( get_player_character(),
-                                        recipe_time_flag::ignore_proficiencies ) );
+                                        {}, recipe_time_flag::ignore_proficiencies ) );
 
         const requirement_data::alter_item_comp_vector &comps_list = req.get_components();
         const std::string comps_str = enumerate_as_string( comps_list,
@@ -3269,24 +3289,38 @@ void item::qualities_info( std::vector<iteminfo> &info, const iteminfo_query *pa
     if( parts->test( iteminfo_parts::QUALITIES ) && has_any_qualities ) {
         insert_separation_line( info );
         // List all inherent (unconditional) qualities
+        // Helper to extract level-only pairs for display from item_quality maps
+        const auto to_level_pairs = []( const std::map<quality_id, itype::item_quality> &qmap ) {
+            std::map<quality_id, int> result;
+            for( const auto &e : qmap ) {
+                result[e.first] = e.second.level;
+            }
+            return result;
+        };
+
         if( !type->qualities.empty() ) {
             info.emplace_back( "QUALITIES", "", _( "<bold>Has qualities</bold>:" ) );
-            for( const std::pair<quality_id, int> &q : sorted_lex( type->qualities ) ) {
+            for( const std::pair<quality_id, int> &q : sorted_lex( to_level_pairs( type->qualities ) ) ) {
                 name_quality( q );
             }
         }
         // Tools with "charged_qualities" defined may have additional qualities when charged.
         // List them, and show whether there is enough charge to use those qualities.
-        if( !type->charged_qualities.empty() && type->charges_to_use() > 0 ) {
+        if( !type->charged_qualities.empty() && needs_charges_to_use() ) {
             // Use ammo_sufficient() with player character to include bionic/UPS power
             if( ammo_sufficient( &get_player_character() ) ) {
                 info.emplace_back( "QUALITIES", "", _( "<good>Has enough charges</good> for qualities:" ) );
+            } else if( uses_firing_requirements() ) {
+                info.emplace_back( "QUALITIES", "",
+                                   string_format( _( "<bad>Needs to be charged with: %s</bad> for qualities:" ),
+                                                  format_consumption_requirements() ) );
             } else {
                 info.emplace_back( "QUALITIES", "",
                                    string_format( _( "<bad>Needs %d or more charges</bad> for qualities:" ),
                                                   type->charges_to_use() ) );
             }
-            for( const std::pair<quality_id, int> &q : sorted_lex( type->charged_qualities ) ) {
+            for( const std::pair<quality_id, int> &q : sorted_lex(
+                     to_level_pairs( type->charged_qualities ) ) ) {
                 name_quality( q );
             }
         }
@@ -3301,11 +3335,11 @@ void item::qualities_info( std::vector<iteminfo> &info, const iteminfo_query *pa
         info.emplace_back( "QUALITIES", "", _( "Contains items with qualities:" ) );
         std::map<quality_id, int, quality_id::LexCmp> most_quality;
         for( const item *e : contents.all_items_top() ) {
-            for( const std::pair<const quality_id, int> &q : e->type->qualities ) {
-                auto emplace_result = most_quality.emplace( q );
+            for( const auto &q : e->type->qualities ) {
+                auto emplace_result = most_quality.emplace( q.first, q.second.level );
                 if( !emplace_result.second &&
-                    most_quality.at( emplace_result.first->first ) < q.second ) {
-                    most_quality[ q.first ] = q.second;
+                    most_quality.at( emplace_result.first->first ) < q.second.level ) {
+                    most_quality[ q.first ] = q.second.level;
                 }
             }
         }
@@ -4169,16 +4203,14 @@ void item::ascii_art_info( std::vector<iteminfo> &info, const iteminfo_query * /
         return;
     }
 
-    if( get_option<bool>( "ENABLE_ASCII_ART" ) ) {
-        ascii_art_id art = type->picture_id;
-        if( has_itype_variant() && itype_variant().art.is_valid() ) {
-            art = itype_variant().art;
-        }
-        if( art.is_valid() ) {
-            insert_separation_line( info );
-            for( const std::string &line : art->picture ) {
-                info.emplace_back( "DESCRIPTION", line, iteminfo::is_art );
-            }
+    ascii_art_id art = type->picture_id;
+    if( has_itype_variant() && itype_variant().art.is_valid() ) {
+        art = itype_variant().art;
+    }
+    if( art.is_valid() ) {
+        insert_separation_line( info );
+        for( const std::string &line : art->picture ) {
+            info.emplace_back( "DESCRIPTION", line, iteminfo::is_art );
         }
     }
 }
@@ -4305,8 +4337,11 @@ std::vector<iteminfo> item::get_info( const iteminfo_query *parts, int batch ) c
         } else if( blockname == "footer" ) {
 
             final_info( info, parts, batch, debug );
-            ascii_art_info( info, parts, batch, debug );
 
+            if( parts->test( iteminfo_parts::DESCRIPTION_ASCII_ART ) &&
+                get_option<bool>( "ENABLE_ASCII_ART" ) ) {
+                ascii_art_info( info, parts, batch, debug );
+            }
         } else {
 
             debugmsg( "Trying to show info block named %s which is not valid.", blockname );

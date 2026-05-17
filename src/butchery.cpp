@@ -661,7 +661,7 @@ bool butchery_drops_harvest( butchery_data bt, Character &you )
         monster_weight = std::round( 0.85 * monster_weight );
     }
     const int entry_count = ( action == butcher_type::DISSECT &&
-                              !mt.dissect.is_empty() ) ? mt.dissect->get_all().size() : mt.harvest->get_all().size();
+                              !mt.dissect.is_empty() ) ? mt.dissect->entries().size() : mt.harvest->entries().size();
     int monster_weight_remaining = monster_weight;
     int practice = 0;
 
@@ -828,8 +828,9 @@ bool butchery_drops_harvest( butchery_data bt, Character &you )
                 // apply skill before converting to items, but only if mass_ratio is defined
                 roll *= butchery_dissect_yield_mult( skill_level, you.get_dex(), tool_quality );
                 monster_weight_remaining -= roll;
-                roll = std::ceil( static_cast<double>( roll ) /
-                                  to_gram( drop->weight ) );
+                // use milligrams to avoid truncation for sub-gram items
+                roll = std::ceil( static_cast<double>( roll ) * 1000.0 /
+                                  to_milligram( drop->weight ) );
             } else {
                 monster_weight_remaining -= roll * to_gram( drop->weight );
             }
@@ -1371,7 +1372,7 @@ std::optional<butcher_type> butcher_submenu( const std::vector<map_stack::iterat
                                 msgFactor ) ) );
     smenu.addentry_col( static_cast<int>( butcher_type::BLEED ),
                         is_enabled( butcher_type::BLEED ),
-                        'l', _( "Bleed corpse" )
+                        'e', _( "Bleed corpse" )
                         + progress_str( butcher_type::BLEED ),
                         time_or_disabledreason( butcher_type::BLEED ),
                         wrap60( string_format( "%s  %s",
@@ -1382,7 +1383,7 @@ std::optional<butcher_type> butcher_submenu( const std::vector<map_stack::iterat
                                 msgFactor ) ) );
     smenu.addentry_col( static_cast<int>( butcher_type::QUARTER ),
                         is_enabled( butcher_type::QUARTER ),
-                        'k', _( "Quarter corpse" )
+                        'q', _( "Quarter corpse" )
                         + progress_str( butcher_type::QUARTER ),
                         time_or_disabledreason( butcher_type::QUARTER ),
                         wrap60( string_format( "%s  %s",

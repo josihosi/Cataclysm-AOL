@@ -38,7 +38,7 @@ Steps from current guide were tested on Windows 11 (64 bit), Visual Studio 2022 
 
 2. Install `Git for Windows` (installer can be downloaded from [Git homepage](https://git-scm.com/)).
 
-3. Install and configure `vcpkg`. If you already have `vcpkg` installed, you should update it to at least commit `3b57fb2e1ff55613db14d2aaf0a30529289c7050` (the most recent tested good revision) and rerun `.\bootstrap-vcpkg.bat` as described:
+3. Install and configure `vcpkg`. If you already have `vcpkg` installed, you should update it to at least commit `c3867e714dd3a51c272826eea77267876517ed99` (the most recent tested good revision) and rerun `.\bootstrap-vcpkg.bat` as described:
 
 ***WARNING: It is important that, wherever you decide to clone this repo, the path does not include whitespace or special symbols. That is, `C:/dev/vcpkg` is acceptable, but `C:/dev test/vcpkg` and `C:/C++Projects/vcpkg` is not.***
 
@@ -74,7 +74,7 @@ cd Cataclysm-DDA
 
 **Note:** This will download the entire CDDA repository; about three gigs of data. If you're just testing you should probably add `--depth=1`.
 
-**Note:** If you want to contribute to CDDA, see [example git workflow](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/CONTRIBUTING.md#example-workflow).
+**Note:** If you want to contribute to CDDA, see [example git workflow](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/CONTRIBUTING.md#example-workflow).
 
 2. Open the provided solution (`msvc-full-features\Cataclysm-vcpkg-static.sln`) in `Visual Studio`.
 

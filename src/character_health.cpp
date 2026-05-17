@@ -211,6 +211,7 @@ static const trait_id trait_HEAVYSLEEPER2( "HEAVYSLEEPER2" );
 static const trait_id trait_HIBERNATE( "HIBERNATE" );
 static const trait_id trait_MASOCHIST( "MASOCHIST" );
 static const trait_id trait_M_SKIN3( "M_SKIN3" );
+static const trait_id trait_NPC_STASIS( "NPC_STASIS" );
 static const trait_id trait_PACIFIST( "PACIFIST" );
 static const trait_id trait_PROF_FOODP( "PROF_FOODP" );
 static const trait_id trait_PYROMANIA( "PYROMANIA" );
@@ -240,6 +241,7 @@ std::string enum_to_string<blood_type>( blood_type data )
         case blood_type::blood_A: return "A";
         case blood_type::blood_B: return "B";
         case blood_type::blood_AB: return "AB";
+        case blood_type::blood_acid: return "Acid";
             // *INDENT-ON*
         case blood_type::num_bt:
             break;
@@ -1422,6 +1424,10 @@ bool Character::needs_food() const
 
 void Character::update_needs( int rate_multiplier )
 {
+    // Stasis NPCs don't accumulate any needs.
+    if( has_trait( trait_NPC_STASIS ) ) {
+        return;
+    }
     const int current_stim = get_stim();
     // Hunger, thirst, & sleepiness up every 5 minutes
     effect &sleep = get_effect( effect_sleep );
@@ -2244,7 +2250,7 @@ void Character::mod_stamina( int mod )
     if( stamina < 0 ) {
         for( const bodypart_id &bp : get_all_body_parts() ) {
             if( !bp->windage_effect.is_null() ) {
-                add_effect( bp->windage_effect, 10_turns );
+                add_effect( bp->windage_effect, 10_turns, bp );
             }
         }
     }
@@ -2432,7 +2438,7 @@ void Character::cough( bool harmful, int loudness )
         const int stam = get_stamina();
         const int malus = get_stamina_max() * 0.05; // 5% max stamina
         mod_stamina( -malus );
-        if( stam < malus && x_in_y( malus - stam, malus ) && one_in( 6 ) ) {
+        if( stam < malus && x_in_y( malus - stam, malus ) && one_in( 20 ) ) {
             apply_damage( nullptr, body_part_torso, 1 );
         }
     }
@@ -2620,6 +2626,21 @@ void Character::apply_damage( Creature *source, bodypart_id hurt, int dam,
     }
 }
 
+bool Character::is_within_wound_limit_for_bp( const bodypart_id bp, wound_type_id wound_id ) const
+{
+    if( wound_id->get_limit() == 0 ) {
+        return true;
+    }
+
+    const std::vector present_wounds = get_part( bp )->get_wounds();
+    const int amount = std::count_if( present_wounds.begin(),
+    present_wounds.end(), [wound_id]( wound wd ) {
+        return wd.type == wound_id;
+    } );
+
+    return amount < wound_id->get_limit();
+}
+
 void Character::apply_random_wound( bodypart_id bp, const damage_instance &d )
 {
     if( x_in_y( 1.0f - get_option<float>( "WOUND_CHANCE" ), 1.0f ) ) {
@@ -2627,14 +2648,16 @@ void Character::apply_random_wound( bodypart_id bp, const damage_instance &d )
     }
 
     weighted_int_list<wound_type_id> possible_wounds;
-    for( const std::pair<bp_wounds, int> &wd : bp->potential_wounds ) {
+    for( const auto &[potential_wound, wound_weight] : bp->potential_wounds ) {
         for( const damage_unit &du : d.damage_units ) {
-            const bool damage_within_limits = du.amount >= wd.first.damage_required.first &&
-                                              du.amount <= wd.first.damage_required.second;
-            const bool damage_type_matches = std::find( wd.first.damage_type.begin(),
-                                             wd.first.damage_type.end(), du.type ) != wd.first.damage_type.end();
-            if( damage_within_limits && damage_type_matches ) {
-                possible_wounds.add( wd.first.id, wd.second );
+            const bool damage_within_limits = du.amount >= potential_wound.damage_required.first &&
+                                              du.amount <= potential_wound.damage_required.second;
+            const bool damage_type_matches = std::find( potential_wound.damage_type.begin(),
+                                             potential_wound.damage_type.end(), du.type ) != potential_wound.damage_type.end();
+            const bool iwwlfb = is_within_wound_limit_for_bp( bp, potential_wound.id );
+
+            if( damage_within_limits && damage_type_matches && iwwlfb ) {
+                possible_wounds.add( potential_wound.id, wound_weight );
             }
         }
     }
@@ -2773,7 +2796,7 @@ int Character::reduce_healing_effect( const efftype_id &eff_id, int remove_med,
     if( remove_med < intensity ) {
         if( eff_id == effect_bandaged ) {
             add_msg_if_player( m_bad, _( "Bandages on your %s were damaged!" ), body_part_name( hurt ) );
-        } else  if( eff_id == effect_disinfected ) {
+        } else if( eff_id == effect_disinfected ) {
             add_msg_if_player( m_bad, _( "You got some filth on your disinfected %s!" ),
                                body_part_name( hurt ) );
         }
@@ -2781,7 +2804,7 @@ int Character::reduce_healing_effect( const efftype_id &eff_id, int remove_med,
         if( eff_id == effect_bandaged ) {
             add_msg_if_player( m_bad, _( "Bandages on your %s were destroyed!" ),
                                body_part_name( hurt ) );
-        } else  if( eff_id == effect_disinfected ) {
+        } else if( eff_id == effect_disinfected ) {
             add_msg_if_player( m_bad, _( "Your %s is no longer disinfected!" ), body_part_name( hurt ) );
         }
     }
@@ -2881,7 +2904,7 @@ void Character::on_hurt( Creature *source, bool disturb /*= true*/ )
     }
 
     if( disturb ) {
-        if( has_effect( effect_sleep ) && !has_bionic( bio_sleep_shutdown ) ) {
+        if( in_sleep_state() && !has_bionic( bio_sleep_shutdown ) ) {
             wake_up();
         }
         if( uistate.distraction_attack && !is_npc() && !has_effect( effect_narcosis ) ) {

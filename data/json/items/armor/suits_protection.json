@@ -1407,6 +1407,13 @@
         "specifically_covers": [ "leg_hip_l", "leg_hip_r" ],
         "coverage": 50,
         "encumbrance": 0
+      },
+      {
+        "material": [ { "type": "steel", "covered_by_mat": 100, "thickness": 1.2 } ],
+        "covers": [ "gastropod_foot" ],
+        "coverage": 50,
+        "encumbrance": 0,
+        "specifically_covers": [ "leg_hip_gastropod_l", "leg_hip_gastropod_r" ]
       }
     ]
   },
@@ -2850,7 +2857,7 @@
     },
     "charges_per_use": 1,
     "tool_ammo": "battery",
-    "passive_effects": [ { "has": "WORN", "condition": "ACTIVE", "values": [ { "value": "ARTIFACT_RESONANCE", "add": -750 } ] } ]
+    "passive_effects": [ { "id": "resonance_suit_active" } ]
   },
   {
     "id": "xedra_artifact_cleansuit_on",
@@ -3470,7 +3477,7 @@
     },
     "tool_ammo": "battery",
     "flags": [ "WATERPROOF", "RAINPROOF", "GAS_PROOF", "RAD_PROOF", "ELECTRIC_IMMUNE", "STURDY", "NO_REPAIR", "NANOFAB_REPAIR" ],
-    "passive_effects": [ { "has": "WORN", "condition": "ACTIVE", "values": [ { "value": "ARTIFACT_RESONANCE", "add": -750 } ] } ]
+    "passive_effects": [ { "id": "resonance_suit_active" } ]
   },
   {
     "id": "robofac_resonance_suit_on",
@@ -3806,7 +3813,7 @@
       "ammo_scale": 0,
       "type": "transform",
       "menu_text": "Turn off",
-      "msg": "The %s pipes stop humming.",
+      "msg": "The hum of the suit's climate control fades.",
       "target": "armor_nomad_plate"
     }
   },
@@ -3875,7 +3882,7 @@
       "ammo_scale": 0,
       "type": "transform",
       "menu_text": "Turn off",
-      "msg": "The %s pipes stop humming.",
+      "msg": "The hum of the suit's climate control fades.",
       "target": "armor_nomad_lightplate"
     }
   },
@@ -3943,7 +3950,7 @@
       "ammo_scale": 0,
       "type": "transform",
       "menu_text": "Turn off",
-      "msg": "The %s pipes stop humming.",
+      "msg": "The hum of the suit's climate control fades.",
       "target": "armor_nomad_heavyplate"
     }
   },
@@ -4010,7 +4017,7 @@
       "ammo_scale": 0,
       "type": "transform",
       "menu_text": "Turn off",
-      "msg": "The %s pipes stop humming.",
+      "msg": "The hum of the suit's climate control fades.",
       "target": "armor_nomad_chainmail"
     }
   },
@@ -4098,5 +4105,37 @@
         "encumbrance": 14
       }
     ]
+  },
+  {
+    "id": "string_dimension_biosuit",
+    "type": "ITEM",
+    "//": "A sturdy biosuit-like underlayer that serves to passively moderate body temperature.  Its liquid components makes it impossible to repair.",
+    "subtypes": [ "ARMOR", "ARTIFACT" ],
+    "category": "armor",
+    "name": { "str": "gold-latticed biosuit" },
+    "description": "A striated bodysuit constructed from a bilayer of stark-white metallic fabric, coated in a microscopically thin layer of gold.  Some of the fibers are more gold than others, giving it a barely perceptible hex pattern.  The textile bilayer is filled with liquid, giving it a squishy, cool-to-the-touch bodyfeel.",
+    "weight": "4000 g",
+    "volume": "12 L",
+    "price": "1 kUSD 175 USD",
+    "price_postapoc": "300 USD",
+    "material": [ { "type": "nanotubes", "portion": 4 }, { "type": "alien_liquid", "portion": 1 }, { "type": "gold", "portion": 0.01 } ],
+    "symbol": "[",
+    "color": "yellow",
+    "armor": [
+      {
+        "material": [
+          { "type": "nanotubes", "covered_by_mat": 100, "thickness": 4 },
+          { "type": "alien_liquid", "covered_by_mat": 100, "thickness": 1 },
+          { "type": "gold", "covered_by_mat": 100, "thickness": 0.01 }
+        ],
+        "covers": [ "torso", "leg_l", "leg_r", "arm_l", "arm_r" ],
+        "coverage": 100,
+        "encumbrance": 7
+      }
+    ],
+    "warmth": 0,
+    "environmental_protection": 20,
+    "flags": [ "VARSIZE", "WATERPROOF", "RAINPROOF", "STURDY", "NO_REPAIR", "SKINTIGHT", "MUNDANE", "SOFT" ],
+    "passive_effects": [ { "id": "ench_string_dimension_biosuit" } ]
   }
 ]

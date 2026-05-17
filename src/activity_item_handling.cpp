@@ -2,8 +2,10 @@
 #include "activity_item_handling.h" // IWYU pragma: associated
 
 #include <algorithm>
+#include <array>
 #include <climits>
 #include <cmath>
+#include <deque>
 #include <cstdlib>
 #include <list>
 #include <memory>
@@ -63,6 +65,7 @@
 #include "player_activity.h"
 #include "pocket_type.h"
 #include "point.h"
+#include "proficiency.h"
 #include "recipe.h"
 #include "recipe_dictionary.h"
 #include "requirements.h"
@@ -119,6 +122,7 @@ static const quality_id qual_SAW_W( "SAW_W" );
 static const quality_id qual_WELD( "WELD" );
 
 static const requirement_id requirement_data_mining_standard( "mining_standard" );
+static const requirement_id requirement_data_mopping_standard( "mopping_standard" );
 static const requirement_id requirement_data_multi_butcher( "multi_butcher" );
 static const requirement_id requirement_data_multi_butcher_big( "multi_butcher_big" );
 static const requirement_id requirement_data_multi_chopping_planks( "multi_chopping_planks" );
@@ -226,6 +230,8 @@ static item_location find_study_book( const tripoint_abs_ms &zone_pos, Character
     return item_location();
 }
 
+namespace
+{
 /** Activity-associated item */
 struct act_item {
     /// inventory item
@@ -240,6 +246,7 @@ struct act_item {
           count( count ),
           consumed_moves( consumed_moves ) {}
 };
+} // namespace
 
 namespace multi_activity_actor
 {
@@ -774,13 +781,17 @@ namespace zone_sorting
 namespace
 {
 struct zone_route_cache {
+    static constexpr size_t max_entries = 200;
+
     tripoint_bub_ms start;
     object_type grab_type = object_type::NONE;
     tripoint_rel_ms grab_point;
     int arm_str = 0;
     units::mass veh_mass = 0_gram;
-    // (destination center, route). Empty route means unreachable.
-    std::vector<std::pair<tripoint_bub_ms, std::vector<tripoint_bub_ms>>> entries;
+    // destination -> route. Empty route means unreachable.
+    std::unordered_map<tripoint_bub_ms, std::vector<tripoint_bub_ms>> entries;
+    // FIFO eviction order -- front is oldest.
+    std::deque<tripoint_bub_ms> insertion_order;
     bool initialized = false;
 
     void ensure_valid( const Character &who ) {
@@ -809,21 +820,31 @@ struct zone_route_cache {
             arm_str = cur_arm_str;
             veh_mass = cur_veh_mass;
             entries.clear();
+            insertion_order.clear();
             initialized = true;
         }
     }
 
     const std::vector<tripoint_bub_ms> *find( const tripoint_bub_ms &dest ) const {
-        for( const auto &e : entries ) {
-            if( e.first == dest ) {
-                return &e.second;
-            }
+        auto it = entries.find( dest );
+        if( it != entries.end() ) {
+            return &it->second;
         }
         return nullptr;
     }
 
     void store( const tripoint_bub_ms &dest, std::vector<tripoint_bub_ms> route ) {
-        entries.emplace_back( dest, std::move( route ) );
+        auto it = entries.find( dest );
+        if( it != entries.end() ) {
+            it->second = std::move( route );
+            return;
+        }
+        while( entries.size() >= max_entries && !insertion_order.empty() ) {
+            entries.erase( insertion_order.front() );
+            insertion_order.pop_front();
+        }
+        entries.emplace( dest, std::move( route ) );
+        insertion_order.push_back( dest );
     }
 };
 
@@ -887,12 +908,23 @@ bool route_to_destination( Character &you, player_activity &act,
 
 bool sort_skip_item( Character &you, const item *it,
                      const std::vector<item_location> &other_activity_items,
-                     bool ignore_favorite, const tripoint_abs_ms &src )
+                     bool ignore_favorite, const tripoint_abs_ms &src,
+                     bool *spillable_skipped )
 {
     const zone_manager &mgr = zone_manager::get_manager();
 
     // skip unpickable liquid
     if( !it->made_of_from_type( phase_id::SOLID ) ) {
+        return true;
+    }
+
+    // skip nonempty spillable containers -- picking them up triggers the
+    // interactive liquid dialog, which is inappropriate during automated
+    // sorting.  Normal pickup also refuses these (pickup.cpp, ACT_INSERT_ITEM).
+    if( it->is_bucket_nonempty() ) {
+        if( spillable_skipped ) {
+            *spillable_skipped = true;
+        }
         return true;
     }
 
@@ -1021,10 +1053,47 @@ bool ignore_zone_position( Character &you, const tripoint_abs_ms &src,
            here.impassable_field_at( src_bub );
 }
 
+// vehicle::add_item and map::add_item_or_charges silently fail at the count
+// limits even when volume fits, so sort must pre-check to avoid bounce loops.
+bool dest_has_capacity( const tripoint_abs_ms &dest, const zone_type_id &ztype,
+                        const item &sample, const faction_id &fac )
+{
+    const zone_manager &mgr = zone_manager::get_manager();
+    map &here = get_map();
+    const tripoint_bub_ms dest_bub = here.get_bub( dest );
+    const bool has_veh_zone = mgr.has_vehicle( ztype, dest, fac );
+    const bool has_ter_zone = mgr.has_terrain( ztype, dest, fac );
+    if( has_veh_zone ) {
+        if( const std::optional<vpart_reference> vp_dest = here.veh_at( dest_bub ).cargo() ) {
+            if( vp_dest->items().amount_can_fit( sample ) > 0 ) {
+                return true;
+            }
+        }
+        if( !has_ter_zone ) {
+            return false;
+        }
+    }
+    return static_cast<int>( here.i_at( dest_bub ).size() ) < MAX_ITEM_IN_SQUARE &&
+           here.free_volume( dest_bub ) >= sample.volume();
+}
+
+static bool any_dest_has_capacity( const std::unordered_set<tripoint_abs_ms> &dests,
+                                   const zone_type_id &ztype, const item &sample,
+                                   const faction_id &fac )
+{
+    for( const tripoint_abs_ms &dest : dests ) {
+        if( dest_has_capacity( dest, ztype, sample, fac ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool has_items_to_sort( Character &you, const tripoint_abs_ms &src,
                         unload_sort_options zone_unload_options,
                         const std::vector<item_location> &other_activity_items,
-                        const zone_items &items, bool *pickup_failure )
+                        const zone_items &items, bool *pickup_failure,
+                        bool *spillable_skipped )
 {
     const zone_manager &mgr = zone_manager::get_manager();
     const faction_id fac_id = _fac_id( you );
@@ -1088,7 +1157,7 @@ bool has_items_to_sort( Character &you, const tripoint_abs_ms &src,
         }
 
         if( sort_skip_item( you, it, other_activity_items,
-                            zone_unload_options.ignore_favorite, src ) ) {
+                            zone_unload_options.ignore_favorite, src, spillable_skipped ) ) {
             continue;
         }
 
@@ -1123,8 +1192,8 @@ bool has_items_to_sort( Character &you, const tripoint_abs_ms &src,
                 }
             }
         }
-        // if item has destination
-        if( !dest_set.empty() ) {
+        if( !dest_set.empty() &&
+            any_dest_has_capacity( dest_set, dest_zone_type_id, *it, fac_id ) ) {
             return true;
         }
     }
@@ -1212,6 +1281,7 @@ std::optional<bool> unload_item( Character &you, const tripoint_abs_ms &src,
                             continue;
                         }
                         unload_teleport_item( contained );
+                        moved_something = true;
                     }
                     if( you.get_moves() <= 0 ) {
                         return std::nullopt;
@@ -1228,6 +1298,7 @@ std::optional<bool> unload_item( Character &you, const tripoint_abs_ms &src,
                             }
                         }
                         unload_teleport_item( contained );
+                        moved_something = true;
                     }
 
                     // destroy fully unloaded magazines
@@ -1246,9 +1317,9 @@ std::optional<bool> unload_item( Character &you, const tripoint_abs_ms &src,
                 for( item *contained : it->all_items_top( pocket_type::MAGAZINE_WELL ) ) {
                     if( zone_sorting::can_unload( contained ) ) {
                         unload_teleport_item( contained );
+                        moved_something = true;
                     }
                 }
-                moved_something = true;
 
             }
 
@@ -1391,6 +1462,116 @@ std::optional<tripoint_bub_ms> worst_drag_tile_on_route(
     }
     return worst_tile;
 }
+
+int viewport_bbox::width() const
+{
+    return max_corner.x() - min_corner.x();
+}
+
+int viewport_bbox::height() const
+{
+    return max_corner.y() - min_corner.y();
+}
+
+viewport_bbox calc_zone_bbox( const std::unordered_set<tripoint_abs_ms> &tiles )
+{
+    viewport_bbox bbox;
+    if( tiles.empty() ) {
+        return bbox;
+    }
+    auto it = tiles.begin();
+    bbox.min_corner = *it;
+    bbox.max_corner = *it;
+    ++it;
+    for( ; it != tiles.end(); ++it ) {
+        const tripoint_abs_ms &p = *it;
+        bbox.min_corner.x() = std::min( bbox.min_corner.x(), p.x() );
+        bbox.min_corner.y() = std::min( bbox.min_corner.y(), p.y() );
+        bbox.min_corner.z() = std::min( bbox.min_corner.z(), p.z() );
+        bbox.max_corner.x() = std::max( bbox.max_corner.x(), p.x() );
+        bbox.max_corner.y() = std::max( bbox.max_corner.y(), p.y() );
+        bbox.max_corner.z() = std::max( bbox.max_corner.z(), p.z() );
+    }
+    bbox.centroid.x() = ( bbox.min_corner.x() + bbox.max_corner.x() ) / 2;
+    bbox.centroid.y() = ( bbox.min_corner.y() + bbox.max_corner.y() ) / 2;
+    bbox.centroid.z() = ( bbox.min_corner.z() + bbox.max_corner.z() ) / 2;
+    return bbox;
+}
+
+bool expand_bbox( viewport_bbox &bbox, const tripoint_abs_ms &tile )
+{
+    bool grew = false;
+    if( tile.x() < bbox.min_corner.x() ) {
+        bbox.min_corner.x() = tile.x();
+        grew = true;
+    }
+    if( tile.y() < bbox.min_corner.y() ) {
+        bbox.min_corner.y() = tile.y();
+        grew = true;
+    }
+    if( tile.x() > bbox.max_corner.x() ) {
+        bbox.max_corner.x() = tile.x();
+        grew = true;
+    }
+    if( tile.y() > bbox.max_corner.y() ) {
+        bbox.max_corner.y() = tile.y();
+        grew = true;
+    }
+    if( grew ) {
+        bbox.centroid.x() = ( bbox.min_corner.x() + bbox.max_corner.x() ) / 2;
+        bbox.centroid.y() = ( bbox.min_corner.y() + bbox.max_corner.y() ) / 2;
+    }
+    return grew;
+}
+
+bool expand_bbox_raw( tripoint_abs_ms &bbox_min, tripoint_abs_ms &bbox_max,
+                      const tripoint_abs_ms &tile )
+{
+    bool grew = false;
+    if( tile.x() < bbox_min.x() ) {
+        bbox_min.x() = tile.x();
+        grew = true;
+    }
+    if( tile.y() < bbox_min.y() ) {
+        bbox_min.y() = tile.y();
+        grew = true;
+    }
+    if( tile.x() > bbox_max.x() ) {
+        bbox_max.x() = tile.x();
+        grew = true;
+    }
+    if( tile.y() > bbox_max.y() ) {
+        bbox_max.y() = tile.y();
+        grew = true;
+    }
+    return grew;
+}
+
+int calc_target_zoom( int bbox_w, int bbox_h,
+                      int visible_w, int visible_h, int current_zoom,
+                      int saved_zoom, int padding )
+{
+    const int padded_w = bbox_w + padding;
+    const int padded_h = bbox_h + padding;
+    const int screen_px_w = visible_w * current_zoom;
+    const int screen_px_h = visible_h * current_zoom;
+
+    // 64 = most detail / fewest tiles, 4 = least detail / most tiles
+    static const std::array<int, 5> zoom_levels = { 64, 32, 16, 8, 4 };
+    int best = 4;  // fallback: most zoomed out
+    for( const int z : zoom_levels ) {
+        if( z > saved_zoom ) {
+            continue;  // never zoom in beyond original
+        }
+        const int tiles_w = screen_px_w / z;
+        const int tiles_h = screen_px_h / z;
+        if( tiles_w >= padded_w && tiles_h >= padded_h ) {
+            best = z;
+            break;  // first (largest) that fits
+        }
+    }
+    return best;
+}
 } //namespace zone_sorting
 
 std::vector<tripoint_bub_ms> route_adjacent( const Character &you, const tripoint_bub_ms &dest )
@@ -1513,7 +1694,7 @@ _find_alt_construction( tripoint_bub_ms const &loc, construction_id const &idx,
                         std::optional<construction_id> const &part_con_idx,
                         std::function<bool( construction const & )> const &filter )
 {
-    std::vector<construction *> cons = constructions_by_filter( filter );
+    std::vector<const construction *> cons = constructions_by_filter( filter );
     for( construction const *el : cons ) {
         if( _can_construct( loc, idx, *el, part_con_idx ) ) {
             return el;
@@ -1534,7 +1715,7 @@ construction const *_find_prereq( tripoint_bub_ms const &loc, construction_id co
                                   std::optional<construction_id> const &part_con_idx, checked_cache_t &checked_cache )
 {
     construction const *con = nullptr;
-    std::vector<construction *> cons = constructions_by_filter( [&idx, &top_idx](
+    std::vector<const construction *> cons = constructions_by_filter( [&idx, &top_idx](
     construction const & it ) {
         furn_id const f = top_idx->post_is_furniture ? _get_id<furn_id>( top_idx ) : furn_id();
         ter_id const t = top_idx->post_is_furniture ? ter_id() : _get_id<ter_id>( top_idx );
@@ -2344,6 +2525,7 @@ bool activity_reason_continue( do_activity_reason reason )
         reason == do_activity_reason::NEEDS_TREE_CHOPPING ||
         reason == do_activity_reason::NEEDS_FISHING ||
         reason == do_activity_reason::NEEDS_MINING ||
+        reason == do_activity_reason::NEEDS_MOP ||
         reason == do_activity_reason::NEEDS_CRAFT ||
         reason == do_activity_reason::NEEDS_DISASSEMBLE;
 }
@@ -2360,7 +2542,8 @@ bool activity_reason_picks_up_tools( do_activity_reason reason )
         reason == do_activity_reason::NEEDS_VEH_DECONST ||
         reason == do_activity_reason::NEEDS_VEH_REPAIR ||
         reason == do_activity_reason::NEEDS_TREE_CHOPPING ||
-        reason == do_activity_reason::NEEDS_MINING;
+        reason == do_activity_reason::NEEDS_MINING ||
+        reason == do_activity_reason::NEEDS_MOP;
 }
 
 bool activity_must_be_in_zone( activity_id act_id, const tripoint_bub_ms &src_loc )
@@ -2500,11 +2683,11 @@ requirement_id synthesize_requirements(
 requirement_id remove_met_requirements( requirement_id base_req_id, Character &you )
 {
 
-    requirement_data reqs = base_req_id.obj();
+    const requirement_data &reqs = base_req_id.obj();
     // Remove the requirements already met
     requirement_data::alter_tool_comp_vector tool_reqs_vector = reqs.get_tools();
     requirement_data::alter_quali_req_vector quality_reqs_vector = reqs.get_qualities();
-    requirement_data::alter_item_comp_vector component_reqs_vector = reqs.get_components();
+    const requirement_data::alter_item_comp_vector &component_reqs_vector = reqs.get_components();
     requirement_data::alter_tool_comp_vector reduced_tool_reqs_vector;
     requirement_data::alter_quali_req_vector reduced_quality_reqs_vector;
 
@@ -3172,7 +3355,7 @@ static bool chop_plank_activity( Character &you, const tripoint_bub_ms &src_loc 
         return false;
     }
     if( best_qual.type->can_have_charges() ) {
-        you.consume_charges( best_qual, best_qual.type->charges_to_use() );
+        best_qual.consume_tool_uses( 1, get_map(), you.pos_bub(), &you );
     }
     map &here = get_map();
     for( item &i : here.i_at( src_loc ) ) {
@@ -3266,7 +3449,7 @@ static bool chop_tree_activity( Character &you, const tripoint_bub_ms &src_loc )
     }
     int moves = chop_moves( you, best_qual );
     if( best_qual.type->can_have_charges() ) {
-        you.consume_charges( best_qual, best_qual.type->charges_to_use() );
+        best_qual.consume_tool_uses( 1, get_map(), you.pos_bub(), &you );
     }
     map &here = get_map();
     const ter_id &ter = here.ter( src_loc );
@@ -3554,9 +3737,11 @@ bool multi_farm_activity_actor::multi_activity_do( Character &you,
           ( reason == do_activity_reason::NEEDS_CUT_HARVESTING ) ) &&
         here.has_flag_furn( ter_furn_flag::TFLAG_GROWTH_HARVEST, src_loc ) ) {
         iexamine::harvest_plant( you, src_loc, true );
+        return false;
     } else if( ( reason == do_activity_reason::NEEDS_CLEARING ) &&
                here.has_flag_furn( ter_furn_flag::TFLAG_GROWTH_OVERGROWN, src_loc ) ) {
         iexamine::clear_overgrown( you, src_loc );
+        return false;
     } else if( reason == do_activity_reason::NEEDS_TILLING &&
                here.has_flag( ter_furn_flag::TFLAG_PLOWABLE, src_loc ) &&
                you.has_quality( qual_DIG, 1 ) && !here.has_furn( src_loc ) ) {
@@ -3739,6 +3924,15 @@ bool multi_mine_activity_actor::multi_activity_do( Character &you,
     return true;
 }
 
+std::optional<requirement_id> multi_mop_activity_actor::multi_activity_requirements( Character &,
+        activity_reason_info &act_info, const tripoint_bub_ms &, const zone_data * )
+{
+    if( act_info.reason == do_activity_reason::NEEDS_MOP ) {
+        return requirement_data_mopping_standard;
+    }
+    return requirement_id::NULL_ID();
+}
+
 bool multi_mop_activity_actor::multi_activity_do( Character &you,
         const activity_reason_info &act_info,
         const tripoint_abs_ms &, const tripoint_bub_ms &src_loc )
@@ -3823,7 +4017,7 @@ bool multi_disassemble_activity_actor::multi_activity_do( Character &you,
                                       recipe_dictionary::get_uncraft( elem.typeId() );
                     int const qty = std::max( 1, elem.typeId() == itype_disassembly ? elem.get_making_batch_size() :
                                               elem.charges );
-                    player_activity act = player_activity( disassemble_activity_actor( r.time_to_craft_moves( you,
+                    player_activity act = player_activity( disassemble_activity_actor( r.time_to_craft_moves( you, {},
                                                            recipe_time_flag::ignore_proficiencies ) * qty ) );
                     act.targets.emplace_back( map_cursor( src_loc ), &elem );
                     act.placement = here.get_abs( src_loc );

@@ -168,7 +168,7 @@
     "connect_groups": [ "BRICKFLOOR", "INDOORFLOOR" ],
     "connects_to": "BRICKFLOOR",
     "move_cost": 2,
-    "roof": "t_rock_roof",
+    "roof": "t_brick_roof",
     "flags": [ "TRANSPARENT", "INDOORS", "COLLAPSES", "SUPPORTS_ROOF", "FLAT", "ROAD" ],
     "bash": { "ter_set": "t_null", "str_min": 75, "str_max": 400, "str_min_supported": 100, "bash_below": true }
   },
@@ -462,6 +462,22 @@
     "copy-from": "t_marble_floor",
     "looks_like": "t_floor_blue",
     "description": "A mosaic floor made from colored stones arranged into fanciful patterns."
+  },
+  {
+    "type": "terrain",
+    "id": "t_highland_bronze_floor",
+    "name": "bronze steps",
+    "copy-from": "t_marble_floor",
+    "looks_like": "t_metal_floor",
+    "description": "Large steps made of bronze, stained green with age, that lead up to nothing."
+  },
+  {
+    "type": "terrain",
+    "id": "t_highland_bronze_floor_inactive",
+    "name": "bronze steps",
+    "copy-from": "t_marble_floor",
+    "looks_like": "t_metal_floor",
+    "description": "Large steps made of bronze, stained green with age, that lead up to nothing."
   },
   {
     "type": "terrain",
@@ -1321,7 +1337,7 @@
     "deconstruct": {
       "ter_set": "t_pit",
       "items": [
-        { "item": "cable", "charges": [ 8, 16 ] },
+        { "item": "cable", "count": [ 8, 16 ] },
         { "item": "cobalt_60", "count": [ 2, 10 ] },
         { "item": "scrap", "count": [ 8, 16 ] },
         { "item": "sheet_metal", "count": [ 5, 10 ] },
@@ -1591,5 +1607,48 @@
     "move_cost": 2,
     "flags": [ "TRANSPARENT" ],
     "examine_action": "ledge"
+  },
+  {
+    "type": "terrain",
+    "id": "t_greenhouse",
+    "name": "greenhouse",
+    "description": "A greenhouse that allows planting year round.",
+    "symbol": "#",
+    "color": "green",
+    "connect_groups": "GREENHOUSE",
+    "connects_to": "GREENHOUSE",
+    "move_cost": 3,
+    "flags": [ "INDOORS", "TRANSPARENT", "PLOWABLE" ],
+    "roof": "t_glass_roof",
+    "bash": {
+      "str_min": 3,
+      "str_max": 6,
+      "sound": "glass breaking!",
+      "sound_fail": "whack!",
+      "ter_set": "t_dirt",
+      "items": [ { "item": "glass_shard", "count": [ 21, 29 ] } ]
+    }
+  },
+  {
+    "type": "terrain",
+    "id": "t_greenhouse_tilled",
+    "name": "plantable greenhouse",
+    "description": "A greenhouse that allows planting year round.  It has been prepared for planting crops inside.",
+    "symbol": "#",
+    "color": "green",
+    "connect_groups": "GREENHOUSE",
+    "connects_to": "GREENHOUSE",
+    "move_cost": 3,
+    "flags": [ "INDOORS", "TRANSPARENT", "PLANTABLE" ],
+    "examine_action": "dirtmound",
+    "roof": "t_glass_roof",
+    "bash": {
+      "str_min": 3,
+      "str_max": 6,
+      "sound": "glass breaking!",
+      "sound_fail": "whack!",
+      "ter_set": "t_dirt",
+      "items": [ { "item": "glass_shard", "count": [ 21, 29 ] } ]
+    }
   }
 ]

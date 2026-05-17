@@ -19,6 +19,7 @@ class JsonObject;
 class item;
 class item_location;
 class map;
+class npc;
 class time_point;
 class vpart_reference;
 struct itype;
@@ -190,10 +191,16 @@ void handle_harvest( Character &you, const itype_id &itemid, bool force_drop );
 using iexamine_examine_function = void ( * )( Character &, const tripoint_bub_ms & );
 using iexamine_can_examine_function = bool ( * )( const tripoint_bub_ms & );
 struct iexamine_functions {
-    iexamine_can_examine_function can_examine;
-    iexamine_examine_function examine;
+    iexamine_can_examine_function can_examine = nullptr;
+    iexamine_examine_function examine = nullptr;
 };
 
 iexamine_functions iexamine_functions_from_string( const std::string &function_name );
+
+// Find the best available intercom operator for a faction.
+// Prefers on-shift, awake operators. Falls back to any awake operator.
+// Returns nullptr if no operator is found.
+npc *find_intercom_operator( const trait_id &marker_trait,
+                             const faction_id &fac_id );
 
 #endif // CATA_SRC_IEXAMINE_H

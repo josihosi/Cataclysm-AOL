@@ -88,6 +88,7 @@ enum class debug_menu_index : int {
     DISPLAY_SCENTS_LOCAL,
     DISPLAY_SCENTS_TYPE_LOCAL,
     DISPLAY_TEMP,
+    DISPLAY_SNOW_DEPTH,
     DISPLAY_VEHICLE_AI,
     DISPLAY_VISIBILITY,
     DISPLAY_LIGHTING,
@@ -120,6 +121,7 @@ enum class debug_menu_index : int {
     TALK_TOPIC,
     IMGUI_DEMO,
     VEHICLE_EFFECTS,
+    RELOAD_GPU_SHADERS,
     last
 };
 

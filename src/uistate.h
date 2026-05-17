@@ -230,6 +230,7 @@ class uistatedata
         bool distraction_mutation = true;
         bool distraction_oxygen = true;
         bool distraction_withdrawal = true;
+        bool distraction_craft_step_complete = true;
         bool distraction_all = true; // NOLINT(cata-serialize)
         bool numpad_navigation = false;
 
@@ -274,6 +275,8 @@ class uistatedata
         std::set<recipe_id> expanded_recipes;
         cata::flat_set<recipe_id> read_recipes;
         std::vector<recipe_id> recent_recipes;
+        bool crafting_expand_details = false;
+        bool crafting_expand_steps = false;
 
         bionic_ui_sort_mode bionic_sort_mode = bionic_ui_sort_mode::POWER;
 

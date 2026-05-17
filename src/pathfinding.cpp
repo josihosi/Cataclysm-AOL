@@ -44,6 +44,8 @@ static constexpr int flat_index( const point_bub_ms &p )
     return ( p.x() * MAPSIZE_Y ) + p.y();
 }
 
+namespace
+{
 // Flattened 2D array representing a single z-level worth of pathfinding data
 struct path_data_layer {
     // Closed/open is accessed way more often than all other values here
@@ -78,6 +80,7 @@ struct pathfinder {
         for( int i = minz; i <= maxz; ++i ) {
             std::unique_ptr< path_data_layer > &ptr = path_data[i + OVERMAP_DEPTH];
             if( ptr != nullptr ) {
+                // NOLINTNEXTLINE(readability-ambiguous-smartptr-reset-call) calls path_data_layer::reset
                 path_data[i + OVERMAP_DEPTH]->reset();
             }
         }
@@ -124,6 +127,7 @@ struct pathfinder {
         layer.closed[index] = false;
     }
 };
+} // namespace
 
 static pathfinder pf;
 
@@ -322,13 +326,21 @@ int map::cost_to_pass( const tripoint_bub_ms &cur, const tripoint_bub_ms &p,
     }
 
     // If it's a door and we can open it from the tile we're on, cool.
+    // But only if opening actually makes the tile passable. Shutters over
+    // reinforced glass open to reveal impassable glass -- no point opening.
     if( allow_open_doors && ( terrain.open || furniture.open ) &&
         ( ( !terrain.has_flag( ter_furn_flag::TFLAG_OPENCLOSE_INSIDE ) &&
             !furniture.has_flag( ter_furn_flag::TFLAG_OPENCLOSE_INSIDE ) ) ||
           !is_outside( cur ) ) ) {
-        // Only try to open INSIDE doors from the inside
-        // To open and then move onto the tile
-        return 4;
+        // Check that opening leads to a passable tile (or a tile that can
+        // itself be opened, like curtains over a window).
+        const ter_t &opened_ter = terrain.open ? *terrain.open : terrain;
+        const furn_t &opened_furn = furniture.open ? *furniture.open : furniture;
+        if( opened_ter.movecost > 0 || opened_furn.open || opened_ter.open ) {
+            // Only try to open INSIDE doors from the inside
+            // To open and then move onto the tile
+            return 4;
+        }
     }
 
     // Otherwise, if we can bash, we'll consider that.
@@ -348,9 +360,13 @@ int map::cost_to_pass( const tripoint_bub_ms &cur, const tripoint_bub_ms &p,
     }
 
     // If we can open doors generally but couldn't open this one, maybe we can
-    // try from another direction.
-    if( allow_open_doors && terrain.open && furniture.open ) {
-        return PF_IMPASSABLE_FROM_HERE;
+    // try from another direction. But only if opening would actually help.
+    if( allow_open_doors && ( terrain.open || furniture.open ) ) {
+        const ter_t &opened_ter = terrain.open ? *terrain.open : terrain;
+        const furn_t &opened_furn = furniture.open ? *furniture.open : furniture;
+        if( opened_ter.movecost > 0 || opened_furn.open || opened_ter.open ) {
+            return PF_IMPASSABLE_FROM_HERE;
+        }
     }
 
     return PF_IMPASSABLE;
@@ -541,15 +557,15 @@ std::vector<tripoint_bub_ms> map::route( const tripoint_bub_ms &f,
                     tripoint_bub_ms below( p + tripoint::below );
                     if( valid_move( p, below, false, true ) ) {
                         if( !has_flag( ter_furn_flag::TFLAG_NO_FLOOR, below ) ) {
-                            // Otherwise this would have been a huge fall
-                            path_data_layer &layer = pf.get_layer( p.z() - 1 );
-                            // From cur, not p, because we won't be walking on air
-                            pf.add_point( layer.gscore[parent_index] + 10,
-                                          layer.score[parent_index] + 10 + 2 * rl_dist( below, t ),
+                            // From cur, not p, because we won't be walking on air.
+                            // Use outer layer (cur.z()) for gscore -- the destination
+                            // layer may contain stale data at parent_index.
+                            int new_g = layer.gscore[parent_index] + 10;
+                            pf.add_point( new_g, new_g + 2 * rl_dist( below, t ),
                                           cur, below );
                         }
 
-                        // Close p, because we won't be walking on it
+                        // Close p on the current z-level -- we won't walk on air
                         layer.closed[index] = true;
                         continue;
                     }
@@ -561,9 +577,8 @@ std::vector<tripoint_bub_ms> map::route( const tripoint_bub_ms &f,
                 tripoint_bub_ms below( p + tripoint::below );
                 if( valid_move( p, below, false, true ) ) {
                     if( !has_flag( ter_furn_flag::TFLAG_NO_FLOOR, below ) ) {
-                        path_data_layer &layer_below = pf.get_layer( p.z() - 1 );
-                        pf.add_point( layer_below.gscore[parent_index] + 10,
-                                      layer_below.score[parent_index] + 10 + 2 * rl_dist( below, t ),
+                        int new_g = layer.gscore[parent_index] + 10;
+                        pf.add_point( new_g, new_g + 2 * rl_dist( below, t ),
                                       cur, below );
                     }
                 }
@@ -596,9 +611,10 @@ std::vector<tripoint_bub_ms> map::route( const tripoint_bub_ms &f,
                 if( !inbounds( dest ) ) {
                     continue;
                 }
-                path_data_layer &layer = pf.get_layer( dest.z() );
-                pf.add_point( layer.gscore[parent_index] + 2,
-                              layer.score[parent_index] + 2 * rl_dist( dest, t ),
+                // Use outer layer (cur.z()) for gscore -- the destination
+                // layer may contain stale data at parent_index.
+                int new_g = layer.gscore[parent_index] + 2;
+                pf.add_point( new_g, new_g + 2 * rl_dist( dest, t ),
                               cur, dest );
             }
         }
@@ -614,48 +630,44 @@ std::vector<tripoint_bub_ms> map::route( const tripoint_bub_ms &f,
                 if( !inbounds( dest ) ) {
                     continue;
                 }
-                path_data_layer &layer = pf.get_layer( dest.z() );
-                pf.add_point( layer.gscore[parent_index] + 2,
-                              layer.score[parent_index] + 2 * rl_dist( dest, t ),
+                int new_g = layer.gscore[parent_index] + 2;
+                pf.add_point( new_g, new_g + 2 * rl_dist( dest, t ),
                               cur, dest );
             }
         }
         if( cur.z() < max.z() && parent_terrain.has_flag( ter_furn_flag::TFLAG_RAMP ) &&
             valid_move( cur, cur + tripoint::above, false, true ) ) {
-            path_data_layer &layer = pf.get_layer( cur.z() + 1 );
             for( size_t it = 0; it < 8; it++ ) {
                 const tripoint_bub_ms above( cur.x() + x_offset[it], cur.y() + y_offset[it], cur.z() + 1 );
                 if( !inbounds( above ) ) {
                     continue;
                 }
-                pf.add_point( layer.gscore[parent_index] + 4,
-                              layer.score[parent_index] + 4 + 2 * rl_dist( above, t ),
+                int new_g = layer.gscore[parent_index] + 4;
+                pf.add_point( new_g, new_g + 2 * rl_dist( above, t ),
                               cur, above );
             }
         }
         if( cur.z() < max.z() && parent_terrain.has_flag( ter_furn_flag::TFLAG_RAMP_UP ) &&
             valid_move( cur, cur + tripoint::above, false, true, true ) ) {
-            path_data_layer &layer = pf.get_layer( cur.z() + 1 );
             for( size_t it = 0; it < 8; it++ ) {
                 const tripoint_bub_ms above( cur.x() + x_offset[it], cur.y() + y_offset[it], cur.z() + 1 );
                 if( !inbounds( above ) ) {
                     continue;
                 }
-                pf.add_point( layer.gscore[parent_index] + 4,
-                              layer.score[parent_index] + 4 + 2 * rl_dist( above, t ),
+                int new_g = layer.gscore[parent_index] + 4;
+                pf.add_point( new_g, new_g + 2 * rl_dist( above, t ),
                               cur, above );
             }
         }
         if( cur.z() > min.z() && parent_terrain.has_flag( ter_furn_flag::TFLAG_RAMP_DOWN ) &&
             valid_move( cur, cur + tripoint::below, false, true, true ) ) {
-            path_data_layer &layer = pf.get_layer( cur.z() - 1 );
             for( size_t it = 0; it < 8; it++ ) {
                 const tripoint_bub_ms below( cur.x() + x_offset[it], cur.y() + y_offset[it], cur.z() - 1 );
                 if( !inbounds( below ) ) {
                     continue;
                 }
-                pf.add_point( layer.gscore[parent_index] + 4,
-                              layer.score[parent_index] + 4 + 2 * rl_dist( below, t ),
+                int new_g = layer.gscore[parent_index] + 4;
+                pf.add_point( new_g, new_g + 2 * rl_dist( below, t ),
                               cur, below );
             }
         }
