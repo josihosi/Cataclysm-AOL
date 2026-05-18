@@ -40,20 +40,20 @@
       "required_monsters": [
         {
           "typeid": "mon_zombie_rider",
-          "offset_ms": [
-            0,
-            -8,
-            0
-          ],
+            "offset_ms": [
+              0,
+              -5,
+              0
+            ],
           "ammo": {
-            "arrow_wood": 18
+            "zombie_rider_tainted_bone_arrow": 18
           }
         }
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_zombie_rider_wounded_active_monster_setup_missing",
       "abort_reason": "saved active_monsters metadata did not contain required wounded rider footing",
-      "expected_visible_fact": "one hostile wounded zombie rider starts eight tiles north at bow-pressure range"
+      "expected_visible_fact": "one hostile wounded zombie rider starts five tiles north at bow-pressure range"
     },
     {
       "kind": "press",

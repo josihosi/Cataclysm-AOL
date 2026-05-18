@@ -46,6 +46,13 @@
           "age_turns": 0
         }
       ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "clear_spawn_tile_headcount": true
     }
   ]
 }

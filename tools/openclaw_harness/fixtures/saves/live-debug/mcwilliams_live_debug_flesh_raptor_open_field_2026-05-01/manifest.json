@@ -1,13 +1,25 @@
 {
   "name": "mcwilliams_live_debug_flesh_raptor_open_field_2026-05-01",
-  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
   "source_profile": "live-debug",
   "description": "Harness-only flesh-raptor open-field restage: one hostile flesh raptor at visible skirmish range for live orbit/swoop/frustration metrics proof.",
   "save_transforms": [
     {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    },
+    {
       "kind": "game_turn",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "turn": 5227200
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "clear_spawn_tile_headcount": true
     },
     {
       "kind": "active_monsters_near_player",
@@ -24,6 +36,7 @@
           "hp": 45,
           "friendly": 0,
           "faction": "zombie",
+          "aggro_character": true,
           "anger": 100,
           "morale": 100
         }

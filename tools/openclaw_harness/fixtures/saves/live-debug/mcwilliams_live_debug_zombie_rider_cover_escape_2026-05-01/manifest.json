@@ -1,6 +1,6 @@
 {
   "name": "mcwilliams_live_debug_zombie_rider_cover_escape_2026-05-01",
-  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
   "source_profile": "live-debug",
   "description": "Harness-only zombie-rider cover/LOS restage: remove human NPC targets, set local noon, place a thick opaque locker wall east of the player, and stage one hostile rider behind it so live turns can prove cover blocks rider bow pressure instead of letting it shoot through walls.",
   "save_transforms": [
@@ -13,6 +13,13 @@
       "kind": "game_turn",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "turn": 5227200
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "clear_spawn_tile_headcount": true
     },
     {
       "kind": "map_furniture_near_player",

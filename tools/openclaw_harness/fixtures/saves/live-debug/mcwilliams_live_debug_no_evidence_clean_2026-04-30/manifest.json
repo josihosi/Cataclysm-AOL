@@ -1,6 +1,6 @@
 {
   "name": "mcwilliams_live_debug_no_evidence_clean_2026-04-30",
-  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
   "source_profile": "live-debug",
   "description": "Harness-only clean no-evidence McWilliams restage for writhing-stalker negative-control proof. It removes overmap NPC human targets, sets local noon, places a thick opaque locker wall east of the player, and seeds exactly one hostile mon_writhing_stalker at a known offset behind that wall via active_monsters save transform.",
   "save_transforms": [

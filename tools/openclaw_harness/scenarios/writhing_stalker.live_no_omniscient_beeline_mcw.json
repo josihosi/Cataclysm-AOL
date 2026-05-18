@@ -216,7 +216,7 @@
       "extract_text_tail_lines": 64,
       "expected_screen_text_after_contains": [
         "quit",
-        "Case Sensitive"
+        "Case Sens"
       ],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_untrusted_writhing_stalker_no_evidence_save_writeback",

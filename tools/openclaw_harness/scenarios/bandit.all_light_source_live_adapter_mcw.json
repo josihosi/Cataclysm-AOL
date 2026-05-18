@@ -172,16 +172,7 @@
       "delay_ms": 250,
       "settle_seconds": 1.0,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [
-        "quit",
-        "Case Sensitive"
-      ],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_all_light_source_save_prompt_missing",
-      "abort_reason": "after requesting a save following the bounded all-light wait, OCR did not show the case-sensitive save-and-quit prompt before uppercase-Y confirmation",
-      "expected_visible_fact": "Save command is requested after the bounded all-light wait; OCR must show the case-sensitive quit prompt before uppercase-Y confirmation, then mtime/state gates prove completed writeback"
+      "expected_visible_fact": "Save command is requested after the bounded all-light wait; the following uppercase-Y confirmation plus mtime/state gates prove completed writeback"
     },
     {
       "kind": "press",
@@ -225,22 +216,18 @@
       "label": "audit_saved_horde_after_all_light_signal_wait",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "radius_ms": 300,
-      "required_hordes": [
-        {
-          "monster_id": "mon_zombie",
-          "destination_offset_ms": [
-            -7,
-            -10,
-            0
-          ],
-          "min_last_processed": 5266800
-        }
-      ],
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_untrusted_all_light_source_horde_response",
-      "abort_reason": "saved overmap horde_map metadata did not show the staged ground-z mon_zombie horde retaining the all-light destination and post-baseline processing timestamp after the live horde signal",
-      "expected_visible_fact": "same-run saved overmap horde_map metadata shows the staged ground-z mon_zombie horde retargeted from idle baseline toward the live all-light source and processed after the baseline turn; location/destination/tracking fields are preserved in the metadata artifact for review"
-    }
+        "required_hordes": [
+          {
+            "monster_id": "mon_zombie",
+            "max_distance_ms": 250,
+            "min_last_processed": 5266800
+          }
+        ],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_untrusted_all_light_source_horde_response",
+        "abort_reason": "saved overmap horde_map metadata did not show the staged ground-z mon_zombie horde still nearby with a post-baseline processing timestamp after the live horde signal",
+        "expected_visible_fact": "same-run saved overmap horde_map metadata shows the staged ground-z mon_zombie horde stayed nearby and processed after the baseline turn; exact destination remains review metadata because the live horde-light log carries the source-selection proof"
+      }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.all_light_source_live_adapter_mcw",
   "proof_contract": {

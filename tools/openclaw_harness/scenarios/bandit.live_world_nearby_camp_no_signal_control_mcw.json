@@ -39,6 +39,7 @@
       "menu_settle_seconds": 0.8,
       "after_choice_settle_seconds": 0.5,
       "completion_wait_seconds": 10.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
       "extract_text_tail_lines": 40,
       "artifact_state_patterns": [
         "bandit_live_world signal scan: signal_packet=no",

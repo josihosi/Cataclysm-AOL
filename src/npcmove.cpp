@@ -143,6 +143,7 @@ static const activity_id ACT_START_FIRE( "ACT_START_FIRE" );
 static const activity_id
     ACT_VEHICLE_DECONSTRUCTION("ACT_VEHICLE_DECONSTRUCTION");
 static const activity_id ACT_VEHICLE_REPAIR("ACT_VEHICLE_REPAIR");
+static const string_id<behavior::node_t> behavior_node_t_npc_decision( "npc_decision" );
 
 static const bionic_id bio_ads("bio_ads");
 static const bionic_id bio_blade( "bio_blade" );
@@ -412,6 +413,35 @@ static void print_action(const char *prepend, npc_action action);
 
 static bool compare_sound_alert(const dangerous_sound &sound_a,
                                 const dangerous_sound &sound_b);
+
+static const vehicle *player_moving_vehicle_for_follow()
+{
+    const Character &player = get_player_character();
+    if( !player.in_vehicle ) {
+        return nullptr;
+    }
+    const optional_vpart_position vp = get_map().veh_at( player.pos_bub() );
+    if( !vp ) {
+        return nullptr;
+    }
+    const vehicle &veh = vp->vehicle();
+    return veh.velocity != 0 ? &veh : nullptr;
+}
+
+static const char *legacy_need_name( const npc::need_goal_id id )
+{
+    switch( id ) {
+        case npc::need_goal_id::eat_food:
+            return "need_food";
+        case npc::need_goal_id::drink_water:
+            return "need_water";
+        case npc::need_goal_id::seek_warmth:
+            return "need_warmth";
+        case npc::need_goal_id::go_to_sleep:
+            return "need_sleep";
+    }
+    return "need_unknown";
+}
 
 bool compare_sound_alert(const dangerous_sound &sound_a,
                          const dangerous_sound &sound_b) {
@@ -2439,6 +2469,50 @@ void npc::move() {
         // No present danger
         cleanup_on_no_danger();
 
+        behavior::character_oracle_t oracle( this );
+        behavior::tree npc_decision;
+        npc_decision.add( &behavior_node_t_npc_decision.obj() );
+        const std::string bt_goal = npc_decision.tick( &oracle );
+
+        if( const auto gid = goal_id_for( bt_goal );
+            gid && debugmode::enabled_filters.count( debugmode::DF_NPC_NEEDS ) == 1 ) {
+            add_msg_debug( debugmode::DF_NPC_NEEDS, "BT needs goal %s legacy %s",
+                           bt_goal, legacy_need_name( *gid ) );
+        }
+
+        if( bt_goal == "idle" ) {
+            if( !ai_cache.committed_goal.empty() ) {
+                clear_committed_goal();
+            }
+            if( is_walking_with() && player_moving_vehicle_for_follow() != nullptr ) {
+                action = npc_pause;
+            }
+        } else if( ai_cache.committed_goal != bt_goal ) {
+            const bool had_previous_commitment = !ai_cache.committed_goal.empty();
+            clear_committed_goal();
+            if( bt_goal != "hold_position" || !had_previous_commitment ) {
+                ai_cache.committed_goal = bt_goal;
+            }
+        }
+
+        if( action == npc_undecided ) {
+            if( bt_goal == "return_to_guard_pos" ) {
+                if( const std::optional<tripoint_abs_ms> post = get_effective_guard_pos() ) {
+                    ai_cache.guard_pos = *post;
+                    action = npc_return_to_guard_pos;
+                }
+            } else if( bt_goal == "hold_position" ) {
+                action = npc_pause;
+            } else if( bt_goal == "follow_player" ) {
+                action = npc_follow_player;
+            } else if( bt_goal == "follow_embarked" ) {
+                action = npc_follow_embarked;
+                path.clear();
+            } else if( bt_goal == "goto_ordered_position" && goto_to_this_pos ) {
+                action = npc_goto_to_this_pos;
+            }
+        }
+
         if( auto gid = goal_id_for( ai_cache.committed_goal ); gid ) {
             const npc_attitude saved_att = attitude;
             const npc_mission saved_mis = mission;
@@ -2450,9 +2524,6 @@ void npc::move() {
             } else if( result == need_result::progressed ||
                        result == need_result::satisfied ) {
                 action = npc_noop;
-                if( result == need_result::satisfied ) {
-                    clear_committed_goal();
-                }
             } else if( result == need_result::impossible ) {
                 plan_for( *gid ).clear();
                 ai_cache.committed_goal.clear();
@@ -4062,7 +4133,11 @@ bool npc::update_path(const tripoint_bub_ms &p, const bool no_bashing,
   return false;
 }
 
-void npc::set_guard_pos(const tripoint_abs_ms &p) { ai_cache.guard_pos = p; }
+void npc::set_guard_pos( const tripoint_abs_ms &p )
+{
+    guard_pos = p;
+    ai_cache.guard_pos = p;
+}
 
 bool npc::is_no_go_position( const tripoint_abs_ms &p ) const
 {
@@ -6705,7 +6780,7 @@ void npc::go_to_omt_destination() {
 
 void npc::guard_current_pos() {
   goal = pos_abs_omt();
-  guard_pos = pos_abs();
+  set_guard_pos( pos_abs() );
 }
 
 std::string npc_action_name(npc_action action) {

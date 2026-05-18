@@ -125,8 +125,26 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def run_json(cmd: List[str], check: bool = True) -> Dict[str, Any]:
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+def run_json(
+    cmd: List[str],
+    check: bool = True,
+    *,
+    timeout_seconds: Optional[float] = None,
+) -> Dict[str, Any]:
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired as exc:
+        if check:
+            raise RuntimeError(
+                f"command timed out after {timeout_seconds}s: {' '.join(cmd)}\n"
+                f"{exc.stdout or ''}\n{exc.stderr or ''}"
+            )
+        return {
+            "ok": False,
+            "timeout": True,
+            "stdout": exc.stdout or "",
+            "stderr": exc.stderr or "",
+        }
     if check and proc.returncode != 0:
         raise RuntimeError(f"command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}\n{proc.stderr}")
     if not proc.stdout.strip():
@@ -563,7 +581,23 @@ def write_json(path: Path, data: Dict[str, Any]) -> None:
 
 
 def require_peekaboo_permissions() -> None:
-    data = run_json(["peekaboo", "permissions", "--json"])
+    last_error = ""
+    data: Dict[str, Any] = {}
+    for attempt in range(2):
+        try:
+            data = run_json(["peekaboo", "permissions", "--json"], timeout_seconds=5.0)
+            last_error = ""
+            break
+        except RuntimeError as err:
+            last_error = str(err)
+            if attempt == 0:
+                time.sleep(0.5)
+    if last_error:
+        # Peekaboo's permission command can intermittently wedge on macOS even
+        # when focus/capture/input permissions are already granted.  The
+        # following focus and screenshot rows are the real feature-test gate, so
+        # do not let this advisory preflight block a probe forever.
+        return
     perms = data.get("data", {}).get("permissions", [])
     missing = [perm for perm in perms if perm.get("isRequired") and not perm.get("isGranted")]
     if missing:
@@ -4391,8 +4425,14 @@ def window_area(window: Dict[str, Any]) -> int:
 
 
 def list_windows_for_pid(pid: int) -> List[Dict[str, Any]]:
-    payload = run_json(["peekaboo", "list", "windows", "--json", "--app", f"PID:{pid}"], check=False)
+    payload = run_json(
+        ["peekaboo", "list", "windows", "--json", "--app", f"PID:{pid}"],
+        check=False,
+        timeout_seconds=5.0,
+    )
     if not isinstance(payload, dict):
+        return []
+    if payload.get("timeout"):
         return []
     data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
     windows = data.get("windows", [])
@@ -4608,12 +4648,21 @@ def crop_png_with_sips(source_path: Path, output_path: Path, crop: Dict[str, int
         "--out",
         str(output_path),
     ]
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10.0,
+        )
+    except subprocess.TimeoutExpired as exc:
+        proc = subprocess.CompletedProcess(
+            cmd,
+            124,
+            stdout=exc.stdout or "",
+            stderr=(exc.stderr or "") + "\npeekaboo image timed out",
+        )
     return {
         "ok": proc.returncode == 0,
         "command": cmd,
@@ -4640,12 +4689,21 @@ def capture_screenshot(
         cmd.extend(["--window-id", str(capture_target["window_id"])])
     else:
         cmd.extend(["--pid", str(pid)])
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10.0,
+        )
+    except subprocess.TimeoutExpired as exc:
+        proc = subprocess.CompletedProcess(
+            cmd,
+            124,
+            stdout=exc.stdout or "",
+            stderr=(exc.stderr or "") + "\npeekaboo image timed out",
+        )
     fallback_report: Optional[Dict[str, Any]] = None
     capture_ok = proc.returncode == 0 and png_path.exists()
     if not capture_ok:
@@ -5382,17 +5440,38 @@ def launch_game(profile: str, target_world: str, run_dir: Path) -> subprocess.Po
 
 
 def pid_command(pid: int) -> str:
-    proc = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, check=False)
+    try:
+        proc = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+    except (PermissionError, subprocess.TimeoutExpired):
+        return ""
     return proc.stdout.strip()
+
+
+def pid_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def wait_for_pid_exit(pid: int, timeout_seconds: float) -> bool:
     deadline = time.monotonic() + max(timeout_seconds, 0.0)
     while time.monotonic() < deadline:
-        if not pid_command(pid):
+        if not pid_is_alive(pid):
             return True
         time.sleep(0.1)
-    return not pid_command(pid)
+    return not pid_is_alive(pid)
 
 
 def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, Any]:
@@ -5407,9 +5486,11 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
     command = pid_command(pid)
     info["command"] = command
     if not command:
-        info["status"] = "already_exited"
-        return info
-    if not re.search(r"cataclysm-(tiles|tlg-tiles)", command):
+        if not pid_is_alive(pid):
+            info["status"] = "already_exited"
+            return info
+        info["command_lookup"] = "unavailable"
+    elif not re.search(r"cataclysm-(tiles|tlg-tiles)", command):
         info["status"] = "skipped_non_cataclysm_process"
         return info
 
