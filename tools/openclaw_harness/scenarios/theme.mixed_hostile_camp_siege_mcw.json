@@ -1,0 +1,147 @@
+{
+  "name": "theme.mixed_hostile_camp_siege_mcw",
+  "description": "Full-scene thematic stress playtest: a McWilliams camp-adjacent scene carries active bandit pressure, cannibal pressure, a writhing stalker, a zombie horde, a zombie rider, a flesh-raptor, and a night fire/smoke cue so the tester can judge whether CAOL hostile systems compose into tension or incoherent noise.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "theme_mixed_hostile_camp_siege_v0_2026-05-18",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world perf:",
+    "camp_style:stalk=1",
+    "cannibal_camp:stalk=1",
+    "writhing_stalker",
+    "zombie_rider",
+    "flesh_raptor",
+    "horde"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_mixed_siege_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "post-load gameplay screen for the mixed hostile camp-siege footing; startup/load and scene-footing evidence only"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "preflight_mixed_siege_midnight",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_siege_not_midnight",
+      "abort_reason": "saved game turn did not prove the intended midnight siege footing"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_siege_bandit_active_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 4,
+      "required_active_outside_count": 4,
+      "required_min_active_member_ids": 4,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_siege_bandit_footing",
+      "abort_reason": "saved bandit_live_world state did not contain the active bandit pressure job"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_siege_cannibal_active_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:cannibal_camp@150,39,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 2,
+      "required_active_outside_count": 2,
+      "required_min_active_member_ids": 2,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_siege_cannibal_footing",
+      "abort_reason": "saved bandit_live_world state did not contain the active cannibal pressure job"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "preflight_mixed_siege_monsters",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_typeids": ["mon_writhing_stalker", "mon_zombie_rider", "mon_spawn_raptor"],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_siege_monster_footing",
+      "abort_reason": "saved active_monsters did not contain the staged stalker, rider, and raptor"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "preflight_mixed_siege_horde",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 360,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [0, -240, 0],
+          "destination_offset_ms": [0, -120, 0],
+          "tracking_intensity": 10,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_siege_horde_footing",
+      "abort_reason": "saved horde metadata did not contain the staged nearby zombie horde"
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode_before_mixed_siege",
+      "keys": ["!"],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "safe mode is off and gameplay remains focused before the mixed-threat window"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_300_turns_mixed_siege_local_window",
+      "count": 300,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 120,
+      "expected_visible_fact": "a bounded local night combat/pressure window advanced with bandit, cannibal, stalker, rider, raptor, horde, and fire/smoke ingredients staged"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_30m_mixed_siege_overmap_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+      "completion_wait_seconds": 12.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "artifact_state_patterns": [
+        "bandit_live_world perf:",
+        "active_job_mix=",
+        "camp_style:stalk=1",
+        "cannibal_camp:stalk=1"
+      ],
+      "expected_visible_fact": "the scene survives a bounded 30-minute hostile overmap cadence without collapsing into stale or duplicated pressure"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff theme.mixed_hostile_camp_siege_mcw --compact-stdout",
+  "playtest_rubric": {
+    "readout_doc": "doc/caol-full-scene-playtest-rubric-v0-2026-05-18.md",
+    "required_actor_rows": ["player", "camp NPCs", "bandits", "cannibals", "writhing stalker", "zombie rider", "flesh-raptor", "horde", "fire/smoke/light signal"],
+    "primary_question": "Did the systems create layered tension, or did stacked primitives make unreadable, unfair, or inert behavior?"
+  },
+  "evidence_contract": {
+    "claim": "a deliberately dense CAOL hostile scene can be staged and advanced for subjective full-system review",
+    "load_only_verdict": "load proof only / inconclusive for mixed-siege behavior",
+    "failure_rule": "No mixed-siege credit unless startup/load, all preflight hostile ingredients, local-window capture, and overmap cadence artifact are separated in the report."
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "name": "theme.intact_camp_shakedown_fight_mcw",
+  "description": "Full-scene thematic playtest: an intact McWilliams/Basecamp with several armed camp NPCs reaches a bandit shakedown, chooses Fight, then advances a short combat window so the tester can judge whether camp NPCs and bandits behave believably.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "theme_intact_camp_shakedown_fight_v0_2026-05-18",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "local_gate site=overmap_special:bandit_camp@140,51,0",
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "basecamp_or_camp=yes",
+    "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
+    "shakedown_surface fight demanded=15797 reachable=45134"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_intact_camp_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "post-load gameplay screen on the armed intact-camp footing before shakedown advancement; this is startup/load and scene-footing evidence only"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "preflight_armed_camp_npc_snapshot",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true,
+      "record_baseline": true,
+      "expected_visible_fact": "saved overmap NPC metadata is recorded before the fight so the readout can separate camp NPCs from bandits and later duplicates"
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode_before_shakedown_fight",
+      "keys": ["!"],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 20,
+      "expected_visible_fact": "safe mode is off and gameplay remains focused before shakedown turns advance"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_shakedown_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_intact_camp_shakedown_surface",
+      "expected_immediate_state": "bounded turn advance reaches the shakedown gate edge; proof is deferred to the same-run demand-surface artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_shakedown",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 80,
+      "expected_visible_fact": "Bandit shakedown dialogue is visible inside the intact camp with player-facing Pay/Fight choices"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_intact_camp_shakedown_surface",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=15797",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ],
+        [
+          "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_shakedown_surface_missing",
+      "abort_reason": "same-run debug artifact did not prove the intact-camp bandit Pay/Fight shakedown surface",
+      "expected_immediate_state": "same-run debug log names camp_style/open_shakedown, reachable goods, demanded toll, visible Pay/Fight responses, and basecamp inventory reach"
+    },
+    {
+      "kind": "press",
+      "label": "choose_fight_inside_intact_camp",
+      "keys": ["down", "enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 80,
+      "expected_visible_fact": "Fight was selected from the visible shakedown menu; the scene should return to live camp/combat contact rather than silently paying or closing without consequence"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_intact_camp_fight_branch",
+      "required_line_patterns": [
+        [
+          "shakedown_surface fight demanded=15797 reachable=45134"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_fight_branch_missing",
+      "abort_reason": "same-run debug artifact did not prove the selected Fight branch for the intact-camp shakedown",
+      "expected_immediate_state": "same-run debug log records the fight branch and preserves demanded/reachable values"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_120_turns_for_camp_fight_readout",
+      "count": 120,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 120,
+      "expected_visible_fact": "a bounded combat window has advanced after the Fight branch; tester must judge whether armed camp NPCs and bandits moved, targeted, and escalated believably"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff theme.intact_camp_shakedown_fight_mcw --compact-stdout",
+  "recommended_repeatability_command": "python3 tools/openclaw_harness/startup_harness.py repeatability --count 3 --compact-stdout theme.intact_camp_shakedown_fight_mcw",
+  "playtest_rubric": {
+    "readout_doc": "doc/caol-full-scene-playtest-rubric-v0-2026-05-18.md",
+    "required_actor_rows": ["player", "armed camp NPCs", "bandits", "camp patrol/locker/routing side effects"],
+    "primary_question": "Did choosing Fight inside an intact armed camp produce a fun, intense, readable fight, or did camp NPCs/bandits behave like confused primitives?"
+  },
+  "evidence_contract": {
+    "claim": "an intact-camp bandit shakedown can be reached, the Fight branch can be selected, and a bounded live combat window can be captured for subjective full-scene review",
+    "load_only_verdict": "load proof only / inconclusive for thematic fight behavior",
+    "failure_rule": "No full-scene fight credit unless startup/load, armed-camp NPC snapshot, visible Pay/Fight demand, same-run fight artifact, and post-fight combat-window capture all exist."
+  }
+}

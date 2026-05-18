@@ -1,0 +1,115 @@
+{
+  "name": "theme_mixed_hostile_camp_siege_v0_2026-05-18",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "Thematic mixed-hostile camp-siege footing: start from the checked-in raw McWilliams/Basecamp local-contact save, clone the known bandit site into a cannibal-style hostile site, pre-stage active jobs, pin the clock to midnight, add a small live fire/smoke cue, and stage stalker/rider/raptor/horde pressure so a human playtest can judge how CAOL hostile systems interact in one scene. This is an intentional stress scene, not natural-discovery proof.",
+  "save_transforms": [
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@150,39,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_anchor": [150, 39, 0],
+      "new_footprint": [
+        [150, 39, 0],
+        [151, 39, 0],
+        [150, 40, 0],
+        [151, 40, 0]
+      ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 4,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 4,
+      "active_job_type": "stalk",
+      "active_target_id": "theme_mixed:bandit@140,51,0",
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@150,39,0",
+      "living_member_count": 2,
+      "member_start_index": 4,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 2,
+      "active_job_type": "stalk",
+      "active_target_id": "theme_mixed:cannibal@150,39,0",
+      "headcount_override": 4
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5184000
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [34, 0, 0],
+          "intensity": 2,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [34, 1, 0],
+          "intensity": 2,
+          "age_turns": 0
+        }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [8, 0, 0],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [-8, -8, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "ammo": { "zombie_rider_tainted_bone_arrow": 6 }
+        },
+        {
+          "typeid": "mon_spawn_raptor",
+          "offset_ms": [7, 6, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [0, -240, 0],
+      "destination_offset_ms": [0, -120, 0],
+      "tracking_intensity": 10,
+      "last_processed": 0,
+      "moves": 0
+    }
+  ]
+}
