@@ -1,6 +1,12 @@
 [
   {
     "type": "overmap_special_migration",
+    "id": "Occupied LMOE Shelter",
+    "new_id": "Locked LMOE Shelter",
+    "//": "Legacy CAOL fixture save special; zombie LMOE terrain now migrates to the locked/prepperquest LMOE footprint."
+  },
+  {
+    "type": "overmap_special_migration",
     "id": "o_lightindustry_scen",
     "new_id": "o_lightindustry",
     "//": "Migrated in 0.J"

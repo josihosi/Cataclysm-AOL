@@ -24,7 +24,7 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:bandit_camp@140,51,0",
       "living_member_count": 4,
-      "member_start_index": 0,
+      "member_start_index": 1,
       "wounded_or_unready_count": 0,
       "active_outside_member_count": 4,
       "active_job_type": "stalk",
@@ -36,7 +36,7 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:cannibal_camp@150,39,0",
       "living_member_count": 2,
-      "member_start_index": 4,
+      "member_start_index": 5,
       "wounded_or_unready_count": 0,
       "active_outside_member_count": 2,
       "active_job_type": "stalk",
@@ -63,6 +63,18 @@
           "offset_ms": [34, 1, 0],
           "intensity": 2,
           "age_turns": 0
+        },
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [4, -4, 0],
+          "intensity": 2,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [6, -4, 0],
+          "intensity": 1,
+          "age_turns": 0
         }
       ]
     },
@@ -73,7 +85,7 @@
       "monsters": [
         {
           "typeid": "mon_writhing_stalker",
-          "offset_ms": [8, 0, 0],
+          "offset_ms": [8, 2, 0],
           "hp": 90,
           "friendly": 0,
           "faction": "zombie",
@@ -82,18 +94,19 @@
         },
         {
           "typeid": "mon_zombie_rider",
-          "offset_ms": [-8, -8, 0],
-          "hp": 80,
+          "offset_ms": [0, -8, 0],
+          "hp": 220,
+          "speed": 80,
           "friendly": 0,
           "faction": "zombie",
           "anger": 100,
           "morale": 100,
-          "ammo": { "zombie_rider_tainted_bone_arrow": 6 }
+          "ammo": {}
         },
         {
           "typeid": "mon_spawn_raptor",
-          "offset_ms": [7, 6, 0],
-          "hp": 80,
+          "offset_ms": [5, 0, 0],
+          "hp": 45,
           "friendly": 0,
           "faction": "zombie",
           "anger": 100,

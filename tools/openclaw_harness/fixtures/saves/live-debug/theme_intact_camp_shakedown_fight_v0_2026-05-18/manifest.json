@@ -33,6 +33,29 @@
       "items": [
         { "typeid": "knife_combat", "count": 1, "slot": "weapon" }
       ]
+    },
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 5,
+      "offset_ms": [30, -4, 0],
+      "ensure_follower": false,
+      "items": [
+        { "typeid": "pipe", "count": 1, "slot": "weapon" }
+      ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 8,
+      "member_start_index": 1,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 1,
+      "active_member_state": "local_contact",
+      "active_job_type": "stalk",
+      "active_target_id": "theme_intact:shakedown@140,51,0",
+      "headcount_override": 8
     }
   ]
 }

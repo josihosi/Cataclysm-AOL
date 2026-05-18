@@ -2776,6 +2776,13 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
+    if( site.last_shakedown_outcome == "fight_unresolved" && input.local_contact_established ) {
+        decision.posture = local_gate_posture::attack_now;
+        decision.combat_forward = true;
+        decision.notes.push_back( "fight branch is already selected; active shakedown pressure commits to hostile contact instead of reopening the demand" );
+        return decision;
+    }
+
     if( decision.pressure_margin <= -3 ) {
         decision.posture = local_gate_posture::abort;
         decision.valid = false;

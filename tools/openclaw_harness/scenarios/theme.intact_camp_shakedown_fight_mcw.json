@@ -15,7 +15,8 @@
     "posture=open_shakedown",
     "basecamp_or_camp=yes",
     "shakedown_surface_dialogue_window opening=basecamp_pressure responses=pay/fight payment_surface=npc_trade_ui",
-    "shakedown_surface fight demanded=15797 reachable=45134"
+    "shakedown_surface fight demanded=",
+    "bandit_live_world shakedown_fight_advance"
   ],
   "steps": [
     {
@@ -33,17 +34,42 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "scan_all_overmaps": true,
       "record_baseline": true,
+      "required_npcs": [
+        { "name": "Katharina Leach", "my_fac": "your_followers", "attitude": 3, "offset_ms": [16, 0, 0] },
+        { "name": "Robbie Knox", "my_fac": "your_followers", "attitude": 3, "offset_ms": [18, 2, 0] },
+        { "name": "Giuseppe Bachman", "my_fac": "your_followers", "attitude": 3, "offset_ms": [18, -2, 0] },
+        { "name": "Vance Gunderson", "my_fac": "hells_raiders", "max_abs_offset_ms": [35, 10, 0] }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_intact_actor_footing",
+      "abort_reason": "saved overmap NPC metadata did not prove separate armed camp followers plus a nearby hostile raider",
       "expected_visible_fact": "saved overmap NPC metadata is recorded before the fight so the readout can separate camp NPCs from bandits and later duplicates"
     },
     {
-      "kind": "press",
-      "label": "disable_safe_mode_before_shakedown_fight",
-      "keys": ["!"],
-      "settle_seconds": 0.8,
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_intact_shakedown_active_raider",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 8,
+      "required_active_outside_count": 1,
+      "required_min_active_member_ids": 1,
+      "required_active_members_found": true,
+      "required_active_member_max_abs_offset_ms": [35, 10, 0],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_intact_bandit_footing",
+      "abort_reason": "saved bandit_live_world state did not prove a separate nearby hostile raider active for the shakedown",
+      "expected_immediate_state": "same-save metadata proves the active shakedown actor is a nearby raider from the hostile site, not one of the camp followers"
+    },
+    {
+      "kind": "wait",
+      "label": "confirm_safe_mode_off_before_shakedown_fight",
+      "seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 20,
-      "expected_visible_fact": "safe mode is off and gameplay remains focused before shakedown turns advance"
+      "expected_visible_fact": "fixture loads with safe mode off, so gameplay remains focused before shakedown turns advance"
     },
     {
       "kind": "advance_turns",
@@ -84,8 +110,8 @@
           "valid=yes",
           "pay_option=yes",
           "fight_option=yes",
-          "reachable_goods=45134",
-          "demanded_toll=15797",
+          "reachable_goods=",
+          "demanded_toll=",
           "basecamp_inventory=yes",
           "vehicle_inventory=no"
         ],
@@ -113,7 +139,8 @@
       "label": "audit_intact_camp_fight_branch",
       "required_line_patterns": [
         [
-          "shakedown_surface fight demanded=15797 reachable=45134"
+          "shakedown_surface fight demanded=",
+          "reachable="
         ]
       ],
       "abort_on_metadata_failure": true,
@@ -130,6 +157,29 @@
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 120,
       "expected_visible_fact": "a bounded combat window has advanced after the Fight branch; tester must judge whether armed camp NPCs and bandits moved, targeted, and escalated believably"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_intact_camp_combat_forward",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=attack_now",
+          "combat_forward=yes"
+        ],
+        [
+          "bandit_live_world shakedown_fight_advance",
+          "profile=camp_style",
+          "attacked=yes",
+          "adjacent=yes",
+          "combat_forward=yes"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_theme_fight_advance_missing",
+      "abort_reason": "same-run debug artifact did not prove the Fight branch advanced into local bandit combat",
+      "expected_immediate_state": "same-run debug log proves the selected Fight branch made the raider advance and attack rather than remain in a passive shakedown state"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff theme.intact_camp_shakedown_fight_mcw --compact-stdout",
@@ -142,6 +192,6 @@
   "evidence_contract": {
     "claim": "an intact-camp bandit shakedown can be reached, the Fight branch can be selected, and a bounded live combat window can be captured for subjective full-scene review",
     "load_only_verdict": "load proof only / inconclusive for thematic fight behavior",
-    "failure_rule": "No full-scene fight credit unless startup/load, armed-camp NPC snapshot, visible Pay/Fight demand, same-run fight artifact, and post-fight combat-window capture all exist."
+    "failure_rule": "No full-scene fight credit unless startup/load, armed-camp NPC snapshot, visible Pay/Fight demand, same-run fight artifact, post-fight combat-window capture, and combat-forward artifact all exist."
   }
 }

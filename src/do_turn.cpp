@@ -111,6 +111,8 @@ static const efftype_id effect_sleep( "sleep" );
 
 static const event_statistic_id event_statistic_last_words( "last_words" );
 
+static const json_character_flag json_flag_CANNOT_MOVE( "CANNOT_MOVE" );
+static const json_character_flag json_flag_CANNOT_ATTACK( "CANNOT_ATTACK" );
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
 
 static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
@@ -617,7 +619,7 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
         bandit_live_world::update_member_state( site, member_id,
                                                 bandit_live_world::member_state::local_contact, summary );
         if( npc *member_npc = g->find_npc( member_id ) ) {
-            member_npc->set_attitude( NPCATT_MUG );
+            member_npc->set_attitude( NPCATT_KILL );
         }
     }
 }
@@ -901,6 +903,54 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
     return true;
 }
 
+bool live_bandit_try_fight_advance( npc &member_npc,
+                                    const bandit_live_world::site_record &site,
+                                    const bandit_live_world::local_gate_input &gate_input,
+                                    const bandit_live_world::local_gate_decision &gate_decision )
+{
+    if( !gate_decision.combat_forward ) {
+        return false;
+    }
+
+    avatar &u = get_avatar();
+    map &here = get_map();
+    member_npc.set_attitude( NPCATT_KILL );
+    const tripoint_bub_ms before = member_npc.pos_bub( here );
+    const bool adjacent = rl_dist( member_npc.pos_abs(), u.pos_abs() ) <= 1;
+    const bool sees_player = member_npc.sees( here, u );
+    bool path_found = false;
+    bool moved = false;
+    bool attacked = false;
+    if( adjacent && sees_player && !member_npc.has_flag( json_flag_CANNOT_ATTACK ) ) {
+        attacked = member_npc.melee_attack( u, true );
+    } else if( !adjacent && !member_npc.has_flag( json_flag_CANNOT_MOVE ) ) {
+        path_found = member_npc.update_path( u.pos_bub( here ), false );
+        if( path_found ) {
+            member_npc.move_to_next();
+            moved = member_npc.pos_bub( here ) != before;
+        }
+    }
+
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world shakedown_fight_advance"
+                               << " site=" << site.site_id
+                               << " active_group=" << site.active_group_id
+                               << " profile=" << bandit_live_world::to_string( site.profile )
+                               << " posture=" << bandit_live_world::to_string( gate_decision.posture )
+                               << " npc=" << member_npc.getID().get_value()
+                               << " from=" << before.to_string_writable()
+                               << " to=" << member_npc.pos_bub( here ).to_string_writable()
+                               << " target=" << u.pos_bub( here ).to_string_writable()
+                               << " moved=" << ( moved ? "yes" : "no" )
+                               << " attacked=" << ( attacked ? "yes" : "no" )
+                               << " path_found=" << ( path_found ? "yes" : "no" )
+                               << " adjacent=" << ( adjacent ? "yes" : "no" )
+                               << " sees_player=" << ( sees_player ? "yes" : "no" )
+                               << " basecamp_or_camp=" << ( gate_input.basecamp_or_camp_scene ? "yes" : "no" )
+                               << " combat_forward=" << ( gate_decision.combat_forward ? "yes" : "no" )
+                               << '\n';
+    return attacked || moved || path_found || adjacent;
+}
+
 bool note_live_bandit_local_turn_sight_avoid()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -934,6 +984,23 @@ bool note_live_bandit_local_turn_sight_avoid()
         DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
                                    gate_decision )
                                    << "- live_existing_active_group=yes\n";
+        if( gate_decision.combat_forward ) {
+            for( const character_id &member_id : site.active_member_ids ) {
+                const bandit_live_world::member_record *member = site.find_member( member_id );
+                if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
+                    continue;
+                }
+                if( npc *member_npc = g->find_npc( member_id ) ) {
+                    changed |= live_bandit_try_fight_advance( *member_npc, site, gate_input,
+                               gate_decision );
+                }
+            }
+            continue;
+        }
+        if( gate_decision.opens_shakedown_surface ) {
+            changed |= open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
+            continue;
+        }
         if( gate_decision.posture != bandit_live_world::local_gate_posture::stalk &&
             gate_decision.posture != bandit_live_world::local_gate_posture::hold_off ) {
             continue;
@@ -1138,6 +1205,18 @@ bool note_live_bandit_aftermath()
         DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
                                    gate_decision )
                                    << "- live_existing_active_group=yes\n";
+        if( gate_decision.combat_forward ) {
+            for( const character_id &member_id : site.active_member_ids ) {
+                if( npc *member_npc = g->find_npc( member_id ) ) {
+                    const bandit_live_world::member_record *member = site.find_member( member_id );
+                    if( member != nullptr && member->state == bandit_live_world::member_state::local_contact ) {
+                        changed |= live_bandit_try_fight_advance( *member_npc, site, gate_input,
+                                   gate_decision );
+                    }
+                }
+            }
+            continue;
+        }
         if( gate_decision.posture == bandit_live_world::local_gate_posture::stalk ||
             gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
             for( const character_id &member_id : site.active_member_ids ) {

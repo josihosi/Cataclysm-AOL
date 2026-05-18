@@ -6180,6 +6180,11 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_site_roster_shape wounded+active exceeds living count in {manifest_path}"
                 )
+            active_member_state = str(raw.get("active_member_state", "outbound") or "outbound").strip()
+            if active_member_state not in {"outbound", "local_contact"}:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape active_member_state must be outbound or local_contact in {manifest_path}"
+                )
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
@@ -6188,6 +6193,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "member_start_index": member_start_index,
                 "wounded_or_unready_count": wounded_or_unready_count,
                 "active_outside_member_count": active_outside_member_count,
+                "active_member_state": active_member_state,
                 "active_job_type": str(raw.get("active_job_type", "stalk") or "stalk").strip(),
                 "active_target_id": str(raw.get("active_target_id", "") or "").strip(),
                 "headcount_override": raw.get("headcount_override"),
@@ -7855,6 +7861,7 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
     target_location = [int(player_location[i]) + offset[i] for i in range(3)]
     requested_npc_id = int(transform.get("npc_id", 0) or 0)
     assigned_camp_omt = transform.get("assigned_camp_omt")
+    ensure_follower = bool(transform.get("ensure_follower", True))
 
     selected_npc: Optional[Dict[str, Any]] = None
     selected_id = requested_npc_id
@@ -7900,8 +7907,9 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
         selected_npc["location"] = target_location
         if assigned_camp_omt not in (None, [], ""):
             selected_npc["assigned_camp"] = [int(value) for value in assigned_camp_omt]
-        selected_npc["my_fac"] = "your_followers"
-        selected_npc["attitude"] = 3
+        if ensure_follower:
+            selected_npc["my_fac"] = "your_followers"
+            selected_npc["attitude"] = 3
         inv = selected_npc.setdefault("inv", [])
         if not isinstance(inv, list):
             raise SystemExit(f"NPC {selected_id} inventory is not a list in {target_overmap_path}")
@@ -7931,7 +7939,7 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
             cleanup_extracted_overmap(plain_path, keep=False)
 
     ensured_follower = False
-    if bool(transform.get("ensure_follower", True)):
+    if ensure_follower:
         player_save = world_dir / selected_player_save
         extracted_save = player_save.with_suffix("")
         run_zzip(player_save)
@@ -8720,8 +8728,9 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         member["last_writeback_summary"] = "fixture roster shape: at-home ready member"
 
     active_member_ids: List[Any] = []
+    active_member_state = str(transform.get("active_member_state", "outbound") or "outbound").strip()
     for member in shaped_members[:active_outside_member_count]:
-        member["state"] = "outbound"
+        member["state"] = active_member_state
         member["last_writeback_summary"] = "fixture roster shape: unresolved outside pressure"
         active_member_ids.append(member.get("npc_id"))
 
@@ -8774,6 +8783,7 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "ready_at_home_count": max(0, living_member_count - active_outside_member_count - wounded_or_unready_count),
         "wounded_or_unready_count": wounded_or_unready_count,
         "active_outside_member_count": active_outside_member_count,
+        "active_member_state": active_member_state,
         "active_member_ids": active_member_ids,
     }
 
