@@ -124,7 +124,7 @@ TEST_CASE( "zone_unloading_ammo_belts", "[zones][items][ammo_belt][activities][u
 
     if( in_vehicle ) {
         REQUIRE( here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                   tripoint_bub_ms::zero + tripoint::east, 0_degrees, 0, 0 ) );
+                                   tripoint_bub_ms::zero + tripoint::east, 0_degrees, 0, veh_spawn_status::UNDAMAGED ) );
         vp = here.veh_at( start ).cargo();
         REQUIRE( vp );
         vp->vehicle().set_owner( dummy );
@@ -446,7 +446,7 @@ TEST_CASE( "zone_sorting_skips_source_when_all_destinations_count_full",
 
     SECTION( "vehicle cargo destination at MAX_ITEM_IN_VEHICLE_STORAGE" ) {
         vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                          dest_pos, 0_degrees, 0, 0 );
+                                          dest_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
         REQUIRE( cart != nullptr );
         cart->set_owner( dummy );
         dest_vp = here.veh_at( dest_pos ).cargo();
@@ -528,7 +528,7 @@ TEST_CASE( "zone_sorting_activity_terminates_with_count_full_vehicle_destination
     here.ter_set( dest_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      dest_pos, 0_degrees, 0, 0 );
+                                      dest_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     std::optional<vpart_reference> vp = here.veh_at( dest_pos ).cargo();
@@ -629,7 +629,7 @@ TEST_CASE( "zone_sorting_with_grabbed_single_tile_vehicle",
     // Spawn shopping cart adjacent to player (east) and grab it
     const tripoint_bub_ms cart_pos = start_pos + tripoint::east;
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::east );
@@ -687,7 +687,7 @@ TEST_CASE( "zone_sorting_with_grabbed_multi_tile_vehicle",
     // Spawn multi-tile vehicle (test_turret_rig) adjacent to player and grab it
     const tripoint_bub_ms veh_pos = start_pos + tripoint::east;
     vehicle *veh = here.add_vehicle( vehicle_prototype_test_turret_rig,
-                                     veh_pos, 0_degrees, 0, 0 );
+                                     veh_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( veh != nullptr );
     REQUIRE( veh->get_points().size() > 1 );
     veh->set_owner( dummy );
@@ -746,7 +746,7 @@ TEST_CASE( "zone_sorting_cart_on_source_full_inventory",
 
     // Spawn shopping cart at the source tile and grab it
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -813,7 +813,7 @@ TEST_CASE( "zone_sorting_virtual_pickup_from_cart",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -871,7 +871,7 @@ TEST_CASE( "zone_sorting_virtual_pickup_full_inventory",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -941,7 +941,7 @@ TEST_CASE( "zone_sorting_direct_delivery_to_cart",
     here.ter_set( cart_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::east );
@@ -993,7 +993,7 @@ TEST_CASE( "zone_sorting_cart_source_with_dest_zone",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1047,7 +1047,7 @@ TEST_CASE( "zone_sorting_direct_delivery_cart_full",
     here.ter_set( cart_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::east );
@@ -1105,7 +1105,7 @@ TEST_CASE( "zone_sorting_virtual_pickup_adjacent_dest",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1160,7 +1160,7 @@ TEST_CASE( "zone_sorting_virtual_pickup_unreachable_dest",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1273,7 +1273,7 @@ TEST_CASE( "zone_sorting_vehicle_on_terrain_unsorted_both_items",
 
     // Spawn cart at source
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1334,7 +1334,7 @@ TEST_CASE( "zone_sorting_vehicle_unsorted_zone_ground_items_ignored",
 
     // Spawn cart at source, set owner
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1400,7 +1400,7 @@ TEST_CASE( "zone_sorting_both_zones_at_same_position",
 
     // Spawn cart, set owner
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1464,7 +1464,7 @@ TEST_CASE( "zone_sorting_terrain_zone_sorts_non_grabbed_vehicle_cargo",
 
     // Spawn a vehicle at source but do NOT grab it (simulates a parked van)
     vehicle *van = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                     src_pos, 0_degrees, 0, 0 );
+                                     src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( van != nullptr );
     van->set_owner( dummy );
     // No grab - this is a parked vehicle
@@ -1527,7 +1527,7 @@ TEST_CASE( "zone_sorting_has_terrain_has_vehicle_helpers",
     avatar &dummy = get_avatar();
     clear_avatar();
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      pos_a_bub, 0_degrees, 0, 0 );
+                                      pos_a_bub, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     create_tile_zone( "Food Vehicle A", zone_type_LOOT_FOOD, pos_a, true );
@@ -1644,7 +1644,7 @@ TEST_CASE( "zone_sorting_batches_into_grabbed_vehicle",
     const tripoint_bub_ms cart_pos = s1_pos + tripoint::south;
     here.ter_set( cart_pos, ter_t_floor );
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -1728,7 +1728,7 @@ TEST_CASE( "zone_sorting_adjacent_dest_both_full",
     here.ter_set( dest_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      dest_pos, 0_degrees, 0, 0 );
+                                      dest_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::east );
@@ -1872,7 +1872,7 @@ TEST_CASE( "zone_sorting_vehicle_dest_cargo_full_ground_fallback",
     here.ter_set( cart_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::east );
@@ -1932,7 +1932,7 @@ TEST_CASE( "zone_sorting_terrain_zone_vehicle_cargo_no_loop",
     here.ter_set( src_pos, ter_t_floor );
 
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      src_pos, 0_degrees, 0, 0 );
+                                      src_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -2170,7 +2170,7 @@ TEST_CASE( "zone_sorting_drag_weight_gate",
     // Leave terrain as grass (default from clear_map) -- no ROAD/FLAT flags,
     // so traction is poor and drag becomes harder.
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, tripoint_rel_ms::south );
@@ -2298,7 +2298,7 @@ static vehicle *setup_grabbed_cart( avatar &dummy, map &here,
 
     const tripoint_bub_ms cart_pos = player_pos + grab_dir;
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      cart_pos, 0_degrees, 0, 0 );
+                                      cart_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     dummy.grab( object_type::VEHICLE, grab_dir );
@@ -2587,7 +2587,7 @@ TEST_CASE( "multi_zone_vehicle_repair_large_zone_no_hang",
     const tripoint_bub_ms veh_pos = start_pos + tripoint( 2, 0, 0 );
     here.ter_set( veh_pos, ter_t_floor );
     vehicle *veh = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                     veh_pos, 0_degrees, 0, 0 );
+                                     veh_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( veh != nullptr );
     for( const vpart_reference &vpr : veh->get_all_parts() ) {
         veh->set_hp( vpr.part(), vpr.part().info().durability / 2, false );
@@ -3378,7 +3378,7 @@ TEST_CASE( "vehicle_zone_refresh_preserves_personal_zone_positions",
     const tripoint_bub_ms veh_pos = start_pos + tripoint( 0, -3, 0 );
     here.ter_set( veh_pos, ter_t_floor );
     vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart,
-                                      veh_pos, 0_degrees, 0, 0 );
+                                      veh_pos, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
     REQUIRE( cart != nullptr );
     cart->set_owner( dummy );
     const tripoint_abs_ms veh_abs = here.get_abs( veh_pos );
