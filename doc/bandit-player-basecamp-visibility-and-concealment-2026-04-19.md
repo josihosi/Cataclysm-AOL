@@ -553,9 +553,9 @@ But the point is to stop hand-waving and freeze something testable.
 - current reality-bubble view radius is about **60 map tiles**, which is about **2.5 overmap tiles**
 - for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for **bubble-local / high-relevance** logic
 - but that local bubble-fed zone should **not** be mistaken for the whole abstract bandit overmap play-space
-- the **strategic bandit theater** needs to be much larger, or bandits collapse into a dumb tripwire near the player
-- current preferred starter lean: **about 60 overmap tiles radius** for the main abstract theater when computationally affordable
-- if that turns out too expensive in real profiling, something around **48 OMT** is the fallback, not a return to tiny tripwire scale
+- the **strategic bandit theater / overmap AI system envelope** needs to be much larger, or bandits collapse into a dumb tripwire near the player
+- current corrected product target after Josef's 2026-04-26 range-matrix correction: **40 overmap tiles radius** for the main abstract theater/system envelope
+- the older **48/60 OMT** starter lean is superseded history, not the current matrix value; the important preserved law is still “not a tiny tripwire scale”
 
 ### Starter sight/read ranges
 - **ordinary bounty visibility range:** start at **10 overmap tiles** in clear conditions
@@ -597,12 +597,12 @@ But the parked canon should preserve them now so the future test packet does not
 Preserve at least these later scenarios explicitly:
 1. a player camp north of a bandit camp has light, but that light is visible only toward the east. Expected: this should **not** justify north-side staking-out from the bandit camp.
 2. the same north-side player camp has light that is visible toward the south. Expected: it **should** become visible/actionable from the bandit side.
-3. the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. Expected: the light should plausibly attract the horde too, not exist in isolated bandit-only theater.
+3. the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. Expected: the light should plausibly attract the horde too, not exist in isolated bandit-only theater. As of the 2026-04-26 live-wiring audit, this remains desired behavior / proof-seam pressure unless a live `visible light -> signal_hordes` bridge is implemented.
 - these fixtures should use sensible spacing near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not toy adjacent placement
 - ordinary visible light should likely track roughly the general overmap visibility envelope under the right conditions, while smoke should project farther because a high plume can stay legible beyond ordinary local-sight assumptions
 
 ### Cross-system interaction
-- if a meaningful visible light sits between camps with a zombie horde in the corridor, the same light should plausibly attract the horde too; the world should not turn into isolated bandit-only theater
+- if a meaningful visible light sits between camps with a zombie horde in the corridor, the same light should plausibly attract the horde too; the world should not turn into isolated bandit-only theater. As of the 2026-04-26 live-wiring audit, this is not yet live gameplay wiring.
 - once overmap-side tests are real, later handover tests should also prove that local reality can rewrite overmap posture, for example a stalk becoming an honest retreat when the player intersects the bandits directly and the tile becomes too dangerous
 
 ### Z-level edge cases

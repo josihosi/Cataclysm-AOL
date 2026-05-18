@@ -965,15 +965,33 @@ void npc::assess_danger() {
                                    llm_state.target_turns_remaining > 0 &&
                                    !llm_state.target_hint.empty();
   bool sees_player = sees(here, player_character.pos_bub(here));
+  basecamp *camp_patrol_response_camp = nullptr;
+  if( assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 ) {
+    if( std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
+        camp && *camp && ( *camp )->has_patrol_zone() ) {
+      camp_patrol_response_camp = *camp;
+    }
+  }
+  const bool camp_patrol_response = camp_patrol_response_camp != nullptr;
+
   const bool self_defense_only =
-      !llm_attack_override && (rules.engagement == combat_engagement::NO_MOVE ||
-                               rules.engagement == combat_engagement::NONE);
+      !llm_attack_override && !camp_patrol_response &&
+      ( rules.engagement == combat_engagement::NO_MOVE ||
+        rules.engagement == combat_engagement::NONE );
   const bool no_fighting =
-      !llm_attack_override && rules.has_flag(ally_rule::forbid_engage);
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::forbid_engage);
   const bool must_retreat =
-      !llm_attack_override && rules.has_flag(ally_rule::follow_close) &&
+      !llm_attack_override && !camp_patrol_response &&
+      rules.has_flag(ally_rule::follow_close) &&
       !too_close(pos_bub(), player_character.pos_bub(), follow_distance()) &&
       !is_guarding();
+
+  const auto raise_camp_patrol_alarm = [&]() {
+    if( camp_patrol_response_camp != nullptr ) {
+      camp_patrol_response_camp->raise_patrol_alarm( getID() );
+    }
+  };
 
     if( is_player_ally() ) {
         if( llm_attack_override ) {
@@ -1097,6 +1115,7 @@ void npc::assess_danger() {
             continue;
         }
 
+        raise_camp_patrol_alarm();
         ai_cache.hostile_guys.emplace_back( g->shared_from( critter ) );
         // warn and consider the odds for distant enemies
         int dist = rl_dist( pos_bub(), critter.pos_bub() );
@@ -1193,7 +1212,7 @@ void npc::assess_danger() {
       }
     }
     // ignore distant monsters that our rules prevent us from attacking
-    if (!is_too_close && is_player_ally() &&
+    if (!camp_patrol_response && !is_too_close && is_player_ally() &&
         !ok_by_rules(critter, dist, scaled_distance)) {
       continue;
     }
@@ -1201,6 +1220,9 @@ void npc::assess_danger() {
     // threatening us or an ally
     float priority = std::max(critter_threat - 2.0f * (scaled_distance - 1.0f),
                               is_too_close ? critter_threat : 0.0f);
+    if( camp_patrol_response ) {
+      priority = std::max( priority, critter_threat );
+    }
     cur_threat_map[direction_from(pos_bub(), critter.pos_bub())] += priority;
         if( priority > highest_priority ) {
             highest_priority = priority;
@@ -1257,11 +1279,14 @@ void npc::assess_danger() {
       }
     }
 
-    if (!is_player_ally() || is_too_close ||
+    if (camp_patrol_response || !is_player_ally() || is_too_close ||
         ok_by_rules(foe, dist, scaled_distance)) {
       float priority = std::max(
           foe_threat - 2.0f * (scaled_distance - 1),
           is_too_close ? std::max(foe_threat, NPC_DANGER_VERY_LOW) : 0.0f);
+      if( camp_patrol_response ) {
+        priority = std::max( priority, foe_threat );
+      }
       cur_threat_map[direction_from(pos_bub(), foe.pos_bub())] += priority;
       if (priority > highest_priority) {
         warn_about(warning, 1_minutes);
@@ -3930,8 +3955,11 @@ bool npc::enough_time_to_reload(const item &gun) const {
 
 void npc::aim(const Target_attributes &target_attributes) {
   const item_location weapon = get_wielded_item();
-  double aim_amount = weapon ? aim_per_move(*weapon, recoil) : 0.0;
+  if( !weapon ) {
+    return;
+  }
   const aim_mods_cache aim_cache = gen_aim_mods_cache(*weapon);
+  double aim_amount = aim_per_move(*weapon, recoil, target_attributes, aim_cache);
     int hold_moves = moves;
     double hold_recoil = recoil;
     while( aim_amount > 0 && recoil > 0 && moves > 0 ) {
@@ -3939,7 +3967,7 @@ void npc::aim(const Target_attributes &target_attributes) {
     recoil -= aim_amount;
     recoil = std::max(0.0, recoil);
     aim_amount =
-        aim_per_move(*weapon, recoil, target_attributes, {std::ref(aim_cache)});
+        aim_per_move(*weapon, recoil, target_attributes, aim_cache);
   }
   add_msg_debug(debugmode::debug_filter::DF_NPC_COMBATAI,
                 "%s reduced recoil from %f to %f in %d moves", this->get_name(),
@@ -4406,9 +4434,17 @@ bool npc::find_job_to_perform() {
             fetch_itr++;
         }
     }
+    auto cooldown_itr = job.activity_cooldowns.begin();
+    while( cooldown_itr != job.activity_cooldowns.end() ) {
+        if( cooldown_itr->second <= calendar::turn ) {
+            cooldown_itr = job.activity_cooldowns.erase( cooldown_itr );
+        } else {
+            cooldown_itr++;
+        }
+    }
 
     for( activity_id &elem : job.get_prioritised_vector() ) {
-        if( job.get_priority_of_job( elem ) == 0 ) {
+        if( job.get_priority_of_job( elem ) == 0 || job.is_job_blocked( elem ) ) {
             continue;
         }
         if( elem != ACT_CAMP_PATROL && assigned_camp ) {
@@ -5515,9 +5551,14 @@ bool npc::do_player_activity() {
             backlog.pop_front();
       current_activity_id = activity.id();
     } else {
-      if (is_player_ally()) {
-        add_msg(m_info, string_format(_("%s completed the assigned task."),
-                                      disp_name()));
+      if( is_player_ally() ) {
+        const std::string completion_message = string_format( _( "%s completed the assigned task." ),
+                                               disp_name() );
+        if( !assigned_camp || basecamp_ai::should_show_camp_job_report(
+                *this, basecamp_ai::camp_job_report_kind::completion,
+                string_format( "activity=%s", current_activity_id.str() ) ) ) {
+          add_msg( m_info, "%s", completion_message );
+        }
       }
       current_activity_id = activity_id::NULL_ID();
       revert_after_activity();
@@ -6098,7 +6139,7 @@ static float rate_food(const item &it, int want_nutr, int want_quench) {
   return weight;
 }
 
-bool npc::consume_food_from_camp() {
+bool npc::consume_food_from_camp( consume_filter ) {
   Character &player_character = get_player_character();
   std::optional<basecamp *> potential_bc;
   for (const tripoint_abs_omt &camp_pos : player_character.camps) {
@@ -6156,7 +6197,7 @@ bool npc::consume_food_from_camp() {
   return false;
 }
 
-bool npc::consume_food() {
+bool npc::consume_food( consume_filter ) {
   float best_weight = 0.0f;
   item_location best_food;
   bool consumed = false;

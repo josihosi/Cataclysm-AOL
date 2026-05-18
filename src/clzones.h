@@ -225,7 +225,7 @@ class blueprint_options : public zone_options, public mark_option
 class ignorable_options : public zone_options
 {
     private:
-        bool ignore_contents;
+        bool ignore_contents = false;
 
         enum query_ignorable_result {
             canceled,
@@ -238,6 +238,9 @@ class ignorable_options : public zone_options
     public:
         bool get_ignore_contents() const {
             return ignore_contents;
+        }
+        void set_ignore_contents( const bool value ) {
+            ignore_contents = value;
         }
         bool has_options() const override {
             return true;
@@ -742,6 +745,16 @@ class zone_manager_ui
         static void zones_manager_shortcuts( const catacurses::window &w_info, faction_id const &faction,
                                              bool show_all_zones, const input_context &ctxt, int width );
 };
+
+struct basecamp_smart_zone_result {
+        bool success = false;
+        std::string message;
+        int placed_zones = 0;
+};
+
+basecamp_smart_zone_result auto_place_basecamp_smart_zones(
+    const tripoint_abs_ms &start, const tripoint_abs_ms &end,
+    const faction_id &fac = your_fac, map *pmap = nullptr );
 
 void mapgen_place_zone( tripoint_abs_ms const &start, tripoint_abs_ms const &end,
                         zone_type_id const &type,

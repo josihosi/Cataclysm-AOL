@@ -1,10 +1,14 @@
 # Bandit camp-map risk/reward dispatch planning packet v0 (2026-04-28)
 
-Status: ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
+Status: CLOSED / SCOPED LIVE PRODUCT CHECKPOINT GREEN
 
 Source-of-truth framing: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
 Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
 Bandit live product playtest matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+
+## Closure note
+
+Frau product review accepted the current scoped live/product matrix as enough for this checkpoint. No second-fixture bias variant is required before closure. Player-created fire/smoke/light remains blocked behind the fuel/writeback gate and is not credited; same-fixture repeatability remains same-fixture confidence only.
 
 This packet is downstream of the camp-map ecology picture: dispatch/risk/reward are the hands; the saved per-camp map is the creature.
 
@@ -60,7 +64,7 @@ The third missing piece is behavior texture. A scout should not sit five overmap
 - Do not keep the previous five-OMT ordinary scout stand-off as the default for camp/basecamp observation; it remains historical proof of the old correction, not the new target behavior.
 - Do not make stalk escalation automatic revenge. It is a risk/reward choice after scout memory, with high-threat/low-reward cases still allowed to hold or re-scout.
 - Do not let large camps empty themselves just because a target looks valuable.
-- Do not let tiny camps perform serious raids unless a later explicit desperation/personality system justifies it and still names the risk.
+- Do not let tiny camps perform serious raids; the scout-confirmed buddy-pair exception is stalk pressure, not a raid, and must remain named so the risk is visible.
 - Do not close this from deterministic evaluator tests alone if the claim says the live bandit camp re-dispatches from remembered scout knowledge. The live game path must consume the new memory and produce an in-game/harness-observable result.
 - Do not route this as an informal Andi nudge; it is a canon plan item with tests.
 
@@ -146,7 +150,7 @@ Sizing is derived from current live roster, not fixed camp folklore:
 
 ### Examples
 
-- 2 living / 2 ready: reserve 1, dispatchable 1 -> scout only.
+- 2 living / 2 ready: uncertain leads keep reserve 1 and scout/avoid; scout-confirmed high-value pressure may commit the buddy pair as a two-member stalk, leaving reserve 0.
 - 4 living / 4 ready: reserve 1, dispatchable 3 -> scout 1; stalk/toll 2 if risk/reward permits; raid usually blocked unless very favorable.
 - 5 living / 5 ready: reserve 2, dispatchable 3 -> scout 1; stalk/toll 2; raid 2-3 if very favorable.
 - 7 living / 6 ready / 1 wounded: reserve 2, dispatchable 4 -> scout 1; stalk 2; shakedown 2-3; raid up to 4 if very favorable.
@@ -180,17 +184,17 @@ For ordinary camp/basecamp observation:
 - [ ] The camp map is serialized/deserialized with the normal game save path, and deterministic save/load coverage proves multiple camps keep distinct map leads across round trip.
 - [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
 - [x] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge. Feature-path proof: `bandit.camp_map_vanished_signal_redispatch` run `.userdata/dev-harness/harness_runs/20260428_185947/`.
-- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted per-camp map state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs. _(Partial feature-path proof now covers vanished-signal redispatch, sight-avoid, 2/5/10 variable-roster sizing, and no-opening stalk-pressure; high-threat/active-outside guardrails and broader product closure remain.)_
+- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted per-camp map state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs. _(Partial feature-path proof now covers vanished-signal redispatch, sight-avoid, 2/5/10 variable-roster sizing, no-opening stalk-pressure, high-threat/low-reward hold, and active-outside dogpile-block guardrails; broader product closure remains.)_
 - [ ] Ordinary camp/basecamp scout stand-off uses a two-OMT observation envelope, not the old five-OMT default, with fallback distances reported when terrain/pathing forces them.
 - [ ] Scout-watch duration is bounded to about half an in-game day, then the scout returns home and writes memory unless explicitly interrupted.
 - [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore.
 - [ ] Job intent is chosen before count, and size is derived from that intent plus risk/reward: scout, re-scout, stalk/pressure, toll/shakedown, raid, hold/stale.
-- [x] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting. Feature-path no-opening proof: `bandit.stalk_pressure_waits_for_opening` run `.userdata/dev-harness/harness_runs/20260428_195617/`.
+- [x] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting. Feature-path no-opening proof: `bandit.stalk_pressure_waits_for_opening` run `.userdata/dev-harness/harness_runs/20260428_195617/` proves only active remembered pressure -> no-opening rejection -> stale/decayed lead, not opening-present escalation.
 - [x] Scout/stalker sight-avoidance reacts when seen: deterministic and in-game proof show non-teleport reposition or abort immediately or within at most two local turns, with blocked/no-cover cases reported. Feature-path proof: `bandit.scout_stalker_sight_avoid_live` run `.userdata/dev-harness/harness_runs/20260428_173626/`.
 - [ ] Camp pressure / stockpile need affects willingness without overriding hard reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded.
 - [ ] Bounty, threat, confidence, distance, lead age, target-alert/scout-seen, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen intent/member count.
-- [ ] High threat alone does not force escalation; deterministic coverage proves high-threat/low-reward cases hold or scout instead of sending a larger attack.
-- [ ] Active outbound/local-contact/stalk/returning groups block parallel same-camp same-target dogpile dispatch until resolved.
+- [x] High threat alone does not force escalation; deterministic and feature-path coverage prove high-threat/low-reward cases hold instead of sending a larger attack. Feature-path proof: `bandit.high_threat_low_reward_holds` run `.userdata/dev-harness/harness_runs/20260428_200600/`.
+- [x] Active outbound/local-contact/stalk/returning groups block parallel same-camp same-target dogpile dispatch until resolved. Feature-path proof: `bandit.active_outside_dogpile_block_live` run `.userdata/dev-harness/harness_runs/20260428_200434/`.
 - [ ] Reports/logs show remembered-lead source, reward/risk inputs, selected intent/job, selected member count, home reserve left behind, scout/stalk posture, sight-exposure turn count, opening state, and whether a live signal or remembered camp-map lead drove the decision.
 - [ ] Harness/product proof covers a real or fixture-backed variable-roster camp through the live game path: scout observes a camp from two OMT, watches for the half-day window, avoids sight by moving/aborting within at most two visible turns if exposed, returns home, writes memory, the live signal disappears or is absent, and a later cadence re-dispatches/plans from remembered camp-map knowledge with expected intent/member count.
 
@@ -234,7 +238,7 @@ Use named scenarios, not loose manual suggestions. The detailed product matrix l
 4. `bandit.stalk_pressure_waits_for_opening`: follow-up stalk/pressure group is larger than scout where justified, waits for opening, and returns/holds if none appears.
 5. `bandit.scout_stalker_sight_avoid_live`: exposed scout/stalker repositions or aborts within at most two visible local turns without teleporting.
 
-The broader bandit matrix also covers player-created fire/smoke/light lead proof, shakedown/toll control, empty-camp live sanity, and repeatability/fixture-bias checks.
+The broader bandit matrix also covers player-created fire/smoke/light lead proof, shakedown/toll control, empty-camp live sanity, and repeatability/fixture-bias checks. Empty-camp live sanity is now green for `bandit.empty_camp_retirement_live` run `.userdata/dev-harness/harness_runs/20260428_214542/`; keep that claim scoped to the configured fixture matrix.
 
 Every harness step needs the proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
 

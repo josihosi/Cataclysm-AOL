@@ -65,10 +65,6 @@ struct expansion_data {
 using npc_ptr = shared_ptr_fast<npc>;
 using comp_list = std::vector<npc_ptr>;
 
-namespace catacurses {
-class window;
-} // namespace catacurses
-
 namespace base_camps {
 
 enum tab_mode : int {
@@ -243,6 +239,7 @@ struct camp_locker_service_probe {
   int cleanup_item_count = 0;
   int magazines_to_take = 0;
   int magazines_to_reload = 0;
+  int medical_supplies_to_take = 0;
 };
 
 std::string render_camp_locker_service_probe(
@@ -331,12 +328,12 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it);
 int score_camp_locker_item(
     camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 camp_locker_candidate_map
 collect_camp_locker_candidates(const std::vector<const item *> &items,
                                const camp_locker_policy &policy);
@@ -355,7 +352,7 @@ plan_camp_locker_loadout(
     const camp_locker_candidate_map &locker_candidates,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,
-    bool wet_weather = false);
+    bool wet_weather = false, const Character *fit_context = nullptr);
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_patrol_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,
@@ -440,6 +437,14 @@ enum class camp_craft_resolution_outcome {
     NO_MATCH,
 };
 
+enum class camp_job_report_kind {
+    completion,
+    missing_tool,
+    no_progress,
+    locker_exception,
+    patrol_exception,
+};
+
 struct camp_craft_resolution {
   camp_craft_recipe_match match;
   std::optional<resolved_camp_craft_recipe> choice;
@@ -516,6 +521,10 @@ camp_craft_resolution resolve_camp_craft_query(
     std::string_view query,
     const std::function<camp_craft_recipe_candidate(const recipe &)>
         &evaluate_recipe);
+std::string camp_job_report_kind_token( camp_job_report_kind kind );
+bool should_show_camp_job_report( const npc &worker, camp_job_report_kind kind,
+                                  std::string_view stable_cause );
+void reset_camp_job_report_debounce();
 
 } // namespace basecamp_ai
 
@@ -560,7 +569,6 @@ public:
         std::vector<std::vector<ui_mission_id>> hidden_missions;
         std::vector<tripoint_abs_omt> fortifications;
         std::vector<expansion_salt_water_pipe *> salt_water_pipes;
-        void faction_display( const catacurses::window &fac_w, int width ) const;
 
         //change name of camp
   void set_name(const std::string &new_name);
@@ -918,6 +926,9 @@ public:
       const character_id &worker_id,
       camp_patrol_interrupt_reason reason =
           camp_patrol_interrupt_reason::explicit_reassignment);
+  bool raise_patrol_alarm(const character_id &spotter_id,
+                          time_duration duration = 30_minutes);
+  bool is_patrol_alarm_active() const;
   void mark_camp_locker_dirty(npc &worker, bool high_priority = false);
   bool process_camp_locker_downtime(npc &worker);
   bool service_camp_locker(npc &worker);
@@ -990,7 +1001,9 @@ private:
   bool patrol_shift_cache_valid = false;
   int patrol_shift_cache_day = -1;
   camp_patrol_shift patrol_shift_cache_kind = camp_patrol_shift::day;
+  bool patrol_shift_cache_alarm_active = false;
   camp_patrol_shift_plan patrol_shift_cache;
+  time_point patrol_alarm_until = calendar::turn_zero;
   std::vector<character_id> locker_service_queue;
   time_point locker_next_service_turn = calendar::turn_zero;
   std::vector<camp_locker_reservation> locker_reservations; // NOLINT(cata-serialize)

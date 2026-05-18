@@ -1,0 +1,66 @@
+{
+  "name": "tmp.bandit_owned_site2_raw_local_contact_kill_probe",
+  "description": "Disposable live probe: resume from the raw copied local-contact snapshot, kill the visible local-contact scout in a 1-tile debug kill-area, advance a few turns so live aftermath can resolve, then save-and-quit for owned-site loss/writeback inspection.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_kill_area_debug",
+      "keys": ["}", "m", "a"],
+      "delay_ms": 250,
+      "settle_seconds": 0.6,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "kill_bandit_tile_first_point",
+      "keys": ["down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "enter"],
+      "delay_ms": 200,
+      "settle_seconds": 0.4,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "kill_bandit_tile_second_point",
+      "keys": ["enter"],
+      "delay_ms": 200,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_10_turns",
+      "count": 10,
+      "settle_seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ]
+}

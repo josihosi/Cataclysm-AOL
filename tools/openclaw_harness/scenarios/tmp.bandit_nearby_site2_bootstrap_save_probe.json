@@ -1,0 +1,17 @@
+{
+  "name": "tmp.bandit_nearby_site2_bootstrap_save_probe",
+  "description": "Disposable diagnostic: seed the nearby camp, start the player beside that seeded site, then save-and-quit immediately so current-build spawn/claim can be inspected.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "tmp_bandit_live_world_nearby_site2_bootstrap",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "steps": [
+    {"kind": "wait", "label": "post_load_settle", "seconds": 2.0, "capture_after": true},
+    {"kind": "press", "label": "open_save_quit_prompt", "keys": ["S"], "settle_seconds": 1.0, "capture_after": true},
+    {"kind": "press", "label": "confirm_save_quit", "keys": ["Y"], "settle_seconds": 4.0, "capture_after": true}
+  ]
+}

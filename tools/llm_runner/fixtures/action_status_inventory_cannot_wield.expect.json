@@ -1,0 +1,11 @@
+{
+  "npc": "Rubik",
+  "kind": "look_inventory",
+  "request": "req_inventory_1",
+  "min_events": 3,
+  "phase_any": ["requested", "precheck", "blocked"],
+  "phase_sequence": ["requested", "precheck", "blocked"],
+  "reason_any": ["inventory.cannot_wield"],
+  "terminal_phase": "blocked",
+  "terminal_reason": "inventory.cannot_wield"
+}

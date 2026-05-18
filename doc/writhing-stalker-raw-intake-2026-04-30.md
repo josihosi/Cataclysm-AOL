@@ -8,7 +8,7 @@ This remains the preserved concept receipt. It is no longer the active contract;
 
 ## Preserved Josef text
 
-> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It's the eyes that do it for you, not it's dripping teeth.
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It’s the eyes that do it for you, not the dripping teeth.
 
 ## Starting product picture
 

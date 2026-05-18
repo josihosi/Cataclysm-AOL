@@ -1,0 +1,51 @@
+{
+  "name": "cannibal.live_world_day_smoke_pressure_mcw",
+  "description": "Scenario 1 for cannibal camp night-raid live matrix: daytime smoke/light near the McWilliams/Basecamp footing should create cannibal scout/stalk/dispatch pressure through the real live signal and local-gate path, not instant combat or bandit shakedown UI. The fixture uses a reviewer-visible relabeled camp-shaped special because the source McWilliams world has no natural cannibal_camp placement; it also sets the save to a daylight 30-minute dispatch cadence boundary so one proven player action can exercise the live dispatch path instead of waiting through a fragile long-wait UI.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_live_world_day_smoke_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "smoke_packets=1",
+    "matched_sites=1 refreshed_sites=1",
+    "local_gate site=overmap_special:cannibal_camp@",
+    "profile=cannibal_camp",
+    "darkness_or_concealment=no",
+    "shakedown=no",
+    "combat_forward=no",
+    "signal_packet=live_smoke@"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_day_smoke_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for McWilliams cannibal day-smoke fixture; this is startup/load evidence plus before-action screen proof, not feature closure by itself",
+      "failure_rule": "If the gameplay screen is not visible after load, later smoke/dispatch artifacts cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "pass_one_turn_on_daylight_dispatch_boundary",
+      "keys": [
+        "."
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "one player pass-turn input has completed on the daylight smoke fixture; feature credit depends on the same-run debug artifact showing cannibal_camp local_gate from live smoke with shakedown=no and combat_forward=no",
+      "failure_rule": "If the pass-turn input is unproven or the same-run artifact lacks the cannibal local-gate line, this scenario is not product proof."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_day_smoke_pressure_mcw",
+  "evidence_contract": {
+    "claim": "day smoke/light creates cannibal scout/stalk/dispatch pressure, not instant combat",
+    "load_only_verdict": "load proof only / inconclusive for cannibal behavior",
+    "failure_rule": "No feature-proof credit if startup/load, pass-turn ledger, smoke signal, cannibal site match, local_gate report, or non-combat/non-shakedown artifact is missing or non-green."
+  }
+}

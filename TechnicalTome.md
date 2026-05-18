@@ -1,5 +1,10 @@
 # Technical Tome
 
+## macOS release app-bundle portability guardrail
+- `Cataclysm.app/Contents/MacOS/Cataclysm.sh` changes into `Contents/Resources` and launches `./cataclysm` / `./cataclysm-tiles`; for the app bundle, `@executable_path` therefore resolves to the Resources directory, not to the shell script in `Contents/MacOS`.
+- The `app` make target now routes dependency bundling through `build-data/osx/bundle_portable_dependencies.sh`, which runs `dylibbundler` and then verifies the launcher-visible Mach-O surface with `otool -L`.
+- Release packaging must fail if any checked binary still links against local package-manager prefixes such as `/opt/local`, `/opt/homebrew`, or `/usr/local`; the v0.2.0 failure shape was exactly an otherwise installable app whose `cataclysm-tiles` still pointed at unbundled MacPorts `libfreetype.6.dylib` and `libz.1.dylib`.
+
 ## Bandit local approach gate v0 spine
 - The first approach/stand-off gate lives on the active owned-outing record, not as free-floating robbery UI: `choose_local_gate_posture(...)` reads dispatch strength plus local threat/opportunity/context and emits a reviewer-readable `local_gate_decision`.
 - The bounded v0 posture set is `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. `open_shakedown` marks that the pay-or-fight surface may open, but it still does not by itself run dialogue, trade UI, or aftermath writeback.
@@ -343,6 +348,7 @@ Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\background_summarizer.py --only-topic BGSS_CODGER_STORY1 --force --retry-invalid 2 --debug-io --include-responses
 ```
 
+
 ## Dialogue Options Architecture (Current)
 - Dialogue data is loaded at startup from `type: "talk_topic"` JSON across `data/json/npcs/**` (including `data/json/npcs/Backgrounds/*.json`) into the `json_talk_topics` map in `src/npctalk.cpp` via `load_talk_topic()`.
 - A conversation starts in `avatar::talk_to()` (`src/npctalk.cpp`), which creates a `dialogue` with two `talker`s and pulls an initial topic stack from `talker_npc::get_topics()` (`src/talker_npc.cpp`).
@@ -490,6 +496,13 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - The return side preserves only the small abstract consequences this slice can honestly answer now, such as survivor count, anchored identity status, wound / morale burden, carried-vs-delivered cargo, threat/bounty writeback, learned marks, and retreat pressure.
 - `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
 
+#### Bandit live-world ownership seam v0
+- The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
+- This seam started as the owner ledger and now carries one first bounded control hook too: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim at `map::place_npc` time, and nearby owned sites can now mint one bounded scout dispatch through `plan_site_dispatch(...)` / `apply_dispatch_plan(...)` instead of staying pure post-hoc bookkeeping.
+- Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
+- Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
+- The first cadence hook is intentionally narrow: `overmap_npc_move()` may select one nearby owned site, mark selected members outbound, and hand those actual NPCs normal `NPC_MISSION_TRAVELLING` overmap routes toward the current nearby player target; broader restage, messy local writeback, and richer cadence still belong to later slices.
+
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
   - threat spike, objective change, squad split, or complex player intent.
@@ -536,3 +549,7 @@ Upstream portability note:
 - Lower-leg armor accessories like knee pads should also stay out of the pants slot. They are protective add-ons, not substitute pants, so hot-weather shorts cleanup must not strip them or dump them into locker stock as fake duplicate legwear.
 - Partial leg-mounted support storage like deep concealment holsters or small drop-leg bags should also stay out of both the underwear and pants slots. If a leg item only covers hips or upper thighs and mainly behaves like support storage / a holster, locker cleanup should keep it equipped while swapping real pants instead of treating it as fake clothing.
 - Combat-policy slot expansion now treats `gloves`, `mask`, `belt`, and `holster` as first-class locker slots. Classifier order matters here: hip holsters must claim the holster lane before generic leg-accessory rejection, while waist-worn belts with holster pockets still belong to the belt lane when their actual coverage is waist gear rather than hip gear.
+
+## Harness saved-state audit notes
+
+- Debug-spawned follower NPCs persist in saved overmap `npcs` records, not in the player save's `unique_npcs` bucket. For proof-freeze harness evidence, the honest target-state path is: record a pre-spawn overmap `npcs` baseline, prove the case-sensitive save/writeback gate, then read same-run overmap `npcs` metadata with count/new-NPC delta plus follower/faction/attitude/location requirements. This is scoped harness primitive/process proof only; follower commands, rule toggles, camp assignment, and product-feature behavior remain separate proof burdens.

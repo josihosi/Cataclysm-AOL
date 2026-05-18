@@ -1,0 +1,224 @@
+{
+  "name": "bandit.player_lit_fire_signal_wait_mcw",
+  "description": "Player-lit fire bandit signal-response probe: start from the green visible-brazier/source-zone saved fd_fire proof, install mineral water plus an AUTO_DRINK support zone, prove the saved fire/water/zone footing, wait a bounded 30 in-game minutes through the real wait UI, require same-run live-signal/dispatch artifacts, then save and inspect turn delta plus persisted bandit live-world signal metadata. This does not prove roof/horde behavior.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "player_lit_fire_bandit_signal_wait_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "bandit_live_world signal maintenance: signal_packet=yes",
+    "matched_sites=1",
+    "bandit_live_world dispatch plan:",
+    "candidate_reason=live_signal",
+    "signal_packet=live_smoke@"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_player_lit_fire_signal_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the captured green player-lit fire footing; this proves startup/load only, while later metadata proves saved fd_fire/water/AUTO_DRINK footing"
+    },
+    {
+      "kind": "capture",
+      "label": "normal_map_before_player_lit_fire_signal_wait",
+      "extract_text": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_contains": [
+        "YOU"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_starting_ui_not_normal_map_before_signal_wait",
+      "abort_reason": "startup did not land on normal map UI before the bounded signal wait; do not credit wait/signal proof from a stale or wrong screen",
+      "expected_visible_fact": "normal map UI is visible before any long-wait input is sent from the real player-lit fire footing"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_player_lit_fire_target_before_signal_wait",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_reason": "captured signal-wait fixture no longer contains the real player-lit f_brazier + fd_fire target tile from the green ignition proof",
+      "expected_visible_fact": "saved target tile east of the player still contains the real player-created f_brazier + fd_fire before the bandit signal wait"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_mineral_water_support_before_signal_wait",
+      "offsets": [
+        [
+          0,
+          1,
+          0
+        ]
+      ],
+      "required_items": [
+        "water_mineral"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_reason": "mineral water support item is missing before bounded signal wait; do not let thirst/no-drink setup become the proof result",
+      "expected_visible_fact": "saved map metadata contains mineral water adjacent to the player as survivability support before the bounded wait"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_auto_drink_zone_before_signal_wait",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ]
+      ],
+      "required_zone_type": "AUTO_DRINK",
+      "required_faction": "your_followers",
+      "required_name_contains": "OpenClaw auto drink wait support zone",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "AUTO_DRINK support zone is missing or does not cover player/mineral water before bounded signal wait",
+      "expected_visible_fact": "saved zone metadata contains an AUTO_DRINK support zone covering the player and adjacent mineral water before the bounded wait"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_before_player_lit_fire_signal_wait",
+      "record_baseline": true,
+      "expected_visible_fact": "saved player turn baseline is recorded before the bounded signal wait so a later guarded save can prove elapsed in-game time"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_30_minutes_for_player_lit_fire_bandit_signal",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "menu_settle_seconds": 0.8,
+      "pre_menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 18.0,
+      "abort_on_interrupt": true,
+      "abort_verdict": "blocked_player_lit_fire_signal_wait_interrupted_or_prompt_visible",
+      "abort_reason": "bounded 30-minute wait was interrupted or left a prompt visible; screenshot/OCR artifacts classify the exact blocker before any response key is sent",
+      "artifact_state_patterns": [
+        "bandit_live_world signal scan: signal_packet=yes",
+        "bandit_live_world signal maintenance: signal_packet=yes",
+        "matched_sites=1",
+        "bandit_live_world dispatch plan:",
+        "candidate_reason=live_signal",
+        "signal_packet=live_smoke@"
+      ],
+      "expected_visible_fact": "the real wait UI is opened, Wait a while is chosen, 30 minutes is selected, and same-run artifacts must show live player-lit fire signal response rather than startup/load only",
+      "failure_rule": "If the wait is interrupted, the signal artifacts are absent, or elapsed time cannot be proven by the later saved turn delta, this packet is inconclusive/non-green. Do not type through prompts blindly."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_player_lit_fire_signal_dispatch_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world signal scan: signal_packet=yes",
+          "smoke_packets=1"
+        ],
+        [
+          "bandit_live_world signal maintenance: signal_packet=yes",
+          "matched_sites=1"
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "candidate_reason=live_signal",
+          "signal_packet=live_smoke@"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_player_lit_fire_signal_dispatch_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain the player-lit fire live-signal scan/maintenance/dispatch response lines after the bounded wait",
+      "expected_visible_fact": "same-run debug artifact contains live smoke/fire signal scan, site match, and bandit dispatch response from the real player-created fire source"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_player_lit_signal_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the live-signal wait and before the guarded save/writeback"
+    },
+    {
+      "kind": "press",
+      "label": "request_direct_save_after_player_lit_signal_wait",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "a save-and-quit prompt request is issued after the bounded signal wait; mtime and saved-turn metadata prove acceptance after confirmation",
+      "failure_rule": "If the subsequent uppercase-Y confirmation does not advance saved-player mtime, the save request row cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_direct_save_after_player_lit_signal_wait",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_player_lit_signal_save",
+      "failure_rule": "uppercase-Y confirmation is trusted only if the following saved-player mtime gate proves same-run writeback",
+      "expected_visible_fact": "uppercase Y follows the recorded save prompt/request so the following mtime and saved metadata gates can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_player_lit_signal_save",
+      "changed_since_label": "audit_player_save_mtime_before_player_lit_signal_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_player_lit_signal_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the post-signal save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-signal save, proving the following turn and bandit-live-world metadata read same-run state"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_player_lit_fire_signal_wait",
+      "baseline_label": "audit_saved_turn_before_player_lit_fire_signal_wait",
+      "required_min_delta_turns": 1500,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_player_lit_fire_signal_wait_turn_delta_missing",
+      "abort_reason": "saved player turn counter did not advance by at least 1500 turns after the bounded wait and guarded save",
+      "expected_visible_fact": "same-run saved player turn counter advanced by a bounded 30-minute-scale delta after the real wait UI path"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_bandit_live_world_after_player_lit_signal_save",
+      "required_profile": "camp_style",
+      "required_site_id_contains": "bandit_camp@",
+      "required_active_group_id_contains": "bandit_camp@",
+      "required_active_target_id_prefix": "player@",
+      "required_min_active_member_ids": 1,
+      "required_known_recent_mark_contains": "live_smoke@",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_player_lit_bandit_signal_state",
+      "abort_reason": "saved dimension-data bandit_live_world metadata did not contain active bandit response state plus persisted known_recent_marks live_smoke signal after same-run save/writeback",
+      "expected_visible_fact": "same-run saved dimension-data contains a bandit_camp active response targeting the player plus persisted known_recent_marks live_smoke signal state from the real player-lit fire"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.player_lit_fire_signal_wait_mcw",
+  "evidence_contract": {
+    "claim": "real player-created source-zone fire can feed the live bandit signal path during a bounded wait, create a bandit response, and persist signal/active-state metadata after guarded save/writeback",
+    "load_only_verdict": "load proof only / inconclusive for player-lit fire signal response",
+    "failure_rule": "No signal-response credit if saved fd_fire footing, water/AUTO_DRINK support, bounded wait, same-run signal/dispatch artifact, save/writeback, turn delta, or saved bandit_live_world signal metadata is missing or non-green."
+  }
+}

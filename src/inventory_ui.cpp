@@ -1,6 +1,7 @@
 #include "inventory_ui.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -77,6 +78,169 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+static bool openclaw_harness_ui_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+static std::string openclaw_harness_quote( const std::string &value )
+{
+    std::string out = "\"";
+    for( const char c : value ) {
+        if( c == '\\' || c == '"' ) {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+
+static std::string openclaw_harness_item_location_type_name( const item_location::type location_type )
+{
+    switch( location_type ) {
+        case item_location::type::invalid:
+            return "invalid";
+        case item_location::type::character:
+            return "character";
+        case item_location::type::map:
+            return "map";
+        case item_location::type::vehicle:
+            return "vehicle";
+        case item_location::type::container:
+            return "container";
+    }
+
+    return "unknown";
+}
+
+static void openclaw_harness_trace_inventory_entry( const std::string &event,
+        const std::string &title, const std::string &filter, const std::string &action,
+        const std::string &selection_method, const inventory_entry *entry )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+
+    std::string line = "openclaw_harness_ui_trace: component=inventory_selector";
+    line += " event=" + event;
+    line += " title=" + openclaw_harness_quote( title );
+    line += " filter=" + openclaw_harness_quote( filter );
+    line += " action=" + openclaw_harness_quote( action );
+    line += " selection_method=" + openclaw_harness_quote( selection_method );
+
+    if( entry == nullptr || !*entry || !entry->is_item() ) {
+        DebugLog( D_INFO, DC_ALL ) << line << " selected_item=no";
+        return;
+    }
+
+    const item_location loc = entry->any_item();
+    const item &it = *loc;
+    const char entry_invlet = entry->get_invlet();
+    const char item_invlet = it.invlet;
+    DebugLog( D_INFO, DC_ALL ) << line
+                               << " selected_item=yes"
+                               << " typeid=" << openclaw_harness_quote( it.typeId().str() )
+                               << " name=" << openclaw_harness_quote( it.tname() )
+                               << " entry_invlet=" << openclaw_harness_quote( entry_invlet == '\0' ? "" : std::string( 1, entry_invlet ) )
+                               << " item_invlet=" << openclaw_harness_quote( item_invlet == '\0' ? "" : std::string( 1, item_invlet ) )
+                               << " stack_count=" << entry->get_available_count();
+}
+
+static void openclaw_harness_trace_inventory_entries( const inventory_selector &selector,
+        const std::vector<inventory_column *> &columns,
+        const std::string &event, const std::string &action, const std::string &selection_method,
+        const std::string &component_prefix = "inventory_selector" )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+
+    const std::pair<size_t, size_t> highlighted_position = selector.get_highlighted_position();
+    const std::string entries_component = component_prefix + "_entries";
+    const std::string entry_component = component_prefix + "_entry";
+
+    for( size_t column_index = 0; column_index < columns.size(); ++column_index ) {
+        const inventory_column *column = columns[column_index];
+        if( column == nullptr ) {
+            continue;
+        }
+        const bool active_column = column_index == highlighted_position.first;
+        const inventory_entry &highlighted = column->get_highlighted();
+        const std::vector<inventory_entry *> entries = column->get_entries( []( const inventory_entry &entry ) {
+            return entry.is_item();
+        } );
+
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=" << entries_component
+                << " event=" << event
+                << " title=" << openclaw_harness_quote( selector.get_title() )
+                << " filter=" << openclaw_harness_quote( selector.get_filter() )
+                << " action=" << openclaw_harness_quote( action )
+                << " selection_method=" << openclaw_harness_quote( selection_method )
+                << " column_index=" << column_index
+                << " active_column=" << ( active_column ? "yes" : "no" )
+                << " highlighted_index=" << column->get_highlighted_index()
+                << " visible_item_count=" << entries.size();
+
+        for( size_t index = 0; index < entries.size(); ++index ) {
+            const inventory_entry *entry = entries[index];
+            const item_location loc = entry->any_item();
+            const item &it = *loc;
+            const char entry_invlet = entry->get_invlet();
+            const char item_invlet = it.invlet;
+            DebugLog( D_INFO, DC_ALL )
+                    << "openclaw_harness_ui_trace: component=" << entry_component
+                    << " event=" << event
+                    << " title=" << openclaw_harness_quote( selector.get_title() )
+                    << " filter=" << openclaw_harness_quote( selector.get_filter() )
+                    << " action=" << openclaw_harness_quote( action )
+                    << " selection_method=" << openclaw_harness_quote( selection_method )
+                    << " column_index=" << column_index
+                    << " visible_item_index=" << index
+                    << " highlighted=" << ( *entry == highlighted ? "yes" : "no" )
+                    << " selectable=" << ( entry->is_selectable() ? "yes" : "no" )
+                    << " typeid=" << openclaw_harness_quote( it.typeId().str() )
+                    << " name=" << openclaw_harness_quote( it.tname() )
+                    << " entry_invlet=" << openclaw_harness_quote( entry_invlet == '\0' ? "" : std::string( 1, entry_invlet ) )
+                    << " item_invlet=" << openclaw_harness_quote( item_invlet == '\0' ? "" : std::string( 1, item_invlet ) )
+                    << " stack_count=" << entry->get_available_count()
+                    << " available_count=" << entry->get_available_count()
+                    << " locations_count=" << entry->locations.size()
+                    << " chosen_count=" << entry->chosen_count
+                    << " location_type=" << openclaw_harness_quote(
+                        openclaw_harness_item_location_type_name( loc.where() ) )
+                    << " recursive_location_type=" << openclaw_harness_quote(
+                        openclaw_harness_item_location_type_name( loc.where_recursive() ) );
+        }
+    }
+}
+
+template<typename DropCollection>
+static void openclaw_harness_trace_drop_selector( const std::string &event,
+        const std::string &title, const std::string &filter, const std::string &action,
+        const DropCollection &selected )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+
+    int total_selected_qty = 0;
+    for( const drop_location &drop : selected ) {
+        total_selected_qty += drop.second;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=inventory_drop_selector"
+            << " event=" << event
+            << " title=" << openclaw_harness_quote( title )
+            << " filter=" << openclaw_harness_quote( filter )
+            << " action=" << openclaw_harness_quote( action )
+            << " selected_stacks=" << selected.size()
+            << " total_selected_qty=" << total_selected_qty;
+}
 
 static const flag_id json_flag_NO_UNLOAD( "NO_UNLOAD" );
 static const flag_id json_flag_SHREDDED( "SHREDDED" );
@@ -2331,12 +2495,20 @@ void inventory_selector::add_remote_map_items( tinymap *remote_map, const tripoi
     } );
 }
 
-void inventory_selector::add_basecamp_items( const basecamp &camp )
+void inventory_selector::add_basecamp_items( const basecamp &camp, const int nearby_radius_to_skip )
 {
-    std::unordered_set<tripoint_abs_ms> tiles = camp.get_storage_tiles();
+    const std::unordered_set<tripoint_abs_ms> tiles = camp.get_storage_tiles();
     map &here = get_map();
-    for( tripoint_abs_ms tile : tiles ) {
-        add_map_items( here.get_bub( tile ) );
+    for( const tripoint_abs_ms &tile : tiles ) {
+        const tripoint_bub_ms local_tile = here.get_bub( tile );
+        if( nearby_radius_to_skip >= 0 && here.inbounds( local_tile ) &&
+            rl_dist( local_tile, u.pos_bub() ) <= nearby_radius_to_skip &&
+            ( local_tile == u.pos_bub() || here.clear_path( u.pos_bub(), local_tile,
+                    rl_dist( u.pos_bub(), local_tile ), 1, 100 ) ) ) {
+            continue;
+        }
+        add_map_items( local_tile );
+        add_vehicle_items( local_tile );
     }
 }
 
@@ -3877,10 +4049,16 @@ item_location inventory_pick_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    openclaw_harness_trace_inventory_entry( "open", get_title(), get_filter(), "", "", nullptr );
     item_location startDragItem;
     bool dragActive = false;
     while( true ) {
         ui_manager::redraw();
+        const inventory_entry &highlighted_after_redraw = get_active_column().get_highlighted();
+        openclaw_harness_trace_inventory_entry( "state", get_title(), get_filter(), "redraw",
+                "highlight_after_redraw", &highlighted_after_redraw );
+        openclaw_harness_trace_inventory_entries( *this, columns, "state", "redraw",
+                "highlight_after_redraw" );
         const inventory_input input = get_input();
 
         if( input.entry != nullptr ) {
@@ -3906,10 +4084,14 @@ item_location inventory_pick_selector::execute()
                             add_character_items( u );
                         }
                     } else {
+                        openclaw_harness_trace_inventory_entry( "return", get_title(), get_filter(), input.action,
+                                "entry_select", input.entry );
                         return input.entry->any_item();
                     }
                 }
             } else if( input.action != "MOUSE_MOVE" && input.action != "COORDINATE" ) {
+                openclaw_harness_trace_inventory_entry( "return", get_title(), get_filter(), input.action,
+                        "entry_action", input.entry );
                 return input.entry->any_item();
             } else {
                 if( !dragActive && highlight( input.entry->any_item() ) ) {
@@ -3921,14 +4103,23 @@ item_location inventory_pick_selector::execute()
             u.worn.organize_items_menu();
             return item_location();
         } else if( input.action == "QUIT" ) {
+            openclaw_harness_trace_inventory_entry( "return", get_title(), get_filter(), input.action,
+                    "quit", nullptr );
             return item_location();
         } else if( input.action == "CONFIRM" ) {
             const inventory_entry &highlighted = get_active_column().get_highlighted();
             if( highlighted && highlighted.is_selectable() ) {
+                openclaw_harness_trace_inventory_entry( "return", get_title(), get_filter(), input.action,
+                        "highlight_confirm", &highlighted );
                 return highlighted.any_item();
             }
         } else {
             on_input( input );
+            const inventory_entry &highlighted = get_active_column().get_highlighted();
+            openclaw_harness_trace_inventory_entry( "state", get_title(), get_filter(), input.action,
+                    "highlight_after_input", &highlighted );
+            openclaw_harness_trace_inventory_entries( *this, columns, "state", input.action,
+                    "highlight_after_input" );
         }
     }
 }
@@ -4802,30 +4993,43 @@ drop_locations inventory_drop_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    openclaw_harness_trace_drop_selector( "open", get_title(), get_filter(), "", to_use );
     while( true ) {
         ui_manager::redraw();
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
+                "drop_highlight_after_redraw", "inventory_drop_selector" );
 
         const inventory_input input = get_input();
         if( input.action == "CONFIRM" ) {
             for( drop_location &stuff : to_use ) {
                 if( !avatar_action::check_stealing( get_player_character(), *stuff.first ) ) {
+                    openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action,
+                                                          drop_locations() );
                     return drop_locations();
                 }
             }
 
             if( to_use.empty() ) {
+                openclaw_harness_trace_drop_selector( "blocked", get_title(), get_filter(), input.action, to_use );
                 popup_getkey( _( "No items were selected.  Use %s to select them." ),
                               ctxt.get_desc( "TOGGLE_ENTRY" ) );
                 continue;
             }
+            openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action, to_use );
             break;
         }
 
         if( input.action == "QUIT" ) {
+            openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action,
+                                                  drop_locations() );
             return drop_locations();
         }
 
         on_input( input );
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", input.action,
+                "drop_highlight_after_input", "inventory_drop_selector" );
     }
 
     drop_locations dropped_pos_and_qty;
@@ -5332,6 +5536,9 @@ void trade_selector::execute()
     while( !exit ) {
         _ui->invalidate_ui();
         ui_manager::redraw_invalidated();
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
+                "trade_highlight_after_redraw", "trade_selector" );
         std::string const &action = _ctxt_trade.handle_input();
         if( action == ACTION_SWITCH_PANES ) {
             _parent->pushevent( trade_ui::event::SWITCH );
@@ -5352,6 +5559,9 @@ void trade_selector::execute()
             inventory_input const input =
                 process_input( ctxt.input_to_action( iev ), iev.get_first_input() );
             inventory_drop_selector::on_input( input );
+            openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
+            openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", input.action,
+                    "trade_highlight_after_input", "trade_selector" );
             if( input.action == "HELP_KEYBINDINGS" ) {
                 ctxt.display_menu();
             }

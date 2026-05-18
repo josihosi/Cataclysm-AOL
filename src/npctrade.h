@@ -14,6 +14,7 @@
 constexpr char const *VAR_TRADE_IGNORE = "trade_ignore";
 
 class Character;
+class basecamp;
 class item;
 class npc;
 
@@ -62,7 +63,7 @@ std::list<item> transfer_items( trade_selector::select_t &stuff, Character &give
                                 bool use_escrow );
 double net_price_adjustment( const Character &buyer, const Character &seller );
 bool trade( npc &p, int cost, const std::string &deal, int you_nearby_item_radius = 1,
-            int you_nearby_ally_radius = 0 );
+            int you_nearby_ally_radius = 0, basecamp *you_basecamp = nullptr );
 std::vector<item_pricing> init_selling( npc &p );
 } // namespace npc_trading
 

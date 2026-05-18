@@ -1,0 +1,116 @@
+{
+  "name": "harness.debug_map_editor_field_furniture_target_state_audit_mcw",
+  "description": "Audit one debug map-editor field/furniture primitive end-to-end under the proof-freeze rules: paint a distinctive furniture/field pair onto the target tile through the debug map editor, prove the case-sensitive save/writeback gate, then require same-run saved-map metadata for the exact field and furniture. This is harness primitive/process evidence, not product-feature proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_map_editor_place_furniture",
+      "label": "debug_map_editor_place_chair_east",
+      "furniture_query": "f_chair",
+      "target_keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_map_tile_after_debug_map_editor",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug map-editor primitive starts from the main map screen",
+      "expected_visible_fact": "debug map editor returns to the live map after selecting f_chair and applying it to the target tile one square east",
+      "expected_immediate_state": "one f_chair should exist on the saved target tile one square east, but this row is credited only through the later same-run saved-map metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-map f_chair metadata after save makes this debug map-editor row non-green",
+      "next_step_gate": "do not credit the debug map-editor furniture primitive unless audit_saved_map_tile_after_debug_map_editor is green"
+    },
+    {
+      "kind": "debug_map_editor_place_field",
+      "label": "debug_map_editor_place_smoke_east",
+      "field_query": "fd_smoke",
+      "target_keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_map_tile_after_debug_map_editor",
+      "preconditions": "canonical dev-harness/McWilliams fixture remains loaded and focused; debug map-editor field primitive starts from the main map screen after the furniture paint helper exits",
+      "expected_visible_fact": "debug map editor returns to the live map after selecting fd_smoke and applying it to the target tile one square east",
+      "expected_immediate_state": "fd_smoke should exist on the saved target tile one square east along with f_chair, but this row is credited only through the later same-run saved-map metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-map fd_smoke metadata after save makes this debug map-editor row non-green",
+      "next_step_gate": "do not credit the debug map-editor field primitive unless audit_saved_map_tile_after_debug_map_editor is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_map_editor_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug map-editor field/furniture placement and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_map_editor",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug map-editor save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug map-editor field/furniture steps; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_map_editor",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_debug_map_editor_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved-map field/furniture metadata may be credited only when audit_player_save_mtime_after_debug_map_editor_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_map_editor_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_map_editor_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug map-editor save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug map-editor save, proving the following saved-map audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_map_tile_after_debug_map_editor",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_fields": [
+        "fd_smoke"
+      ],
+      "required_furniture": [
+        "f_chair"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_field_furniture_target_state",
+      "abort_reason": "saved-map metadata did not contain fd_smoke and f_chair at player-relative offset [1,0,0] after same-run debug map-editor save/writeback",
+      "expected_visible_fact": "same-run saved-map metadata contains fd_smoke and f_chair one tile east of the player after the debug map-editor primitive"
+    }
+  ]
+}

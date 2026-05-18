@@ -1,0 +1,11 @@
+{
+  "profile": "dev",
+  "snapshot_name": "basecamp_dev_manual_2026-04-02",
+  "captured_at": "2026-04-02T16:54:00+0200",
+  "source_path": "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/.userdata/dev/",
+  "purpose": "Manual basecamp testing baseline requested by Josef; preserve full dev profile state including save, options, and related profile files.",
+  "notes": [
+    "This snapshot is broader than the harness save fixture and includes config/options and other dev-profile state.",
+    "Do not overwrite casually; this is intended as the new default dev baseline after manual camp setup/testing."
+  ]
+}

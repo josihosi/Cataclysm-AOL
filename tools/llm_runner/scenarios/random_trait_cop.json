@@ -1,0 +1,53 @@
+{
+  "player_name": "Test Survivor",
+  "player_utterance": "Stay sharp and cover the door.",
+  "npc_name": "Marlene Pike",
+  "profession": "police officer",
+  "mutations": [
+    "BGSS_Cop_1"
+  ],
+  "chatbin": {
+    "talk_friend": "",
+    "talk_friend_guard": "",
+    "first_topic": "",
+    "talk_leader": "",
+    "talk_stranger_friendly": "",
+    "talk_stranger_neutral": "",
+    "talk_stranger_wary": "",
+    "talk_stranger_scared": "",
+    "talk_stranger_aggressive": ""
+  },
+  "state": {
+    "follow_mode": "guard/hold",
+    "morale": 3,
+    "hunger": 0,
+    "thirst": 0,
+    "pain": 1,
+    "stamina": 8,
+    "sleepiness": 0,
+    "hp_percent": 92,
+    "danger_assessment": 5,
+    "panic": 2,
+    "confidence": 4,
+    "aggression": 4,
+    "bravery": 6,
+    "collector": 2,
+    "altruism": 4,
+    "trust": 4,
+    "intimidation": 2,
+    "respect": 4,
+    "anger": 0
+  },
+  "world": {
+    "threats": "zombie threat=4/10",
+    "friendlies": "player",
+    "inventory": "wielded=\"service pistol\"",
+    "weapons": "[service pistol, baton]",
+    "bandage_possible": "true",
+    "map": "-----\n--a--\n--|--\n--b--\n-----"
+  },
+  "expectations": {
+    "selector_equals": "trait:BGSS_Cop_1",
+    "source_tag_contains": "cop_1"
+  }
+}

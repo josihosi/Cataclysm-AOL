@@ -1,0 +1,3 @@
+action_status npc="Rubik" kind="look_inventory" phase="requested" reason="" request="req_inventory_1" target_hint="id:wrench_01" target="heavy anvil" facts=""
+action_status npc="Rubik" kind="look_inventory" phase="precheck" reason="" request="req_inventory_1" target_hint="id:wrench_01" target="heavy anvil" facts=""
+action_status npc="Rubik" kind="look_inventory" phase="blocked" reason="inventory.cannot_wield" request="req_inventory_1" target_hint="id:wrench_01" target="heavy anvil" facts=""

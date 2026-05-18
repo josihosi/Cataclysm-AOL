@@ -1,0 +1,293 @@
+{
+  "name": "bandit.roof_fire_horde_split_wait_from_player_fire_mcw",
+  "description": "Split-run roof-fire horde detection proof: start from the saved world captured after run 20260429_172847 proved normal player-created roof/elevated f_brazier + fd_fire. Re-load that world into gameplay, re-audit the saved roof-fire state, perform bounded in-game wait, require same-run live horde light-signal artifacts, then save and inspect elapsed turn delta plus roof-fire and horde response metadata.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "light_packets=1",
+    "bandit_live_world horde light signal:",
+    "horde_signal_power="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "roof_fire_split_wait_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen from the saved player-created roof-fire world; this proves startup/load only before saved metadata and bounded wait prove the split-run horde path"
+    },
+    {
+      "kind": "capture",
+      "label": "normal_map_before_split_roof_fire_horde_wait",
+      "extract_text": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_contains": [
+        "YOU"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_split_roof_fire_starting_ui_not_normal_map",
+      "abort_reason": "split-run load did not land on normal map UI before bounded horde wait; do not credit wait/horde proof from a stale or wrong screen",
+      "expected_visible_fact": "normal map UI is visible before any wait input is sent from the saved player-created roof-fire footing"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_roof_fire_target_before_horde_wait",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_split_roof_fire_source_state_missing",
+      "abort_reason": "split-run source world no longer contains the source-run player-created roof/elevated f_brazier plus fd_fire before bounded horde wait",
+      "expected_visible_fact": "split-run saved map metadata still contains the source-run player-created roof/elevated f_brazier + fd_fire before any bounded horde wait; no fixture fd_fire transform is applied in this fixture",
+      "next_step_gate": "only proceed to bounded horde wait if this roof-fire result-state gate is green"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_before_roof_fire_horde_wait",
+      "record_baseline": true,
+      "expected_visible_fact": "saved player turn baseline is recorded before the bounded roof-fire horde wait so the final guarded save can prove elapsed in-game time"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_horde_before_split_roof_fire_horde_wait",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 180,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "destination_offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "tracking_intensity": 0,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_split_roof_fire_horde_footing",
+      "abort_reason": "split-run saved overmap horde_map metadata did not contain the staged mon_zombie horde before the bounded roof-fire wait",
+      "expected_visible_fact": "saved overmap horde_map metadata contains the staged horde before the split-run bounded roof-fire wait; horde staging is setup-only and must change after the signal"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_5_minutes_for_roof_fire_horde_signal",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "pre_menu_choice_key": "w",
+      "menu_settle_seconds": 0.8,
+      "pre_menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 120.0,
+      "abort_on_interrupt": true,
+      "abort_verdict": "blocked_roof_fire_horde_wait_interrupted_or_prompt_visible",
+      "abort_reason": "bounded 5-minute wait was interrupted or left a prompt visible after the explicit captured I-ignore retry budget; screenshot/OCR artifacts classify the blocker before any further proof is credited",
+      "artifact_state_patterns": [
+        "bandit_live_world signal scan: signal_packet=yes",
+        "light_packets=1",
+        "bandit_live_world horde light signal:",
+        "horde_signal_power="
+      ],
+      "expected_visible_fact": "the real wait UI is opened from the loaded post-fire gameplay state, Wait a while is chosen, 5 minutes is selected, and same-run artifacts must show live roof-fire light reaching the horde signal bridge; if the roof fire heat/hurt prompt interrupts, the harness records it and presses case-sensitive I to ignore the distraction before continuing the bounded wait.",
+      "failure_rule": "If the split-run wait is interrupted, signal artifacts are absent, or elapsed time cannot be proven by the later saved turn delta, this packet is inconclusive/non-green. A handled interruption is only green if the final wait ledger/artifact delta prove elapsed wait/signal state.",
+      "interrupt_response_key": "I",
+      "max_interrupt_responses": 12,
+      "interrupt_response_wait_seconds": 20.0
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_roof_fire_horde_light_signal_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world signal scan: signal_packet=yes",
+          "light_packets=1"
+        ],
+        [
+          "bandit_live_world horde light signal:",
+          "horde_signal_power="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_light_signal_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain roof-fire live-light horde signal lines after the bounded wait",
+      "expected_visible_fact": "same-run split-run debug artifact contains live light scan and horde light signal lines from the player-created roof fire source"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_roof_fire_horde_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the roof-fire horde wait and before guarded save/writeback"
+    },
+    {
+      "kind": "press",
+      "label": "request_direct_save_after_roof_fire_horde_wait",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "Save and quit"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_save_prompt_missing",
+      "abort_reason": "after requesting a save following the bounded roof-fire horde wait, OCR did not show the Save and quit prompt before uppercase-Y confirmation",
+      "expected_visible_fact": "Save command is requested after the bounded roof-fire wait; mtime proves acceptance after confirmation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_direct_save_after_roof_fire_horde_wait",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_roof_fire_horde_save",
+      "expected_visible_fact": "uppercase Y confirms the recorded save prompt; following mtime/state gates prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_roof_fire_horde_save",
+      "changed_since_label": "audit_player_save_mtime_before_roof_fire_horde_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_fire_horde_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the post-wait roof-fire horde save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-wait save, proving the following turn/map/horde metadata reads same-run state"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_roof_fire_horde_wait",
+      "baseline_label": "audit_saved_turn_before_roof_fire_horde_wait",
+      "required_min_delta_turns": 250,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_wait_turn_delta_missing",
+      "abort_reason": "saved player turn counter did not advance by at least 250 turns after the bounded wait and guarded save",
+      "expected_visible_fact": "same-run saved player turn counter advanced by a bounded 5-minute-scale delta after the real wait UI path"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_roof_fire_target_after_wait",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_roof_fire_after_wait",
+      "abort_reason": "saved roof target metadata did not contain player-created f_brazier plus fd_fire after the normal deploy/lighter path and bounded wait",
+      "expected_visible_fact": "split-run saved map metadata after bounded wait/save still contains roof/elevated terrain plus the player-created f_brazier/fd_fire provenance from source run 20260429_172847"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_horde_after_roof_fire_signal_wait",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 240,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "destination_offset_ms": [
+            -7,
+            -10,
+            0
+          ],
+          "min_moves": 1
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_roof_fire_horde_response",
+      "abort_reason": "saved overmap horde_map metadata did not show the staged horde moved/retargeted to the roof-fire source after the bounded wait and save",
+      "expected_visible_fact": "split-run saved overmap horde_map metadata shows the staged mon_zombie horde changed from its baseline: same horde location, destination retargeted to the roof-fire source submap, and positive movement budget after live horde light signaling"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.roof_fire_horde_split_wait_from_player_fire_mcw",
+  "evidence_contract": {
+    "claim": "a source-run normal player-created roof/elevated fire can be loaded back into gameplay and drive a bounded elapsed-time horde light-signal/response proof through the real live path",
+    "load_only_verdict": "load proof only / inconclusive for roof-fire horde response",
+    "failure_rule": "No roof-horde credit if split-run startup/load, saved roof f_brazier/fd_fire provenance, bounded wait, same-run horde light-signal artifact, save/writeback, turn delta, or saved horde response metadata is missing or non-green."
+  }
+}

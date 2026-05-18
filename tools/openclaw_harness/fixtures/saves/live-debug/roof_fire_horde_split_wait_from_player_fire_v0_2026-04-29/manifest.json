@@ -1,0 +1,11 @@
+{
+  "name": "roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "captured_at": "2026-04-29T17:50:00+0200",
+  "source_run": ".userdata/dev-harness/harness_runs/20260429_172847/",
+  "source_scenario": "bandit.roof_fire_horde_player_action_mcw",
+  "source_proof": "green scoped player-action roof/elevated fire writeback: saved t_tile_flat_roof + f_brazier + fd_fire after normal Apply->brazier and Apply->lighter/source-firewood path; horde wait/response was not proven in the source run because the save/writeback gate quit to main menu",
+  "description": "Split-run source fixture for roof-fire horde detection proof: starts from the saved world produced after the normal player-created roof/elevated fire writeback proof in run 20260429_172847. No fd_fire transform is applied here; the fire provenance is the source run's normal player action path plus saved metadata audit. This fixture exists to load that world back into gameplay and perform the bounded horde wait/response audit from a live map state instead of trying to wait after a save-and-quit gate.",
+  "save_transforms": []
+}

@@ -23,7 +23,7 @@ This lane should:
 - add one small named multi-turn scenario packet for a north-of-bandit camp whose light leaks only east, then a matching south-visible variant
 - prove that east-only leakage does **not** justify north-side staking-out or pursuit from the bandit side
 - prove that south-visible leakage **does** become actionable from the bandit side under the same broader footing
-- include the matching zombie-horde corridor variant so the same light does not become private bandit information
+- include the matching deterministic zombie-horde corridor variant so the same light does not become private bandit information on the proof seam; do not claim live horde attraction without a live bridge
 - carry explicit per-scenario goals and tuning metrics instead of leaving the answer as vague vibes
 - run on the current overmap-side playback / proof seam for up to **500 turns**, with reviewer-readable checkpoints and benchmark outcomes
 
@@ -45,7 +45,7 @@ This lane should **not** do any of the following:
 This lane is done for now when:
 - one bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam
 - deterministic multi-turn proof up to **500 turns** shows the hidden-side leakage case stays non-actionable while the visible-side case becomes actionable under the same surrounding conditions
-- the matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in bandit-only theater
+- the matching deterministic zombie-horde corridor variant proves the same light can carry abstract horde pressure too instead of existing in bandit-only theater; live horde attraction remains a separate bridge
 - each scenario carries explicit goals and tuning metrics, and the reviewer-readable output shows whether those benchmarks were met
 - the slice stays bounded: no z-level expansion, no fresh concealment architecture, no handoff rewrite, and no broad world-sim jump
 

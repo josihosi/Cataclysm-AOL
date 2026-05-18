@@ -1,11 +1,15 @@
 # Bandit live product playtest matrix v0 (2026-04-28)
 
-Status: GREENLIT / BANDIT PRODUCT-PROOF MATRIX
+Status: GREENLIT / BANDIT PRODUCT-PROOF MATRIX (scoped checkpoint accepted)
 
 Product source of truth: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`
 Risk/reward contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`
 Actual playtest stack: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
 Proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
+
+## Checkpoint review note
+
+Frau product review accepted the current scoped matrix as enough for the bandit camp-map checkpoint. A second-fixture bias variant is not required before closure. Scenario 1 player-created fire/smoke/light remains blocked behind the fuel/writeback gate and is not credited by this checkpoint. Same-fixture repeatability stays labeled as same-fixture confidence, not broad anti-bias proof.
 
 ## Purpose
 
@@ -69,20 +73,20 @@ Required proof:
 
 Claim: tiny, medium, and large camps size action from current living/ready/home roster, reserve, wounds/unready state, active outside groups, risk/reward, and target confidence rather than fixed folklore.
 
-Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. This still does **not** close the full row: live high-threat/low-reward and active-outside dogpile guardrails still need named evidence.
+Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny buddy-pair run `.userdata/dev-harness/harness_runs/20260428_202044/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny scout-confirmed buddy-pair, medium, and large/cooled cases. High-threat/low-reward hold is also green in `.userdata/dev-harness/harness_runs/20260428_200600/` via `bandit.high_threat_low_reward_holds`: clean `6206131b31` runtime, green 30-minute wait, same-run hold rejection with exact `selected=hold / chill`, and saved no-active-outside/no-dispatch state. Active-outside dogpile is also green in `.userdata/dev-harness/harness_runs/20260428_200434/` via `bandit.active_outside_dogpile_block_live`: clean `6206131b31` runtime, saved preflight `active_outside=2` footing, green 30-minute wait, same-run dogpile-block rejection, and saved unchanged two-active/three-ready state. This closes these named guardrails only, not broad product closure.
 
 Required proof:
 - fixture/precondition proves roster shape for at least 2-, 4/5-, and 7/10-member cases over bounded runs or variants;
 - report names living roster, ready-at-home, wounded/unready, active outside, hard reserve, dispatchable count, selected intent, and selected member count;
-- high-threat/low-reward case holds/re-scouts instead of escalating just because threat is high;
-- active outside same-target group blocks dogpile;
+- ~~high-threat/low-reward case holds/re-scouts instead of escalating just because threat is high;~~
+- ~~active outside same-target group blocks dogpile;~~
 - reserve is preserved or downgrade is explained.
 
 ### 5. Stalk/pressure waits for opening, then returns/holds if none appears
 
 Claim: a follow-up stalk/pressure group can be larger than the scout where justified, waits for an opening rather than instantly fighting, and returns/holds/decays if no opening appears within the bounded window.
 
-Status: **green feature-path evidence for the no-opening branch** in `.userdata/dev-harness/harness_runs/20260428_195617/` via `bandit.stalk_pressure_waits_for_opening`: saved active lead footing, green 30-minute cadence wait, same-run no-opening rejection with `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no`, held-pressure notes, no spawned outside group, and saved stale/decayed lead state. This closes the no-opening guardrail only; opening-present escalation remains separate.
+Status: **green feature-path evidence for the no-opening decision/decay branch only** in `.userdata/dev-harness/harness_runs/20260428_195617/` via `bandit.stalk_pressure_waits_for_opening`: saved active remembered pressure footing, green 30-minute cadence wait, same-run no-opening rejection with `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no`, held-pressure notes, no spawned outside group, and saved stale/decayed lead state. This closes active remembered pressure -> no-opening rejection -> stale/decayed lead only; opening-present escalation remains separate.
 
 Required proof:
 - remembered high-value/manageable-risk lead exists;
@@ -115,6 +119,8 @@ Required proof:
 - pay and fight branches are separate runs or clearly separated steps;
 - no cannibal proof borrows this result.
 
+Current boundary: **green as scoped shakedown/toll-control guardrail evidence, not broad product closure**. The proof runs are `bandit.extortion_first_demand_fight_mcw` in `.userdata/dev-harness/harness_runs/20260428_204454/`, `bandit.extortion_first_demand_pay_mcw` in `.userdata/dev-harness/harness_runs/20260428_204630/`, and `bandit.extortion_reopened_demand_mcw` in `.userdata/dev-harness/harness_runs/20260428_204813/`. They prove same-run `camp_style` / `open_shakedown` local-gate artifacts, first-demand `demanded_toll=15797` pay/fight surface, distinct fight branch logging, pay branch logging plus saved no-active-group/all-14-home writeback, and reopened defender-loss `demanded_toll=22116` bounded higher demand. Runtime at proof was dirty current source `72e67bdcb9`; after commit/rebuild the local binary reports `d70b8ce014`.
+
 ### 8. Empty-camp retirement live sanity proof
 
 Claim: a camp retires from active AI calculations only when both home/inside presence and outside/active pressure are empty; one-side-empty cases stay active.
@@ -125,9 +131,13 @@ Required proof:
 - report/log names `retired_empty_site` or equivalent predicate and the blocking reason for negative cases;
 - deterministic empty-camp tests remain support, not live proof.
 
+Status: **green as scoped optional empty-camp retirement live sanity, not broad product closure**. `bandit.empty_camp_retirement_live` in `.userdata/dev-harness/harness_runs/20260428_214542/` used current runtime `d70b8ce014`, clean startup, fixture-derived preflight saved-state audits for a fully empty positive camp plus home-side and active-outside negatives, a green 30-minute wait ledger, same-run `bandit_live_world retired_empty_site:` artifact with `headcount=0 at_home=0 spawn_tile_headcount=0 active_group=no active_member_ids=0 home_side_signals=0 active_outside=no`, saved positive `retired_empty_site=true`, saved home-side negative not retired with blocker `home_side_present`, and saved active-outside negative not retired with blocker `active_outside_present`. This proves only the empty-retirement guardrail for the configured fixture matrix; it is not second-fixture bias proof.
+
 ### 9. Repeatability / fixture-bias check
 
 Claim: at least one passing bandit product scenario is not a one-fixture miracle.
+
+Status: **green for same-fixture repeatability only** via `python3 tools/openclaw_harness/startup_harness.py repeatability --count 2 bandit.high_threat_low_reward_holds`: runs `.userdata/dev-harness/harness_runs/20260428_211105/` and `.userdata/dev-harness/harness_runs/20260428_211153/` both reached feature-path `artifacts_matched` with 7/7 green step-ledger rows, the same high-threat/low-reward hold report fields, saved no-dispatch state, and `overall_verdict=stable_repeatability_pass`. This proves stability for the bounded high-threat fixture; it is not a second-fixture bias variant and not broad product closure.
 
 Required proof:
 - rerun the smallest equivalent scenario or a second bounded fixture variant;
@@ -137,13 +147,13 @@ Required proof:
 ## Preferred execution order
 
 1. Preserve/repair any still-red prerequisite gates before dependent proof: especially real player fuel/fire if testing player-created fire/smoke/light.
-2. Run scenario 2 scout memory two-OMT watch.
-3. Preserve scenario 4 variable-roster dispatch sizing evidence and add separate high-threat/active-outside guardrail scenarios before row closure.
-4. Preserve scenario 5 no-opening evidence; add opening-present escalation only if product review needs that branch now.
-5. Run scenario 7 shakedown/toll control regression.
-6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
+2. Preserve scenario 2 scout memory / vanished-signal remembered-lead evidence narrowly unless product review reopens it.
+3. Preserve scenario 4 variable-roster/high-threat/active-outside guardrail evidence, including the current tiny buddy-pair update, without inflating it into broad product closure.
+4. Preserve scenario 5 no-opening evidence narrowly; add opening-present escalation only if product review needs that branch now.
+5. Preserve scenario 7 shakedown/toll-control guardrails as green from `20260428_204454`, `20260428_204630`, and `20260428_204813`; do not rerun it as the next unrun target unless Schani/Josef/Frau explicitly reopen it.
+6. Preserve scenario 8 empty-camp live sanity as green for `bandit.empty_camp_retirement_live`; do not rerun it unless product review asks for stronger anti-fixture coverage.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
-8. Run scenario 9 repeatability after the first passing scenario.
+8. Preserve scenario 9 same-fixture repeatability as green for `bandit.high_threat_low_reward_holds`; run a second-fixture bias variant only if product review asks for stronger anti-fixture coverage.
 
 ## Stop conditions
 

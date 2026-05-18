@@ -1,0 +1,41 @@
+{
+  "name": "fuel_visible_brazier_deploy_source_zone_v0_2026-04-29",
+  "source_fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+  "source_profile": "live-debug",
+  "description": "Visible deployed-brazier gate for fuel source-zone proof: start from normal player-action exact-items footing, add only real saved logs and SOURCE_FIREWOOD zone near/east of the player, then require normal Apply->brazier->Deploy where?->east before any lighter/fire proof. No f_brazier or fd_fire is injected by this fixture.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "log",
+          "count": 100,
+          "offset_ms": [
+            1,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "OpenClaw visible brazier source firewood proof zone",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [
+        1,
+        -1,
+        0
+      ],
+      "end_offset_ms": [
+        3,
+        1,
+        0
+      ],
+      "write_temp": true
+    }
+  ]
+}

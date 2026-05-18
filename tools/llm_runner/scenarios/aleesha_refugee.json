@@ -1,0 +1,48 @@
+{
+  "player_name": "Test Survivor",
+  "player_utterance": "Aleesha, stick close and tell me what you need.",
+  "npc_name": "Aleesha Seward",
+  "chatbin": {
+    "talk_friend": "",
+    "talk_friend_guard": "",
+    "first_topic": "TALK_REFUGEE_Aleesha_1",
+    "talk_leader": "",
+    "talk_stranger_friendly": "",
+    "talk_stranger_neutral": "",
+    "talk_stranger_wary": "",
+    "talk_stranger_scared": ""
+  },
+  "state": {
+    "follow_mode": "follow-close",
+    "morale": 4,
+    "hunger": 1,
+    "thirst": 0,
+    "pain": 0,
+    "stamina": 8,
+    "sleepiness": 0,
+    "hp_percent": 95,
+    "danger_assessment": 2,
+    "panic": 1,
+    "confidence": 5,
+    "aggression": 2,
+    "bravery": 4,
+    "collector": 3,
+    "altruism": 6,
+    "trust": 4,
+    "intimidation": 1,
+    "respect": 5,
+    "anger": 0
+  },
+  "world": {
+    "threats": "zombie threat=3/10",
+    "friendlies": "player",
+    "inventory": "wielded=\"makeshift club\"",
+    "weapons": "[makeshift club]",
+    "bandage_possible": "true",
+    "map": "-----\n--a--\n--|--\n--b--\n-----"
+  },
+  "expectations": {
+    "selector_equals": "name:Aleesha Seward",
+    "source_tag_contains": ":registry:aleesha_seward"
+  }
+}

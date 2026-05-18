@@ -1,0 +1,51 @@
+{
+  "name": "cannibal_live_world_day_smoke_v0_2026-04-28",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Cannibal live-world day smoke footing for audited product-proof scenario 1: reuse the McWilliams/Basecamp playtest-kit save, copy an existing camp-shaped hostile-site footprint, relabel the seeded nearby overmap special as cannibal_camp for live-world ownership/profile handling, and inject a visible same-OMT smoke/fire source near but not on the player. This proves only the named day smoke lead/dispatch/local-gate path, not player-lit fire or natural worldgen fixture breadth.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5234400
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        11,
+        0
+      ]
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            10,
+            0,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        },
+        {
+          "field_id": "fd_smoke",
+          "offset_ms": [
+            11,
+            0,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        }
+      ]
+    }
+  ]
+}

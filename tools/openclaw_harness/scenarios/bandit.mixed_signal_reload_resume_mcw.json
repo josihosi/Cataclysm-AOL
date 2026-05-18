@@ -1,0 +1,168 @@
+{
+  "name": "bandit.mixed_signal_reload_resume_mcw",
+  "description": "Challenge C for CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0: no-fixture reload/resume audit for the currently saved McWilliams dev-harness world produced by the green mixed-signal coexistence run. It starts the saved world without reinstalling a fixture, verifies the active live-signal scout and active structural scavenge groups are still present, advances a bounded 5-minute wait, saves, and verifies the same active groups/sites did not disappear, duplicate, or stale out.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "",
+  "replace_existing_worlds": false,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "artifact_patterns": [
+    "game::load: Finalizing end",
+    "bandit_live_world perf:",
+    "sites=3",
+    "active_sites=2",
+    "active_job_mix=camp_style:scavenge=1,camp_style:scout=1",
+    "total_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_reload_mixed_signal_world_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "the already-saved McWilliams dev-harness world reloads without fixture reinstall before active outing metadata is audited",
+      "failure_rule": "If the gameplay screen is not visible after no-fixture reload, this run is only saved-file inspection and cannot be credited as reload support."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_reloaded_live_signal_scout_before_resume_wait",
+      "required_site_id_contains": "overmap_special:bandit_camp@151,39,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 4,
+      "required_active_outside_count": 1,
+      "required_active_group_id_contains": "overmap_special:bandit_camp@151,39,0#dispatch",
+      "required_active_target_id_prefix": "player@",
+      "required_active_job_type": "scout",
+      "required_min_active_member_ids": 1,
+      "required_known_recent_mark_contains": "live_smoke@",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_lost_live_signal_scout_state",
+      "abort_reason": "after no-fixture reload, saved bandit_live_world metadata lost or duplicated the active live-signal scout group"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_reloaded_structural_scavenge_before_resume_wait",
+      "required_site_id_contains": "overmap_special:bandit_camp@160,39,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 4,
+      "required_active_outside_count": 1,
+      "required_active_group_id_contains": "overmap_special:bandit_camp@160,39,0#structural",
+      "required_active_target_id_exact": "overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0",
+      "required_active_job_type": "scavenge",
+      "required_min_active_member_ids": 1,
+      "required_min_leads": 1,
+      "required_lead_kind": "structural_bounty",
+      "required_lead_target_id": "forest",
+      "required_lead_status": "active",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_lost_structural_scavenge_state",
+      "abort_reason": "after no-fixture reload, saved bandit_live_world metadata lost or duplicated the active structural scavenge group"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_before_reload_resume_wait",
+      "record_baseline": true,
+      "expected_visible_fact": "saved player turn baseline is recorded before the reload/resume bounded wait"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_5_minutes_after_reload_for_active_outing_resume",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "pre_menu_choice_key": "w",
+      "menu_settle_seconds": 0.8,
+      "pre_menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 10.0,
+      "interrupt_response_key": "I",
+      "max_interrupt_responses": 4,
+      "interrupt_response_wait_seconds": 1.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "artifact_state_patterns": [
+        "bandit_live_world perf:",
+        "sites=3",
+        "active_sites=2",
+        "active_job_mix=camp_style:scavenge=1,camp_style:scout=1",
+        "total_us="
+      ],
+      "expected_visible_fact": "after no-fixture reload, a real bounded 5-minute wait runs with the same two active outing classes visible in live-world perf artifacts",
+      "failure_rule": "If active group state vanishes or duplicates during the reload/resume wait, Challenge C is yellow/red."
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt_after_reload_resume_wait",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit prompt is visible after the reload/resume wait"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit_after_reload_resume_wait",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit confirmation completed after reload/resume wait"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_reload_resume_wait",
+      "baseline_label": "audit_saved_turn_before_reload_resume_wait",
+      "required_min_delta_turns": 300,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_resume_saved_turn_did_not_advance",
+      "abort_reason": "saved turn did not advance by at least five minutes after reload/resume wait/save"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_live_signal_scout_after_reload_resume_wait",
+      "required_site_id_contains": "overmap_special:bandit_camp@151,39,0",
+      "required_member_count": 5,
+      "required_active_outside_count": 1,
+      "required_active_group_id_contains": "overmap_special:bandit_camp@151,39,0#dispatch",
+      "required_active_target_id_prefix": "player@",
+      "required_active_job_type": "scout",
+      "required_min_active_member_ids": 1,
+      "required_known_recent_mark_contains": "live_smoke@",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_resume_live_signal_scout_not_preserved",
+      "abort_reason": "after reload/resume wait/save, the live-signal scout active group disappeared, duplicated, or lost its target/mark"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_structural_scavenge_after_reload_resume_wait",
+      "required_site_id_contains": "overmap_special:bandit_camp@160,39,0",
+      "required_member_count": 5,
+      "required_active_outside_count": 1,
+      "required_active_group_id_contains": "overmap_special:bandit_camp@160,39,0#structural",
+      "required_active_target_id_exact": "overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0",
+      "required_active_job_type": "scavenge",
+      "required_min_active_member_ids": 1,
+      "required_min_leads": 1,
+      "required_lead_kind": "structural_bounty",
+      "required_lead_target_id": "forest",
+      "required_lead_status": "active",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_resume_structural_scavenge_not_preserved",
+      "abort_reason": "after reload/resume wait/save, the structural scavenge active group disappeared, duplicated, or lost its active lead"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reload_resume_artifact",
+      "required_line_patterns": [
+        ["game::load: Finalizing end"],
+        ["bandit_live_world perf:", "sites=3", "active_sites=2", "active_job_mix=camp_style:scavenge=1,camp_style:scout=1", "total_us="]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reload_resume_artifact_missing",
+      "abort_reason": "reload/resume artifact did not show clean no-fixture load plus continuing active outing perf state"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.mixed_signal_reload_resume_mcw",
+  "evidence_contract": {
+    "claim": "paired with the green mixed-signal create/save run, a no-fixture reload preserves one live-signal scout group and one structural scavenge group, then a bounded wait/save keeps both active groups stable without disappearance, duplication, or stale target loss",
+    "load_only_verdict": "reload support only / inconclusive without paired create-save run and bounded wait",
+    "failure_rule": "No Challenge C credit if a fixture is reinstalled, startup/load is not green, active groups are absent before wait, wait ledger is not green, saved turn does not advance, or active group/site metadata fails after resume wait/save."
+  }
+}

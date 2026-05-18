@@ -13,6 +13,7 @@
 #include "line.h"
 #include "input_context.h"
 #include "map.h"
+#include "messages.h"
 #include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
@@ -24,7 +25,149 @@
 #include "uilist.h"
 #include "ui_manager.h"
 
+#include <cstdlib>
+
+static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
+
+namespace
+{
+bool openclaw_harness_zone_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+std::string openclaw_harness_quote_zone_value( const std::string &value )
+{
+    std::string out = "\"";
+    for( const char c : value ) {
+        if( c == '\\' || c == '"' ) {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+
+std::string openclaw_harness_tripoint_abs_ms( const tripoint_abs_ms &point )
+{
+    return string_format( "%d,%d,%d", point.x(), point.y(), point.z() );
+}
+
+void openclaw_harness_trace_smart_zone_prompt( const tripoint_abs_ms &start,
+        const tripoint_abs_ms &end, const faction_id &fac, const bool accepted )
+{
+    if( !openclaw_harness_zone_trace_enabled() ) {
+        return;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=zone_manager_smart_zone"
+            << " event=prompt"
+            << " accepted=" << ( accepted ? "yes" : "no" )
+            << " fac=" << openclaw_harness_quote_zone_value( fac.str() )
+            << " start_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( start ) )
+            << " end_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( end ) );
+
+    if( accepted ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "[harness][smart_zone] prompt accepted"
+                << " fac=" << openclaw_harness_quote_zone_value( fac.str() )
+                << " start_abs=" << openclaw_harness_quote_zone_value(
+                    openclaw_harness_tripoint_abs_ms( start ) )
+                << " end_abs=" << openclaw_harness_quote_zone_value(
+                    openclaw_harness_tripoint_abs_ms( end ) );
+    }
+}
+
+void openclaw_harness_trace_smart_zone_result( const tripoint_abs_ms &start,
+        const tripoint_abs_ms &end, const faction_id &fac,
+        const basecamp_smart_zone_result &result )
+{
+    if( !openclaw_harness_zone_trace_enabled() ) {
+        return;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=zone_manager_smart_zone"
+            << " event=result"
+            << " success=" << ( result.success ? "yes" : "no" )
+            << " placed_zones=" << result.placed_zones
+            << " fac=" << openclaw_harness_quote_zone_value( fac.str() )
+            << " start_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( start ) )
+            << " end_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( end ) )
+            << " message=" << openclaw_harness_quote_zone_value( result.message );
+
+    if( result.success ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "[harness][smart_zone] result success=1"
+                << " placed_zones=" << result.placed_zones
+                << " message=" << openclaw_harness_quote_zone_value( result.message );
+    }
+}
+
+void openclaw_harness_trace_zone_manager_row( const int row_index, const int active_index,
+        const zone_data &zone, const tripoint_abs_ms &player_absolute_pos )
+{
+    if( !openclaw_harness_zone_trace_enabled() ) {
+        return;
+    }
+
+    const tripoint_abs_ms start = zone.get_start_point();
+    const tripoint_abs_ms end = zone.get_end_point();
+    const tripoint_abs_ms center = zone.get_center_point();
+    const int distance = static_cast<int>( trig_dist( player_absolute_pos, center ) );
+    const std::string direction = direction_name_short( direction_from( player_absolute_pos, center ) );
+    const std::string visible_label = string_format( "%d %s", distance, direction );
+    const std::string compact_label = string_format( "%d%s", distance, direction );
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=zone_manager_row"
+            << " event=redraw"
+            << " row_index=" << row_index
+            << " active=" << ( row_index == active_index ? "yes" : "no" )
+            << " name=" << openclaw_harness_quote_zone_value( zone.get_name() )
+            << " type=" << openclaw_harness_quote_zone_value( zone.get_type().str() )
+            << " enabled=" << ( zone.get_enabled() ? "yes" : "no" )
+            << " personal=" << ( zone.get_is_personal() ? "yes" : "no" )
+            << " vehicle=" << ( zone.get_is_vehicle() ? "yes" : "no" )
+            << " displayed=" << ( zone.get_is_displayed() ? "yes" : "no" )
+            << " ui_distance=" << distance
+            << " ui_direction=" << openclaw_harness_quote_zone_value( direction )
+            << " visible_label=" << openclaw_harness_quote_zone_value( visible_label )
+            << " compact_label=" << openclaw_harness_quote_zone_value( compact_label )
+            << " start_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( start ) )
+            << " end_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( end ) )
+            << " center_abs=" << openclaw_harness_quote_zone_value(
+                openclaw_harness_tripoint_abs_ms( center ) );
+}
+
+void maybe_offer_basecamp_smart_zoning( const tripoint_abs_ms &start,
+                                        const tripoint_abs_ms &end,
+                                        const faction_id &fac )
+{
+    const bool accepted = query_yn( _( "Run Smart Zone Manager v1 for this Basecamp inventory zone now?" ) );
+    openclaw_harness_trace_smart_zone_prompt( start, end, fac, accepted );
+    if( !accepted ) {
+        return;
+    }
+    const basecamp_smart_zone_result result = auto_place_basecamp_smart_zones( start, end, fac );
+    openclaw_harness_trace_smart_zone_result( start, end, fac, result );
+    if( result.success ) {
+        add_msg( m_good, "%s", result.message );
+    } else {
+        popup( result.message, PF_NONE );
+    }
+}
+}
 
 shared_ptr_fast<game::draw_callback_t> zone_manager_ui::create_zone_callback(
     const std::optional<tripoint_bub_ms> &zone_start,
@@ -464,6 +607,8 @@ void zone_manager_ui::display_zone_manager()
                                direction_name_short( direction_from( player_absolute_pos,
                                                      center ) ) );
 
+                    openclaw_harness_trace_zone_manager_row( iNum, active_index, zone, player_absolute_pos );
+
                     //Draw Vehicle Indicator
                     mvwprintz( w_zones, point( zone_ui_width - 4, iNum - start_index ), colorLine,
                                zone.get_is_vehicle() ? "*" : "" );
@@ -545,6 +690,10 @@ void zone_manager_ui::display_zone_manager()
 
                 mgr.add( name, id, get_player_character().get_faction()->id, false, true,
                          position->first, position->second, options );
+                if( id == zone_type_CAMP_STORAGE ) {
+                    maybe_offer_basecamp_smart_zoning( position->first, position->second,
+                                                       get_player_character().get_faction()->id );
+                }
 
                 zones = get_zones();
                 active_index = zone_cnt - 1;
@@ -745,6 +894,11 @@ void zone_manager_ui::display_zone_manager()
                                 zone.set_position( std::make_pair( new_start_point_rl, new_end_point_rl ) );
                             } else {
                                 zone.set_position( std::make_pair( new_start_point, new_end_point ) );
+                            }
+                            if( zone.get_type() == zone_type_CAMP_STORAGE ) {
+                                maybe_offer_basecamp_smart_zoning( zone.get_start_point(),
+                                                                   zone.get_end_point(),
+                                                                   zone.get_faction() );
                             }
                             stuff_changed = true;
                         }

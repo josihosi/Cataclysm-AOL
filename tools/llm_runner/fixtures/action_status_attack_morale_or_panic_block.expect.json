@@ -1,0 +1,11 @@
+{
+  "npc": "Marlene Pike",
+  "kind": "attack_target",
+  "request": "req_attack_panic_1",
+  "min_events": 3,
+  "phase_any": ["requested", "precheck", "blocked"],
+  "phase_sequence": ["requested", "precheck", "blocked"],
+  "reason_any": ["attack.morale_or_panic_block"],
+  "terminal_phase": "blocked",
+  "terminal_reason": "attack.morale_or_panic_block"
+}

@@ -1,0 +1,190 @@
+{
+  "name": "bandit.empty_camp_retirement_live",
+  "description": "Fixture-backed empty-camp retirement live sanity proof: the real live-world turn loop retires a fully empty bandit camp while preserving one home-side-populated negative site and one home-empty active-outside negative site in the same run.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_empty_retirement_matrix_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world retired_empty_site:",
+    "site=overmap_special:bandit_camp@140,51,0",
+    "headcount=0",
+    "at_home=0",
+    "spawn_tile_headcount=0",
+    "active_group=no",
+    "active_member_ids=0",
+    "home_side_signals=0",
+    "active_outside=no"
+  ],
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_empty_retirement_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the empty-camp retirement matrix fixture; this proves only startup/load and fixture footing before the live turn-loop retirement proof",
+      "failure_rule": "If the gameplay screen is not visible after load, later empty-retirement evidence cannot be credited."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_saved_fully_empty_positive_site",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 0,
+      "required_ready_at_home_count": 0,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 0,
+      "required_retired_empty_site": false,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_empty_retirement_positive_fixture",
+      "abort_reason": "preflight saved bandit_live_world did not contain the unretired fully empty positive camp with no home-side signals and no active outside pressure",
+      "expected_immediate_state": "saved bandit_live_world contains one unretired fully empty bandit camp eligible for retirement before the live turn loop runs",
+      "failure_rule": "If the fully empty positive footing is missing, later retired_empty_site logs cannot be credited."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_saved_home_side_negative_site",
+      "required_site_id_contains": "fixture_home_side_negative",
+      "required_member_count": 1,
+      "required_ready_at_home_count": 1,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 2,
+      "required_retired_empty_site": false,
+      "required_empty_retirement_blocker_contains": "home_side_present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_home_side_negative_fixture",
+      "abort_reason": "preflight saved bandit_live_world did not contain the home-side-populated negative site that must not retire",
+      "expected_immediate_state": "saved bandit_live_world contains a negative site with home-side presence and no active outside group",
+      "failure_rule": "If the home-side negative footing is missing, same-run retirement proof cannot cover one-side-populated behavior."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_saved_active_outside_negative_site",
+      "required_site_id_contains": "fixture_active_outside_negative",
+      "required_member_count": 1,
+      "required_ready_at_home_count": 0,
+      "required_active_outside_count": 1,
+      "required_home_side_signal_count": 0,
+      "required_retired_empty_site": false,
+      "required_empty_retirement_blocker_contains": "active_outside_present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_active_outside_negative_fixture",
+      "abort_reason": "preflight saved bandit_live_world did not contain the home-empty active-outside negative site that must not retire",
+      "expected_immediate_state": "saved bandit_live_world contains a negative site with no home-side signals but unresolved active outside pressure",
+      "failure_rule": "If the active-outside negative footing is missing, same-run retirement proof cannot cover outside-pressure preservation."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_30_minutes_for_empty_retirement_turn_loop",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+      "completion_wait_seconds": 12.0,
+      "artifact_state_patterns": [
+        "bandit_live_world retired_empty_site:",
+        "site=overmap_special:bandit_camp@140,51,0",
+        "home_side_signals=0",
+        "active_outside=no"
+      ],
+      "expected_visible_fact": "the player waited through a real live turn-loop window; feature credit depends on same-run debug artifact lines proving the fully empty camp retired",
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the retired_empty_site line, this scenario is inconclusive/red."
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt_after_empty_retirement",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit prompt is visible after the empty-camp retirement probe",
+      "failure_rule": "If save/quit cannot be opened, preserve artifacts but do not count the run as a clean saved-state proof."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit_after_empty_retirement",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit confirmation completed after the empty-camp retirement probe",
+      "failure_rule": "If save/quit confirmation is unproven, preserve artifacts but do not count the run as fully green without reviewing cleanup status."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_fully_empty_site_retired",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 0,
+      "required_retired_empty_site": true,
+      "required_retirement_summary_contains": "retired_empty_site",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_saved_empty_site_not_retired",
+      "abort_reason": "saved bandit_live_world did not persist the fully empty site as retired_empty_site after the live turn loop",
+      "expected_immediate_state": "after save/quit, the fully empty camp is persisted as retired_empty_site with no home-side signals and no active outside pressure",
+      "failure_rule": "If the fully empty site is not retired in saved metadata, the same-run log cannot close retirement proof by itself."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_home_side_negative_not_retired",
+      "required_site_id_contains": "fixture_home_side_negative",
+      "required_member_count": 1,
+      "required_ready_at_home_count": 1,
+      "required_active_outside_count": 0,
+      "required_retired_empty_site": false,
+      "required_empty_retirement_blocker_contains": "home_side_present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_home_side_negative_retired",
+      "abort_reason": "saved bandit_live_world retired a site that still had home-side presence",
+      "expected_immediate_state": "after save/quit, the home-side negative site remains active and records home_side_present as the retirement blocker",
+      "failure_rule": "If the home-side negative site retires, the conjunctive empty-camp predicate is wrong."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_active_outside_negative_not_retired",
+      "required_site_id_contains": "fixture_active_outside_negative",
+      "required_member_count": 1,
+      "required_ready_at_home_count": 0,
+      "required_active_outside_count": 1,
+      "required_home_side_signal_count": 0,
+      "required_retired_empty_site": false,
+      "required_empty_retirement_blocker_contains": "active_outside_present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_active_outside_negative_retired",
+      "abort_reason": "saved bandit_live_world retired a home-empty site that still had unresolved active outside pressure",
+      "expected_immediate_state": "after save/quit, the active-outside negative site remains active and records active_outside_present as the retirement blocker",
+      "failure_rule": "If the active-outside negative site retires, unresolved outside pressure is being pruned incorrectly."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_empty_retirement_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world retired_empty_site:",
+          "site=overmap_special:bandit_camp@140,51,0",
+          "headcount=0",
+          "at_home=0",
+          "spawn_tile_headcount=0",
+          "active_group=no",
+          "active_member_ids=0",
+          "home_side_signals=0",
+          "active_outside=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_empty_retirement_artifact_missing",
+      "abort_reason": "same-run debug artifact did not show the fully empty site retiring with both home-side and active-outside pressure absent",
+      "failure_rule": "No empty-camp retirement live sanity credit if the same-run debug artifact lacks the retired_empty_site line for the fully empty camp."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.empty_camp_retirement_live",
+  "evidence_contract": {
+    "claim": "the live turn loop retires a fully empty bandit camp only when both home-side signals and active outside pressure are absent, while preserving one-side-populated negative sites",
+    "load_only_verdict": "load proof only / inconclusive for empty-camp retirement behavior",
+    "failure_rule": "No feature-proof credit if startup/load, three saved preflight fixture states, real wait/turn-loop action, same-run retired_empty_site artifact, save/writeback, and saved positive/negative postconditions are not all green/matched."
+  }
+}

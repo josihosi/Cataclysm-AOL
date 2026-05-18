@@ -1,0 +1,55 @@
+{
+  "name": "bandit.local_scout_return_followthrough_mcw",
+  "description": "Disposable live follow-through probe for the finite scout-return packet: start from the real nearby-owned-site local-contact footing with the scout sortie clock pre-aged, trip the return-home decision, advance a bounded 2600-turn travel window, then save/copy the world for writeback inspection.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_local_scout_return_preaged_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world scout_sortie: linger limit reached -> return_home",
+    "bandit_live_world scout_sortie: returning_home -> local_gate skipped",
+    "bandit_live_world scout_report: returned -> pressure refreshed"
+  ],
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_2600_turns_for_return_home_followthrough",
+      "count": 2600,
+      "settle_seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.local_scout_return_followthrough_mcw"
+}

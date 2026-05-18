@@ -223,9 +223,14 @@ void horde_map::signal_entities( const tripoint_abs_ms &origin, int volume )
     }
     for( std::unordered_map
          <tripoint_om_sm, std::unordered_map<tripoint_abs_ms, horde_entity>>::iterator idle_sm_iter =
-             idle_monster_map.begin(); idle_sm_iter != idle_monster_map.end(); ++idle_sm_iter ) {
+             idle_monster_map.begin(); idle_sm_iter != idle_monster_map.end(); ) {
         tripoint_abs_sm abs_sm = project_combine( location, idle_sm_iter->first );
         signal_sm( origin, sm_dest, abs_sm, volume, idle_sm_iter, false, migrating_hordes );
+        if( idle_sm_iter->second.empty() ) {
+            idle_sm_iter = idle_monster_map.erase( idle_sm_iter );
+        } else {
+            ++idle_sm_iter;
+        }
     }
 
     while( !migrating_hordes.empty() ) {
@@ -298,41 +303,47 @@ void horde_map::iterator::next_map()
     }
 }
 
+void horde_map::iterator::skip_empty_buckets()
+{
+    while( outer_map != nullptr ) {
+        while( outer_iter != outer_map->end() && outer_iter->second.empty() ) {
+            ++outer_iter;
+        }
+        if( outer_iter != outer_map->end() ) {
+            inner_iter = outer_iter->second.begin();
+            return;
+        }
+        next_map();
+        if( outer_map != nullptr ) {
+            outer_iter = outer_map->begin();
+        }
+    }
+}
+
 // This helper insures that a freshly created iterator is in a valid state.
 void horde_map::iterator::insure_valid()
 {
-    // Iterate forward if we don't have a valid initial state.
-    if( !( filter & horde_map_flavors::active ) || outer_map->empty() ) {
-        do {
-            next_map();
-            if( outer_map == nullptr ) {
-                return;
-            }
-        } while( outer_map->empty() );
+    if( !( filter & horde_map_flavors::active ) ) {
+        next_map();
+        if( outer_map == nullptr ) {
+            return;
+        }
         outer_iter = outer_map->begin();
     }
-    // This is not obviously correct, but it is correct because
-    // horde_map::erase() insures that we cull empty maps, so if
-    // outer_map is not empty, outer_map->begin() is valid and so is
-    // outer_map->begin()->second.begin()
-    inner_iter = outer_iter->second.begin();
+    skip_empty_buckets();
 }
 
 horde_map::iterator &horde_map::iterator::operator++()
 {
+    if( outer_map == nullptr ) {
+        return *this;
+    }
     if( inner_iter != outer_iter->second.end() ) {
         ++inner_iter;
     }
-    while( inner_iter == outer_iter->second.end() ) {
+    if( inner_iter == outer_iter->second.end() ) {
         ++outer_iter;
-        while( outer_iter == outer_map->end() ) {
-            next_map();
-            if( outer_map == nullptr ) {
-                return *this;
-            }
-            outer_iter = outer_map->begin();
-        }
-        inner_iter = outer_iter->second.begin();
+        skip_empty_buckets();
     }
     return *this;
 }

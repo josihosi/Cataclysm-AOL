@@ -1,0 +1,185 @@
+{
+  "name": "performance_four_site_prestaged_active_v0_2026-04-29",
+  "source_fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
+  "source_profile": "live-debug",
+  "description": "Performance-load footing for four active hostile overmap AI sites: starts from the green two-site remembered-lead footing, adds west and north separated cannibal_camp overmap specials, clones live-world records for all three cannibal anchors, and pre-stages all four sites as already-active non-player-target stalk jobs. This is explicitly load/cost measurement, not proof that four hostile sites naturally dispatch to the player through the anti-dogpile cap in one cadence.",
+  "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        -10,
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        -10,
+        0
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@150,39,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_anchor": [
+        150,
+        39,
+        0
+      ],
+      "new_footprint": [
+        [
+          150,
+          39,
+          0
+        ],
+        [
+          151,
+          39,
+          0
+        ],
+        [
+          150,
+          40,
+          0
+        ],
+        [
+          151,
+          40,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@130,39,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_anchor": [
+        130,
+        39,
+        0
+      ],
+      "new_footprint": [
+        [
+          130,
+          39,
+          0
+        ],
+        [
+          131,
+          39,
+          0
+        ],
+        [
+          130,
+          40,
+          0
+        ],
+        [
+          131,
+          40,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@140,29,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_anchor": [
+        140,
+        29,
+        0
+      ],
+      "new_footprint": [
+        [
+          140,
+          29,
+          0
+        ],
+        [
+          141,
+          29,
+          0
+        ],
+        [
+          140,
+          30,
+          0
+        ],
+        [
+          141,
+          30,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 4,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 4,
+      "active_job_type": "stalk",
+      "active_target_id": "performance_load:bandit@140,51,0",
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@150,39,0",
+      "living_member_count": 2,
+      "member_start_index": 4,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 2,
+      "active_job_type": "stalk",
+      "active_target_id": "performance_load:cannibal_east@150,39,0",
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@130,39,0",
+      "living_member_count": 2,
+      "member_start_index": 6,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 2,
+      "active_job_type": "stalk",
+      "active_target_id": "performance_load:cannibal_west@130,39,0",
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,29,0",
+      "living_member_count": 2,
+      "member_start_index": 8,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 2,
+      "active_job_type": "stalk",
+      "active_target_id": "performance_load:cannibal_north@140,29,0",
+      "headcount_override": 4
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "pid": 59036,
+  "command": [
+    "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/cataclysm-tiles",
+    "--userdir",
+    ".userdata/dev/",
+    "--world",
+    "Sandy Creek"
+  ],
+  "killed_previous_pids": [
+    58622
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "performance_three_site_bandit_cannibal_v0_2026-04-29",
+  "source_fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
+  "source_profile": "live-debug",
+  "description": "Blocked direct-range three-site performance-audit footing: starts from the green two-site remembered-lead bandit plus direct-range cannibal fixture, then seeds a second camp-shaped cannibal_camp 10 OMT west of the player. Run 20260429_035001 showed this footing proves both added cannibal sites bootstrapped and dispatched, but only reaches sites=3 active_sites=2 because the two direct-range cannibal sites consume the live player-pressure cap before the remembered-lead bandit camp dispatches. Retain as cap/interference evidence, not as a green three-active-site row.",
+  "status": "blocked_direct_range_cap_guardrail",
+  "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        -10,
+        0,
+        0
+      ]
+    }
+  ]
+}

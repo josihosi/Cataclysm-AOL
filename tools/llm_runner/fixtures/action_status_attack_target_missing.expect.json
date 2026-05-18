@@ -1,0 +1,10 @@
+{
+  "npc": "Marlene Pike",
+  "kind": "attack_target",
+  "request": "req_attack_1",
+  "min_events": 4,
+  "phase_any": ["requested", "precheck", "waiting", "blocked"],
+  "reason_any": ["attack.reacquire_grace", "attack.target_missing"],
+  "terminal_phase": "blocked",
+  "terminal_reason": "attack.target_missing"
+}

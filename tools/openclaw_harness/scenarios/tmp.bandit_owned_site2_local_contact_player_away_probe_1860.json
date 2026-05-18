@@ -1,0 +1,49 @@
+{
+  "name": "tmp.bandit_owned_site2_local_contact_player_away_probe_1860",
+  "description": "Disposable live probe: resume from the copied stuck-local_contact snapshot, relocate the player 20 OMT south of site2 to break local contact, advance 1860 turns, then save-and-quit for aftermath/writeback inspection.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_local_contact_snapshot_2026-04-23",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_1860_turns",
+      "count": 1860,
+      "settle_seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ]
+}

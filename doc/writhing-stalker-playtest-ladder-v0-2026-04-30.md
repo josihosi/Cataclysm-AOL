@@ -236,28 +236,67 @@ Proof steps:
 
 ### Green live packet B — no-evidence negative
 
-Proposed scenario: `writhing_stalker.live_no_omniscient_beeline_mcw`
+Scenario: `writhing_stalker.live_no_omniscient_beeline_mcw`
 
-Setup:
+Status: **GREEN** at `.userdata/dev-harness/harness_runs/20260430_173555/`.
 
-- stalker exists somewhere plausible;
-- player gives no valid clue;
-- no night light lure or human mark;
-- wait window long enough to catch cheap omniscience bugs.
+Credited setup/evidence:
+
+- harness-only clean fixture `mcwilliams_live_debug_no_evidence_clean_2026-04-30` removes all saved overmap NPC/human targets, applies local noon, places a thick opaque `f_locker` wall, and places exactly one saved active `mon_writhing_stalker` behind that wall;
+- saved pre-window audits prove zero overmap NPCs, local noon/no night-light lure, one active stalker at known distance, and the opaque wall before live turns advance;
+- same-run live artifact proves repeated `writhing_stalker target_probe: ... target=no ... sees_player=no ... friendly=0 ... turns_since_target=` lines;
+- same-run negative log guard proves no `target=yes`, no `sees_player=yes`, no `writhing_stalker live_plan:`, and no strike/shadow/cooldown line in the no-evidence window;
+- save/writeback mtime and saved active-monster distance audit remain green after the live window.
 
 Green means no instant beeline/attack and no magic refreshed latch.
 
 ### Green live packet C — exposed-focus retreat
 
-Proposed scenario: `writhing_stalker.live_exposed_retreat_mcw`
+Scenario: `writhing_stalker.live_exposed_retreat_mcw`
+
+Status: **GREEN** at `.userdata/dev-harness/harness_runs/20260430_163626/`.
+
+Credited setup/evidence:
+
+- harness-only noon fixture `mcwilliams_live_debug_noon_2026-04-30` applies a saved `game_turn` transform only; no artificial map/light/field setup is synthesized;
+- pre-spawn saved-turn audit proves `time_of_day_text=12:00:00` with zero noon delta;
+- one hostile `mon_writhing_stalker` is spawned at plausible visible distance;
+- same-run live-plan artifact proves `decision=withdraw route=hold_exposed reason=live_exposed_and_focused_withdraw ... stalker_bright=yes target_focus=yes cooldown=no`;
+- save/writeback mtime and saved active-monster audit remain green after the live line.
+
+Green means stalker holds/withdraws instead of brainless melee until death.
+
+### Green/yellow live packet D — mixed hostile performance metrics
+
+Scenario: `performance.mixed_hostile_stalker_horde_mcw`
+
+Status: **GREEN/YELLOW ACCEPTED FOR V0** at `.userdata/dev-harness/harness_runs/20260430_181748/`. The run is green for Josef's requested metrics packet and yellow only for attribution: horde presence is proven, but horde cost is `not instrumented` separately. Frau accepted this caveat for v0 closure; stricter horde timing is future-only unless explicitly promoted.
+
+Contract/report: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
 Setup:
 
-- latch exists;
-- player gets bright exposure/line-of-sight/focus;
-- stalker takes light damage or becomes exposed.
+- one bandit camp / hostile live-world site;
+- one cannibal camp / hostile live-world site;
+- exactly one `mon_writhing_stalker` at a plausible distance;
+- one overmap horde or horde-pressure fixture;
+- a bounded player position/state that lets the run measure mixed pressure before it collapses into nonsense.
 
-Green means stalker holds/withdraws instead of brainless melee until death.
+Required report:
+
+- runtime commit and dirty/clean state;
+- scenario/run path;
+- setup mix and proof all four requested actors exist;
+- in-game window, sampled turns and/or waited minutes;
+- harness wall-clock;
+- per-turn min/median/p95/max where available;
+- `bandit_live_world perf` min/median/max plus max `signal_us`, `dispatch_us`, `travel_us`, and active job mix;
+- stalker planning cost and horde movement/retarget cost, or explicit `not instrumented` for either;
+- debug/log spam, stability, and playability note.
+
+Green means the mixed scene completes with real metrics from live paths. Startup/load-only, setup-only, or missing-ingredient runs are not green.
+
+Credited evidence: preflight audits prove one active bandit stalk job, one active cannibal stalk job, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde; the run completes `500` sampled turns plus a bounded `30m` wait; saved turn delta is `2300`; timing rows include average `236.239ms/turn`, `bandit_live_world perf:` `total_us` max `3777`, stalker `eval_us` max `54`, and no crash/stderr/debug-error flood. Full tuning notes are in the mixed-hostile report.
 
 ### Optional Josef playtest prompts
 
@@ -271,17 +310,18 @@ Josef should not be a blocker, but if he plays it, ask only product questions:
 
 ## Closure gates
 
-- [ ] Creature JSON/schema green.
-- [ ] Rarity/singleton proof green.
-- [ ] Interest/latch deterministic tests green.
-- [ ] Approach/no-beeline deterministic proof green.
-- [ ] Opportunity/strike deterministic proof green.
-- [ ] Withdrawal/cooldown deterministic proof green.
-- [ ] Persistence proof green or explicitly not applicable.
-- [ ] Live packet A stalk/strike green.
-- [ ] Live packet B no-omniscient-beeline green.
-- [ ] Live packet C exposed/focus retreat green or explicitly future-only.
-- [ ] Tuning readout records too-fast/too-tanky/too-common/too-stupid verdict.
+- [x] Creature JSON/schema green.
+- [x] Rarity/singleton proof green.
+- [x] Interest/latch deterministic tests green.
+- [x] Approach/no-beeline deterministic proof green.
+- [x] Opportunity/strike deterministic proof green.
+- [x] Withdrawal/cooldown deterministic proof green.
+- [x] Persistence proof green or explicitly not applicable.
+- [x] Live packet A stalk/strike green.
+- [x] Live packet B no-omniscient-beeline green.
+- [x] Live packet C exposed/focus retreat green or explicitly future-only.
+- [x] Mixed hostile performance packet `performance.mixed_hostile_stalker_horde_mcw` records bandit camp + cannibal camp + stalker + horde metrics, or is explicitly classified as follow-up/future-only.
+- [x] Tuning readout records too-fast/too-tanky/too-common/too-stupid/too-expensive verdict.
 
 ## Future-only after v0
 

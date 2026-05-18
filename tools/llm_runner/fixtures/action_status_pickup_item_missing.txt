@@ -1,0 +1,3 @@
+action_status npc="Marlene Pike" kind="look_around_pickup" phase="requested" reason="" request="req_pickup_1" target_hint="steel jerrycan" target="steel jerrycan" facts=""
+action_status npc="Marlene Pike" kind="look_around_pickup" phase="precheck" reason="" request="req_pickup_1" target_hint="steel jerrycan" target="steel jerrycan" facts="target_pos=(12,34,0)"
+action_status npc="Marlene Pike" kind="look_around_pickup" phase="blocked" reason="pickup.item_missing" request="req_pickup_1" target_hint="steel jerrycan" target="steel jerrycan" facts=""

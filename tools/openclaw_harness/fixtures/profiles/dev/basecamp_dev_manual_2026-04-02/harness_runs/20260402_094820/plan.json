@@ -1,0 +1,20 @@
+{
+  "profile": "dev",
+  "userdir": "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/.userdata/dev",
+  "executable": "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/cataclysm-tiles",
+  "strategy": "autoload_world",
+  "reason": "explicit world requested",
+  "target_world": "Sandy Creek",
+  "existing_worlds": [
+    {
+      "name": "Sandy Creek",
+      "path": "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/.userdata/dev/save/Sandy Creek",
+      "has_save": true,
+      "save_files": [
+        "#RGFuaWFsIEdvbnphbGV6.sav.zzip"
+      ]
+    }
+  ],
+  "fixture": "",
+  "run_dir": "/Users/josefhorvath/Schanigarten/Cataclysm-AOL/.userdata/dev/harness_runs/20260402_094820"
+}

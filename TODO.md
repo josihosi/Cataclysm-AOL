@@ -7,17 +7,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Recent checkpointed lane: `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0`.
+No active Andi code target is currently promoted in repo canon.
 
-Status: CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW.
+`CAOL-CI-RED-TRIAGE-v0` is closed/checkpointed green at code head `cb21294168`: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845` both completed success on `dev`.
 
-Contract: `doc/defended-camp-sight-smoke-hardening-packet-v0-2026-05-05.md`.
+If this docs-only closure alignment commit triggered a new GitHub Actions run, Andi should only verify that run and then disable the temporary CI-repair cron. Do not make churn commits while Actions is merely queued/running, and do not reopen completed product proof rows by ritual.
 
-Current checkpoint: deterministic/source-path gates plus staged/live currently-sighted bandit watcher and smoke-out rows are green. Latest live receipts: `.userdata/dev-harness/harness_runs/20260505_102525/` (`bandit.scout_stalker_sight_avoid_live`, `feature-path`, `feature_proof=true`, 10/10) and `.userdata/dev-harness/harness_runs/20260505_102629/` (`bandit.scout_stalker_smoked_watcher_live`, `feature-path`, `feature_proof=true`, 11/11).
-
-Next concrete steps:
-- Frau/Augerl review the checkpointed proof and claim boundary;
-- if accepted, Schani should close or retitle this packet and promote the next specific greenlit lane;
-- Andi should not rerun the green smoke/sight rows unless review finds a concrete evidence gap or code/claim changes.
-
-Do not rerun completed eleven-slice debug-stack proof as ritual.
+Next product move is Schani/Frau review or a fresh greenlit lane.

@@ -1,0 +1,107 @@
+{
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "game::load: Finalizing end"
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_source_zone_normal_map_entry_mcw (normal-map entry primitive only; no fire/lighter action keys)",
+  "name": "bandit.live_world_nearby_camp_source_zone_normal_map_entry_mcw",
+  "description": "Fuel normal-map entry primitive probe: load the source-zone fire fixture, capture the first live post-load normal-map gate before any activation/targeting/fire key, then prove setup footing (wielded charged lighter, f_brazier/log target, SOURCE_FIREWOOD zone). No fire/lighter action keys are sent by this scenario.",
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "source_zone_load_settle",
+      "seconds": 2.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "normal_map_entry_gate_before_activation",
+      "expected_visible_fact": "The source-zone fuel repair fixture has had a brief post-load settle interval before the first visible normal-map gate; no cleanup/action key is sent. The following guarded normal-map capture proves the settle landed on gameplay UI rather than raw JSON/item-info/stale/debug text."
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_player_has_wielded_charged_lighter",
+      "required_items": [
+        "lighter"
+      ],
+      "required_weapon": "lighter",
+      "required_weapon_ammo_type": "",
+      "required_weapon_ammo_min": 1,
+      "expected_visible_fact": "saved player state has a lighter already wielded with saved charge before the proof begins",
+      "preconditions": "fixture transform pre-wielded a charged lighter; this proves setup state only, not inventory/wield UI",
+      "next_step_gate": "do not credit normal activation unless saved weapon state is lighter with charge",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved-player weapon is not charged lighter before source-zone fire proof"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_target_tile_for_brazier_logs",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_items": [
+        "log"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "expected_visible_fact": "saved target tile east of player contains f_brazier plus real log item metadata before ignition",
+      "preconditions": "fixture/source save provides the brazier and save_transform adds oversized logs; no fd_fire was injected",
+      "next_step_gate": "do not credit source-zone repair unless real saved-world brazier/log footing is present",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved-world brazier/log source missing before lighter/fire proof"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_source_firewood_zone_for_logs",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_zone_type": "SOURCE_FIREWOOD",
+      "required_faction": "your_followers",
+      "required_name_contains": "OpenClaw source firewood proof zone",
+      "expected_visible_fact": "saved zone metadata contains a broad SOURCE_FIREWOOD zone covering the brazier/log target and adjacent source area",
+      "preconditions": "fixture save_transform added a SOURCE_FIREWOOD zone over/around the log pile; this is fuel footing only, not Smart Zone Manager closure",
+      "next_step_gate": "do not credit source-zone repair unless saved zone metadata covers the brazier/log source area",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved SOURCE_FIREWOOD zone metadata missing before lighter/fire proof"
+    },
+    {
+      "kind": "capture",
+      "label": "normal_map_entry_gate_before_activation",
+      "extract_text": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_contains": [
+        "Wield:",
+        "YOU"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "pocket_type",
+        "contents",
+        "specific energy"
+      ],
+      "abort_verdict": "blocked_starting_ui_not_normal_map",
+      "abort_reason": "startup did not land on normal map UI; do not type activation/targeting through raw item-info/JSON text",
+      "expected_visible_fact": "Startup lands on normal gameplay map UI before activation: the right sidebar exposes the normal-map `Wield:` field and the map/text layer exposes `YOU`; no blind Escape/Return key is sent through a stale item-info/JSON view."
+    }
+  ]
+}

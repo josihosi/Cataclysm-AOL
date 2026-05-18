@@ -9,6 +9,7 @@
 #include <optional>
 #include <regex>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -58,6 +59,7 @@ static const oter_str_id oter_cabin_west( "cabin_west" );
 
 static const overmap_special_id overmap_special_Cabin( "Cabin" );
 static const overmap_special_id overmap_special_Lab( "Lab" );
+static const overmap_special_id overmap_special_bandit_cabin( "bandit_cabin" );
 
 class overmap_test_helper
 {

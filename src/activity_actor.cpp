@@ -13577,7 +13577,20 @@ void zone_sort_activity_actor::do_turn( player_activity &act, Character &you )
     // replaces the activity and destroys this actor before returning.
     const bool had_viewport = viewport_was_active;
     const int saved_zoom = viewport_saved_zoom;
+    const bool sorted_before_turn = sorted_anything;
     zone_activity_actor::do_turn( act, you );
+
+    if( you.is_npc() && act.is_null() ) {
+        if( sorted_before_turn ) {
+            you.as_npc()->job.clear_job_block( ACT_MOVE_LOOT );
+        } else {
+            you.as_npc()->job.block_job_until( ACT_MOVE_LOOT, calendar::turn + 30_minutes );
+            add_msg_debug( debugmode::DF_ACTIVITY,
+                           "zone_sort: no-progress NPC sort job blocked until %s",
+                           to_string( calendar::turn + 30_minutes ) );
+        }
+        return;
+    }
 
     // True completion: activity nulled AND no auto-move destination pending.
     // route_to_destination sets destination before nulling; true end does not.
@@ -13979,6 +13992,7 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                         placed = ground.get_item() != nullptr;
                     }
                     if( placed ) {
+                        sorted_anything = true;
                         you.mod_moves( -you.item_handling_cost( **iter ) );
                         if( const vehicle_cursor *veh_curs = iter->veh_cursor() ) {
                             vehicle &cart_with_items = veh_curs->veh;
@@ -14177,6 +14191,7 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                 if( !placed ) {
                     continue;
                 }
+                sorted_anything = true;
                 you.mod_moves( -you.item_handling_cost( copy_thisitem ) );
                 if( it->second ) {
                     vp->vehicle().remove_item( vp->part(), &thisitem );
@@ -14775,6 +14790,7 @@ void zone_sort_activity_actor::serialize( JsonOut &jsout ) const
     jsout.member( "virtual_pickup_active", virtual_pickup_active );
     jsout.member( "viewport_was_active", viewport_was_active );
     jsout.member( "viewport_saved_zoom", viewport_saved_zoom );
+    jsout.member( "sorted_anything", sorted_anything );
 
     jsout.end_object();
 }
@@ -14805,6 +14821,9 @@ std::unique_ptr<activity_actor> zone_sort_activity_actor::deserialize( JsonValue
     }
     if( data.has_member( "viewport_saved_zoom" ) ) {
         data.read( "viewport_saved_zoom", actor.viewport_saved_zoom );
+    }
+    if( data.has_member( "sorted_anything" ) ) {
+        data.read( "sorted_anything", actor.sorted_anything );
     }
     return actor.clone();
 }

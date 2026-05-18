@@ -61,6 +61,21 @@ Implication:
 
 ## Design principles
 
+### Evidence-class firewall
+
+The harness must never let startup/load evidence impersonate feature evidence.
+
+- **Startup/load proof** means the game launched, reached a screen, and could be captured or closed.
+- **Deterministic proof** means a focused test asserted the code contract directly.
+- **Live/UI proof** means the scenario visibly drove the intended UI/action path and captured the resulting game state.
+- **Artifact/log proof** means an exact report, debug line, saved field, or inspected file shows the requested state.
+
+If a packaged probe only loads the game and auto-closes after artifact capture, the verdict for any feature behavior is `load proof only / inconclusive for feature`. Auto-close is normal harness machinery; it is not proof that the scenario reached the feature path.
+
+For GUI/live feature claims, each screenshot checkpoint needs a named expected visible fact in the scenario/report. At minimum, capture the state before the action, the relevant menu/UI opened, the action/result checkpoint, and the final inspected state. A screenshot that only proves “loaded into game” must stay startup/load evidence and must not be reused as “feature works”.
+
+Smart Zone layout proof has the stricter shape Josef called out on 2026-04-27: deterministic `tests/clzones_test.cpp` geometry and overlap-allowlist assertions first, then live/UI proof only if screenshots show the actual generated zone positions after Smart Zone generation/reopen. If the harness cannot reliably drive or observe the Zone Manager path, stop and write a Josef manual playtest packet instead of upgrading serialization or load screenshots into layout proof.
+
 1. **Structured observation first, raw screen second**
    - Do not make the harness depend primarily on generic terminal vision.
    - Prefer a compact, agent-facing frame assembled from game state.
@@ -487,6 +502,58 @@ Do **not** let ambiguity silently degrade into random keypress nonsense.
 - create harness module,
 - create replay/run manifest output,
 - validate config-dir artifact writing.
+
+### Current startup-harness slice on `dev`
+There is now a first macOS-oriented startup harness script at:
+- `tools/openclaw_harness/startup_harness.py`
+
+Current scope:
+- branch-aware profile/userdir resolution
+- existing world/save detection
+- fixture save capture/install/list helpers
+- launch game with the correct `--userdir`
+- autoload a world with saves via `--world` when possible
+- otherwise drive the minimal `New Game -> Play Now! (default scenario)` path
+- copy `debug.log` deltas into the run artifact directory, capture popup screenshots, and attempt popup ignore with `i`
+- detect failure via process exit or startup timeout
+- detect success via `config/lastworld.json` updating with a world + character
+
+Example dry-run plan:
+- `python3 tools/openclaw_harness/startup_harness.py plan --profile master`
+- `python3 tools/openclaw_harness/startup_harness.py start --profile master --dry-run`
+
+Example fixture operations:
+- `python3 tools/openclaw_harness/startup_harness.py list-fixtures --profile master`
+- `python3 tools/openclaw_harness/startup_harness.py capture-fixture base_alpha --profile master --overwrite`
+- `python3 tools/openclaw_harness/startup_harness.py install-fixture base_alpha --profile master --replace`
+
+Notes:
+- non-dry-run startup currently requires Peekaboo permissions for Screen Recording and Accessibility
+- the first profile config lives at `tools/openclaw_harness/profiles/master.json`
+- `port/*` branch variations are expected later via per-profile config rather than one giant hardcoded key script
+
+## Next in-game smoke candidates (current `master` / `Sandy Creek` save)
+The first live gameplay smoke ideas discovered after startup success are:
+- `C`, `t` to talk to Ricky Broughton
+- `a`, `a` inside the quest-first chat window variant to reach the ruleset window
+- `C`, `b` to enter a player utterance and submit it
+- later, debug-menu path `}`, `s`, `p`, `O` to spawn Rubik for a more curated named-NPC test
+
+These are not fully scripted yet. The next harness work should determine the minimum reliable observables around them:
+- is the intended NPC actually nearby?
+- can we confirm the chat window contents/state before pressing follow-up keys?
+- should we scrape window contents via screenshot/OCR or settle for log-based confirmation first?
+
+### Empirical note from current live probes
+A live `C+b` probe in the current save did work, but recipient resolution and visible behavior are state-sensitive enough that they should be confirmed from fresh artifacts, not folklore. One practical lesson: gameplay raw keybinds matter — a wrong input path can land in throw mode instead of the intended interaction flow.
+
+A small harness-oriented control lookup now lives at:
+- `tools/openclaw_harness/CONTROL_LOOKUP.md`
+
+A tiny log helper now also lives at:
+- `tools/openclaw_harness/log_probe.py`
+
+Use it to mark/read `llm_intent.log` by **byte size checkpoint** instead of the flakier line-count trick.
 
 ### HV0-B: frame schema + state classifier
 - implement frame object,

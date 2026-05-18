@@ -1,0 +1,40 @@
+{
+  "name": "bandit_live_world_nearby_camp_light_horde_v0_2026-04-27",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Visible-light horde bridge proof footing: reuse the McWilliams/Basecamp playtest-kit save, set the save to nighttime, seed a real bandit_camp just beyond direct-player range, and inject a visible/safe same-OMT raw fd_fire field near but not on the player. This proves the loaded-map fire/light reader can drive the live horde signal bridge; it is not player-lit fire product proof.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5266800
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        11,
+        0
+      ]
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_fire",
+          "offset_ms": [
+            10,
+            0,
+            0
+          ],
+          "intensity": 3,
+          "age_turns": 0
+        }
+      ]
+    }
+  ]
+}

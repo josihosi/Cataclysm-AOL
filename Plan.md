@@ -49,6 +49,28 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Current execution posture
+
+No active Andi code target is currently promoted. `CAOL-CI-RED-TRIAGE-v0` reached a green branch-health checkpoint at code head `cb21294168` (`Allow items under layered bedroom terrain`). GitHub Actions on that head are complete and green for the branch-health workflows that were red: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845`.
+
+Recommended next action: the temporary Andi CI-repair cron should only verify any docs-only closure/checkpoint push that follows this canon alignment, then stand down. Do not reopen the defended-camp sight/smoke packet or other closed product lanes by ritual. The next non-CI product move remains Schani/Frau review or a fresh promoted greenlit lane.
+
+---
+
+## Recent closed lane — CAOL-CI-RED-TRIAGE-v0
+
+**Status:** CLOSED / CHECKPOINTED GREEN / ACTIONS VERIFIED
+
+Contract: `doc/ci-red-triage-packet-v0-2026-05-06.md`.
+
+Initial red evidence was run `25371458600` on `5043f2c32c` (`General build matrix`, title `Retitle Andi handoff for checkpointed camp smoke proof`) with failures across GCC/Clang/Linux/macOS/CMake jobs. Seed clusters included `faction_camp_test` patrol-alarm/current-target failures, `debug_menu_test` missing entry, `flesh_raptor_test` sight setup failure, `item_test` density for `zombie_rider_bone_bow`, `uncraft_test` yield drift, and `zombie_rider_test` mature-gate/direct-entry failures.
+
+Repair stack from `29cb5bbb97` through `cb21294168` fixed the branch-caused CI failures with narrow code/data/test changes: zombie rider test/data fixes, CI-sensitive camp/flesh-raptor/debug-menu test stabilization, NPC zone-sort ASan completion, and the layered-bedroom terrain item allowance.
+
+Verification: `General build matrix` run `25462728843` on `cb21294168` completed success across all matrix jobs, and `Cataclysm Windows build` run `25462728845` completed success.
+
+---
+
 ## Recent checkpointed lane — CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0
 
 **Status:** CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW

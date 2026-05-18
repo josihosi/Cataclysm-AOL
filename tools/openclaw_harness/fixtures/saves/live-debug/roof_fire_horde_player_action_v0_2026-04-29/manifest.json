@@ -1,0 +1,95 @@
+{
+  "name": "roof_fire_horde_player_action_v0_2026-04-29",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Roof-fire horde product-path footing: copy the McWilliams/Basecamp kit, set night, move the player one z-level onto the adjacent shelter roof, seed a real nearby bandit_camp for live light observations, stage one overmap horde near enough to respond, and provide only normal player-action brazier/lighter/log/source-zone inputs. The horde/distance and roof relocation are setup footing; credited fire must come from the scenario's normal Apply->brazier and Apply->lighter path, not a field transform.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5266800
+    },
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [0, 0, 1]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, 11, 0]
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [0, -120, 0],
+      "destination_offset_ms": [0, -120, 0],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "items": [
+        { "typeid": "brazier", "count": 1 }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "lighter",
+          "count": 1,
+          "charges": 100,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "butane",
+                    "charges": 100,
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "log",
+          "count": 100,
+          "offset_ms": [1, 0, 0]
+        }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "OpenClaw roof-fire horde source firewood proof zone",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [1, -1, 0],
+      "end_offset_ms": [3, 1, 0],
+      "write_temp": true
+    }
+  ]
+}

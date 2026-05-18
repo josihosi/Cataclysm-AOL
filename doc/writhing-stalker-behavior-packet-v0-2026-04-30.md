@@ -2,7 +2,7 @@
 
 ## Classification
 
-Status: **GREENLIT implementation packet**.
+Status: **CLOSED / CHECKPOINTED GREEN V0**.
 
 Ledger ID: `CAOL-WRITHING-STALKER-v0`.
 
@@ -15,6 +15,14 @@ Raw intake preserved at: `doc/writhing-stalker-raw-intake-2026-04-30.md`.
 ## Goal
 
 Create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without becoming omniscient or turning into a bandit-camp economy clone.
+
+## Creature description lock
+
+Josef's preserved flavor text is documentation truth for the creature description. Do not replace it with generic zombie/predator slop:
+
+> A slim, shaking figure. Grey arms wrapped around it's chest, hugging it's twitching and writhing body. It's eyes make your neck hair stand: half crazed, half panicked, they steer around in prehensile madness. It’s the eyes that do it for you, not the dripping teeth.
+
+The in-game description may polish grammar, but it must keep the core: inward grey arms, twitching/writhing body, half-crazed/half-panicked eyes, prehensile madness, and the explicit idea that the eyes—not the teeth—are what unsettles the player.
 
 ## Scope
 
@@ -140,18 +148,20 @@ Required proof types:
 
 Close `CAOL-WRITHING-STALKER-v0` only when:
 
-- [ ] The monster/stat/spawn footing exists and validates.
-- [ ] Spawn rarity/singleton rules are tested or otherwise proven.
-- [ ] Stalker latch/opportunity/withdraw decisions have deterministic tests.
-- [ ] Direct player/human evidence can create a bounded latch without omniscience.
-- [ ] Weak/no evidence decays or fails to latch.
-- [ ] Zombie pressure can increase opportunity without becoming a magic player locator.
-- [ ] Strike behavior is short cut/bleed pressure rather than a tank duel.
-- [ ] Withdrawal/cooldown prevents immediate repeat spam.
-- [ ] Save/load preserves any new stalker state, or the packet explicitly avoids new persisted state.
-- [ ] Live/harness proof shows a real stalk/hold/strike/withdraw scene from the game path.
-- [ ] Live/harness negative/control proof shows no instant beeline with no valid evidence.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final closed/next state.
+- [x] The monster/stat/spawn footing exists and validates.
+- [x] Spawn rarity/singleton rules are tested or otherwise proven.
+- [x] Stalker latch/opportunity/withdraw decisions have deterministic tests.
+- [x] Direct player/human evidence can create a bounded latch without omniscience.
+- [x] Weak/no evidence decays or fails to latch.
+- [x] Zombie pressure can increase opportunity without becoming a magic player locator.
+- [x] Strike behavior is short cut/bleed pressure rather than a tank duel.
+- [x] Withdrawal/cooldown prevents immediate repeat spam.
+- [x] Save/load preserves any new stalker state, or the packet explicitly avoids new persisted state.
+- [x] Live/harness proof shows a real stalk/hold/strike/withdraw scene from the game path.
+- [x] Live/harness negative/control proof shows no instant beeline with no valid evidence.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final closed/next state.
+
+Closure note: the v0 evidence packet is closed/checkpointed green after `.userdata/dev-harness/harness_runs/20260430_181748/` added Josef's mixed-hostile metrics/tuning readout and Frau accepted the yellow attribution caveat. The mixed-hostile horde caveat remains explicit: horde presence is proven by saved setup audit, but horde movement/retarget cost is `not instrumented` separately and is future-only unless explicitly promoted.
 
 ## Open tuning questions
 

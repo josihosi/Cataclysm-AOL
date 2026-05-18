@@ -3,9 +3,9 @@
 ## Status
 
 This is **CHECKPOINTED / DONE FOR NOW**.
-It is the closed narrow concealment promotion after the first honest 500-turn playback proof.
+It has reached a real bounded closure on the current light-mark seam after the first honest 500-turn playback proof.
 
-This was **not** permission to implement the whole visibility/concealment system.
+This is **not** permission to reopen the whole visibility/concealment system.
 For v0, the lane stayed explicitly **light concealment first**.
 Weather stayed only as a reducer/modifier, not as the main feature.
 

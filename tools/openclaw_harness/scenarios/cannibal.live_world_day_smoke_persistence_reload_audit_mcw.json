@@ -1,0 +1,43 @@
+{
+  "name": "cannibal.live_world_day_smoke_persistence_reload_audit_mcw",
+  "description": "No-fixture reload support audit for scenario 6: start the currently saved McWilliams dev-harness world after the cannibal day-smoke persistence save, then read saved dimension-data to confirm the active cannibal group/profile/target/member plus known_recent_marks signal state remains present. This is reload support, not independent product closure without the paired create/save run.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "",
+  "replace_existing_worlds": false,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "game::load: Finalizing end"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_reload_saved_cannibal_persistence_world_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "the already-saved McWilliams dev-harness world reloads without fixture reinstall before saved-state metadata is audited",
+      "failure_rule": "If the gameplay screen is not visible after no-fixture reload, this run is only saved-file inspection and cannot be credited as reload support."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_bandit_live_world_after_no_fixture_reload",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "cannibal_camp@",
+      "required_active_group_id_contains": "cannibal_camp@",
+      "required_active_target_id_prefix": "player@",
+      "required_active_job_type": "stalk",
+      "required_min_active_member_ids": 2,
+      "required_known_recent_mark_contains": "live_smoke@",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_reloaded_saved_cannibal_active_group_state",
+      "abort_reason": "after no-fixture reload, saved dimension-data bandit_live_world metadata did not contain the active cannibal smoke group/profile/target/member plus known_recent_marks signal state",
+      "expected_visible_fact": "after a fresh no-fixture startup of the saved world, saved dimension-data metadata still contains the cannibal_camp active stalk group with at least two active members, player target, and persisted known_recent_marks live_smoke signal state"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_day_smoke_persistence_reload_audit_mcw --fixture ''",
+  "evidence_contract": {
+    "claim": "paired with a green create/save run, a no-fixture reload still sees the persisted active cannibal group/profile/target/member plus known_recent_marks signal state in saved dimension data",
+    "load_only_verdict": "reload support only / saved-state persistence support",
+    "failure_rule": "No reload-support credit if a fixture is reinstalled, startup/load is not green, or saved bandit_live_world metadata lacks the active cannibal state plus known_recent_marks live_smoke signal state. This does not claim intelligence_map.leads proof."
+  }
+}

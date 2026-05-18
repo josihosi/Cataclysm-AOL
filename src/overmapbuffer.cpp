@@ -273,6 +273,9 @@ void overmap_global_state::clear()
     unique_special_count.clear();
     unique_special_decks.clear();
     highway_intersections.clear();
+    bandit_live_world.clear();
+    zombie_rider_light_memory.clear();
+    zombie_rider_light_memory_last_turn = calendar::turn_zero;
     overmap_count = 0;
     major_river_count = 0;
 }

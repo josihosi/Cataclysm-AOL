@@ -1,0 +1,37 @@
+{
+  "name": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Post-Frau footing for player-action fire proof: set nighttime, seed nearby bandit_camp, and inject only exact-id player items before the scenario drives the normal deploy/drop/firestarter route: brazier is wielded for live Apply selector visibility; 2x4 fuel and charged lighter are placed in a live-accessible worn pocket. No raw map fields are injected.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5266800
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [ 0, 11, 0 ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "items": [
+        { "typeid": "brazier", "count": 1 }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        { "typeid": "2x4", "count": 20 },
+        { "typeid": "lighter", "count": 1, "charges": 100 }
+      ]
+    }
+  ]
+}

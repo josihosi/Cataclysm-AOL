@@ -17,6 +17,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include "avatar.h"
 #include "bandit_live_world.h"
 #include "bandit_mark_generation.h"
+#include "basecamp.h"
 #include "bionics.h"
 #include "cached_options.h"
 #include "calendar.h"
@@ -92,6 +94,7 @@
 #include "vpart_position.h"
 #include "weather.h"
 #include "worldfactory.h"
+#include "zombie_rider_overmap_ai.h"
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
@@ -102,12 +105,15 @@ static const bionic_id bio_alarm( "bio_alarm" );
 
 static const efftype_id effect_controlled( "controlled" );
 static const efftype_id effect_npc_suspend( "npc_suspend" );
+static const efftype_id effect_run( "run" );
 static const efftype_id effect_ridden( "ridden" );
 static const efftype_id effect_sleep( "sleep" );
 
 static const event_statistic_id event_statistic_last_words( "last_words" );
 
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
+
+static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
@@ -149,19 +155,45 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
 }
 
-bool live_bandit_player_at_basecamp( const avatar &u )
+static constexpr int live_bandit_basecamp_reach_radius = 30;
+static constexpr int live_bandit_basecamp_storage_zone_scan_radius = live_bandit_basecamp_reach_radius * 2;
+static constexpr int live_bandit_camp_adjacent_radius_submaps = 24;
+static const faction_id faction_your_followers( "your_followers" );
+static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
+
+void live_bandit_refresh_basecamp_storage_tiles( const avatar &u, basecamp &camp )
 {
-    return overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value();
+    zone_manager::get_manager().cache_data();
+    std::unordered_set<tripoint_abs_ms> storage_tiles =
+        zone_manager::get_manager().get_near( zone_type_CAMP_STORAGE, u.pos_abs(),
+                live_bandit_basecamp_storage_zone_scan_radius, nullptr, camp.get_owner() );
+    const std::unordered_set<tripoint_abs_ms> follower_storage_tiles =
+        zone_manager::get_manager().get_near( zone_type_CAMP_STORAGE, u.pos_abs(),
+                live_bandit_basecamp_storage_zone_scan_radius, nullptr, faction_your_followers );
+    storage_tiles.insert( follower_storage_tiles.begin(), follower_storage_tiles.end() );
+    if( !storage_tiles.empty() ) {
+        camp.set_storage_tiles( storage_tiles );
+    }
+}
+
+basecamp *live_bandit_nearest_basecamp( const avatar &u )
+{
+    if( std::optional<basecamp *> bcp = overmap_buffer.find_camp( u.pos_abs_omt().xy() ) ) {
+        return *bcp;
+    }
+
+    const std::vector<camp_reference> camps_near_player = overmap_buffer.get_camps_near(
+                u.pos_abs_sm(), live_bandit_camp_adjacent_radius_submaps );
+    if( !camps_near_player.empty() ) {
+        return camps_near_player.front().camp;
+    }
+
+    return nullptr;
 }
 
 bool live_bandit_player_near_basecamp( const avatar &u )
 {
-    if( live_bandit_player_at_basecamp( u ) ) {
-        return true;
-    }
-
-    static constexpr int camp_adjacent_radius_submaps = 24;
-    return !overmap_buffer.get_camps_near( u.pos_abs_sm(), camp_adjacent_radius_submaps ).empty();
+    return live_bandit_nearest_basecamp( u ) != nullptr;
 }
 
 bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
@@ -285,14 +317,80 @@ int live_bandit_nearby_ground_goods_value( const avatar &u )
 {
     map &here = get_map();
     int value = 0;
-    static constexpr int basecamp_reach_radius = 30;
-    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(), basecamp_reach_radius ) ) {
+    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(),
+            live_bandit_basecamp_reach_radius ) ) {
         if( !here.accessible_items( pt ) ) {
             continue;
         }
         for( const item &it : here.i_at( pt ) ) {
             value += live_bandit_item_value( it );
         }
+    }
+    return value;
+}
+
+int live_bandit_basecamp_storage_goods_value( const avatar &u, const basecamp &camp,
+        const int nearby_radius_to_skip )
+{
+    map &here = get_map();
+    int value = 0;
+    for( const tripoint_abs_ms &storage_tile : camp.get_storage_tiles() ) {
+        if( nearby_radius_to_skip >= 0 &&
+            rl_dist( storage_tile, u.pos_abs() ) <= nearby_radius_to_skip ) {
+            continue;
+        }
+
+        const tripoint_bub_ms local_tile = here.get_bub( storage_tile );
+        if( !here.inbounds( local_tile ) ) {
+            continue;
+        }
+        if( here.accessible_items( local_tile ) ) {
+            for( const item &it : here.i_at( local_tile ) ) {
+                value += live_bandit_item_value( it );
+            }
+        }
+        const std::optional<vpart_reference> cargo_part = here.veh_at( local_tile ).cargo();
+        if( cargo_part ) {
+            for( const item &it : cargo_part->items() ) {
+                value += live_bandit_item_value( it );
+            }
+        }
+    }
+    return value;
+}
+
+int live_bandit_basecamp_assigned_npc_goods_value( const avatar &u, basecamp &camp,
+        const int nearby_radius_to_skip )
+{
+    int value = 0;
+    std::set<character_id> counted;
+    const auto count_assigned = [&]( const npc &assigned, const bool assigned_to_this_camp ) {
+        if( assigned.is_dead() || !assigned.is_player_ally() ) {
+            return;
+        }
+        if( !assigned_to_this_camp && nearby_radius_to_skip >= 0 &&
+            rl_dist( assigned.pos_abs(), u.pos_abs() ) <= nearby_radius_to_skip ) {
+            return;
+        }
+        if( counted.insert( assigned.getID() ).second ) {
+            value += live_bandit_character_goods_value( assigned );
+        }
+    };
+    for( const npc_ptr &assigned : camp.get_npcs_assigned() ) {
+        if( assigned == nullptr ) {
+            continue;
+        }
+        count_assigned( *assigned, true );
+    }
+    for( const npc &assigned : g->all_npcs() ) {
+        const bool assigned_to_this_camp = assigned.assigned_camp &&
+                                           *assigned.assigned_camp == camp.camp_omt_pos();
+        const bool in_basecamp_side_pool = rl_dist( assigned.pos_abs(), u.pos_abs() ) <=
+                                           live_bandit_basecamp_storage_zone_scan_radius;
+        if( !assigned_to_this_camp && !in_basecamp_side_pool ) {
+            continue;
+        }
+        count_assigned( assigned, assigned_to_this_camp );
     }
     return value;
 }
@@ -345,11 +443,21 @@ bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
         if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
             continue;
         }
+        if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
+            continue;
+        }
         pool.companion_carried_value += live_bandit_character_goods_value( guy );
     }
 
     if( input.basecamp_or_camp_scene ) {
         pool.reachable_basecamp_value = live_bandit_nearby_ground_goods_value( u );
+        if( basecamp *camp = live_bandit_nearest_basecamp( u ) ) {
+            live_bandit_refresh_basecamp_storage_tiles( u, *camp );
+            pool.reachable_basecamp_value += live_bandit_basecamp_storage_goods_value( u, *camp,
+                                             live_bandit_basecamp_reach_radius );
+            pool.companion_carried_value += live_bandit_basecamp_assigned_npc_goods_value( u, *camp,
+                                            nearby_companion_radius );
+        }
     } else {
         pool.vehicle_carried_value = live_bandit_current_vehicle_goods_value( u );
     }
@@ -376,19 +484,34 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
     }
 
     const int player_value = live_bandit_character_goods_value( u );
-    const int companion_value = [&u]() {
+    const int companion_value = [&u, &input]() {
         int value = 0;
         static constexpr int nearby_companion_radius = 12;
         for( const npc &guy : g->all_npcs() ) {
             if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
                 continue;
             }
+            if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
+                continue;
+            }
             value += live_bandit_character_goods_value( guy );
         }
         return value;
     }();
+    basecamp *payment_basecamp = input.basecamp_or_camp_scene ?
+                                 live_bandit_nearest_basecamp( u ) : nullptr;
+    if( payment_basecamp != nullptr ) {
+        live_bandit_refresh_basecamp_storage_tiles( u, *payment_basecamp );
+    }
+    const int basecamp_storage_value = payment_basecamp != nullptr ?
+                                       live_bandit_basecamp_storage_goods_value( u, *payment_basecamp,
+                                               live_bandit_basecamp_reach_radius ) : 0;
+    static constexpr int nearby_companion_radius = 12;
+    const int basecamp_npc_value = payment_basecamp != nullptr ?
+                                   live_bandit_basecamp_assigned_npc_goods_value( u, *payment_basecamp,
+                                           nearby_companion_radius ) : 0;
     const int scene_value = input.basecamp_or_camp_scene ?
-                            live_bandit_nearby_ground_goods_value( u ) :
+                            live_bandit_nearby_ground_goods_value( u ) + basecamp_storage_value :
                             live_bandit_current_vehicle_goods_value( u );
 
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui opened demanded="
@@ -396,15 +519,15 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
                                << surface.reachable_goods_value
                                << " player_pool=" << player_value
                                << " nearby_npc_pool=" << companion_value
+                               << " basecamp_npc_pool=" << basecamp_npc_value
                                << " scene_pool=" << scene_value
+                               << " basecamp_storage_pool=" << basecamp_storage_value
                                << " trader=" << trader->getID().get_value()
                                << " trade_api=npc_trading::trade"
                                << " title=Pay:\n";
-    static constexpr int basecamp_reach_radius = 30;
-    static constexpr int nearby_companion_radius = 12;
     const bool paid = npc_trading::trade( *trader, surface.demanded_value, _( "Pay:" ),
-                                          input.basecamp_or_camp_scene ? basecamp_reach_radius : 1,
-                                          nearby_companion_radius );
+                                          input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
+                                          nearby_companion_radius, payment_basecamp );
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result="
                                << ( paid ? "paid" : "cancel_or_short" )
                                << " demanded=" << surface.demanded_value
@@ -519,6 +642,7 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     const bandit_live_world::shakedown_surface &surface )
 {
     dialogue_window d_win;
+    d_win.is_not_conversation = true;
     const std::pair<std::string, nc_color> speaker = live_bandit_shakedown_speaker( site );
     d_win.add_to_history( surface.bark, speaker.first, speaker.second );
     d_win.add_history_separator();
@@ -989,6 +1113,20 @@ bool note_live_bandit_aftermath()
             }
         }
 
+        const bool active_group_returning_home = !observations.empty() &&
+                std::all_of( observations.begin(), observations.end(),
+        []( const bandit_live_world::active_member_observation & observation ) {
+            return observation.state ==
+                   bandit_live_world::active_member_observation_state::returning_home;
+        } );
+        if( active_group_returning_home ) {
+            DebugLog( D_INFO, DC_ALL )
+                    << "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
+                    << " site=" << site.site_id
+                    << " active_group=" << site.active_group_id << '\n';
+            continue;
+        }
+
         bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
         gate_input.local_contact_established |= std::any_of( observations.begin(), observations.end(),
         []( const bandit_live_world::active_member_observation & observation ) {
@@ -1052,6 +1190,8 @@ struct live_bandit_signal_observation {
     int range_cap_omt = 0;
     int horde_signal_power = 0;
     std::string weather_summary;
+    bool has_light_projection = false;
+    bandit_mark_generation::light_projection light_projection;
 };
 
 struct live_bandit_dispatch_candidate {
@@ -1465,6 +1605,8 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         light_observation.mark.notes = light_projection.signal.notes;
         light_observation.horde_signal_power =
             bandit_mark_generation::horde_signal_power_from_light_projection( light_projection );
+        light_observation.has_light_projection = true;
+        light_observation.light_projection = light_projection;
         observations.push_back( light_observation );
     }
 
@@ -1590,31 +1732,39 @@ int refresh_live_bandit_signal_marks(
             continue;
         }
 
-        const live_bandit_signal_observation *best_signal = nullptr;
-        int best_signal_distance = 0;
+        std::vector<const live_bandit_signal_observation *> matching_signals;
+        bool smoke_signal_matched = false;
+        bool light_signal_matched = false;
         for( const live_bandit_signal_observation &signal : signals ) {
             const int signal_distance = rl_dist( site.anchor, signal.source_omt );
             if( signal_distance > signal.range_cap_omt ) {
                 continue;
             }
-            if( best_signal == nullptr || signal_distance < best_signal_distance ) {
-                best_signal = &signal;
-                best_signal_distance = signal_distance;
+            matching_signals.push_back( &signal );
+            if( signal.mark.kind == "light" || signal.mark.kind == "searchlight" ) {
+                light_signal_matched = true;
+            } else if( signal.mark.kind == "smoke" ) {
+                smoke_signal_matched = true;
             }
         }
 
-        if( best_signal == nullptr ) {
+        if( matching_signals.empty() ) {
             rejected_by_signal_range++;
             continue;
         }
 
         matched_sites++;
-        if( best_signal->mark.kind == "light" || best_signal->mark.kind == "searchlight" ) {
+        if( light_signal_matched ) {
             matched_light_sites++;
-        } else if( best_signal->mark.kind == "smoke" ) {
+        }
+        if( smoke_signal_matched ) {
             matched_smoke_sites++;
         }
-        if( bandit_live_world::record_live_signal_mark( site, best_signal->mark ) ) {
+        bool site_refreshed = false;
+        for( const live_bandit_signal_observation *signal : matching_signals ) {
+            site_refreshed |= bandit_live_world::record_live_signal_mark( site, signal->mark );
+        }
+        if( site_refreshed ) {
             refreshed_sites++;
         }
     }
@@ -1650,6 +1800,182 @@ int signal_live_hordes_from_light_observations(
                                    << " horde_signal_power=" << signal.horde_signal_power
                                    << " range_cap_omt=" << signal.range_cap_omt
                                    << " weather=" << signal.weather_summary << '\n';
+    }
+    return signaled_sources;
+}
+
+void advance_zombie_rider_light_memories()
+{
+    std::map<tripoint_abs_omt, zombie_rider_overmap_ai::rider_light_memory> &memories =
+        overmap_buffer.global_state.zombie_rider_light_memory;
+    time_point &last_turn = overmap_buffer.global_state.zombie_rider_light_memory_last_turn;
+    if( last_turn == calendar::turn_zero && memories.empty() ) {
+        last_turn = calendar::turn;
+        return;
+    }
+    if( calendar::turn < last_turn ) {
+        memories.clear();
+        last_turn = calendar::turn;
+        return;
+    }
+
+    const int elapsed_turns = to_turns<int>( calendar::turn - last_turn );
+    if( elapsed_turns <= 0 ) {
+        return;
+    }
+
+    for( auto iter = memories.begin(); iter != memories.end(); ) {
+        zombie_rider_overmap_ai::advance_light_memory( iter->second, elapsed_turns );
+        if( !iter->second.active() ) {
+            iter = memories.erase( iter );
+        } else {
+            ++iter;
+        }
+    }
+    last_turn = calendar::turn;
+}
+
+int command_live_zombie_riders_to_light(
+    const zombie_rider_overmap_ai::rider_convergence_result &convergence,
+    const std::unordered_map<std::string, monster *> &live_riders_by_id,
+    const tripoint_abs_ms &light_source, int memory_turns )
+{
+    int commanded = 0;
+    if( !convergence.should_converge ) {
+        return commanded;
+    }
+    const int wander_interest = std::max( 1, memory_turns );
+    for( const std::string &rider_id : convergence.rider_ids ) {
+        const auto rider_iter = live_riders_by_id.find( rider_id );
+        if( rider_iter == live_riders_by_id.end() || rider_iter->second == nullptr ) {
+            continue;
+        }
+        monster &rider = *rider_iter->second;
+        rider.wander_to( light_source, wander_interest );
+        rider.anger = std::max( rider.anger, 100 );
+        commanded++;
+    }
+    return commanded;
+}
+
+int signal_live_zombie_riders_from_light_observations(
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    advance_zombie_rider_light_memories();
+    int signaled_sources = 0;
+    const int world_age_days = std::max( 0, to_days<int>( calendar::turn -
+                                         calendar::start_of_cataclysm ) );
+
+    std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders;
+    std::unordered_map<std::string, monster *> live_riders_by_id;
+    int wounded_riders = 0;
+    for( monster &critter : g->all_monsters() ) {
+        if( critter.type->id != mon_zombie_rider || critter.is_dead() ) {
+            continue;
+        }
+        zombie_rider_overmap_ai::rider_overmap_agent rider;
+        rider.rider_id = "active@" + critter.pos_abs().to_string();
+        rider.pos = critter.pos_abs_omt();
+        rider.available = true;
+        rider.already_in_band = false;
+        rider.cooldown_turns = critter.has_effect( effect_run ) ? 1 : 0;
+        riders.push_back( rider );
+        live_riders_by_id.emplace( rider.rider_id, &critter );
+        if( critter.hp_percentage() <= 50 ) {
+            wounded_riders++;
+        }
+    }
+
+    std::vector<bool> used_signal( signals.size(), false );
+    for( size_t signal_index = 0; signal_index < signals.size(); ++signal_index ) {
+        const live_bandit_signal_observation &signal = signals[signal_index];
+        if( used_signal[signal_index] || !signal.has_light_projection || signal.horde_signal_power <= 0 ) {
+            continue;
+        }
+
+        used_signal[signal_index] = true;
+        int aggregate_sources = 1;
+        int aggregate_horde_signal_power = signal.horde_signal_power;
+        bandit_mark_generation::light_projection aggregate_projection = signal.light_projection;
+        for( size_t peer_index = signal_index + 1; peer_index < signals.size(); ++peer_index ) {
+            const live_bandit_signal_observation &peer = signals[peer_index];
+            if( used_signal[peer_index] || !peer.has_light_projection || peer.horde_signal_power <= 0 ) {
+                continue;
+            }
+            const int distance = std::max( std::abs( peer.source_omt.x() - signal.source_omt.x() ),
+                                           std::abs( peer.source_omt.y() - signal.source_omt.y() ) );
+            if( peer.source_omt.z() != signal.source_omt.z() || distance > 1 ) {
+                continue;
+            }
+            used_signal[peer_index] = true;
+            aggregate_sources++;
+            aggregate_horde_signal_power += peer.horde_signal_power;
+        }
+
+        if( aggregate_sources > 1 ) {
+            const int nearby_light_bonus = std::min( aggregate_sources - 1, 4 ) * 2;
+            aggregate_projection.packet.id += "_cluster";
+            aggregate_projection.visibility_score = std::clamp(
+                    aggregate_projection.visibility_score + nearby_light_bonus, 0, 60 );
+            aggregate_projection.projected_range_omt = std::clamp(
+                    aggregate_projection.projected_range_omt + nearby_light_bonus, 0, 30 );
+            aggregate_projection.review_summary += "; nearby camp-light cluster sources=" +
+                    std::to_string( aggregate_sources );
+            aggregate_projection.signal.notes.push_back( "nearby camp-light cluster sources=" +
+                    std::to_string( aggregate_sources ) + ", combined_horde_signal_power=" +
+                    std::to_string( aggregate_horde_signal_power ) );
+        }
+
+        const int rider_horde_signal_power =
+            bandit_mark_generation::horde_signal_power_from_light_projection( aggregate_projection );
+        const zombie_rider_overmap_ai::rider_light_interest interest =
+            zombie_rider_overmap_ai::evaluate_light_attraction( aggregate_projection, world_age_days,
+                    std::max( 1, static_cast<int>( riders.size() ) ) );
+        zombie_rider_overmap_ai::rider_light_memory &memory =
+            overmap_buffer.global_state.zombie_rider_light_memory[signal.source_omt];
+        zombie_rider_overmap_ai::refresh_light_memory( memory, interest );
+        const zombie_rider_overmap_ai::rider_convergence_result convergence =
+            zombie_rider_overmap_ai::evaluate_rider_convergence( memory, signal.source_omt, riders );
+        const int live_riders_commanded = command_live_zombie_riders_to_light(
+                                              convergence, live_riders_by_id,
+                                              coords::project_to<coords::ms>( signal.source_omt ),
+                                              memory.turns_remaining );
+
+        zombie_rider_overmap_ai::rider_camp_pressure_input pressure_input;
+        pressure_input.light_memory_active = memory.active();
+        pressure_input.rider_count = convergence.selected_riders;
+        pressure_input.band_formed = convergence.band_formed;
+        pressure_input.breach_or_opening = false;
+        pressure_input.defender_strength = 2;
+        pressure_input.rider_wounded = wounded_riders > 0;
+        const zombie_rider_overmap_ai::rider_camp_pressure_result pressure =
+            zombie_rider_overmap_ai::choose_camp_pressure_posture( pressure_input );
+
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider camp_light: signal=yes source_omt="
+                                   << signal.source_omt.to_string()
+                                   << " world_age_days=" << world_age_days
+                                   << " horde_signal_power=" << rider_horde_signal_power
+                                   << " aggregate_sources=" << aggregate_sources
+                                   << " aggregate_horde_signal_power=" << aggregate_horde_signal_power
+                                   << " interest=" << ( interest.should_investigate ? "yes" : "no" )
+                                   << " interest_reason=" << interest.reason
+                                   << " interest_score=" << interest.interest_score
+                                   << " memory_active=" << ( memory.active() ? "yes" : "no" )
+                                   << " memory_turns=" << memory.turns_remaining
+                                   << " riders_observed=" << riders.size()
+                                   << " selected_riders=" << convergence.selected_riders
+                                   << " live_riders_commanded=" << live_riders_commanded
+                                   << " cap=" << convergence.cap
+                                   << " band_formed=" << ( convergence.band_formed ? "yes" : "no" )
+                                   << " band_size=" << convergence.band_size
+                                   << " convergence_reason=" << convergence.reason
+                                   << " posture=" << zombie_rider_overmap_ai::to_string( pressure.posture )
+                                   << " posture_reason=" << pressure.reason
+                                   << " wounded_riders=" << wounded_riders << '\n';
+        if( !memory.active() ) {
+            overmap_buffer.global_state.zombie_rider_light_memory.erase( signal.source_omt );
+        }
+        signaled_sources++;
     }
     return signaled_sources;
 }
@@ -2269,11 +2595,14 @@ void monmove()
 
 void overmap_npc_move()
 {
+    const auto perf_started = std::chrono::steady_clock::now();
     avatar &u = get_avatar();
+    bandit_live_world::world_state &bandit_state = overmap_buffer.global_state.bandit_live_world;
     note_live_bandit_aftermath();
+    const auto aftermath_done = std::chrono::steady_clock::now();
     std::vector<std::string> empty_site_retirement_reports;
-    bandit_live_world::retire_empty_hostile_sites( overmap_buffer.global_state.bandit_live_world,
-            &empty_site_retirement_reports );
+    bandit_live_world::retire_empty_hostile_sites( bandit_state, &empty_site_retirement_reports );
+    const auto retirement_done = std::chrono::steady_clock::now();
     for( const std::string &report : empty_site_retirement_reports ) {
         DebugLog( D_INFO, DC_ALL ) << report << '\n';
     }
@@ -2288,13 +2617,15 @@ void overmap_npc_move()
         live_signals = observe_live_bandit_field_signals_near_player();
         refresh_live_bandit_signal_marks( live_signals );
         signal_live_hordes_from_light_observations( live_signals );
+        signal_live_zombie_riders_from_light_observations( live_signals );
     }
+    const auto signal_done = std::chrono::steady_clock::now();
     if( dispatch_cadence_due ) {
         steer_live_bandit_dispatch_toward_player( live_signals );
     } else if( signal_cadence_due ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle"
                                    << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
-                                   << " sites=" << overmap_buffer.global_state.bandit_live_world.sites.size()
+                                   << " sites=" << bandit_state.sites.size()
                                    << " dispatch_interval=30_minutes"
                                    << " signal_interval=5_minutes\n";
     }
@@ -2343,6 +2674,48 @@ void overmap_npc_move()
     }
     if( npcs_need_reload ) {
         g->reload_npcs();
+    }
+    const auto travel_done = std::chrono::steady_clock::now();
+
+    if( signal_cadence_due || dispatch_cadence_due || !empty_site_retirement_reports.empty() ) {
+        int active_sites = 0;
+        std::map<std::string, int> active_job_mix;
+        for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+            if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+                continue;
+            }
+            active_sites++;
+            const std::string profile = bandit_live_world::to_string( site.profile );
+            const std::string job = site.active_job_type.empty() ? "unknown" : site.active_job_type;
+            active_job_mix[profile + ":" + job]++;
+        }
+        std::ostringstream active_jobs;
+        bool first_job = true;
+        for( const std::pair<const std::string, int> &entry : active_job_mix ) {
+            if( !first_job ) {
+                active_jobs << ',';
+            }
+            first_job = false;
+            active_jobs << entry.first << '=' << entry.second;
+        }
+        const auto elapsed_us = []( const auto &from, const auto &to ) {
+            return std::chrono::duration_cast<std::chrono::microseconds>( to - from ).count();
+        };
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world perf: sites=" << bandit_state.sites.size()
+                                   << " active_sites=" << active_sites
+                                   << " active_job_mix=" << ( active_job_mix.empty() ? "none" : active_jobs.str() )
+                                   << " signals=" << live_signals.size()
+                                   << " retired_reports=" << empty_site_retirement_reports.size()
+                                   << " travelling_npcs=" << travelling_npcs.size()
+                                   << " npcs_need_reload=" << ( npcs_need_reload ? "yes" : "no" )
+                                   << " signal_cadence_due=" << ( signal_cadence_due ? "yes" : "no" )
+                                   << " dispatch_cadence_due=" << ( dispatch_cadence_due ? "yes" : "no" )
+                                   << " aftermath_us=" << elapsed_us( perf_started, aftermath_done )
+                                   << " retirement_us=" << elapsed_us( aftermath_done, retirement_done )
+                                   << " signal_us=" << elapsed_us( retirement_done, signal_done )
+                                   << " dispatch_us=" << elapsed_us( signal_done, dispatch_done )
+                                   << " travel_us=" << elapsed_us( dispatch_done, travel_done )
+                                   << " total_us=" << elapsed_us( perf_started, travel_done ) << '\n';
     }
 }
 
@@ -2626,7 +2999,6 @@ bool game::do_turn()
 
     // process monster and npc turn
     monmove();
-
     note_live_bandit_local_turn_sight_avoid();
     if( calendar::once_every( time_between_npc_OM_moves ) ) {
         overmap_npc_move();
