@@ -58,18 +58,28 @@ if ! command -v otool >/dev/null 2>&1; then
     exit 2
 fi
 
+is_macho() {
+    local path=$1
+    file "$path" | grep -q 'Mach-O'
+}
+
 if [[ "$mode" == "bundle" ]]; then
     if ! command -v dylibbundler >/dev/null 2>&1; then
         echo "dylibbundler is required to bundle macOS app dependencies" >&2
         exit 2
     fi
-    dylibbundler -of -b -x "$target_binary" -d "$resources_dir/" -p "$bundle_prefix"
+    while IFS= read -r -d '' binary; do
+        if is_macho "$binary"; then
+            dylibbundler -of -b -x "$binary" -d "$resources_dir/" -p "$bundle_prefix"
+        fi
+    done < <(
+        {
+            printf '%s\n' "$target_binary"
+            find "$macos_dir" -maxdepth 1 -type f -print 2>/dev/null || true
+            find "$resources_dir" -maxdepth 1 -type f ! -name '*.dylib' -print 2>/dev/null || true
+        } | sort -u | tr '\n' '\0'
+    )
 fi
-
-is_macho() {
-    local path=$1
-    file "$path" | grep -q 'Mach-O'
-}
 
 check_binary() {
     local binary=$1
