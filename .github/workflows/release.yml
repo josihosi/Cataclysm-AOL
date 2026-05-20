@@ -406,4 +406,4 @@ jobs:
 
       - name: Upload checksum asset
         run: |
-          gh release upload '${{ needs.release.outputs.tag_name }}' dist/SHA256SUMS.txt --clobber
+          gh release upload '${{ needs.release.outputs.tag_name }}' dist/SHA256SUMS.txt --repo '${{ github.repository }}' --clobber
