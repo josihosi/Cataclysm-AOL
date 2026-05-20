@@ -2201,7 +2201,8 @@ static bool reload_camp_locker_target_from_zone(npc &worker,
     return false;
   }
 
-  item::reload_option reload_opt(&worker, target, ammo_loc);
+  item::reload_option reload_opt(&worker, target, ammo_loc,
+                                 item::reload_option::POCKET_FALLBACK);
   item &reload_target = const_cast<item &>(*target);
   const bool reloaded =
       reload_target.reload(worker, ammo_loc, reload_opt.qty());
