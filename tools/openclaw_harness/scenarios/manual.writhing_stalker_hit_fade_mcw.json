@@ -1,0 +1,71 @@
+{
+  "name": "manual.writhing_stalker_hit_fade_mcw",
+  "description": "Manual playtest handoff: vulnerable midnight writhing-stalker scene with one hostile stalker staged south of the player. The harness only loads the save and audits footing; it sends no gameplay keys after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker live_plan:",
+    "decision=strike",
+    "decision=withdraw",
+    "decision=cooling_off",
+    "retreat_distance=8"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_manual_hit_fade_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "manual handoff loads onto the vulnerable midnight stalker footing before the tester advances time"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_manual_hit_fade_midnight",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_stalker_time_setup_missing",
+      "abort_reason": "installed save did not prove expected midnight time before manual stalker play"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_manual_hit_fade_stalker",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [0, 8, 0]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_stalker_active_monster_missing",
+      "abort_reason": "saved active_monsters metadata did not contain the staged writhing stalker"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.writhing_stalker_hit_fade_mcw --compact-stdout",
+  "manual_playtest": {
+    "question": "Does the stalker feel like fair dread: pressure, hit/fade, cooldown, and retreat instead of gluey melee or magic beeline?",
+    "tester_notes": [
+      "Move, wait, use light, or retreat naturally.",
+      "Watch whether it creates breathing room after burst pressure.",
+      "Save if it either feels very good or obviously wrong."
+    ],
+    "metadata_to_check_after": [
+      "debug.log writhing_stalker live_plan rows",
+      "saved active monster location/hp after manual play"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from current staged writhing-stalker footing without harness gameplay input",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from tester play after handoff"
+  }
+}

@@ -161,6 +161,26 @@ TEST_CASE( "Limb_ugliness_calculations", "[character][npc][limb]" )
     // TODO: fix covered ugliness and test it...
 }
 
+TEST_CASE( "NPC_opinion_health_calculation_uses_evaluated_target", "[character][npc][limb]" )
+{
+    clear_avatar();
+    on_out_of_scope reset_avatar( []() {
+        clear_avatar();
+    } );
+    standard_npc dude( "Test NPC" );
+    standard_npc beholder( "Beholder" );
+    const npc_opinion baseline = beholder.get_opinion_values( dude );
+
+    Character &avatar = get_player_character();
+    for( const bodypart_id &bp : avatar.get_all_body_parts() ) {
+        avatar.set_part_hp_cur( bp, 0 );
+    }
+    CHECK( beholder.get_opinion_values( dude ).fear == baseline.fear );
+
+    dude.set_part_hp_cur( body_part_torso, dude.get_part_hp_max( body_part_torso ) / 2 );
+    CHECK( beholder.get_opinion_values( dude ).fear == baseline.fear - 1 );
+}
+
 TEST_CASE( "Healing/mending_bonuses", "[character][limb]" )
 {
     standard_npc dude( "Test NPC" );

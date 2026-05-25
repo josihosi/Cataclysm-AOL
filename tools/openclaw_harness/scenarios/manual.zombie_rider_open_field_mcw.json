@@ -1,0 +1,74 @@
+{
+  "name": "manual.zombie_rider_open_field_mcw",
+  "description": "Manual playtest handoff: noon open-field zombie-rider pressure with one hostile rider staged at bow range. The harness only loads the save and audits footing; it sends no gameplay keys after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_zombie_rider_open_field_2026-05-01",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "zombie_rider live_plan:",
+    "decision=bow_pressure",
+    "decision=reposition",
+    "line_of_fire=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_manual_rider_open_field_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "manual handoff loads onto the zombie-rider open-field footing before the tester advances time"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_manual_rider_noon",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_rider_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon time before manual zombie-rider play"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_manual_rider_open_field",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [0, -5, 0],
+          "ammo": {
+            "zombie_rider_tainted_bone_arrow": 18
+          }
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_rider_active_monster_missing",
+      "abort_reason": "saved active_monsters metadata did not contain the staged zombie rider with expected ammo"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.zombie_rider_open_field_mcw --compact-stdout",
+  "manual_playtest": {
+    "question": "Does the zombie rider create scary ranged pressure with readable cover/counterplay, or does it feel unfair or inert?",
+    "tester_notes": [
+      "Try closing distance, breaking line of fire, and retreating.",
+      "If safe mode interrupts the feel pass, toggle it yourself and continue.",
+      "Save after a short fight or escape if the aftermath looks useful."
+    ],
+    "metadata_to_check_after": [
+      "debug.log zombie_rider live_plan and target_probe rows",
+      "saved active monster location/hp/ammo after manual play"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from current staged zombie-rider footing without harness gameplay input",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from tester play after handoff"
+  }
+}

@@ -2564,7 +2564,10 @@ bool should_attempt_parse( const std::string &line )
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.use_api = cfg.backend == "api" || get_option<bool>( "LLM_INTENT_USE_API" );
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
-    cfg.api_provider = "openai";
+    cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
+    if( cfg.api_provider.empty() ) {
+        cfg.api_provider = "openai";
+    }
     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
     cfg.ollama_url = get_option<std::string>( "LLM_INTENT_OLLAMA_URL" );
     cfg.ollama_model = get_option<std::string>( "LLM_INTENT_OLLAMA_MODEL" );

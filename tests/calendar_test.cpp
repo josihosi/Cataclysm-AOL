@@ -53,6 +53,9 @@ TEST_CASE( "time_duration_to_string_eternal_season", "[calendar][nogame]" )
 
 TEST_CASE( "months_and_days_over_time", "[calendar]" )
 {
+    restore_on_out_of_scope restore_game_start( calendar::start_of_game );
+    calendar::start_of_game = calendar::turn_zero;
+
     std::vector<std::pair<month, int>> date;
     date.reserve( 364 );
     for( int i = 0; i < 12; ++i ) {
@@ -75,7 +78,6 @@ TEST_CASE( "months_and_days_over_time", "[calendar]" )
     REQUIRE( date[date_idx] == month_and_day( calendar::start_of_game ) );
 
     // game starts on a thursday
-    restore_on_out_of_scope restore_game_start( calendar::start_of_game );
     calendar::start_of_game = calendar::turn_zero;
     size_t day_idx = static_cast<size_t>( weekdays::THURSDAY );
     REQUIRE( day_of_week( calendar::start_of_game ) == days[day_idx] );

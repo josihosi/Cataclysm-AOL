@@ -1,0 +1,87 @@
+{
+  "name": "flesh_raptor.live_debug_spawn_visible_skirmisher_mcw",
+  "description": "Minimal live raptor seam probe: load the clean McWilliams debug profile, spawn one hostile flesh raptor at visible skirmish range, advance a bounded window, and require same-run orbit/swoop/melee metrics. This separates stale fixture geometry from live monster-plan behavior.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "flesh_raptor live_plan:",
+    "decision=orbit",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_raptor_debug_spawn_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the clean McWilliams live-debug fixture loads to the normal map before spawning a flesh raptor"
+    },
+    {
+      "kind": "debug_spawn_monster",
+      "label": "debug_spawn_flesh_raptor_five_east",
+      "monster_query": "flesh-raptor",
+      "target_keys": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "friendly": false,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "debug spawn monster helper returns to the live map after placing one hostile flesh raptor five tiles east"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_raptor_debug_spawn_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_debug_spawn_raptor_skirmish_window",
+      "count": 180,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "flesh_raptor live_plan:",
+        "decision=orbit",
+        "eval_us="
+      ],
+      "expected_visible_fact": "bounded live turn window runs after the visible flesh-raptor spawn; feature proof depends on same-run live_plan lines"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_debug_spawn_flesh_raptor_live_plan",
+      "required_line_patterns": [
+        [
+          "flesh_raptor live_plan:",
+          "decision=orbit",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_debug_spawn_flesh_raptor_live_plan_missing",
+      "abort_reason": "same-run debug artifact did not contain flesh-raptor orbit live-plan lines after visible debug spawn",
+      "expected_visible_fact": "same-run debug artifact proves the visible spawned flesh raptor reached the live monster-plan seam"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe flesh_raptor.live_debug_spawn_visible_skirmisher_mcw",
+  "evidence_contract": {
+    "claim": "a freshly debug-spawned flesh raptor reaches the live monster-plan seam when staged at visible skirmish range",
+    "failure_rule": "If this fails while unit tests pass, inspect spawn footing/LOS before treating it as a gameplay regression."
+  }
+}

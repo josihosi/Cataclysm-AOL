@@ -1154,10 +1154,34 @@ collect_camp_patrol_clusters(const tripoint_abs_ms &origin,
 
 namespace {
 
+int camp_patrol_duty_percent( const job_data &job, const int patrol_priority )
+{
+    int total_priority = 0;
+    bool has_competing_job = false;
+    for( const activity_id &task : job.get_prioritised_vector() ) {
+        const int priority = job.get_priority_of_job( task );
+        if( priority <= 0 ) {
+            continue;
+        }
+        total_priority += priority;
+        if( task != ACT_CAMP_PATROL && priority >= patrol_priority ) {
+            has_competing_job = true;
+        }
+    }
+
+    if( !has_competing_job || total_priority <= patrol_priority ) {
+        return 100;
+    }
+    return std::clamp( patrol_priority * 100 / total_priority, 1, 100 );
+}
+
 bool camp_patrol_worker_sort_less(const camp_patrol_worker &lhs,
                                   const camp_patrol_worker &rhs) {
     if( lhs.priority != rhs.priority ) {
         return lhs.priority > rhs.priority;
+    }
+    if( lhs.duty_percent != rhs.duty_percent ) {
+        return lhs.duty_percent > rhs.duty_percent;
     }
     return lhs.worker_id.get_value() < rhs.worker_id.get_value();
 }
@@ -1203,12 +1227,51 @@ size_t select_camp_patrol_extra_cluster(
     return best_index;
 }
 
+void assign_camp_patrol_duty_slots( camp_patrol_shift_plan &plan )
+{
+    std::vector<size_t> limited_duty_guards;
+    for( size_t index = 0; index < plan.active_guards.size(); ++index ) {
+        camp_patrol_guard_plan &guard_plan = plan.active_guards[index];
+        guard_plan.duty_percent = std::clamp( guard_plan.duty_percent, 1, 100 );
+        guard_plan.duty_slot = 0;
+        guard_plan.duty_slots = 1;
+        if( guard_plan.duty_percent < 100 ) {
+            limited_duty_guards.push_back( index );
+        }
+    }
+
+    for( size_t slot = 0; slot < limited_duty_guards.size(); ++slot ) {
+        camp_patrol_guard_plan &guard_plan =
+            plan.active_guards[limited_duty_guards[slot]];
+        guard_plan.duty_slot = slot;
+        guard_plan.duty_slots = limited_duty_guards.size();
+    }
+}
+
+camp_patrol_worker camp_patrol_roster_worker_or_default(
+    const camp_patrol_shift_plan &plan, const character_id &worker_id )
+{
+    const auto worker_it = std::find_if(
+        plan.roster_workers.begin(), plan.roster_workers.end(),
+        [&worker_id]( const camp_patrol_worker &worker ) {
+            return worker.worker_id == worker_id;
+        } );
+    if( worker_it != plan.roster_workers.end() ) {
+        return *worker_it;
+    }
+    return camp_patrol_worker{ worker_id, 0, 100 };
+}
+
 camp_patrol_shift_plan build_camp_patrol_shift_plan(
-    camp_patrol_shift shift, const std::vector<character_id> &roster,
+    camp_patrol_shift shift, const std::vector<camp_patrol_worker> &roster,
     const std::vector<camp_patrol_cluster> &clusters) {
     camp_patrol_shift_plan plan;
     plan.shift = shift;
-    plan.roster = roster;
+    plan.roster_workers = roster;
+    plan.roster.reserve( roster.size() );
+    for( const camp_patrol_worker &worker : roster ) {
+        plan.roster.push_back( worker.worker_id );
+    }
     plan.clusters.reserve(clusters.size());
     for( const camp_patrol_cluster &cluster : clusters ) {
         plan.clusters.push_back(camp_patrol_cluster_plan{ cluster, {} });
@@ -1217,9 +1280,13 @@ camp_patrol_shift_plan build_camp_patrol_shift_plan(
     const size_t active_count = std::min(roster.size(), count_camp_patrol_tiles(clusters));
     plan.active_guards.reserve(active_count);
     for( size_t index = 0; index < active_count; ++index ) {
-        plan.active_guards.push_back(camp_patrol_guard_plan{ roster[index], {} });
+        plan.active_guards.push_back( camp_patrol_guard_plan{ roster[index].worker_id, {},
+                                      roster[index].duty_percent } );
     }
-    plan.reserve_guards.assign(roster.begin() + active_count, roster.end());
+    plan.reserve_guards.reserve( roster.size() - active_count );
+    for( size_t index = active_count; index < roster.size(); ++index ) {
+        plan.reserve_guards.push_back( roster[index].worker_id );
+    }
 
     if( plan.active_guards.empty() || plan.clusters.empty() ) {
         return plan;
@@ -1238,6 +1305,7 @@ camp_patrol_shift_plan build_camp_patrol_shift_plan(
                                  plan.clusters[cluster_index], cluster_index);
     }
 
+    assign_camp_patrol_duty_slots( plan );
     return plan;
 }
 
@@ -1255,7 +1323,8 @@ collect_camp_patrol_workers(const std::vector<npc_ptr> &assigned_npcs) {
         if( priority <= 0 ) {
             continue;
         }
-        workers.push_back(camp_patrol_worker{ guard->getID(), priority });
+        workers.push_back( camp_patrol_worker{ guard->getID(), priority,
+                                               camp_patrol_duty_percent( guard->job, priority ) } );
     }
 
     std::sort(workers.begin(), workers.end(), camp_patrol_worker_sort_less);
@@ -1265,17 +1334,16 @@ collect_camp_patrol_workers(const std::vector<npc_ptr> &assigned_npcs) {
 camp_patrol_plan
 plan_camp_patrol(const std::vector<camp_patrol_worker> &workers,
                  const std::vector<camp_patrol_cluster> &clusters) {
-    std::vector<character_id> day_roster;
-    std::vector<character_id> night_roster;
+    std::vector<camp_patrol_worker> day_roster;
+    std::vector<camp_patrol_worker> night_roster;
     day_roster.reserve((workers.size() + 1) / 2);
     night_roster.reserve(workers.size() / 2);
 
     for( size_t index = 0; index < workers.size(); ++index ) {
-        const character_id worker_id = workers[index].worker_id;
         if( index % 2 == 0 ) {
-            day_roster.push_back(worker_id);
+            day_roster.push_back(workers[index]);
         } else {
-            night_roster.push_back(worker_id);
+            night_roster.push_back(workers[index]);
         }
     }
 
@@ -1340,6 +1408,61 @@ size_t camp_patrol_guard_loop_phase(const camp_patrol_shift_plan &plan,
                                           guard_plan.worker_id);
 }
 
+std::pair<time_point, time_point>
+camp_patrol_shift_bounds( const camp_patrol_shift shift, const time_point &turn )
+{
+    if( shift == camp_patrol_shift::day ) {
+        return { sunrise( turn ), sunset( turn ) };
+    }
+
+    const time_point today_sunrise = sunrise( turn );
+    if( turn < today_sunrise ) {
+        return { sunset( turn - 1_days ), today_sunrise };
+    }
+    return { sunset( turn ), sunrise( turn + 1_days ) };
+}
+
+std::optional<time_point> camp_patrol_guard_duty_start(
+    const camp_patrol_shift_plan &plan, const camp_patrol_guard_plan &guard_plan,
+    const time_point &turn )
+{
+    const int duty_percent = std::clamp( guard_plan.duty_percent, 1, 100 );
+    if( duty_percent >= 100 ) {
+        return calendar::turn_zero;
+    }
+
+    const auto [shift_start, shift_end] = camp_patrol_shift_bounds( plan.shift, turn );
+    if( turn < shift_start || turn >= shift_end ) {
+        return std::nullopt;
+    }
+
+    const time_duration shift_duration = shift_end - shift_start;
+    if( shift_duration <= 0_turns ) {
+        return std::nullopt;
+    }
+
+    time_duration duty_duration = shift_duration * duty_percent / 100;
+    if( duty_duration < camp_patrol_loop_dwell() ) {
+        duty_duration = std::min( camp_patrol_loop_dwell(), shift_duration );
+    }
+    if( duty_duration >= shift_duration ) {
+        return shift_start;
+    }
+
+    const size_t duty_slots = std::max<size_t>( guard_plan.duty_slots, 1 );
+    const size_t duty_slot = std::min( guard_plan.duty_slot, duty_slots - 1 );
+    const time_duration offset_span = shift_duration - duty_duration;
+    const time_duration duty_offset = duty_slots <= 1 ? 0_turns :
+                                      offset_span * static_cast<int>( duty_slot ) /
+                                      static_cast<int>( duty_slots - 1 );
+    const time_point duty_start = shift_start + duty_offset;
+    const time_point duty_end = duty_start + duty_duration;
+    if( turn < duty_start || turn >= duty_end ) {
+        return std::nullopt;
+    }
+    return duty_start;
+}
+
 } // namespace
 
 time_duration camp_patrol_loop_dwell() {
@@ -1356,6 +1479,12 @@ describe_camp_patrol_guard_runtime(const camp_patrol_shift_plan &plan,
             return guard_plan.worker_id == worker_id;
         } );
     if( guard_it == plan.active_guards.end() ) {
+        return std::nullopt;
+    }
+
+    const std::optional<time_point> duty_start =
+        camp_patrol_guard_duty_start( plan, *guard_it, turn );
+    if( !duty_start ) {
         return std::nullopt;
     }
 
@@ -1382,7 +1511,7 @@ describe_camp_patrol_guard_runtime(const camp_patrol_shift_plan &plan,
     }
 
     const int dwell_turns = to_turns<int>(camp_patrol_loop_dwell());
-    const int absolute_turn = to_turns<int>(turn - calendar::turn_zero);
+    const int absolute_turn = to_turns<int>(turn - *duty_start);
     const size_t loop_step = dwell_turns > 0 ? static_cast<size_t>(absolute_turn /
                              dwell_turns) : 0;
     const size_t loop_phase = camp_patrol_guard_loop_phase(plan, *guard_it);
@@ -1432,7 +1561,10 @@ bool apply_camp_patrol_guard_interrupt(
         if( !plan.reserve_guards.empty() ) {
             const character_id replacement_id = plan.reserve_guards.front();
             plan.reserve_guards.erase(plan.reserve_guards.begin());
+            const camp_patrol_worker replacement =
+                camp_patrol_roster_worker_or_default( plan, replacement_id );
             active_it->worker_id = replacement_id;
+            active_it->duty_percent = replacement.duty_percent;
             for( const size_t cluster_index : cluster_indices ) {
                 if( cluster_index >= plan.clusters.size() ) {
                     continue;
@@ -1442,6 +1574,7 @@ bool apply_camp_patrol_guard_interrupt(
         } else {
             plan.active_guards.erase(active_it);
         }
+        assign_camp_patrol_duty_slots( plan );
         return true;
     }
 
@@ -3775,10 +3908,10 @@ bool basecamp::refresh_patrol_shift_cache() {
   const std::vector<camp_patrol_worker> workers =
       collect_camp_patrol_workers(get_npcs_assigned());
   if( current_alarm_active ) {
-    std::vector<character_id> alarm_roster;
+    std::vector<camp_patrol_worker> alarm_roster;
     alarm_roster.reserve(workers.size());
     for( const camp_patrol_worker &worker : workers ) {
-      alarm_roster.push_back(worker.worker_id);
+      alarm_roster.push_back( camp_patrol_worker{ worker.worker_id, worker.priority, 100 } );
     }
     patrol_shift_cache =
         build_camp_patrol_shift_plan(current_shift, alarm_roster, clusters);

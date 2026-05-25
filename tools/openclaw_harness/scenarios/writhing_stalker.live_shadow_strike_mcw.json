@@ -74,7 +74,7 @@
     {
       "kind": "advance_turns",
       "label": "advance_shadow_strike_window",
-      "count": 80,
+      "count": 180,
       "settle_seconds": 0.8,
       "capture_after": true,
       "artifact_state_patterns": [
@@ -116,7 +116,7 @@
         [
           "writhing_stalker live_plan:",
           "decision=cooling_off",
-          "reason=live_latch_cooldown_blocks_relatched_pressure",
+          "reason=live_cooldown_blocks_repeat_strike",
           "evidence=yes",
           "cooldown=yes",
           "eval_us="

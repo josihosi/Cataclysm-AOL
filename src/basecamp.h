@@ -255,11 +255,15 @@ enum class camp_patrol_shift : int {
 struct camp_patrol_worker {
     character_id worker_id;
     int priority = 0;
+    int duty_percent = 100;
 };
 
 struct camp_patrol_guard_plan {
     character_id worker_id;
     std::vector<size_t> cluster_indices;
+    int duty_percent = 100;
+    size_t duty_slot = 0;
+    size_t duty_slots = 1;
 };
 
 struct camp_patrol_cluster_plan {
@@ -270,6 +274,7 @@ struct camp_patrol_cluster_plan {
 struct camp_patrol_shift_plan {
     camp_patrol_shift shift = camp_patrol_shift::day;
     std::vector<character_id> roster;
+    std::vector<camp_patrol_worker> roster_workers;
     std::vector<camp_patrol_guard_plan> active_guards;
     std::vector<character_id> reserve_guards;
     std::vector<camp_patrol_cluster_plan> clusters;

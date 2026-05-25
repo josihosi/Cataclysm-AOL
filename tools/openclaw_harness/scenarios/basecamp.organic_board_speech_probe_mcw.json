@@ -11,21 +11,18 @@
   "artifact_source": "llm_intent.log",
   "artifact_patterns": [
     "camp routing check",
+    "uses_basecamp=yes",
     "camp heard",
-    "camp board reply",
     "player utterance:",
-    "prompt Katharina Leach",
-    "response Katharina Leach",
-    "response Robbie Knox",
-    "heard=show_board",
-    "board=show_board"
+    "response Robbie Knox"
   ],
   "steps": [
     {
       "kind": "wait",
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "normal McWilliams gameplay screen is loaded before camp assignment"
     },
     {
       "kind": "assign_nearby_npc_to_camp_dialog",
@@ -36,49 +33,56 @@
       "assignment_keys": ["d", "n", "a"],
       "exit_dialog_keys": ["q", "c"],
       "stage_settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Katharina camp-assignment dialogue completes and the game returns to the live map"
     },
     {
       "kind": "advance_turns",
       "label": "settle_after_assignment_1",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": false
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts"
     },
     {
       "kind": "advance_turns",
       "label": "settle_after_assignment_2",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": false
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts"
     },
     {
       "kind": "advance_turns",
       "label": "settle_after_assignment_3",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": false
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts"
     },
     {
       "kind": "advance_turns",
       "label": "settle_after_assignment_4",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": false
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts"
     },
     {
       "kind": "advance_turns",
       "label": "settle_after_assignment_5",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "assigned camp resident has had time to settle before the organic board question"
     },
     {
       "kind": "press",
       "label": "open_freeform_chat_for_board",
       "keys": ["C", "b"],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "nearby freeform chat input is open before asking the organic board phrase"
     },
     {
       "kind": "type",
@@ -86,7 +90,8 @@
       "text": "what needs making",
       "submit": true,
       "settle_seconds": 1.2,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "organic board phrase is submitted to nearby NPCs"
     },
     {
       "kind": "advance_turns",
@@ -101,7 +106,39 @@
         "height": 920
       },
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 12
+      "extract_text_tail_lines": 12,
+      "expected_screen_text_after_contains": [
+        "Board's got",
+        "bandages"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_organic_board_reply_screen_text_missing",
+      "abort_reason": "screen text did not prove the organic board-status reply after asking what needs making",
+      "expected_visible_fact": "message log shows Katharina answering the organic board-status phrase with the camp board summary"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_organic_board_routing_artifacts",
+      "required_line_patterns": [
+        [
+          "camp routing check",
+          "Katharina Leach",
+          "uses_basecamp=yes"
+        ],
+        [
+          "camp heard Katharina Leach"
+        ],
+        [
+          "utterance=what needs making"
+        ],
+        [
+          "player utterance: what needs making"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_organic_board_routing_artifacts_missing",
+      "abort_reason": "llm_intent log did not prove camp-resident routing and heard organic board utterance",
+      "expected_visible_fact": "same-run llm_intent log proves Katharina was routed through basecamp handling for the organic board phrase"
     }
   ],
   "recommended_test_command": "./tests/cata_test \"[camp][basecamp_ai]\""

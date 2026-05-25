@@ -1,0 +1,117 @@
+{
+  "name": "manual.mixed_hostile_siege_mcw",
+  "description": "Manual playtest handoff: dense midnight McWilliams siege with active bandit pressure, cannibal pressure, writhing stalker, zombie rider, flesh raptor, horde, and fire/smoke cues staged. The harness only loads the save and audits footing; it sends no gameplay keys after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "theme_mixed_hostile_camp_siege_v0_2026-05-18",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world perf:",
+    "camp_style:stalk=1",
+    "cannibal_camp:stalk=1",
+    "writhing_stalker",
+    "zombie_rider",
+    "flesh_raptor",
+    "horde"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_manual_mixed_siege_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "manual handoff loads onto the mixed hostile siege footing before the tester advances time"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_manual_mixed_siege_midnight",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 0,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_siege_not_midnight",
+      "abort_reason": "saved game turn did not prove the intended midnight siege footing"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_manual_mixed_siege_bandit_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 4,
+      "required_active_outside_count": 4,
+      "required_min_active_member_ids": 4,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_siege_bandit_footing",
+      "abort_reason": "saved bandit_live_world state did not contain the active bandit pressure job"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_manual_mixed_siege_cannibal_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:cannibal_camp@150,39,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 2,
+      "required_active_outside_count": 2,
+      "required_min_active_member_ids": 2,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_siege_cannibal_footing",
+      "abort_reason": "saved bandit_live_world state did not contain the active cannibal pressure job"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_manual_mixed_siege_monsters",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_typeids": ["mon_writhing_stalker", "mon_zombie_rider", "mon_spawn_raptor"],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_siege_monster_footing",
+      "abort_reason": "saved active_monsters did not contain the staged stalker, rider, and raptor"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_manual_mixed_siege_horde",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 360,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [0, -240, 0],
+          "destination_offset_ms": [0, -120, 0],
+          "tracking_intensity": 10,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_siege_horde_footing",
+      "abort_reason": "saved horde metadata did not contain the staged nearby zombie horde"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.mixed_hostile_siege_mcw --compact-stdout",
+  "manual_playtest": {
+    "question": "Does stacked hostile pressure create readable tension or incoherent noise?",
+    "tester_notes": [
+      "Play from the loaded midnight state without trying to satisfy a proof contract.",
+      "Separate your impressions by actor group: bandits, cannibals, stalker, rider, raptor, horde, and camp NPCs.",
+      "Save after 5-15 minutes of in-game consequences if the aftermath state looks interesting."
+    ],
+    "metadata_to_check_after": [
+      "debug.log active_job_mix/local_gate rows",
+      "writhing_stalker/zombie_rider/flesh_raptor live-plan rows",
+      "saved bandit_live_world, active_monsters, and horde state"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from current staged mixed-siege footing without harness gameplay input",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from tester play after handoff"
+  }
+}

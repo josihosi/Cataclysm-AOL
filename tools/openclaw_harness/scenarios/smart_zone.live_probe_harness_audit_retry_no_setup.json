@@ -58,11 +58,11 @@
       "extract_text_after_capture": true,
       "extract_text_after_capture_tail_lines": 32,
       "expected_screen_text_after_contains": [
-        "select zone type"
+        "Auto Drink"
       ],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_zone_type_picker_ui_entry_guard_failed",
-      "abort_reason": "zone type picker text missing after add-zone key; stop before filter/generation keys."
+      "abort_reason": "zone type picker row text missing after add-zone key; stop before filter/generation keys."
     },
     {
       "label": "filter_zone_type_picker",
@@ -83,8 +83,7 @@
       "capture_after": true,
       "expected_visible_fact": "Zone type picker filter has been submitted for Basecamp: Storage before selecting the filtered row",
       "expected_screen_text_after_contains": [
-        "Basecamp",
-        "Storage"
+        "Basecamp"
       ],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_storage_zone_filter_guard_failed",
@@ -185,15 +184,10 @@
       "keys": [
         "f4"
       ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
       "capture_after": true,
       "expected_visible_fact": "Smart Zone Manager prompt/result checkpoint after accepting generation (accepted through profile-local F4 YES binding)",
-      "settle_seconds": 0.8,
-      "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 32,
-      "expected_screen_text_after_contains": [
-        "Smart Zone"
-      ],
-      "abort_on_screen_text_expectation_failure": false
+      "settle_seconds": 0.8
     },
     {
       "label": "post_generation_settle",

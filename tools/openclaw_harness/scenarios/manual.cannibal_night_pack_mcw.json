@@ -1,0 +1,69 @@
+{
+  "name": "manual.cannibal_night_pack_mcw",
+  "description": "Manual playtest handoff: night local-contact cannibal-camp pressure one player action away from the dispatch/local-gate path. The harness only loads the save and audits footing; it sends no gameplay keys after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "local_gate site=overmap_special:cannibal_camp@",
+    "profile=cannibal_camp",
+    "posture=attack_now",
+    "pack_size=2",
+    "shakedown=no",
+    "combat_forward=yes"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_manual_cannibal_night_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "manual handoff loads onto the cannibal night local-contact footing before the tester advances time"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_manual_cannibal_night_time",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 82800,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_cannibal_not_night",
+      "abort_reason": "saved game turn did not prove the intended 23:00 cannibal footing"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_manual_cannibal_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "overmap_special:cannibal_camp@",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_cannibal_site_missing",
+      "abort_reason": "saved bandit_live_world metadata did not contain the staged nearby cannibal camp"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.cannibal_night_pack_mcw --compact-stdout",
+  "manual_playtest": {
+    "question": "Does night cannibal pressure read as a distinct pack attack instead of bandit shakedown behavior?",
+    "tester_notes": [
+      "Pass one turn, wait, move, or make noise to let local contact resolve.",
+      "Watch for attack pressure without Pay/Fight shakedown UI.",
+      "Save after the first contact if the pack behavior or aftermath is worth auditing."
+    ],
+    "metadata_to_check_after": [
+      "debug.log cannibal_camp local_gate rows",
+      "saved bandit_live_world site/active group state",
+      "saved NPC positions if a pack spawned into local contact"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from current staged cannibal night-contact footing without harness gameplay input",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from tester play after handoff"
+  }
+}

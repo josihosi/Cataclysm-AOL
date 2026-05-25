@@ -821,6 +821,9 @@ TEST_CASE( "monster_can_navigate_from_anywhere_in_reality_bubble", "[monster]" )
 
 TEST_CASE( "monster_can_navigate_from_overmap_to_reality_bubble", "[monster][hordes]" )
 {
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero;
+    clear_overmaps();
     map &m = get_map();
     // Remove interacting with the player as a complication.
     clear_map_and_put_player_underground();
@@ -852,6 +855,9 @@ TEST_CASE( "monster_can_navigate_from_overmap_to_reality_bubble", "[monster][hor
 TEST_CASE( "monster_can_navigate_from_overmap_to_reality_bubble_following_sound",
            "[monster][hordes][sound]" )
 {
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero;
+    clear_overmaps();
     // Remove interacting with the player as a complication.
     clear_map_and_put_player_underground();
     // Clear lingering sounds from queue.
@@ -892,6 +898,9 @@ TEST_CASE( "monster_can_navigate_from_overmap_to_reality_bubble_following_sound"
 
 TEST_CASE( "monster_moved_to_overmap_after_map_shift", "[monster][hordes]" )
 {
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero;
+    clear_overmaps();
     clear_map_without_vision();
     map &here = get_map();
     // Place character in the central submap of map.
@@ -934,6 +943,9 @@ TEST_CASE( "monster_moved_to_overmap_after_map_shift", "[monster][hordes]" )
 
 TEST_CASE( "monster_cant_enter_reality_bubble_because_wall", "[monster][hordes]" )
 {
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero;
+    clear_overmaps();
     // Remove interacting with the player as a complication.
     clear_map_and_put_player_underground();
     const tripoint_bub_ms destination{ 11 * 6, 11 * 6, 0 };
@@ -945,8 +957,9 @@ TEST_CASE( "monster_cant_enter_reality_bubble_because_wall", "[monster][hordes]"
     sound( destination, 200, sounds::sound_t::combat, test_sound );
     sounds::process_sounds();
     // Put a wall between the monster and the overmap so they can't enter.
-    for( int i = -12; i < 12; ++i ) {
-        overmap_buffer.set_passable( m.get_abs( { -12, 66 + i, 0 } ), false );
+    const int wall_span = m.getmapsize() * SEEX * 2;
+    for( int y = -wall_span; y <= wall_span; ++y ) {
+        overmap_buffer.set_passable( m.get_abs( { -12, 66 + y, 0 } ), false );
     }
     // This reference will be invalidated once the monster spawns in the reality bubble,
     // don't access it again after calling move_hordes().

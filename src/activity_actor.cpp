@@ -14002,15 +14002,26 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
             const bool is_adjacent_or_closer_to_dest = square_dist( abspos, drop_dest ) <= 1;
 
             if( is_adjacent_or_closer_to_dest ) {
-                auto iter = picked_up_stuff.begin();
-                // ensure validity of all item_locations before we start this - if any have been invalidated there's a bug somewhere earlier
-                for( item_location itm_loc : picked_up_stuff ) {
-                    if( !itm_loc.get_item() ) {
-                        debugmsg( "Lost item_location during sorting" );
-                        stage = LAST;
-                        return;
-                    }
+                auto stale = std::remove_if( picked_up_stuff.begin(), picked_up_stuff.end(),
+                []( const item_location &loc ) {
+                    return !loc.get_item();
+                } );
+                if( stale != picked_up_stuff.end() ) {
+                    add_msg_debug( debugmode::DF_ACTIVITY,
+                                   "zone_sort DO: purged %zu stale item_locations before dropoff",
+                                   static_cast<size_t>( std::distance( stale, picked_up_stuff.end() ) ) );
+                    picked_up_stuff.erase( stale, picked_up_stuff.end() );
                 }
+                if( picked_up_stuff.empty() ) {
+                    add_msg_debug( debugmode::DF_ACTIVITY,
+                                   "zone_sort DO: all picked items lost before dropoff, back to THINK" );
+                    coord_set.erase( src );
+                    stage = THINK;
+                    you.mod_moves( -1 );
+                    dropoff_coords.clear();
+                    return;
+                }
+                auto iter = picked_up_stuff.begin();
                 while( iter != picked_up_stuff.end() ) {
                     if( you.get_moves() <= 0 ) { // Ran out of moves dropping stuff
                         return;

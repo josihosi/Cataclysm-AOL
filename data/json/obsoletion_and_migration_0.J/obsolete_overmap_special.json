@@ -141,10 +141,5 @@
     "type": "overmap_special_migration",
     "id": "office_tower_hiddenlab",
     "//": "Removed in 0.J experimental"
-  },
-  {
-    "type": "overmap_special_migration",
-    "id": "Occupied LMOE Shelter",
-    "new_id": "LMOE Shelter"
   }
 ]

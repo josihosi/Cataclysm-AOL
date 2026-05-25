@@ -15,6 +15,7 @@
 #include "build_reqs.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character.h"
 #include "clzones.h"
 #include "construction.h"
@@ -78,6 +79,8 @@ void run_activities( Character &u, int max_moves )
 {
     map &here = get_map();
 
+    u.clear_destination();
+    u.omt_path.clear();
     u.assign_activity( multi_build_construction_activity_actor() );
     int turns = 0;
     while( !u.activity.is_null() || u.is_auto_moving() ) {
@@ -156,6 +159,10 @@ construction setup_testcase( Character &u, std::string const &constr,
 
 void run_test_case( Character &u )
 {
+    zone_manager::get_manager().clear();
+    on_out_of_scope clear_zones( []() {
+        zone_manager::get_manager().clear();
+    } );
     calendar::turn = calendar::turn_zero + 9_hours + 30_minutes;
     clear_map_without_vision();
     scoped_weather_override weather_clear( WEATHER_CLEAR );

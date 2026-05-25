@@ -2594,7 +2594,8 @@ bool uses_basecamp_request_routing( const npc &hearer )
 
     return hearer.mission == NPC_MISSION_NULL ||
            hearer.mission == NPC_MISSION_GUARD ||
-           hearer.mission == NPC_MISSION_GUARD_PATROL;
+           hearer.mission == NPC_MISSION_GUARD_PATROL ||
+           hearer.mission == NPC_MISSION_CAMP_RESIDENT;
 }
 
 std::string camp_request_subject_for_display( const camp_llm_request &request,

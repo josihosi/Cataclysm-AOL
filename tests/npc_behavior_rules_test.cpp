@@ -40,6 +40,7 @@ static const vproto_id vehicle_prototype_locked_as_hell_car( "locked_as_hell_car
 static shared_ptr_fast<npc> setup_generic_rules_test( ally_rule rule_to_test,
         update_mapgen_id update_mapgen_id_to_apply )
 {
+    clear_overmaps();
     map &here = get_map();
     clear_map_without_vision();
     clear_vehicles();

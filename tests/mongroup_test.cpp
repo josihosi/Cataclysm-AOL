@@ -47,6 +47,11 @@ static void spawn_x_monsters( int x, const mongroup_id &grp, const std::vector<m
 {
     std::set<mtype_id> rand_gets;
     std::set<mtype_id> rand_results;
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_start_of_game( calendar::start_of_game );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
     calendar::turn = time_point( 1 );
     for( int i = 0; i < x; i++ ) {
         mtype_id tmp_get = MonsterGroupManager::GetRandomMonsterFromGroup( grp );
@@ -179,6 +184,12 @@ TEST_CASE( "Using_mon_null_as_mongroup_default_monster", "[mongroup]" )
 
 TEST_CASE( "Nested_monster_groups_spawn_chance", "[mongroup]" )
 {
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_start_of_game( calendar::start_of_game );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
+    calendar::turn = time_point( 1 );
     mongroup_id mg( "test_top_level_mongroup" );
 
     const int iters = 10000;
@@ -206,8 +217,6 @@ TEST_CASE( "Nested_monster_groups_spawn_chance", "[mongroup]" )
         { 2, { ( 1.f / 3.f ) *( 5.f / 105.f ), 0 } }
     };
 
-    calendar::turn += 1_turns;
-
     for( int i = 0; i < iters; i++ ) {
         MonsterGroupResult res = MonsterGroupManager::GetResultFromGroup( mg ).front();
         auto iter = results.find( res.id );
@@ -234,8 +243,13 @@ TEST_CASE( "Nested_monster_groups_spawn_chance", "[mongroup]" )
 
 TEST_CASE( "Nested_monster_group_pack_size", "[mongroup]" )
 {
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_start_of_game( calendar::start_of_game );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
+    calendar::turn = time_point( 1 );
     const int iters = 100;
-    calendar::turn += 1_turns;
 
     SECTION( "Nested group pack size used as-is" ) {
         mongroup_id mg( "test_top_level_no_packsize" );
@@ -276,6 +290,13 @@ TEST_CASE( "Nested_monster_group_pack_size", "[mongroup]" )
 
 TEST_CASE( "mongroup_sets_quantity_correctly", "[mongroup]" )
 {
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_start_of_game( calendar::start_of_game );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
+    calendar::turn = time_point( 1 );
+
     mongroup_id mg = GENERATE( GROUP_PET_DOGS, GROUP_PETS );
     CAPTURE( mg );
 
@@ -294,6 +315,9 @@ static void test_multi_spawn( const mtype_id &old_mon, int range, int min, int m
     const int upgrade_attempts = 100;
     clear_avatar();
     // make sure tested scenarios haven't messed with our start time
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_start_of_game( calendar::start_of_game );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
     calendar::start_of_cataclysm = calendar::turn_zero;
     calendar::start_of_game = calendar::turn_zero;
 

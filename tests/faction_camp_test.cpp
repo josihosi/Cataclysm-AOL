@@ -45,6 +45,9 @@
 #include "value_ptr.h"
 #include "weather.h"
 
+static const efftype_id effect_lying_down("lying_down");
+static const efftype_id effect_sleep("sleep");
+
 static const itype_id itype_9mm("9mm");
 static const itype_id itype_38_special("38_special");
 static const itype_id itype_38_speedloader("38_speedloader");
@@ -676,8 +679,44 @@ TEST_CASE("camp_patrol_worker_pool_uses_patrol_priority_surface",
   REQUIRE(workers.size() == 2);
   CHECK(workers[0].worker_id == high_priority_guard.getID());
   CHECK(workers[0].priority == 8);
+  CHECK(workers[0].duty_percent == 100);
   CHECK(workers[1].worker_id == mid_priority_guard.getID());
   CHECK(workers[1].priority == 4);
+  CHECK(workers[1].duty_percent == 100);
+}
+
+TEST_CASE("camp_patrol_worker_pool_limits_duty_for_competing_jobs",
+          "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+  static const activity_id ACT_MOVE_LOOT("ACT_MOVE_LOOT");
+
+  map &here = get_map();
+  const tripoint_abs_ms camp_abs = here.get_abs(tripoint_bub_ms{5, 5, 0});
+  basecamp test_camp("Patrol Camp", project_to<coords::omt>(camp_abs));
+
+  npc &dedicated_guard = spawn_npc(tripoint_bub_ms{6, 5, 0}.xy(), "thug");
+  npc &split_guard = spawn_npc(tripoint_bub_ms{7, 5, 0}.xy(), "thug");
+
+  REQUIRE(dedicated_guard.job.set_task_priority(ACT_CAMP_PATROL, 8));
+  REQUIRE(dedicated_guard.job.set_task_priority(ACT_MOVE_LOOT, 3));
+  REQUIRE(split_guard.job.set_task_priority(ACT_CAMP_PATROL, 2));
+  REQUIRE(split_guard.job.set_task_priority(ACT_MOVE_LOOT, 8));
+
+  test_camp.add_assignee(dedicated_guard.getID());
+  test_camp.add_assignee(split_guard.getID());
+
+  const std::vector<camp_patrol_worker> workers =
+      collect_camp_patrol_workers(test_camp.get_npcs_assigned());
+
+  REQUIRE(workers.size() == 2);
+  CHECK(workers[0].worker_id == dedicated_guard.getID());
+  CHECK(workers[0].duty_percent == 100);
+  CHECK(workers[1].worker_id == split_guard.getID());
+  CHECK(workers[1].duty_percent == 20);
 }
 
 TEST_CASE("camp_patrol_planner_contract", "[camp][patrol]") {
@@ -1169,6 +1208,118 @@ TEST_CASE("camp_patrol_worker_downtime_hides_routine_route_reports",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_patrol_only_blocks_other_jobs_during_active_runtime",
+          "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms worker_local{10, 10, 0};
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{12, 10, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(patrol_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+  test_camp->set_bb_pos(patrol_abs);
+
+  npc &worker = spawn_npc(worker_local.xy(), "thug");
+  worker.set_fac(your_fac);
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+  static const activity_id ACT_MOVE_LOOT("ACT_MOVE_LOOT");
+  REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 2));
+  REQUIRE(worker.job.set_task_priority(ACT_MOVE_LOOT, 8));
+  test_camp->add_assignee(worker.getID());
+
+  const time_point day_start = sunrise(calendar::turn_zero);
+  const time_duration shift_duration = sunset(calendar::turn_zero) - day_start;
+  const time_duration duty_duration =
+      std::max(camp_patrol_loop_dwell(), shift_duration * 20 / 100);
+
+  calendar::turn = day_start;
+  REQUIRE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  CHECK_FALSE(worker.find_job_to_perform());
+  CHECK(!worker.activity);
+
+  calendar::turn = day_start + duty_duration + 1_turns;
+  REQUIRE_FALSE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  CHECK(worker.find_job_to_perform());
+  CHECK(worker.activity.id() == ACT_MOVE_LOOT);
+
+  worker.activity.set_to_null();
+  REQUIRE(test_camp->raise_patrol_alarm(worker.getID(), 10_minutes));
+  REQUIRE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  CHECK_FALSE(worker.find_job_to_perform());
+  CHECK(!worker.activity);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_defers_routine_sleep_until_off_duty",
+          "[camp][patrol][sleep]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{12, 10, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(patrol_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+  test_camp->set_bb_pos(patrol_abs);
+
+  npc &worker = spawn_npc(tripoint_bub_ms{10, 10, 0}.xy(), "thug");
+  worker.set_fac(your_fac);
+  worker.set_mission(NPC_MISSION_CAMP_RESIDENT);
+  worker.rules.set_flag(ally_rule::allow_sleep);
+  worker.set_hunger(0);
+  worker.set_thirst(0);
+  worker.set_stored_kcal(worker.get_healthy_kcal());
+  worker.set_sleepiness(static_cast<int>(sleepiness_levels::TIRED) + 50);
+
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+  static const activity_id ACT_MOVE_LOOT("ACT_MOVE_LOOT");
+  REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 2));
+  REQUIRE(worker.job.set_task_priority(ACT_MOVE_LOOT, 8));
+  test_camp->add_assignee(worker.getID());
+
+  const time_point day_start = sunrise(calendar::turn_zero);
+  const time_duration shift_duration = sunset(calendar::turn_zero) - day_start;
+  const time_duration duty_duration =
+      std::max(camp_patrol_loop_dwell(), shift_duration * 20 / 100);
+
+  calendar::turn = day_start + 1_hours;
+  REQUIRE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  worker.set_moves(100);
+  npc_action active_action = worker.address_needs(0);
+  worker.execute_action(active_action);
+  CHECK_FALSE(worker.has_effect(effect_sleep));
+  CHECK_FALSE(worker.has_effect(effect_lying_down));
+
+  calendar::turn = day_start + duty_duration + 1_turns;
+  REQUIRE_FALSE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  worker.set_sleepiness(static_cast<int>(sleepiness_levels::TIRED) + 50);
+  worker.set_moves(100);
+  npc_action off_duty_action = worker.address_needs(0);
+  worker.execute_action(off_duty_action);
+  CHECK((worker.has_effect(effect_sleep) || worker.has_effect(effect_lying_down)));
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_patrol_runtime_contract", "[camp][patrol]") {
   clear_avatar();
   clear_map_without_vision();
@@ -1203,6 +1354,83 @@ TEST_CASE("camp_patrol_runtime_contract", "[camp][patrol]") {
                                                camp_patrol_loop_dwell());
     REQUIRE(second_runtime);
     CHECK(second_runtime->target == clusters[1][0]);
+  }
+
+  SECTION("low-priority patrol only runs during its duty slice") {
+    const std::vector<camp_patrol_worker> workers = {{character_id(806), 2, 20}};
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{18, 22, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+    REQUIRE(plan.day.active_guards.size() == 1);
+    CHECK(plan.day.active_guards[0].duty_percent == 20);
+
+    const time_point day_start = sunrise(calendar::turn_zero);
+    const time_duration shift_duration =
+        sunset(calendar::turn_zero) - day_start;
+    const time_duration duty_duration =
+        std::max(camp_patrol_loop_dwell(), shift_duration * 20 / 100);
+
+    const std::optional<camp_patrol_guard_runtime> duty_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(806),
+                                           day_start);
+    REQUIRE(duty_runtime);
+    CHECK(duty_runtime->target == clusters[0][0]);
+
+    const std::optional<camp_patrol_guard_runtime> after_duty_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(806),
+                                           day_start + duty_duration + 1_turns);
+    CHECK_FALSE(after_duty_runtime);
+  }
+
+  SECTION("limited-duty guards split their patrol windows") {
+    const std::vector<camp_patrol_worker> workers = {
+        {character_id(808), 2, 20},
+        {character_id(900), 2, 20},
+        {character_id(809), 2, 20},
+    };
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{20, 22, 0}}),
+        make_patrol_cluster(here, {{21, 22, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+    REQUIRE(plan.day.active_guards.size() == 2);
+    CHECK(plan.day.active_guards[0].duty_slots == 2);
+    CHECK(plan.day.active_guards[1].duty_slots == 2);
+
+    const time_point day_start = sunrise(calendar::turn_zero);
+    const time_point day_end = sunset(calendar::turn_zero);
+    const time_duration shift_duration = day_end - day_start;
+    const time_duration duty_duration =
+        std::max(camp_patrol_loop_dwell(), shift_duration * 20 / 100);
+    const time_point late_duty_start = day_end - duty_duration;
+
+    CHECK(describe_camp_patrol_guard_runtime(plan.day, character_id(808),
+                                             day_start));
+    CHECK_FALSE(describe_camp_patrol_guard_runtime(plan.day, character_id(809),
+                                                  day_start));
+    CHECK_FALSE(describe_camp_patrol_guard_runtime(plan.day, character_id(808),
+                                                  late_duty_start));
+    CHECK(describe_camp_patrol_guard_runtime(plan.day, character_id(809),
+                                             late_duty_start));
+  }
+
+  SECTION("dedicated patrol remains active for the whole shift") {
+    const std::vector<camp_patrol_worker> workers = {{character_id(807), 9, 100}};
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{19, 22, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+    const time_point day_start = sunrise(calendar::turn_zero);
+    const time_point day_end = sunset(calendar::turn_zero);
+
+    CHECK(describe_camp_patrol_guard_runtime(plan.day, character_id(807),
+                                             day_start));
+    CHECK(describe_camp_patrol_guard_runtime(plan.day, character_id(807),
+                                             day_end - 1_turns));
   }
 
   SECTION("one guard loops an understaffed connected cluster") {
@@ -7850,6 +8078,9 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
     listener.mission = NPC_MISSION_GUARD_PATROL;
+    CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.mission = NPC_MISSION_CAMP_RESIDENT;
     CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
     listener.mission = NPC_MISSION_NULL;

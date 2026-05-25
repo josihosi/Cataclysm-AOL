@@ -84,6 +84,7 @@
 #include "mtype.h"
 #include "npc.h"
 #include "npc_attack.h"
+#include "npc_class.h"
 #include "character_oracle.h"
 #include "npc_opinion.h"
 #include "npctalk.h"
@@ -428,6 +429,32 @@ static const vehicle *player_moving_vehicle_for_follow()
     return veh.velocity != 0 ? &veh : nullptr;
 }
 
+static bool scheduled_npc_is_off_shift( const npc &who )
+{
+    if( who.myclass.is_null() ) {
+        return false;
+    }
+    const auto &[shift_start, shift_end] = who.myclass.obj().get_work_hours();
+    if( shift_start == 0 && shift_end == 24 ) {
+        return false;
+    }
+    const int hour = to_hours<int>( time_past_midnight( calendar::turn ) );
+    return !is_within_work_hours( hour, shift_start, shift_end );
+}
+
+static bool npc_has_active_camp_patrol_runtime( const npc &who )
+{
+    if( !who.assigned_camp || who.job.get_priority_of_job( ACT_CAMP_PATROL ) <= 0 ) {
+        return false;
+    }
+    if( const std::optional<basecamp *> camp =
+            overmap_buffer.find_camp( who.assigned_camp->xy() );
+        camp && *camp ) {
+        return ( *camp )->get_current_patrol_runtime( who.getID(), calendar::turn ).has_value();
+    }
+    return false;
+}
+
 static const char *legacy_need_name( const npc::need_goal_id id )
 {
     switch( id ) {
@@ -469,6 +496,9 @@ static bool clear_shot_reach(const tripoint_bub_ms &from,
 
   return true;
 }
+
+static float directional_threat( const std::array<float, npc_threat_dir.size()> &threat_map,
+                                 direction dir );
 
 tripoint_bub_ms npc::good_escape_direction(bool include_pos) {
   map &here = get_map();
@@ -595,7 +625,7 @@ tripoint_bub_ms npc::good_escape_direction(bool include_pos) {
     int num_points_searched = 1;
     for( direction pt_dir : npc_threat_dir ) {
         const tripoint_bub_ms pt = pos_bub() + displace_XY( pt_dir );
-    float cur_rating = rate_pt(pt, ai_cache.threat_map[pt_dir]);
+    float cur_rating = rate_pt( pt, directional_threat( ai_cache.threat_map, pt_dir ) );
     adj_map[pt_dir] = cur_rating;
     if (cur_rating == best_rating) {
       add_msg_debug(
@@ -957,6 +987,32 @@ static bool too_close(const tripoint_bub_ms &critter_pos,
   return rl_dist(critter_pos, ally_pos) <= def_radius;
 }
 
+static size_t npc_threat_index( const direction dir )
+{
+    for( size_t i = 0; i < npc_threat_dir.size(); ++i ) {
+        if( npc_threat_dir[i] == dir ) {
+            return i;
+        }
+    }
+    return npc_threat_dir.size();
+}
+
+static float directional_threat( const std::array<float, npc_threat_dir.size()> &threat_map,
+                                 const direction dir )
+{
+    const size_t index = npc_threat_index( dir );
+    return index < threat_map.size() ? threat_map[index] : 0.0f;
+}
+
+static void add_directional_threat( std::array<float, npc_threat_dir.size()> &threat_map,
+                                    const direction dir, const float value )
+{
+    const size_t index = npc_threat_index( dir );
+    if( index < threat_map.size() ) {
+        threat_map[index] += value;
+    }
+}
+
 std::optional<int>
 npc_short_term_cache::closest_enemy_to_friendly_distance() const {
   int distance = INT_MAX;
@@ -1016,7 +1072,7 @@ void npc::assess_danger() {
   basecamp *camp_patrol_response_camp = nullptr;
   if( assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 ) {
     if( std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
-        camp && *camp && ( *camp )->has_patrol_zone() ) {
+        camp && *camp && ( *camp )->get_current_patrol_runtime( getID(), calendar::turn ) ) {
       camp_patrol_response_camp = *camp;
     }
   }
@@ -1081,10 +1137,10 @@ void npc::assess_danger() {
 
         return true;
     };
-    std::map<direction, float> cur_threat_map;
+    std::array<float, npc_threat_dir.size()> cur_threat_map = {};
     // start with a decayed version of last turn's map
-    for( direction threat_dir : npc_threat_dir ) {
-        cur_threat_map[ threat_dir ] = 0.25f * ai_cache.threat_map[ threat_dir ];
+    for( size_t i = 0; i < npc_threat_dir.size(); ++i ) {
+        cur_threat_map[i] = 0.25f * ai_cache.threat_map[i];
     }
   // cache string_id -> int_id conversion before hot loop
   const field_type_id fd_fire = ::fd_fire;
@@ -1097,8 +1153,8 @@ void npc::assess_danger() {
       continue;
     }
     int dist = rl_dist(pos_bub(), pt);
-    cur_threat_map[direction_from(pos_bub(), pt)] +=
-        2.0f * (NPC_MONSTER_DANGER_MAX - dist);
+    add_directional_threat( cur_threat_map, direction_from( pos_bub(), pt ),
+                            2.0f * ( NPC_MONSTER_DANGER_MAX - dist ) );
     if (dist < 3 && !has_effect(effect_npc_fire_bad)) {
       warn_about("fire_bad", 1_minutes);
       add_effect(effect_npc_fire_bad, 5_turns);
@@ -1140,8 +1196,8 @@ void npc::assess_danger() {
   }
     if( is_friendly( player_character ) && sees_player ) {
         ai_cache.friends.emplace_back( g->shared_from( player_character ) );
-    } else if( sees_player && is_enemy() && sees( here, player_character ) ) {
-        // Unlike allies, hostile npcs should not see invisible players
+    } else if( sees_player && guaranteed_hostile() && sees( here, player_character ) ) {
+        // Includes faction hostility, not just the attitude enum.
         ai_cache.hostile_guys.emplace_back( g->shared_from( player_character ) );
     }
 
@@ -1271,7 +1327,8 @@ void npc::assess_danger() {
     if( camp_patrol_response ) {
       priority = std::max( priority, critter_threat );
     }
-    cur_threat_map[direction_from(pos_bub(), critter.pos_bub())] += priority;
+    add_directional_threat( cur_threat_map, direction_from( pos_bub(), critter.pos_bub() ),
+                            priority );
         if( priority > highest_priority ) {
             highest_priority = priority;
             ai_cache.target = g->shared_from( critter );
@@ -1335,7 +1392,8 @@ void npc::assess_danger() {
       if( camp_patrol_response ) {
         priority = std::max( priority, foe_threat );
       }
-      cur_threat_map[direction_from(pos_bub(), foe.pos_bub())] += priority;
+      add_directional_threat( cur_threat_map, direction_from( pos_bub(), foe.pos_bub() ),
+                              priority );
       if (priority > highest_priority) {
         warn_about(warning, 1_minutes);
                 highest_priority = priority;
@@ -1384,16 +1442,17 @@ void npc::assess_danger() {
                 name, mem_combat.assess_ally);
 
   if (sees_player) {
+    const bool player_is_hostile = is_enemy() || guaranteed_hostile();
     // Mod for the player's danger level, weight it higher if player is very
     // close When the player is almost adjacent, it can exceed max danger
     // ratings, so the NPC will try hard not to break and run while in
     // formation. This code should eventually remove the 'player' special case
     // and be applied to whoever the NPC perceives as their closest leader.
     float player_diff =
-        std::max(evaluate_character(player_character, npc_ranged, is_enemy()),
+        std::max(evaluate_character(player_character, npc_ranged, player_is_hostile),
                  NPC_DANGER_VERY_LOW);
     int dist = rl_dist(pos_bub(), player_character.pos_bub());
-    if (is_enemy()) {
+    if (player_is_hostile) {
       add_msg_debug(debugmode::DF_NPC_COMBATAI,
                     "<color_light_gray>%s identified player as an</color> "
                     "<color_red>enemy</color> <color_light_gray>of threat "
@@ -1491,13 +1550,11 @@ void npc::assess_danger() {
                   mem_combat.assess_enemy, mem_combat.assess_ally);
   }
   // update the threat cache
-  for (size_t i = 0; i < 8; i++) {
-    direction threat_dir = npc_threat_dir[i];
-    direction dir_right = npc_threat_dir[(i + 1) % 8];
-    direction dir_left = npc_threat_dir[(i + 7) % 8];
-    ai_cache.threat_map[threat_dir] =
-        cur_threat_map[threat_dir] +
-        0.1f * (cur_threat_map[dir_right] + cur_threat_map[dir_left]);
+  for (size_t i = 0; i < npc_threat_dir.size(); i++) {
+    ai_cache.threat_map[i] =
+        cur_threat_map[i] +
+        0.1f * ( cur_threat_map[( i + 1 ) % npc_threat_dir.size()] +
+                 cur_threat_map[( i + npc_threat_dir.size() - 1 ) % npc_threat_dir.size()] );
   }
   if (mem_combat.assess_enemy <= 2.0f) {
     ai_cache.danger_assessment =
@@ -1651,10 +1708,14 @@ void npc::regen_ai_cache() {
   map &here = get_map();
   auto i = std::begin(ai_cache.sound_alerts);
   creature_tracker &creatures = get_creature_tracker();
-    if( has_trait( trait_RETURN_TO_START_POS ) ) {
-        if( !ai_cache.guard_pos ) {
-            ai_cache.guard_pos = pos_abs();
+    if( has_trait( trait_RETURN_TO_START_POS ) &&
+        mission != NPC_MISSION_CAMP_RESIDENT ) {
+        if( !guard_pos ) {
+            guard_pos = pos_abs();
         }
+    }
+    if( !ai_cache.guard_pos && guard_pos ) {
+        ai_cache.guard_pos = guard_pos;
     }
   while (i != std::end(ai_cache.sound_alerts)) {
     if (sees(here, here.get_bub(tripoint_abs_ms(i->abs_pos)))) {
@@ -2179,6 +2240,15 @@ void npc::move() {
         return;
     }
     act_on_danger_assessment();
+    // Forage/harvest activities skip BT re-evaluation to prevent backlog
+    // flooding, but must yield to danger so the NPC can fight or flee.
+    if( activity.id() == ACT_FORAGE || activity.id() == ACT_HARVEST ) {
+        if( ai_cache.danger <= NPC_DANGER_VERY_LOW ) {
+            execute_action( npc_player_activity );
+            return;
+        }
+        cancel_activity();
+    }
     npc_action action = npc_undecided;
 
     apply_llm_intent_target();
@@ -2495,8 +2565,9 @@ void npc::move() {
             }
         }
 
+        const bool scheduled_off_shift = scheduled_npc_is_off_shift( *this );
         if( action == npc_undecided ) {
-            if( bt_goal == "return_to_guard_pos" ) {
+            if( bt_goal == "return_to_guard_pos" && !scheduled_off_shift ) {
                 if( const std::optional<tripoint_abs_ms> post = get_effective_guard_pos() ) {
                     ai_cache.guard_pos = *post;
                     action = npc_return_to_guard_pos;
@@ -2543,7 +2614,8 @@ void npc::move() {
       print_action("address_player %s", action);
     }
     if (action == npc_undecided && ai_cache.sound_alerts.empty() &&
-        ai_cache.guard_pos && !has_flag(json_flag_CANNOT_MOVE)) {
+        ai_cache.guard_pos && !has_flag(json_flag_CANNOT_MOVE) &&
+        !scheduled_off_shift) {
       tripoint_abs_ms return_guard_pos = *ai_cache.guard_pos;
       add_msg_debug(debugmode::DF_NPC,
                     "NPC %s: returning to guard spot at x(%d) y(%d)",
@@ -3673,6 +3745,29 @@ healing_options npc::patient_assessment(const Character &c) {
 }
 
 npc_action npc::address_needs(float danger) {
+    // Activities assigned here are self-initiated (the NPC addressing its own
+    // needs), not player-assigned tasks. assign_activity() unconditionally sets
+    // NPCATT_ACTIVITY, which causes "completed the assigned task" spam and
+    // disrupts the BT. Save and restore around any activity we pick up.
+    const npc_attitude saved_attitude = attitude;
+    const npc_mission saved_mission = mission;
+    const auto self_activity = [&]() -> npc_action {
+        attitude = saved_attitude;
+        mission = saved_mission;
+        return npc_player_activity;
+    };
+
+    bool needs_warmth = false;
+    {
+        behavior::character_oracle_t oracle( this );
+        needs_warmth = oracle.needs_warmth_badly( "" ) == behavior::status_t::running;
+        if( needs_warmth ) {
+            add_msg_debug( debugmode::DF_NPC_NEEDS,
+                           "NPC %s: needs warmth (trying wear, ground wear, shelter)",
+                           get_name() );
+        }
+    }
+
   map &here = get_map();
 
   Character &player_character = get_player_character();
@@ -3745,14 +3840,49 @@ npc_action npc::address_needs(float danger) {
         }
     }
 
+    // TODO: remove warmth from address_needs once hold_position and idle
+    // route through the executor path.  Currently kept as a safety net for
+    // NPCs that reach address_needs through hold_position / idle dispatch.
+    // Warmth: wearing clothes costs a turn but hypothermia is life-threatening.
+    // Before danger gate, like extreme food.
+    if( needs_warmth && wear_warmest_item() ) {
+        return npc_noop;
+    }
+    // Warmth: adjacent ground clothing, instant (no movement).
+    if( needs_warmth ) {
+        for( scored_item &c : find_nearby_warm_clothing() ) {
+            if( square_dist( pos_bub(), c.loc.pos_bub( here ) ) <= 1 ) {
+                if( wear_item_at( c.loc ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+    }
+
     // Extreme thirst or hunger, bypass safety check.
-    if( get_thirst() > 80 ||
-        get_stored_kcal() + stomach.get_calories() < get_healthy_kcal() * 0.75 ) {
+    if( needs_food() && ( get_thirst() > 80 ||
+                          get_stored_kcal() + stomach.get_calories() < get_healthy_kcal() * 0.75 ) ) {
         if( consume_food_from_camp() ) {
             return npc_noop;
         }
         if( consume_food() ) {
             return npc_noop;
+        }
+        // Adjacent ground food, instant.
+        for( scored_item &c : find_nearby_food() ) {
+            if( square_dist( pos_bub(), c.loc.pos_bub( here ) ) <= 1 ) {
+                if( consume_food_at( c.loc ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+        // Adjacent water terrain, instant.
+        for( scored_water_source &ws : find_nearby_water_sources() ) {
+            if( square_dist( pos_bub(), ws.pos ) <= 1 ) {
+                if( drink_from_water_source( ws.pos ) ) {
+                    return npc_noop;
+                }
+            }
         }
     }
     //Hallucinations have a chance of disappearing each turn
@@ -3764,13 +3894,95 @@ npc_action npc::address_needs(float danger) {
         return npc_undecided;
     }
 
-    if( one_in( 3 ) && ( get_thirst() > NPC_THIRST_CONSUME ||
-                         get_hunger() > NPC_HUNGER_CONSUME ) ) {
+    // Warmth: shelter requires movement, only safe at low danger.
+    if( needs_warmth && take_shelter_nearby() ) {
+        return npc_noop;
+    }
+    // Warmth: path to distant ground clothing.
+    if( needs_warmth ) {
+        for( scored_item &c : find_nearby_warm_clothing() ) {
+            if( move_to_and_verify( c.loc.pos_bub( here ) ) ) {
+                return npc_noop;
+            }
+        }
+    }
+
+    // Extreme food/water pathing: the pre-gate block only consumed adjacent
+    // resources. If extreme need persists and we passed the danger gate,
+    // path to distant ground food or water deterministically.
+    if( needs_food() && ( get_thirst() > 80 ||
+                          get_stored_kcal() + stomach.get_calories() < get_healthy_kcal() * 0.75 ) ) {
+        for( scored_item &c : find_nearby_food() ) {
+            if( square_dist( pos_bub(), c.loc.pos_bub( here ) ) <= 1 ) {
+                if( consume_food_at( c.loc ) ) {
+                    return npc_noop;
+                }
+            } else {
+                if( move_to_and_verify( c.loc.pos_bub( here ) ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+        for( scored_water_source &ws : find_nearby_water_sources() ) {
+            if( square_dist( pos_bub(), ws.pos ) <= 1 ) {
+                if( drink_from_water_source( ws.pos ) ) {
+                    return npc_noop;
+                }
+            } else {
+                if( move_to_and_verify( ws.pos ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+        // Last resort: harvest scavenging (forage underbrush, harvest plants).
+        for( const scored_water_source &h : find_nearby_harvestable( true ) ) {
+            if( square_dist( pos_bub(), h.pos ) <= 1 ) {
+                here.examine( *this, h.pos );
+                return activity ? self_activity() : npc_noop;
+            } else if( move_to_and_verify( h.pos ) ) {
+                return npc_noop;
+            }
+        }
+    }
+
+    if( needs_food() && one_in( 3 ) && ( get_thirst() > NPC_THIRST_CONSUME ||
+                                         get_hunger() > NPC_HUNGER_CONSUME ) ) {
         if( consume_food_from_camp() ) {
             return npc_noop;
         }
         if( consume_food() ) {
             return npc_noop;
+        }
+        for( scored_item &c : find_nearby_food() ) {
+            if( square_dist( pos_bub(), c.loc.pos_bub( here ) ) <= 1 ) {
+                if( consume_food_at( c.loc ) ) {
+                    return npc_noop;
+                }
+            } else {
+                if( move_to_and_verify( c.loc.pos_bub( here ) ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+        for( scored_water_source &ws : find_nearby_water_sources() ) {
+            if( square_dist( pos_bub(), ws.pos ) <= 1 ) {
+                if( drink_from_water_source( ws.pos ) ) {
+                    return npc_noop;
+                }
+            } else {
+                if( move_to_and_verify( ws.pos ) ) {
+                    return npc_noop;
+                }
+            }
+        }
+        // Last resort: harvest scavenging (same as extreme path).
+        for( const scored_water_source &h : find_nearby_harvestable( true ) ) {
+            if( square_dist( pos_bub(), h.pos ) <= 1 ) {
+                here.examine( *this, h.pos );
+                return activity ? self_activity() : npc_noop;
+            } else if( move_to_and_verify( h.pos ) ) {
+                return npc_noop;
+            }
         }
     }
 
@@ -3782,7 +3994,7 @@ npc_action npc::address_needs(float danger) {
         if( !activity ) {
             assign_activity( pulp_activity_actor( *pulp_location ) );
         }
-        return npc_player_activity;
+        return self_activity();
     } else if( find_corpse_to_pulp() ) {
         move_to_next();
         return npc_noop;
@@ -3794,6 +4006,10 @@ npc_action npc::address_needs(float danger) {
 
     const auto could_sleep = [&]() {
         if( danger <= 0.01 ) {
+            if( npc_has_active_camp_patrol_runtime( *this ) &&
+                get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS ) {
+                return false;
+            }
             if( get_sleepiness() >= sleepiness_levels::TIRED ) {
                 return true;
             }
@@ -3807,9 +4023,7 @@ npc_action npc::address_needs(float danger) {
     // TODO: More risky attempts at sleep when exhausted
     if( could_sleep() ) {
         if( !is_player_ally() ) {
-            // TODO: Make tired NPCs handle sleep offscreen
-            set_sleepiness( 0 );
-            return npc_undecided;
+            return npc_sleep;
         }
 
         if( rules.has_flag( ally_rule::allow_sleep ) ||
@@ -4586,7 +4800,8 @@ bool npc::find_job_to_perform() {
         if( elem != ACT_CAMP_PATROL && assigned_camp ) {
             if( std::optional<basecamp *> camp =
                     overmap_buffer.find_camp( assigned_camp->xy() );
-                camp && *camp && ( *camp )->is_worker_on_patrol_shift( *this ) ) {
+                camp && *camp &&
+                ( *camp )->get_current_patrol_runtime( getID(), calendar::turn ) ) {
                 continue;
             }
         }
@@ -7067,7 +7282,7 @@ bool npc::complain() {
 
   // Hunger every 3-6 hours
   // Since NPCs can't starve to death, respect the rules
-  if (get_hunger() > NPC_HUNGER_COMPLAIN &&
+  if (needs_food() && get_hunger() > NPC_HUNGER_COMPLAIN &&
       complain_about(
           hunger_string,
           std::max(3_hours, time_duration::from_minutes(60 * 8 - get_hunger())),
@@ -7077,7 +7292,7 @@ bool npc::complain() {
 
   // Thirst every 2 hours
   // Since NPCs can't dry to death, respect the rules
-  if (get_thirst() > NPC_THIRST_COMPLAIN &&
+  if (needs_food() && get_thirst() > NPC_THIRST_COMPLAIN &&
       complain_about(thirst_string, 2_hours,
                      chat_snippets().snip_thirsty.translated())) {
     return true;

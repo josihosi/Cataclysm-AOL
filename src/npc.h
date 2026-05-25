@@ -565,7 +565,7 @@ struct npc_short_term_cache {
     std::vector<weak_ptr_fast<Creature>> neutral_guys;
     std::vector<weak_ptr_fast<Creature>> friends;
     std::vector<sphere> dangerous_explosives;
-    std::map<direction, float> threat_map;
+    std::array<float, npc_threat_dir.size()> threat_map = {};
     // BT goal commitment: persists across turns until completed or
     // overridden by a higher-priority goal. Empty = no commitment.
     std::string committed_goal;

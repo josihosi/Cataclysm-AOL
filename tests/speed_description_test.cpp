@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "cata_catch.h"
+#include "map_helpers.h"
 #include "monster.h"
 #include "mtype.h"
 #include "player_helpers.h"
@@ -25,6 +26,7 @@ TEST_CASE( "monster_speed_description", "[monster][speed_description]" )
      * That means their tiles per turn is 100 / 116 == 0.86206896551
      * The tiles per turn ratio is monster_ratio / player_ratio
      */
+    clear_map_without_vision();
 
     auto get_speed_string = []( const mtype_id & mon_id ) {
         clear_avatar();

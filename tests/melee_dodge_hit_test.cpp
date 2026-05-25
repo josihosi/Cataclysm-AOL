@@ -244,6 +244,7 @@ TEST_CASE( "player_get_dodge_with_effects", "[player][melee][dodge][effect]" )
     avatar &dummy = get_avatar();
     clear_character( dummy );
     dodge_base_with_dex_and_skill( dummy, 8, 4 );
+    dummy.set_dodges_left( 1 );
 
     // Compare all effects against base dodge ability
     const float base_dodge = dummy.get_dodge_base();
@@ -303,6 +304,7 @@ TEST_CASE( "player_get_dodge_stamina_effects", "[player][melee][dodge][stamina]"
     avatar &dummy = get_avatar();
     clear_character( dummy );
     dodge_base_with_dex_and_skill( dummy, 8, 0 );
+    dummy.set_dodges_left( 1 );
 
     SECTION( "8/8/8/8, no skills, unencumbered" ) {
         const int stamina_max = dummy.get_stamina_max();

@@ -123,16 +123,14 @@ TEST_CASE( "light_and_fine_detail_vision_mod", "[character][sight][light][vision
 
 TEST_CASE( "npc_light_and_fine_detail_vision_mod", "[character][npc][sight][light][vision]" )
 {
-    g->place_player( { 66, 66, 0 } );
-    Character &u = get_player_character();
-    shared_ptr_fast<npc> guy = make_shared_fast<npc>();
-    overmap_buffer.insert_npc( guy );
-    g->load_npcs();
-    npc &n = *guy;
-    n.set_body();
-
     clear_avatar();
     clear_map_without_vision();
+    map &here = get_map();
+    Character &u = get_player_character();
+    u.setpos( here, tripoint_bub_ms( 66, 66, 0 ) );
+    npc &n = spawn_npc( u.pos_bub().xy() + point::east, "thug" );
+    n.set_body();
+
     tripoint const u_shift = GENERATE( tripoint::zero, tripoint::above );
     CAPTURE( u_shift );
     // Allow player to float for purpose of purely testing this and not factoring in terrain potentially blocking vision etc
@@ -362,4 +360,3 @@ TEST_CASE( "ursine_vision", "[character][ursine][vision]" )
         }
     }
 }
-

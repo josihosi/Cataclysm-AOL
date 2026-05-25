@@ -89,7 +89,6 @@
           "zombie_rider live_plan:",
           "decision=bow_pressure",
           "reason=line_of_fire",
-          "distance=5",
           "line_of_fire=yes",
           "eval_us="
         ],

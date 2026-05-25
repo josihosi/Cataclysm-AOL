@@ -279,9 +279,7 @@ npc::npc()
 
     *path_settings = pathfinding_settings( {}, 1000, 1000, 10, true, true, true, true, false, true,
                                            get_size() );
-    for( direction threat_dir : npc_threat_dir ) {
-        ai_cache.threat_map[ threat_dir ] = 0.0f;
-    }
+    ai_cache.threat_map.fill( 0.0f );
 }
 
 std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
@@ -2082,7 +2080,7 @@ npc_opinion npc::get_opinion_values( const Character &you ) const
     npc_values.fear += ( you.get_str_base() / 4 ) - 2;
 
     // is your health low
-    for( const std::pair<const bodypart_str_id, bodypart> &elem : get_player_character().get_body() ) {
+    for( const std::pair<const bodypart_str_id, bodypart> &elem : you.get_body() ) {
         const int hp_max = elem.second.get_hp_max();
         const int hp_cur = elem.second.get_hp_cur();
         if( hp_cur <= hp_max / 2 ) {
@@ -3722,7 +3720,7 @@ void npc::reboot()
     ai_cache.my_weapon_value = 0;
     ai_cache.friends.clear();
     ai_cache.dangerous_explosives.clear();
-    ai_cache.threat_map.clear();
+    ai_cache.threat_map.fill( 0.0f );
     ai_cache.searched_tiles.clear();
     activity = player_activity();
     clear_destination();
@@ -4816,4 +4814,3 @@ std::unique_ptr<talker> get_talker_for( npc *guy )
 {
     return std::make_unique<talker_npc>( guy );
 }
-

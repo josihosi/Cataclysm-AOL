@@ -1954,13 +1954,22 @@ void npc::handle_sound( const sounds::sound_t spriority, const std::string &desc
             return;
         }
     }
-    // patrolling guards will investigate more readily than stationary NPCS
+    const bool camp_patrol_investigates_noise = [&]() {
+        if( mission != NPC_MISSION_GUARD_PATROL || !assigned_camp ||
+            job.get_priority_of_job( ACT_CAMP_PATROL ) <= 0 ) {
+            return false;
+        }
+        if( const std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
+            camp && *camp ) {
+            return ( *camp )->get_current_patrol_runtime( getID(), calendar::turn ).has_value();
+        }
+        return false;
+    }();
+    // Patrolling guards will investigate more readily than stationary NPCs.
     int investigate_dist = 10;
-    if( mission == NPC_MISSION_GUARD_ALLY || mission == NPC_MISSION_GUARD_PATROL ) {
+    if( mission == NPC_MISSION_GUARD_ALLY || camp_patrol_investigates_noise ) {
         investigate_dist = 50;
     }
-    const bool camp_patrol_investigates_noise = mission == NPC_MISSION_GUARD_PATROL &&
-            assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0;
     if( rules.has_flag( ally_rule::ignore_noise ) && !camp_patrol_investigates_noise ) {
         investigate_dist = 0;
     }

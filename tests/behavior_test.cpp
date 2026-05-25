@@ -1,3 +1,4 @@
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
@@ -1904,7 +1905,21 @@ TEST_CASE( "bt_camp_resident_goals", "[npc][behavior]" )
         CHECK( bt_goal( guy ) != "free_time" );
     }
     SECTION( "away from camp: return_to_camp" ) {
-        guy.setpos( here, tripoint_bub_ms( 50 + SEEX * 2, 50, 0 ) );
+        std::optional<tripoint_bub_ms> away_local;
+        for( const tripoint &dir : std::array<tripoint, 4> {
+                 tripoint::east, tripoint::west, tripoint::north, tripoint::south
+             } ) {
+            const tripoint_abs_omt away_omt = camp_omt + dir;
+            const tripoint_abs_ms away_center =
+                project_to<coords::ms>( away_omt ) + tripoint{ SEEX, SEEY, 0 };
+            const tripoint_bub_ms candidate = here.get_bub( away_center );
+            if( here.inbounds( candidate ) ) {
+                away_local = candidate;
+                break;
+            }
+        }
+        REQUIRE( away_local );
+        guy.setpos( here, *away_local );
         REQUIRE( guy.pos_abs_omt() != *guy.assigned_camp );
         CHECK( bt_goal( guy ) == "return_to_camp" );
     }

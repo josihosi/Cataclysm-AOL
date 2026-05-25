@@ -1,0 +1,79 @@
+{
+  "name": "manual.intact_camp_shakedown_mcw",
+  "description": "Manual playtest handoff: intact McWilliams camp with armed camp NPCs and nearby active bandit shakedown pressure staged. The harness only loads the save and audits footing; it sends no gameplay keys after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "theme_intact_camp_shakedown_fight_v0_2026-05-18",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "local_gate site=overmap_special:bandit_camp@140,51,0",
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "shakedown_surface"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_manual_intact_camp_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "manual handoff loads onto the intact camp map before the tester advances time or chooses any branch"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_manual_intact_camp_armed_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true,
+      "record_baseline": true,
+      "required_npcs": [
+        { "name": "Katharina Leach", "my_fac": "your_followers", "attitude": 3, "offset_ms": [16, 0, 0] },
+        { "name": "Robbie Knox", "my_fac": "your_followers", "attitude": 3, "offset_ms": [18, 2, 0] },
+        { "name": "Giuseppe Bachman", "my_fac": "your_followers", "attitude": 3, "offset_ms": [18, -2, 0] },
+        { "name": "Vance Gunderson", "my_fac": "hells_raiders", "max_abs_offset_ms": [35, 10, 0] }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_intact_actor_footing",
+      "abort_reason": "saved NPC metadata did not prove armed camp followers plus a nearby hostile raider for manual shakedown play"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_manual_intact_camp_bandit_pressure",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_job_type": "stalk",
+      "required_member_count": 8,
+      "required_active_outside_count": 1,
+      "required_min_active_member_ids": 1,
+      "required_active_members_found": true,
+      "required_active_member_max_abs_offset_ms": [35, 10, 0],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_manual_intact_bandit_footing",
+      "abort_reason": "saved bandit_live_world state did not prove one nearby hostile raider active for the manual shakedown scene"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.intact_camp_shakedown_mcw --compact-stdout",
+  "manual_playtest": {
+    "question": "Does an intact armed camp make the shakedown and Fight branch feel like a believable camp-defense scene?",
+    "tester_notes": [
+      "Advance time or move naturally until the bandit demand appears.",
+      "Try Pay once if you want to inspect the real trade surface, or choose Fight and watch whether camp NPCs commit sensibly.",
+      "Save after the outcome if you want metadata comparison on survivors and active bandit state."
+    ],
+    "metadata_to_check_after": [
+      "debug.log shakedown_surface and local_gate lines",
+      "saved overmap NPC survivor/duplicate state",
+      "saved bandit_live_world active group and site state"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from current staged intact-camp shakedown footing without harness gameplay input",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from tester play after handoff"
+  }
+}

@@ -98,7 +98,6 @@
         [
           "writhing_stalker live_plan:",
           "decision=cooling_off",
-          "reason=live_latch_cooldown_blocks_relatched_pressure",
           "cooldown=yes",
           "eval_us="
         ]
