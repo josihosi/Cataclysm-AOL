@@ -531,13 +531,21 @@ def choose_strategy(profile: str, explicit_world: str) -> Tuple[str, str, str, L
 
 def detect_executable() -> Path:
     root = repo_root()
-    for name in ("cataclysm-tlg-tiles", "cataclysm-tiles", "cataclysm-tlg-tiles.exe", "cataclysm-tiles.exe"):
+    for name in (
+        "Cataclysm-AOL",
+        "cataclysm-tlg-tiles",
+        "cataclysm-tiles",
+        "Cataclysm-AOL.exe",
+        "cataclysm-tlg-tiles.exe",
+        "cataclysm-tiles.exe",
+    ):
         path = root / name
         if path.exists() and os.access(path, os.X_OK):
             return path
     raise SystemExit(
         "Could not find a runnable game executable "
-        "(cataclysm-tlg-tiles, cataclysm-tiles, cataclysm-tlg-tiles.exe, or cataclysm-tiles.exe)."
+        "(Cataclysm-AOL, cataclysm-tlg-tiles, cataclysm-tiles, Cataclysm-AOL.exe, "
+        "cataclysm-tlg-tiles.exe, or cataclysm-tiles.exe)."
     )
 
 
@@ -6297,10 +6305,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
 
 def zzip_binary() -> Path:
-    path = repo_root() / "zzip"
-    if not path.exists():
-        raise SystemExit(f"Required repo zzip helper not found: {path}")
-    return path
+    helper_name = "zzip.exe" if os.name == "nt" else "zzip"
+    checked_paths = [repo_root() / helper_name]
+    for path in checked_paths:
+        if path.exists() and path.is_file() and (os.name == "nt" or os.access(path, os.X_OK)):
+            return path
+    checked = "\n".join(f"- {path}" for path in checked_paths)
+    raise SystemExit(
+        f"Required repo zzip helper not found or not executable for platform {sys.platform}.\n"
+        f"Checked paths:\n{checked}"
+    )
 
 
 def run_zzip(path: Path) -> None:
@@ -11787,6 +11801,302 @@ def run_repeatability(args: argparse.Namespace) -> int:
     return 0
 
 
+def scenario_contract_dict(
+    *,
+    profile: str,
+    world: str,
+    profile_snapshot: str,
+    profile_snapshot_profile: str,
+    fixture: str,
+    fixture_profile: str,
+    replace_existing_worlds: bool,
+    advance_count: int,
+    settle_seconds: float,
+    artifact_source: str,
+    artifact_patterns: List[str],
+    recommended_test_command: str,
+    steps: List[Dict[str, Any]],
+    capture_world_after: bool,
+    portal_storm_policy: Dict[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "profile": profile,
+        "world": world,
+        "profile_snapshot": profile_snapshot,
+        "profile_snapshot_profile": profile_snapshot_profile,
+        "fixture": fixture,
+        "fixture_profile": fixture_profile,
+        "replace_existing_worlds": replace_existing_worlds,
+        "advance_turns": advance_count,
+        "settle_seconds": settle_seconds,
+        "artifact_source": artifact_source,
+        "artifact_patterns": artifact_patterns,
+        "recommended_test_command": recommended_test_command,
+        "steps": steps,
+        "capture_world_after": capture_world_after,
+        "portal_storm_policy": portal_storm_policy,
+    }
+
+
+def run_launch_only_handoff(
+    args: argparse.Namespace,
+    *,
+    scenario: Dict[str, Any],
+    profile: str,
+    world: str,
+    fixture: str,
+    fixture_profile: str,
+    profile_snapshot: str,
+    profile_snapshot_profile: str,
+    replace_existing_worlds: bool,
+    advance_count: int,
+    settle_seconds: float,
+    artifact_source: str,
+    artifact_patterns: List[str],
+    recommended_test_command: str,
+    steps: List[Dict[str, Any]],
+    capture_world_after: bool,
+    portal_storm_policy: Dict[str, Any],
+    report_filename: str = "handoff.report.json",
+) -> int:
+    scenario_name = str(scenario.get("name", args.scenario))
+    contract = scenario_contract_dict(
+        profile=profile,
+        world=world,
+        profile_snapshot=profile_snapshot,
+        profile_snapshot_profile=profile_snapshot_profile,
+        fixture=fixture,
+        fixture_profile=fixture_profile,
+        replace_existing_worlds=replace_existing_worlds,
+        advance_count=advance_count,
+        settle_seconds=settle_seconds,
+        artifact_source=artifact_source,
+        artifact_patterns=artifact_patterns,
+        recommended_test_command=recommended_test_command,
+        steps=steps,
+        capture_world_after=capture_world_after,
+        portal_storm_policy=portal_storm_policy,
+    )
+
+    if args.dry_run:
+        zzip_path = zzip_binary()
+        plan = build_plan(profile, world, fixture)
+        print(json.dumps({
+            "ok": True,
+            "mode": "handoff",
+            "scenario": scenario,
+            "launch_only": True,
+            "dry_run": True,
+            "resolved_contract": contract,
+            "startup_plan": asdict(plan),
+            "zzip_helper": str(zzip_path),
+            "dry_run_contract": {
+                "profile_snapshot_install": "not_run_dry_run",
+                "fixture_install": "not_run_dry_run",
+                "launch": "not_run_dry_run",
+                "gui_automation": "not_required_launch_only",
+                "feature_proof": False,
+                "evidence_class": "plan-only",
+            },
+        }, indent=2, ensure_ascii=False))
+        return 0
+
+    profile_snapshot_result: Dict[str, Any] = {}
+    fixture_install_result: Dict[str, Any] = {}
+    run_dir: Optional[Path] = None
+    try:
+        if profile_snapshot:
+            profile_snapshot_result = install_profile_snapshot(
+                profile,
+                profile_snapshot,
+                snapshot_profile=profile_snapshot_profile,
+            )
+        if fixture:
+            fixture_install_result = install_fixture(
+                profile,
+                fixture,
+                replace=replace_existing_worlds,
+                fixture_profile=fixture_profile,
+            )
+        plan = build_plan(profile, world, fixture)
+        run_dir = Path(plan.run_dir)
+        write_json(run_dir / "plan.json", asdict(plan))
+        if world and plan.target_world != world:
+            report = {
+                "ok": False,
+                "mode": "handoff",
+                "scenario": scenario_name,
+                "profile": profile,
+                "world": world,
+                "fixture": fixture,
+                "reason": "target_world_not_found_after_fixture_install",
+                "contract": contract,
+                "startup": {
+                    "status": "not_launched",
+                    "launch_only": True,
+                    "plan": asdict(plan),
+                    "profile_snapshot": profile_snapshot_result,
+                    "fixture_install": fixture_install_result,
+                },
+                "verdict": "target_world_not_found_after_fixture_install",
+                "evidence_class": "setup",
+                "feature_proof": False,
+            }
+            finalize_probe_report(
+                run_dir,
+                report,
+                report_filename=report_filename,
+                compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            )
+            return 1
+        if not plan.target_world:
+            report = {
+                "ok": False,
+                "mode": "handoff",
+                "scenario": scenario_name,
+                "profile": profile,
+                "world": world,
+                "fixture": fixture,
+                "reason": "no_target_world_to_launch",
+                "contract": contract,
+                "startup": {
+                    "status": "not_launched",
+                    "launch_only": True,
+                    "plan": asdict(plan),
+                    "profile_snapshot": profile_snapshot_result,
+                    "fixture_install": fixture_install_result,
+                },
+                "verdict": "no_target_world_to_launch",
+                "evidence_class": "setup",
+                "feature_proof": False,
+            }
+            finalize_probe_report(
+                run_dir,
+                report,
+                report_filename=report_filename,
+                compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            )
+            return 1
+
+        ensure_dir(config_dir_for_profile(profile))
+        proc = launch_game(profile, plan.target_world, run_dir)
+        process = {
+            "pid": proc.pid,
+            "command": [plan.executable, "--userdir", f".userdata/{profile}/", "--world", plan.target_world],
+            "killed_previous_pids": [],
+            "launch_only": True,
+        }
+        write_json(run_dir / "process.json", process)
+        (run_dir / "handoff.pid").write_text(f"{proc.pid}\n", encoding="utf-8")
+
+        startup = {
+            "ok": True,
+            "status": "launched",
+            "launch_only": True,
+            "pid": proc.pid,
+            "profile": profile,
+            "world": plan.target_world,
+            "strategy": plan.strategy,
+            "reason": plan.reason,
+            "run_dir": str(run_dir),
+            "plan": asdict(plan),
+            "profile_snapshot": profile_snapshot_result,
+            "fixture_install": fixture_install_result,
+            "process": process,
+            "proof_classification": {
+                "evidence_class": "launch-only/manual-handoff",
+                "status": "green",
+                "verdict": "manual_handoff_started",
+                "feature_proof": False,
+                "rule": "Manual handoff prepares the save and launches the game without GUI proof automation.",
+            },
+            "evidence_class": "launch-only/manual-handoff",
+            "feature_proof": False,
+        }
+        write_json(run_dir / "startup.result.json", startup)
+        report = {
+            "ok": True,
+            "mode": "handoff",
+            "scenario": scenario_name,
+            "profile": profile,
+            "world": plan.target_world,
+            "fixture": fixture,
+            "contract": contract,
+            "startup": startup,
+            "screen": {
+                "status": "not_required_launch_only",
+                "before": {},
+                "after": {},
+            },
+            "steps": [
+                {
+                    "index": index,
+                    "kind": str(step.get("kind", "")).strip().lower(),
+                    "label": str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}",
+                    "status": "not_run_launch_only_manual_handoff",
+                }
+                for index, step in enumerate(steps, start=1)
+            ],
+            "tests": {
+                "status": "not_run",
+                "recommended_command": recommended_test_command,
+            },
+            "artifacts": {
+                "status": "not_required_launch_only",
+                "path": "",
+                "source_log": artifact_source,
+                "match_patterns": artifact_patterns,
+                "matches_by_pattern": [],
+                "matched_lines": [],
+                "line_count": 0,
+            },
+            "cleanup": {
+                "status": "deferred_handoff",
+                "pid": proc.pid,
+                "reason": "manual_playtest_handoff",
+            },
+            "handoff": {
+                "pid": proc.pid,
+                "run_dir": str(run_dir),
+                "report_path": str(run_dir / report_filename),
+            },
+            "run_dir": str(run_dir),
+            "report_path": str(run_dir / report_filename),
+            "verdict": "manual_handoff_started",
+            "evidence_class": "launch-only/manual-handoff",
+            "feature_proof": False,
+        }
+        finalize_probe_report(
+            run_dir,
+            report,
+            report_filename=report_filename,
+            compact_stdout=bool(getattr(args, "compact_stdout", False)),
+        )
+        return 0
+    except Exception as exc:
+        report = {
+            "ok": False,
+            "mode": "handoff",
+            "scenario": scenario_name,
+            "profile": profile,
+            "world": world,
+            "fixture": fixture,
+            "reason": "launch_only_handoff_failed",
+            "error": str(exc),
+            "contract": contract,
+            "verdict": "launch_only_handoff_failed",
+            "evidence_class": "setup",
+            "feature_proof": False,
+        }
+        finalize_probe_report(
+            run_dir,
+            report,
+            report_filename=report_filename,
+            compact_stdout=bool(getattr(args, "compact_stdout", False)),
+        )
+        return 1
+
+
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
     blocker_info = scenario_blocker_info(scenario)
@@ -11893,6 +12203,28 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         }
         finalize_probe_report(run_dir, report, report_filename=report_filename)
         return 2
+
+    if handoff and bool(getattr(args, "launch_only", False)):
+        return run_launch_only_handoff(
+            args,
+            scenario=scenario,
+            profile=profile,
+            world=world,
+            fixture=fixture,
+            fixture_profile=fixture_profile,
+            profile_snapshot=profile_snapshot,
+            profile_snapshot_profile=profile_snapshot_profile,
+            replace_existing_worlds=replace_existing_worlds,
+            advance_count=advance_count,
+            settle_seconds=settle_seconds,
+            artifact_source=artifact_source,
+            artifact_patterns=artifact_patterns,
+            recommended_test_command=recommended_test_command,
+            steps=steps,
+            capture_world_after=capture_world_after,
+            portal_storm_policy=portal_storm_policy,
+            report_filename=report_filename,
+        )
 
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
     if world:
@@ -12379,6 +12711,7 @@ def build_parser() -> argparse.ArgumentParser:
     handoff_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
     handoff_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
     handoff_p.add_argument("--compact-stdout", action="store_true", help="Print only a compact report index to stdout; the full report still lands on disk.")
+    handoff_p.add_argument("--launch-only", action="store_true", help="Prepare fixture/profile, verify the target save, launch C-AOL, and leave it open without GUI proof automation.")
     handoff_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     repeat_p = subparsers.add_parser("repeatability", help="Run the same packaged probe multiple times and summarize screen-first repeatability evidence.")
