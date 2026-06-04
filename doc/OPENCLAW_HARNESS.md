@@ -11,6 +11,21 @@ The OpenClaw harness is a debug-first agent integration for Cataclysm-AOL intend
 
 This is **not** a first-pass attempt at full autonomous play. The first objective is a robust test operator for prepared scenarios.
 
+## Packaged Release Quickstart
+
+Release bundles include `tools/openclaw_harness` next to the game executable so testers can list manual scenarios and leave a prepared scenario running for human play.
+
+From an extracted Linux/Windows release root:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py list-scenarios
+python3 tools/openclaw_harness/startup_harness.py handoff manual.intact_camp_shakedown_mcw --compact-stdout
+```
+
+On macOS, run the same commands from `Cataclysm.app/Contents/Resources`.
+
+Use `handoff` for human playtesting because it installs the fixture, checks the footing, and leaves the game running. Catapult-Dabubu's shipped Debug tab exposes only `manual.*` handoff scenarios; automated probes remain a developer CLI path and may close the game after collecting artifacts.
+
 ## Why this is technically plausible in the current codebase
 
 The current repo already contains several ingredients the harness can reuse:

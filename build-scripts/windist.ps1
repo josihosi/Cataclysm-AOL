@@ -17,4 +17,5 @@ ForEach ($extra in $extras) {
 }
 mkdir bindist/tools
 cp -r tools/llm_runner bindist/tools
+cp -r tools/openclaw_harness bindist/tools
 Compress-Archive -Force -Path bindist/* -DestinationPath "cataclysmdda-0.J.zip"

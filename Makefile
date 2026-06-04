@@ -1482,6 +1482,7 @@ endif
 	cp -R doc $(APPRESOURCESDIR)/
 	mkdir -p $(APPRESOURCESDIR)/tools
 	cp -R tools/llm_runner $(APPRESOURCESDIR)/tools/
+	cp -R tools/openclaw_harness $(APPRESOURCESDIR)/tools/
 	mkdir -p $(APPDATADIR)
 	cp data/fontdata.json $(APPDATADIR)
 	cp -R data/core $(APPDATADIR)
@@ -1547,6 +1548,7 @@ $(BINDIST): distclean version $(TARGET) $(ZZIP_BIN) $(L10N) $(BINDIST_EXTRAS) $(
 	mkdir -p $(BINDIST_DIR)
 	cp -R $(TARGET) $(ZZIP_BIN) $(BINDIST_EXTRAS) $(BINDIST_DIR)
 	cp -R --parents tools/llm_runner $(BINDIST_DIR)
+	cp -R --parents tools/openclaw_harness $(BINDIST_DIR)
 	$(foreach lib,$(INSTALL_EXTRAS),install --strip $(lib) $(BINDIST_DIR);)
 ifdef LANGUAGES
 	cp -R --parents lang/mo $(BINDIST_DIR)

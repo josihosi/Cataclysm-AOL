@@ -531,11 +531,14 @@ def choose_strategy(profile: str, explicit_world: str) -> Tuple[str, str, str, L
 
 def detect_executable() -> Path:
     root = repo_root()
-    for name in ("cataclysm-tlg-tiles", "cataclysm-tiles"):
+    for name in ("cataclysm-tlg-tiles", "cataclysm-tiles", "cataclysm-tlg-tiles.exe", "cataclysm-tiles.exe"):
         path = root / name
         if path.exists() and os.access(path, os.X_OK):
             return path
-    raise SystemExit("Could not find a runnable game executable (cataclysm-tlg-tiles or cataclysm-tiles).")
+    raise SystemExit(
+        "Could not find a runnable game executable "
+        "(cataclysm-tlg-tiles, cataclysm-tiles, cataclysm-tlg-tiles.exe, or cataclysm-tiles.exe)."
+    )
 
 
 def ensure_dir(path: Path) -> None:
