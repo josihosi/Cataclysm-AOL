@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -63,6 +64,15 @@ def mount_dmg(archive: Path) -> str:
 
 def detach_dmg(mount_point: str) -> None:
     subprocess.run(["hdiutil", "detach", mount_point], check=False, capture_output=True, text=True)
+
+
+def copy_macos_app_from_dmg(mount_root: Path, destination: Path) -> Path:
+    apps = sorted(mount_root.glob("*.app"))
+    require(apps, f"no .app bundle found in mounted DMG at {mount_root}")
+    require(len(apps) == 1, f"expected one .app bundle in mounted DMG, found: {[app.name for app in apps]}")
+    writable_app = destination / apps[0].name
+    shutil.copytree(apps[0], writable_app, symlinks=True)
+    return writable_app
 
 
 def find_harness_script(root: Path) -> Path:
@@ -130,7 +140,7 @@ def main() -> int:
         else:
             require(sys.platform == "darwin", "macOS DMG verification must run on macOS")
             mount_point = mount_dmg(asset)
-            root = Path(mount_point)
+            root = copy_macos_app_from_dmg(Path(mount_point), tmp_path)
         try:
             require_payload(root, args.platform)
         finally:
