@@ -54,6 +54,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "Makefile",
     "make.sh",
 )
+PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
 
 PATROL_CACHE_RE = re.compile(
     r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+)(?: alarm=(?P<alarm>\w+))? workers=(?P<workers>\d+) "
@@ -10768,7 +10769,7 @@ def resolve_profile_snapshot_payload(
     manifest = load_fixture_manifest(snapshot_dir)
     copyable_entries = [
         entry for entry in sorted(snapshot_dir.iterdir(), key=lambda p: p.name.lower())
-        if entry.name not in {"manifest.json", "save", "harness_runs"}
+        if entry.name not in PROFILE_SNAPSHOT_SKIP_ENTRIES
     ]
     chain = list(seen or [])
     chain.append((source_profile, snapshot_name))
@@ -10802,7 +10803,7 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
     userdir = userdir_for_profile(profile)
     ensure_dir(userdir)
     copied_entries = []
-    skipped_entries = ["manifest.json", "save", "harness_runs"]
+    skipped_entries = sorted(PROFILE_SNAPSHOT_SKIP_ENTRIES)
     for entry in resolved["copyable_entries"]:
         dst = userdir / entry.name
         if dst.exists() or dst.is_symlink():
@@ -10828,6 +10829,34 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
         "skipped_entries": skipped_entries,
         "source_chain": [f"{entry_profile}:{entry_name}" for entry_profile, entry_name in resolved["source_chain"]],
         "manifest": resolved["manifest"],
+    }
+
+
+def purge_profile_flexbuffer_cache(profile: str) -> Dict[str, Any]:
+    userdir = userdir_for_profile(profile)
+    cache_dir = userdir / "cache"
+    deleted: List[str] = []
+    failures: List[Dict[str, str]] = []
+    if cache_dir.exists():
+        for path in sorted(cache_dir.rglob("*.fb"), key=lambda p: str(p).lower()):
+            try:
+                path.unlink()
+                deleted.append(str(path.relative_to(userdir)))
+            except OSError as exc:
+                failures.append({"path": str(path), "error": str(exc)})
+        for path in sorted([p for p in cache_dir.rglob("*") if p.is_dir()], key=lambda p: len(p.parts), reverse=True):
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+    if failures:
+        raise SystemExit(f"Could not purge stale profile flexbuffer cache files: {json.dumps(failures, ensure_ascii=False)}")
+    return {
+        "profile": profile,
+        "cache_dir": str(cache_dir),
+        "deleted_count": len(deleted),
+        "deleted": deleted[:200],
+        "truncated": len(deleted) > 200,
     }
 
 
@@ -11195,6 +11224,7 @@ def run_startup(args: argparse.Namespace) -> int:
             replace=args.replace_existing_worlds,
             fixture_profile=getattr(args, "fixture_profile", ""),
         )
+    flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
     plan = build_plan(profile, args.world, args.fixture)
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
@@ -11267,6 +11297,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "profile": profile,
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
+                "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "run_dir": str(run_dir),
                 "screen": screen_summary,
                 "startup_step_ledger": startup_step_ledger,
@@ -11328,6 +11359,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "strategy": plan.strategy,
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
+                "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data if readiness_kind == "lastworld" else {},
                 "readiness": readiness,
@@ -11390,6 +11422,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
         "fixture_install": fixture_install_result,
+        "flexbuffer_cache_purge": flexbuffer_cache_purge,
         "readiness": readiness,
         "run_dir": str(run_dir),
         "screen": screen_summary,
@@ -11918,6 +11951,7 @@ def run_launch_only_handoff(
                 replace=replace_existing_worlds,
                 fixture_profile=fixture_profile,
             )
+        flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
         plan = build_plan(profile, world, fixture)
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
@@ -11937,6 +11971,7 @@ def run_launch_only_handoff(
                     "plan": asdict(plan),
                     "profile_snapshot": profile_snapshot_result,
                     "fixture_install": fixture_install_result,
+                    "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 },
                 "verdict": "target_world_not_found_after_fixture_install",
                 "evidence_class": "setup",
@@ -11965,6 +12000,7 @@ def run_launch_only_handoff(
                     "plan": asdict(plan),
                     "profile_snapshot": profile_snapshot_result,
                     "fixture_install": fixture_install_result,
+                    "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 },
                 "verdict": "no_target_world_to_launch",
                 "evidence_class": "setup",
@@ -12002,6 +12038,7 @@ def run_launch_only_handoff(
             "plan": asdict(plan),
             "profile_snapshot": profile_snapshot_result,
             "fixture_install": fixture_install_result,
+            "flexbuffer_cache_purge": flexbuffer_cache_purge,
             "process": process,
             "proof_classification": {
                 "evidence_class": "launch-only/manual-handoff",

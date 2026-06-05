@@ -41,6 +41,7 @@
 /obj/
 /objwin/
 /.userdata/
+/tools/openclaw_harness/fixtures/profiles/**/cache/**/*.fb
 /_release_win/
 /save/
 /src/version.h

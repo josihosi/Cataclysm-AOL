@@ -84,6 +84,11 @@ def find_harness_script(root: Path) -> Path:
 def require_payload(root: Path, platform: str) -> None:
     harness = find_harness_script(root)
     game_root = harness.parents[2]
+    fixture_flexbuffers = sorted(
+        str(path.relative_to(game_root))
+        for path in (harness.parent / "fixtures").rglob("*.fb")
+    )
+    require(not fixture_flexbuffers, f"fixture flexbuffer caches must not ship: {fixture_flexbuffers[:20]}")
     helper_name = "zzip.exe" if platform == "windows" else "zzip"
     helper = game_root / helper_name
     require(helper.is_file(), f"missing platform zzip helper at {helper}")
