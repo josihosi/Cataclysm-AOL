@@ -546,7 +546,7 @@ scenario_definition make_smoke_only_distant_clue()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the stale smoke should still be dead, not quietly regrow pressure."
+            "At the authored tick-500 checkpoint, the stale smoke should still be dead, not quietly regrow pressure."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -835,7 +835,7 @@ scenario_definition make_city_edge_moving_hordes()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the abandoned city edge should still not regrow a fake vendetta on its own."
+            "At the authored tick-500 checkpoint, the abandoned city edge should still not regrow a fake vendetta on its own."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1154,7 +1154,7 @@ scenario_definition make_generated_directional_light_hidden_side_stays_inert()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later this should still be quiet, because hidden-side leakage is not magical long-range truth."
+            "At the authored tick-500 checkpoint, this should still be quiet, because hidden-side leakage is not magical long-range truth."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1248,7 +1248,7 @@ scenario_definition make_generated_directional_light_visible_side_becomes_action
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the ordinary light clue should be gone again instead of persisting as a fake permanent target."
+            "At the authored tick-500 checkpoint, the ordinary light clue should be gone again instead of persisting as a fake permanent target."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1337,7 +1337,7 @@ scenario_definition make_generated_directional_light_corridor_shares_horde_press
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the shared corridor clue should finally cool off instead of living forever."
+            "At the authored tick-500 checkpoint, the shared corridor clue should finally cool off instead of living forever."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1430,7 +1430,7 @@ scenario_definition make_generated_nearby_cross_z_light_stays_actionable()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the nearby cross-z light should be gone again instead of haunting the map forever."
+            "At the authored tick-500 checkpoint, the nearby cross-z light should be gone again instead of haunting the map forever."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1511,7 +1511,7 @@ scenario_definition make_generated_ground_hidden_light_stays_bounded()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later this should still be quiet, because a hidden ground lantern is not orbital surveillance."
+            "At the authored tick-500 checkpoint, this should still be quiet, because a hidden ground lantern is not orbital surveillance."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1604,7 +1604,7 @@ scenario_definition make_generated_elevated_exposed_light_becomes_actionable()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the elevated clue should be gone again rather than living forever."
+            "At the authored tick-500 checkpoint, the elevated clue should be gone again rather than living forever."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1693,7 +1693,7 @@ scenario_definition make_generated_radio_tower_fire_shares_horde_pressure()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the long-range fire clue should finally cool instead of haunting the map forever."
+            "At the authored tick-500 checkpoint, the long-range fire clue should finally cool instead of haunting the map forever."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -2166,7 +2166,7 @@ scenario_definition make_generated_repeated_site_reinforcement_stays_bounded()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the reinforced site should have cooled back out instead of becoming immortal scout pressure."
+            "At the authored tick-500 checkpoint, the reinforced site should have cooled back out instead of becoming immortal scout pressure."
         },
         cadence_tier::distant_inactive,
         {}
@@ -2298,7 +2298,7 @@ scenario_definition make_generated_local_loss_rewrites_corridor_to_withdrawal()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the packet should still show no forced return to the stale granary route."
+            "At the authored tick-500 checkpoint, the packet should still show no forced return to the stale granary route."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -2380,7 +2380,7 @@ scenario_definition make_generated_local_loss_reroutes_to_safer_detour()
         make_camp( 2 ),
         {},
         {
-            "Five hundred turns later the packet should still not regrow the stale bridge intercept as if nothing happened."
+            "At the authored tick-500 checkpoint, the packet should still not regrow the stale bridge intercept as if nothing happened."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -2411,7 +2411,7 @@ scenario_definition make_empty_frontier_expands_visibility()
     scenario.default_checkpoints = { 0, 20, 100, 500 };
     scenario.questions = {
         "Goal: when nothing useful is nearby, the camp should leave indefinite hold / chill behind through one explicit bounded scout/explore outing.",
-        "Benchmark: inside the first 100 turns the winner should stay on `bounded_explore`, and the notes should show frontier visibility climbing relative to tick 0.",
+        "Benchmark: across the authored checkpoints through tick 100, the winner should stay on `bounded_explore`, and the notes should show frontier visibility climbing relative to tick 0.",
         "Carry-through: by tick 500 the packet should still read as a bounded frontier-expansion pass rather than immortal random wandering."
     };
 
@@ -2544,7 +2544,7 @@ scenario_definition make_portal_storm_smoke_is_harder_to_localize()
     scenario.default_checkpoints = { 0, 20, 100 };
     scenario.questions = {
         "Goal: portal-storm smoke should stay explicit, weird, and less trustworthy than the ordinary baseline instead of looking like normal night smoke with a cosmetic label.",
-        "Benchmark: the 100-turn packet should show a baseline clear-weather read first, then a portal-storm refresh with materially worse localization notes.",
+        "Benchmark: the selected authored checkpoints through tick 100 should show a baseline clear-weather read first, then a portal-storm refresh with materially worse localization notes.",
         "Tuning metrics: reviewer-readable smoke notes should surface `weather=portal_storm` plus a corridor-ish or otherwise displaced origin hint."
     };
 
@@ -2608,7 +2608,7 @@ scenario_definition make_portal_storm_exposed_light_stays_legible_but_sheltered_
     scenario.questions = {
         "Goal: sheltered ordinary light should not become a magical portal-storm beacon.",
         "Goal: the matching exposed bright light can still stay legible when that is the honest read.",
-        "Benchmark: the 100-turn packet should show the sheltered ordinary case staying bounded while the exposed bright case later becomes actionable under the same storm family."
+        "Benchmark: the selected authored checkpoints through tick 100 should show the sheltered ordinary case staying bounded while the exposed bright case later becomes actionable under the same storm family."
     };
 
     scenario.frames.push_back( {
@@ -2674,7 +2674,7 @@ scenario_definition make_independent_camps_do_not_dogpile_by_default()
     scenario.default_checkpoints = { 0, 100, 500 };
     scenario.questions = {
         "Goal: camps should read like mostly independent actors instead of automatic coalition spam.",
-        "Benchmark: inside the first 100 turns the packet should stay off the already-occupied target and choose a separate honest local route instead.",
+        "Benchmark: across the authored checkpoints through tick 100, the packet should stay off the already-occupied target and choose a separate honest local route instead.",
         "Carry-through: by tick 500 the same-region pile-on stays suppressed unless a later separate reason appears, which this bounded packet does not provide."
     };
 
@@ -3255,7 +3255,7 @@ std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
                           { 0, 20, 100 },
                           {
                               "Goal: the visible-side twin of the same directional-light footing should become actionable instead of staying inert.",
-                              "Benchmark: inside the 100-turn packet the light-born clue should produce a real bounded posture reviewer-cleanly.",
+                              "Benchmark: the selected authored checkpoints through tick 100 should show the light-born clue producing a real bounded posture reviewer-cleanly.",
                               "Tuning metrics: keep the same broader footing as the hidden-side twin and only change the honest visible-side leakage."
                           } ),
         renamed_scenario( make_generated_directional_light_corridor_shares_horde_pressure(),
@@ -3264,7 +3264,7 @@ std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
                           { 0, 20, 100, 500 },
                           {
                               "Goal: corridor light should stay shared-world pressure instead of private bandit omniscience.",
-                              "Benchmark: inside the 100-turn packet the same corridor clue should still carry zombie-pressure consequences reviewer-readably.",
+                              "Benchmark: the selected authored checkpoints through tick 100 should show the same corridor clue still carrying zombie-pressure consequences reviewer-readably.",
                               "Carry-through: the clue should cool later without changing family or becoming magical site truth."
                           } ),
         renamed_scenario( make_generated_local_loss_rewrites_corridor_to_withdrawal(),
@@ -3282,7 +3282,7 @@ std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
                           { 0, 20, 100, 500 },
                           {
                               "Goal: some hot-route cases should reroute instead of merely giving up.",
-                              "Benchmark: inside the first 100 turns the packet should show a safer detour rather than recommitting to the burned path.",
+                              "Benchmark: across the authored checkpoints through tick 100, the packet should show a safer detour rather than recommitting to the burned path.",
                               "Carry-through: later cooling should stay off the stale bridge route."
                           } ),
         renamed_scenario( make_generated_human_sighting_tracks_moving_carrier(),
@@ -3301,7 +3301,7 @@ std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
                           {
                               "Goal: repeated mixed site signals can strengthen revisit interest without unlocking immortal settlement truth.",
                               "Benchmark: by tick 100 the repeated site mark may be modestly stronger, but it must stay reviewer-readable and bounded.",
-                              "Carry-through: by tick 500 the packet should show one last bounded revisit, a real cooldown turn, and no endless pressure."
+                              "Authored checkpoint: at tick 500 the packet should show one last bounded revisit, a real cooldown tick, and no endless pressure."
                           } ),
         renamed_scenario( make_generated_windy_smoke_mark_stays_fuzzy(),
                           "windy_smoke_stays_scoutable_but_fuzzy",
@@ -3309,7 +3309,7 @@ std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
                           { 0, 20, 100 },
                           {
                               "Goal: strong wind should leave smoke potentially scoutable while clearly degrading source precision.",
-                              "Benchmark: inside the 100-turn packet the weather notes should show a fuzzier, drifted read than the ordinary clear-weather baseline.",
+                              "Benchmark: the selected authored checkpoints through tick 100 should show weather notes with a fuzzier, drifted read than the ordinary clear-weather baseline.",
                               "Tuning metrics: keep the clue bounded and reviewer-readable, not accidentally promoted to magical source certainty."
                           } ),
         make_portal_storm_smoke_is_harder_to_localize(),
@@ -3362,7 +3362,7 @@ std::vector<benchmark_check_result> evaluate_overmap_benchmark_100( const playba
                            tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::hold_chill &&
                            tick0->generated_leads.empty() && tick20->generated_leads.empty() && tick100->generated_leads.empty();
         return {
-            make_benchmark_check( 100, "hidden-side light stays inert through the 100-turn packet", inert,
+            make_benchmark_check( 100, "hidden-side light stays inert at the selected checkpoints through tick 100", inert,
                                   inert ? "ticks 0, 20, and 100 all stay on hold / chill with no generated lead" : "one hidden-side checkpoint became actionable" )
         };
     }
@@ -3677,16 +3677,17 @@ size_t evaluation_checksum( const evaluation_result &evaluation )
     return seed;
 }
 
-void add_persistence_line( persistence_budget &budget, const std::string &label,
-                           size_t count, size_t bytes, const std::string &notes )
+void add_persistence_estimate_line( persistence_design_estimate &estimate,
+                                    const std::string &label, size_t count,
+                                    size_t estimated_bytes, const std::string &notes )
 {
-    persistence_budget_line line;
+    persistence_design_estimate_line line;
     line.label = label;
     line.count = count;
-    line.bytes = bytes;
+    line.estimated_bytes = estimated_bytes;
     line.notes = notes;
-    budget.sample_total_bytes += bytes;
-    budget.lines.push_back( line );
+    estimate.estimated_total_bytes += estimated_bytes;
+    estimate.lines.push_back( line );
 }
 
 std::string classify_budget_verdict( const reference_suite_budget &result )
@@ -3705,14 +3706,14 @@ std::string classify_budget_verdict( const reference_suite_budget &result )
         }
     }
 
-    if( result.persistence.sample_total_bytes > 2048 ||
+    if( result.persistence_estimate.estimated_total_bytes > 2048 ||
         max_candidates_generated > 16 ||
         max_path_checks > 16 ||
         max_average_runtime_us > 5000 ) {
         return "suspicious: the bounded v0 seam is already bigger or slower than it should be, so broader rollout should wait for cleanup";
     }
 
-    return "cheap enough: the bounded v0 seam stays tiny across the reference suite, and the first persistence sample remains well below obvious save-bloat territory";
+    return "runtime and churn checks are within the bounded thresholds; persistence size is not measured and remains an unverified design estimate";
 }
 } // namespace
 
@@ -3769,7 +3770,7 @@ playback_result run_scenario( const scenario_definition &scenario,
     return result;
 }
 
-proof_packet_result run_first_500_turn_playback_proof()
+proof_packet_result run_selected_authored_checkpoint_playback()
 {
     static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
     static const std::vector<std::string> proof_scenarios = {
@@ -3779,7 +3780,7 @@ proof_packet_result run_first_500_turn_playback_proof()
     };
 
     proof_packet_result result;
-    result.packet_id = "bandit_first_500_turn_playback_proof_v0";
+    result.packet_id = "bandit_selected_authored_checkpoint_playback_v0";
     result.checkpoints = proof_checkpoints;
 
     for( const std::string &scenario_id : proof_scenarios ) {
@@ -3956,33 +3957,34 @@ scenario_budget measure_scenario_budget( const scenario_definition &scenario,
     return result;
 }
 
-persistence_budget estimate_v0_persistence_budget()
+persistence_design_estimate make_v0_persistence_design_estimate()
 {
-    persistence_budget result;
+    persistence_design_estimate result;
     result.sample_shape = "1 camp ledger + 8 marks + 1 active abstract outing + 2 anchored identities + 1 bubble seam key";
     result.assumptions = {
-        "Approximate payload bytes for the bounded abstract state only, not exact serializer or JSON text overhead.",
+        "These are hand-entered design estimates; this code does not serialize state or count emitted bytes.",
         "Compact ids, enums, bands, and small state flags are assumed for the persisted shape.",
-        "Exact loaded-bubble NPC truth, old candidate boards, and already-consumed return deltas stay out of this budget."
+        "Serializer framing, field names, escaping, and format overhead are unknown and excluded.",
+        "Exact loaded-bubble NPC truth, old candidate boards, and already-consumed return deltas stay out of this estimate."
     };
 
-    add_persistence_line( result, "camp ledger", 1, 64,
-                          "camp id, home region, stockpile buckets, shortage band, manpower state, and dispatch cooldown/load" );
-    add_persistence_line( result, "source-shaped mark ledger", 8, 256,
-                          "eight mixed site/corridor/actor/loss/route-blocked style marks at about 32 bytes each" );
-    add_persistence_line( result, "active abstract outing ledger", 1, 104,
-                          "group id, owning camp, current job/lead, mission posture, survivor count, cargo profile, burden, travel credit, and return pressure" );
-    add_persistence_line( result, "anchored identity slice", 2, 48,
-                          "two anchored identities at about 24 bytes each for status and join continuity" );
-    add_persistence_line( result, "camp/group hard links", 1, 24,
-                          "ownership, reserve commitment, and pending return-writeback linkage" );
-    add_persistence_line( result, "bubble seam key", 1, 16,
-                          "minimal group/camp/mission key plus bubble-owned or return-pending flag" );
+    add_persistence_estimate_line( result, "camp ledger", 1, 64,
+                                   "camp id, home region, stockpile buckets, shortage band, manpower state, and dispatch cooldown/load" );
+    add_persistence_estimate_line( result, "source-shaped mark ledger", 8, 256,
+                                   "eight mixed site/corridor/actor/loss/route-blocked style marks at about 32 estimated bytes each" );
+    add_persistence_estimate_line( result, "active abstract outing ledger", 1, 104,
+                                   "group id, owning camp, current job/lead, mission posture, survivor count, cargo profile, burden, travel credit, and return pressure" );
+    add_persistence_estimate_line( result, "anchored identity slice", 2, 48,
+                                   "two anchored identities at about 24 estimated bytes each for status and join continuity" );
+    add_persistence_estimate_line( result, "camp/group hard links", 1, 24,
+                                   "ownership, reserve commitment, and pending return-writeback linkage" );
+    add_persistence_estimate_line( result, "bubble seam key", 1, 16,
+                                   "minimal group/camp/mission key plus bubble-owned or return-pending flag" );
 
-    if( result.sample_total_bytes > 2048 ) {
-        result.verdict = "suspicious: even the bounded abstract sample is already large, so the schema shape should be trimmed before wider rollout";
+    if( result.estimated_total_bytes > 2048 ) {
+        result.verdict = "large on paper: the hand-entered estimate exceeds two kilobytes, but serialized output still must be measured";
     } else {
-        result.verdict = "cheap enough: the bounded abstract sample stays around half a kilobyte before serializer overhead, so only duplicated tactical truth or historical deltas look dangerous";
+        result.verdict = "unverified design estimate: the assumed fields total about half a kilobyte before unknown serializer overhead; measure serialized output before making save-size claims";
     }
 
     return result;
@@ -3994,7 +3996,7 @@ reference_suite_budget measure_reference_suite_budget( size_t iterations_per_che
     for( const scenario_definition &scenario : reference_scenarios() ) {
         result.scenarios.push_back( measure_scenario_budget( scenario, iterations_per_checkpoint ) );
     }
-    result.persistence = estimate_v0_persistence_budget();
+    result.persistence_estimate = make_v0_persistence_design_estimate();
     return result;
 }
 
@@ -4040,11 +4042,12 @@ std::string render_report( const playback_result &result )
     return out.str();
 }
 
-std::string render_first_500_turn_playback_proof( const proof_packet_result &result )
+std::string render_selected_authored_checkpoint_playback( const proof_packet_result &result )
 {
     std::ostringstream out;
-    out << "bandit first 500-turn playback proof\n";
+    out << "bandit selected authored-checkpoint playback\n";
     out << "packet: " << result.packet_id << "\n";
+    out << "execution model: evaluates authored scenario frames at the listed tick labels; it does not execute intervening game turns\n";
     out << "checkpoints:";
     for( int tick : result.checkpoints ) {
         out << " " << tick;
@@ -4243,16 +4246,16 @@ std::string render_overmap_benchmark_suite_packet( const benchmark_suite_result 
             }
         }
 
-        out << "  100-turn benchmark:\n";
+        out << "  checks through authored tick 100:\n";
         for( const benchmark_check_result &check : scenario.benchmark_100 ) {
             out << "    - " << ( check.passed ? "PASS" : "FAIL" ) << " [tick " << check.tick << "] "
                 << check.label << ": " << check.details << "\n";
         }
 
         if( scenario.benchmark_500.empty() ) {
-            out << "  500-turn carry-through: not required for this bounded scenario\n";
+            out << "  authored tick-500 check: not required for this bounded scenario\n";
         } else {
-            out << "  500-turn carry-through:\n";
+            out << "  authored tick-500 checks:\n";
             for( const benchmark_check_result &check : scenario.benchmark_500 ) {
                 out << "    - " << ( check.passed ? "PASS" : "FAIL" ) << " [tick " << check.tick << "] "
                     << check.label << ": " << check.details << "\n";
@@ -4301,18 +4304,18 @@ std::string render_budget_report( const reference_suite_budget &result )
         }
     }
 
-    out << "persistence sample:\n";
-    out << "- shape: " << result.persistence.sample_shape << "\n";
-    for( const persistence_budget_line &line : result.persistence.lines ) {
-        out << "  - " << line.label << ": count=" << line.count << ", bytes=" << line.bytes
+    out << "manual persistence design estimate (no serialization exercised):\n";
+    out << "- shape: " << result.persistence_estimate.sample_shape << "\n";
+    for( const persistence_design_estimate_line &line : result.persistence_estimate.lines ) {
+        out << "  - " << line.label << ": count=" << line.count << ", estimated_bytes=" << line.estimated_bytes
             << " (" << line.notes << ")\n";
     }
-    out << "- sample_total_bytes=" << result.persistence.sample_total_bytes << "\n";
-    out << "- assumptions:\n";
-    for( const std::string &assumption : result.persistence.assumptions ) {
+    out << "- estimated_total_bytes=" << result.persistence_estimate.estimated_total_bytes << "\n";
+    out << "- estimate assumptions:\n";
+    for( const std::string &assumption : result.persistence_estimate.assumptions ) {
         out << "  - " << assumption << "\n";
     }
-    out << "- persistence_verdict: " << result.persistence.verdict << "\n";
+    out << "- estimate_verdict: " << result.persistence_estimate.verdict << "\n";
     out << "overall_verdict:\n- " << classify_budget_verdict( result ) << "\n";
 
     return out.str();

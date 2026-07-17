@@ -134,31 +134,31 @@ struct scenario_budget {
     std::vector<checkpoint_budget> checkpoints;
 };
 
-struct persistence_budget_line {
+struct persistence_design_estimate_line {
     std::string label;
-    size_t bytes = 0;
+    size_t estimated_bytes = 0;
     size_t count = 0;
     std::string notes;
 };
 
-struct persistence_budget {
+struct persistence_design_estimate {
     std::string sample_shape;
-    std::vector<persistence_budget_line> lines;
+    std::vector<persistence_design_estimate_line> lines;
     std::vector<std::string> assumptions;
-    size_t sample_total_bytes = 0;
+    size_t estimated_total_bytes = 0;
     std::string verdict;
 };
 
 struct reference_suite_budget {
     std::vector<scenario_budget> scenarios;
-    persistence_budget persistence;
+    persistence_design_estimate persistence_estimate;
 };
 
 const std::vector<scenario_definition> &reference_scenarios();
 const scenario_definition *find_reference_scenario( const std::string &id );
 playback_result run_scenario( const scenario_definition &scenario,
                               const std::vector<int> &checkpoints = {} );
-proof_packet_result run_first_500_turn_playback_proof();
+proof_packet_result run_selected_authored_checkpoint_playback();
 proof_packet_result run_long_range_directional_light_proof_packet();
 proof_packet_result run_elevated_light_z_level_visibility_packet();
 proof_packet_result run_overmap_local_pressure_rewrite_proof_packet();
@@ -167,10 +167,10 @@ benchmark_suite_result run_overmap_benchmark_suite_packet();
 scenario_budget measure_scenario_budget( const scenario_definition &scenario,
         size_t iterations_per_checkpoint = 1,
         const std::vector<int> &checkpoints = {} );
-persistence_budget estimate_v0_persistence_budget();
+persistence_design_estimate make_v0_persistence_design_estimate();
 reference_suite_budget measure_reference_suite_budget( size_t iterations_per_checkpoint = 1 );
 std::string render_report( const playback_result &result );
-std::string render_first_500_turn_playback_proof( const proof_packet_result &result );
+std::string render_selected_authored_checkpoint_playback( const proof_packet_result &result );
 std::string render_long_range_directional_light_proof_packet( const proof_packet_result &result );
 std::string render_elevated_light_z_level_visibility_packet( const proof_packet_result &result );
 std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result );

@@ -76,8 +76,6 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
     const std::vector<bandit_playback::scenario_definition> &scenarios =
         bandit_playback::reference_scenarios();
 
-    REQUIRE( scenarios.size() == 22 );
-
     const std::vector<std::string> expected_ids = {
         "empty_region",
         "bounded_explore_frontier_tripwire",
@@ -89,6 +87,8 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
         "city_edge_moving_hordes",
         "generated_smoke_mark_cools_off",
         "generated_night_light_mark_scopes_out",
+        "generated_windy_smoke_mark_stays_fuzzy",
+        "generated_portal_storm_exposed_light_stays_legible",
         "generated_directional_light_hidden_side_stays_inert",
         "generated_directional_light_visible_side_becomes_actionable",
         "generated_directional_light_corridor_shares_horde_pressure",
@@ -101,15 +101,20 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
         "generated_local_loss_reroutes_to_safer_detour",
     };
 
+    REQUIRE( scenarios.size() == expected_ids.size() );
+
     for( const std::string &id : expected_ids ) {
         INFO( id );
         const bandit_playback::scenario_definition *scenario =
             bandit_playback::find_reference_scenario( id );
         REQUIRE( scenario != nullptr );
-        const std::vector<int> expected_checkpoints =
-            id.find( "generated_local_loss_" ) == 0 ?
-            std::vector<int>( { 0, 20, 100, 500 } ) :
-            std::vector<int>( { 0, 5, 20, 100 } );
+        std::vector<int> expected_checkpoints = { 0, 5, 20, 100 };
+        if( id.find( "generated_local_loss_" ) == 0 ) {
+            expected_checkpoints = { 0, 20, 100, 500 };
+        } else if( id == "generated_windy_smoke_mark_stays_fuzzy" ||
+                   id == "generated_portal_storm_exposed_light_stays_legible" ) {
+            expected_checkpoints = { 0, 20, 100 };
+        }
         CHECK( scenario->default_checkpoints == expected_checkpoints );
         CHECK_FALSE( scenario->questions.empty() );
         CHECK_FALSE( scenario->frames.empty() );
@@ -719,13 +724,13 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
     CHECK( light_report.find( "terrain=open" ) != std::string::npos );
 }
 
-TEST_CASE( "bandit_playback_first_500_turn_proof_stays_bounded", "[bandit][playback]" )
+TEST_CASE( "bandit_playback_selected_authored_checkpoint_packet_stays_bounded", "[bandit][playback]" )
 {
     const bandit_playback::proof_packet_result proof =
-        bandit_playback::run_first_500_turn_playback_proof();
-    const std::string report = bandit_playback::render_first_500_turn_playback_proof( proof );
+        bandit_playback::run_selected_authored_checkpoint_playback();
+    const std::string report = bandit_playback::render_selected_authored_checkpoint_playback( proof );
 
-    CHECK( proof.packet_id == "bandit_first_500_turn_playback_proof_v0" );
+    CHECK( proof.packet_id == "bandit_selected_authored_checkpoint_playback_v0" );
     CHECK( proof.checkpoints == std::vector<int>( { 0, 20, 100, 500 } ) );
     REQUIRE( proof.scenarios.size() == 3 );
 
@@ -744,8 +749,9 @@ TEST_CASE( "bandit_playback_first_500_turn_proof_stays_bounded", "[bandit][playb
     CHECK( winner_at( reinforcement, 100 ).job == bandit_dry_run::job_template::scout );
     CHECK( winner_at( reinforcement, 500 ).job == bandit_dry_run::job_template::hold_chill );
 
-    CHECK( report.find( "bandit first 500-turn playback proof" ) != std::string::npos );
-    CHECK( report.find( "packet: bandit_first_500_turn_playback_proof_v0" ) != std::string::npos );
+    CHECK( report.find( "bandit selected authored-checkpoint playback" ) != std::string::npos );
+    CHECK( report.find( "does not execute intervening game turns" ) != std::string::npos );
+    CHECK( report.find( "packet: bandit_selected_authored_checkpoint_playback_v0" ) != std::string::npos );
     CHECK( report.find( "tick 500" ) != std::string::npos );
     CHECK( report.find( "scenario: smoke_only_distant_clue" ) != std::string::npos );
     CHECK( report.find( "scenario: city_edge_moving_hordes" ) != std::string::npos );
@@ -987,7 +993,7 @@ TEST_CASE( "bandit_playback_overmap_benchmark_suite_packet_covers_the_active_con
     CHECK( report.find( "cadence metrics:" ) != std::string::npos );
     CHECK( report.find( "first_non_idle_turn=" ) != std::string::npos );
     CHECK( report.find( "PASS [tick 100]" ) != std::string::npos );
-    CHECK( report.find( "500-turn carry-through" ) != std::string::npos );
+    CHECK( report.find( "authored tick-500 checks" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_playback_overmap_benchmark_suite_keeps_empty_frontier_and_blocked_route_honest", "[bandit][playback]" )
@@ -1153,21 +1159,23 @@ TEST_CASE( "bandit_playback_budget_measurement_exposes_short_vs_long_horizon_chu
     CHECK( budget.checkpoints[1].metrics.winner_comparisons == 0 );
 }
 
-TEST_CASE( "bandit_playback_reference_suite_budget_reports_perf_churn_and_persistence", "[bandit][playback]" )
+TEST_CASE( "bandit_playback_reference_suite_budget_separates_measurements_from_persistence_estimate",
+           "[bandit][playback]" )
 {
     const bandit_playback::reference_suite_budget budget =
         bandit_playback::measure_reference_suite_budget( 2 );
     const std::string report = bandit_playback::render_budget_report( budget );
 
-    REQUIRE( budget.scenarios.size() == 22 );
-    CHECK( budget.persistence.sample_total_bytes == 512 );
-    CHECK( budget.persistence.lines.size() == 6 );
-    CHECK( budget.persistence.verdict.find( "cheap enough" ) != std::string::npos );
+    REQUIRE( budget.scenarios.size() == bandit_playback::reference_scenarios().size() );
+    CHECK( budget.persistence_estimate.estimated_total_bytes == 512 );
+    CHECK( budget.persistence_estimate.lines.size() == 6 );
+    CHECK( budget.persistence_estimate.verdict.find( "unverified design estimate" ) != std::string::npos );
     CHECK( report.find( "bandit budget report" ) != std::string::npos );
     CHECK( report.find( "smoke_only_distant_clue" ) != std::string::npos );
     CHECK( report.find( "average_runtime_us=" ) != std::string::npos );
     CHECK( report.find( "candidates_generated=" ) != std::string::npos );
-    CHECK( report.find( "persistence sample:" ) != std::string::npos );
-    CHECK( report.find( "sample_total_bytes=512" ) != std::string::npos );
+    CHECK( report.find( "manual persistence design estimate (no serialization exercised):" ) != std::string::npos );
+    CHECK( report.find( "estimated_total_bytes=512" ) != std::string::npos );
+    CHECK( report.find( "persistence size is not measured" ) != std::string::npos );
     CHECK( report.find( "overall_verdict:" ) != std::string::npos );
 }

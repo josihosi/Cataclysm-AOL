@@ -15,6 +15,7 @@
 #include "monster.h"
 #include "mongroup.h"
 #include "mtype.h"
+#include "player_helpers.h"
 #include "type_id.h"
 #include "writhing_stalker_ai.h"
 
@@ -171,6 +172,7 @@ void refresh_writhing_stalker_arena( map &here )
 
 void prepare_writhing_stalker_arena( map &here, const tripoint_bub_ms &center )
 {
+    clear_avatar();
     const ter_id t_floor( "t_floor" );
     const ter_id t_wall( "t_wall" );
     for( const tripoint_bub_ms &p : here.points_in_radius( center, 12 ) ) {

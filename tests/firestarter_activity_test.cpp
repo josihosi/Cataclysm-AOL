@@ -9,12 +9,16 @@
 #include "map.h"
 #include "map_helpers.h"
 #include "player_activity.h"
+#include "player_helpers.h"
 #include "type_id.h"
 
 static void complete_activity_for_firestarter_test( Character &u, const activity_actor &act )
 {
     u.assign_activity( act );
+    int elapsed_turns = 0;
     while( !u.activity.is_null() ) {
+        REQUIRE( elapsed_turns < 1000 );
+        ++elapsed_turns;
         u.set_moves( u.get_speed() );
         u.activity.do_turn( u );
     }
@@ -24,6 +28,7 @@ TEST_CASE( "fire_start_activity_exact_brazier_wood_lighter_creates_fd_fire",
            "[firestarter][activity][bandit_live_world]" )
 {
     clear_map_without_vision();
+    clear_avatar();
 
     map &here = get_map();
     avatar &u = get_avatar();
