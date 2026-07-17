@@ -2197,6 +2197,7 @@ void overmap_global_state::deserialize( const JsonObject &json )
     if( !json.read( "zombie_rider_light_memory_last_turn", zombie_rider_light_memory_last_turn ) ) {
         zombie_rider_light_memory_last_turn = calendar::turn;
     }
+    placed_regions.clear();
     json.read( "placed_regions", placed_regions );
 }
 

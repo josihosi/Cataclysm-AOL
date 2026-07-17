@@ -179,6 +179,11 @@ enum npc_mission : int {
     NPC_MISSION_LEGACY_1,
     NPC_MISSION_SHELTER, // Stay in shelter, introduce player to game
     NPC_MISSION_SHOPKEEP, // Stay still unless combat or something and sell stuff
+
+    // Retain these slots so numeric missions in existing C-AOL saves do not shift.
+    NPC_MISSION_LEGACY_2,
+    NPC_MISSION_LEGACY_3,
+
     NPC_MISSION_GUARD_ALLY, // Assigns an allied NPC to guard a position
     NPC_MISSION_GUARD, // Assigns a non-allied NPC to remain in place
     NPC_MISSION_GUARD_PATROL, // Assigns a non-allied NPC to guard and investigate

@@ -66,6 +66,7 @@
 #include "player_activity.h"
 #include "player_helpers.h"
 #include "point.h"
+#include "ranged.h"
 #include "stomach.h"
 #include "test_data.h"
 #include "text_snippets.h"
@@ -701,6 +702,81 @@ TEST_CASE( "npc_can_target_player" )
     hostile.regen_ai_cache();
     REQUIRE( hostile.current_target() != nullptr );
     CHECK( hostile.current_target() == static_cast<Creature *>( &player_character ) );
+}
+
+TEST_CASE( "npc_reload_timing_handles_item_without_default_ammo", "[npc_ai][reload]" )
+{
+    clear_map_without_vision();
+
+    standard_npc guy( "Reload tester" );
+    clear_character( guy, true );
+    const item non_ammo_item( itype_2x4 );
+
+    REQUIRE( non_ammo_item.ammo_default().is_null() );
+    REQUIRE_FALSE( item::ammotype_of( non_ammo_item.ammo_default() ) );
+    REQUIRE( guy.current_target() == nullptr );
+
+    CHECK( guy.enough_time_to_reload( non_ammo_item ) );
+}
+
+TEST_CASE( "npc_aim_only_spends_moves_for_useful_improvement", "[npc_ai][aim]" )
+{
+    clear_map_without_vision();
+
+    standard_npc guy( "Aim tester" );
+    clear_character( guy, true );
+    const Target_attributes target;
+
+    SECTION( "no wielded weapon" ) {
+        guy.set_moves( 10 );
+        guy.recoil = MAX_RECOIL;
+        const int initial_moves = guy.get_moves();
+        const double initial_recoil = guy.recoil;
+
+        REQUIRE_FALSE( guy.get_wielded_item() );
+        guy.aim( target );
+
+        CHECK( guy.get_moves() == initial_moves );
+        CHECK( guy.recoil == initial_recoil );
+    }
+
+    SECTION( "negligible improvement" ) {
+        arm_shooter( guy, itype_M24 );
+        const item_location weapon = guy.get_wielded_item();
+        REQUIRE( weapon );
+        const aim_mods_cache aim_cache = guy.gen_aim_mods_cache( *weapon );
+        guy.set_moves( 10 );
+        guy.recoil = aim_cache.limit + MIN_RECOIL_IMPROVEMENT / 2.0;
+        const int initial_moves = guy.get_moves();
+        const double initial_recoil = guy.recoil;
+        const double aim_amount = guy.aim_per_move( *weapon, guy.recoil, target,
+                                  aim_cache );
+
+        REQUIRE( aim_amount > 0.0 );
+        REQUIRE( aim_amount <= MIN_RECOIL_IMPROVEMENT );
+        guy.aim( target );
+
+        CHECK( guy.get_moves() == initial_moves );
+        CHECK( guy.recoil == initial_recoil );
+    }
+
+    SECTION( "useful improvement" ) {
+        arm_shooter( guy, itype_M24 );
+        const item_location weapon = guy.get_wielded_item();
+        REQUIRE( weapon );
+        const aim_mods_cache aim_cache = guy.gen_aim_mods_cache( *weapon );
+        guy.set_moves( 10 );
+        guy.recoil = MAX_RECOIL;
+        const int initial_moves = guy.get_moves();
+        const double initial_recoil = guy.recoil;
+
+        REQUIRE( guy.aim_per_move( *weapon, guy.recoil, target,
+                                   aim_cache ) > MIN_RECOIL_IMPROVEMENT );
+        guy.aim( target );
+
+        CHECK( guy.get_moves() < initial_moves );
+        CHECK( guy.recoil < initial_recoil );
+    }
 }
 
 static void advance_turn( Character &guy )

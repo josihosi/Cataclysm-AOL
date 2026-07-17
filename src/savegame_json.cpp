@@ -2212,15 +2212,19 @@ void npc::load( const JsonObject &data )
     // remove migration in 0.K
     if( data.read( "mission", misstmp ) ) {
         mission = static_cast<npc_mission>( misstmp );
-        static const std::set<npc_mission> legacy_missions = { NPC_MISSION_LEGACY_1 };
+        static const std::set<npc_mission> legacy_missions = {
+            NPC_MISSION_LEGACY_1, NPC_MISSION_LEGACY_2, NPC_MISSION_LEGACY_3
+        };
         if( legacy_missions.count( mission ) > 0 ) {
             mission = NPC_MISSION_NULL;
         }
     }
     if( data.read( "previous_mission", misstmp ) ) {
         previous_mission = static_cast<npc_mission>( misstmp );
-        static const std::set<npc_mission> legacy_missions = { NPC_MISSION_LEGACY_1 };
-        if( legacy_missions.count( mission ) > 0 ) {
+        static const std::set<npc_mission> legacy_missions = {
+            NPC_MISSION_LEGACY_1, NPC_MISSION_LEGACY_2, NPC_MISSION_LEGACY_3
+        };
+        if( legacy_missions.count( previous_mission ) > 0 ) {
             previous_mission = NPC_MISSION_NULL;
         }
     }

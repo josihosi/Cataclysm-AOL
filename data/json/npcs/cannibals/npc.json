@@ -6,7 +6,7 @@
     "name_suffix": "Cannibal Hunter",
     "class": "NC_CANNIBAL_HUNTER",
     "attitude": 0,
-    "mission": 8,
+    "mission": "GUARD_PATROL",
     "chat": "TALK_DONE",
     "faction": "cannibal_camp"
   },
@@ -17,7 +17,7 @@
     "name_suffix": "Cannibal Butcher",
     "class": "NC_CANNIBAL_BUTCHER",
     "attitude": 0,
-    "mission": 8,
+    "mission": "GUARD_PATROL",
     "chat": "TALK_DONE",
     "faction": "cannibal_camp"
   },
@@ -28,7 +28,7 @@
     "name_suffix": "Cannibal Leader",
     "class": "NC_CANNIBAL_LEADER",
     "attitude": 0,
-    "mission": 8,
+    "mission": "GUARD_PATROL",
     "chat": "TALK_DONE",
     "faction": "cannibal_camp"
   }

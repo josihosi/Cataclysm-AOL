@@ -4238,66 +4238,67 @@ bool npc::wont_hit_friend(const tripoint_bub_ms &tar, const item &it,
   return true;
 }
 
-bool npc::enough_time_to_reload(const item &gun) const {
-  const map &here = get_map();
+bool npc::enough_time_to_reload( const item &gun ) const
+{
+    const map &here = get_map();
 
     const std::optional<ammotype> at = item::ammotype_of( gun.ammo_default() );
     int rltime = item_reload_cost( gun, item( gun.ammo_default() ),
                                    at ? gun.ammo_capacity( *at ) : 0 );
     const float turns_til_reloaded = static_cast<float>( rltime ) / get_speed();
 
-  const Creature *target = current_target();
-  if (target == nullptr) {
-    add_msg_debug(debugmode::DF_NPC_ITEMAI,
-                  "%s can't see anyone around: great time to reload.", name);
-    return true;
-  }
+    const Creature *target = current_target();
+    if( target == nullptr ) {
+        add_msg_debug( debugmode::DF_NPC_ITEMAI,
+                       "%s can't see anyone around: great time to reload.", name );
+        return true;
+    }
 
     const int distance = rl_dist( pos_bub(), target->pos_bub() );
     const float target_speed = target->speed_rating();
     const float turns_til_reached = distance / target_speed;
     if( target->is_avatar() || target->is_npc() ) {
         const Character &foe = dynamic_cast<const Character &>( *target );
-    const item_location weapon = foe.get_wielded_item();
-    // TODO: Allow reloading if the player has a low accuracy gun
-    if (sees(here, foe) && weapon && weapon->is_gun() && rltime > 200 &&
-        weapon->gun_range(true) >
-            distance + turns_til_reloaded / target_speed) {
-      // Don't take longer than 2 turns if player has a gun
-      add_msg_debug(debugmode::DF_NPC_ITEMAI,
-                    "%s is shy about reloading with &s standing right there.",
-                    name, foe.name);
-      return false;
+        const item_location weapon = foe.get_wielded_item();
+        // TODO: Allow reloading if the player has a low accuracy gun
+        if( sees( here, foe ) && weapon && weapon->is_gun() && rltime > 200 &&
+            weapon->gun_range( true ) > distance + turns_til_reloaded / target_speed ) {
+            // Don't take longer than 2 turns if player has a gun
+            add_msg_debug( debugmode::DF_NPC_ITEMAI,
+                           "%s is shy about reloading with %s standing right there.",
+                           name, foe.name );
+            return false;
+        }
     }
-  }
 
-  // TODO: Handle monsters with ranged attacks and players with CBMs
-  add_msg_debug(debugmode::DF_NPC_ITEMAI,
-                "%s turns to reload: %i./nTurns til reached: %i.", name,
-                static_cast<int>(turns_til_reloaded),
-                static_cast<int>(turns_til_reached));
-  return turns_til_reloaded < turns_til_reached;
+    // TODO: Handle monsters with ranged attacks and players with CBMs
+    add_msg_debug( debugmode::DF_NPC_ITEMAI,
+                   "%s turns to reload: %i.\nTurns til reached: %i.", name,
+                   static_cast<int>( turns_til_reloaded ),
+                   static_cast<int>( turns_til_reached ) );
+    return turns_til_reloaded < turns_til_reached;
 }
 
-void npc::aim(const Target_attributes &target_attributes) {
-  const item_location weapon = get_wielded_item();
-  if( !weapon ) {
-    return;
-  }
-  const aim_mods_cache aim_cache = gen_aim_mods_cache(*weapon);
-  double aim_amount = aim_per_move(*weapon, recoil, target_attributes, aim_cache);
+void npc::aim( const Target_attributes &target_attributes )
+{
+    const item_location weapon = get_wielded_item();
+    if( !weapon ) {
+        return;
+    }
+    const aim_mods_cache aim_cache = gen_aim_mods_cache( *weapon );
     int hold_moves = moves;
     double hold_recoil = recoil;
-    while( aim_amount > 0 && recoil > 0 && moves > 0 ) {
-    moves--;
-    recoil -= aim_amount;
-    recoil = std::max(0.0, recoil);
-    aim_amount =
-        aim_per_move(*weapon, recoil, target_attributes, aim_cache);
-  }
-  add_msg_debug(debugmode::debug_filter::DF_NPC_COMBATAI,
-                "%s reduced recoil from %f to %f in %d moves", this->get_name(),
-                hold_recoil, recoil, hold_moves);
+    while( recoil > 0 && moves > 0 ) {
+        const double aim_amount = aim_per_move( *weapon, recoil, target_attributes, aim_cache );
+        if( aim_amount <= MIN_RECOIL_IMPROVEMENT ) {
+            break;
+        }
+        moves--;
+        recoil = std::max( 0.0, recoil - aim_amount );
+    }
+    add_msg_debug( debugmode::debug_filter::DF_NPC_COMBATAI,
+                   "%s reduced recoil from %f to %f in %d moves", this->get_name(),
+                   hold_recoil, recoil, hold_moves - moves );
 }
 
 bool npc::update_path(const tripoint_bub_ms &p, const bool no_bashing,

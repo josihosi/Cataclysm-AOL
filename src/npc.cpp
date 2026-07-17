@@ -196,6 +196,8 @@ std::string enum_to_string<npc_mission>( npc_mission data )
         case npc_mission::NPC_MISSION_LEGACY_1: return "LEGACY_1";
         case npc_mission::NPC_MISSION_SHELTER: return "SHELTER";
         case npc_mission::NPC_MISSION_SHOPKEEP: return "SHOPKEEP";
+        case npc_mission::NPC_MISSION_LEGACY_2: return "LEGACY_2";
+        case npc_mission::NPC_MISSION_LEGACY_3: return "LEGACY_3";
         case npc_mission::NPC_MISSION_GUARD_ALLY: return "GUARD_ALLY";
         case npc_mission::NPC_MISSION_GUARD: return "GUARD";
         case npc_mission::NPC_MISSION_GUARD_PATROL: return "GUARD_PATROL";
