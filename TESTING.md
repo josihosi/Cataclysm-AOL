@@ -54,7 +54,37 @@ Before promoting, closing, or handing off a lane, confirm that `TESTING.md` pend
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-## Current validation targets
+## Current validation target - CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0
+
+Source reference:
+- upstream tip: `89c6aef1b3`
+- integration merge: `0fdc380371`
+- reviewed candidate code stack: `d1b16f0a67`
+- exact Mac candidate: the ledger checkpoint containing this receipt
+
+Latest current-candidate evidence (2026-07-18):
+- Fresh high-reasoning whole-diff autoreview reported no actionable findings and judged the patch correct with `0.86` confidence.
+- Windows/MSYS2 rebuilt the eight affected production translation units with `-Werror`; the final dense-snapshot, save-compatibility, and camp-patrol test translation units also compile cleanly.
+- Linux/WSL rebuilt the eight affected production translation units and all ten affected test/helper translation units with `-Werror`.
+- Windows and WSL each pass 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 26 OpenClaw/save-proof tests, and a real Ollama runner self-test.
+- The WSL tiled target is not credited: its installed SDL3 is older than the upstream `3.4.0` GPU-shader requirement. The exact tiled build/test/runtime gate is assigned to the correctly provisioned Mac Mini.
+
+Required evidence:
+- Windows/MSYS2 and Linux/WSL affected C++ compile/test gates.
+- Python runner discovery, NPC harness self-test, action-status fixtures, and OpenClaw harness discovery.
+- macOS build/test link plus focused filters for LLM/NPC, save migration, camp patrol, rider, stalker, bandit playback classification, and firestarter behavior.
+- Feature-path scenarios for assigned-camp speech, writhing-stalker withdrawal, zombie-rider light response, and camp locker service.
+- A broader Mac Mini playtest/stress series on the exact candidate, including save/load and ordinary gameplay as well as affected C-AOL paths.
+- Fresh Peekaboo artifacts and same-run logs from the current binary.
+
+Claim boundary:
+- The bandit playback suite evaluates authored checkpoints; it does not execute every intervening game turn.
+- Startup/load and menu movement prove launchability, not gameplay behavior.
+- Action-status proof must come from the dedicated same-run event stream.
+- Restored save files count only when tracked, structurally valid, and consumed by a real scenario.
+- Staged-fixture feature paths are not natural-discovery or full-siege proof.
+
+## Recent historical receipts
 
 ### Closed validation receipt — CAOL-CI-RED-TRIAGE-v0
 
@@ -111,7 +141,7 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-No active Andi-side probe is currently promoted. `CAOL-CI-RED-TRIAGE-v0` is closed/checkpointed green at code head `cb21294168`; if this docs-only closure alignment commit triggered a new Actions run, verify that run and then disable the temporary CI cron. `CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0` remains checkpointed green pending Frau/Augerl review; do not rerun its sight/smoke rows unless review finds a concrete evidence gap or the code/claim changes.
+The current candidate still needs the exact-HEAD macOS focused gate, four real feature-path scenarios, live action-event check, and broader Mac Mini stress/playtest series. Origin and release stay held until those pass.
 
 Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
 

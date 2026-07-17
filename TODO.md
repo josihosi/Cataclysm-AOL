@@ -7,10 +7,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active Andi code target is currently promoted in repo canon.
-
-`CAOL-CI-RED-TRIAGE-v0` is closed/checkpointed green at code head `cb21294168`: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845` both completed success on `dev`.
-
-If this docs-only closure alignment commit triggered a new GitHub Actions run, Andi should only verify that run and then disable the temporary CI-repair cron. Do not make churn commits while Actions is merely queued/running, and do not reopen completed product proof rows by ritual.
-
-Next product move is Schani/Frau review or a fresh greenlit lane.
+1. Sync the exact committed HEAD to the Mac Mini without touching its user-owned `Agents.md`.
+2. Run macOS focused C++/Python tests and the strongest existing feature-path scenarios.
+3. Run a broader in-game Mac Mini stress/playtest series across NPC/LLM, camp, predators, save/load, and ordinary gameplay.
+4. Fetch upstream again; if unchanged and green, push the exact tested HEAD.
+5. Verify the release workflow and assets, then record the final release state.

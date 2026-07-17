@@ -41,7 +41,9 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-Repo policy remains unchanged: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree and `josihosi/Cataclysm-AOL` is the real project/release repo. `josihosi/C-AOL-mirror` is green-dot-only.
+For the 2026-07-17 release-recovery cycle, `port/cdda-master` is the explicitly promoted working/integration branch. It contains `upstream/master` at `89c6aef1b3` through merge `0fdc380371`, with the reviewed C-AOL repair/proof stack checkpointed through `d1b16f0a67`. The affected Windows/MSYS2 and Linux/WSL compile and Python contract gates are green.
+
+Windows owns integration edits; the Mac Mini is the exact-commit build, gameplay, and GUI verification lane. `origin/port/cdda-master` remains deliberately unadvanced until the final tested commit is green. `master` and `dev` are not to be merged over this lane or renamed yet. `josihosi/C-AOL-mirror` remains green-dot-only.
 
 `doc/work-ledger.md` is now the compact receipt book for meaningful asks, state changes, evidence links, owners, supersessions, held lanes, and red/non-credit proof. Use it before trimming active docs.
 
@@ -51,9 +53,15 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ## Current execution posture
 
-No active Andi code target is currently promoted. `CAOL-CI-RED-TRIAGE-v0` reached a green branch-health checkpoint at code head `cb21294168` (`Allow items under layered bedroom terrain`). GitHub Actions on that head are complete and green for the branch-health workflows that were red: `General build matrix` run `25462728843` and `Cataclysm Windows build` run `25462728845`.
+### Active target - CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0
 
-Recommended next action: the temporary Andi CI-repair cron should only verify any docs-only closure/checkpoint push that follows this canon alignment, then stand down. Do not reopen the defended-camp sight/smoke packet or other closed product lanes by ritual. The next non-CI product move remains Schani/Frau review or a fresh promoted greenlit lane.
+**Status:** AGENT TESTING / RELEASE HELD
+
+Goal: produce one exact `port/cdda-master` commit containing current upstream CDDA plus preserved C-AOL behavior, prove the affected paths on Windows/WSL/macOS, and release only that tested commit.
+
+Boundary: do not rename or overwrite `master`/`dev` yet; do not update the other `port/*` branches; do not count compile-only checks, stale binaries, authored-checkpoint playback, startup/load screenshots, or old Mac runs as gameplay proof.
+
+Recommended next action: sync the exact ledger checkpoint to the Mac Mini, run the focused macOS and broad gameplay/stress gates, then fetch upstream once more and push only if the tested commit and upstream tip are still unchanged.
 
 ---
 

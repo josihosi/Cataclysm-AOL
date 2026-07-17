@@ -17,6 +17,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0 - Current CDDA master integration and release candidate
+
+Status: AGENT TESTING / RELEASE HELD
+
+Success state:
+- [x] `upstream/master` at `89c6aef1b3` is merged into `port/cdda-master` through `0fdc380371`.
+- [x] Merge conflicts and post-merge semantic regressions are resolved without dropping C-AOL NPC intent, save migration, camp patrol, predator, rider, runner, harness, or release behavior.
+- [x] Older tests are re-audited for production wiring and false-proof shapes are removed or explicitly demoted.
+- [x] The final committed code stack passes the affected Windows/MSYS2 and Linux/WSL compile/test gates. _Checkpoint through `d1b16f0a67`: Windows/MSYS2 and WSL production/test translation units compile with `-Werror`; both Python lanes pass 14 runner tests, NPC self-test, 7 action-status fixtures, 26 OpenClaw/save-proof tests, and real Ollama self-test. C++ runtime filters remain part of the exact-HEAD macOS gate._
+- [ ] The same final committed HEAD passes the macOS build, focused C++ tests, Python contract tests, and selected feature-path harness scenarios.
+- [ ] A real macOS game run on that HEAD reaches an affected C-AOL path and records same-run evidence; menu navigation alone is not sufficient.
+- [ ] Windows and Mac Mini resolve to the exact same tested HEAD, with only explicitly preserved user-owned dirt, before origin is updated.
+- [ ] A final upstream fetch shows no unreviewed drift, and `origin/port/cdda-master` is advanced to exactly the tested HEAD.
+- [ ] The release workflow succeeds and its assets match the platform claims.
+- [ ] Canon/testing notes record the final commit, workflow run, release tag/URL, and any honestly withheld platform.
+
+---
+
 ## CAOL-DEFENDED-CAMP-SIGHT-SMOKE-HARDENING-v0 — Defended-camp sight/smoke hardening
 
 Status: CHECKPOINTED GREEN / AGENT-SIDE PROOF COMPLETE / AWAITING FRAU REVIEW
@@ -583,19 +601,14 @@ Compact reference:
 
 ## GitHub normal-download release packet v0
 
-Status: HELD / NOT CURRENTLY PROMOTED
+Status: SUPERSEDED / FOLDED INTO `CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0`
 
 Success state:
-- [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
-- [ ] The release assets match the stated platform support instead of implying broken platforms work.
-- [ ] The release source commit and relevant Actions state are linked from canon/testing notes.
-- [ ] Josef has a normal GitHub Releases URL he can download from.
-- [ ] Any withheld/broken platform is plainly marked with the evidence-backed blocker.
+- [x] Remaining release criteria are carried by `CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0` so there is one active release gate.
 
 Notes:
 - Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
-- Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
-- This packet was once queued after CI recovery went green, but current `Plan.md` / `TODO.md` promote no active or greenlit execution target. Release/download work needs an explicit Schani/Josef promotion before Andi treats it as active.
+- Josef explicitly promoted the current upstream integration and release-readiness work on 2026-07-17.
 
 ---
 

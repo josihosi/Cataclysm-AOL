@@ -21,6 +21,7 @@
 - The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.
 - Soft marks cool selectively by cadence tier, while confirmed threat stays sticky on the ledger until later real evidence rewrites it. That means weak smoke/searchlight pressure can fade back out, but recent ugly loss / hard-threat memory does not get passively wished away.
 - Playback is now the reviewer-readable bridge for this seam: generated mark state rides alongside the existing dry-run scenarios so the same reference packet can show both the overmap-side mark picture and the evaluator winner drift.
+- Playback evaluates authored frames at selected checkpoint labels. It does not execute every intervening game turn, so it is evaluator evidence rather than a 500-turn gameplay simulation.
 - Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
 - Repeated site reinforcement is deliberately modest: a site mark only gets reinforcement credit from mixed ordinary smoke/light/route activity, repeated one-kind noise stays weak, and the bonus tops out as bounded confidence/bounty amplification instead of unlocking magical settlement truth or free extraction jobs.
 
@@ -45,6 +46,7 @@
 - In the current planner contract, one guard may own multiple disconnected posts on a shift, while extra guards beyond one-per-cluster stack onto larger connected clusters for the later hold-vs-loop behavior.
 - The current shift roster now latches for the whole day/night block instead of being recomputed every job tick: routine chores must not steal active guards mid-shift, while the interrupt whitelist only allows combat/severe-need/player-reassignment breaks and backfills from reserve without rebalancing the whole shift.
 - On-map Patrol Zone v1 stays deliberately simple: each on-shift guard gets a deterministic runtime order from the cached shift plan. A guard with one fully staffed connected cluster holds a distinct tile; otherwise the guard walks a fixed loop over the tiles from their assigned cluster(s), advancing one tile every 10 in-game minutes. Off-shift patrol workers drop back into ordinary camp downtime instead of pretending to hold stale patrol posts.
+- Patrol runtime orders carry an explicit persisted ownership marker. Only camp-resident workers can be acquired by the scheduler; release restores camp-resident duty, while unrelated manual guard orders are left untouched. An accepted combat, severe-injury, or explicit-reassignment interrupt is also persisted as a current-shift exclusion, survives save/reload, and expires at the next day/night boundary.
 - Legacy camp-worker saves can deserialize without newly added job-priority keys. `job_data::deserialize` now reseeds missing default camp jobs after loading so new control-surface tasks like `ACT_CAMP_PATROL` still appear and respond to `Set all priorities` on older fixtures/saves.
 
 ## Camp locker dirty-trigger follow-through
@@ -207,14 +209,10 @@ Run the named-NPC smoke harness without invoking the model:
 Run the named-NPC smoke harness through the normal runner pipe:
 - `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
 
-Check structured action-status output from `llm_intent.log`:
-- `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent.log --npc "Marlene Pike" --kind attack_target --terminal-phase blocked --terminal-reason attack.target_missing`
-- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_target_missing.txt --expect-file tools/llm_runner/fixtures/action_status_attack_target_missing.expect.json --json`
-- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_item_missing.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_item_missing.expect.json --json`
-- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.txt --expect-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.expect.json --json`
-- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.txt --expect-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.expect.json --json`
-- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_panic_override.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_panic_override.expect.json --json`
-- `python3 tools/llm_runner/run_action_status_fixtures.py`
+Check same-run structured action-status output:
+- Before the action: `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent_events.log --print-byte-offset`
+- After the action: `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent_events.log --after-byte-offset <pre-run-byte-offset> --kind look_inventory --min-events 1 --phase-any requested --json`
+- Deterministic fixture suite: `python3 tools/llm_runner/run_action_status_fixtures.py`
 
 The checker also supports `phase_sequence` expectations so a fixture can assert on ordered lifecycle progression, not just whether a phase appeared somewhere eventually.
 
@@ -224,6 +222,15 @@ The smoke harness intentionally tests three layers together:
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
+
+### Action-status event evidence
+
+Runtime action-status evidence is written as one physical framed line to `config/llm_intent_events.log`:
+
+`[CAOL_EVENT] action_status ...`
+
+Field values are JSON-escaped. Production checking accepts only the exact anchored event grammar from that dedicated basename and requires a pre-run byte offset, so stale earlier events, ordinary model/player text, embedded lookalikes, and truncated/rotated logs cannot become same-run proof. Nonstandard paths are allowed only in explicit fixture mode. The legacy intent log remains useful for human debugging but is not the trusted action-status proof source.
+
 - Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved. Those packets now fence the exact handoff text between `reply_begin` / `reply_end`, so the live artifact is easier to eyeball and compare against the deterministic snapshot proof.
 - Direct deterministic `show_board` handling can still produce a real in-game reply without a normal prompt/response block in `config/llm_intent.log`; use the explicit camp-reply block as the artifact sink first. If that block is missing, treat it as an instrumentation/config question rather than automatic proof that `show_board` failed.
 - Structured/internal board/job follow-through tokens now stay in the internal camp-reply log packet while the visible in-game message log gets the corresponding organic board/status bark. If raw `board=` / `status=` / `next=` payload text shows up on-screen, that is a regression on the assigned-camp board path, not intended behavior.
@@ -264,6 +271,7 @@ The smoke harness intentionally tests three layers together:
 - `0.H` now uses real profession fallback for `your_profession` instead of defaulting to `no_past` whenever `custom_profession` is empty.
 
 ## Porting/Release Strategy (Current Plan)
+- For the current release-recovery cycle, Josef promoted the existing `port/cdda-master` branch as the working integration branch. It is advanced by an orchestrated native upstream merge when the audit shows a manageable conflict set, then tested in place. The normal `dev` -> `master` -> recreated `port/*` model remains the default outside this explicit cycle; branch renaming/overwriting is deferred until release validation is complete.
 - Problem statement: full branch merges from AOL `master` into very different upstreams
   (especially CTLG) produce massive recurring conflict sets and are not sustainable
   for periodic releases.
