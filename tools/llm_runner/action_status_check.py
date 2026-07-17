@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Check structured LLM action-status lines in llm_intent.log.
+"""Check same-run structured LLM action-status events.
 
 This is a small deterministic checker for the action_status lines emitted by
 src/npc.cpp / src/npcmove.cpp / src/llm_intent.cpp.
 
 Typical use:
   python3 tools/llm_runner/action_status_check.py \
-    --log-file config/llm_intent.log \
+    --log-file config/llm_intent_events.log \
+    --after-byte-offset 1234 \
     --npc "Rubik" \
     --kind look_around_pickup \
     --terminal-phase blocked \
@@ -23,7 +24,19 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-FIELD_RE = re.compile(r'(\w+)="([^"]*)"')
+EVENT_LOG_NAME = "llm_intent_events.log"
+JSON_STRING_PATTERN = r'"(?:\\.|[^"\\])*"'
+ACTION_STATUS_RE = re.compile(
+    rf'^\[CAOL_EVENT\] action_status '
+    rf'npc=(?P<npc>{JSON_STRING_PATTERN}) '
+    rf'kind=(?P<kind>{JSON_STRING_PATTERN}) '
+    rf'phase=(?P<phase>{JSON_STRING_PATTERN}) '
+    rf'reason=(?P<reason>{JSON_STRING_PATTERN}) '
+    rf'request=(?P<request>{JSON_STRING_PATTERN}) '
+    rf'target_hint=(?P<target_hint>{JSON_STRING_PATTERN}) '
+    rf'target=(?P<target>{JSON_STRING_PATTERN}) '
+    rf'facts=(?P<facts>{JSON_STRING_PATTERN})$'
+)
 
 
 @dataclass
@@ -54,14 +67,30 @@ EXPECTED_KEYS = {
 }
 
 
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="replace")
+def read_text(path: Path, after_byte_offset: int = 0) -> str:
+    size = path.stat().st_size
+    if after_byte_offset < 0 or after_byte_offset > size:
+        raise ValueError(
+            f"byte offset {after_byte_offset} is outside current log size {size}; "
+            "the event log may have rotated or been truncated"
+        )
+    with path.open("rb") as stream:
+        stream.seek(after_byte_offset)
+        return stream.read().decode("utf-8", errors="replace")
 
 
 def parse_action_status_line(line: str) -> Optional[ActionStatusEvent]:
-    if "action_status" not in line:
+    physical_line = line.rstrip("\r\n")
+    match = ACTION_STATUS_RE.fullmatch(physical_line)
+    if match is None:
         return None
-    fields: Dict[str, str] = {key: value for key, value in FIELD_RE.findall(line)}
+    try:
+        fields: Dict[str, str] = {
+            key: json.loads(value)
+            for key, value in match.groupdict().items()
+        }
+    except json.JSONDecodeError:
+        return None
     if not fields:
         return None
     kind = fields.get("kind", "").strip()
@@ -70,7 +99,7 @@ def parse_action_status_line(line: str) -> Optional[ActionStatusEvent]:
     if not kind or not phase or not npc:
         return None
     return ActionStatusEvent(
-        raw_line=line.rstrip("\n"),
+        raw_line=physical_line,
         npc=npc,
         kind=kind,
         phase=phase,
@@ -82,9 +111,9 @@ def parse_action_status_line(line: str) -> Optional[ActionStatusEvent]:
     )
 
 
-def load_action_status_events(path: Path) -> List[ActionStatusEvent]:
+def load_action_status_events(path: Path, after_byte_offset: int = 0) -> List[ActionStatusEvent]:
     events: List[ActionStatusEvent] = []
-    for line in read_text(path).splitlines():
+    for line in read_text(path, after_byte_offset).splitlines():
         event = parse_action_status_line(line)
         if event is not None:
             events.append(event)
@@ -133,6 +162,24 @@ def normalize_expectations(args: argparse.Namespace) -> Dict[str, object]:
         expectations["phase_sequence"] = list(args.phase_sequence)
     if args.reason_any:
         expectations["reason_any"] = list(args.reason_any)
+    for key in ("npc", "kind", "request", "target", "target_hint", "terminal_phase", "terminal_reason"):
+        if key not in expectations:
+            continue
+        value = expectations[key]
+        if not isinstance(value, str) or not value.strip():
+            raise SystemExit(f"{key} must be a non-empty string.")
+    for key in ("phase_any", "phase_sequence", "reason_any"):
+        if key not in expectations:
+            continue
+        value = expectations[key]
+        if not isinstance(value, list) or any(
+            not isinstance(entry, str) or not entry.strip() for entry in value
+        ):
+            raise SystemExit(f"{key} must be a list of non-empty strings.")
+    expectations.setdefault("min_events", 1)
+    min_events = expectations["min_events"]
+    if isinstance(min_events, bool) or not isinstance(min_events, int) or min_events < 1:
+        raise SystemExit("min_events must be an integer greater than or equal to 1.")
     return expectations
 
 
@@ -200,8 +247,24 @@ def evaluate_events(events: List[ActionStatusEvent], expectations: Dict[str, obj
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Check structured action_status lines in llm_intent.log.")
-    parser.add_argument("--log-file", required=True, help="Path to llm_intent.log or another captured status log.")
+    parser = argparse.ArgumentParser(description="Check framed action_status lines in llm_intent_events.log.")
+    parser.add_argument("--log-file", required=True, help="Path to the dedicated llm_intent_events.log.")
+    parser.add_argument(
+        "--after-byte-offset",
+        type=int,
+        default=None,
+        help="Read only bytes appended after this pre-run event-log size.",
+    )
+    parser.add_argument(
+        "--print-byte-offset",
+        action="store_true",
+        help="Print the current event-log size for a later same-run check and exit.",
+    )
+    parser.add_argument(
+        "--fixture-mode",
+        action="store_true",
+        help="Allow a non-event-log fixture path; deterministic tests only.",
+    )
     parser.add_argument("--expect-file", default="", help="Optional JSON expectation file.")
     parser.add_argument("--npc", default="", help="Exact NPC name to match.")
     parser.add_argument("--kind", default="", help="Exact action kind to match.")
@@ -221,11 +284,25 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     log_path = Path(args.log_file)
+    if args.print_byte_offset:
+        print(log_path.stat().st_size if log_path.exists() else 0)
+        return 0
+    if not args.fixture_mode and log_path.name != EVENT_LOG_NAME:
+        print(f"Refusing untrusted log source; expected {EVENT_LOG_NAME}.", file=sys.stderr)
+        return 2
+    if args.after_byte_offset is None:
+        print("--after-byte-offset is required for same-run evidence.", file=sys.stderr)
+        return 2
     expectations = normalize_expectations(args)
-    all_events = load_action_status_events(log_path)
+    try:
+        all_events = load_action_status_events(log_path, args.after_byte_offset)
+    except (OSError, ValueError) as exc:
+        print(f"Unable to read event log: {exc}", file=sys.stderr)
+        return 2
     matched_events = filter_events(all_events, expectations)
     result = {
         "log_file": str(log_path),
+        "after_byte_offset": args.after_byte_offset,
         "expectations": expectations,
         "total_action_status_events": len(all_events),
     }

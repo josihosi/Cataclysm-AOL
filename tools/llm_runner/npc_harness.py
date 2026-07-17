@@ -42,8 +42,8 @@ ALLOWED_ACTIONS = [
     "look_inventory",
     "idle",
 ]
-VALID_MOVE_COORDS = {"n", "s", "e", "w", "ne", "nw", "se", "sw"}
 VALID_MOVE_TERMINAL_STATES = {"wait_here", "hold_position"}
+SNAPSHOT_MOVE_RADIUS = 20
 
 
 @dataclass
@@ -174,8 +174,44 @@ def default_prompt_template() -> str:
 
 
 def render_prompt(template: str, snapshot: str) -> str:
-    action_list = ", ".join(ALLOWED_ACTIONS) + ", attack=<target>, move: <coordinate> <coordinate> ... <state>"
+    action_list = ", ".join(ALLOWED_ACTIONS) + ", attack=<target>, move=<dx>,<dy> <state>"
     return template.replace("{{snapshot}}", snapshot).replace("{{action_list_with_target}}", action_list)
+
+
+def render_map_with_axes(raw_map: str) -> str:
+    rows = raw_map.splitlines()
+    if not rows or not rows[0]:
+        raise ValueError("scenario map must contain at least one row")
+    width = len(rows[0])
+    if any(len(row) != width for row in rows):
+        raise ValueError("scenario map rows must have equal width")
+    origins = [
+        (row_index, column_index)
+        for row_index, row in enumerate(rows)
+        for column_index, glyph in enumerate(row)
+        if glyph == "|"
+    ]
+    if len(origins) != 1:
+        raise ValueError("scenario map must contain exactly one '|' NPC origin")
+    origin_row, origin_column = origins[0]
+
+    labels = [" "] * width
+    markers = ["."] * width
+    for column in range(width):
+        dx = column - origin_column
+        if dx % 10 != 0:
+            continue
+        markers[column] = "|"
+        label = "0" if dx == 0 else f"{dx:+d}"
+        centered_start = column - len(label) // 2
+        clamped_start = max(0, min(centered_start, max(width - len(label), 0)))
+        labels[clamped_start:clamped_start + len(label)] = label
+
+    rendered = ["        " + "".join(labels), "        " + "".join(markers)]
+    for row_index, row in enumerate(rows):
+        dy = origin_row - row_index
+        rendered.append(f"dy={dy:+03d} {row}")
+    return "\n".join(rendered)
 
 
 def parse_summary_text_file(path: Path) -> Dict[str, SummaryEntry]:
@@ -473,36 +509,47 @@ def build_snapshot(scenario: Dict[str, object], resolved: ResolvedSummary, reque
         "6 ... obstructed area",
         "[a - z] ... creature",
         "[A - Z] ... obstructed creature",
+        "? ... unlettered creature (not a target handle)",
         "| ... You (NPC)",
         "map_legend:",
         "a ... player",
+        "map axes: +x east/right, -x west/left, +y north/up, -y south/down",
         "map:",
-        str(world.get("map", "-----\n--a--\n--|--\n-----\n-----")),
+        render_map_with_axes(str(world.get("map", "-----\n--a--\n--|--\n-----\n-----"))),
     ])
     return "\n".join(lines) + "\n"
 
 
-def parse_move_field(field: str) -> Tuple[Optional[List[str]], Optional[str], Optional[str]]:
+def parse_move_field(field: str) -> Tuple[Optional[Tuple[int, int]], Optional[str], Optional[str]]:
     raw = field.strip()
     lowered = raw.lower()
-    if lowered.startswith("move:"):
-        lowered = lowered[5:].strip()
-    elif lowered.startswith("move "):
-        lowered = lowered[5:].strip()
-    else:
-        return None, None, "move token missing prefix"
+    if not lowered.startswith("move="):
+        return None, None, "Move field must use move=<dx>,<dy> <state>."
+    lowered = lowered[5:].strip()
     parts = [part for part in lowered.split() if part]
-    if len(parts) < 2:
-        return None, None, "move field must include coordinates and terminal state"
+    if len(parts) != 2:
+        return None, None, "Move field must include one delta and terminal state."
     terminal = parts[-1]
     if terminal not in VALID_MOVE_TERMINAL_STATES:
-        return None, None, "move field terminal state is invalid"
-    coords = parts[:-1]
-    if not coords or len(coords) > 15:
-        return None, None, "move field must have 1-15 coordinates"
-    if any(coord not in VALID_MOVE_COORDS for coord in coords):
-        return None, None, "move coordinate is invalid"
-    return coords, terminal, None
+        return None, None, "Move field terminal state is invalid."
+    delta = parts[0]
+    if delta.count(",") != 1:
+        return None, None, "Move field delta is invalid."
+    dx_token, dy_token = delta.split(",", 1)
+    def is_ascii_signed_integer(token: str) -> bool:
+        digits = token[1:] if token.startswith(("+", "-")) else token
+        return bool(digits) and all("0" <= char <= "9" for char in digits)
+    if not is_ascii_signed_integer(dx_token) or not is_ascii_signed_integer(dy_token):
+        return None, None, "Move field delta is invalid."
+    try:
+        dx = int(dx_token, 10)
+        dy = int(dy_token, 10)
+    except ValueError:
+        return None, None, "Move field delta is invalid."
+    if not (-SNAPSHOT_MOVE_RADIUS <= dx <= SNAPSHOT_MOVE_RADIUS and
+            -SNAPSHOT_MOVE_RADIUS <= dy <= SNAPSHOT_MOVE_RADIUS):
+        return None, None, "Move field delta must stay within the snapshot map (-20..20)."
+    return (dx, dy), terminal, None
 
 
 def validate_csv_payload(payload: str) -> Tuple[bool, str, List[str]]:
@@ -516,34 +563,92 @@ def validate_csv_payload(payload: str) -> Tuple[bool, str, List[str]]:
         return False, "CSV speech field missing.", []
     parsed_actions: List[str] = []
     attack_seen = False
+    attack_action = ""
+    move_seen = False
     for field in fields[1:]:
         if not field:
             return False, "CSV action token is invalid.", []
         lowered_field = field.lower().strip()
-        if lowered_field.startswith("move:") or lowered_field.startswith("move "):
-            coords, terminal, error = parse_move_field(lowered_field)
+        if lowered_field.startswith(("move=", "move:", "move ")):
+            if move_seen:
+                return False, "CSV move field repeated.", []
+            delta, terminal, error = parse_move_field(lowered_field)
             if error:
                 return False, error, []
-            parsed_actions.append(f"move: {' '.join(coords)} {terminal}")
+            assert delta is not None and terminal is not None
+            move_seen = True
+            parsed_actions.append(lowered_field)
             continue
         for token in lowered_field.split():
             if token.startswith("attack="):
-                target = token[7:]
-                if not target or not all(ch.isalnum() or ch == '_' for ch in target):
+                target_raw = token[7:]
+                target_length = 0
+                while target_length < len(target_raw):
+                    char = target_raw[target_length]
+                    if not ("a" <= char <= "z" or "0" <= char <= "9" or char == "_"):
+                        break
+                    target_length += 1
+                if target_length == 0:
                     return False, "CSV attack target is invalid.", []
                 if attack_seen:
                     return False, "CSV attack target repeated.", []
                 attack_seen = True
-                parsed_actions.append(token)
+                attack_action = "attack=" + target_raw[:target_length]
                 continue
             if token not in ALLOWED_ACTIONS:
                 return False, "CSV action token is invalid.", []
             parsed_actions.append(token)
+    if not parsed_actions and attack_seen:
+        parsed_actions.append("idle")
+    if parsed_actions == ["wait_here", "hold_position"]:
+        parsed_actions.pop()
     if len(parsed_actions) == 0:
         return False, "CSV must include at least one action field.", []
     if len(parsed_actions) > 3:
         return False, "CSV has too many action tokens.", []
+    if attack_action:
+        parsed_actions.append(attack_action)
     return True, "", parsed_actions
+
+
+def normalize_csv_separators(payload: str) -> str:
+    if "|" in payload:
+        return payload
+    output: List[str] = []
+    last_separator = False
+    for index, char in enumerate(payload):
+        if char == "+":
+            signed_number = (
+                index + 1 < len(payload)
+                and "0" <= payload[index + 1] <= "9"
+                and (index == 0 or payload[index - 1] in ",=" or payload[index - 1].isspace())
+            )
+            if signed_number:
+                output.append(char)
+                last_separator = False
+                continue
+            if not last_separator:
+                output.append("|")
+                last_separator = True
+            continue
+        last_separator = False
+        output.append(char)
+    return "".join(output)
+
+
+def extract_attack_target_hint(payload: str) -> str:
+    lowered = payload.lower()
+    start = lowered.find("attack=")
+    if start == -1:
+        return ""
+    start += len("attack=")
+    end = start
+    while end < len(lowered):
+        char = lowered[end]
+        if not ("a" <= char <= "z" or "0" <= char <= "9" or char == "_"):
+            break
+        end += 1
+    return lowered[start:end]
 
 
 def extract_lenient_csv(payload: str) -> Tuple[bool, str, List[str], str]:
@@ -588,6 +693,10 @@ def extract_lenient_csv(payload: str) -> Tuple[bool, str, List[str], str]:
 
 def validate_response_like_game(payload: str) -> Dict[str, object]:
     ok, error, parsed_actions = validate_csv_payload(payload)
+    if not ok:
+        normalized = normalize_csv_separators(payload)
+        if normalized != payload:
+            ok, error, parsed_actions = validate_csv_payload(normalized)
     if ok:
         return {
             "ok": True,
@@ -597,6 +706,9 @@ def validate_response_like_game(payload: str) -> Dict[str, object]:
         }
     lenient_ok, _speech, lenient_actions, lenient_error = extract_lenient_csv(payload)
     if lenient_ok:
+        attack_target = extract_attack_target_hint(payload)
+        if attack_target:
+            lenient_actions.append("attack=" + attack_target)
         return {
             "ok": True,
             "mode": "lenient",
@@ -609,6 +721,105 @@ def validate_response_like_game(payload: str) -> Dict[str, object]:
         "error": error,
         "parsed_actions": [],
     }
+
+
+def run_self_test() -> int:
+    failures: List[str] = []
+
+    def check(condition: bool, label: str) -> None:
+        if not condition:
+            failures.append(label)
+
+    rendered = render_prompt("{{action_list_with_target}}\n{{snapshot}}", "snapshot")
+    check("move=<dx>,<dy> <state>" in rendered, "rendered prompt uses delta move contract")
+    check("move: <coordinate>" not in rendered, "rendered prompt omits legacy move contract")
+
+    rendered_map = render_map_with_axes("-----\n--a--\n--|--\n-----\n-----")
+    check("        ..|.." in rendered_map, "map renders dx marker line")
+    check("dy=+01 --a--" in rendered_map, "map renders positive dy row label")
+    check("dy=+00 --|--" in rendered_map, "map renders NPC origin row")
+
+    valid_cases = [
+        ("move=4,-2 hold_position", (4, -2), "hold_position"),
+        ("MOVE= -20,+20 WAIT_HERE", (-20, 20), "wait_here"),
+        ("move=0,0 wait_here", (0, 0), "wait_here"),
+    ]
+    for field, expected_delta, expected_terminal in valid_cases:
+        delta, terminal, error = parse_move_field(field)
+        check(error is None and delta == expected_delta and terminal == expected_terminal,
+              f"valid move parses: {field}")
+
+    invalid_cases = [
+        "move: E E hold_position",
+        "move E E hold_position",
+        "move=4,-2",
+        "move=4,-2 later",
+        "move=4, -2 hold_position",
+        "move=4,-2 hold_position extra",
+        "move=4,-2.5 hold_position",
+        "move=4,-2,0 hold_position",
+        "move=1_0,0 wait_here",
+        "move=21,0 hold_position",
+        "move=-21,0 wait_here",
+        "move=2147483647,0 wait_here",
+    ]
+    for field in invalid_cases:
+        delta, terminal, error = parse_move_field(field)
+        check(delta is None and terminal is None and bool(error), f"invalid move rejects: {field}")
+
+    ok, error, actions = validate_csv_payload(
+        "On it|move=4,-2 wait_here|equip_gun"
+    )
+    check(ok and not error and actions == ["move=4,-2 wait_here", "equip_gun"],
+          "strict CSV accepts delta move with another action")
+
+    ok, _error, _actions = validate_csv_payload(
+        "On it|move=1,2 wait_here|move=2,1 hold_position"
+    )
+    check(not ok, "strict CSV rejects duplicate move fields")
+
+    ok, error, actions = validate_csv_payload(
+        "Engaging|attack=a|equip_gun|follow_close panic_off"
+    )
+    check(ok and not error and actions == ["equip_gun", "follow_close", "panic_off", "attack=a"],
+          "attack target does not consume the three normal action slots")
+
+    ok, error, actions = validate_csv_payload("Engaging|attack=a")
+    check(ok and not error and actions == ["idle", "attack=a"],
+          "attack-only CSV mirrors the game's idle action plus target")
+
+    ok, error, actions = validate_csv_payload("Engaging|attack=a,")
+    check(ok and not error and actions == ["idle", "attack=a"],
+          "attack target accepts the same ASCII prefix as the game")
+
+    ok, error, actions = validate_csv_payload("Staying|wait_here hold_position")
+    check(ok and not error and actions == ["wait_here"],
+          "wait-here plus hold-position normalizes like the game")
+
+    normalized = normalize_csv_separators("Moving+move=-20,+20 wait_here")
+    check(normalized == "Moving|move=-20,+20 wait_here",
+          "plus separator normalization preserves signed coordinates")
+
+    mixed = validate_response_like_game("Speech|bogus follow_close")
+    check(mixed.get("mode") == "lenient" and mixed.get("parsed_actions") == ["follow_close"],
+          "mixed invalid action falls back like the game")
+
+    mixed_attack = validate_response_like_game("Speech|attack=A bogus follow_close")
+    check(mixed_attack.get("mode") == "lenient" and
+          mixed_attack.get("parsed_actions") == ["follow_close", "attack=a"],
+          "lenient recovery retains the canonical attack handle")
+
+    legacy = validate_response_like_game("On it|move: E E wait_here")
+    check(legacy.get("ok") is True and legacy.get("mode") == "lenient" and
+          legacy.get("parsed_actions") == ["wait_here"],
+          "legacy move is not misreported as movement during lenient recovery")
+
+    if failures:
+        for failure in failures:
+            print(f"FAIL: {failure}", file=sys.stderr)
+        return 1
+    print("npc_harness self-test passed")
+    return 0
 
 
 def build_runner_command(args: argparse.Namespace) -> List[str]:
@@ -711,12 +922,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-file", default="")
     parser.add_argument("--resolve-only", action="store_true", help="Only resolve and validate summary selection; do not invoke runner.py.")
     parser.add_argument("--dump-prompt", action="store_true", help="Print the rendered prompt and exit.")
+    parser.add_argument("--self-test", action="store_true", help="Run parser/prompt parity checks without invoking a model backend.")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON result.")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.self_test:
+        return run_self_test()
     scenario = load_scenario(args.scenario)
     summary_roots = default_summary_roots() + [Path(path).resolve() for path in args.summary_root]
     resolved = resolve_summary(scenario, summary_roots)

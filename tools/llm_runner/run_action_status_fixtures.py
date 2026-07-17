@@ -26,7 +26,17 @@ def main() -> int:
         if not log_file.exists():
             failures.append((expect_file.name, f"missing matching log fixture for {stem}"))
             continue
-        cmd = [sys.executable, str(checker), "--log-file", str(log_file), "--expect-file", str(expect_file)]
+        cmd = [
+            sys.executable,
+            str(checker),
+            "--log-file",
+            str(log_file),
+            "--after-byte-offset",
+            "0",
+            "--fixture-mode",
+            "--expect-file",
+            str(expect_file),
+        ]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         label = f"{stem}"
         if proc.returncode == 0:
