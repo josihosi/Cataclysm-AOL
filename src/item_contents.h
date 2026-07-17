@@ -353,7 +353,7 @@ class item_contents
         /**
          * Open a menu for the player to set pocket favorite settings for the pockets in this item_contents
          */
-        void favorite_settings_menu( item *i );
+        void favorite_settings_menu( item_location il );
 
         item_pocket *contained_where( const item &contained );
         void on_pickup( Character &guy, item *avoid = nullptr );
@@ -362,6 +362,9 @@ class item_contents
         /** Spill items that don't fit in the container. */
         void overflow( map &here, const tripoint_bub_ms &pos, const item_location &loc );
         void clear_items();
+        /** Engage bulk-fill mode on all pockets. See item_pocket::begin_bulk_fill. */
+        void begin_bulk_fill();
+        void end_bulk_fill();
         /** Clear all items from magazine type pockets. */
         void clear_magazines();
         void clear_pockets_if( const std::function<bool( item_pocket const & )> &filter );
@@ -486,6 +489,7 @@ class item_contents
         friend struct item_contents_helper;
 };
 
-void pocket_management_menu( const std::string &title, const std::vector<item *> &to_organize );
+void pocket_management_menu( const std::string &title,
+                             const std::vector<item_location> &to_organize );
 
 #endif // CATA_SRC_ITEM_CONTENTS_H

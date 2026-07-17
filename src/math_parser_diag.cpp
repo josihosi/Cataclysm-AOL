@@ -257,6 +257,15 @@ double consumption_count_total_eval( const_dialogue const &d, char scope,
     return count;
 }
 
+double light_level_eval( const_dialogue const &d, char /* scope */,
+                         std::vector<diag_value> const &params, diag_kwargs const &/* kwargs */ )
+{
+    const map &here = get_map();
+    tripoint_abs_ms loc_val = params[0].tripoint( d );
+
+    return static_cast<double>( here.light_at( here.get_bub( loc_val ) ) );
+}
+
 double distance_eval( const_dialogue const &d, char /* scope */,
                       std::vector<diag_value> const &params, diag_kwargs const & /* kwargs */ )
 {
@@ -533,6 +542,14 @@ double knows_proficiency_eval( const_dialogue const &d, char scope,
 {
     return d.const_actor( is_beta( scope ) )
            ->knows_proficiency( proficiency_id( params[0].str( d ) ) );
+}
+
+double has_wielded_with_flag_eval( const_dialogue const &d, char scope,
+                                   std::vector<diag_value> const &params,
+                                   diag_kwargs const & /* kwargs */ )
+{
+    return d.const_actor( is_beta( scope ) )
+           ->wielded_with_flag( flag_id( params[0].str( d ) ) );
 }
 
 double hp_eval( const_dialogue const &d, char scope, std::vector<diag_value> const &params,
@@ -1816,6 +1833,7 @@ std::map<std::string_view, dialogue_func> const dialogue_funcs{
     { "damage_level", { "un", 0, damage_level_eval } },
     { "degradation", { "un", 0, degradation_eval, degradation_ass } },
     { "distance", { "g", 2, distance_eval } },
+    { "light_level", { "g", 1, light_level_eval } },
     { "effect_intensity", { "un", 1, effect_intensity_eval, {}, { "bodypart" } } },
     { "effect_duration", { "un", 1, effect_duration_eval, {}, { "bodypart", "unit" } } },
     { "limb_score", { "un", 1, limb_score_eval, {}, { "type" } } },
@@ -1839,6 +1857,7 @@ std::map<std::string_view, dialogue_func> const dialogue_funcs{
     { "sum_traits_of_category", { "un", 1, sum_traits_of_category_eval, {}, { "type" } } },
     { "sum_traits_of_category_char_has", { "un", 1, sum_traits_of_category_char_has_eval, {}, { "type" } } },
     { "has_proficiency", { "un", 1, knows_proficiency_eval } },
+    { "has_wielded_with_flag", { "un", 1, has_wielded_with_flag_eval } },
     { "has_var", { "g", 1, has_var_eval } },
     { "hp", { "un", 1, hp_eval, hp_ass } },
     { "hp_max", { "un", 1, hp_max_eval } },

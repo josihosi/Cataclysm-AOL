@@ -22,7 +22,6 @@
       {
         "u_travel_to_dimension": "radiosphere",
         "npc_travel_radius": 0,
-        "region_type": "radiosphere",
         "npc_travel_filter": "none",
         "fail_message": "You experience brief vertigo, but nothing dangerous seems to happen.",
         "success_message": "Your surroundings warp and fold before reforming into a dark industrial area."
@@ -35,10 +34,8 @@
         "max_radius": 0
       },
       { "u_teleport": { "context_val": "nearest_floor" } },
-      { "custom_light_level": 10, "length": "9999 days", "key": "radiosphere_lights_off" },
       { "u_message": "Darkness envelops you.", "popup": true, "popup_w_interrupt_query": true },
       { "run_eocs": "EOC_PORTAL_RADIOSPHERE_RETURN", "time_in_future": [ "20 minutes", "2 hours" ] },
-      { "run_eocs": "EOC_RADIOSPHERE_DEACTIVATE_DARKNESS" },
       { "math": [ "u_ire -= 5" ] }
     ]
   },
@@ -76,8 +73,7 @@
         "else": { "u_teleport": { "context_val": "ground" }, "fail_message": "", "success_message": "" }
       },
       { "clear_dimension": "radiosphere" },
-      { "u_message": "You're back.", "popup": true, "popup_w_interrupt_query": true },
-      { "run_eocs": "EOC_RADIOSPHERE_DEACTIVATE_DARKNESS" }
+      { "u_message": "You're back.", "popup": true, "popup_w_interrupt_query": true }
     ],
     "false_effect": [
       {
@@ -93,26 +89,11 @@
   },
   {
     "type": "effect_on_condition",
-    "id": "EOC_RADIOSPHERE_DEACTIVATE_DARKNESS",
-    "//": "bring the light back.",
-    "global": true,
-    "recurrence": "30 seconds",
-    "condition": { "not": { "current_dimension": "radiosphere" } },
-    "deactivate_condition": { "not": { "current_dimension": "radiosphere" } },
-    "effect": [ { "alter_timed_events": "radiosphere_lights_off" } ]
-  },
-  {
-    "type": "effect_on_condition",
     "id": "EOC_PORTAL_CABINS",
     "condition": { "and": [ { "test_eoc": "EOC_PORTAL_STORM_CONDITION_FLAG_DIMENSIONAL_ANCHOR" }, { "not": "u_driving" } ] },
     "effect": [
       { "u_add_effect": "blind", "duration": 0 },
-      {
-        "u_travel_to_dimension": "cabins",
-        "npc_travel_radius": 0,
-        "region_type": "cabins",
-        "npc_travel_filter": "none"
-      },
+      { "u_travel_to_dimension": "cabins", "npc_travel_radius": 0, "npc_travel_filter": "none" },
       {
         "u_location_variable": { "context_val": "nearest_floor" },
         "terrain": "t_tar_flat_roof",
@@ -211,7 +192,6 @@
       {
         "u_travel_to_dimension": "inner_cabins",
         "npc_travel_radius": 0,
-        "region_type": "inner_cabins",
         "npc_travel_filter": "none",
         "fail_message": "You experience brief vertigo, but nothing dangerous seems to happen.",
         "success_message": "Your surroundings warp and fold."
@@ -239,7 +219,7 @@
     "id": "EOC_PORTAL_INNER_CABINS_WARPED_CABIN",
     "condition": { "and": [ { "test_eoc": "EOC_PORTAL_STORM_CONDITION_FLAG_DIMENSIONAL_ANCHOR" }, { "not": "u_driving" } ] },
     "effect": [
-      { "u_travel_to_dimension": "cabins", "npc_travel_radius": 0, "region_type": "cabins", "npc_travel_filter": "none" },
+      { "u_travel_to_dimension": "cabins", "npc_travel_radius": 0, "npc_travel_filter": "none" },
       { "u_location_variable": { "context_val": "nearest_bed" }, "furniture": "f_bed", "target_max_radius": 60 },
       { "u_teleport": { "context_val": "nearest_bed" } },
       {

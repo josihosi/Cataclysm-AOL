@@ -1122,6 +1122,10 @@ void Character::reach_attack( const tripoint_bub_ms &p, int forced_movecost )
             // Communicate this with a different message?
         }
 
+        const int total_stamina = enchantment_cache->modify_value(
+                                      enchant_vals::mod::MELEE_STAMINA_CONSUMPTION, get_total_melee_stamina_cost() );
+        burn_energy_arms( std::min( -50, total_stamina ) );
+
         mod_moves( forced_movecost >= 0 ? -forced_movecost : -move_cost );
         return;
     }
@@ -1362,7 +1366,7 @@ static void roll_melee_damage_internal( const Character &u, const damage_type_id
     } else if( dt == damage_bash ) {
         float melee_bonus = u.get_skill_level( skill_melee );
 
-        /** @EFFECT_UNARMED caps bash damage with unarmed weapons */
+        /** Martial arts can increase bash cap by melee skill. */
         if( u.is_melee_bash_damage_cap_bonus() ) {
             bash_cap += melee_bonus;
         }
@@ -1421,7 +1425,7 @@ static void roll_melee_damage_internal( const Character &u, const damage_type_id
         } else if( dt == damage_bash ) {
             dmg_mul *= 1.f + 0.5f * crit_mod;
             // 50% armor penetration
-            armor_mult = 0.5f * crit_mod;
+            armor_mult = 1.f - 0.5f * crit_mod;
         }
     }
 
@@ -2788,17 +2792,15 @@ double Character::evaluate_weapon( const item &maybe_weapon, const bool pretend_
     // ABSOLUTELY disgusting fake gun assembly for character creation
     int pretend_ammo = 0;
     if( pretend_have_ammo && maybe_weapon.is_gun() ) {
-        itype_id ammo_id = itype_id::NULL_ID();
-        if( maybe_weapon.ammo_default().is_null() ) {
-            ammo_id = item( maybe_weapon.magazine_default() ).ammo_default();
-        } else {
-            ammo_id = maybe_weapon.ammo_default();
-        }
-        const ammotype &type_of_ammo = item::find_type( ammo_id )->ammo->type;
-        if( maybe_weapon.magazine_integral() ) {
-            pretend_ammo = maybe_weapon.ammo_capacity( type_of_ammo );
-        } else {
-            pretend_ammo = item( maybe_weapon.magazine_default() ).ammo_capacity( type_of_ammo );
+        const itype_id ammo_id = maybe_weapon.ammo_default().is_null()
+                                 ? item( maybe_weapon.magazine_default() ).ammo_default()
+                                 : maybe_weapon.ammo_default();
+        if( const std::optional<ammotype> type_of_ammo = item::ammotype_of( ammo_id ) ) {
+            if( maybe_weapon.magazine_integral() ) {
+                pretend_ammo = maybe_weapon.ammo_capacity( *type_of_ammo );
+            } else {
+                pretend_ammo = item( maybe_weapon.magazine_default() ).ammo_capacity( *type_of_ammo );
+            }
         }
     }
     return evaluate_weapon_internal( maybe_weapon, can_use_gun, use_silent, pretend_ammo );

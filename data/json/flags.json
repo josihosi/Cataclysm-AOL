@@ -113,6 +113,10 @@
     "type": "json_flag"
   },
   {
+    "id": "ALLOWS_LEG_TENTACLES",
+    "type": "json_flag"
+  },
+  {
     "id": "ALLOWS_TALONS",
     "type": "json_flag"
   },
@@ -351,6 +355,11 @@
     "id": "EATEN_HOT",
     "type": "json_flag",
     "info": "This tastes <good>better</good> while <color_red>hot</color>."
+  },
+  {
+    "id": "HUNGER_DISRUPTION",
+    "type": "json_flag",
+    "info": "You don't know how hungry you are when you are effected by this."
   },
   {
     "id": "ELECTRIC_IMMUNE",
@@ -993,6 +1002,11 @@
     "inherit": false
   },
   {
+    "id": "FAULT_ON_COMPLETION",
+    "//COMMENT": "Hardcoded application/removal.",
+    "type": "json_flag"
+  },
+  {
     "id": "SUN_GLASSES",
     "type": "json_flag",
     "//": "Prevents glaring when in sunlight.",
@@ -1171,6 +1185,11 @@
     "id": "NO_FAIL",
     "type": "json_flag",
     "//": "Spellcasting never fails for this spell"
+  },
+  {
+    "id": "HIDDEN_SPELL",
+    "type": "json_flag",
+    "//": "Spellcasting never shows any messages for this spell"
   },
   {
     "id": "IGNORE_WALLS",
@@ -1627,6 +1646,10 @@
   },
   {
     "id": "IMPERIAL_ROAD_KEY",
+    "type": "json_flag"
+  },
+  {
+    "id": "IMPERIAL_ROAD_TRAVELER",
     "type": "json_flag"
   },
   {
@@ -2605,14 +2628,14 @@
   {
     "id": "GASFILTER_SM",
     "type": "json_flag",
-    "info": "A small-sized gasmask filter.",
+    "info": "A small-sized gas mask filter.",
     "name": "filter mask cartridge"
   },
   {
     "id": "GASFILTER_MED",
     "type": "json_flag",
-    "info": "A medium-sized gasmask filter.",
-    "name": "gas mask cartridge"
+    "info": "A medium-sized gas mask filter.",
+    "name": "CBRN filter canister"
   },
   {
     "id": "PANORAMIC_OUTSERT",
@@ -3036,6 +3059,21 @@
     "type": "json_flag",
     "//": "Terrain / Furniture flag",
     "//2": "This terrain will phase back to its original terrain when no longer modified."
+  },
+  {
+    "id": "ROBOFAC_ARM",
+    "type": "json_flag",
+    "info": "This item is a Hub 01 ARM exoskeleton.  It requires an implanted XM-ARM interface to function."
+  },
+  {
+    "id": "ROBOFAC_LEG",
+    "type": "json_flag",
+    "info": "This item is a Hub 01 LEG exoskeleton.  It requires an implanted XM-LEG interface to function."
+  },
+  {
+    "id": "ROBOFAC_BACK",
+    "type": "json_flag",
+    "info": "This item is a Hub 01 BACK exoskeleton.  It requires an implanted XM-LEG interface and it must be worn with ARM and LEG exoskeletons to function."
   },
   {
     "id": "ROBOFAC_LENS_ACCESSORY",

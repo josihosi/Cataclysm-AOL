@@ -276,6 +276,7 @@ void overmap_global_state::clear()
     bandit_live_world.clear();
     zombie_rider_light_memory.clear();
     zombie_rider_light_memory_last_turn = calendar::turn_zero;
+    placed_regions.clear();
     overmap_count = 0;
     major_river_count = 0;
 }

@@ -25,6 +25,7 @@
 #include "memory_fast.h"
 #include "overmap.h"
 #include "overmap_types.h"
+#include "overmap_worldgen.h"
 #include "point.h"
 #include "simple_pathfinding.h"
 #include "type_id.h"
@@ -195,6 +196,8 @@ struct overmap_global_state {
     std::map<tripoint_abs_omt, zombie_rider_overmap_ai::rider_light_memory>
     zombie_rider_light_memory;
     time_point zombie_rider_light_memory_last_turn = calendar::turn_zero;
+    // placed regions by overmap
+    std::unordered_map<tripoint_abs_om, region_settings_id> placed_regions;
 
     void clear();
     void reset();
@@ -209,6 +212,7 @@ class overmapbuffer
 
         bool externally_set_args = false;
         overmap_global_state global_state;
+        dimension_region_layout regions;
 
         static std::string terrain_filename( const point_abs_om & );
         static cata_path player_filename( const point_abs_om & );
@@ -283,7 +287,6 @@ class overmapbuffer
         std::string get_vehicle_tile_id( const tripoint_abs_omt &omt );
         const region_settings &get_settings( const tripoint_abs_omt &p );
         const region_settings &get_default_settings( const point_abs_om &p );
-        std::string current_region_type;
         /**
          * Accessors for horde introspection into overmaps.
          * Probably also useful for NPC overmap-scale navigation.
@@ -476,6 +479,11 @@ class overmapbuffer
         overmap_with_local_coords get_existing_om_global( const tripoint_abs_omt &p );
         overmap_with_local_coords get_om_global( const point_abs_omt &p );
         overmap_with_local_coords get_om_global( const tripoint_abs_omt &p );
+
+        // gets the region for the given overmap and current dimension
+        region_settings_id get_overmap_region( tripoint_abs_om om_point );
+        void print_region_layout();
+        void init_region_layout();
 
         /**
          * Pass global overmap coordinates (same as @ref get).

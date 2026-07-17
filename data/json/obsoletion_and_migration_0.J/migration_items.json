@@ -376,6 +376,16 @@
   },
   {
     "type": "MIGRATION",
+    "id": "water_purifying_active",
+    "replace": "water_clean"
+  },
+  {
+    "type": "MIGRATION",
+    "id": "water_purifying",
+    "replace": "water_clean"
+  },
+  {
+    "type": "MIGRATION",
     "id": "mre_strawberry_cake",
     "replace": "mre_chocolate_cake"
   },
@@ -869,18 +879,13 @@
   },
   {
     "type": "MIGRATION",
-    "id": "integrated_bio_robofac_xmleg_on",
-    "replace": "qt_steel_chunk"
+    "id": "gobag",
+    "replace": "duffelbag"
   },
   {
     "type": "MIGRATION",
-    "id": "integrated_bio_robofac_xmarm_on",
-    "replace": "qt_steel_chunk"
-  },
-  {
-    "type": "MIGRATION",
-    "id": "integrated_bio_robofac_xmback_on",
-    "replace": "qt_steel_chunk"
+    "id": "personal_gobag",
+    "replace": "duffelbag"
   },
   {
     "type": "MIGRATION",

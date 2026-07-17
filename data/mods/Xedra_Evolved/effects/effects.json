@@ -171,7 +171,22 @@
     "rating": "mixed",
     "max_duration": "30 m",
     "base_mods": { "per_mod": [ 6 ], "dex_mod": [ -2 ], "speed_mod": [ -5 ] },
+    "flags": [ "HUNGER_DISRUPTION" ],
     "blood_analysis_description": "Cross-dimensional narcotic, unexpected physics encountered"
+  },
+  {
+    "type": "effect_type",
+    "id": "elf-addled",
+    "//": "Should make the player have better perception with a worse dex but should be offset if taken with consumables that grant altered_physics.",
+    "name": [ "ælfadl" ],
+    "desc": [ "The world was much more beautiful when you were closer to the Underhill." ],
+    "apply_message": "The world becomes a duller place.  Do you even care if you live or die if it is in this place?",
+    "remove_message": "The colors brighten and your vision sharpens.",
+    "rating": "bad",
+    "max_duration": "24 hours",
+    "base_mods": { "per_mod": [ -1 ], "speed_mod": [ -5 ] },
+    "flags": [ "HUNGER_DISRUPTION" ],
+    "blood_analysis_description": "Anemia of the soul."
   },
   {
     "type": "effect_type",
@@ -2991,6 +3006,14 @@
   },
   {
     "type": "effect_type",
+    "id": "effect_changeling_temporary_psychopath",
+    "name": [ "Arbiter Mundi" ],
+    "desc": [ "Yours is the right to rule." ],
+    "rating": "mixed",
+    "flags": [ "PSYCHOPATH" ]
+  },
+  {
+    "type": "effect_type",
     "id": "effect_changeling_noble_movement_buffs_ally",
     "name": [ "Deeds of Lughnasadh" ],
     "desc": [ "You would have definitely won the contests." ],
@@ -3877,8 +3900,8 @@
     "max_intensity": 5,
     "apply_message": "You want to sink your fangs in someone's neck and drink their blood.",
     "miss_messages": [ [ "Your thirst distract you.", 1 ] ],
-    "base_mods": { "sleep_chance": [ -1003 ], "sleep_min": [ 15000 ], "sleep_max": [ 21000 ] },
-    "scaling_mods": { "per_mod": [ -0.5 ], "dex_mod": [ -0.5 ], "int_mod": [ -0.75 ], "sleep_chance": [ 501 ] },
+    "base_mods": { "per_mod": [ -1 ], "dex_mod": [ -1 ], "int_mod": [ -1.5 ] },
+    "scaling_mods": { "per_mod": [ -0.5 ], "dex_mod": [ -0.5 ], "int_mod": [ -0.75 ] },
     "limb_score_mods": [
       { "limb_score": "manip", "modifier": 1.0, "scaling": -0.1 },
       { "limb_score": "block", "modifier": 1.0, "scaling": -0.1 },
@@ -4264,7 +4287,9 @@
     "type": "effect_type",
     "id": "effect_werewolf_gain_more_powers",
     "name": [ "Gifts of the Moon" ],
-    "desc": [ "You can unlock a new Lunar Gift.  Do so at night under the moon." ]
+    "desc": [ "You can unlock a new Lunar Gift.  Do so at night under the moon." ],
+    "apply_message": "You are ready for a new gift of the moon.",
+    "rating": "good"
   },
   {
     "type": "effect_type",
@@ -4365,6 +4390,14 @@
   },
   {
     "type": "effect_type",
+    "id": "effect_follower_summoned_dross",
+    "name": [ "Recently created dreamdross" ],
+    "desc": [
+      "This person has recently gave you dreamdross.  It will take some time before they gather an usable amount of dross again."
+    ]
+  },
+  {
+    "type": "effect_type",
     "id": "march_baron",
     "name": [ "March Baron" ],
     "//": "Used to target a slightly different winning screen upon exiting the mortal realms as a Lord in Boann's court."
@@ -4432,5 +4465,14 @@
     ],
     "max_intensity": 10,
     "rating": "mixed"
+  },
+  {
+    "type": "effect_type",
+    "id": "effect_withering_healing_down",
+    "name": [ "Withered" ],
+    "desc": [ { "str": "You feel strangely enervated." } ],
+    "rating": "bad",
+    "show_in_info": true,
+    "enchantments": [ { "values": [ { "value": "REGEN_HP", "multiply": -0.5 } ] } ]
   }
 ]

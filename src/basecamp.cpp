@@ -4721,10 +4721,18 @@ basecamp_action_components::basecamp_action_components(
     basecamp &base)
     : making_(making), args_(args), batch_size_(batch_size), base_(base) {}
 
-bool basecamp_action_components::choose_components() {
-  const auto filter = is_crafting_component;
-  avatar &player_character = get_avatar();
-  const requirement_data *req;
+bool basecamp_action_components::choose_components()
+{
+    // Basecamp crafting selects and consumes tools whole-recipe; the per-step
+    // tool model is not wired through this path, so step recipes are excluded
+    // here rather than risk mis-metering their tools.
+    if( making_.has_steps() ) {
+        debugmsg( "step recipe %s cannot be crafted at a basecamp yet", making_.ident().str() );
+        return false;
+    }
+    const auto filter = is_crafting_component;
+    avatar &player_character = get_avatar();
+    const requirement_data *req;
     if( making_.is_blueprint() ) {
         const std::unordered_map<mapgen_arguments, build_reqs> &reqs_map =
             making_.blueprint_build_reqs().reqs_by_parameters;
