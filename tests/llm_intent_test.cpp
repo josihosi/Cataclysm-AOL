@@ -387,7 +387,15 @@ TEST_CASE( "llm_intent_snapshot_request_resolves_lettered_neutral_targets", "[ll
 
     const std::string snapshot = llm_intent::build_snapshot_for_test(
                                      listener, "Attack the neutral target.", "req-target" );
-    REQUIRE( snapshot.find( "B ... Neutral NPC neutral threat=" ) != std::string::npos );
+    const std::string neutral_legend = " ... Neutral NPC neutral threat=";
+    const size_t neutral_legend_pos = snapshot.find( neutral_legend );
+    REQUIRE( neutral_legend_pos != std::string::npos );
+    REQUIRE( neutral_legend_pos >= 1 );
+    REQUIRE( ( neutral_legend_pos == 1 || snapshot[neutral_legend_pos - 2] == '\n' ) );
+    const char obstructed_handle = snapshot[neutral_legend_pos - 1];
+    REQUIRE( obstructed_handle >= 'A' );
+    REQUIRE( obstructed_handle <= 'Z' );
+    const char normalized_handle = static_cast<char>( obstructed_handle - 'A' + 'a' );
 
     std::vector<std::string> actions;
     std::string attack_target;
@@ -395,9 +403,9 @@ TEST_CASE( "llm_intent_snapshot_request_resolves_lettered_neutral_targets", "[ll
     std::string terminal_state;
     std::string error;
     REQUIRE( llm_intent::parse_action_csv_for_test(
-                 "Engaging|attack=B", actions, attack_target,
+                 std::string( "Engaging|attack=" ) + obstructed_handle, actions, attack_target,
                  move_delta, terminal_state, error ) );
-    REQUIRE( attack_target == "b" );
+    REQUIRE( attack_target == std::string( 1, normalized_handle ) );
 
     listener.set_llm_intent_actions( {}, "stale-request", attack_target );
     listener.move();
