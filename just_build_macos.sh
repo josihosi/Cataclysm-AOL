@@ -12,6 +12,142 @@ SUMMARY_MODEL_DIR="${LLM_SUMMARY_MODEL_DIR:-}"
 SUMMARY_DEVICE="${LLM_SUMMARY_DEVICE:-}"
 SUMMARY_OLLAMA_URL="${LLM_SUMMARY_OLLAMA_URL:-}"
 SUMMARY_OLLAMA_MODEL="${LLM_SUMMARY_OLLAMA_MODEL:-}"
+SHADERCROSS_REV="6b06e55c7c5d7e7a09a8a14f76e866dcfad5ab99"
+SHADERCROSS_SPIRV_CROSS_REV="d1d4adbefd411fc4721a2fece15a7f4aaa3dcdfa"
+SHADERCROSS_CACHE_ROOT="${CATA_SHADERCROSS_CACHE_ROOT:-${XDG_CACHE_HOME:-$HOME/Library/Caches}/Cataclysm-AOL/SDL_shadercross}"
+SHADERCROSS_CACHE_PREFIX="$SHADERCROSS_CACHE_ROOT/${SHADERCROSS_REV:0:12}-${SHADERCROSS_SPIRV_CROSS_REV:0:12}-$(uname -m)"
+SHADERCROSS_TEMP_PARENT="${TMPDIR:-/tmp}"
+SHADERCROSS_TEMP_PARENT="${SHADERCROSS_TEMP_PARENT%/}"
+SHADERCROSS_BUILD_ROOT=""
+SHADERCROSS_PUBLISH_TMP=""
+
+shadercross_works() {
+  [[ -x "$1" ]] && "$1" --help >/dev/null 2>&1
+}
+
+cleanup_macos_shadercross_provision() {
+  if [[ -n "$SHADERCROSS_PUBLISH_TMP" &&
+        "$SHADERCROSS_PUBLISH_TMP" == "$SHADERCROSS_CACHE_PREFIX/bin/.shadercross."* ]]; then
+    rm -f -- "$SHADERCROSS_PUBLISH_TMP"
+  fi
+  if [[ -n "$SHADERCROSS_BUILD_ROOT" &&
+        "$SHADERCROSS_BUILD_ROOT" == "$SHADERCROSS_TEMP_PARENT/caol-sdl-shadercross."* ]]; then
+    rm -rf -- "$SHADERCROSS_BUILD_ROOT"
+  fi
+}
+
+provision_macos_shadercross() {
+  local brew_prefix
+  local candidate
+
+  if shadercross_works "$SHADERCROSS_CACHE_PREFIX/bin/shadercross"; then
+    return
+  fi
+
+  brew_prefix="$(brew --prefix)"
+  SHADERCROSS_BUILD_ROOT="$(mktemp -d "$SHADERCROSS_TEMP_PARENT/caol-sdl-shadercross.XXXXXX")"
+  trap cleanup_macos_shadercross_provision EXIT
+  trap 'exit 130' HUP INT TERM
+  echo "Building pinned SDL_shadercross $SHADERCROSS_REV for Metal shaders..."
+  git clone --filter=blob:none https://github.com/libsdl-org/SDL_shadercross.git "$SHADERCROSS_BUILD_ROOT/src"
+  git -C "$SHADERCROSS_BUILD_ROOT/src" checkout "$SHADERCROSS_REV"
+  test "$(git -C "$SHADERCROSS_BUILD_ROOT/src" rev-parse HEAD)" = "$SHADERCROSS_REV"
+  git -C "$SHADERCROSS_BUILD_ROOT/src" submodule update --init --depth 1 external/SPIRV-Cross
+  test "$(git -C "$SHADERCROSS_BUILD_ROOT/src/external/SPIRV-Cross" rev-parse HEAD)" = \
+    "$SHADERCROSS_SPIRV_CROSS_REV"
+
+  cmake -S "$SHADERCROSS_BUILD_ROOT/src/external/SPIRV-Cross" \
+    -B "$SHADERCROSS_BUILD_ROOT/spirv-cross-build" -GNinja \
+    -DCMAKE_MAKE_PROGRAM="$brew_prefix/bin/ninja" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$SHADERCROSS_BUILD_ROOT/spirv-cross-prefix" \
+    -DSPIRV_CROSS_SHARED=OFF \
+    -DSPIRV_CROSS_STATIC=ON \
+    -DSPIRV_CROSS_CLI=OFF \
+    -DSPIRV_CROSS_ENABLE_TESTS=OFF
+  cmake --build "$SHADERCROSS_BUILD_ROOT/spirv-cross-build" \
+    --parallel "$(sysctl -n hw.ncpu)"
+  cmake --install "$SHADERCROSS_BUILD_ROOT/spirv-cross-build"
+
+  # Metal translation only needs SPIRV-Cross. Keeping DXC off avoids pulling
+  # the large DirectX toolchain used by the all-platform release workflow.
+  cmake -S "$SHADERCROSS_BUILD_ROOT/src" -B "$SHADERCROSS_BUILD_ROOT/build" -GNinja \
+    -DCMAKE_MAKE_PROGRAM="$brew_prefix/bin/ninja" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH="$SHADERCROSS_BUILD_ROOT/spirv-cross-prefix;$brew_prefix/opt/sdl3" \
+    -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
+    -DCMAKE_INSTALL_PREFIX="$SHADERCROSS_BUILD_ROOT/prefix" \
+    -DSDLSHADERCROSS_DXC=OFF \
+    -DSDLSHADERCROSS_VENDORED=OFF \
+    -DSDLSHADERCROSS_SHARED=OFF \
+    -DSDLSHADERCROSS_STATIC=ON \
+    -DSDLSHADERCROSS_SPIRVCROSS_SHARED=OFF \
+    -DSDLSHADERCROSS_CLI=ON \
+    -DSDLSHADERCROSS_INSTALL=ON
+  cmake --build "$SHADERCROSS_BUILD_ROOT/build" --parallel "$(sysctl -n hw.ncpu)"
+  cmake --install "$SHADERCROSS_BUILD_ROOT/build"
+
+  candidate="$SHADERCROSS_BUILD_ROOT/prefix/bin/shadercross"
+  if ! shadercross_works "$candidate"; then
+    echo "The pinned SDL_shadercross build did not produce a working CLI." >&2
+    return 2
+  fi
+  mkdir -p "$SHADERCROSS_CACHE_PREFIX/bin"
+  SHADERCROSS_PUBLISH_TMP="$SHADERCROSS_CACHE_PREFIX/bin/.shadercross.$$"
+  install -m 0755 "$candidate" "$SHADERCROSS_PUBLISH_TMP"
+  shadercross_works "$SHADERCROSS_PUBLISH_TMP"
+  mv -f "$SHADERCROSS_PUBLISH_TMP" "$SHADERCROSS_CACHE_PREFIX/bin/shadercross"
+  SHADERCROSS_PUBLISH_TMP=""
+  cleanup_macos_shadercross_provision
+  SHADERCROSS_BUILD_ROOT=""
+  trap - EXIT HUP INT TERM
+}
+
+resolve_macos_shader_tools() {
+  local shadercross_candidate="${SDL_SHADERCROSS:-}"
+  local glslang_candidate="${GLSLANG:-}"
+  local glslang_prefix=""
+
+  if [[ -n "$shadercross_candidate" ]] && ! shadercross_works "$shadercross_candidate"; then
+    echo "SDL_SHADERCROSS does not point to a working executable: $shadercross_candidate" >&2
+    exit 2
+  fi
+  if [[ -z "$shadercross_candidate" ]] && command -v shadercross >/dev/null 2>&1 && \
+     shadercross_works "$(command -v shadercross)"; then
+    shadercross_candidate="$(command -v shadercross)"
+  fi
+  if [[ -z "$shadercross_candidate" ]] && shadercross_works "$SHADERCROSS_CACHE_PREFIX/bin/shadercross"; then
+    shadercross_candidate="$SHADERCROSS_CACHE_PREFIX/bin/shadercross"
+  fi
+  if [[ -z "$shadercross_candidate" && "$INSTALL_DEPS" == "1" ]]; then
+    provision_macos_shadercross
+    shadercross_candidate="$SHADERCROSS_CACHE_PREFIX/bin/shadercross"
+  fi
+  if [[ -z "$shadercross_candidate" ]] || ! shadercross_works "$shadercross_candidate"; then
+    echo "A working SDL_shadercross CLI is required for the macOS Metal shaders." >&2
+    echo "Rerun with --install-deps to build the pinned tool, or set SDL_SHADERCROSS to an executable." >&2
+    exit 2
+  fi
+
+  if [[ -z "$glslang_candidate" ]] && command -v glslangValidator >/dev/null 2>&1; then
+    glslang_candidate="$(command -v glslangValidator)"
+  fi
+  if [[ -z "$glslang_candidate" ]]; then
+    glslang_prefix="$(brew --prefix glslang 2>/dev/null || true)"
+    if [[ -n "$glslang_prefix" ]]; then
+      glslang_candidate="$glslang_prefix/bin/glslangValidator"
+    fi
+  fi
+  if [[ ! -x "$glslang_candidate" ]]; then
+    echo "glslangValidator is required for the macOS Metal shaders." >&2
+    echo "Rerun with --install-deps, or set GLSLANG to an executable." >&2
+    exit 2
+  fi
+
+  export SDL_SHADERCROSS="$shadercross_candidate"
+  export GLSLANG="$glslang_candidate"
+  echo "SDL3 shader tools: GLSLANG=$GLSLANG SDL_SHADERCROSS=$SDL_SHADERCROSS"
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -99,8 +235,11 @@ if [[ "$INSTALL_DEPS" == "1" ]]; then
   echo "Installing/updating macOS SDL3 build dependencies via Homebrew..."
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install \
     gettext ccache dylibbundler pkg-config freetype glslang \
-    sdl3 sdl3_image sdl3_ttf sdl3_mixer libvorbis libogg
+    sdl3 sdl3_image sdl3_ttf sdl3_mixer libvorbis libogg \
+    cmake ninja
 fi
+
+resolve_macos_shader_tools
 
 if [[ -f "config/options.macos.json" ]]; then
   echo "Applying macOS LLM options snapshot..."
