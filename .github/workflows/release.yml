@@ -169,6 +169,17 @@ jobs:
         shell: bash
         run: echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Verify C-AOL Python contracts
+        if: steps.metadata.outputs.target_ref == 'port/cdda-master'
+        shell: bash
+        run: |
+          set -eu
+          python -m pip install --disable-pip-version-check --requirement tools/openclaw_harness/requirements.txt
+          python -m unittest discover -s tools/llm_runner -p 'test*.py' -v
+          python tools/llm_runner/npc_harness.py --self-test
+          python tools/llm_runner/run_action_status_fixtures.py
+          python -m unittest discover -s tools/openclaw_harness -p 'test*.py' -v
+
       - name: Generate release notes
         id: generate-release-notes
         run: |
