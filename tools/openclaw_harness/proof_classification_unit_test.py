@@ -20,12 +20,14 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from startup_harness import (  # noqa: E402
     audit_saved_weather_state,
+    build_probe_step_ledger,
     build_portal_storm_warning,
     classify_wait_step_ledger,
     portal_storm_policy_from_scenario,
     portal_storm_step_ledger_rows,
     probe_proof_classification,
     render_repeatability_text_report,
+    screen_checkpoint_verdict,
     summarize_probe_step_ledger,
 )
 
@@ -43,6 +45,53 @@ def startup(*, clean: bool = True, status: str = "green") -> Dict[str, Any]:
 
 def matches() -> List[Dict[str, Any]]:
     return [{"pattern": "claim scoped line", "lines": ["claim scoped line"]}]
+
+
+class ScreenCheckpointVerdictTest(unittest.TestCase):
+    def test_named_screenshot_without_state_guard_is_not_green(self) -> None:
+        verdict, issues = screen_checkpoint_verdict(
+            screen_summary={"peekaboo_success": True},
+            expected_visible_fact="NPC reached the requested destination",
+        )
+
+        self.assertEqual(verdict, "yellow_step_screen_checkpoint_caveated")
+        self.assertIn("screen_fact_not_verified", issues)
+
+    def test_matching_ocr_guard_can_make_screenshot_green(self) -> None:
+        verdict, issues = screen_checkpoint_verdict(
+            screen_summary={"peekaboo_success": True},
+            expected_visible_fact="inventory window is visible",
+            text_expectation={"status": "matched"},
+            ocr_requested=True,
+        )
+
+        self.assertEqual(verdict, "green_step_screen_text_guarded")
+        self.assertEqual(issues, [])
+
+    def test_deferred_step_points_at_decisive_artifact_not_decorative_screen(self) -> None:
+        ledger = build_probe_step_ledger([
+            {
+                "label": "mechanical_press",
+                "kind": "press",
+                "proof_deferred_to_label": "decisive_audit",
+                "expected_visible_fact": "requested state should be reached",
+                "screen_after": {
+                    "peekaboo_success": True,
+                    "png_path": "decorative-screen.png",
+                },
+            },
+            {
+                "label": "decisive_audit",
+                "kind": "audit_log_contains",
+                "metadata": {
+                    "status": "required_state_present",
+                    "artifact_path": "decisive-audit.metadata.json",
+                },
+            },
+        ])
+
+        self.assertEqual(ledger[0]["verdict"], "green_step_proof_deferred_to_guard")
+        self.assertEqual(ledger[0]["evidence_artifact"], "decisive-audit.metadata.json")
 
 
 class ProbeProofClassificationTest(unittest.TestCase):

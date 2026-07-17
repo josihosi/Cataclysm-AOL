@@ -1,5 +1,5 @@
 # OpenClaw manual handoff harness requirements.
 #
-# The packaged manual handoff path currently uses Python's standard library only.
-# Keep this file in release artifacts so Catapult-Dabubu can install future
-# harness dependencies into the shared C-AOL LLM/debug Python venv.
+# Keep this file in release artifacts so Catapult-Dabubu can install harness
+# dependencies into the shared C-AOL LLM/debug Python venv.
+flatbuffers==25.12.19

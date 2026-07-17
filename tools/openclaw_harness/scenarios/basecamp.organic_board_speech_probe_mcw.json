@@ -22,6 +22,7 @@
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts",
       "expected_visible_fact": "normal McWilliams gameplay screen is loaded before camp assignment"
     },
     {
@@ -34,6 +35,7 @@
       "exit_dialog_keys": ["q", "c"],
       "stage_settle_seconds": 0.8,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts",
       "expected_visible_fact": "Katharina camp-assignment dialogue completes and the game returns to the live map"
     },
     {
@@ -74,6 +76,7 @@
       "count": 20,
       "settle_seconds": 0.8,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts",
       "expected_visible_fact": "assigned camp resident has had time to settle before the organic board question"
     },
     {
@@ -82,6 +85,7 @@
       "keys": ["C", "b"],
       "settle_seconds": 0.5,
       "capture_after": true,
+      "proof_deferred_to_label": "wait_for_board_reply",
       "expected_visible_fact": "nearby freeform chat input is open before asking the organic board phrase"
     },
     {
@@ -91,6 +95,7 @@
       "submit": true,
       "settle_seconds": 1.2,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_organic_board_routing_artifacts",
       "expected_visible_fact": "organic board phrase is submitted to nearby NPCs"
     },
     {

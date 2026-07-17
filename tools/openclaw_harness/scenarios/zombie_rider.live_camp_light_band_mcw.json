@@ -24,6 +24,7 @@
       "label": "post_load_rider_camp_light_settle",
       "seconds": 1.0,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_camp_light_band_trace",
       "expected_visible_fact": "staged mature-world camp-light rider fixture loads to live map"
     },
     {
@@ -116,6 +117,7 @@
       "delay_ms": 250,
       "settle_seconds": 0.4,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_camp_light_band_trace",
       "expected_visible_fact": "safe mode is toggled off so the bounded live camp-light window is not consumed by warnings"
     },
     {
@@ -124,6 +126,7 @@
       "count": 310,
       "settle_seconds": 0.8,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_camp_light_band_trace",
       "artifact_state_patterns": [
         "zombie_rider camp_light:",
         "signal=yes",

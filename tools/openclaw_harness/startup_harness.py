@@ -415,7 +415,8 @@ def resolve_game_runtime_python(options: Dict[str, str]) -> Tuple[List[str], str
 
 def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str, str]]:
     normalized_source = str(artifact_source).strip().lower()
-    if normalized_source not in {"llm", "llm_intent", "llm_intent.log"}:
+    llm_event_sources = {"llm_events", "llm_intent_events", "llm_intent_events.log"}
+    if normalized_source not in {"llm", "llm_intent", "llm_intent.log"} | llm_event_sources:
         return []
 
     options = load_game_options(profile)
@@ -427,7 +428,7 @@ def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str,
             "message": "LLM intent is disabled in profile options.",
             "option": "LLM_INTENT_ENABLE",
         })
-    if options.get("DEBUG_LLM_INTENT_LOG", "").lower() != "true":
+    if normalized_source not in llm_event_sources and options.get("DEBUG_LLM_INTENT_LOG", "").lower() != "true":
         blockers.append({
             "code": "llm_intent_log_disabled",
             "message": "LLM intent log capture is disabled in profile options.",
@@ -465,7 +466,10 @@ def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str,
 
 def probe_runtime_warnings(profile: str, artifact_source: str) -> List[Dict[str, str]]:
     normalized_source = str(artifact_source).strip().lower()
-    if normalized_source not in {"llm", "llm_intent", "llm_intent.log"}:
+    if normalized_source not in {
+        "llm", "llm_intent", "llm_intent.log",
+        "llm_events", "llm_intent_events", "llm_intent_events.log",
+    }:
         return []
 
     options = load_game_options(profile)
@@ -4391,6 +4395,8 @@ def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]
         return config_dir_for_profile(profile) / "debug.log", True, "debug.log"
     if normalized in {"llm", "llm_intent", "llm_intent.log"}:
         return repo_root() / "config" / "llm_intent.log", False, "llm_intent.log"
+    if normalized in {"llm_events", "llm_intent_events", "llm_intent_events.log"}:
+        return repo_root() / "config" / "llm_intent_events.log", False, "llm_intent_events.log"
     raise SystemExit(f"Unsupported artifact source: {source}")
 
 
@@ -5059,10 +5065,11 @@ def screen_checkpoint_verdict(
             if issues:
                 return "yellow_step_screen_text_matched_with_caveats", issues
             return "green_step_screen_text_guarded", issues
+        issues.append("screen_text_not_verified")
+    elif not ocr_requested:
+        issues.append("screen_fact_not_verified")
 
-    if issues:
-        return "yellow_step_screen_checkpoint_caveated", issues
-    return "green_step_screen_checkpoint_named", issues
+    return "yellow_step_screen_checkpoint_caveated", issues
 
 
 def direct_report_checkpoint_verdict(report: Dict[str, Any]) -> Tuple[str, List[str], str]:
@@ -5192,11 +5199,11 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 ocr_requested=ocr_requested,
             )
 
-        evidence_artifact = screen_summary_path(screen_summary)
+        evidence_artifact = deferred_evidence_artifact
+        if not evidence_artifact:
+            evidence_artifact = screen_summary_path(screen_summary)
         if not evidence_artifact and metadata_summary:
             evidence_artifact = str(metadata_summary.get("artifact_path", "")) or "probe.report.json:steps[].metadata"
-        if not evidence_artifact and deferred_evidence_artifact:
-            evidence_artifact = deferred_evidence_artifact
         if not evidence_artifact and kind in {"long_wait", "wait_action"}:
             evidence_artifact = str(report.get("wait_step_ledger", {}).get("wait_menu_artifact", ""))
         if not evidence_artifact:

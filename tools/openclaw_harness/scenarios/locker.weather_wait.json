@@ -15,6 +15,7 @@
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_locker_service_artifacts",
       "expected_visible_fact": "Sandy Creek locker-ready gameplay is loaded before forcing the cold locker probe state; this is startup/load footing only."
     },
     {
@@ -23,6 +24,7 @@
       "temperature_f": 35,
       "settle_seconds": 0.5,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_weather_after_locker_temperature",
       "expected_visible_fact": "Debug force-temperature returns to the live map after setting the probe state to 35F."
     },
     {
@@ -31,7 +33,72 @@
       "count": 3,
       "settle_seconds": 1.0,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_locker_service_artifacts",
       "expected_visible_fact": "A bounded turn window completes on the locker-ready fixture; practical gear proof depends on same-run camp locker queued/plan/after/serviced artifact lines."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_locker_service_artifacts",
+      "since_label": "wait_for_locker_service",
+      "required_patterns": [
+        "camp locker: queued",
+        "camp locker: plan for",
+        "camp locker: after",
+        "camp locker: serviced"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_locker_service_artifacts_missing",
+      "abort_reason": "same-run debug artifact lacked the camp locker queued/plan/after/serviced service sequence",
+      "expected_visible_fact": "same-run debug artifact proves the bounded locker service sequence was queued, planned, applied, and serviced"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_locker_temperature_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after locker service and before saving the forced-temperature state"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_locker_temperature",
+      "keys": ["S"],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": ["quit", "Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_locker_temperature_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the locker-temperature save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open before persisting the locker probe temperature"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_locker_temperature",
+      "keys": ["Y"],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_locker_temperature_save",
+      "expected_visible_fact": "the proven save prompt is confirmed so the following mtime and weather audits can verify same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_locker_temperature_save",
+      "changed_since_label": "audit_player_save_mtime_before_locker_temperature_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_locker_temperature_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the locker-temperature save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed locker-temperature save"
+    },
+    {
+      "kind": "audit_saved_weather_state",
+      "label": "audit_saved_weather_after_locker_temperature",
+      "required_temperature_f": 35,
+      "temperature_tolerance_f": 0.75,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_locker_temperature_target_state",
+      "abort_reason": "saved dimension weather metadata did not contain 35F after same-run locker-temperature save/writeback",
+      "expected_visible_fact": "same-run saved dimension weather metadata contains the forced 35F locker probe temperature"
     }
   ],
   "recommended_test_command": "./tests/cata_test \"[camp][locker]\"",
