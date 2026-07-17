@@ -96,8 +96,10 @@ if [[ "$FAST_DEBUG" == "1" ]]; then
 fi
 
 if [[ "$INSTALL_DEPS" == "1" ]]; then
-  echo "Installing/updating macOS build dependencies via Homebrew..."
-  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install gettext ccache dylibbundler sdl2 sdl2_image sdl2_ttf sdl2_mixer pkg-config
+  echo "Installing/updating macOS SDL3 build dependencies via Homebrew..."
+  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install \
+    gettext ccache dylibbundler pkg-config freetype glslang \
+    sdl3 sdl3_image sdl3_ttf sdl3_mixer libvorbis libogg
 fi
 
 if [[ -f "config/options.macos.json" ]]; then
@@ -215,7 +217,7 @@ fi
 export LLM_BG_SUMMARY_PYTHON
 make_cmd=(
   make -j"$(sysctl -n hw.ncpu)"
-  TILES=1 SOUND="$MAKE_SOUND" RELEASE="$MAKE_RELEASE" LOCALIZE="$MAKE_LOCALIZE"
+  TILES=1 SDL3=1 SOUND="$MAKE_SOUND" RELEASE="$MAKE_RELEASE" LOCALIZE="$MAKE_LOCALIZE"
   LINTJSON=0 ASTYLE=0 TESTS=0 USE_HOME_DIR=1 DYNAMIC_LINKING=1
   PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$(brew --prefix)/opt/gettext/lib/pkgconfig"
 )
