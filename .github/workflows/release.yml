@@ -11,6 +11,34 @@ on:
       - port/cdda-0.H
       - port/cdda-0.I
       - port/ctlg-master
+    paths:
+      - '.github/actions/**'
+      - '.github/workflows/compose-tilesets.yml'
+      - '.github/workflows/build-translations.yml'
+      - '.github/workflows/release.yml'
+      - '.github/vcpkg_triplets/**'
+      - 'android/**'
+      - 'build-data/**'
+      - 'build-scripts/**'
+      - 'cataclysm-launcher'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'data/**'
+      - 'doc/**'
+      - 'gfx/**'
+      - 'lang/**'
+      - 'LICENSE*'
+      - 'Makefile'
+      - 'msvc-full-features/**'
+      - 'README*'
+      - 'src/**'
+      - 'tools/build_shaders.py'
+      - 'tools/format/**'
+      - 'tools/llm_runner/**'
+      - 'tools/openclaw_harness/**'
+      - 'Plan.md'
+      - 'TechnicalTome.md'
+      - 'Agents.md'
   workflow_dispatch:
     inputs:
       target_branch:
@@ -36,12 +64,19 @@ jobs:
     outputs:
       timestamp: ${{ steps.get-timestamp.outputs.time }}
       target_ref: ${{ steps.metadata.outputs.target_ref }}
+      target_sha: ${{ steps.resolve-target.outputs.target_sha }}
       branch_slug: ${{ steps.metadata.outputs.branch_slug }}
       branch_display: ${{ steps.metadata.outputs.branch_display }}
       tag_name: ${{ steps.metadata.outputs.tag_name }}
       release_name: ${{ steps.metadata.outputs.release_name }}
       asset_prefix: ${{ steps.metadata.outputs.asset_prefix }}
       release_tag_prefix: ${{ steps.metadata.outputs.release_tag_prefix }}
+      source_tar: ${{ steps.metadata.outputs.source_tar }}
+      source_zip: ${{ steps.metadata.outputs.source_zip }}
+      use_sdl3: ${{ steps.metadata.outputs.use_sdl3 }}
+      handoff: ${{ steps.metadata.outputs.handoff }}
+      vcpkg_commit: ${{ steps.metadata.outputs.vcpkg_commit }}
+      msbuild_targets: ${{ steps.metadata.outputs.msbuild_targets }}
     steps:
       - name: Get build timestamp
         id: get-timestamp
@@ -59,18 +94,42 @@ jobs:
             port/cdda-master)
               branch_display="CDDA master port"
               branch_key="cdda-master"
+              source_tar="cataclysmdda-0.J.tar.gz"
+              source_zip="cataclysmdda-0.J.zip"
+              use_sdl3="true"
+              handoff="true"
+              vcpkg_commit="f6672d8e480ccdecddfad3fd1b838ba369ffe6cd"
+              msbuild_targets="Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip"
               ;;
             port/cdda-0.H)
               branch_display="CDDA 0.H port"
               branch_key="cdda-0-h"
+              source_tar="cataclysmdda-0.H.tar.gz"
+              source_zip="cataclysmdda-0.H.zip"
+              use_sdl3="false"
+              handoff="false"
+              vcpkg_commit="1b6e030cf096faf4f82d7b7025de8b2abee3e3df"
+              msbuild_targets="Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static"
               ;;
             port/cdda-0.I)
               branch_display="CDDA 0.I port"
               branch_key="cdda-0-i"
+              source_tar="cataclysmdda-0.I.tar.gz"
+              source_zip="cataclysmdda-0.I.zip"
+              use_sdl3="false"
+              handoff="false"
+              vcpkg_commit="1b6e030cf096faf4f82d7b7025de8b2abee3e3df"
+              msbuild_targets="Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip"
               ;;
             port/ctlg-master)
               branch_display="CTLG master port"
               branch_key="ctlg-master"
+              source_tar="cataclysm-tlg-1.0.tar.gz"
+              source_zip="cataclysm-tlg-1.0.zip"
+              use_sdl3="false"
+              handoff="false"
+              vcpkg_commit="1b6e030cf096faf4f82d7b7025de8b2abee3e3df"
+              msbuild_targets="Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip"
               ;;
             *)
               echo "Unsupported target branch: $branch" >&2
@@ -91,13 +150,24 @@ jobs:
             echo "release_name=$release_name"
             echo "asset_prefix=$asset_prefix"
             echo "release_tag_prefix=$release_tag_prefix"
+            echo "source_tar=$source_tar"
+            echo "source_zip=$source_zip"
+            echo "use_sdl3=$use_sdl3"
+            echo "handoff=$handoff"
+            echo "vcpkg_commit=$vcpkg_commit"
+            echo "msbuild_targets=$msbuild_targets"
           } >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          ref: ${{ steps.metadata.outputs.target_ref }}
+          ref: ${{ github.event_name == 'push' && github.sha || steps.metadata.outputs.target_ref }}
           fetch-tags: true
           persist-credentials: false
+
+      - name: Resolve target commit
+        id: resolve-target
+        shell: bash
+        run: echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         id: generate-release-notes
@@ -107,7 +177,7 @@ jobs:
           node build-scripts/generate-release-notes.js \
             '${{ secrets.GITHUB_TOKEN }}' \
             '${{ steps.metadata.outputs.tag_name }}' \
-            "$(git log -1 --format='%H')" \
+            '${{ steps.resolve-target.outputs.target_sha }}' \
             '${{ steps.metadata.outputs.release_tag_prefix }}' \
             '${{ steps.metadata.outputs.target_ref }}' \
             > auto-notes.txt
@@ -130,17 +200,20 @@ jobs:
               --notes-file notes.txt \
               --prerelease \
               --title '${{ steps.metadata.outputs.release_name }}' \
-              --target "$(git log -1 --format='%H')"
+              --target '${{ steps.resolve-target.outputs.target_sha }}'
           fi
 
   compose-tilesets:
+    needs: release
     uses: ./.github/workflows/compose-tilesets.yml
     with:
-      target_ref: ${{ github.event.inputs.target_branch || github.ref_name }}
+      target_ref: ${{ needs.release.outputs.target_sha }}
+      target_branch: ${{ needs.release.outputs.target_ref }}
   build-translations:
+    needs: release
     uses: ./.github/workflows/build-translations.yml
     with:
-      target_ref: ${{ github.event.inputs.target_branch || github.ref_name }}
+      target_ref: ${{ needs.release.outputs.target_sha }}
     secrets:
       TX_TOKEN: ${{ secrets.TX_TOKEN }}
 
@@ -149,17 +222,23 @@ jobs:
   # backend (Vulkan/D3D12/Metal). Curses jobs do not fetch it.
   compile-shaders:
     name: Compile shaders
-    # Default SDL3 release builds need these shader artifacts.
+    needs: release
     runs-on: ubuntu-24.04
     steps:
     - name: checkout repository
+      if: needs.release.outputs.use_sdl3 == 'true'
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
-        ref: ${{ github.event.inputs.target_branch || github.ref_name }}
+        ref: ${{ needs.release.outputs.target_sha }}
         persist-credentials: false
 
     - name: build SDL3 shader artifacts
+      if: needs.release.outputs.use_sdl3 == 'true'
       uses: ./.github/actions/build-sdl3-shaders
+
+    - name: Skip shader compilation for SDL2 target
+      if: needs.release.outputs.use_sdl3 != 'true'
+      run: echo "${{ needs.release.outputs.target_ref }} uses the legacy SDL2 release path."
 
   builds:
     needs:
@@ -179,7 +258,6 @@ jobs:
             arch: x64
             tiles: 1
             sound: 1
-            sdl3: 1
           - name: Linux x64 Tiles + Sound
             release_os: linux
             os: ubuntu-24.04
@@ -189,7 +267,6 @@ jobs:
             libbacktrace: 1
             tiles: 1
             sound: 1
-            sdl3: 1
           - name: macOS universal Tiles + Sound
             release_os: macos
             os: macos-15
@@ -197,7 +274,6 @@ jobs:
             content: application/x-apple-diskimage
             tiles: 1
             sound: 1
-            sdl3: 1
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions: write-all
@@ -211,7 +287,7 @@ jobs:
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          ref: ${{ needs.release.outputs.target_ref }}
+          ref: ${{ needs.release.outputs.target_sha }}
           fetch-tags: true
           persist-credentials: false
 
@@ -235,14 +311,14 @@ jobs:
           name: translations
 
       - name: Fetch shader artifacts into build (SDL3)
-        if: matrix.sdl3 == 1
+        if: needs.release.outputs.use_sdl3 == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: cdda-shaders
           path: data/shaders
 
       - name: Mark shader artifacts fresh (SDL3)
-        if: matrix.sdl3 == 1
+        if: needs.release.outputs.use_sdl3 == 'true'
         shell: bash
         run: |
           touch data/shaders/build-*.stamp data/shaders/*.spv data/shaders/*.dxil data/shaders/*.msl
@@ -253,15 +329,15 @@ jobs:
 
       - name: Install dependencies (windows msvc) (2/4)
         if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11.6
         id: runvcpkg
         with:
-          vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-          vcpkgGitCommitId: 'f6672d8e480ccdecddfad3fd1b838ba369ffe6cd'
+          vcpkgDirectory: '${{ github.workspace }}/../b/vcpkg'
+          vcpkgGitCommitId: ${{ needs.release.outputs.vcpkg_commit }}
       - name: Install dependencies (windows msvc) (3/4)
         if: runner.os == 'Windows'
         run: |
-          vcpkg integrate install --vcpkg-root '${{ runner.workspace }}\b\vcpkg'
+          vcpkg integrate install --vcpkg-root "$env:RUNNER_WORKSPACE\b\vcpkg"
 
       - name: Install dependencies (windows msvc) (4/4)
         if: runner.os == 'Windows'
@@ -271,19 +347,29 @@ jobs:
           install: >-
             gettext
             make
-      - name: Cache vcpkg packages (Windows, SDL3)
-        if: runner.os == 'Windows' && matrix.sdl3 == 1
+      - name: Cache vcpkg packages (Windows)
+        if: runner.os == 'Windows'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: msvc-full-features/vcpkg_installed
-          key: vcpkg-installed-sdl3-${{ hashFiles('msvc-full-features/vcpkg.json', '.github/vcpkg_triplets/x64-windows-static.cmake') }}-f6672d8e480ccdecddfad3fd1b838ba369ffe6cd
-      - name: Install dependencies (Linux, curses)
-        if: runner.os == 'Linux' && matrix.android == 'none' && !matrix.wasm && matrix.tiles != 1
+          key: release-vcpkg-installed-${{ hashFiles('msvc-full-features/vcpkg.json', '.github/vcpkg_triplets/x64-windows-static.cmake') }}-${{ needs.release.outputs.vcpkg_commit }}
+      - name: Install dependencies (Linux, SDL2)
+        if: runner.os == 'Linux' && matrix.android == 'none' && needs.release.outputs.use_sdl3 != 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libncursesw5-dev ccache gettext parallel
+          sudo apt-get install -y libsdl2-dev
+          git clone https://github.com/libsdl-org/SDL.git --branch release-2.0.20 --depth 1
+          cd SDL
+          mkdir build
+          cd build
+          ../configure
+          make -j$((`nproc`+0))
+          sudo make install
+          cp ../LICENSE.txt ${{ github.workspace }}/LICENSE-SDL.txt
+          sudo apt-get install -y libncursesw5-dev libsdl2-ttf-dev libsdl2-image-dev \
+            libsdl2-mixer-dev libpulse-dev ccache gettext parallel
       - name: Install dependencies (Linux, SDL3)
-        if: runner.os == 'Linux' && matrix.android == 'none' && !matrix.wasm && matrix.sdl3 == 1
+        if: runner.os == 'Linux' && matrix.android == 'none' && needs.release.outputs.use_sdl3 == 'true'
         run: |
           sudo apt-get update
           wget -O /tmp/llvm.sh https://apt.llvm.org/llvm.sh
@@ -291,25 +377,30 @@ jobs:
           sudo /tmp/llvm.sh 18
           sudo apt-get install -y libncursesw5-dev ccache gettext parallel patchelf
       - name: Setup SDL3 stack (Linux, SDL3)
-        if: runner.os == 'Linux' && matrix.android == 'none' && !matrix.wasm && matrix.sdl3 == 1
+        if: runner.os == 'Linux' && matrix.android == 'none' && needs.release.outputs.use_sdl3 == 'true'
         uses: ./.github/actions/setup-sdl3-stack
         with:
           cache-key: sdl3-stack-strict-sdl-3.4.10-image-3.4.4-ttf-3.2.2-mixer-3.2.4-ubuntu-24.04-v2
-          prefix: ${{ runner.workspace }}/sdl3_prefix
+          prefix: ${{ github.workspace }}/../sdl3_prefix
           stage-licenses: "true"
-      - name: Install Emscripten (WebAssembly)
-        if: matrix.wasm
-        uses: mymindstorm/setup-emsdk@d233ac12b0102f74ca199f5dad7a4e2c13a8a745 # v13
       - name: Install build dependencies (mac)
         if: runner.os == 'macOS'
         run: |
           HOMEBREW_NO_AUTO_UPDATE=yes HOMEBREW_NO_INSTALL_CLEANUP=yes brew install gettext ccache parallel dylibbundler
           pip3 install --break-system-packages dmgbuild biplist
-      - name: install macports (mac, SDL3)
-        if: runner.os == 'macOS' && matrix.tiles == 1 && matrix.sdl3 == 1
+      - name: Install runtime dependencies (mac, SDL2)
+        if: runner.os == 'macOS' && needs.release.outputs.use_sdl3 != 'true'
+        uses: BrettDong/setup-sdl2-frameworks@a8ca795ef904417e9ddcb010ef6bf2d11779dbe3 # v2
+        with:
+          sdl2: 2.30.11
+          sdl2-ttf: 2.24.0
+          sdl2-image: 2.8.4
+          sdl2-mixer: 2.8.0
+      - name: install macports (mac)
+        if: runner.os == 'macOS' && matrix.tiles == 1
         uses: melusina-org/setup-macports@c7eb59386def259a274627092566a7f7b8d219b1 # v1
       - name: install macports packages (mac, SDL3)
-        if: runner.os == 'macOS' && matrix.tiles == 1 && matrix.sdl3 == 1
+        if: runner.os == 'macOS' && matrix.tiles == 1 && needs.release.outputs.use_sdl3 == 'true'
         run: |
           # SDL_mixer VENDORED=OFF pulls every mixer codec from a system lib.
           # The macOS artifact is universal, so each (plus libiconv, a
@@ -317,17 +408,21 @@ jobs:
           sudo port install freetype +universal pkgconfig +universal \
               libiconv +universal libogg +universal flac +universal \
               libvorbis +universal wavpack +universal mpg123 +universal
+      - name: install macports packages (mac, SDL2)
+        if: runner.os == 'macOS' && matrix.tiles == 1 && needs.release.outputs.use_sdl3 != 'true'
+        run: |
+          sudo port install freetype +universal pkgconfig +universal
       - name: Cache SDL3 stack source build (mac, SDL3)
-        if: runner.os == 'macOS' && matrix.tiles == 1 && matrix.sdl3 == 1
+        if: runner.os == 'macOS' && matrix.tiles == 1 && needs.release.outputs.use_sdl3 == 'true'
         id: cache-sdl3-release-macos
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: ${{ runner.workspace }}/sdl3_prefix
+          path: ${{ github.workspace }}/../sdl3_prefix
           key: sdl3-stack-universal-sdl-3.4.10-image-3.4.4-ttf-3.2.2-mixer-3.2.4-${{ runner.os }}-v5
       - name: Build SDL3 stack from source (mac, SDL3, universal)
-        if: runner.os == 'macOS' && matrix.tiles == 1 && matrix.sdl3 == 1 && steps.cache-sdl3-release-macos.outputs.cache-hit != 'true'
+        if: runner.os == 'macOS' && matrix.tiles == 1 && needs.release.outputs.use_sdl3 == 'true' && steps.cache-sdl3-release-macos.outputs.cache-hit != 'true'
         run: |
-          PREFIX=${{ runner.workspace }}/sdl3_prefix
+          PREFIX=$RUNNER_WORKSPACE/sdl3_prefix
           export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:/opt/local/lib/pkgconfig
           # wavpack's Findwavpack.cmake uses plain find_library (no pkg-config),
           # so /opt/local must be on CMAKE_PREFIX_PATH.
@@ -434,13 +529,13 @@ jobs:
               fi
           done
       - name: Stage SDL3 license files (mac, SDL3)
-        if: runner.os == 'macOS' && matrix.tiles == 1 && matrix.sdl3 == 1
+        if: runner.os == 'macOS' && matrix.tiles == 1 && needs.release.outputs.use_sdl3 == 'true'
         run: |
-          cp ${{ runner.workspace }}/sdl3_prefix/share/LICENSE-SDL.txt ${{ github.workspace }}/LICENSE-SDL.txt
-          cp ${{ runner.workspace }}/sdl3_prefix/share/LICENSE-SDL3_image.txt ${{ github.workspace }}/LICENSE-SDL3_image.txt
-          cp ${{ runner.workspace }}/sdl3_prefix/share/LICENSE-SDL3_ttf.txt ${{ github.workspace }}/LICENSE-SDL3_ttf.txt
-          cp ${{ runner.workspace }}/sdl3_prefix/share/LICENSE-SDL3_mixer.txt ${{ github.workspace }}/LICENSE-SDL3_mixer.txt
-          for f in ${{ runner.workspace }}/sdl3_prefix/share/LICENSE-vendored-*.txt; do
+          cp "$RUNNER_WORKSPACE/sdl3_prefix/share/LICENSE-SDL.txt" ${{ github.workspace }}/LICENSE-SDL.txt
+          cp "$RUNNER_WORKSPACE/sdl3_prefix/share/LICENSE-SDL3_image.txt" ${{ github.workspace }}/LICENSE-SDL3_image.txt
+          cp "$RUNNER_WORKSPACE/sdl3_prefix/share/LICENSE-SDL3_ttf.txt" ${{ github.workspace }}/LICENSE-SDL3_ttf.txt
+          cp "$RUNNER_WORKSPACE/sdl3_prefix/share/LICENSE-SDL3_mixer.txt" ${{ github.workspace }}/LICENSE-SDL3_mixer.txt
+          for f in "$RUNNER_WORKSPACE"/sdl3_prefix/share/LICENSE-vendored-*.txt; do
               if [ -f "$f" ]; then
                   cp "$f" "${{ github.workspace }}/$(basename "$f")"
               fi
@@ -489,12 +584,12 @@ jobs:
       - name: Build CDDA (linux)
         if: runner.os == 'Linux' && matrix.android == 'none'
         run: |
-          if [ "${{ matrix.sdl3 }}" = "1" ]; then
+          if [ "${{ needs.release.outputs.use_sdl3 }}" = "true" ]; then
             export PKG_CONFIG_PATH="$RUNNER_WORKSPACE/sdl3_prefix/lib/pkgconfig:$RUNNER_WORKSPACE/sdl3_prefix/lib/x86_64-linux-gnu/pkgconfig"
             export LD_LIBRARY_PATH="$RUNNER_WORKSPACE/sdl3_prefix/lib:$RUNNER_WORKSPACE/sdl3_prefix/lib/x86_64-linux-gnu"
           fi
-          make COMPILER=clang++-18 -j$((`nproc`+0)) TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} SDL3=${{ matrix.sdl3 == 1 && '1' || '0' }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=1 LIBBACKTRACE=${{ matrix.libbacktrace }} WARN_STALE_DATA=1 PCH=0 bindist
-          mv cataclysmdda-0.J.tar.gz ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+          make COMPILER=clang++-18 -j$((`nproc`+0)) TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} SDL3=${{ needs.release.outputs.use_sdl3 == 'true' && '1' || '0' }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=1 LIBBACKTRACE=${{ matrix.libbacktrace }} WARN_STALE_DATA=1 PCH=0 bindist
+          mv '${{ needs.release.outputs.source_tar }}' '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}'
 
       - name: Build CDDA (windows msvc)
         if: runner.os == 'Windows'
@@ -505,7 +600,7 @@ jobs:
         shell: pwsh
         run: |
           $target = 'msvc-full-features\Cataclysm-vcpkg-static.sln'
-          $args = @('-m', '-p:Configuration=Release', '-p:Platform=${{ matrix.arch }}', '-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip', $target)
+          $args = @('-m', '-p:Configuration=Release', '-p:Platform=${{ matrix.arch }}', '-target:${{ needs.release.outputs.msbuild_targets }}', $target)
           for( $attempt = 1; $attempt -le 2; $attempt++ ) {
             Write-Host "Windows build attempt $attempt/2"
             & msbuild @args
@@ -518,8 +613,12 @@ jobs:
             Write-Host 'msbuild failed; retrying once after a short backoff in case vcpkg download flaked out.'
             Start-Sleep -Seconds 20
           }
-          .\build-scripts\windist.ps1 -SDL3
-          Move-Item cataclysmdda-0.J.zip ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+          if( '${{ needs.release.outputs.use_sdl3 }}' -eq 'true' ) {
+            .\build-scripts\windist.ps1 -SDL3
+          } else {
+            .\build-scripts\windist.ps1
+          }
+          Move-Item '${{ needs.release.outputs.source_zip }}' '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}'
 
       - name: Dump vcpkg logs if Windows build failed
         if: failure() && runner.os == 'Windows'
@@ -530,7 +629,7 @@ jobs:
             Get-ChildItem 'msvc-full-features\vcpkg_installed' -Recurse
           }
           Write-Host '=== vcpkg buildtrees logs ==='
-          $buildtrees = Join-Path '${{ runner.workspace }}' 'b\vcpkg\buildtrees'
+          $buildtrees = Join-Path $env:RUNNER_WORKSPACE 'b\vcpkg\buildtrees'
           if( Test-Path $buildtrees ) {
             Get-ChildItem $buildtrees | ForEach-Object {
               Get-ChildItem $_.FullName -Filter *.log | ForEach-Object {
@@ -542,11 +641,17 @@ jobs:
             }
           }
 
+      - name: Build CDDA (osx, SDL2)
+        if: runner.os == 'macOS' && needs.release.outputs.use_sdl3 != 'true'
+        run: |
+          make -j3 TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=0 PCH=0 USE_HOME_DIR=1 FRAMEWORK=1 UNIVERSAL_BINARY=1 WARN_STALE_DATA=1 dmgdist
+          mv Cataclysm.dmg '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}'
+
       - name: Build CDDA (osx, SDL3)
-        if: runner.os == 'macOS' && matrix.sdl3 == 1
+        if: runner.os == 'macOS' && needs.release.outputs.use_sdl3 == 'true'
         env:
-          PKG_CONFIG_PATH: ${{ runner.workspace }}/sdl3_prefix/lib/pkgconfig:/opt/local/lib/pkgconfig
-          DYLIBBUNDLER_SEARCH_PATHS: ${{ runner.workspace }}/sdl3_prefix/lib /opt/local/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/../sdl3_prefix/lib/pkgconfig:/opt/local/lib/pkgconfig
+          DYLIBBUNDLER_SEARCH_PATHS: ${{ github.workspace }}/../sdl3_prefix/lib /opt/local/lib
         run: |
           make -j3 TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} SDL3=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=0 PCH=0 USE_HOME_DIR=1 UNIVERSAL_BINARY=1 WARN_STALE_DATA=1 dmgdist
           if ! ls Cataclysm.app/Contents/Resources/libmpg123*.dylib >/dev/null 2>&1; then
@@ -556,6 +661,7 @@ jobs:
           mv Cataclysm.dmg ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
 
       - name: Verify manual handoff release asset
+        if: needs.release.outputs.handoff == 'true'
         shell: bash
         run: |
           python tools/openclaw_harness/verify_release_asset.py \

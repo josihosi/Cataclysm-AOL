@@ -7,12 +7,21 @@ on:
         required: false
         default: master
         type: string
+      target_branch:
+        description: Logical port branch identity when target_ref is an immutable commit
+        required: false
+        default: ""
+        type: string
   workflow_call:
     inputs:
       target_ref:
         required: false
         type: string
         default: master
+      target_branch:
+        required: false
+        type: string
+        default: ""
 
 jobs:
   formatter:
@@ -81,16 +90,19 @@ jobs:
             tileset_dir: gfx/MShockXotto+
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            ctlg_strip_flagpole: true
           - name: NeoDays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/NeoDays
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            skip_on_ctlg: true
           - name: Retrodays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/Retrodays
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            skip_on_ctlg: true
           - name: GiantDays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/GiantDays
@@ -144,7 +156,12 @@ jobs:
           packages: python3 python3-pip libvips42
       - run: pip install pyvips
 
+      - name: Skip duplicate built-in CTLG tileset
+        if: ${{ (inputs.target_branch || inputs.target_ref) == 'port/ctlg-master' && matrix.skip_on_ctlg }}
+        run: echo "Skipping ${{ matrix.name }} because CTLG already ships that tileset under a built-in directory."
+
       - name: Clone tileset repo
+        if: ${{ !((inputs.target_branch || inputs.target_ref) == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: ${{ matrix.tileset_repo }}
@@ -154,7 +171,19 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Checkout 0.H legacy UltimateCataclysm layering source
+        if: ${{ (inputs.target_branch || inputs.target_ref) == 'port/cdda-0.H' && matrix.name == 'UltimateCataclysm' }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.target_ref }}
+          path: legacy-layering
+          sparse-checkout: |
+            gfx/UltimateCataclysm/layering.json
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Build ${{ matrix.name }}
+        if: ${{ !((inputs.target_branch || inputs.target_ref) == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         run: |
           export SOURCE="${{github.workspace}}/build-tilesets/${{ matrix.tileset_dir }}"
           export DEST="${{github.workspace}}/gfx/${{ matrix.name }}"
@@ -164,7 +193,35 @@ jobs:
           [ -f "$SOURCE/fallback.png"  ] && mv -v "$SOURCE/fallback.png" "$DEST/" || echo "No fallback.png for ${{ matrix.name }}"
           [ -f "$SOURCE/layering.json" ] && mv -v "$SOURCE/layering.json" "$DEST/" || echo "No layering.json for ${{ matrix.name }}"
 
+      - name: Restore 0.H legacy UltimateCataclysm layering
+        if: ${{ (inputs.target_branch || inputs.target_ref) == 'port/cdda-0.H' && matrix.name == 'UltimateCataclysm' }}
+        run: |
+          cp "${{ github.workspace }}/legacy-layering/gfx/UltimateCataclysm/layering.json" "${{ github.workspace }}/gfx/${{ matrix.name }}/layering.json"
+
+      - name: Clean CTLG-only tileset warnings
+        if: ${{ (inputs.target_branch || inputs.target_ref) == 'port/ctlg-master' && matrix.ctlg_strip_flagpole }}
+        run: |
+          python3 - <<'PY2'
+          import json
+          from pathlib import Path
+          base = Path('${{ github.workspace }}') / 'gfx' / '${{ matrix.name }}'
+          layering = base / 'layering.json'
+          if layering.exists():
+              data = json.loads(layering.read_text())
+              data['variants'] = [v for v in data.get('variants', []) if v.get('context') != 'f_indoor_flagpole_wooden']
+              layering.write_text(json.dumps(data, indent=2) + '\n')
+          tile_config = base / 'tile_config.json'
+          if tile_config.exists():
+              data = json.loads(tile_config.read_text())
+              tiles = data.get('tiles-new', [])
+              for entry in tiles:
+                  if isinstance(entry, dict) and isinstance(entry.get('tiles'), list):
+                      entry['tiles'] = [t for t in entry['tiles'] if not (isinstance(t, dict) and t.get('id') == 'f_indoor_flagpole_wooden')]
+              tile_config.write_text(json.dumps(data, indent=2) + '\n')
+          PY2
+
       - name: Store artifact
+        if: ${{ !((inputs.target_branch || inputs.target_ref) == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: "tileset-${{ matrix.name }}"
