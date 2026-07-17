@@ -2010,7 +2010,7 @@ int signal_live_zombie_riders_from_light_observations(
             bandit_mark_generation::horde_signal_power_from_light_projection( aggregate_projection );
         const zombie_rider_overmap_ai::rider_light_interest interest =
             zombie_rider_overmap_ai::evaluate_light_attraction( aggregate_projection, world_age_days,
-                    std::max( 1, static_cast<int>( riders.size() ) ) );
+                    static_cast<int>( riders.size() ) );
         zombie_rider_overmap_ai::rider_light_memory &memory =
             overmap_buffer.global_state.zombie_rider_light_memory[signal.source_omt];
         zombie_rider_overmap_ai::refresh_light_memory( memory, interest );

@@ -28,6 +28,7 @@
 #include "cursesdef.h"
 #include "damage.h"
 #include "debug.h"
+#include "debug_capture.h"
 #include "dialogue.h"
 #include "dialogue_chatbin.h"
 #include "effect.h"
@@ -595,9 +596,14 @@ void npc::emit_llm_action_status( llm_action_status &status ) const
     const std::string facts = join_debug_facts( status.debug_facts );
     llm_intent::log_event( string_format(
                               "action_status npc=\"%s\" kind=\"%s\" phase=\"%s\" reason=\"%s\" request=\"%s\" target_hint=\"%s\" target=\"%s\" facts=\"%s\"",
-                              get_name(), llm_action_kind_name( status.kind ),
-                              llm_action_phase_name( status.phase ), status.reason_code,
-                              status.request_id, status.target_hint, status.target_name, facts ) );
+                              debug_menu::capture_json_escape( get_name() ),
+                              debug_menu::capture_json_escape( llm_action_kind_name( status.kind ) ),
+                              debug_menu::capture_json_escape( llm_action_phase_name( status.phase ) ),
+                              debug_menu::capture_json_escape( status.reason_code ),
+                              debug_menu::capture_json_escape( status.request_id ),
+                              debug_menu::capture_json_escape( status.target_hint ),
+                              debug_menu::capture_json_escape( status.target_name ),
+                              debug_menu::capture_json_escape( facts ) ) );
 
     if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
         std::string ui = string_format( "LLM %s %s", llm_action_kind_name( status.kind ),
@@ -4526,6 +4532,51 @@ void npc::set_mission( npc_mission new_mission )
     if( mission == NPC_MISSION_ACTIVITY ) {
         current_activity_id = activity.id();
     }
+}
+
+bool npc::set_camp_patrol_order( const tripoint_abs_ms &target,
+                                 const npc_mission patrol_mission )
+{
+    if( patrol_mission != NPC_MISSION_GUARD &&
+        patrol_mission != NPC_MISSION_GUARD_PATROL ) {
+        return false;
+    }
+    if( camp_patrol_order_active &&
+        mission != NPC_MISSION_GUARD &&
+        mission != NPC_MISSION_GUARD_PATROL ) {
+        camp_patrol_order_active = false;
+    }
+    if( !camp_patrol_order_active && mission != NPC_MISSION_CAMP_RESIDENT ) {
+        return false;
+    }
+    if( get_guard_post() != target ) {
+        path.clear();
+    }
+    set_guard_pos( target );
+    set_mission( patrol_mission );
+    camp_patrol_order_active = true;
+    return true;
+}
+
+void npc::clear_camp_patrol_order()
+{
+    if( !camp_patrol_order_active ) {
+        return;
+    }
+    camp_patrol_order_active = false;
+    if( mission != NPC_MISSION_GUARD &&
+        mission != NPC_MISSION_GUARD_PATROL ) {
+        return;
+    }
+    guard_pos = std::nullopt;
+    clear_ai_guard_pos();
+    path.clear();
+    set_mission( assigned_camp ? NPC_MISSION_CAMP_RESIDENT : NPC_MISSION_NULL );
+}
+
+bool npc::has_camp_patrol_order() const
+{
+    return camp_patrol_order_active;
 }
 
 bool npc::has_activity() const

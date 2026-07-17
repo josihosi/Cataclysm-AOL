@@ -3212,7 +3212,12 @@ void npc::execute_action(npc_action action) {
             break;
 
         case npc_goto_to_this_pos: {
-            update_path( here.get_bub( *goto_to_this_pos ) );
+            if( !update_path( here.get_bub( *goto_to_this_pos ), false, false ) ) {
+                path.clear();
+                set_llm_intent_move_target( std::nullopt, llm_intent_action::none );
+                move_pause();
+                break;
+            }
             move_to_next();
 
             if( pos_abs() == *goto_to_this_pos ) {
@@ -4238,47 +4243,6 @@ bool npc::wont_hit_friend(const tripoint_bub_ms &tar, const item &it,
   return true;
 }
 
-bool npc::enough_time_to_reload( const item &gun ) const
-{
-    const map &here = get_map();
-
-    const std::optional<ammotype> at = item::ammotype_of( gun.ammo_default() );
-    int rltime = item_reload_cost( gun, item( gun.ammo_default() ),
-                                   at ? gun.ammo_capacity( *at ) : 0 );
-    const float turns_til_reloaded = static_cast<float>( rltime ) / get_speed();
-
-    const Creature *target = current_target();
-    if( target == nullptr ) {
-        add_msg_debug( debugmode::DF_NPC_ITEMAI,
-                       "%s can't see anyone around: great time to reload.", name );
-        return true;
-    }
-
-    const int distance = rl_dist( pos_bub(), target->pos_bub() );
-    const float target_speed = target->speed_rating();
-    const float turns_til_reached = distance / target_speed;
-    if( target->is_avatar() || target->is_npc() ) {
-        const Character &foe = dynamic_cast<const Character &>( *target );
-        const item_location weapon = foe.get_wielded_item();
-        // TODO: Allow reloading if the player has a low accuracy gun
-        if( sees( here, foe ) && weapon && weapon->is_gun() && rltime > 200 &&
-            weapon->gun_range( true ) > distance + turns_til_reloaded / target_speed ) {
-            // Don't take longer than 2 turns if player has a gun
-            add_msg_debug( debugmode::DF_NPC_ITEMAI,
-                           "%s is shy about reloading with %s standing right there.",
-                           name, foe.name );
-            return false;
-        }
-    }
-
-    // TODO: Handle monsters with ranged attacks and players with CBMs
-    add_msg_debug( debugmode::DF_NPC_ITEMAI,
-                   "%s turns to reload: %i.\nTurns til reached: %i.", name,
-                   static_cast<int>( turns_til_reloaded ),
-                   static_cast<int>( turns_til_reached ) );
-    return turns_til_reloaded < turns_til_reached;
-}
-
 void npc::aim( const Target_attributes &target_attributes )
 {
     const item_location weapon = get_wielded_item();
@@ -4348,6 +4312,7 @@ bool npc::update_path(const tripoint_bub_ms &p, const bool no_bashing,
 
 void npc::set_guard_pos( const tripoint_abs_ms &p )
 {
+    camp_patrol_order_active = false;
     guard_pos = p;
     ai_cache.guard_pos = p;
 }
@@ -4875,16 +4840,13 @@ void npc::worker_downtime() {
           job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
           ( *camp )->has_patrol_zone();
       if( patrol_worker ) {
+        const bool had_camp_patrol_order = has_camp_patrol_order();
         const std::optional<camp_patrol_guard_runtime> patrol_runtime =
             ( *camp )->get_current_patrol_runtime( getID(), calendar::turn );
-        if( patrol_runtime ) {
+        if( patrol_runtime && has_camp_patrol_order() ) {
           chair_pos = std::nullopt;
           wander_pos = std::nullopt;
           const tripoint_abs_ms patrol_target = patrol_runtime->target;
-          guard_pos = patrol_target;
-          ai_cache.guard_pos = patrol_target;
-          set_mission( patrol_runtime->behavior == camp_patrol_guard_behavior::loop ?
-                       NPC_MISSION_GUARD_PATROL : NPC_MISSION_GUARD );
 
           std::ostringstream route_summary;
           for( size_t route_index = 0; route_index < patrol_runtime->route.size(); ++route_index ) {
@@ -4919,17 +4881,13 @@ void npc::worker_downtime() {
           return;
         }
 
-        if( mission == NPC_MISSION_GUARD || mission == NPC_MISSION_GUARD_PATROL ) {
+        if( !patrol_runtime && had_camp_patrol_order ) {
           if( get_value( "camp_patrol_probe_last" ).str() != "inactive" ) {
             DebugLog( D_INFO, DC_ALL )
                 << string_format( "camp patrol: runtime worker=%s behavior=inactive pos=%s",
                                   get_name(), pos_abs().to_string_writable() );
             set_value( "camp_patrol_probe_last", "inactive" );
           }
-          guard_pos = std::nullopt;
-          ai_cache.guard_pos = std::nullopt;
-          set_mission( NPC_MISSION_NULL );
-          path.clear();
         }
       }
     }

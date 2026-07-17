@@ -12,6 +12,7 @@ constexpr int mature_world_gate_days = 730;
 constexpr int max_riders_drawn_by_light = 2;
 constexpr int rider_convergence_response_radius_omt = 36;
 constexpr int rider_band_minimum_size = 2;
+constexpr int rider_light_memory_decay_interval_turns = 60;
 
 struct rider_light_interest {
     bool should_investigate = false;
@@ -26,6 +27,7 @@ struct rider_light_memory {
     int interest_score = 0;
     int turns_remaining = 0;
     int max_riders_drawn = 0;
+    int decay_turn_remainder = 0;
     std::string reason = "none";
 
     bool active() const {

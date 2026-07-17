@@ -392,6 +392,33 @@ TEST_CASE( "camp_patrol_alarm_serialization", "[camp][patrol]" )
   CHECK_FALSE( loaded.is_patrol_alarm_active() );
 }
 
+TEST_CASE( "camp_patrol_order_ownership_survives_npc_save", "[camp][patrol][savegame]" )
+{
+  const tripoint_abs_omt camp_pos( 8, 8, 0 );
+  const tripoint_abs_ms patrol_target( 192, 192, 0 );
+  npc saved;
+  saved.assigned_camp = camp_pos;
+  saved.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  REQUIRE( saved.set_camp_patrol_order( patrol_target, NPC_MISSION_GUARD_PATROL ) );
+
+  std::ostringstream os;
+  JsonOut jsout( os );
+  saved.serialize( jsout );
+
+  JsonValue jsin = json_loader::from_string( os.str() );
+  npc loaded;
+  loaded.deserialize( jsin.get_object() );
+
+  CHECK( loaded.has_camp_patrol_order() );
+  CHECK( loaded.mission == NPC_MISSION_GUARD_PATROL );
+  CHECK( loaded.get_guard_post() == patrol_target );
+
+  loaded.clear_camp_patrol_order();
+  CHECK_FALSE( loaded.has_camp_patrol_order() );
+  CHECK( loaded.mission == NPC_MISSION_CAMP_RESIDENT );
+  CHECK_FALSE( loaded.get_guard_post().has_value() );
+}
+
 TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_briefs)) ==
         camp_locker_slot::underwear);
@@ -939,6 +966,9 @@ TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
   npc &day_guard = spawn_npc(tripoint_bub_ms{6, 5, 0}.xy(), "thug");
   npc &night_guard = spawn_npc(tripoint_bub_ms{7, 5, 0}.xy(), "thug");
   npc &replacement_guard = spawn_npc(tripoint_bub_ms{8, 5, 0}.xy(), "thug");
+  day_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  night_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  replacement_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
 
   static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
   REQUIRE(day_guard.job.set_task_priority(ACT_CAMP_PATROL, 9));
@@ -992,6 +1022,354 @@ TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE( "camp_patrol_roster_backfills_ineligible_manual_guards",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp test_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  test_camp.set_owner( your_fac );
+  test_camp.set_bb_pos( patrol_abs );
+
+  npc &day_guard = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  npc &manual_guard = spawn_npc( tripoint_bub_ms{ 7, 5, 0 }.xy(), "thug" );
+  npc &night_guard = spawn_npc( tripoint_bub_ms{ 8, 5, 0 }.xy(), "thug" );
+  day_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  night_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( day_guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  REQUIRE( manual_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  REQUIRE( night_guard.job.set_task_priority( ACT_CAMP_PATROL, 7 ) );
+
+  test_camp.add_assignee( day_guard.getID() );
+  test_camp.add_assignee( manual_guard.getID() );
+  test_camp.add_assignee( night_guard.getID() );
+
+  const tripoint_abs_ms manual_guard_target =
+      here.get_abs( tripoint_bub_ms{ 7, 7, 0 } );
+  manual_guard.set_guard_pos( manual_guard_target );
+  manual_guard.set_mission( NPC_MISSION_GUARD );
+
+  calendar::turn = sunset( calendar::turn_zero ) + 1_minutes;
+  const camp_patrol_shift_plan *night_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE( night_plan != nullptr );
+  CHECK( night_plan->roster ==
+         std::vector<character_id>({ night_guard.getID() }) );
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               night_guard.getID(), calendar::turn ) );
+  CHECK( night_guard.has_camp_patrol_order() );
+  CHECK( manual_guard.mission == NPC_MISSION_GUARD );
+  CHECK( manual_guard.get_guard_post() == manual_guard_target );
+  CHECK_FALSE( manual_guard.has_camp_patrol_order() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE( "camp_patrol_roster_rebuilds_after_mid_shift_manual_reassignment",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp test_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  test_camp.set_owner( your_fac );
+  test_camp.set_bb_pos( patrol_abs );
+
+  npc &initial_guard = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  npc &replacement_guard = spawn_npc( tripoint_bub_ms{ 7, 5, 0 }.xy(), "thug" );
+  npc &reserve_guard = spawn_npc( tripoint_bub_ms{ 8, 5, 0 }.xy(), "thug" );
+  initial_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  replacement_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  reserve_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( initial_guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  REQUIRE( replacement_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  REQUIRE( reserve_guard.job.set_task_priority( ACT_CAMP_PATROL, 7 ) );
+
+  test_camp.add_assignee( initial_guard.getID() );
+  test_camp.add_assignee( replacement_guard.getID() );
+  test_camp.add_assignee( reserve_guard.getID() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               initial_guard.getID(), calendar::turn ) );
+  REQUIRE( initial_guard.has_camp_patrol_order() );
+
+  const tripoint_abs_ms manual_guard_target =
+      here.get_abs( tripoint_bub_ms{ 6, 7, 0 } );
+  initial_guard.set_guard_pos( manual_guard_target );
+  CHECK_FALSE( initial_guard.has_camp_patrol_order() );
+
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               replacement_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *rebuilt_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE( rebuilt_plan != nullptr );
+  CHECK( rebuilt_plan->roster ==
+         std::vector<character_id>({ replacement_guard.getID() }) );
+  CHECK( replacement_guard.has_camp_patrol_order() );
+  CHECK( initial_guard.mission == NPC_MISSION_GUARD );
+  CHECK( initial_guard.get_guard_post() == manual_guard_target );
+  CHECK_FALSE( initial_guard.has_camp_patrol_order() );
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE( "camp_patrol_interrupt_exclusion_survives_same_shift_cache_rebuild",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp test_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  test_camp.set_owner( your_fac );
+  test_camp.set_bb_pos( patrol_abs );
+
+  npc &interrupted_guard = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  npc &backfill_guard = spawn_npc( tripoint_bub_ms{ 7, 5, 0 }.xy(), "thug" );
+  npc &replacement_guard = spawn_npc( tripoint_bub_ms{ 8, 5, 0 }.xy(), "thug" );
+  interrupted_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  backfill_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  replacement_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( interrupted_guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  REQUIRE( backfill_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  REQUIRE( replacement_guard.job.set_task_priority( ACT_CAMP_PATROL, 7 ) );
+  test_camp.add_assignee( interrupted_guard.getID() );
+  test_camp.add_assignee( backfill_guard.getID() );
+  test_camp.add_assignee( replacement_guard.getID() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               interrupted_guard.getID(), calendar::turn ) );
+  REQUIRE( interrupted_guard.has_camp_patrol_order() );
+  REQUIRE( test_camp.interrupt_patrol_worker(
+               interrupted_guard.getID(),
+               camp_patrol_interrupt_reason::explicit_reassignment ) );
+  CHECK_FALSE( interrupted_guard.has_camp_patrol_order() );
+
+  const tripoint_abs_ms manual_guard_target =
+      here.get_abs( tripoint_bub_ms{ 8, 7, 0 } );
+  replacement_guard.set_guard_pos( manual_guard_target );
+  replacement_guard.set_mission( NPC_MISSION_GUARD );
+
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               backfill_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *rebuilt_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE( rebuilt_plan != nullptr );
+  CHECK( rebuilt_plan->roster ==
+         std::vector<character_id>({ backfill_guard.getID() }) );
+  CHECK_FALSE( interrupted_guard.has_camp_patrol_order() );
+  CHECK( interrupted_guard.mission == NPC_MISSION_CAMP_RESIDENT );
+  CHECK( replacement_guard.mission == NPC_MISSION_GUARD );
+  CHECK( replacement_guard.get_guard_post() == manual_guard_target );
+
+  calendar::turn += 1_days;
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               interrupted_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *next_day_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE( next_day_plan != nullptr );
+  CHECK( std::find( next_day_plan->roster.begin(), next_day_plan->roster.end(),
+                    interrupted_guard.getID() ) != next_day_plan->roster.end() );
+  CHECK( interrupted_guard.has_camp_patrol_order() );
+}
+
+TEST_CASE( "camp_patrol_interrupt_exclusion_survives_save_until_shift_boundary",
+           "[camp][patrol][savegame]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp saved_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  saved_camp.set_owner( your_fac );
+  saved_camp.set_bb_pos( patrol_abs );
+
+  npc &interrupted_guard = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  npc &backfill_guard = spawn_npc( tripoint_bub_ms{ 7, 5, 0 }.xy(), "thug" );
+  interrupted_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  backfill_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( interrupted_guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  REQUIRE( backfill_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  saved_camp.add_assignee( interrupted_guard.getID() );
+  saved_camp.add_assignee( backfill_guard.getID() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  REQUIRE( saved_camp.get_current_patrol_runtime(
+               interrupted_guard.getID(), calendar::turn ) );
+  REQUIRE( interrupted_guard.has_camp_patrol_order() );
+  REQUIRE( saved_camp.interrupt_patrol_worker(
+               interrupted_guard.getID(),
+               camp_patrol_interrupt_reason::severe_injury ) );
+  CHECK_FALSE( interrupted_guard.has_camp_patrol_order() );
+
+  std::ostringstream os;
+  JsonOut jsout( os );
+  saved_camp.serialize( jsout );
+
+  JsonValue jsin = json_loader::from_string( os.str() );
+  basecamp loaded_camp;
+  loaded_camp.deserialize( jsin.get_object() );
+  loaded_camp.add_assignee( interrupted_guard.getID() );
+  loaded_camp.add_assignee( backfill_guard.getID() );
+
+  CHECK_FALSE( loaded_camp.get_current_patrol_runtime(
+                   interrupted_guard.getID(), calendar::turn ) );
+  REQUIRE( loaded_camp.get_current_patrol_runtime(
+               backfill_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *same_shift_plan =
+      loaded_camp.get_current_patrol_shift_plan();
+  REQUIRE( same_shift_plan != nullptr );
+  CHECK( same_shift_plan->roster ==
+         std::vector<character_id>({ backfill_guard.getID() }) );
+  CHECK_FALSE( interrupted_guard.has_camp_patrol_order() );
+  CHECK( backfill_guard.has_camp_patrol_order() );
+
+  calendar::turn = sunset( calendar::turn_zero ) + 1_minutes;
+  REQUIRE( loaded_camp.get_current_patrol_runtime(
+               backfill_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *next_shift_plan =
+      loaded_camp.get_current_patrol_shift_plan();
+  REQUIRE( next_shift_plan != nullptr );
+  CHECK( next_shift_plan->roster ==
+         std::vector<character_id>({ backfill_guard.getID() }) );
+  CHECK_FALSE( loaded_camp.get_current_patrol_runtime(
+                   interrupted_guard.getID(), calendar::turn ) );
+
+  calendar::turn = sunrise( calendar::turn_zero + 1_days ) + 1_minutes;
+  REQUIRE( loaded_camp.get_current_patrol_runtime(
+               interrupted_guard.getID(), calendar::turn ) );
+  const camp_patrol_shift_plan *next_day_plan =
+      loaded_camp.get_current_patrol_shift_plan();
+  REQUIRE( next_day_plan != nullptr );
+  CHECK( next_day_plan->roster ==
+         std::vector<character_id>({ interrupted_guard.getID() }) );
+  CHECK( interrupted_guard.has_camp_patrol_order() );
+  CHECK_FALSE( loaded_camp.get_current_patrol_runtime(
+                   backfill_guard.getID(), calendar::turn ) );
+  CHECK_FALSE( backfill_guard.has_camp_patrol_order() );
+}
+
+TEST_CASE( "camp_patrol_interrupt_cleans_owned_order_after_roster_rebuild",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp test_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  test_camp.set_owner( your_fac );
+  test_camp.set_bb_pos( patrol_abs );
+
+  npc &external_activity_guard = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  npc &night_guard = spawn_npc( tripoint_bub_ms{ 7, 5, 0 }.xy(), "thug" );
+  npc &day_guard = spawn_npc( tripoint_bub_ms{ 8, 5, 0 }.xy(), "thug" );
+  external_activity_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  night_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  day_guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( external_activity_guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  REQUIRE( night_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  REQUIRE( day_guard.job.set_task_priority( ACT_CAMP_PATROL, 7 ) );
+  test_camp.add_assignee( external_activity_guard.getID() );
+  test_camp.add_assignee( night_guard.getID() );
+  test_camp.add_assignee( day_guard.getID() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  REQUIRE( test_camp.get_current_patrol_runtime(
+               external_activity_guard.getID(), calendar::turn ) );
+  REQUIRE( external_activity_guard.has_camp_patrol_order() );
+
+  external_activity_guard.set_mission( NPC_MISSION_ACTIVITY );
+  REQUIRE( test_camp.interrupt_patrol_worker(
+               external_activity_guard.getID(),
+               camp_patrol_interrupt_reason::explicit_reassignment ) );
+  CHECK( external_activity_guard.mission == NPC_MISSION_ACTIVITY );
+  CHECK_FALSE( external_activity_guard.has_camp_patrol_order() );
+
+  const camp_patrol_shift_plan *rebuilt_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE( rebuilt_plan != nullptr );
+  CHECK( std::find( rebuilt_plan->roster.begin(), rebuilt_plan->roster.end(),
+                    external_activity_guard.getID() ) == rebuilt_plan->roster.end() );
+}
+
+TEST_CASE( "camp_patrol_cleanup_does_not_clear_another_camp_order",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_omt old_camp_pos( 8, 8, 0 );
+  const tripoint_abs_omt new_camp_pos( 9, 9, 0 );
+  const tripoint_abs_ms new_camp_target =
+      here.get_abs( tripoint_bub_ms{ 12, 10, 0 } );
+  basecamp old_camp( "Old Camp", old_camp_pos );
+
+  npc &worker = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  worker.assigned_camp = new_camp_pos;
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  REQUIRE( worker.set_camp_patrol_order(
+               new_camp_target, NPC_MISSION_GUARD_PATROL ) );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  CHECK_FALSE( old_camp.get_current_patrol_runtime(
+                   worker.getID(), calendar::turn ) );
+  CHECK( worker.has_camp_patrol_order() );
+  CHECK( worker.mission == NPC_MISSION_GUARD_PATROL );
+  CHECK( worker.get_guard_post() == new_camp_target );
+}
+
 TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_positive",
           "[camp][patrol]") {
   restore_on_out_of_scope restore_calendar_turn(calendar::turn);
@@ -1021,6 +1399,7 @@ TEST_CASE("camp_patrol_assessment_engages_hostile_bandits_without_neutral_false_
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
   guard.set_attitude( NPCATT_NULL );
+  guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
@@ -1085,6 +1464,7 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
   guard.set_attitude( NPCATT_NULL );
+  guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
@@ -1155,6 +1535,7 @@ TEST_CASE("camp_patrol_assessment_engages_zombies", "[camp][patrol]") {
   static const faction_id faction_free_merchants( "free_merchants" );
   guard.set_fac( faction_free_merchants );
   guard.set_attitude( NPCATT_NULL );
+  guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
   static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
   REQUIRE( guard.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
   test_camp->add_assignee( guard.getID() );
@@ -1197,6 +1578,7 @@ TEST_CASE("camp_patrol_worker_downtime_hides_routine_route_reports",
 
   npc &worker = spawn_npc(worker_local.xy(), "thug");
   worker.set_fac( your_fac );
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
   static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
   REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 9));
   test_camp->add_assignee(worker.getID());
@@ -1207,6 +1589,165 @@ TEST_CASE("camp_patrol_worker_downtime_hides_routine_route_reports",
   CHECK(Messages::recent_messages(0).empty());
 
   zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_worker_moves_route_and_releases_after_interrupt",
+          "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+  map &here = get_map();
+  const tripoint_bub_ms worker_local{10, 10, 0};
+  const tripoint_abs_ms patrol_start = here.get_abs( tripoint_bub_ms{12, 10, 0} );
+  const tripoint_abs_ms patrol_middle = here.get_abs( tripoint_bub_ms{13, 10, 0} );
+  const tripoint_abs_ms patrol_end = here.get_abs( tripoint_bub_ms{14, 10, 0} );
+  const std::vector<tripoint_abs_ms> patrol_tiles = {
+    patrol_start, patrol_middle, patrol_end
+  };
+  create_rect_zone( "Patrol Route", zone_type_CAMP_PATROL, patrol_start,
+                    patrol_end );
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>( patrol_start );
+  overmap_buffer.clear_camps( camp_omt.xy() );
+  here.add_camp( camp_omt, "faction_camp" );
+  on_out_of_scope clear_camp( [camp_omt]() {
+    overmap_buffer.clear_camps( camp_omt.xy() );
+  } );
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
+  REQUIRE( !!bcp );
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner( your_fac );
+  test_camp->set_bb_pos( patrol_start );
+
+  npc &worker = spawn_npc( worker_local.xy(), "thug" );
+  clear_character( worker, true );
+  worker.setpos( here, worker_local );
+  worker.set_fac( your_fac );
+  worker.set_attitude( NPCATT_NULL );
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  worker.guard_pos = std::nullopt;
+  worker.clear_ai_guard_pos();
+  worker.set_hunger( 0 );
+  worker.set_thirst( 0 );
+  worker.set_sleepiness( 0 );
+  worker.set_stored_kcal( worker.get_healthy_kcal() );
+
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( worker.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  test_camp->add_assignee( worker.getID() );
+
+  npc &manual_guard = spawn_npc( point_bub_ms( 8, 10 ), "thug" );
+  clear_character( manual_guard, true );
+  manual_guard.set_fac( your_fac );
+  REQUIRE( manual_guard.job.set_task_priority( ACT_CAMP_PATROL, 8 ) );
+  test_camp->add_assignee( manual_guard.getID() );
+  const tripoint_abs_ms manual_guard_target = here.get_abs( tripoint_bub_ms( 8, 12, 0 ) );
+  manual_guard.set_guard_pos( manual_guard_target );
+  manual_guard.set_mission( NPC_MISSION_GUARD );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  CHECK( worker.mission == NPC_MISSION_CAMP_RESIDENT );
+  CHECK_FALSE( worker.guard_pos.has_value() );
+  CHECK_FALSE( test_camp->get_current_patrol_runtime(
+                   manual_guard.getID(), calendar::turn ).has_value() );
+  CHECK( manual_guard.mission == NPC_MISSION_GUARD );
+  CHECK( manual_guard.get_guard_post() == manual_guard_target );
+  CHECK_FALSE( manual_guard.has_camp_patrol_order() );
+
+  calendar::turn = sunset( calendar::turn_zero ) + 1_minutes;
+  CHECK_FALSE( test_camp->get_current_patrol_runtime(
+                   manual_guard.getID(), calendar::turn ).has_value() );
+  for( int turn = 0; turn < 4 && manual_guard.pos_abs() != manual_guard_target; ++turn ) {
+    manual_guard.set_moves( 100 );
+    manual_guard.move();
+  }
+  REQUIRE( manual_guard.pos_abs() == manual_guard_target );
+  manual_guard.set_moves( 100 );
+  manual_guard.move();
+  CHECK( manual_guard.mission == NPC_MISSION_GUARD );
+  CHECK( manual_guard.get_guard_post() == manual_guard_target );
+  CHECK_FALSE( manual_guard.has_camp_patrol_order() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 1_minutes;
+  worker.set_moves( 100 );
+  worker.move();
+  REQUIRE( worker.has_camp_patrol_order() );
+  REQUIRE( worker.guard_pos );
+  const tripoint_abs_ms first_patrol_target = *worker.guard_pos;
+  CHECK( std::find( patrol_tiles.begin(), patrol_tiles.end(), first_patrol_target ) !=
+         patrol_tiles.end() );
+
+  for( int turn = 0; turn < 4 && worker.pos_abs() != first_patrol_target; ++turn ) {
+    worker.set_moves( 100 );
+    worker.move();
+  }
+  REQUIRE( worker.pos_abs() == first_patrol_target );
+  CHECK( worker.mission == NPC_MISSION_GUARD_PATROL );
+  REQUIRE( worker.guard_pos );
+  CHECK( *worker.guard_pos == first_patrol_target );
+
+  calendar::turn += camp_patrol_loop_dwell();
+  worker.set_moves( 100 );
+  worker.move();
+  REQUIRE( worker.guard_pos );
+  const tripoint_abs_ms second_patrol_target = *worker.guard_pos;
+  REQUIRE( second_patrol_target != first_patrol_target );
+  CHECK( std::find( patrol_tiles.begin(), patrol_tiles.end(), second_patrol_target ) !=
+         patrol_tiles.end() );
+
+  for( int turn = 0; turn < 3 && worker.pos_abs() != second_patrol_target; ++turn ) {
+    worker.set_moves( 100 );
+    worker.move();
+  }
+  REQUIRE( worker.pos_abs() == second_patrol_target );
+  REQUIRE( worker.guard_pos );
+  CHECK( *worker.guard_pos == second_patrol_target );
+
+  const tripoint_abs_ms external_guard_target =
+      here.get_abs( tripoint_bub_ms( 15, 10, 0 ) );
+  worker.set_guard_pos( external_guard_target );
+  CHECK_FALSE( test_camp->get_current_patrol_runtime(
+                   worker.getID(), calendar::turn ).has_value() );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+  CHECK( worker.mission == NPC_MISSION_GUARD_PATROL );
+  CHECK( worker.get_guard_post() == external_guard_target );
+
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  REQUIRE( test_camp->get_current_patrol_runtime(
+               worker.getID(), calendar::turn ).has_value() );
+  REQUIRE( worker.has_camp_patrol_order() );
+  worker.set_mission( NPC_MISSION_ACTIVITY );
+  CHECK_FALSE( test_camp->get_current_patrol_runtime(
+                   worker.getID(), calendar::turn ).has_value() );
+  CHECK( worker.mission == NPC_MISSION_ACTIVITY );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+  worker.set_moves( 100 );
+  worker.move();
+  CHECK( worker.mission == NPC_MISSION_ACTIVITY );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  REQUIRE( test_camp->get_current_patrol_runtime(
+               worker.getID(), calendar::turn ).has_value() );
+  REQUIRE( worker.has_camp_patrol_order() );
+  REQUIRE( test_camp->interrupt_patrol_worker(
+               worker.getID(), camp_patrol_interrupt_reason::explicit_reassignment ) );
+  CHECK( worker.mission == NPC_MISSION_CAMP_RESIDENT );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+  CHECK_FALSE( worker.guard_pos.has_value() );
+  CHECK_FALSE( worker.get_effective_guard_pos().has_value() );
+
+  worker.set_moves( 100 );
+  worker.move();
+  CHECK( worker.mission == NPC_MISSION_CAMP_RESIDENT );
+  CHECK_FALSE( worker.guard_pos.has_value() );
+  CHECK_FALSE( worker.get_effective_guard_pos().has_value() );
+  CHECK( manual_guard.mission == NPC_MISSION_GUARD );
+  CHECK( manual_guard.get_guard_post() == manual_guard_target );
 }
 
 TEST_CASE("camp_patrol_only_blocks_other_jobs_during_active_runtime",
@@ -1232,6 +1773,7 @@ TEST_CASE("camp_patrol_only_blocks_other_jobs_during_active_runtime",
 
   npc &worker = spawn_npc(worker_local.xy(), "thug");
   worker.set_fac(your_fac);
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
   static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
   static const activity_id ACT_MOVE_LOOT("ACT_MOVE_LOOT");
   REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 2));
@@ -8195,7 +8737,11 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     clear_map_without_vision();
     Messages::clear_messages();
     basecamp_ai::reset_camp_job_report_debounce();
-    const time_point old_turn = calendar::turn;
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    on_out_of_scope reset_report_state( []() {
+      Messages::clear_messages();
+      basecamp_ai::reset_camp_job_report_debounce();
+    } );
 
     npc &worker = spawn_npc( tripoint_bub_ms{ 4, 4, 0 }.xy(), "thug" );
     clear_character( worker, true );
@@ -8262,9 +8808,6 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     CHECK( messages[messages.size() - 2].second == "camp repeat source" );
     CHECK( messages.back().second == "unrelated danger stays visible" );
 
-    Messages::clear_messages();
-    basecamp_ai::reset_camp_job_report_debounce();
-    calendar::turn = old_turn;
   }
 
   SECTION("board handoff snapshot stays explicit when the board is empty") {

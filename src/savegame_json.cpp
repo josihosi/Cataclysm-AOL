@@ -2228,6 +2228,12 @@ void npc::load( const JsonObject &data )
             previous_mission = NPC_MISSION_NULL;
         }
     }
+    data.read( "camp_patrol_order_active", camp_patrol_order_active );
+    if( camp_patrol_order_active &&
+        ( !assigned_camp || ( mission != NPC_MISSION_GUARD &&
+                              mission != NPC_MISSION_GUARD_PATROL ) ) ) {
+        camp_patrol_order_active = false;
+    }
 
     if( data.read( "my_fac", facID ) ) {
         if( facID.is_valid() ) {
@@ -2261,7 +2267,7 @@ void npc::load( const JsonObject &data )
                 NPCATT_LEGACY_4, NPCATT_LEGACY_5, NPCATT_LEGACY_6
             }
         };
-        if( legacy_attitudes.count( attitude ) > 0 ) {
+        if( legacy_attitudes.count( previous_attitude ) > 0 ) {
             previous_attitude = NPCATT_NULL;
         }
     }
@@ -2379,6 +2385,7 @@ void npc::store( JsonOut &json ) const
     // TODO: stringid
     json.member( "mission", mission );
     json.member( "previous_mission", previous_mission );
+    json.member( "camp_patrol_order_active", camp_patrol_order_active );
     json.member( "faction_api_ver", faction_api_version );
     if( !fac_id.str().empty() ) { // set in constructor
         json.member( "my_fac", fac_id.c_str() );
@@ -4938,6 +4945,8 @@ void basecamp::serialize( JsonOut &json ) const
         json.member( "liquid_dumping_spots", liquid_dumping_spots );
         json.member( "camp_requests", camp_requests );
         json.member( "locker_policy", locker_policy );
+        json.member( "patrol_shift_exclusion_start", patrol_shift_exclusion_start );
+        json.member( "patrol_shift_excluded_workers", patrol_shift_excluded_workers );
         json.member( "patrol_alarm_until", patrol_alarm_until );
         json.member( "locker_service_queue", locker_service_queue );
         json.member( "locker_next_service_turn", locker_next_service_turn );
@@ -5033,6 +5042,10 @@ void basecamp::deserialize( const JsonObject &data )
     data.read( "liquid_dumping_spots", liquid_dumping_spots );
     data.read( "camp_requests", camp_requests );
     data.read( "locker_policy", locker_policy );
+    patrol_shift_exclusion_start = calendar::before_time_starts;
+    patrol_shift_excluded_workers.clear();
+    data.read( "patrol_shift_exclusion_start", patrol_shift_exclusion_start );
+    data.read( "patrol_shift_excluded_workers", patrol_shift_excluded_workers );
     data.read( "patrol_alarm_until", patrol_alarm_until );
     data.read( "locker_service_queue", locker_service_queue );
     data.read( "locker_next_service_turn", locker_next_service_turn );

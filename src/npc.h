@@ -1378,7 +1378,6 @@ class npc : public Character
         int confident_throw_range( const item &, Creature * ) const;
         void invalidate_range_cache();
         bool wont_hit_friend( const tripoint_bub_ms &tar, const item &it, bool throwing ) const;
-        bool enough_time_to_reload( const item &gun ) const;
         /** Can reload currently wielded gun? */
         bool can_reload_current();
         /** Has a gun or magazine that can be reloaded */
@@ -1528,6 +1527,9 @@ class npc : public Character
         npc_attitude get_attitude() const override;
         void set_attitude( npc_attitude new_attitude );
         void set_mission( npc_mission new_mission );
+        bool set_camp_patrol_order( const tripoint_abs_ms &target, npc_mission patrol_mission );
+        void clear_camp_patrol_order();
+        bool has_camp_patrol_order() const;
         bool has_activity() const;
         bool has_job() const {
             return job.has_job();
@@ -1559,6 +1561,7 @@ class npc : public Character
     private:
         npc_attitude attitude = NPCATT_NULL; // What we want to do to the player
         npc_attitude previous_attitude = NPCATT_NULL;
+        bool camp_patrol_order_active = false;
         bool known_to_u = false; // Does the player know this NPC?
         // Type of complaint->last time we complained about this type
         std::map<std::string, time_point> complaints;

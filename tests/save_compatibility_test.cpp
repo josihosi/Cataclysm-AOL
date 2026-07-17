@@ -25,6 +25,7 @@ overmap_global_state populated_global_state()
     rider_memory.interest_score = 8;
     rider_memory.turns_remaining = 40;
     rider_memory.max_riders_drawn = 2;
+    rider_memory.decay_turn_remainder = 17;
     rider_memory.reason = "save compatibility test";
     state.zombie_rider_light_memory.emplace( tripoint_abs_omt( 4, 5, 0 ), rider_memory );
     state.zombie_rider_light_memory_last_turn = calendar::turn_zero + 123_turns;
@@ -44,6 +45,12 @@ overmap_global_state round_trip_global_state( const overmap_global_state &state 
     loaded.deserialize( jsin.get_object() );
     return loaded;
 }
+
+JsonValue legacy_npc_save_with( const std::string &fields )
+{
+    return json_loader::from_string(
+               "{\"posx\":0,\"posy\":0,\"posz\":0," + fields + "}" );
+}
 } // namespace
 
 TEST_CASE( "C-AOL numeric npc mission save layout remains stable",
@@ -60,27 +67,86 @@ TEST_CASE( "C-AOL numeric npc mission save layout remains stable",
     STATIC_REQUIRE( static_cast<int>( NPC_MISSION_CAMP_RESIDENT ) == 11 );
 }
 
-TEST_CASE( "npc validates a legacy previous mission independently",
+TEST_CASE( "C-AOL numeric npc attitude save layout remains stable",
+           "[savegame][npc][regression]" )
+{
+    STATIC_REQUIRE( static_cast<int>( NPCATT_NULL ) == 0 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_TALK ) == 1 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_1 ) == 2 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_FOLLOW ) == 3 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_2 ) == 4 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEAD ) == 5 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_WAIT ) == 6 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_6 ) == 7 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_MUG ) == 8 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_WAIT_FOR_LEAVE ) == 9 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_KILL ) == 10 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_FLEE ) == 11 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_3 ) == 12 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_HEAL ) == 13 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_4 ) == 14 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_LEGACY_5 ) == 15 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_ACTIVITY ) == 16 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_FLEE_TEMP ) == 17 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_RECOVER_GOODS ) == 18 );
+    STATIC_REQUIRE( static_cast<int>( NPCATT_END ) == 19 );
+}
+
+TEST_CASE( "npc validates legacy mission fields independently",
            "[savegame][npc][regression]" )
 {
     for( const int legacy_mission : std::array<int, 3> { 1, 4, 5 } ) {
         CAPTURE( legacy_mission );
-        JsonValue old_save = json_loader::from_string(
-                                 "{\"mission\":0,\"previous_mission\":" +
-                                 std::to_string( legacy_mission ) + "}" );
-        npc loaded;
+        JsonValue legacy_current_save = legacy_npc_save_with(
+                                            "\"mission\":" + std::to_string( legacy_mission ) +
+                                            ",\"previous_mission\":10" );
+        npc legacy_current;
+        legacy_current.deserialize( legacy_current_save.get_object() );
 
-        loaded.deserialize( old_save.get_object() );
+        CHECK( legacy_current.mission == NPC_MISSION_NULL );
+        CHECK( legacy_current.get_previous_mission() == NPC_MISSION_TRAVELLING );
 
-        CHECK( loaded.mission == NPC_MISSION_NULL );
-        CHECK( loaded.get_previous_mission() == NPC_MISSION_NULL );
+        JsonValue legacy_previous_save = legacy_npc_save_with(
+                                             "\"mission\":8,\"previous_mission\":" +
+                                             std::to_string( legacy_mission ) );
+        npc legacy_previous;
+        legacy_previous.deserialize( legacy_previous_save.get_object() );
+
+        CHECK( legacy_previous.mission == NPC_MISSION_GUARD_PATROL );
+        CHECK( legacy_previous.get_previous_mission() == NPC_MISSION_NULL );
+    }
+}
+
+TEST_CASE( "npc validates legacy attitude fields independently",
+           "[savegame][npc][regression]" )
+{
+    for( const int legacy_attitude : std::array<int, 6> { 2, 4, 7, 12, 14, 15 } ) {
+        CAPTURE( legacy_attitude );
+        JsonValue legacy_current_save = legacy_npc_save_with(
+                                            "\"attitude\":" +
+                                            std::to_string( legacy_attitude ) +
+                                            ",\"previous_attitude\":3" );
+        npc legacy_current;
+        legacy_current.deserialize( legacy_current_save.get_object() );
+
+        CHECK( legacy_current.get_attitude() == NPCATT_NULL );
+        CHECK( legacy_current.get_previous_attitude() == NPCATT_FOLLOW );
+
+        JsonValue legacy_previous_save = legacy_npc_save_with(
+                                             "\"attitude\":1,\"previous_attitude\":" +
+                                             std::to_string( legacy_attitude ) );
+        npc legacy_previous;
+        legacy_previous.deserialize( legacy_previous_save.get_object() );
+
+        CHECK( legacy_previous.get_attitude() == NPCATT_TALK );
+        CHECK( legacy_previous.get_previous_attitude() == NPCATT_NULL );
     }
 }
 
 TEST_CASE( "npc loads established C-AOL numeric mission values",
            "[savegame][npc][regression]" )
 {
-    JsonValue old_save = json_loader::from_string( R"({"mission":8,"previous_mission":10})" );
+    JsonValue old_save = legacy_npc_save_with( "\"mission\":8,\"previous_mission\":10" );
     npc loaded;
 
     loaded.deserialize( old_save.get_object() );
@@ -103,6 +169,7 @@ TEST_CASE( "overmap global save fields coexist across a round trip",
     CHECK( rider->second.interest_score == 8 );
     CHECK( rider->second.turns_remaining == 40 );
     CHECK( rider->second.max_riders_drawn == 2 );
+    CHECK( rider->second.decay_turn_remainder == 17 );
     CHECK( rider->second.reason == "save compatibility test" );
     CHECK( loaded.zombie_rider_light_memory_last_turn == calendar::turn_zero + 123_turns );
 

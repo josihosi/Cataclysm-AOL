@@ -704,21 +704,6 @@ TEST_CASE( "npc_can_target_player" )
     CHECK( hostile.current_target() == static_cast<Creature *>( &player_character ) );
 }
 
-TEST_CASE( "npc_reload_timing_handles_item_without_default_ammo", "[npc_ai][reload]" )
-{
-    clear_map_without_vision();
-
-    standard_npc guy( "Reload tester" );
-    clear_character( guy, true );
-    const item non_ammo_item( itype_2x4 );
-
-    REQUIRE( non_ammo_item.ammo_default().is_null() );
-    REQUIRE_FALSE( item::ammotype_of( non_ammo_item.ammo_default() ) );
-    REQUIRE( guy.current_target() == nullptr );
-
-    CHECK( guy.enough_time_to_reload( non_ammo_item ) );
-}
-
 TEST_CASE( "npc_aim_only_spends_moves_for_useful_improvement", "[npc_ai][aim]" )
 {
     clear_map_without_vision();

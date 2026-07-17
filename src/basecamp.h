@@ -1008,6 +1008,8 @@ private:
   camp_patrol_shift patrol_shift_cache_kind = camp_patrol_shift::day;
   bool patrol_shift_cache_alarm_active = false;
   camp_patrol_shift_plan patrol_shift_cache;
+  time_point patrol_shift_exclusion_start = calendar::before_time_starts;
+  std::set<character_id> patrol_shift_excluded_workers; // NOLINT(cata-serialize)
   time_point patrol_alarm_until = calendar::turn_zero;
   std::vector<character_id> locker_service_queue;
   time_point locker_next_service_turn = calendar::turn_zero;

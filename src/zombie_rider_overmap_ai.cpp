@@ -12,6 +12,7 @@ void clear_memory( rider_light_memory &memory, const std::string &reason )
     memory.interest_score = 0;
     memory.turns_remaining = 0;
     memory.max_riders_drawn = 0;
+    memory.decay_turn_remainder = 0;
     memory.reason = reason;
 }
 
@@ -83,6 +84,7 @@ void refresh_light_memory( rider_light_memory &memory, const rider_light_interes
     memory.turns_remaining = std::max( memory.turns_remaining, interest.memory_turns );
     memory.max_riders_drawn = std::min( max_riders_drawn_by_light,
                                         std::max( memory.max_riders_drawn, interest.max_riders_drawn ) );
+    memory.decay_turn_remainder = 0;
     memory.reason = interest.reason;
 }
 
@@ -98,7 +100,9 @@ void advance_light_memory( rider_light_memory &memory, int elapsed_turns )
     }
 
     memory.turns_remaining -= elapsed_turns;
-    const int decay_steps = elapsed_turns / 60;
+    const int decay_turns = memory.decay_turn_remainder + elapsed_turns;
+    const int decay_steps = decay_turns / rider_light_memory_decay_interval_turns;
+    memory.decay_turn_remainder = decay_turns % rider_light_memory_decay_interval_turns;
     if( decay_steps > 0 ) {
         memory.interest_score = std::max( 0, memory.interest_score - decay_steps );
     }

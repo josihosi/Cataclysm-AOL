@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,6 +32,11 @@ std::vector<std::string> parse_look_around_response_for_test( const std::string 
 bool parse_move_field_for_test( const std::string &field, point &delta,
                                 std::string &terminal_state,
                                 std::string &error );
+bool parse_action_csv_for_test( const std::string &csv, std::vector<std::string> &actions,
+                                std::string &attack_target, std::optional<point> &move_delta,
+                                std::string &move_terminal_state, std::string &error );
+std::string normalize_csv_separators_for_test( const std::string &csv );
+std::string prepare_event_log_payload_for_test( const std::string &payload );
 tripoint_abs_ms resolve_move_target_for_test( const tripoint_abs_ms &origin,
         const point &delta );
 } // namespace llm_intent

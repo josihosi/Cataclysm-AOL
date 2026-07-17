@@ -2136,6 +2136,7 @@ void overmap_global_state::serialize( JsonOut &json ) const
         json.member( "interest_score", entry.second.interest_score );
         json.member( "turns_remaining", entry.second.turns_remaining );
         json.member( "max_riders_drawn", entry.second.max_riders_drawn );
+        json.member( "decay_turn_remainder", entry.second.decay_turn_remainder );
         json.member( "reason", entry.second.reason );
         json.end_object();
     }
@@ -2188,6 +2189,9 @@ void overmap_global_state::deserialize( const JsonObject &json )
             memory_json.read( "interest_score", memory.interest_score );
             memory_json.read( "turns_remaining", memory.turns_remaining );
             memory_json.read( "max_riders_drawn", memory.max_riders_drawn );
+            memory_json.read( "decay_turn_remainder", memory.decay_turn_remainder );
+            memory.decay_turn_remainder = std::clamp( memory.decay_turn_remainder, 0,
+                                          zombie_rider_overmap_ai::rider_light_memory_decay_interval_turns - 1 );
             memory_json.read( "reason", memory.reason );
             if( memory.active() ) {
                 zombie_rider_light_memory.emplace( source_omt, memory );

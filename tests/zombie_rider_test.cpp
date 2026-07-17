@@ -16,6 +16,7 @@
 #include "monster.h"
 #include "mtype.h"
 #include "pathfinding.h"
+#include "player_helpers.h"
 #include "type_id.h"
 #include "zombie_rider_overmap_ai.h"
 
@@ -45,6 +46,7 @@ static void refresh_pathing_cache( map &here )
 
 static void prepare_zombie_rider_local_arena( map &here, const tripoint_bub_ms &center )
 {
+    clear_avatar();
     const ter_id t_floor( "t_floor" );
     for( const tripoint_bub_ms &p : here.points_in_radius( center, 14 ) ) {
         here.ter_set( p, t_floor );
@@ -508,6 +510,13 @@ TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",
     CHECK( mature.memory_turns >= 90 );
     CHECK( mature.memory_turns <= 300 );
     CHECK( mature.max_riders_drawn == 1 );
+
+    const zombie_rider_overmap_ai::rider_light_interest no_riders =
+        zombie_rider_overmap_ai::evaluate_light_attraction( projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 0 );
+    CHECK_FALSE( no_riders.should_investigate );
+    CHECK( no_riders.reason == "no_riders_available" );
+    CHECK( no_riders.max_riders_drawn == 0 );
 }
 
 TEST_CASE( "zombie_rider_overmap_light_negative_controls_do_not_call_riders",
@@ -609,15 +618,26 @@ TEST_CASE( "zombie_rider_overmap_light_memory_decays_and_caps_accumulation",
     REQUIRE( memory.active() );
     CHECK( memory.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
 
-    zombie_rider_overmap_ai::advance_light_memory( memory, 60 );
-    CHECK( memory.active() );
-    CHECK( memory.interest_score == 5 );
-    CHECK( memory.turns_remaining == 240 );
-    CHECK( memory.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+    zombie_rider_overmap_ai::rider_light_memory single_advance = memory;
+    zombie_rider_overmap_ai::rider_light_memory partitioned_advance = memory;
+    zombie_rider_overmap_ai::advance_light_memory( single_advance, 60 );
+    for( int turn = 0; turn < 60; ++turn ) {
+        zombie_rider_overmap_ai::advance_light_memory( partitioned_advance, 1 );
+    }
 
-    zombie_rider_overmap_ai::advance_light_memory( memory, 1000 );
-    CHECK_FALSE( memory.active() );
-    CHECK( memory.reason == "decayed_after_light_off" );
+    CHECK( partitioned_advance.interest_score == single_advance.interest_score );
+    CHECK( partitioned_advance.turns_remaining == single_advance.turns_remaining );
+    CHECK( partitioned_advance.max_riders_drawn == single_advance.max_riders_drawn );
+    CHECK( partitioned_advance.decay_turn_remainder == single_advance.decay_turn_remainder );
+    CHECK( partitioned_advance.reason == single_advance.reason );
+    CHECK( single_advance.active() );
+    CHECK( single_advance.interest_score == 5 );
+    CHECK( single_advance.turns_remaining == 240 );
+    CHECK( single_advance.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+
+    zombie_rider_overmap_ai::advance_light_memory( single_advance, 1000 );
+    CHECK_FALSE( single_advance.active() );
+    CHECK( single_advance.reason == "decayed_after_light_off" );
 }
 
 static zombie_rider_overmap_ai::rider_light_memory strong_rider_light_memory()

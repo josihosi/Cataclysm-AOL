@@ -147,6 +147,54 @@ const char *camp_patrol_shift_name( const camp_patrol_shift shift ) {
     return "unknown";
 }
 
+bool camp_patrol_worker_is_eligible( const npc &worker )
+{
+    if( worker.mission == NPC_MISSION_CAMP_RESIDENT ) {
+        return true;
+    }
+    return worker.has_camp_patrol_order() &&
+           ( worker.mission == NPC_MISSION_GUARD ||
+             worker.mission == NPC_MISSION_GUARD_PATROL );
+}
+
+bool camp_patrol_cached_roster_is_eligible(
+    const camp_patrol_shift_plan &plan, const tripoint_abs_omt &camp_pos )
+{
+    return std::all_of( plan.roster.begin(), plan.roster.end(),
+    [&camp_pos]( const character_id &worker_id ) {
+        const npc_ptr worker = overmap_buffer.find_npc( worker_id );
+        return worker && worker->assigned_camp &&
+               *worker->assigned_camp == camp_pos &&
+               camp_patrol_worker_is_eligible( *worker );
+    } );
+}
+
+bool sync_camp_patrol_worker_order(
+    const tripoint_abs_omt &camp_pos, const character_id &worker_id,
+    const std::optional<camp_patrol_guard_runtime> &runtime )
+{
+    const npc_ptr worker = overmap_buffer.find_npc( worker_id );
+    if( !worker ) {
+        return false;
+    }
+
+    if( runtime ) {
+        if( !worker->assigned_camp || *worker->assigned_camp != camp_pos ) {
+            return false;
+        }
+        return worker->set_camp_patrol_order(
+            runtime->target,
+            runtime->behavior == camp_patrol_guard_behavior::loop ?
+            NPC_MISSION_GUARD_PATROL : NPC_MISSION_GUARD );
+    }
+
+    if( !worker->assigned_camp || *worker->assigned_camp != camp_pos ) {
+        return false;
+    }
+    worker->clear_camp_patrol_order();
+    return true;
+}
+
 } // namespace
 
 camp_locker_policy::camp_locker_policy() { enabled_slots.fill(true); }
@@ -3879,12 +3927,26 @@ bool basecamp::refresh_patrol_shift_cache() {
 
   const int current_day = camp_patrol_shift_cache_day(calendar::turn);
   const camp_patrol_shift current_shift = camp_patrol_shift_for_turn(calendar::turn);
+  const time_point current_shift_start =
+      camp_patrol_shift_bounds( current_shift, calendar::turn ).first;
+  if( patrol_shift_exclusion_start != current_shift_start ) {
+    patrol_shift_exclusion_start = current_shift_start;
+    patrol_shift_excluded_workers.clear();
+  }
   const bool current_alarm_active = is_patrol_alarm_active();
-  if( patrol_shift_cache_valid && patrol_shift_cache_day == current_day &&
+  const bool cache_matches_shift =
+      patrol_shift_cache_valid && patrol_shift_cache_day == current_day &&
       patrol_shift_cache_kind == current_shift &&
-      patrol_shift_cache_alarm_active == current_alarm_active ) {
+      patrol_shift_cache_alarm_active == current_alarm_active;
+  if( cache_matches_shift &&
+      camp_patrol_cached_roster_is_eligible( patrol_shift_cache, omt_pos ) ) {
     return !patrol_shift_cache.clusters.empty() &&
            !patrol_shift_cache.roster.empty();
+  }
+  if( cache_matches_shift ) {
+    DebugLog( D_INFO, DC_ALL )
+        << string_format( "camp patrol: cache camp=%s shift=%s reason=ineligible_roster",
+                          name, camp_patrol_shift_name( current_shift ) );
   }
 
   clear_patrol_shift_cache();
@@ -3905,8 +3967,17 @@ bool basecamp::refresh_patrol_shift_cache() {
     return false;
   }
 
+  std::vector<npc_ptr> eligible_npcs = get_npcs_assigned();
+  eligible_npcs.erase(
+      std::remove_if(
+          eligible_npcs.begin(), eligible_npcs.end(),
+          [this]( const npc_ptr &worker ) {
+            return !worker || !camp_patrol_worker_is_eligible( *worker ) ||
+                   patrol_shift_excluded_workers.count( worker->getID() ) > 0;
+          } ),
+      eligible_npcs.end() );
   const std::vector<camp_patrol_worker> workers =
-      collect_camp_patrol_workers(get_npcs_assigned());
+      collect_camp_patrol_workers(eligible_npcs);
   if( current_alarm_active ) {
     std::vector<camp_patrol_worker> alarm_roster;
     alarm_roster.reserve(workers.size());
@@ -3942,13 +4013,27 @@ const camp_patrol_shift_plan *basecamp::get_current_patrol_shift_plan() {
 }
 
 std::optional<camp_patrol_guard_runtime>
-basecamp::get_current_patrol_runtime(const character_id &worker_id,
-                                     const time_point &turn) {
-  const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
-  if( plan == nullptr ) {
-    return std::nullopt;
-  }
-  return describe_camp_patrol_guard_runtime(*plan, worker_id, turn);
+basecamp::get_current_patrol_runtime( const character_id &worker_id,
+                                     const time_point &turn )
+{
+    const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
+    std::optional<camp_patrol_guard_runtime> runtime;
+    if( plan != nullptr ) {
+        runtime = describe_camp_patrol_guard_runtime( *plan, worker_id, turn );
+    }
+    if( turn == calendar::turn &&
+        !sync_camp_patrol_worker_order( omt_pos, worker_id, runtime ) ) {
+        clear_patrol_shift_cache();
+        runtime.reset();
+        if( refresh_patrol_shift_cache() ) {
+            runtime = describe_camp_patrol_guard_runtime(
+                          patrol_shift_cache, worker_id, turn );
+        }
+        if( !sync_camp_patrol_worker_order( omt_pos, worker_id, runtime ) ) {
+            return std::nullopt;
+        }
+    }
+    return runtime;
 }
 
 bool basecamp::is_worker_on_patrol_shift(const npc &worker) {
@@ -3964,12 +4049,25 @@ bool basecamp::is_worker_on_patrol_shift(const npc &worker) {
 }
 
 bool basecamp::interrupt_patrol_worker(
-    const character_id &worker_id, camp_patrol_interrupt_reason reason) {
-  const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
-  if( plan == nullptr ) {
-    return false;
-  }
-  return apply_camp_patrol_guard_interrupt(patrol_shift_cache, worker_id, reason);
+    const character_id &worker_id, camp_patrol_interrupt_reason reason )
+{
+    const npc_ptr worker = overmap_buffer.find_npc( worker_id );
+    const bool owns_matching_camp_order =
+        worker && worker->assigned_camp && *worker->assigned_camp == omt_pos &&
+        worker->has_camp_patrol_order();
+    const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
+    bool interrupted = false;
+    if( plan != nullptr ) {
+        interrupted =
+            apply_camp_patrol_guard_interrupt( patrol_shift_cache, worker_id, reason );
+    }
+    const bool accepted = camp_patrol_interrupt_is_whitelisted( reason ) &&
+                          ( interrupted || owns_matching_camp_order );
+    if( accepted ) {
+        patrol_shift_excluded_workers.insert( worker_id );
+        sync_camp_patrol_worker_order( omt_pos, worker_id, std::nullopt );
+    }
+    return accepted;
 }
 
 bool basecamp::raise_patrol_alarm(const character_id &spotter_id,

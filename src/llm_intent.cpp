@@ -96,6 +96,7 @@ namespace
 {
 std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
+constexpr const char *llm_intent_event_log_filename = "llm_intent_events.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
@@ -108,10 +109,11 @@ std::filesystem::path central_llm_log_path( const char *filename )
     return central_llm_config_dir_path() / std::filesystem::u8path( filename );
 }
 
-void append_llm_intent_log( const std::string &payload )
+std::string prepare_llm_log_payload( const std::string &payload,
+                                     const bool normalize_punctuation )
 {
     if( payload.empty() ) {
-        return;
+        return {};
     }
     auto replace_all = []( std::string & text, const std::string & from,
     const std::string & to ) {
@@ -125,24 +127,36 @@ void append_llm_intent_log( const std::string &payload )
         }
     };
     std::string final_payload = payload;
-    // Normalize common UTF-8 punctuation so Windows log viewers don't show mojibake.
-    replace_all( final_payload, "\xE2\x80\x98", "'" );
-    replace_all( final_payload, "\xE2\x80\x99", "'" );
-    replace_all( final_payload, "\xE2\x80\x9C", "\"" );
-    replace_all( final_payload, "\xE2\x80\x9D", "\"" );
-    replace_all( final_payload, "\xE2\x80\x93", "-" );
-    replace_all( final_payload, "\xE2\x80\x94", "-" );
-    replace_all( final_payload, "\xE2\x80\xA6", "..." );
-    replace_all( final_payload, "\xC2\xA0", " " );
+    if( normalize_punctuation ) {
+        // Normalize common UTF-8 punctuation so Windows log viewers don't show mojibake.
+        replace_all( final_payload, "\xE2\x80\x98", "'" );
+        replace_all( final_payload, "\xE2\x80\x99", "'" );
+        replace_all( final_payload, "\xE2\x80\x9C", "\"" );
+        replace_all( final_payload, "\xE2\x80\x9D", "\"" );
+        replace_all( final_payload, "\xE2\x80\x93", "-" );
+        replace_all( final_payload, "\xE2\x80\x94", "-" );
+        replace_all( final_payload, "\xE2\x80\xA6", "..." );
+        replace_all( final_payload, "\xC2\xA0", " " );
+    }
     if( final_payload.size() < 2 ||
         final_payload.compare( final_payload.size() - 2, 2, "\n\n" ) != 0 ) {
         final_payload += "\n\n";
+    }
+    return final_payload;
+}
+
+void append_llm_log( const char *filename, const std::string &payload,
+                     const bool normalize_punctuation )
+{
+    const std::string final_payload = prepare_llm_log_payload( payload, normalize_punctuation );
+    if( final_payload.empty() ) {
+        return;
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
     const std::filesystem::path config_dir = central_llm_config_dir_path();
     std::error_code mkdir_ec;
     std::filesystem::create_directories( config_dir, mkdir_ec );
-    const std::filesystem::path log_path = central_llm_log_path( llm_intent_log_filename );
+    const std::filesystem::path log_path = central_llm_log_path( filename );
     std::error_code ec;
     if( std::filesystem::exists( log_path, ec ) ) {
         const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
@@ -164,11 +178,22 @@ void append_llm_intent_log( const std::string &payload )
     out << final_payload;
 }
 
+void append_llm_intent_log( const std::string &payload )
+{
+    append_llm_log( llm_intent_log_filename, payload, true );
+}
+
+void append_llm_intent_event_log( const std::string &payload )
+{
+    append_llm_log( llm_intent_event_log_filename, payload, false );
+}
+
 constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
 constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
 constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
+constexpr int llm_snapshot_map_radius = 20;
 
 struct llm_intent_request {
     std::string request_id;
@@ -900,6 +925,7 @@ bool parse_move_field( const std::string &field, int &dx, int &dy,
     dx = 0;
     dy = 0;
     terminal_state.clear();
+    error.clear();
     std::string lowered = trim_copy( field );
     std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
         return static_cast<char>( std::tolower( c ) );
@@ -941,6 +967,11 @@ bool parse_move_field( const std::string &field, int &dx, int &dy,
         error = "Move field delta is invalid.";
         return false;
     }
+    if( dx < -llm_snapshot_map_radius || dx > llm_snapshot_map_radius ||
+        dy < -llm_snapshot_map_radius || dy > llm_snapshot_map_radius ) {
+        error = "Move field delta must stay within the snapshot map (-20..20).";
+        return false;
+    }
     return true;
 }
 
@@ -963,6 +994,7 @@ bool parse_csv_payload( std::string_view csv, std::string &speech,
     attack_target.clear();
     move_delta.reset();
     move_terminal_state.clear();
+    error.clear();
     std::vector<std::string> fields;
     std::string current;
     for( char c : csv ) {
@@ -1044,9 +1076,8 @@ bool parse_csv_payload( std::string_view csv, std::string &speech,
         }
         if( !is_allowed_action( token_lower ) )
         {
-            if( !attack_target.empty() ) {
-                return true;
-            }
+            error = "CSV action token is invalid.";
+            return false;
         }
         actions.push_back( token_lower );
         if( actions.size() > 3 )
@@ -1446,8 +1477,18 @@ std::string normalize_csv_separators( const std::string &csv )
     std::string out;
     out.reserve( csv.size() );
     bool last_sep = false;
-    for( char c : csv ) {
+    for( size_t index = 0; index < csv.size(); ++index ) {
+        const char c = csv[index];
         if( c == '+' ) {
+            const bool signed_number = index + 1 < csv.size() &&
+                                       std::isdigit( static_cast<unsigned char>( csv[index + 1] ) ) &&
+                                       ( index == 0 || csv[index - 1] == ',' || csv[index - 1] == '=' ||
+                                         std::isspace( static_cast<unsigned char>( csv[index - 1] ) ) );
+            if( signed_number ) {
+                out.push_back( c );
+                last_sep = false;
+                continue;
+            }
             if( !last_sep ) {
                 out.push_back( '|' );
                 last_sep = true;
@@ -1889,6 +1930,7 @@ std::string build_snapshot_legend()
                "6 ... obstructed area\n"
                "[a - z] ... creature\n"
                "[A - Z] ... obstructed creature\n"
+               "? ... unlettered creature (not a target handle)\n"
                "| ... You (NPC)\n" );
 }
 
@@ -1946,7 +1988,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
     map &here = get_map();
     const tripoint_bub_ms player_pos = get_player_character().pos_bub();
     const tripoint_bub_ms center = listener.pos_bub();
-    static constexpr int radius = 20;
+    static constexpr int radius = llm_snapshot_map_radius;
     static constexpr std::string_view header_padding = "        ";
     std::string out_map;
     out_map.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 3 ) );
@@ -1974,18 +2016,19 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
             } else {
                 const int cost = here.move_cost( p );
                 const int scaled_cost = cost * 50;
+                const bool obstructed = cost <= 0 || scaled_cost > 100;
                 if( Creature *critter = get_creature_tracker().creature_at( p ) ) {
                     if( !listener.sees( here, *critter ) ) {
-                        glyph = cost <= 0 ? '6' : ( scaled_cost > 100 ? '0' : '-' );
+                        glyph = cost <= 0 ? '6' : ( obstructed ? '0' : '-' );
                     } else if( critter->is_avatar() && player_letter_active ) {
                         auto found = letter_map.find( critter );
                         if( found == letter_map.end() ) {
                             const char base_letter = 'a';
-                            const char letter = cost > 100 ||
-                                                cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                            const char letter = obstructed ?
+                                                static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                             letter_map.emplace( critter, letter );
                             legend_entries.emplace_back( letter, creature_legend_entry( listener, *critter ) );
-                            legend_targets[letter] = g->shared_from( *critter );
+                            legend_targets[base_letter] = g->shared_from( *critter );
                             glyph = letter;
                         } else {
                             glyph = found->second;
@@ -1995,16 +2038,16 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
                         if( found == letter_map.end() ) {
                             if( next_letter <= 'z' ) {
                                 const char base_letter = next_letter;
-                                const char letter = cost > 100 ||
-                                                    cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                                const char letter = obstructed ?
+                                                    static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                                 letter_map.emplace( critter, letter );
                                 legend_entries.emplace_back( letter,
                                                              creature_legend_entry( listener, *critter ) );
-                                legend_targets[letter] = g->shared_from( *critter );
+                                legend_targets[base_letter] = g->shared_from( *critter );
                                 glyph = letter;
                                 ++next_letter;
                             } else {
-                                glyph = cost > 100 || cost <= 0 ? 'A' : 'a';
+                                glyph = '?';
                             }
                         } else {
                             glyph = found->second;
@@ -4162,6 +4205,18 @@ void enqueue_random_requests()
 void log_event( const std::string &message )
 {
     append_llm_intent_log( message + "\n" );
+    std::string framed_message;
+    framed_message.reserve( message.size() );
+    for( const char c : message ) {
+        if( c == '\n' ) {
+            framed_message += "\\n";
+        } else if( c == '\r' ) {
+            framed_message += "\\r";
+        } else {
+            framed_message.push_back( c );
+        }
+    }
+    append_llm_intent_event_log( "[CAOL_EVENT] " + framed_message + "\n" );
 }
 
 std::string build_snapshot_for_test( npc &listener, const std::string &player_utterance,
@@ -4208,6 +4263,25 @@ bool parse_move_field_for_test( const std::string &field, point &delta,
     const bool ok = parse_move_field( field, dx, dy, terminal_state, error );
     delta = point( dx, dy );
     return ok;
+}
+
+bool parse_action_csv_for_test( const std::string &csv, std::vector<std::string> &actions,
+                                std::string &attack_target, std::optional<point> &move_delta,
+                                std::string &move_terminal_state, std::string &error )
+{
+    std::string speech;
+    return parse_csv_payload( csv, speech, actions, attack_target, move_delta,
+                              move_terminal_state, error );
+}
+
+std::string normalize_csv_separators_for_test( const std::string &csv )
+{
+    return normalize_csv_separators( csv );
+}
+
+std::string prepare_event_log_payload_for_test( const std::string &payload )
+{
+    return prepare_llm_log_payload( payload, false );
 }
 
 tripoint_abs_ms resolve_move_target_for_test( const tripoint_abs_ms &origin,
