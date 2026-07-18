@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,9 @@ MACOS_SYSTEM_DEPENDENCY_PREFIXES = (
     "/System/Library/",
     "/usr/lib/",
 )
+
+GAME_VERSION_TIMEOUT_SECONDS = 20
+MINIMUM_BINARY_COMMIT_LENGTH = 11
 
 
 def require(condition: bool, message: str) -> None:
@@ -126,6 +130,98 @@ def require_version_metadata(
         require(metadata["commit sha"] == expected_commit, f"VERSION.txt commit is {metadata['commit sha']!r}, expected {expected_commit!r}")
         require(metadata["commit url"].endswith(f"/commit/{expected_commit}"), f"VERSION.txt commit URL does not name {expected_commit!r}")
     return metadata
+
+
+def native_release_platform() -> str:
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    if sys.platform.startswith("linux"):
+        return "linux"
+    require(False, f"unsupported release verification host: {sys.platform}")
+    return ""
+
+
+def require_native_release_platform(platform: str) -> None:
+    native_platform = native_release_platform()
+    require(
+        platform == native_platform,
+        f"{platform} release asset must be executed on a {platform} runner, not {native_platform}",
+    )
+
+
+def require_game_binary_version(
+    game_binary: Path,
+    game_root: Path,
+    expected_commit: str,
+    timeout_seconds: int = GAME_VERSION_TIMEOUT_SECONDS,
+) -> dict[str, object]:
+    require(
+        re.fullmatch(r"[0-9a-fA-F]{40}", expected_commit) is not None,
+        f"expected commit is not a full SHA-1: {expected_commit!r}",
+    )
+    command = [str(game_binary), "--version"]
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=str(game_root),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        require(False, f"native packaged game --version timed out after {timeout_seconds} seconds")
+    except OSError as err:
+        require(False, f"native packaged game could not be launched: {err}")
+
+    require(
+        proc.returncode == 0,
+        f"native packaged game --version exited with {proc.returncode}:\n{command_output(proc)}",
+    )
+    version_prefix = "Cataclysm Dark Days Ahead:"
+    version_lines = [
+        line.strip()
+        for line in proc.stdout.splitlines()
+        if line.strip().startswith(version_prefix)
+    ]
+    require(
+        len(version_lines) == 1,
+        f"native packaged game --version reported {len(version_lines)} version lines:\n{command_output(proc)}",
+    )
+    reported_version = version_lines[0].removeprefix(version_prefix).strip()
+    require(bool(reported_version), "native packaged game --version reported an empty version")
+    require(
+        "dirty" not in reported_version.lower(),
+        f"native packaged game version is not an exact source revision: {reported_version!r}",
+    )
+
+    expected_commit = expected_commit.lower()
+    reported_commits = {
+        match.group(1).lower()
+        for match in re.finditer(
+            rf"(?<![0-9a-f])g?([0-9a-f]{{{MINIMUM_BINARY_COMMIT_LENGTH},40}})(?![0-9a-f])",
+            reported_version,
+            re.IGNORECASE,
+        )
+    }
+    matching_commits = sorted(
+        (commit for commit in reported_commits if expected_commit.startswith(commit)),
+        key=len,
+        reverse=True,
+    )
+    require(
+        bool(matching_commits),
+        f"native packaged game version {reported_version!r} does not identify expected commit {expected_commit}",
+    )
+    return {
+        "commit_abbreviation": matching_commits[0],
+        "expected_commit": expected_commit,
+        "ok": True,
+        "reported_version": reported_version,
+        "timeout_seconds": timeout_seconds,
+    }
 
 
 def macos_macho_candidates(app: Path) -> list[Path]:
@@ -418,7 +514,9 @@ def main() -> int:
 
     asset = args.asset.resolve()
     require(asset.is_file(), f"asset not found: {asset}")
+    require_native_release_platform(args.platform)
     mount_point = ""
+    binary_launch: dict[str, object] = {}
     macos_trust: dict[str, object] = {}
     version_metadata: dict[str, str] = {}
     with tempfile.TemporaryDirectory(prefix="caol-release-shape-") as tmp:
@@ -444,6 +542,14 @@ def main() -> int:
             )
             if args.platform == "macos":
                 macos_trust = require_macos_bundle(root, game_root)
+            game_binary = game_root / (
+                "cataclysm-tiles.exe" if args.platform == "windows" else "cataclysm-tiles"
+            )
+            binary_launch = require_game_binary_version(
+                game_binary,
+                game_root,
+                version_metadata["commit sha"],
+            )
         finally:
             if mount_point:
                 detach_dmg(mount_point)
@@ -451,6 +557,7 @@ def main() -> int:
     print(json.dumps({
         "ok": True,
         "asset": str(asset),
+        "binary_launch": binary_launch,
         "macos_trust": macos_trust,
         "platform": args.platform,
         "manual_scenarios": sorted(EXPECTED_MANUAL_SCENARIOS),

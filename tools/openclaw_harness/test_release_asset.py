@@ -44,6 +44,8 @@ class ReleaseWorkflowContractTest(unittest.TestCase):
         self.assertIn('case "$status" in', workflow)
         self.assertIn("404)", workflow)
         self.assertIn("Unexpected HTTP $status", workflow)
+        self.assertIn('release_version="${commit_sha:0:11}"', workflow)
+        self.assertIn('echo "CAOL_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"', workflow)
 
     def test_release_note_generator_fails_hard(self) -> None:
         script = (REPO_ROOT / "build-scripts" / "generate-release-notes.js").read_text(encoding="utf-8")
@@ -51,6 +53,23 @@ class ReleaseWorkflowContractTest(unittest.TestCase):
         self.assertIn("process.exit( 1 );", script)
         self.assertNotIn("process.exit( 0 );", script)
         self.assertNotIn("@actions/github", script)
+
+
+class ReleaseVersionOverrideContractTest(unittest.TestCase):
+    def test_release_override_precedes_dirty_worktree_stamping(self) -> None:
+        makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+        prebuild = (REPO_ROOT / "msvc-full-features" / "prebuild.cmd").read_text(encoding="utf-8")
+
+        make_override = 'if [ -n "$$CAOL_RELEASE_VERSION" ]; then'
+        self.assertIn(make_override, makefile)
+        self.assertIn('VERSION_STRING="$$CAOL_RELEASE_VERSION"', makefile)
+        self.assertLess(makefile.index(make_override), makefile.index("DIRTYFLAG=$$("))
+        self.assertIn('if not "%CAOL_RELEASE_VERSION%"==""', prebuild)
+        self.assertIn("set VERSION=%CAOL_RELEASE_VERSION%", prebuild)
+        self.assertLess(
+            prebuild.index("set VERSION=%CAOL_RELEASE_VERSION%"),
+            prebuild.index("git describe --tags --always --dirty"),
+        )
 
 
 class ReleaseVersionMetadataTest(unittest.TestCase):
@@ -95,6 +114,141 @@ class ReleaseVersionMetadataTest(unittest.TestCase):
                     "2026-07-18-1200",
                     "b" * 40,
                 )
+
+
+class NativeGameLaunchTest(unittest.TestCase):
+    def test_exact_packaged_binary_version_is_accepted(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles.exe"
+        command = [str(game_binary), "--version"]
+        version_output = (
+            "Cataclysm Dark Days Ahead: "
+            "cdda-experimental-2023-04-17-2341-25576-g116382dc99d+SDL3\n\n"
+            "+tiles, +sound\n"
+        )
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(command, stdout=version_output),
+        ) as run_mock:
+            evidence = release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+        self.assertEqual(evidence["commit_abbreviation"], "116382dc99d")
+        self.assertEqual(evidence["expected_commit"], commit)
+        self.assertTrue(evidence["ok"])
+        self.assertEqual(
+            evidence["reported_version"],
+            "cdda-experimental-2023-04-17-2341-25576-g116382dc99d+SDL3",
+        )
+        run_mock.assert_called_once_with(
+            command,
+            cwd=str(game_root),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=release_asset.GAME_VERSION_TIMEOUT_SECONDS,
+        )
+
+    def test_make_packaged_binary_version_is_accepted(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        command = [str(game_binary), "--version"]
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(
+                command,
+                stdout="Cataclysm Dark Days Ahead: 116382dc99d+SDL3\n\n+tiles, +sound\n",
+            ),
+        ):
+            evidence = release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+        self.assertEqual(evidence["commit_abbreviation"], "116382dc99d")
+
+    def test_stale_packaged_binary_version_is_rejected(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        command = [str(game_binary), "--version"]
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(
+                command,
+                stdout="Cataclysm Dark Days Ahead: cdda-experimental-old-gdeadbeef000+SDL3\n",
+            ),
+        ):
+            with self.assertRaisesRegex(SystemExit, "does not identify expected commit"):
+                release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+    def test_too_short_commit_abbreviation_is_rejected(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        command = [str(game_binary), "--version"]
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(
+                command,
+                stdout="Cataclysm Dark Days Ahead: 116382dc99+SDL3\n",
+            ),
+        ):
+            with self.assertRaisesRegex(SystemExit, "does not identify expected commit"):
+                release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+    def test_dirty_packaged_binary_version_is_rejected(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        command = [str(game_binary), "--version"]
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(
+                command,
+                stdout="Cataclysm Dark Days Ahead: 116382dc99d-dirty+SDL3\n",
+            ),
+        ):
+            with self.assertRaisesRegex(SystemExit, "not an exact source revision"):
+                release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+    def test_packaged_binary_launch_failure_is_rejected(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        command = [str(game_binary), "--version"]
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            return_value=completed(command, returncode=3221225781, stderr="missing runtime library"),
+        ):
+            with self.assertRaisesRegex(SystemExit, "exited with 3221225781"):
+                release_asset.require_game_binary_version(game_binary, game_root, commit)
+
+    def test_packaged_binary_launch_timeout_is_rejected(self) -> None:
+        commit = "116382dc99d2bacf273d74751d41e2473e5e84fb"
+        game_root = Path("release-root")
+        game_binary = game_root / "cataclysm-tiles"
+        with mock.patch.object(
+            release_asset.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired([str(game_binary), "--version"], 3),
+        ):
+            with self.assertRaisesRegex(SystemExit, "timed out after 3 seconds"):
+                release_asset.require_game_binary_version(
+                    game_binary,
+                    game_root,
+                    commit,
+                    timeout_seconds=3,
+                )
+
+    def test_cross_platform_execution_is_rejected(self) -> None:
+        with mock.patch.object(release_asset, "native_release_platform", return_value="linux"):
+            with self.assertRaisesRegex(SystemExit, "windows release asset must be executed"):
+                release_asset.require_native_release_platform("windows")
 
 
 class MacReleaseAssetTest(unittest.TestCase):

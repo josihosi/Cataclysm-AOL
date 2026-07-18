@@ -1295,12 +1295,15 @@ version: $(SRC_DIR)/version.h
 
 $(SRC_DIR)/version.h: version-force
 	@( VERSION_STRING=$(VERSION) ; \
-        [ -e ".git" ] && \
+        if [ -n "$$CAOL_RELEASE_VERSION" ]; then \
+          VERSION_STRING="$$CAOL_RELEASE_VERSION" ; \
+        elif [ -e ".git" ]; then \
           GITVERSION=$$( git describe --tags --always --match "[0-9A-Z]*.[0-9A-Z]*" --match "cdda-experimental-*" --exact-match 2>/dev/null || true ) && \
           GITSHA=$$( git rev-parse --short HEAD ) && \
           DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false status --porcelain --untracked-files=all -- . ':(exclude)lang/po/**' ':(exclude)Agents.md')" ] || echo "-dirty") && \
           VERSION_STRING="$$GITVERSION $$GITSHA$$DIRTYFLAG" && \
           VERSION_STRING="$${VERSION_STRING## }" ; \
+        fi ; \
         [ -e "$(SRC_DIR)/version.h" ] && \
           OLDVERSION=$$(grep VERSION $(SRC_DIR)/version.h | cut -d '"' -f2) ; \
         if [ "x$$VERSION_STRING" != "x$$OLDVERSION" ]; then \

@@ -534,6 +534,8 @@ jobs:
         shell: bash
         run: |
           commit_sha="$(git rev-parse HEAD)"
+          release_version="${commit_sha:0:11}"
+          echo "CAOL_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
           cat > VERSION.txt <<EOL
           build type: ${{ matrix.release_os }}
           build number: ${{ needs.release.outputs.timestamp }}
