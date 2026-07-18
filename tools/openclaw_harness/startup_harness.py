@@ -40,6 +40,34 @@ IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
     ),
     re.compile( r"\d{2}:\d{2}:\d{2}\.\d{3} WARNING : .* pack load time:: .*" ),
 ]
+BACKTRACE_PREAMBLE_TEXT_PATTERN = re.compile(
+    r"^[^\r\n]*(?:ERROR|DEBUG)[^\r\n]*\(error message will follow backtrace\)",
+    re.IGNORECASE,
+)
+BACKTRACE_CONTINUATION_TEXT_PATTERN = re.compile(
+    r"^\(continued from above\)\s+(?:ERROR|DEBUG)(?:\s+(?:MAIN|MAP_GEN|MAP|NPC|GAME|SDL|MMAP))*\s*:",
+    re.IGNORECASE,
+)
+BACKTRACE_PREAMBLE_BYTES_PATTERN = re.compile(
+    br"(?m)^[^\r\n]*(?:ERROR|DEBUG)[^\r\n]*\(error message will follow backtrace\)[^\r\n]*(?:\r?\n|$)",
+    re.IGNORECASE,
+)
+BACKTRACE_CONTINUATION_BYTES_PATTERN = re.compile(
+    br"(?m)^\(continued from above\)\s+(?:ERROR|DEBUG)[^\r\n]*(?:\r?\n|$)",
+    re.IGNORECASE,
+)
+STARTUP_ERROR_LOG_PATTERN = re.compile(
+    r"^\s*(?:(?:\d{2}:){2}\d{2}\.\d{3,4}\s+|\(continued from above\)\s+)?"
+    r"(?:(?:INFO|WARNING)\s+)*(?:ERROR|DEBUG)(?:\s+PEDANTIC)?"
+    r"(?:\s+(?:MAIN|MAP_GEN|MAP|NPC|GAME|SDL|MMAP))*(?:\s*:|\s*$)",
+    re.IGNORECASE,
+)
+BENIGN_DEBUG_LOG_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:(?:\d{2}:){2}\d{2}\.\d{3,4}\s+|\(continued from above\)\s+)?"
+    r"(?:(?:INFO|WARNING|PEDANTIC)\s+)+"
+    r"(?:\s*(?:MAIN|MAP_GEN|MAP|NPC|GAME|SDL|MMAP)\s+)*:",
+    re.IGNORECASE,
+)
 
 RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "src",
@@ -53,6 +81,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "CMakeLists.txt",
     "Makefile",
     "make.sh",
+    "tools/llm_runner",
 )
 PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
 
@@ -86,6 +115,29 @@ PORTAL_STORM_CONTAMINATION_SUMMARY = "⚠ PORTAL STORM ACTIVE / HARNESS RESULT M
 PORTAL_STORM_ALLOWED_SUMMARY = "⚠ PORTAL STORM ACTIVE / EXPECTED BY SCENARIO"
 PORTAL_STORM_REQUIRED_MISSING_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT NOT OBSERVED"
 PORTAL_STORM_REQUIRED_UNKNOWN_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT WEATHER STATUS IS UNKNOWN"
+
+PEEKABOO_INPUT_TRANSPORT_ENV = "CAOL_PEEKABOO_INPUT_TRANSPORT"
+PEEKABOO_CAPTURE_TRANSPORT_ENV = "CAOL_PEEKABOO_CAPTURE_TRANSPORT"
+PEEKABOO_BRIDGE_SOCKET_ENV = "CAOL_PEEKABOO_BRIDGE_SOCKET"
+PEEKABOO_BINARY_ENV = "CAOL_PEEKABOO_BIN"
+
+STARTUP_ERROR_SCREEN_PATTERNS: Tuple[Pattern[str], ...] = (
+    re.compile(r"\ban error has occurred\b", re.IGNORECASE),
+    re.compile(r"\bdebug\s*:", re.IGNORECASE),
+    re.compile(r"\bpress space bar to continue the game\b", re.IGNORECASE),
+)
+STARTUP_HUD_BODY_PATTERNS: Tuple[Pattern[str], ...] = (
+    re.compile(r"\bhead\b", re.IGNORECASE),
+    re.compile(r"\btorso\b", re.IGNORECASE),
+    re.compile(r"\b(?:l |r |left |right )?arm\b", re.IGNORECASE),
+    re.compile(r"\b(?:l |r |left |right )?leg\b", re.IGNORECASE),
+)
+STARTUP_HUD_STATUS_PATTERNS: Tuple[Pattern[str], ...] = (
+    re.compile(r"\bmove\s*:", re.IGNORECASE),
+    re.compile(r"\bsafe\s*:", re.IGNORECASE),
+    re.compile(r"\bactivity\s*:", re.IGNORECASE),
+    re.compile(r"\bweary(?:\s+malus)?\s*:", re.IGNORECASE),
+)
 
 PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
     "corrupted": 0,
@@ -151,6 +203,47 @@ def run_json(
     if not proc.stdout.strip():
         return {}
     return json.loads(proc.stdout)
+
+
+def subprocess_output_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def peekaboo_binary() -> str:
+    configured = os.environ.get(PEEKABOO_BINARY_ENV, "").strip()
+    return configured or shutil.which("peekaboo") or "peekaboo"
+
+
+def peekaboo_command(args: Sequence[str], *, channel: str) -> List[str]:
+    """Build a Peekaboo command with explicit input/capture transport policy.
+
+    Input and focus default to the local macOS process because routing those
+    operations through a GUI bridge can target the wrong host or leave focus
+    unproved. Capture defaults to Peekaboo's bridge-aware routing because an
+    SSH-launched harness may not own Screen Recording permission while the
+    signed bridge host does. Both choices can be overridden without changing
+    scenario files.
+    """
+    if channel not in {"input", "capture"}:
+        raise ValueError(f"unsupported Peekaboo channel: {channel}")
+    env_name = PEEKABOO_INPUT_TRANSPORT_ENV if channel == "input" else PEEKABOO_CAPTURE_TRANSPORT_ENV
+    default_transport = "local" if channel == "input" else "bridge"
+    transport = os.environ.get(env_name, default_transport).strip().lower() or default_transport
+    if transport not in {"local", "bridge"}:
+        raise ValueError(f"{env_name} must be 'local' or 'bridge', got {transport!r}")
+
+    cmd = [peekaboo_binary(), *[str(arg) for arg in args]]
+    if transport == "local":
+        cmd.append("--no-remote")
+    else:
+        bridge_socket = os.environ.get(PEEKABOO_BRIDGE_SOCKET_ENV, "").strip()
+        if bridge_socket:
+            cmd.extend(["--bridge-socket", bridge_socket])
+    return cmd
 
 
 def sanitize_profile_name(name: str) -> str:
@@ -219,6 +312,44 @@ def runtime_relevant_changes_since(captured_head: str) -> Tuple[List[str], str]:
 
     changes = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
     return changes, ""
+
+
+def runtime_relevant_worktree_changes() -> Tuple[List[str], str]:
+    commands = [
+        [
+            "git",
+            "-C",
+            str(repo_root()),
+            "diff",
+            "--name-only",
+            "HEAD",
+            "--",
+            *RUNTIME_RELEVANT_PATHS,
+        ],
+        [
+            "git",
+            "-C",
+            str(repo_root()),
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *RUNTIME_RELEVANT_PATHS,
+        ],
+    ]
+    changes: set[str] = set()
+    for cmd in commands:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout).strip()
+            return [], detail or "git worktree comparison failed"
+        changes.update(line.strip() for line in proc.stdout.splitlines() if line.strip())
+    return sorted(changes), ""
 
 
 def resolve_profile_name(explicit: str) -> str:
@@ -596,34 +727,92 @@ def write_json(path: Path, data: Dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def require_peekaboo_permissions() -> None:
+def missing_peekaboo_capabilities(payload: Dict[str, Any], required_names: Sequence[str]) -> List[Dict[str, Any]]:
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+    raw_permissions = data.get("permissions", []) if isinstance(data.get("permissions"), list) else []
+    permissions = [entry for entry in raw_permissions if isinstance(entry, dict)]
+    by_name = {str(entry.get("name", "")).strip().lower(): entry for entry in permissions}
+    missing: List[Dict[str, Any]] = []
+    for required_name in required_names:
+        permission = by_name.get(str(required_name).strip().lower())
+        if permission is None:
+            missing.append({"name": required_name, "isGranted": False, "reason": "not_reported"})
+        elif not permission.get("isGranted"):
+            missing.append(permission)
+    return missing
+
+
+def peekaboo_permission_preflight(channel: str, required_names: Sequence[str]) -> Dict[str, Any]:
+    cmd = peekaboo_command(["permissions", "status", "--json"], channel=channel)
     last_error = ""
-    data: Dict[str, Any] = {}
+    payload: Dict[str, Any] = {}
     for attempt in range(2):
         try:
-            data = run_json(["peekaboo", "permissions", "--json"], timeout_seconds=5.0)
+            payload = run_json(cmd, timeout_seconds=5.0)
             last_error = ""
             break
         except RuntimeError as err:
             last_error = str(err)
             if attempt == 0:
                 time.sleep(0.5)
+    report = {
+        "channel": channel,
+        "command": cmd,
+        "required_capabilities": list(required_names),
+        "payload": payload,
+        "error": last_error,
+        "status": "unavailable" if last_error else "checked",
+    }
     if last_error:
-        # Peekaboo's permission command can intermittently wedge on macOS even
-        # when focus/capture/input permissions are already granted.  The
-        # following focus and screenshot rows are the real feature-test gate, so
-        # do not let this advisory preflight block a probe forever.
-        return
-    perms = data.get("data", {}).get("permissions", [])
-    missing = [perm for perm in perms if perm.get("isRequired") and not perm.get("isGranted")]
+        # Permission reporting can wedge even when the real operations work.
+        # Focus verification, command return codes, and capture/HUD inspection
+        # remain the decisive gates, so preserve this diagnostic as advisory.
+        return report
+    missing = missing_peekaboo_capabilities(payload, required_names)
+    report["missing_capabilities"] = missing
+    report["status"] = "missing" if missing else "green"
     if missing:
-        details = ", ".join(f"{perm.get('name')} ({perm.get('grantInstructions')})" for perm in missing)
-        raise SystemExit(f"Peekaboo permissions missing: {details}")
+        details = ", ".join(
+            f"{entry.get('name')} ({entry.get('grantInstructions', entry.get('reason', 'not granted'))})"
+            for entry in missing
+        )
+        raise SystemExit(f"Peekaboo {channel} permissions missing: {details}")
+    return report
+
+
+def require_peekaboo_permissions() -> Dict[str, Any]:
+    return {
+        "input": peekaboo_permission_preflight(
+            "input",
+            ["Accessibility"],
+        ),
+        "capture": peekaboo_permission_preflight(
+            "capture",
+            ["Screen Recording"],
+        ),
+    }
 
 
 def peekaboo_focus_pid(pid: int) -> Dict[str, Any]:
-    cmd = ["peekaboo", "window", "focus", "--pid", str(pid)]
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    cmd = peekaboo_command(
+        ["window", "focus", "--pid", str(pid), "--verify"],
+        channel="input",
+    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10.0,
+        )
+    except subprocess.TimeoutExpired as exc:
+        proc = subprocess.CompletedProcess(
+            cmd,
+            124,
+            stdout=subprocess_output_text(exc.stdout),
+            stderr=subprocess_output_text(exc.stderr) + "\npeekaboo focus timed out",
+        )
     return {
         "command": cmd,
         "returncode": proc.returncode,
@@ -638,15 +827,46 @@ def run_peekaboo_interaction(
     cmd: List[str],
     *,
     retry_delay_seconds: float = 0.15,
-) -> None:
-    peekaboo_focus_pid(pid)
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError:
-        peekaboo_focus_pid(pid)
-        if retry_delay_seconds > 0:
+) -> Dict[str, Any]:
+    report: Dict[str, Any] = {
+        "command": list(cmd),
+        "focus_attempts": [],
+        "attempts": [],
+    }
+    for attempt in range(2):
+        report["focus_attempts"].append(peekaboo_focus_pid(pid))
+        if attempt > 0 and retry_delay_seconds > 0:
             time.sleep(retry_delay_seconds)
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        try:
+            proc = subprocess.run(
+                cmd,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10.0,
+            )
+            command_attempt = {
+                "attempt": attempt + 1,
+                "returncode": proc.returncode,
+                "stdout": proc.stdout,
+                "stderr": proc.stderr,
+            }
+        except subprocess.TimeoutExpired as exc:
+            command_attempt = {
+                "attempt": attempt + 1,
+                "returncode": 124,
+                "stdout": subprocess_output_text(exc.stdout),
+                "stderr": subprocess_output_text(exc.stderr) + "\npeekaboo interaction timed out",
+            }
+        report["attempts"].append(command_attempt)
+        if command_attempt["returncode"] == 0:
+            report["ok"] = True
+            return report
+    report["ok"] = False
+    raise RuntimeError(
+        "Peekaboo interaction failed; command diagnostics: "
+        + json.dumps(report, ensure_ascii=False)
+    )
 
 
 PEEKABOO_KEY_ALIASES = {
@@ -668,7 +888,10 @@ def is_printable_text_key(key: str) -> bool:
 
 
 def peekaboo_hotkey(pid: int, keys: str, hold_ms: int = 50) -> None:
-    cmd = ["peekaboo", "hotkey", "--keys", keys, "--pid", str(pid), "--hold-duration", str(hold_ms)]
+    cmd = peekaboo_command(
+        ["hotkey", "--keys", keys, "--pid", str(pid), "--hold-duration", str(hold_ms)],
+        channel="input",
+    )
     run_peekaboo_interaction(pid, cmd)
 
 
@@ -714,7 +937,10 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
             text_buffer.append(key)
             continue
         flush_text_buffer()
-        cmd = ["peekaboo", "press", key, "--pid", str(pid), "--delay", str(delay_ms)]
+        cmd = peekaboo_command(
+            ["press", key, "--pid", str(pid), "--delay", str(delay_ms)],
+            channel="input",
+        )
         run_peekaboo_interaction(pid, cmd)
     flush_text_buffer()
 
@@ -725,7 +951,10 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
     max_chunk_len = 20
     for start in range(0, len(text), max_chunk_len):
         chunk = text[start:start + max_chunk_len]
-        cmd = ["peekaboo", "type", chunk, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"]
+        cmd = peekaboo_command(
+            ["type", chunk, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"],
+            channel="input",
+        )
         run_peekaboo_interaction(pid, cmd)
 
 
@@ -4160,30 +4389,112 @@ def copy_file_if_exists(src: Path, dst: Path) -> None:
 
 
 def filter_debug_log_text(text: str) -> str:
-    filtered_lines = []
-    for line in text.splitlines(keepends=True):
+    lines = text.splitlines(keepends=True)
+    filtered_lines: List[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if BACKTRACE_PREAMBLE_TEXT_PATTERN.search(line):
+            continuation_index = index + 1
+            while (
+                continuation_index < len(lines)
+                and not BACKTRACE_CONTINUATION_TEXT_PATTERN.search(lines[continuation_index])
+            ):
+                continuation_index += 1
+            if continuation_index < len(lines):
+                continuation = lines[continuation_index]
+                if any(pattern.search(continuation) for pattern in IGNORABLE_DEBUG_LOG_PATTERNS):
+                    index = continuation_index + 1
+                    continue
+                filtered_lines.extend(lines[index:continuation_index + 1])
+                index = continuation_index + 1
+                continue
+            # An incomplete record is never silently ignored.  Streaming
+            # callers retain it until a continuation arrives; final callers
+            # preserve it as error evidence.
+            filtered_lines.extend(lines[index:])
+            break
         if any(pattern.search(line) for pattern in IGNORABLE_DEBUG_LOG_PATTERNS):
+            index += 1
             continue
         filtered_lines.append(line)
+        index += 1
     return "".join(filtered_lines)
 
 
-def read_log_delta(src: Path, start_size: int, *, filter_debug_noise: bool = False) -> str:
+def read_log_delta_chunk(
+    src: Path,
+    start_size: int,
+    *,
+    filter_debug_noise: bool = False,
+    include_incomplete_line: bool = True,
+) -> Dict[str, Any]:
+    """Read a byte-offset log delta without losing split, unit-buffered lines.
+
+    Cataclysm's debug stream may flush the severity, class, colon, and message
+    through separate insertions.  Polling must therefore advance only through
+    the last complete line.  Otherwise a split ``ERROR ... : message`` can be
+    divided into two individually harmless-looking chunks and escape the gate.
+    """
+
+    report: Dict[str, Any] = {
+        "text": "",
+        "previous_size": max(0, int(start_size or 0)),
+        "current_size": max(0, int(start_size or 0)),
+        "raw_current_size": max(0, int(start_size or 0)),
+        "unclassified_trailing_bytes": 0,
+        "unclassified_trailing_text": "",
+        "truncated": False,
+    }
     if not src.exists():
-        return ""
+        return report
     size = src.stat().st_size
-    if size == start_size:
-        return ""
-    with src.open("r", encoding="utf-8", errors="replace") as fh:
+    start_offset = max(0, int(start_size or 0))
+    report["raw_current_size"] = size
+    if size == start_offset:
+        return report
+    if size < start_offset:
+        start_offset = 0
+        report["previous_size"] = 0
+        report["truncated"] = True
+    with src.open("rb") as fh:
         # debug.log is rewritten/truncated on some live GUI restarts.  When that
         # happens the previous byte offset points past EOF; read the new file
         # from the beginning instead of silently returning an empty delta.
-        if size > start_size:
-            fh.seek(start_size)
-        data = fh.read()
+        fh.seek(start_offset)
+        raw_data = fh.read()
+
+    last_line_end = raw_data.rfind(b"\n")
+    complete_length = last_line_end + 1 if last_line_end >= 0 else 0
+    complete_data = raw_data[:complete_length]
+    backtrace_preambles = list(BACKTRACE_PREAMBLE_BYTES_PATTERN.finditer(complete_data))
+    if backtrace_preambles:
+        last_preamble = backtrace_preambles[-1]
+        if BACKTRACE_CONTINUATION_BYTES_PATTERN.search(complete_data, last_preamble.end()) is None:
+            # Keep the entire record pending.  Whether a backtrace is ignorable
+            # can only be decided from its eventual continued error line.
+            complete_length = last_preamble.start()
+    report["current_size"] = start_offset + complete_length
+    report["unclassified_trailing_bytes"] = len(raw_data) - complete_length
+    trailing_text = raw_data[complete_length:].decode("utf-8", errors="replace")
     if filter_debug_noise:
-        return filter_debug_log_text(data)
-    return data
+        trailing_text = filter_debug_log_text(trailing_text)
+    report["unclassified_trailing_text"] = trailing_text
+    selected = raw_data if include_incomplete_line else raw_data[:complete_length]
+    data = selected.decode("utf-8", errors="replace")
+    if filter_debug_noise:
+        data = filter_debug_log_text(data)
+    report["text"] = data
+    return report
+
+
+def read_log_delta(src: Path, start_size: int, *, filter_debug_noise: bool = False) -> str:
+    return str(read_log_delta_chunk(
+        src,
+        start_size,
+        filter_debug_noise=filter_debug_noise,
+        include_incomplete_line=True,
+    )["text"])
 
 
 def read_filtered_log_delta(src: Path, start_size: int) -> str:
@@ -4196,6 +4507,50 @@ def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Pat
         return
     ensure_dir(dst.parent)
     dst.write_text(data, encoding="utf-8")
+
+
+def startup_error_log_lines(text: str) -> List[str]:
+    return [
+        line.strip()
+        for line in text.splitlines()
+        if STARTUP_ERROR_LOG_PATTERN.search(line)
+    ]
+
+
+def classify_unterminated_debug_tail(text: str) -> str:
+    """Classify a no-newline debug tail without mistaking benign records for races."""
+
+    if not text:
+        return "none"
+    if startup_error_log_lines(text):
+        return "error_or_debug"
+    tail_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if tail_lines and all(BENIGN_DEBUG_LOG_PREFIX_PATTERN.search(line) for line in tail_lines):
+        return "benign_info_or_warning"
+    return "ambiguous_prefix"
+
+
+def log_file_identity(path: Path) -> Dict[str, int]:
+    try:
+        stat = path.stat()
+    except OSError:
+        return {}
+    return {
+        "device": int(stat.st_dev),
+        "inode": int(stat.st_ino),
+    }
+
+
+def log_file_identity_changed(expected: Optional[Dict[str, Any]], current: Dict[str, int]) -> bool:
+    if not isinstance(expected, dict) or not expected or not current:
+        return False
+    try:
+        return (
+            int(expected.get("device", -1)) != current["device"]
+            or int(expected.get("inode", -1)) != current["inode"]
+        )
+    except (TypeError, ValueError):
+        return True
 
 
 def parse_patrol_coords(raw: str) -> List[Dict[str, int]]:
@@ -4400,17 +4755,99 @@ def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]
     raise SystemExit(f"Unsupported artifact source: {source}")
 
 
-def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: int) -> int:
+def capture_debug_delta(
+    profile: str,
+    start_size: int,
+    run_dir: Path,
+    serial: int,
+    *,
+    include_incomplete_line: bool = False,
+    artifact_name: str = "",
+    expected_identity: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     debug_log = config_dir_for_profile(profile) / "debug.log"
+    current_identity = log_file_identity(debug_log)
+    identity_changed = log_file_identity_changed(expected_identity, current_identity)
+    effective_start_size = 0 if identity_changed else start_size
+    report: Dict[str, Any] = {
+        "previous_size": effective_start_size,
+        "current_size": effective_start_size,
+        "raw_current_size": effective_start_size,
+        "unclassified_trailing_bytes": 0,
+        "unclassified_trailing_text": "",
+        "tail_classification": "none",
+        "artifact_path": "",
+        "error_evidence_lines": [],
+        "expected_identity": expected_identity or {},
+        "current_identity": current_identity,
+        "identity_changed": identity_changed,
+    }
     if not debug_log.exists():
-        return start_size
-    size = debug_log.stat().st_size
-    data = read_filtered_log_delta(debug_log, start_size)
+        return report
+    chunk = read_log_delta_chunk(
+        debug_log,
+        effective_start_size,
+        filter_debug_noise=True,
+        include_incomplete_line=include_incomplete_line,
+    )
+    report.update({
+        "previous_size": int(chunk.get("previous_size", effective_start_size) or 0),
+        "current_size": int(chunk.get("current_size", effective_start_size) or 0),
+        "raw_current_size": int(chunk.get("raw_current_size", effective_start_size) or 0),
+        "unclassified_trailing_bytes": int(chunk.get("unclassified_trailing_bytes", 0) or 0),
+        "unclassified_trailing_text": str(chunk.get("unclassified_trailing_text", "")),
+        "truncated": bool(chunk.get("truncated", False)),
+    })
+    data = str(chunk.get("text", ""))
+    report["tail_classification"] = classify_unterminated_debug_tail(
+        report["unclassified_trailing_text"]
+    )
     if not data:
-        return start_size
-    out = run_dir / f"debug_delta_{serial:02d}.log"
+        return report
+    out = run_dir / (artifact_name or f"debug_delta_{serial:02d}.log")
     out.write_text(data, encoding="utf-8")
-    return size
+    report["artifact_path"] = str(out)
+    report["error_evidence_lines"] = startup_error_log_lines(data)
+    return report
+
+
+def capture_stable_final_debug_delta(
+    profile: str,
+    start_size: int,
+    run_dir: Path,
+    serial: int,
+    *,
+    artifact_name: str,
+    max_attempts: int = 20,
+    retry_seconds: float = 0.05,
+    expected_identity: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Boundedly resolve an ambiguous unit-buffered final log prefix."""
+
+    attempts = max(1, int(max_attempts))
+    report: Dict[str, Any] = {}
+    for attempt in range(1, attempts + 1):
+        report = capture_debug_delta(
+            profile,
+            start_size,
+            run_dir,
+            serial,
+            include_incomplete_line=True,
+            artifact_name=artifact_name,
+            expected_identity=expected_identity,
+        )
+        tail_classification = str(report.get("tail_classification", "none"))
+        report["stable_tail_attempts"] = attempt
+        if tail_classification != "ambiguous_prefix":
+            report["tail_classified"] = True
+            if tail_classification in {"none", "benign_info_or_warning"}:
+                report["current_size"] = int(report.get("raw_current_size", start_size) or 0)
+            return report
+        if attempt < attempts and retry_seconds > 0:
+            time.sleep(retry_seconds)
+    report["tail_classified"] = False
+    report["tail_classification"] = "ambiguous_after_retry"
+    return report
 
 
 def extract_window_build_info(window_title: str) -> Dict[str, Any]:
@@ -4419,12 +4856,39 @@ def extract_window_build_info(window_title: str) -> Dict[str, Any]:
         "captured_head": "",
         "captured_dirty": False,
     }
-    match = re.search(r" - ([0-9a-f]{10})(-dirty)?$", window_title or "")
+    match = re.search(r" - ([0-9a-f]{10,40})(-dirty)?(?:\+[^ ]+)?$", window_title or "")
     if not match:
         return info
     info["captured_head"] = match.group(1)
     info["captured_dirty"] = bool(match.group(2))
     return info
+
+
+def populate_runtime_version_comparison(summary: Dict[str, Any]) -> None:
+    captured_head = str(summary.get("captured_head", "") or "").strip()
+    repo_head = str(summary.get("repo_head", "") or "").strip()
+    summary["runtime_relevant_diff_since_capture"] = []
+    summary["runtime_relevant_worktree_diff"] = []
+    summary["runtime_compare_error"] = ""
+    summary["runtime_worktree_compare_error"] = ""
+    if not captured_head:
+        summary["runtime_compare_error"] = "captured head is missing from the window title"
+        return
+
+    summary["version_matches_repo_head"] = bool(
+        repo_head and captured_head.startswith(repo_head)
+    )
+    runtime_changes, runtime_error = runtime_relevant_changes_since(captured_head)
+    worktree_changes, worktree_error = runtime_relevant_worktree_changes()
+    summary["runtime_relevant_diff_since_capture"] = runtime_changes
+    summary["runtime_relevant_worktree_diff"] = worktree_changes
+    summary["runtime_compare_error"] = runtime_error
+    summary["runtime_worktree_compare_error"] = worktree_error
+    if runtime_error or worktree_error:
+        return
+    summary["version_matches_runtime_paths"] = not (
+        bool(summary.get("captured_dirty")) or runtime_changes or worktree_changes
+    )
 
 
 def window_area(window: Dict[str, Any]) -> int:
@@ -4444,7 +4908,10 @@ def window_area(window: Dict[str, Any]) -> int:
 
 def list_windows_for_pid(pid: int) -> List[Dict[str, Any]]:
     payload = run_json(
-        ["peekaboo", "list", "windows", "--json", "--app", f"PID:{pid}"],
+        peekaboo_command(
+            ["list", "windows", "--json", "--app", f"PID:{pid}"],
+            channel="capture",
+        ),
         check=False,
         timeout_seconds=5.0,
     )
@@ -4477,11 +4944,46 @@ def choose_capture_window(pid: int) -> Dict[str, Any]:
     return max(windows, key=capture_rank)
 
 
+def peekaboo_capture_diagnostics(payload: Dict[str, Any]) -> Dict[str, Any]:
+    warnings: List[str] = []
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+    observations = data.get("observations", []) if isinstance(data.get("observations"), list) else []
+    for observation in observations:
+        if not isinstance(observation, dict):
+            continue
+        raw_warnings = observation.get("warnings", [])
+        if not isinstance(raw_warnings, list):
+            continue
+        for warning in raw_warnings:
+            text = str(warning).strip()
+            if text and text not in warnings:
+                warnings.append(text)
+
+    debug_logs = [
+        str(entry).strip()
+        for entry in payload.get("debug_logs", [])
+        if str(entry).strip()
+    ] if isinstance(payload.get("debug_logs"), list) else []
+    runtime_host = next(
+        (entry for entry in debug_logs if "Runtime host:" in entry),
+        "",
+    )
+    return {
+        "capture_warnings": warnings,
+        "peekaboo_debug_logs": debug_logs,
+        "peekaboo_runtime_host": runtime_host,
+    }
+
+
 def summarize_peekaboo_image_capture(
     stdout: str,
     png_path: Path,
     json_path: Path,
     capture_target: Optional[Dict[str, Any]] = None,
+    *,
+    stderr: str = "",
+    command: Optional[Sequence[str]] = None,
+    returncode: int = 0,
 ) -> Dict[str, Any]:
     repo_head = current_head_short()
     summary: Dict[str, Any] = {
@@ -4498,8 +5000,16 @@ def summarize_peekaboo_image_capture(
         "version_matches_runtime_paths": None,
         "runtime_relevant_paths": list(RUNTIME_RELEVANT_PATHS),
         "runtime_relevant_diff_since_capture": [],
+        "runtime_relevant_worktree_diff": [],
         "runtime_compare_error": "",
+        "runtime_worktree_compare_error": "",
         "parse_error": "",
+        "peekaboo_command": list(command or []),
+        "peekaboo_returncode": returncode,
+        "peekaboo_stderr": stderr,
+        "capture_warnings": [],
+        "peekaboo_debug_logs": [],
+        "peekaboo_runtime_host": "",
     }
     if not stdout.strip():
         summary["parse_error"] = "peekaboo produced no JSON stdout"
@@ -4529,19 +5039,10 @@ def summarize_peekaboo_image_capture(
     error_info = payload.get("error", {}) if isinstance(payload.get("error"), dict) else {}
     if not summary["peekaboo_success"] and error_info.get("message"):
         summary["parse_error"] = str(error_info.get("message", "")).strip()
+    summary.update(peekaboo_capture_diagnostics(payload))
     build_info = extract_window_build_info(summary["window_title"])
     summary.update(build_info)
-    if summary["captured_head"]:
-        captured_head = str(summary["captured_head"])
-        summary["version_matches_repo_head"] = captured_head == repo_head
-        if summary["version_matches_repo_head"]:
-            summary["version_matches_runtime_paths"] = True
-        else:
-            runtime_changes, runtime_error = runtime_relevant_changes_since(captured_head)
-            summary["runtime_relevant_diff_since_capture"] = runtime_changes
-            summary["runtime_compare_error"] = runtime_error
-            if not runtime_error:
-                summary["version_matches_runtime_paths"] = not runtime_changes
+    populate_runtime_version_comparison(summary)
     return summary
 
 
@@ -4634,22 +5135,20 @@ def summarize_screencapture_image_capture(
         "version_matches_runtime_paths": None,
         "runtime_relevant_paths": list(RUNTIME_RELEVANT_PATHS),
         "runtime_relevant_diff_since_capture": [],
+        "runtime_relevant_worktree_diff": [],
         "runtime_compare_error": "",
+        "runtime_worktree_compare_error": "",
         "parse_error": str(fallback_report.get("error", "")),
+        "peekaboo_command": [],
+        "peekaboo_returncode": None,
+        "peekaboo_stderr": "",
+        "capture_warnings": [],
+        "peekaboo_debug_logs": [],
+        "peekaboo_runtime_host": "",
     }
     build_info = extract_window_build_info(summary["window_title"])
     summary.update(build_info)
-    if summary["captured_head"]:
-        captured_head = str(summary["captured_head"])
-        summary["version_matches_repo_head"] = captured_head == repo_head
-        if summary["version_matches_repo_head"]:
-            summary["version_matches_runtime_paths"] = True
-        else:
-            runtime_changes, runtime_error = runtime_relevant_changes_since(captured_head)
-            summary["runtime_relevant_diff_since_capture"] = runtime_changes
-            summary["runtime_compare_error"] = runtime_error
-            if not runtime_error:
-                summary["version_matches_runtime_paths"] = not runtime_changes
+    populate_runtime_version_comparison(summary)
     return summary
 
 
@@ -4678,8 +5177,8 @@ def crop_png_with_sips(source_path: Path, output_path: Path, crop: Dict[str, int
         proc = subprocess.CompletedProcess(
             cmd,
             124,
-            stdout=exc.stdout or "",
-            stderr=(exc.stderr or "") + "\npeekaboo image timed out",
+            stdout=subprocess_output_text(exc.stdout),
+            stderr=subprocess_output_text(exc.stderr) + "\nsips crop timed out",
         )
     return {
         "ok": proc.returncode == 0,
@@ -4702,11 +5201,12 @@ def capture_screenshot(
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
     capture_target = choose_capture_window(pid)
-    cmd = ["peekaboo", "image", "--json", "--path", str(png_path)]
+    cmd_args = ["image", "--json", "--path", str(png_path)]
     if capture_target.get("window_id"):
-        cmd.extend(["--window-id", str(capture_target["window_id"])])
+        cmd_args.extend(["--window-id", str(capture_target["window_id"])])
     else:
-        cmd.extend(["--pid", str(pid)])
+        cmd_args.extend(["--pid", str(pid)])
+    cmd = peekaboo_command(cmd_args, channel="capture")
     try:
         proc = subprocess.run(
             cmd,
@@ -4719,8 +5219,8 @@ def capture_screenshot(
         proc = subprocess.CompletedProcess(
             cmd,
             124,
-            stdout=exc.stdout or "",
-            stderr=(exc.stderr or "") + "\npeekaboo image timed out",
+            stdout=subprocess_output_text(exc.stdout),
+            stderr=subprocess_output_text(exc.stderr) + "\npeekaboo image timed out",
         )
     fallback_report: Optional[Dict[str, Any]] = None
     capture_ok = proc.returncode == 0 and png_path.exists()
@@ -4748,9 +5248,15 @@ def capture_screenshot(
             png_path,
             json_path,
             capture_target=capture_target,
+            stderr=proc.stderr,
+            command=cmd,
+            returncode=proc.returncode,
         )
         screen_summary["capture_success"] = bool(screen_summary.get("peekaboo_success"))
         screen_summary["capture_backend"] = "peekaboo"
+    screen_summary["peekaboo_command"] = list(cmd)
+    screen_summary["peekaboo_returncode"] = proc.returncode
+    screen_summary["peekaboo_stderr"] = proc.stderr
     if crop_report:
         screen_summary["crop_requested"] = crop_request
         screen_summary["crop_applied"] = bool(crop_report.get("ok"))
@@ -4789,12 +5295,23 @@ def run_screen_ocr(image_path: Path) -> Dict[str, Any]:
             "image_path": str(image_path),
         }
 
-    proc = subprocess.run(
-        [swift_cmd, str(script_path), "--image", str(image_path)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    cmd = [swift_cmd, str(script_path), "--image", str(image_path)]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30.0,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "error": "OCR helper timed out after 30 seconds",
+            "image_path": str(image_path),
+            "stdout": subprocess_output_text(exc.stdout),
+            "stderr": subprocess_output_text(exc.stderr),
+        }
     if proc.returncode != 0:
         return {
             "ok": False,
@@ -4819,6 +5336,190 @@ def run_screen_ocr(image_path: Path) -> Dict[str, Any]:
             "image_path": str(image_path),
         }
     return payload
+
+
+def startup_screen_probe_classification(
+    *,
+    ocr_payload: Dict[str, Any],
+    capture_warnings: Sequence[str],
+    debug_delta_text: str,
+) -> Dict[str, Any]:
+    raw_lines = ocr_payload.get("lines", []) if isinstance(ocr_payload, dict) else []
+    lines = [str(line).strip() for line in raw_lines if str(line).strip()] if isinstance(raw_lines, list) else []
+    screen_text = "\n".join(lines)
+
+    error_markers = [
+        pattern.pattern
+        for pattern in STARTUP_ERROR_SCREEN_PATTERNS
+        if pattern.search(screen_text)
+    ]
+    body_markers = [
+        line
+        for line in lines
+        if any(pattern.search(line) for pattern in STARTUP_HUD_BODY_PATTERNS)
+    ]
+    status_markers = [
+        line
+        for line in lines
+        if any(pattern.search(line) for pattern in STARTUP_HUD_STATUS_PATTERNS)
+    ]
+    body_marker_types = [
+        pattern.pattern
+        for pattern in STARTUP_HUD_BODY_PATTERNS
+        if pattern.search(screen_text)
+    ]
+    status_marker_types = [
+        pattern.pattern
+        for pattern in STARTUP_HUD_STATUS_PATTERNS
+        if pattern.search(screen_text)
+    ]
+    gameplay_hud_present = len(body_marker_types) >= 3 and len(status_marker_types) >= 2
+    debug_error_lines = startup_error_log_lines(debug_delta_text)
+    normalized_warnings = [str(warning).strip() for warning in capture_warnings if str(warning).strip()]
+    black_capture_warning = any("solid black" in warning.lower() for warning in normalized_warnings)
+    visible_error_popup = bool(error_markers)
+    startup_error_logged = bool(debug_error_lines)
+
+    if visible_error_popup:
+        classification = "red_visible_error_popup"
+    elif startup_error_logged:
+        classification = "red_startup_error_logged"
+    elif gameplay_hud_present:
+        classification = "green_gameplay_hud_present"
+    else:
+        classification = "yellow_gameplay_hud_absent"
+    return {
+        "classification": classification,
+        "gameplay_hud_present": gameplay_hud_present,
+        "visible_error_popup": visible_error_popup,
+        "startup_error_logged": startup_error_logged,
+        "error_screen_markers": error_markers,
+        "hud_body_markers": body_markers,
+        "hud_body_marker_types": body_marker_types,
+        "hud_status_markers": status_markers,
+        "hud_status_marker_types": status_marker_types,
+        "debug_error_lines": debug_error_lines,
+        "capture_warnings": normalized_warnings,
+        "black_capture_warning": black_capture_warning,
+        "ocr_ok": bool(ocr_payload.get("ok")),
+        "ocr_line_count": len(lines),
+        "rule": "A clean startup needs at least three distinct body labels and two map-sidebar-only status labels; visible debug/error UI is red.",
+    }
+
+
+def capture_startup_screen_probe(
+    run_dir: Path,
+    label: str,
+    screen_summary: Dict[str, Any],
+    debug_delta_path: Path,
+) -> Dict[str, Any]:
+    png_path = Path(str(screen_summary.get("png_path", "")))
+    if png_path.is_file():
+        ocr_payload = run_screen_ocr(png_path)
+    else:
+        ocr_payload = {
+            "ok": False,
+            "error": f"startup screenshot is missing: {png_path}",
+            "lines": [],
+        }
+    ocr_path = run_dir / f"{label}.startup_screen_ocr.json"
+    ocr_path.write_text(json.dumps(ocr_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    debug_delta_text = debug_delta_path.read_text(encoding="utf-8", errors="replace") if debug_delta_path.is_file() else ""
+    probe = startup_screen_probe_classification(
+        ocr_payload=ocr_payload,
+        capture_warnings=screen_summary.get("capture_warnings", []),
+        debug_delta_text=debug_delta_text,
+    )
+    probe.update({
+        "source_png": str(png_path),
+        "ocr_artifact": str(ocr_path),
+        "debug_delta_artifact": str(debug_delta_path) if debug_delta_path.is_file() else "",
+    })
+    probe_path = run_dir / f"{label}.startup_screen_probe.json"
+    probe["artifact_path"] = str(probe_path)
+    probe_path.write_text(json.dumps(probe, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return probe
+
+
+def capture_final_startup_evidence(
+    *,
+    profile: str,
+    debug_start_size: int,
+    run_dir: Path,
+    screen_summary: Dict[str, Any],
+    label: str,
+    serial: int,
+    pid: int = 0,
+    debug_identity: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Classify the final log delta and screenshot without sending input.
+
+    This same path is used for success, process exit, and timeout so a late log
+    error or a still-visible modal is always preserved in the result.  The
+    classified offset deliberately stops before an incomplete trailing line;
+    a caller that continues into feature steps can then re-read the completed
+    line instead of losing it at the phase boundary.
+    """
+
+    debug_artifact = run_dir / "debug.final.log"
+    screen_probe = capture_startup_screen_probe(
+        run_dir,
+        label,
+        screen_summary,
+        debug_artifact,
+    )
+    # OCR is the longest final observation and the game can continue logging
+    # while it runs.  Scan only after OCR so direct `start` cannot miss a late
+    # startup error during that window.
+    debug_capture = capture_stable_final_debug_delta(
+        profile,
+        debug_start_size,
+        run_dir,
+        serial,
+        artifact_name=debug_artifact.name,
+        expected_identity=debug_identity,
+    )
+    error_lines = debug_capture.get("error_evidence_lines", [])
+    if isinstance(error_lines, list) and error_lines:
+        screen_probe["startup_error_logged"] = True
+        screen_probe["debug_error_lines"] = error_lines
+        screen_probe["debug_delta_artifact"] = str(debug_artifact)
+        if not screen_probe.get("visible_error_popup"):
+            screen_probe["classification"] = "red_startup_error_logged"
+        probe_artifact_value = str(screen_probe.get("artifact_path", "")).strip()
+        if probe_artifact_value:
+            write_json(Path(probe_artifact_value), screen_probe)
+    screen_summary["startup_screen_probe"] = screen_probe
+    process_alive = pid_is_alive(pid) if pid > 0 else None
+    tail_classified = bool(debug_capture.get("tail_classified", True))
+    return {
+        "debug_capture": debug_capture,
+        "screen_probe": screen_probe,
+        "debug_delta_recorded": bool(debug_capture.get("artifact_path")),
+        "debug_error_recorded": bool(debug_capture.get("error_evidence_lines")),
+        "visible_error_popup_recorded": bool(screen_probe.get("visible_error_popup")),
+        "process_alive": process_alive,
+        "debug_tail_classified": tail_classified,
+        "safe_for_startup": process_alive is not False and tail_classified,
+        "classified_size": int(debug_capture.get("current_size", debug_start_size) or 0),
+        "raw_current_size": int(debug_capture.get("raw_current_size", debug_start_size) or 0),
+        "debug_log_identity": debug_capture.get("current_identity", {}),
+        "rule": "Final startup evidence is classified on success, process exit, and timeout; classification never dismisses dialogs or sends keys.",
+    }
+
+
+def apply_direct_child_liveness(
+    final_evidence: Dict[str, Any],
+    process: subprocess.Popen[Any],
+) -> bool:
+    """Use the owned Popen status so an unreaped zombie is never called live."""
+
+    process_alive = process.poll() is None
+    final_evidence["process_alive"] = process_alive
+    final_evidence["safe_for_startup"] = bool(
+        process_alive and final_evidence.get("debug_tail_classified", False)
+    )
+    return process_alive
 
 
 def capture_screen_text_artifact(
@@ -5051,8 +5752,11 @@ def screen_checkpoint_verdict(
         return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
     if not screen_capture_succeeded(screen_summary):
         return "red_step_screen_capture_failed", ["screen_capture_failed"]
-    if screen_summary.get("version_matches_runtime_paths") is False:
+    runtime_version_match = screen_summary.get("version_matches_runtime_paths")
+    if runtime_version_match is False:
         issues.append("runtime_version_mismatch")
+    elif runtime_version_match is not True:
+        issues.append("runtime_version_unproven")
 
     if not expected_visible_fact:
         issues.append("missing_expected_visible_fact")
@@ -6310,6 +7014,65 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
+
+
+def validate_fixture_save_transform_chain(
+    transforms: List[Dict[str, Any]],
+    *,
+    source_chain: Optional[List[Tuple[str, str]]] = None,
+) -> None:
+    """Reject resolved transform sequences that destroy state needed later."""
+
+    remove_all_index: Optional[int] = None
+    partial_remove_indices: Dict[str, int] = {}
+    for index, transform in enumerate(transforms):
+        kind = str(transform.get("kind", "") or "").strip().lower()
+        player_save = str(transform.get("player_save", "") or "").strip()
+        if kind == "remove_overmap_npcs":
+            if bool(transform.get("scan_all_overmaps", True)):
+                remove_all_index = index
+                partial_remove_indices.clear()
+            else:
+                partial_remove_indices[player_save] = index
+            continue
+        if kind == "player_location_offset_ms":
+            raw_offset = transform.get("offset_ms", [])
+            guarantees_new_overmap = (
+                isinstance(raw_offset, list)
+                and len(raw_offset) >= 2
+                and (
+                    abs(int(raw_offset[0])) >= OMAPX * 24
+                    or abs(int(raw_offset[1])) >= OMAPY * 24
+                )
+            )
+            if guarantees_new_overmap:
+                # Moving by at least one full overmap span on either axis
+                # guarantees a different target regardless of the old local
+                # coordinate. Smaller offsets and special-relative moves do
+                # not make that guarantee.
+                partial_remove_indices.pop(player_save, None)
+            continue
+        if kind != "overmap_npcs_near_player":
+            continue
+
+        remove_index = remove_all_index
+        if remove_index is None:
+            remove_index = partial_remove_indices.get(player_save)
+        if remove_index is None:
+            continue
+
+        # Both clone_follower_template modes currently copy a saved NPC
+        # payload. scan_all_overmaps_for_ids only prevents ID collisions; it
+        # does not search those overmaps for a template.
+        chain_text = " -> ".join(
+            f"{profile}:{name}" for profile, name in (source_chain or [])
+        ) or "<unknown fixture chain>"
+        raise SystemExit(
+            "Fixture save transform chain is contradictory: "
+            f"{chain_text}; save_transforms[{remove_index + 1}] remove_overmap_npcs "
+            f"empties the NPC template source before save_transforms[{index + 1}] "
+            "overmap_npcs_near_player clones an existing NPC"
+        )
 
 
 def zzip_binary() -> Path:
@@ -10705,6 +11468,7 @@ def resolve_fixture_payload(
     chain = list(seen or [])
     chain.append((source_profile, fixture_name))
     if save_src.exists():
+        validate_fixture_save_transform_chain(save_transforms, source_chain=chain)
         return {
             "fixture": fixture_name,
             "fixture_profile": source_profile,
@@ -10725,9 +11489,14 @@ def resolve_fixture_payload(
             + " -> ".join(f"{profile}:{name}" for profile, name in chain + [(nested_profile, source_fixture)])
         )
     resolved = resolve_fixture_payload(source_fixture, nested_profile, seen=chain)
+    resolved_transforms = list(resolved.get("save_transforms", [])) + save_transforms
+    validate_fixture_save_transform_chain(
+        resolved_transforms,
+        source_chain=list(resolved.get("source_chain", chain)),
+    )
     return {
         **resolved,
-        "save_transforms": list(resolved.get("save_transforms", [])) + save_transforms,
+        "save_transforms": resolved_transforms,
     }
 
 
@@ -10915,9 +11684,21 @@ def startup_profile_snapshot_verdict(snapshot_name: str, snapshot_result: Dict[s
 def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
     if not screen_capture_succeeded(screen_summary):
         return "red_screen_capture_failed"
-    if screen_summary.get("version_matches_runtime_paths") is False:
+    runtime_version_match = screen_summary.get("version_matches_runtime_paths")
+    if runtime_version_match is False:
         return "yellow_runtime_version_mismatch"
-    return "green_screen_captured"
+    if runtime_version_match is not True:
+        return "yellow_runtime_version_unproven"
+    screen_probe = screen_summary.get("startup_screen_probe", {})
+    if not isinstance(screen_probe, dict):
+        screen_probe = {}
+    if screen_probe.get("visible_error_popup"):
+        return "red_visible_error_popup"
+    if screen_probe.get("startup_error_logged"):
+        return "red_startup_error_logged"
+    if not screen_probe.get("gameplay_hud_present"):
+        return "yellow_gameplay_hud_unproven"
+    return "green_gameplay_hud_captured"
 
 
 def build_startup_step_ledger(
@@ -11031,7 +11812,155 @@ def build_startup_step_ledger(
     return ledger
 
 
-def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], failure_reason: str = "") -> Dict[str, Any]:
+def build_feature_debug_guard(
+    *,
+    debug_capture: Dict[str, Any],
+    screen_probe: Optional[Dict[str, Any]] = None,
+    screen_summary: Optional[Dict[str, Any]] = None,
+    process_alive: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """Build a release-blocking feature-phase log/modal ledger row."""
+
+    probe = screen_probe if isinstance(screen_probe, dict) else {}
+    raw_error_lines = debug_capture.get("error_evidence_lines", [])
+    error_lines = [str(line) for line in raw_error_lines] if isinstance(raw_error_lines, list) else []
+    visible_error_popup = bool(probe.get("visible_error_popup"))
+    summary = screen_summary if isinstance(screen_summary, dict) else {}
+    capture_observable = screen_capture_succeeded(summary)
+    ocr_observable = bool(probe.get("ocr_ok"))
+    black_capture_warning = bool(probe.get("black_capture_warning"))
+    debug_tail_classified = bool(debug_capture.get("tail_classified", True))
+    issues: List[str] = []
+    if error_lines:
+        issues.append("feature_phase_error_logged")
+    if visible_error_popup:
+        issues.append("feature_phase_visible_error_popup")
+    if process_alive is False:
+        issues.append("feature_phase_process_exited")
+    elif process_alive is not True:
+        issues.append("feature_phase_process_liveness_unproven")
+    if not capture_observable:
+        issues.append("feature_phase_screen_capture_failed")
+    if not ocr_observable:
+        issues.append("feature_phase_screen_ocr_failed")
+    if black_capture_warning:
+        issues.append("feature_phase_screen_capture_black")
+    if not debug_tail_classified:
+        issues.append("feature_phase_debug_tail_unclassified")
+
+    if visible_error_popup:
+        status = "red"
+        verdict = "red_feature_phase_visible_error_popup"
+    elif error_lines:
+        status = "red"
+        verdict = "red_feature_phase_error_logged"
+    elif process_alive is False:
+        status = "red"
+        verdict = "red_feature_phase_process_exited"
+    elif (
+        process_alive is not True
+        or not capture_observable
+        or not ocr_observable
+        or black_capture_warning
+        or not debug_tail_classified
+    ):
+        status = "yellow"
+        verdict = "yellow_feature_phase_observability_unproven"
+    else:
+        status = "green"
+        verdict = "green_feature_phase_error_free"
+
+    evidence_artifact = str(
+        debug_capture.get("artifact_path", "")
+        or probe.get("artifact_path", "")
+    )
+    ledger_row = {
+        "index": "feature_debug_guard",
+        "label": "feature_debug_guard",
+        "kind": "debug_log_guard",
+        "primitive_step": "feature_phase_debug_log_guard",
+        "expected_visible_fact": "feature steps complete without a new ERROR/DEBUG log or visible error modal",
+        "evidence_artifact": evidence_artifact,
+        "issues": issues,
+        "verdict": verdict,
+    }
+    return {
+        "status": status,
+        "verdict": verdict,
+        "error_evidence_lines": error_lines,
+        "visible_error_popup": visible_error_popup,
+        "process_alive": process_alive,
+        "capture_observable": capture_observable,
+        "ocr_observable": ocr_observable,
+        "black_capture_warning": black_capture_warning,
+        "debug_tail_classified": debug_tail_classified,
+        "artifact_path": evidence_artifact,
+        "debug_capture": debug_capture,
+        "screen_probe": probe,
+        "ledger_row": ledger_row,
+        "rule": "Any new feature-phase ERROR/DEBUG line or visible error modal blocks feature proof; the guard never sends dismissal or input keys.",
+    }
+
+
+def capture_feature_phase_guard(
+    *,
+    profile: str,
+    debug_start_size: int,
+    run_dir: Path,
+    label: str,
+    artifact_name: str,
+    screen_summary: Dict[str, Any],
+    pid: int,
+    debug_identity: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Observe the final feature screen, then scan logs, then prove liveness."""
+
+    debug_artifact = run_dir / artifact_name
+    screen_probe = capture_startup_screen_probe(
+        run_dir,
+        label,
+        screen_summary,
+        debug_artifact,
+    )
+    # OCR can take several seconds while the game and background LLM work keep
+    # running.  The log scan must happen after OCR, not before it.
+    debug_capture = capture_stable_final_debug_delta(
+        profile,
+        debug_start_size,
+        run_dir,
+        1,
+        artifact_name=artifact_name,
+        expected_identity=debug_identity,
+    )
+    error_lines = debug_capture.get("error_evidence_lines", [])
+    if isinstance(error_lines, list) and error_lines:
+        screen_probe["startup_error_logged"] = True
+        screen_probe["debug_error_lines"] = error_lines
+        screen_probe["debug_delta_artifact"] = str(debug_artifact)
+        if not screen_probe.get("visible_error_popup"):
+            screen_probe["classification"] = "red_feature_phase_error_logged"
+        probe_artifact_value = str(screen_probe.get("artifact_path", "")).strip()
+        if probe_artifact_value:
+            write_json(Path(probe_artifact_value), screen_probe)
+    return build_feature_debug_guard(
+        debug_capture=debug_capture,
+        screen_probe=screen_probe,
+        screen_summary=screen_summary,
+        process_alive=pid_is_alive(pid),
+    )
+
+
+def startup_proof_classification(
+    *,
+    ok: bool,
+    screen_summary: Dict[str, Any],
+    focus_result: Optional[Dict[str, Any]] = None,
+    debug_popups_recorded: int = 0,
+    debug_errors_recorded: int = 0,
+    failure_reason: str = "",
+) -> Dict[str, Any]:
+    popup_count = max(0, int(debug_popups_recorded or 0))
+    error_count = max(0, int(debug_errors_recorded or 0))
     if not ok:
         return {
             "evidence_class": "startup/load",
@@ -11040,22 +11969,58 @@ def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], fa
             "feature_proof": False,
             "startup_clean_for_feature_steps": False,
             "feature_gate": failure_reason or "startup_failed",
+            "debug_popups_recorded": popup_count,
+            "debug_errors_recorded": error_count,
             "rule": "A failed startup cannot support feature proof.",
         }
     status = "green"
     verdict = "startup_load_only"
     clean_for_feature_steps = True
     feature_gate = "startup_clean"
+    focus_proven = bool((focus_result or {}).get("ok"))
+    screen_probe = screen_summary.get("startup_screen_probe", {})
+    if not isinstance(screen_probe, dict):
+        screen_probe = {}
     if not screen_capture_succeeded(screen_summary):
         status = "red"
         verdict = "startup_load_only_screen_capture_failed"
         clean_for_feature_steps = False
         feature_gate = "screen_capture_failed"
+    elif screen_probe.get("visible_error_popup"):
+        status = "red"
+        verdict = "startup_load_only_visible_error_popup"
+        clean_for_feature_steps = False
+        feature_gate = "visible_error_popup"
+    elif popup_count > 0:
+        status = "red"
+        verdict = "startup_load_only_debug_popups_recorded"
+        clean_for_feature_steps = False
+        feature_gate = "debug_popups_recorded"
+    elif screen_probe.get("startup_error_logged") or error_count > 0:
+        status = "red"
+        verdict = "startup_load_only_startup_error_logged"
+        clean_for_feature_steps = False
+        feature_gate = "startup_error_logged"
     elif screen_summary.get("version_matches_runtime_paths") is False:
         status = "yellow"
         verdict = "startup_load_only_runtime_version_mismatch"
         clean_for_feature_steps = False
         feature_gate = "runtime_version_mismatch"
+    elif screen_summary.get("version_matches_runtime_paths") is not True:
+        status = "yellow"
+        verdict = "startup_load_only_runtime_version_unproven"
+        clean_for_feature_steps = False
+        feature_gate = "runtime_version_unproven"
+    elif not focus_proven:
+        status = "yellow"
+        verdict = "startup_load_only_focus_unproven"
+        clean_for_feature_steps = False
+        feature_gate = "focus_unproven"
+    elif not screen_probe.get("gameplay_hud_present"):
+        status = "yellow"
+        verdict = "startup_load_only_gameplay_hud_absent"
+        clean_for_feature_steps = False
+        feature_gate = "gameplay_hud_absent"
     return {
         "evidence_class": "startup/load",
         "status": status,
@@ -11063,7 +12028,11 @@ def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], fa
         "feature_proof": False,
         "startup_clean_for_feature_steps": clean_for_feature_steps,
         "feature_gate": feature_gate,
-        "rule": "Load/readiness plus screenshot prove only startup/load; feature proof still needs later step-local ledgers and a clean startup gate.",
+        "focus_proven": focus_proven,
+        "screen_gate": str(screen_probe.get("classification", "startup_screen_probe_missing")),
+        "debug_popups_recorded": popup_count,
+        "debug_errors_recorded": error_count,
+        "rule": "Load/readiness plus screenshot prove only startup/load; feature steps require verified focus, a real gameplay HUD, no visible error popup or new ERROR/DEBUG log, and later step-local proof.",
     }
 
 
@@ -11236,12 +12205,14 @@ def run_startup(args: argparse.Namespace) -> int:
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
 
-    require_peekaboo_permissions()
+    peekaboo_permissions = require_peekaboo_permissions()
+    write_json(run_dir / "peekaboo.permissions.json", peekaboo_permissions)
     killed_pids = kill_existing_game_processes()
     ensure_dir(config_dir_for_profile(profile))
     debug_log = config_dir_for_profile(profile) / "debug.log"
     lastworld = config_dir_for_profile(profile) / "lastworld.json"
     debug_size = debug_log.stat().st_size if debug_log.exists() else 0
+    debug_identity = log_file_identity(debug_log)
     baseline_mtime = lastworld.stat().st_mtime if lastworld.exists() else 0.0
     baseline_save_marker = latest_world_save_marker(profile, plan.target_world)
     baseline_save_marker_mtime = float(baseline_save_marker.get("mtime", 0.0) or 0.0)
@@ -11262,9 +12233,10 @@ def run_startup(args: argparse.Namespace) -> int:
 
     poll_seconds = float(startup_cfg["poll_seconds"])
     timeout_seconds = float(startup_cfg["timeout_seconds"])
-    debug_popup_ignore_text = str(startup_cfg["debug_popup_ignore_text"])
-    max_popup_dismissals = int(startup_cfg["max_popup_dismissals"])
-    dismissals = 0
+    debug_delta_count = 0
+    debug_error_evidence_count = 0
+    debug_popup_evidence_count = 0
+    debug_popup_dismissals = 0
     deadline = time.monotonic() + timeout_seconds
     expected_world = plan.target_world
 
@@ -11272,9 +12244,22 @@ def run_startup(args: argparse.Namespace) -> int:
         code = proc.poll()
         if code is not None:
             screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit")
-            copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
+            final_evidence = capture_final_startup_evidence(
+                profile=profile,
+                debug_start_size=debug_size,
+                run_dir=run_dir,
+                screen_summary=screen_summary,
+                label="failure_process_exit",
+                serial=debug_delta_count + 1,
+                pid=proc.pid,
+                debug_identity=debug_identity,
+            )
+            apply_direct_child_liveness(final_evidence, proc)
+            debug_delta_count += int(final_evidence["debug_delta_recorded"])
+            debug_error_evidence_count += int(final_evidence["debug_error_recorded"])
+            debug_popup_evidence_count += int(final_evidence["visible_error_popup_recorded"])
             readiness = {"kind": "process_exit", "pid": proc.pid, "returncode": code}
             startup_step_ledger = build_startup_step_ledger(
                 plan=plan,
@@ -11294,6 +12279,9 @@ def run_startup(args: argparse.Namespace) -> int:
             proof_classification = startup_proof_classification(
                 ok=False,
                 screen_summary=screen_summary,
+                focus_result=focus_result,
+                debug_popups_recorded=debug_popup_evidence_count,
+                debug_errors_recorded=debug_error_evidence_count,
                 failure_reason="process_exited",
             )
             result = {
@@ -11302,9 +12290,18 @@ def run_startup(args: argparse.Namespace) -> int:
                 "returncode": code,
                 "pid": proc.pid,
                 "profile": profile,
+                "debug_popups_recorded": debug_popup_evidence_count,
+                "debug_errors_recorded": debug_error_evidence_count,
+                "debug_popup_dismissals": debug_popup_dismissals,
+                "debug_log_deltas_recorded": debug_delta_count,
+                "debug_log_classified_size": final_evidence["classified_size"],
+                "debug_log_raw_size": final_evidence["raw_current_size"],
+                "debug_log_identity": final_evidence["debug_log_identity"],
+                "final_startup_evidence": final_evidence,
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
+                "peekaboo_permissions": peekaboo_permissions,
                 "run_dir": str(run_dir),
                 "screen": screen_summary,
                 "startup_step_ledger": startup_step_ledger,
@@ -11326,15 +12323,28 @@ def run_startup(args: argparse.Namespace) -> int:
             post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
-                peekaboo_focus_pid(proc.pid)
+            focus_result = peekaboo_focus_pid(proc.pid)
             post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
             if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
                 peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
                 time.sleep(float(startup_cfg["post_input_wait_seconds"]))
             screen = capture_screenshot(proc.pid, run_dir, "success")
-            copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
+            final_evidence = capture_final_startup_evidence(
+                profile=profile,
+                debug_start_size=debug_size,
+                run_dir=run_dir,
+                screen_summary=screen_summary,
+                label="success",
+                serial=debug_delta_count + 1,
+                pid=proc.pid,
+                debug_identity=debug_identity,
+            )
+            apply_direct_child_liveness(final_evidence, proc)
+            debug_delta_count += int(final_evidence["debug_delta_recorded"])
+            debug_error_evidence_count += int(final_evidence["debug_error_recorded"])
+            debug_popup_evidence_count += int(final_evidence["visible_error_popup_recorded"])
             readiness = {
                 "kind": readiness_kind,
                 "reason": data.get("readiness", "lastworld_updated") if isinstance(data, dict) else "lastworld_updated",
@@ -11356,17 +12366,41 @@ def run_startup(args: argparse.Namespace) -> int:
                 screen_label="success",
                 run_dir=run_dir,
             )
-            proof_classification = startup_proof_classification(ok=True, screen_summary=screen_summary)
+            if final_evidence["process_alive"] is not True:
+                startup_failure_reason = "process_exited_after_readiness"
+            elif not final_evidence["debug_tail_classified"]:
+                startup_failure_reason = "debug_log_tail_unclassified"
+            else:
+                startup_failure_reason = ""
+            startup_ok = not startup_failure_reason
+            proof_classification = startup_proof_classification(
+                ok=startup_ok,
+                screen_summary=screen_summary,
+                focus_result=focus_result,
+                debug_popups_recorded=debug_popup_evidence_count,
+                debug_errors_recorded=debug_error_evidence_count,
+                failure_reason=startup_failure_reason,
+            )
             result = {
-                "ok": True,
+                "ok": startup_ok,
+                "reason": startup_failure_reason,
                 "pid": proc.pid,
                 "profile": profile,
-                "ok_with_debug_popups": dismissals > 0,
-                "debug_popups_recorded": dismissals,
+                "ok_with_debug_popups": debug_popup_evidence_count > 0,
+                "ok_with_debug_errors": debug_error_evidence_count > 0,
+                "debug_popups_recorded": debug_popup_evidence_count,
+                "debug_errors_recorded": debug_error_evidence_count,
+                "debug_popup_dismissals": debug_popup_dismissals,
+                "debug_log_deltas_recorded": debug_delta_count,
+                "debug_log_classified_size": final_evidence["classified_size"],
+                "debug_log_raw_size": final_evidence["raw_current_size"],
+                "debug_log_identity": final_evidence["debug_log_identity"],
+                "final_startup_evidence": final_evidence,
                 "strategy": plan.strategy,
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
+                "peekaboo_permissions": peekaboo_permissions,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data if readiness_kind == "lastworld" else {},
                 "readiness": readiness,
@@ -11380,21 +12414,43 @@ def run_startup(args: argparse.Namespace) -> int:
             write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
             write_json(run_dir / "startup.result.json", result)
             print(json.dumps(result, indent=2, ensure_ascii=False))
-            return 0
+            return 0 if startup_ok else 1
 
-        new_debug_size = capture_debug_delta(profile, debug_size, run_dir, dismissals + 1)
-        if new_debug_size > debug_size and dismissals < max_popup_dismissals:
-            debug_size = new_debug_size
-            capture_screenshot(proc.pid, run_dir, f"debug_popup_{dismissals + 1:02d}")
-            peekaboo_focus_pid(proc.pid)
-            peekaboo_type_text(proc.pid, debug_popup_ignore_text)
-            dismissals += 1
+        debug_delta = capture_debug_delta(
+            profile,
+            debug_size,
+            run_dir,
+            debug_delta_count + 1,
+            expected_identity=debug_identity,
+        )
+        debug_size = int(debug_delta.get("current_size", debug_size) or 0)
+        debug_identity = debug_delta.get("current_identity", debug_identity)
+        if debug_delta.get("artifact_path"):
+            debug_delta_count += 1
+        error_evidence_lines = debug_delta.get("error_evidence_lines", [])
+        if isinstance(error_evidence_lines, list) and error_evidence_lines:
+            # A D_ERROR log is release-blocking evidence, but it is not proof
+            # that a modal is visible.  Never send dismissal/input keys based
+            # on log text alone; the final OCR capture classifies visible UI.
+            debug_error_evidence_count += 1
         time.sleep(poll_seconds)
 
     screen = capture_screenshot(proc.pid, run_dir, "failure_timeout")
-    copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
     screen_summary = screen.get("screen_summary", {})
+    final_evidence = capture_final_startup_evidence(
+        profile=profile,
+        debug_start_size=debug_size,
+        run_dir=run_dir,
+        screen_summary=screen_summary,
+        label="failure_timeout",
+        serial=debug_delta_count + 1,
+        pid=proc.pid,
+        debug_identity=debug_identity,
+    )
+    debug_delta_count += int(final_evidence["debug_delta_recorded"])
+    debug_error_evidence_count += int(final_evidence["debug_error_recorded"])
+    debug_popup_evidence_count += int(final_evidence["visible_error_popup_recorded"])
     readiness = {
         "kind": "timeout",
         "baseline_save_marker": baseline_save_marker,
@@ -11419,6 +12475,9 @@ def run_startup(args: argparse.Namespace) -> int:
     proof_classification = startup_proof_classification(
         ok=False,
         screen_summary=screen_summary,
+        focus_result=focus_result,
+        debug_popups_recorded=debug_popup_evidence_count,
+        debug_errors_recorded=debug_error_evidence_count,
         failure_reason="startup_timeout",
     )
     result = {
@@ -11426,10 +12485,19 @@ def run_startup(args: argparse.Namespace) -> int:
         "reason": "startup_timeout",
         "pid": proc.pid,
         "profile": profile,
+        "debug_popups_recorded": debug_popup_evidence_count,
+        "debug_errors_recorded": debug_error_evidence_count,
+        "debug_popup_dismissals": debug_popup_dismissals,
+        "debug_log_deltas_recorded": debug_delta_count,
+        "debug_log_classified_size": final_evidence["classified_size"],
+        "debug_log_raw_size": final_evidence["raw_current_size"],
+        "debug_log_identity": final_evidence["debug_log_identity"],
+        "final_startup_evidence": final_evidence,
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
         "fixture_install": fixture_install_result,
         "flexbuffer_cache_purge": flexbuffer_cache_purge,
+        "peekaboo_permissions": peekaboo_permissions,
         "readiness": readiness,
         "run_dir": str(run_dir),
         "screen": screen_summary,
@@ -11529,9 +12597,12 @@ def compact_probe_report_for_stdout(
 
     startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
+    startup_screen_probe = startup_screen.get("startup_screen_probe", {}) if isinstance(startup_screen.get("startup_screen_probe"), dict) else {}
+    startup_classification = startup.get("proof_classification", {}) if isinstance(startup.get("proof_classification"), dict) else {}
     artifacts = report.get("artifacts", {}) if isinstance(report.get("artifacts"), dict) else {}
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
     abort = report.get("abort", {}) if isinstance(report.get("abort"), dict) else {}
+    feature_debug_guard = report.get("feature_debug_guard", {}) if isinstance(report.get("feature_debug_guard"), dict) else {}
     step_ledger_summary = report.get("step_ledger_summary", {}) if isinstance(report.get("step_ledger_summary"), dict) else {}
     step_ledger = report.get("step_ledger", []) if isinstance(report.get("step_ledger"), list) else []
     non_green_steps = [
@@ -11575,8 +12646,23 @@ def compact_probe_report_for_stdout(
         "feature_proof": bool(report.get("feature_proof", False)),
         "startup_screen": {
             "window_title": str(startup_screen.get("window_title", "")),
-            "screenshot": str(startup_screen.get("screenshot", "")),
+            "screenshot": str(startup_screen.get("png_path", startup_screen.get("screenshot", ""))),
             "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
+            "capture_backend": str(startup_screen.get("capture_backend", "")),
+            "peekaboo_stderr": str(startup_screen.get("peekaboo_stderr", "")),
+            "capture_warnings": startup_screen.get("capture_warnings", []),
+            "probe_classification": str(startup_screen_probe.get("classification", "")),
+            "gameplay_hud_present": bool(startup_screen_probe.get("gameplay_hud_present", False)),
+            "visible_error_popup": bool(startup_screen_probe.get("visible_error_popup", False)),
+            "startup_error_logged": bool(startup_screen_probe.get("startup_error_logged", False)),
+        },
+        "startup_gate": {
+            "status": str(startup_classification.get("status", "")),
+            "feature_gate": str(startup_classification.get("feature_gate", "")),
+            "startup_clean_for_feature_steps": bool(startup_classification.get("startup_clean_for_feature_steps", False)),
+            "focus_proven": bool(startup_classification.get("focus_proven", False)),
+            "debug_popups_recorded": int(startup_classification.get("debug_popups_recorded", 0) or 0),
+            "debug_errors_recorded": int(startup_classification.get("debug_errors_recorded", 0) or 0),
         },
         "artifacts": {
             "status": str(artifacts.get("status", "")),
@@ -11587,6 +12673,21 @@ def compact_probe_report_for_stdout(
             "step_artifact_matches": compact_step_matches,
         },
         "step_ledger_summary": step_ledger_summary,
+        "feature_debug_guard": {
+            "status": str(feature_debug_guard.get("status", "")),
+            "verdict": str(feature_debug_guard.get("verdict", "")),
+            "visible_error_popup": bool(feature_debug_guard.get("visible_error_popup", False)),
+            "process_alive": feature_debug_guard.get("process_alive"),
+            "capture_observable": bool(feature_debug_guard.get("capture_observable", False)),
+            "ocr_observable": bool(feature_debug_guard.get("ocr_observable", False)),
+            "black_capture_warning": bool(feature_debug_guard.get("black_capture_warning", False)),
+            "debug_tail_classified": bool(feature_debug_guard.get("debug_tail_classified", False)),
+            "error_evidence_lines": [
+                str(line)
+                for line in feature_debug_guard.get("error_evidence_lines", [])[:12]
+            ] if isinstance(feature_debug_guard.get("error_evidence_lines"), list) else [],
+            "artifact_path": str(feature_debug_guard.get("artifact_path", "")),
+        },
         "non_green_steps": non_green_steps,
         "abort": abort,
         "cleanup": cleanup,
@@ -11669,6 +12770,7 @@ def repeatability_run_summary(
     startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
+    proof_classification = report.get("proof_classification", {}) if isinstance(report.get("proof_classification"), dict) else {}
     portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
     expectation_results, helper_lines = evaluate_repeatability_expectations(report, expectations)
     cleanup_status = str(cleanup.get("status", "")).strip()
@@ -11679,6 +12781,8 @@ def repeatability_run_summary(
         "scenario": str(report.get("scenario", "")).strip(),
         "run_dir": str(startup.get("run_dir", "") or report.get("run_dir", "")).strip(),
         "verdict": str(report.get("verdict", "")).strip(),
+        "proof_status": str(proof_classification.get("status", "")).strip(),
+        "feature_proof": bool(report.get("feature_proof", proof_classification.get("feature_proof", False))),
         "window_title": str(startup_screen.get("window_title", "")).strip(),
         "version_matches_repo_head": startup_screen.get("version_matches_repo_head"),
         "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
@@ -11688,6 +12792,15 @@ def repeatability_run_summary(
         "expectations": expectation_results,
         "helper_tail_lines": helper_lines,
     }
+
+
+def repeatability_run_is_green(run: Dict[str, Any]) -> bool:
+    return bool(
+        run.get("returncode") == 0
+        and run.get("report_ok")
+        and str(run.get("proof_status", "")) == "green"
+        and run.get("feature_proof") is True
+    )
 
 
 def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
@@ -11700,9 +12813,11 @@ def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
     for run in summary.get("runs", []):
         portal_warning = run.get("portal_storm_warning", {}) if isinstance(run.get("portal_storm_warning"), dict) else {}
         lines.append(
-            "Run {run}: verdict={verdict} cleanup={cleanup} runtime_current={runtime_current} portal_storm={portal_status}".format(
+            "Run {run}: verdict={verdict} proof={proof_status} feature_proof={feature_proof} cleanup={cleanup} runtime_current={runtime_current} portal_storm={portal_status}".format(
                 run=run.get("run", "?"),
                 verdict=run.get("verdict", ""),
+                proof_status=run.get("proof_status", ""),
+                feature_proof=run.get("feature_proof", False),
                 cleanup=run.get("cleanup", {}).get("status", ""),
                 runtime_current=run.get("version_matches_runtime_paths", None),
                 portal_status=portal_warning.get("status", ""),
@@ -11792,7 +12907,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
             "all_runs_matched": matched_runs == repeat_count,
         })
 
-    all_runs_ok = all(run.get("returncode") == 0 and run.get("report_ok") for run in run_summaries)
+    all_runs_ok = all(repeatability_run_is_green(run) for run in run_summaries)
     all_runtime_current = all(run.get("version_matches_runtime_paths") is True for run in run_summaries)
     all_cleanup_ok = all(run.get("cleanup_ok") for run in run_summaries)
     all_expectations_ok = all(item.get("all_runs_matched") for item in aggregate_expectations) if aggregate_expectations else True
@@ -12378,6 +13493,78 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
         return 1
 
+    startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
+    if not startup_classification.get("startup_clean_for_feature_steps", False):
+        abort_report = {
+            "guard": "startup",
+            "status": "blocked_startup_gate",
+            "reason": str(startup_classification.get("feature_gate", "startup_not_clean")),
+        }
+        proof_classification = probe_proof_classification(
+            verdict="blocked_startup_gate",
+            startup_classification=startup_classification,
+            step_reports=[],
+            artifact_patterns=artifact_patterns,
+            matches_by_pattern=[],
+            abort_report=abort_report,
+        )
+        report = {
+            "ok": False,
+            "mode": mode,
+            "scenario": str(scenario.get("name", args.scenario)),
+            "profile": profile,
+            "world": world,
+            "fixture": fixture,
+            "reason": "startup_gate_not_clean",
+            "startup": start_result,
+            "steps": [
+                {
+                    "index": index,
+                    "kind": str(step.get("kind", "")).strip().lower(),
+                    "label": str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}",
+                    "status": "skipped_startup_gate",
+                }
+                for index, step in enumerate(steps, start=1)
+            ],
+            "screen": {
+                "status": "startup_gate_not_clean",
+                "before": start_result.get("screen", {}),
+                "after": {},
+            },
+            "tests": {
+                "status": "not_run",
+                "recommended_command": recommended_test_command,
+            },
+            "artifacts": {
+                "status": "not_run",
+                "path": "",
+                "source_log": artifact_source,
+                "match_patterns": artifact_patterns,
+                "matches_by_pattern": [],
+                "matched_lines": [],
+                "line_count": 0,
+            },
+            "abort": abort_report,
+            "portal_storm_warning": build_portal_storm_warning_for_report(
+                profile=profile,
+                world=world,
+                scenario=scenario,
+                step_reports=[],
+            ),
+            "proof_classification": proof_classification,
+            "evidence_class": proof_classification.get("evidence_class", "startup/load-or-inconclusive"),
+            "feature_proof": False,
+            "verdict": "blocked_startup_gate",
+        }
+        finalize_probe_report(
+            run_dir,
+            report,
+            cleanup_pid=pid,
+            report_filename=report_filename,
+            compact_stdout=bool(getattr(args, "compact_stdout", False)),
+        )
+        return 2
+
     artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
     runtime_blockers = probe_runtime_blockers(profile, resolved_artifact_source)
     runtime_warnings = probe_runtime_warnings(profile, resolved_artifact_source)
@@ -12458,6 +13645,17 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         return 0
 
     initial_weather_audit = read_current_saved_weather_audit(profile, world)
+    feature_debug_log = config_dir_for_profile(profile) / "debug.log"
+    feature_debug_identity = (
+        start_result.get("debug_log_identity", {})
+        if isinstance(start_result.get("debug_log_identity"), dict)
+        else {}
+    )
+    startup_debug_classified_size = start_result.get("debug_log_classified_size")
+    try:
+        feature_debug_start = int(startup_debug_classified_size)
+    except (TypeError, ValueError):
+        feature_debug_start = feature_debug_log.stat().st_size if feature_debug_log.exists() else 0
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
     step_reports = execute_probe_steps(
@@ -12473,6 +13671,31 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     )
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")
+    world_snapshot_report: Dict[str, Any] = {}
+    if capture_world_after:
+        try:
+            world_snapshot_report = snapshot_world_state(profile, world, run_dir)
+        except Exception as exc:
+            world_snapshot_report = {
+                "status": "failed",
+                "error": str(exc),
+            }
+
+    feature_screen_summary = (
+        screen_after.get("screen_summary", {})
+        if isinstance(screen_after.get("screen_summary"), dict)
+        else {}
+    )
+    feature_debug_guard = capture_feature_phase_guard(
+        profile=profile,
+        debug_start_size=feature_debug_start,
+        run_dir=run_dir,
+        label=f"{mode}_after_feature_guard",
+        artifact_name=f"{mode}.feature_debug.log",
+        screen_summary=feature_screen_summary,
+        pid=pid,
+        debug_identity=feature_debug_identity,
+    )
 
     artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
     artifact_path = run_dir / f"{mode}.artifacts.log"
@@ -12547,11 +13770,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     )
     step_ledger = build_probe_step_ledger(step_reports)
     step_ledger.extend(portal_storm_step_ledger_rows(portal_storm_warning))
+    step_ledger.append(feature_debug_guard["ledger_row"])
     step_ledger_summary = summarize_probe_step_ledger(step_ledger)
     write_json(run_dir / f"{mode}.step_ledger.json", {
         "mode": mode,
         "scenario": str(scenario.get("name", args.scenario)),
         "portal_storm_warning": portal_storm_warning,
+        "feature_debug_guard": feature_debug_guard,
         "step_ledger_summary": step_ledger_summary,
         "step_ledger": step_ledger,
     })
@@ -12563,6 +13788,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
     elif version_matches_runtime is False:
         verdict = "inconclusive_version_mismatch"
+    elif feature_debug_guard["status"] == "red":
+        verdict = "blocked_" + str(feature_debug_guard["verdict"]).removeprefix("red_")
+    elif feature_debug_guard["status"] == "yellow":
+        verdict = "yellow_feature_phase_observability_unproven"
     elif wait_step_summary["status"] == "blocked_wait_step":
         verdict = "blocked_wait_step_ledger"
     elif wait_step_summary["status"] == "yellow_wait_step_unverified":
@@ -12641,6 +13870,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         },
         "wait_step_summary": wait_step_summary,
         "portal_storm_warning": portal_storm_warning,
+        "feature_debug_guard": feature_debug_guard,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
         "proof_classification": proof_classification,
@@ -12649,13 +13879,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "verdict": verdict,
     }
     if capture_world_after:
-        try:
-            report["world_snapshot"] = snapshot_world_state(profile, world, run_dir)
-        except Exception as exc:
-            report["world_snapshot"] = {
-                "status": "failed",
-                "error": str(exc),
-            }
+        report["world_snapshot"] = world_snapshot_report
     if handoff:
         report["cleanup"] = {
             "status": "deferred_handoff",

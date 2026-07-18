@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set
 
@@ -540,6 +541,30 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             raise AssertionError("No repository .sav.zzip fixture is available for decoder tests")
         return candidates[0]
 
+    @staticmethod
+    def write_resolved_fixture_chain(
+        temp_dir: str,
+        source_transforms: List[Dict[str, Any]],
+        derived_transforms: List[Dict[str, Any]],
+    ) -> None:
+        fixture_root = Path(temp_dir) / "live-debug"
+        source_fixture = fixture_root / "source"
+        (source_fixture / "save" / "World").mkdir(parents=True)
+        (source_fixture / "manifest.json").write_text(
+            json.dumps({"save_transforms": source_transforms}),
+            encoding="utf-8",
+        )
+        derived_fixture = fixture_root / "derived"
+        derived_fixture.mkdir()
+        (derived_fixture / "manifest.json").write_text(
+            json.dumps({
+                "source_fixture": "source",
+                "source_profile": "live-debug",
+                "save_transforms": derived_transforms,
+            }),
+            encoding="utf-8",
+        )
+
     def test_xxh64_matches_reference_vector(self) -> None:
         self.assertEqual(xxh64(b""), 0xEF46DB3751D8E999)
 
@@ -554,6 +579,261 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
     def test_repository_zzip_is_fully_decodable_player_json(self) -> None:
         self.assertEqual(player_save_error(self.sample_zzip_save()), "")
+
+    def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
+        for clone_follower_template in (False, True):
+            with self.subTest(clone_follower_template=clone_follower_template):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self.write_resolved_fixture_chain(
+                        temp_dir,
+                        [{
+                            "kind": "remove_overmap_npcs",
+                            "player_save": "player.sav.zzip",
+                            "scan_all_overmaps": True,
+                        }],
+                        [{
+                            "kind": "overmap_npcs_near_player",
+                            "player_save": "player.sav.zzip",
+                            "offsets_ms": [[1, 0, 0]],
+                            "clone_follower_template": clone_follower_template,
+                        }],
+                    )
+
+                    with mock.patch(
+                        "startup_harness.profile_fixture_root",
+                        side_effect=lambda profile: Path(temp_dir) / profile,
+                    ):
+                        with self.assertRaisesRegex(
+                            SystemExit,
+                            r"live-debug:derived -> live-debug:source.*remove_overmap_npcs.*overmap_npcs_near_player",
+                        ):
+                            resolve_fixture_payload("derived", "live-debug")
+
+    def test_resolved_fixture_allows_clone_when_source_npcs_were_not_removed(self) -> None:
+        for clone_follower_template in (False, True):
+            with self.subTest(clone_follower_template=clone_follower_template):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self.write_resolved_fixture_chain(
+                        temp_dir,
+                        [],
+                        [{
+                            "kind": "overmap_npcs_near_player",
+                            "player_save": "player.sav.zzip",
+                            "offsets_ms": [[1, 0, 0]],
+                            "clone_follower_template": clone_follower_template,
+                        }],
+                    )
+
+                    with mock.patch(
+                        "startup_harness.profile_fixture_root",
+                        side_effect=lambda profile: Path(temp_dir) / profile,
+                    ):
+                        resolved = resolve_fixture_payload("derived", "live-debug")
+
+                    self.assertEqual(
+                        resolved["save_transforms"][-1]["clone_follower_template"],
+                        clone_follower_template,
+                    )
+
+    def test_resolved_fixture_allows_clone_after_partial_remove_and_relocation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_resolved_fixture_chain(
+                temp_dir,
+                [{
+                    "kind": "remove_overmap_npcs",
+                    "player_save": "player.sav.zzip",
+                    "scan_all_overmaps": False,
+                }],
+                [
+                    {
+                        "kind": "player_location_offset_ms",
+                        "player_save": "player.sav.zzip",
+                        "offset_ms": [4320, 0, 0],
+                    },
+                    {
+                        "kind": "overmap_npcs_near_player",
+                        "player_save": "player.sav.zzip",
+                        "offsets_ms": [[1, 0, 0]],
+                        "clone_follower_template": True,
+                        "scan_all_overmaps_for_ids": True,
+                    },
+                ],
+            )
+
+            with mock.patch(
+                "startup_harness.profile_fixture_root",
+                side_effect=lambda profile: Path(temp_dir) / profile,
+            ):
+                resolved = resolve_fixture_payload("derived", "live-debug")
+
+        self.assertEqual(
+            [transform["kind"] for transform in resolved["save_transforms"]],
+            [
+                "remove_overmap_npcs",
+                "player_location_offset_ms",
+                "overmap_npcs_near_player",
+            ],
+        )
+
+    def test_resolved_fixture_rejects_clone_after_unproven_relocation(self) -> None:
+        relocations = [
+            {
+                "kind": "player_location_offset_ms",
+                "player_save": "player.sav.zzip",
+                "offset_ms": [0, 0, 0],
+            },
+            {
+                "kind": "player_location_offset_ms",
+                "player_save": "player.sav.zzip",
+                "offset_ms": [4319, 0, 0],
+            },
+            {
+                "kind": "player_near_overmap_special",
+                "player_save": "player.sav.zzip",
+                "special_id": "evac_center_18",
+                "site_index": 1,
+                "offset_omt": [0, 0, 0],
+            },
+        ]
+        for relocation in relocations:
+            with self.subTest(relocation=relocation):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self.write_resolved_fixture_chain(
+                        temp_dir,
+                        [{
+                            "kind": "remove_overmap_npcs",
+                            "player_save": "player.sav.zzip",
+                            "scan_all_overmaps": False,
+                        }],
+                        [
+                            relocation,
+                            {
+                                "kind": "overmap_npcs_near_player",
+                                "player_save": "player.sav.zzip",
+                                "offsets_ms": [[1, 0, 0]],
+                                "clone_follower_template": True,
+                            },
+                        ],
+                    )
+
+                    with mock.patch(
+                        "startup_harness.profile_fixture_root",
+                        side_effect=lambda profile: Path(temp_dir) / profile,
+                    ):
+                        with self.assertRaisesRegex(
+                            SystemExit,
+                            r"remove_overmap_npcs.*overmap_npcs_near_player",
+                        ):
+                            resolve_fixture_payload("derived", "live-debug")
+
+    def test_resolved_fixture_allows_other_player_template_after_partial_remove(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_resolved_fixture_chain(
+                temp_dir,
+                [{
+                    "kind": "remove_overmap_npcs",
+                    "player_save": "first-player.sav.zzip",
+                    "scan_all_overmaps": False,
+                }],
+                [{
+                    "kind": "overmap_npcs_near_player",
+                    "player_save": "second-player.sav.zzip",
+                    "offsets_ms": [[1, 0, 0]],
+                    "clone_follower_template": True,
+                    "scan_all_overmaps_for_ids": True,
+                }],
+            )
+
+            with mock.patch(
+                "startup_harness.profile_fixture_root",
+                side_effect=lambda profile: Path(temp_dir) / profile,
+            ):
+                resolved = resolve_fixture_payload("derived", "live-debug")
+
+        self.assertEqual(
+            resolved["save_transforms"][-1]["player_save"],
+            "second-player.sav.zzip",
+        )
+
+    def test_global_id_scan_does_not_restore_template_removed_from_target_overmap(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_resolved_fixture_chain(
+                temp_dir,
+                [{
+                    "kind": "remove_overmap_npcs",
+                    "player_save": "player.sav.zzip",
+                    "scan_all_overmaps": False,
+                }],
+                [{
+                    "kind": "overmap_npcs_near_player",
+                    "player_save": "player.sav.zzip",
+                    "offsets_ms": [[1, 0, 0]],
+                    "clone_follower_template": True,
+                    "scan_all_overmaps_for_ids": True,
+                }],
+            )
+
+            with mock.patch(
+                "startup_harness.profile_fixture_root",
+                side_effect=lambda profile: Path(temp_dir) / profile,
+            ):
+                with self.assertRaisesRegex(SystemExit, r"remove_overmap_npcs"):
+                    resolve_fixture_payload("derived", "live-debug")
+
+    def test_high_threat_allied_stalker_fixture_keeps_source_followers(self) -> None:
+        resolved = resolve_fixture_payload(
+            "mcwilliams_live_debug_noon_high_threat_allies_stalker_2026-05-03",
+            "live-debug",
+        )
+
+        self.assertEqual(
+            [name for _profile, name in resolved["source_chain"]],
+            [
+                "mcwilliams_live_debug_noon_high_threat_allies_stalker_2026-05-03",
+                "mcwilliams_live_debug_noon_stalker_2026-04-30",
+                "mcwilliams_live_debug_2026-04-07",
+            ],
+        )
+        transforms = resolved["save_transforms"]
+        self.assertEqual(
+            [transform["kind"] for transform in transforms],
+            ["game_turn", "active_monsters_near_player", "overmap_npcs_near_player"],
+        )
+        self.assertEqual(transforms[0]["turn"], 5227200)
+        self.assertEqual(
+            [monster["typeid"] for monster in transforms[1]["monsters"]],
+            ["mon_writhing_stalker"],
+        )
+        self.assertEqual(transforms[1]["monsters"][0]["offset_ms"], [7, 0, 0])
+        self.assertEqual(transforms[2]["offsets_ms"], [[2, -2, 0]])
+        self.assertTrue(transforms[2]["clone_follower_template"])
+
+        scenario = load_scenario(
+            "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw"
+        )
+        steps_by_label = {
+            step["label"]: step
+            for step in scenario["steps"]
+        }
+        follower_guard = steps_by_label[
+            "audit_saved_three_allied_followers_before_high_threat_light"
+        ]
+        self.assertEqual(follower_guard["required_observed_npc_count"], 3)
+        self.assertEqual(
+            [npc["name"] for npc in follower_guard["required_npcs"]],
+            ["Katharina Leach", "Robbie Knox", "OpenClaw Ally 1"],
+        )
+        self.assertTrue(all(
+            npc["my_fac"] == "your_followers"
+            for npc in follower_guard["required_npcs"]
+        ))
+        stalker_guard = steps_by_label[
+            "audit_saved_writhing_stalker_before_high_threat_allied_scene"
+        ]
+        self.assertEqual(
+            stalker_guard["required_monsters"],
+            [{"typeid": "mon_writhing_stalker", "offset_ms": [7, 0, 0]}],
+        )
 
     def test_zzip_truncated_after_zstd_magic_is_rejected(self) -> None:
         source = self.sample_zzip_save()

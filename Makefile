@@ -1296,7 +1296,7 @@ version:
         [ -e ".git" ] && \
           GITVERSION=$$( git describe --tags --always --match "[0-9A-Z]*.[0-9A-Z]*" --match "cdda-experimental-*" --exact-match 2>/dev/null || true ) && \
           GITSHA=$$( git rev-parse --short HEAD ) && \
-          DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false diff --numstat | grep -v lang/po/)" ] || echo "-dirty") && \
+          DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false status --porcelain --untracked-files=all -- . ':(exclude)lang/po/**' ':(exclude)Agents.md')" ] || echo "-dirty") && \
           VERSION_STRING="$$GITVERSION $$GITSHA$$DIRTYFLAG" && \
           VERSION_STRING="$${VERSION_STRING## }" ; \
         [ -e "$(SRC_DIR)/version.h" ] && \

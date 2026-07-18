@@ -41,6 +41,31 @@
       "kind": "audit_saved_overmap_npcs",
       "label": "audit_saved_three_allied_followers_before_high_threat_light",
       "required_observed_npc_count": 3,
+      "required_npcs": [
+        {
+          "name": "Katharina Leach",
+          "my_fac": "your_followers",
+          "attitude": 0,
+          "mission": 6
+        },
+        {
+          "name": "Robbie Knox",
+          "my_fac": "your_followers",
+          "attitude": 0,
+          "mission": 6
+        },
+        {
+          "name": "OpenClaw Ally 1",
+          "my_fac": "your_followers",
+          "attitude": 0,
+          "mission": 6,
+          "offset_ms": [
+            2,
+            -2,
+            0
+          ]
+        }
+      ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_writhing_stalker_high_threat_allied_footing_missing",
       "abort_reason": "installed save did not contain three saved overmap NPC allies before the high-threat/allied writhing-stalker live row",
@@ -49,13 +74,15 @@
     {
       "kind": "audit_saved_active_monsters",
       "label": "audit_saved_writhing_stalker_before_high_threat_allied_scene",
-      "required_typeids": [
-        "mon_writhing_stalker"
-      ],
-      "offset_ms": [
-        7,
-        0,
-        0
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            7,
+            0,
+            0
+          ]
+        }
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_writhing_stalker_high_threat_stalker_footing_missing",

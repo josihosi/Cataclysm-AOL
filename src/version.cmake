@@ -9,11 +9,16 @@ include(GetGitRevisionDescription)
 git_describe(GIT_VERSION --tags --always --match "cdda-*")
 
 if(EXISTS ${GIT_EXECUTABLE})
-    execute_process(COMMAND ${GIT_EXECUTABLE} -c core.safecrlf=false diff --quiet
-        RESULT_VARIABLE DIRTY_FLAG
+    execute_process(COMMAND ${GIT_EXECUTABLE} -c core.safecrlf=false
+        status --porcelain --untracked-files=all -- .
+        ":(exclude)lang/po/**" ":(exclude)Agents.md"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        RESULT_VARIABLE DIRTY_STATUS
+        OUTPUT_VARIABLE DIRTY_OUTPUT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-    if(DIRTY_FLAG)
+    if(NOT DIRTY_STATUS EQUAL 0 OR NOT "${DIRTY_OUTPUT}" STREQUAL "")
         string(APPEND GIT_VERSION "-dirty")
     endif()
 endif()
