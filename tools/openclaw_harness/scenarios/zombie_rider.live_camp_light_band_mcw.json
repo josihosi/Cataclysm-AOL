@@ -109,18 +109,6 @@
       "expected_visible_fact": "saved-map metadata proves staged fd_fire camp-light sources before live turns advance"
     },
     {
-      "kind": "press",
-      "label": "toggle_safe_mode_off_before_rider_camp_light",
-      "keys": [
-        "!"
-      ],
-      "delay_ms": 250,
-      "settle_seconds": 0.4,
-      "capture_after": true,
-      "proof_deferred_to_label": "audit_zombie_rider_camp_light_band_trace",
-      "expected_visible_fact": "safe mode is toggled off so the bounded live camp-light window is not consumed by warnings"
-    },
-    {
       "kind": "advance_turns",
       "label": "advance_rider_camp_light_signal_window",
       "count": 310,
