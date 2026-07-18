@@ -971,6 +971,32 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertGreaterEqual(len(probe["hud_body_marker_types"]), 3)
         self.assertLess(len(probe["hud_status_marker_types"]), 2)
 
+    def test_compact_mac_hud_with_one_visible_body_label_is_green(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": ["ARM", "Move: 0(W)", "Weary Malus:"],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertTrue(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "green_gameplay_hud_present")
+
+    def test_one_body_label_and_one_status_label_are_not_enough(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": ["ARM", "Move: 0(W)"],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertFalse(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "yellow_gameplay_hud_absent")
+
     def test_unproven_focus_blocks_an_otherwise_real_gameplay_hud(self) -> None:
         result = startup_proof_classification(
             ok=True,
