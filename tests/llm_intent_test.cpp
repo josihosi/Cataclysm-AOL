@@ -394,7 +394,8 @@ TEST_CASE( "llm_intent_snapshot_request_resolves_lettered_neutral_targets", "[ll
 
     const std::string snapshot = llm_intent::build_snapshot_for_test(
                                      listener, "Attack the neutral target.", "req-target" );
-    const std::string neutral_legend = " ... Neutral NPC neutral threat=";
+    CAPTURE( snapshot );
+    const std::string neutral_legend = " ... " + neutral_npc.disp_name() + " neutral threat=";
     const size_t neutral_legend_pos = snapshot.find( neutral_legend );
     REQUIRE( neutral_legend_pos != std::string::npos );
     REQUIRE( neutral_legend_pos >= 1 );

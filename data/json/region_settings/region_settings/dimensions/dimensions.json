@@ -6,6 +6,11 @@
   },
   {
     "type": "dimension",
+    "id": "test",
+    "region_layout": "default"
+  },
+  {
+    "type": "dimension",
     "id": "abyss",
     "region_layout": "nether_abyss"
   },

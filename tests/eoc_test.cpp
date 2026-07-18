@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstddef>
+#include <filesystem>
 #include <functional>
 #include <list>
 #include <memory>
@@ -24,6 +25,7 @@
 #include "dialogue_helpers.h"
 #include "effect_on_condition.h"
 #include "field_type.h"
+#include "filesystem.h"
 #include "game.h"
 #include "global_vars.h"
 #include "item.h"
@@ -84,6 +86,10 @@ static const effect_on_condition_id
 effect_on_condition_EOC_compare_string_match_all_test( "EOC_compare_string_match_all_test" );
 static const effect_on_condition_id
 effect_on_condition_EOC_compare_string_test( "EOC_compare_string_test" );
+static const effect_on_condition_id
+effect_on_condition_EOC_TEST_CLEAR_DIMENSION_VARIABLE( "EOC_TEST_CLEAR_DIMENSION_VARIABLE" );
+static const effect_on_condition_id
+effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT( "EOC_TEST_DIMENSION_ID_CONTRACT" );
 static const effect_on_condition_id
 effect_on_condition_EOC_increment_var_var( "EOC_increment_var_var" );
 static const effect_on_condition_id
@@ -276,6 +282,63 @@ TEST_CASE( "EOC_beta_elevate", "[eoc]" )
     effect_on_condition_EOC_try_kill->activate( newDialog );
 
     CHECK( n.hp_percentage() == 0 );
+}
+
+TEST_CASE( "EOC_clear_dimension_resolves_global_variable_target", "[eoc][dimension]" )
+{
+    const std::string global_key = "eoc_test_clear_dimension_target";
+    const std::string target_dimension_id = "dimension_eoc_test_clear_target";
+    const std::string untouched_dimension_id = "dimension_eoc_test_clear_untouched";
+    const std::filesystem::path target_dimension_path =
+        ( PATH_INFO::dimensions_save_path() / target_dimension_id ).get_unrelative_path();
+    const std::filesystem::path untouched_dimension_path =
+        ( PATH_INFO::dimensions_save_path() / untouched_dimension_id ).get_unrelative_path();
+    global_variables &globvars = get_globals();
+
+    std::filesystem::remove_all( target_dimension_path );
+    std::filesystem::remove_all( untouched_dimension_path );
+    REQUIRE( !globvars.maybe_get_global_value( global_key ) );
+    on_out_of_scope cleanup( [&]() {
+        std::filesystem::remove_all( target_dimension_path );
+        std::filesystem::remove_all( untouched_dimension_path );
+        globvars.remove_global_value( global_key );
+    } );
+
+    REQUIRE( std::filesystem::create_directories( target_dimension_path ) );
+    REQUIRE( std::filesystem::create_directories( untouched_dimension_path ) );
+    globvars.set_global_value( global_key, target_dimension_id );
+
+    dialogue d( get_talker_for( get_avatar() ), std::make_unique<talker>() );
+    REQUIRE( effect_on_condition_EOC_TEST_CLEAR_DIMENSION_VARIABLE.is_valid() );
+    CHECK( effect_on_condition_EOC_TEST_CLEAR_DIMENSION_VARIABLE->activate( d ) );
+
+    CHECK_FALSE( std::filesystem::exists( target_dimension_path ) );
+    CHECK( std::filesystem::is_directory( untouched_dimension_path ) );
+}
+
+TEST_CASE( "EOC_dimension_ids_use_registered_default", "[eoc][dimension]" )
+{
+    const dimension_id default_dimension( "default" );
+    const dimension_id test_dimension( "test" );
+    const dimension_id empty_dimension( "" );
+    const std::string global_key = "eoc_test_current_dimension";
+    global_variables &globvars = get_globals();
+
+    REQUIRE( !globvars.maybe_get_global_value( global_key ) );
+    on_out_of_scope cleanup( [&]() {
+        globvars.remove_global_value( global_key );
+    } );
+
+    CHECK( default_dimension.is_valid() );
+    CHECK( test_dimension.is_valid() );
+    CHECK_FALSE( empty_dimension.is_valid() );
+    REQUIRE( g->get_dimension_prefix() == default_dimension );
+
+    dialogue d( get_talker_for( get_avatar() ), std::make_unique<talker>() );
+    REQUIRE( effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT.is_valid() );
+    CHECK( effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT->test_condition( d ) );
+    CHECK( effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT->activate( d ) );
+    CHECK( globvars.get_global_value( global_key ) == default_dimension.str() );
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity): false positive

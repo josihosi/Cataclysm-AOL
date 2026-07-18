@@ -1175,13 +1175,15 @@ static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monste
 {
     tripoint_bub_ms desired_bub = here.get_bub( desired );
     const int route_limit = rider.get_pathfinding_settings().max_dist;
-    constexpr int route_margin = 6;
+    // Leave enough of the route budget for a local detour around camp walls.
+    constexpr int route_detour_margin = 10;
     const int desired_distance = rl_dist( rider.pos_bub(), desired_bub );
-    if( route_limit > route_margin && desired_distance > route_limit - route_margin ) {
+    if( route_limit > route_detour_margin &&
+        desired_distance > route_limit - route_detour_margin ) {
         const int delta_x = desired_bub.x() - rider.pos_bub().x();
         const int delta_y = desired_bub.y() - rider.pos_bub().y();
         const int span = std::max( std::abs( delta_x ), std::abs( delta_y ) );
-        const int hop = route_limit - route_margin;
+        const int hop = route_limit - route_detour_margin;
         desired_bub = tripoint_bub_ms( rider.pos_bub().x() + delta_x * hop / span,
                                       rider.pos_bub().y() + delta_y * hop / span,
                                       rider.posz() );

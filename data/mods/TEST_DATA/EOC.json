@@ -868,5 +868,16 @@
         ]
       }
     ]
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_TEST_CLEAR_DIMENSION_VARIABLE",
+    "effect": { "clear_dimension": { "global_val": "eoc_test_clear_dimension_target" } }
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_TEST_DIMENSION_ID_CONTRACT",
+    "condition": { "current_dimension": "default" },
+    "effect": { "dimension_name": { "global_val": "eoc_test_current_dimension" } }
   }
 ]
