@@ -111,7 +111,7 @@
     {
       "kind": "advance_turns",
       "label": "advance_rider_camp_light_signal_window",
-      "count": 310,
+      "count": 200,
       "settle_seconds": 0.8,
       "capture_after": true,
       "proof_deferred_to_label": "audit_zombie_rider_camp_light_band_trace",
