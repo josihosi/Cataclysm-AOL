@@ -41,7 +41,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-For the 2026-07-17 release-recovery cycle, `port/cdda-master` is the explicitly promoted working/integration branch. It contains `upstream/master` at `89c6aef1b3` through merge `0fdc380371`, with the hardened C-AOL production stack checkpointed through `dcaa9439b3` and the fail-closed macOS proof stack through `facd9cd91e`. The affected Windows/MSYS2 and Linux/WSL compile gates are green; the current Windows Python contract gates and independent exact-tree audit are green.
+For the 2026-07-17 release-recovery cycle, `port/cdda-master` is the explicitly promoted working/integration branch. It contains `upstream/master` at `89c6aef1b3` through merge `0fdc380371`, with the hardened C-AOL production stack checkpointed through `dcaa9439b3` and the fail-closed macOS proof stack through `533363fff3`. The affected Windows/MSYS2 and Linux/WSL compile gates are green; the current Windows Python contract gates and independent exact-tree audit are green.
 
 Windows owns integration edits; the Mac Mini is the exact-commit build, gameplay, and GUI verification lane. `origin/port/cdda-master` remains deliberately unadvanced until the final tested commit is green. `master` and `dev` are not to be merged over this lane or renamed yet. `josihosi/C-AOL-mirror` remains green-dot-only.
 

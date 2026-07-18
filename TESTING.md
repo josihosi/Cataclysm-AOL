@@ -60,14 +60,14 @@ Source reference:
 - upstream tip: `89c6aef1b3`
 - integration merge: `0fdc380371`
 - hardened production stack: `dcaa9439b3`
-- fail-closed proof stack: `facd9cd91e`
+- fail-closed proof stack: `533363fff3`
 - exact Mac candidate: the committed ledger checkpoint containing this receipt
 
 Latest current-candidate evidence (2026-07-18):
-- An independent exact-tree audit found no remaining actionable defect in the save/LLM fixes, fixture contracts, log-rotation/tail handling, process-liveness checks, feature-phase gates, repeatability verdicts, or macOS proof transport.
+- An independent exact-tree audit found no remaining actionable defect in the save/LLM fixes, fixture contracts, log-rotation/tail handling, process-liveness checks, feature-phase gates, repeatability verdicts, or macOS proof transport. A subsequent structured review found three result-propagation gaps; `533363fff3` fixed them so non-green startup and mixed repeatability set `ok=false` and exit nonzero, while compact child reports retain the proof/runtime fields used by repeatability.
 - Windows/MSYS2 rebuilt the eight affected production translation units with `-Werror`; the final dense-snapshot, save-compatibility, and camp-patrol test translation units also compile cleanly.
 - Linux/WSL rebuilt the eight affected production translation units and all ten affected test/helper translation units with `-Werror`.
-- The current Windows tree passes 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 54 standalone proof tests, all 71 OpenClaw discovery tests, and a real Ollama runner self-test.
+- The current Windows tree passes 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 57 standalone proof tests, all 74 non-duplicated OpenClaw discovery tests, and a real Ollama runner self-test.
 - The WSL tiled target is not credited: its installed SDL3 is older than the upstream `3.4.0` GPU-shader requirement. The exact tiled build/test/runtime gate is assigned to the correctly provisioned Mac Mini.
 
 Required evidence:
