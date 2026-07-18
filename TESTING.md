@@ -59,14 +59,15 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Source reference:
 - upstream tip: `89c6aef1b3`
 - integration merge: `0fdc380371`
-- reviewed candidate code stack: `d1b16f0a67`
-- exact Mac candidate: the ledger checkpoint containing this receipt
+- hardened production stack: `dcaa9439b3`
+- fail-closed proof stack: `facd9cd91e`
+- exact Mac candidate: the committed ledger checkpoint containing this receipt
 
 Latest current-candidate evidence (2026-07-18):
-- Fresh high-reasoning whole-diff autoreview reported no actionable findings and judged the patch correct with `0.86` confidence.
+- An independent exact-tree audit found no remaining actionable defect in the save/LLM fixes, fixture contracts, log-rotation/tail handling, process-liveness checks, feature-phase gates, repeatability verdicts, or macOS proof transport.
 - Windows/MSYS2 rebuilt the eight affected production translation units with `-Werror`; the final dense-snapshot, save-compatibility, and camp-patrol test translation units also compile cleanly.
 - Linux/WSL rebuilt the eight affected production translation units and all ten affected test/helper translation units with `-Werror`.
-- Windows and WSL each pass 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 26 OpenClaw/save-proof tests, and a real Ollama runner self-test.
+- The current Windows tree passes 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 54 standalone proof tests, all 71 OpenClaw discovery tests, and a real Ollama runner self-test.
 - The WSL tiled target is not credited: its installed SDL3 is older than the upstream `3.4.0` GPU-shader requirement. The exact tiled build/test/runtime gate is assigned to the correctly provisioned Mac Mini.
 
 Required evidence:
