@@ -897,6 +897,7 @@ class BlockingInterruptionTest(unittest.TestCase):
         )
         partial = self.classify("Spotted zombie rider nearby")
         degraded_ocr = self.classify("off, press\nto ignore monster) x 17 it\n19 tiles\nturnu")
+        repeated_ocr = self.classify("safe mode\npress\ntiles\nt0\nLIe u")
 
         self.assertEqual(prompt["status"], "known_prompt")
         self.assertEqual(prompt["classification"], "safe_mode_spotted_hostile_prompt")
@@ -904,6 +905,8 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertFalse(prompt["contaminating"])
         self.assertEqual(degraded_ocr["status"], "known_prompt")
         self.assertEqual(degraded_ocr["response_key"], "'")
+        self.assertEqual(repeated_ocr["status"], "known_prompt")
+        self.assertEqual(repeated_ocr["response_key"], "'")
         self.assertEqual(partial["status"], "unknown_prompt")
         self.assertEqual(partial["response_key"], "")
 
