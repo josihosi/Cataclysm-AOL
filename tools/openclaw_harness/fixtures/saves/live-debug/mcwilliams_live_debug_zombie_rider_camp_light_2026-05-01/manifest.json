@@ -2,7 +2,7 @@
   "name": "mcwilliams_live_debug_zombie_rider_camp_light_2026-05-01",
   "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
   "source_profile": "live-debug",
-  "description": "Harness-only zombie-rider camp-light restage: remove human NPC targets, set a mature-world midnight turn, place several bright fire fields near the player as a camp-light source, and stage two hostile riders far enough out to feed the live overmap light/convergence hook without relying on natural random discovery.",
+  "description": "Harness-only zombie-rider camp-light restage: remove human NPC targets, set a mature-world midnight turn while preserving the remaining delay of scheduled effects, place several bright fire fields near the player as a camp-light source, and stage two hostile riders far enough out to feed the live overmap light/convergence hook without relying on natural random discovery.",
   "save_transforms": [
     {
       "kind": "remove_overmap_npcs",
@@ -12,7 +12,8 @@
     {
       "kind": "game_turn",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "turn": 68256000
+      "turn": 68256000,
+      "shift_queued_eocs": true
     },
     {
       "kind": "bandit_site_roster_shape",

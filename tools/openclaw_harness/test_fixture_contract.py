@@ -42,8 +42,10 @@ RELEASE_GATE_SCENARIOS = (
 
 from startup_harness import (  # noqa: E402
     StartupPlan,
+    apply_game_turn_to_payload,
     load_profile_config,
     load_scenario,
+    normalize_fixture_save_transforms,
     resolve_fixture_payload,
     resolve_profile_name,
     resolve_startup_config_profile,
@@ -889,6 +891,130 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(SystemExit, r"remove_overmap_npcs"):
                     resolve_fixture_payload("derived", "live-debug")
+
+    def test_game_turn_time_warp_shifts_player_and_global_queued_eocs(self) -> None:
+        payload = {
+            "turn": 5241593,
+            "queued_global_effect_on_conditions": [
+                {
+                    "time": 6736754,
+                    "eoc": "EOC_PORTAL_STORM_WARN_OR_CAUSE_RECURRING",
+                    "context": {"alpha": "preserved"},
+                },
+                {
+                    "time": 5241593,
+                    "eoc": "EOC_IMMEDIATELY_DUE",
+                    "context": {"beta": "preserved"},
+                },
+            ],
+            "player": {
+                "queued_effect_on_conditions": [
+                    {
+                        "time": 5241600,
+                        "eoc": "EOC_PLAYER_EVENT",
+                        "context": {"gamma": "preserved"},
+                    },
+                ],
+            },
+        }
+
+        report = apply_game_turn_to_payload(
+            payload,
+            new_turn=68256000,
+            shift_queued_eocs=True,
+        )
+
+        self.assertEqual(report["turn_delta"], 63014407)
+        self.assertEqual(payload["turn"], 68256000)
+        global_queue = payload["queued_global_effect_on_conditions"]
+        player_queue = payload["player"]["queued_effect_on_conditions"]
+        self.assertEqual([entry["time"] for entry in global_queue], [69751161, 68256000])
+        self.assertEqual(player_queue[0]["time"], 68256007)
+        self.assertEqual(global_queue[0]["context"], {"alpha": "preserved"})
+        self.assertEqual(global_queue[1]["context"], {"beta": "preserved"})
+        self.assertEqual(player_queue[0]["context"], {"gamma": "preserved"})
+        self.assertEqual(report["queue_reports"]["global"]["count"], 2)
+        self.assertEqual(report["queue_reports"]["player"]["count"], 1)
+
+    def test_game_turn_without_queue_shift_preserves_existing_transform_behavior(self) -> None:
+        payload = {
+            "turn": 100,
+            "queued_global_effect_on_conditions": [{"time": 150, "eoc": "EOC_GLOBAL"}],
+            "player": {"queued_effect_on_conditions": [{"time": 175, "eoc": "EOC_PLAYER"}]},
+        }
+
+        report = apply_game_turn_to_payload(payload, new_turn=200, shift_queued_eocs=False)
+
+        self.assertEqual(payload["turn"], 200)
+        self.assertEqual(payload["queued_global_effect_on_conditions"][0]["time"], 150)
+        self.assertEqual(payload["player"]["queued_effect_on_conditions"][0]["time"], 175)
+        self.assertEqual(report["queue_reports"], {})
+
+    def test_game_turn_queue_shift_fails_closed_for_malformed_queues(self) -> None:
+        invalid_payloads = [
+            ({
+                "turn": 100,
+                "queued_global_effect_on_conditions": {},
+                "player": {"queued_effect_on_conditions": []},
+            }, "is not a list"),
+            ({
+                "turn": 100,
+                "queued_global_effect_on_conditions": ["bad entry"],
+                "player": {"queued_effect_on_conditions": []},
+            }, "is not an object"),
+            ({
+                "turn": 100,
+                "queued_global_effect_on_conditions": [{"time": "later", "eoc": "EOC_GLOBAL"}],
+                "player": {"queued_effect_on_conditions": []},
+            }, "non-integer time"),
+        ]
+        for payload, expected_error in invalid_payloads:
+            with self.subTest(payload=payload):
+                with self.assertRaisesRegex(SystemExit, expected_error):
+                    apply_game_turn_to_payload(payload, new_turn=200, shift_queued_eocs=True)
+
+        invalid_player_queue = {
+            "turn": 100,
+            "queued_global_effect_on_conditions": [{"time": 150, "eoc": "EOC_GLOBAL"}],
+            "player": {"queued_effect_on_conditions": ["bad entry"]},
+        }
+        with self.assertRaisesRegex(SystemExit, "is not an object"):
+            apply_game_turn_to_payload(invalid_player_queue, new_turn=200, shift_queued_eocs=True)
+        self.assertEqual(invalid_player_queue["queued_global_effect_on_conditions"][0]["time"], 150)
+
+    def test_rider_release_fixtures_shift_queued_eocs_with_time_jump(self) -> None:
+        manifest_path = Path("fixture") / "manifest.json"
+        normalized = normalize_fixture_save_transforms(
+            [{
+                "kind": "game_turn",
+                "player_save": "player.sav.zzip",
+                "turn": 68256000,
+                "shift_queued_eocs": True,
+            }],
+            manifest_path=manifest_path,
+        )
+        self.assertTrue(normalized[0]["shift_queued_eocs"])
+        with self.assertRaisesRegex(SystemExit, "must be boolean"):
+            normalize_fixture_save_transforms(
+                [{
+                    "kind": "game_turn",
+                    "player_save": "player.sav.zzip",
+                    "turn": 68256000,
+                    "shift_queued_eocs": "true",
+                }],
+                manifest_path=manifest_path,
+            )
+
+        fixture_names = [
+            "mcwilliams_live_debug_zombie_rider_camp_light_2026-05-01",
+            "mcwilliams_live_debug_zombie_rider_no_camp_light_2026-05-01",
+        ]
+        for fixture_name in fixture_names:
+            with self.subTest(fixture=fixture_name):
+                transforms = resolve_fixture_payload(fixture_name, "live-debug")["save_transforms"]
+                game_turn = next(transform for transform in transforms if transform["kind"] == "game_turn")
+                self.assertEqual(game_turn["turn"], 68256000)
+                self.assertTrue(game_turn["shift_queued_eocs"])
 
     def test_high_threat_allied_stalker_fixture_keeps_source_followers(self) -> None:
         resolved = resolve_fixture_payload(

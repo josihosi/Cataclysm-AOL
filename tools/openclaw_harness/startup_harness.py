@@ -6903,11 +6903,19 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(f"Fixture save_transforms[{index}] needs integer turn in {manifest_path}")
             if turn < 0:
                 raise SystemExit(f"Fixture save_transforms[{index}] needs turn >= 0 in {manifest_path}")
-            transforms.append({
+            shift_queued_eocs = raw.get("shift_queued_eocs", False)
+            if not isinstance(shift_queued_eocs, bool):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] game_turn shift_queued_eocs must be boolean in {manifest_path}"
+                )
+            normalized_game_turn = {
                 "kind": kind,
                 "player_save": player_save,
                 "turn": turn,
-            })
+            }
+            if shift_queued_eocs:
+                normalized_game_turn["shift_queued_eocs"] = True
+            transforms.append(normalized_game_turn)
             continue
 
         if kind == "bandit_camp_map_lead":
@@ -9225,6 +9233,65 @@ def audit_saved_hordes_near_player(
     }
 
 
+def apply_game_turn_to_payload(
+    payload: Dict[str, Any],
+    *,
+    new_turn: int,
+    shift_queued_eocs: bool,
+) -> Dict[str, Any]:
+    try:
+        old_turn = int(payload.get("turn"))
+    except (TypeError, ValueError):
+        raise SystemExit("Player save game-turn transform needs integer top-level turn")
+
+    turn_delta = new_turn - old_turn
+    queue_reports: Dict[str, Dict[str, Any]] = {}
+    if shift_queued_eocs:
+        player = payload.get("player")
+        if not isinstance(player, dict):
+            raise SystemExit("Player save game-turn transform is missing player object")
+        queues = (
+            ("global", payload, "queued_global_effect_on_conditions"),
+            ("player", player, "queued_effect_on_conditions"),
+        )
+        queue_plans: List[Tuple[str, List[Dict[str, Any]], List[int]]] = []
+        for scope, container, key in queues:
+            queued = container.get(key)
+            if not isinstance(queued, list):
+                raise SystemExit(f"Player save {key} is not a list")
+            old_times: List[int] = []
+            for index, entry in enumerate(queued):
+                if not isinstance(entry, dict):
+                    raise SystemExit(f"Player save {key}[{index}] is not an object")
+                try:
+                    old_time = int(entry.get("time"))
+                except (TypeError, ValueError):
+                    raise SystemExit(f"Player save {key}[{index}] has non-integer time")
+                old_times.append(old_time)
+            queue_plans.append((scope, queued, old_times))
+
+        for scope, queued, old_times in queue_plans:
+            for entry, old_time in zip(queued, old_times):
+                entry["time"] = old_time + turn_delta
+            new_times = [old_time + turn_delta for old_time in old_times]
+            queue_reports[scope] = {
+                "count": len(old_times),
+                "old_min_time": min(old_times) if old_times else None,
+                "old_max_time": max(old_times) if old_times else None,
+                "new_min_time": min(new_times) if new_times else None,
+                "new_max_time": max(new_times) if new_times else None,
+            }
+
+    payload["turn"] = new_turn
+    return {
+        "old_turn": old_turn,
+        "new_turn": new_turn,
+        "turn_delta": turn_delta,
+        "shift_queued_eocs": shift_queued_eocs,
+        "queue_reports": queue_reports,
+    }
+
+
 def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_save = world_dir / player_save_name
@@ -9242,9 +9309,11 @@ def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dic
     if not isinstance(payload, dict):
         raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
 
-    old_turn = int(payload.get("turn", 0))
-    new_turn = int(transform.get("turn", old_turn))
-    payload["turn"] = new_turn
+    report = apply_game_turn_to_payload(
+        payload,
+        new_turn=int(transform.get("turn", payload.get("turn", 0))),
+        shift_queued_eocs=bool(transform.get("shift_queued_eocs", False)),
+    )
     extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     run_zzip(extracted_save)
     if extracted_save.exists():
@@ -9254,8 +9323,7 @@ def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dic
         "kind": "game_turn",
         "world": world_dir.name,
         "player_save": player_save_name,
-        "old_turn": old_turn,
-        "new_turn": new_turn,
+        **report,
     }
 
 
