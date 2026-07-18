@@ -96,6 +96,26 @@
       "expected_visible_fact": "bounded live turn window matches the positive camp-light cadence duration while no staged camp-light source exists"
     },
     {
+      "kind": "audit_log_contains",
+      "label": "audit_zombie_rider_no_camp_light_rider_liveness",
+      "since_label": "advance_rider_no_camp_light_control_window",
+      "required_any_line_patterns": [
+        [
+          "zombie_rider target_probe:",
+          "eval_us="
+        ],
+        [
+          "zombie_rider live_plan:",
+          "camp_posture=none",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_no_camp_light_rider_liveness_missing",
+      "abort_reason": "same-run artifact contained no zombie-rider target-probe or no-camp live-plan line, so the bounded control window did not prove rider processing",
+      "expected_visible_fact": "same-run debug artifact proves at least one staged rider ran its target probe or no-camp local planner during the bounded control window"
+    },
+    {
       "kind": "audit_log_not_contains",
       "label": "audit_zombie_rider_no_camp_light_no_band_trace",
       "since_label": "advance_rider_no_camp_light_control_window",

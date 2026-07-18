@@ -1115,6 +1115,51 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertFalse(failures, "\n".join(failures))
 
+    def test_no_camp_light_control_requires_same_run_rider_liveness(self) -> None:
+        scenario = load_scenario("zombie_rider.live_no_camp_light_control_mcw")
+        steps = {
+            str(step.get("label", "")).strip(): step
+            for step in scenario.get("steps", [])
+        }
+        liveness = steps["audit_zombie_rider_no_camp_light_rider_liveness"]
+
+        self.assertEqual(liveness["kind"], "audit_log_contains")
+        self.assertEqual(
+            liveness["since_label"],
+            "advance_rider_no_camp_light_control_window",
+        )
+        self.assertTrue(liveness["abort_on_metadata_failure"])
+        self.assertEqual(
+            liveness["required_any_line_patterns"],
+            [
+                ["zombie_rider target_probe:", "eval_us="],
+                ["zombie_rider live_plan:", "camp_posture=none", "eval_us="],
+            ],
+        )
+
+    def test_no_camp_light_control_keeps_separate_deferred_negative_audit(self) -> None:
+        scenario = load_scenario("zombie_rider.live_no_camp_light_control_mcw")
+        steps = list(scenario.get("steps", []))
+        labels = [str(step.get("label", "")).strip() for step in steps]
+        liveness_label = "audit_zombie_rider_no_camp_light_rider_liveness"
+        negative_label = "audit_zombie_rider_no_camp_light_no_band_trace"
+        negative = steps[labels.index(negative_label)]
+
+        self.assertLess(labels.index(liveness_label), labels.index(negative_label))
+        self.assertEqual(negative["kind"], "audit_log_not_contains")
+        self.assertEqual(
+            negative["since_label"],
+            "advance_rider_no_camp_light_control_window",
+        )
+        self.assertTrue(negative["abort_on_metadata_failure"])
+        self.assertTrue(
+            all(
+                step.get("proof_deferred_to_label") == negative_label
+                for step in steps
+                if step.get("capture_after")
+            )
+        )
+
     def test_staged_worlds_have_tracked_player_save(self) -> None:
         repo = HARNESS_DIR.parents[1]
         tracked = tracked_paths(repo)
