@@ -18,6 +18,10 @@ void enqueue_requests( const std::vector<npc *> &listeners,
                        const std::string &player_utterance );
 void prewarm();
 void process_responses();
+void process_response_for_test( npc &listener, const std::string &request_id,
+                                const std::string &player_utterance,
+                                const std::string &response_text );
+bool has_request_state_for_test( const npc &listener, const std::string &request_id );
 void enqueue_random_requests();
 void log_event( const std::string &message );
 

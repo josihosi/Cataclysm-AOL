@@ -4034,6 +4034,35 @@ class llm_intent_manager
             }
         }
 
+        void process_response_for_test( npc &listener, const std::string &request_id,
+                                        const std::string &player_utterance,
+                                        const std::string &response_text ) {
+            llm_intent_response response;
+            response.request_id = request_id;
+            response.npc_id = listener.getID();
+            response.npc_name = listener.get_name();
+            response.ok = true;
+            response.text = response_text;
+            response.raw = response_text;
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                utterance_by_request[request_id] = player_utterance;
+                snapshot_origin_by_request[request_id] = listener.pos_abs();
+                primary_request_ids.insert( request_id );
+                pending_primary_npcs.insert( listener.getID() );
+                response_queue.push( std::move( response ) );
+            }
+            process_responses();
+        }
+
+        bool has_request_state_for_test( const npc &listener, const std::string &request_id ) {
+            std::lock_guard<std::mutex> lock( mutex );
+            return utterance_by_request.count( request_id ) > 0 ||
+                   snapshot_origin_by_request.count( request_id ) > 0 ||
+                   primary_request_ids.count( request_id ) > 0 ||
+                   pending_primary_npcs.count( listener.getID() ) > 0;
+        }
+
     private:
         std::mutex mutex;
         std::condition_variable cv;
@@ -4175,6 +4204,19 @@ void prewarm()
 void process_responses()
 {
     get_manager().process_responses();
+}
+
+void process_response_for_test( npc &listener, const std::string &request_id,
+                                const std::string &player_utterance,
+                                const std::string &response_text )
+{
+    get_manager().process_response_for_test( listener, request_id, player_utterance,
+            response_text );
+}
+
+bool has_request_state_for_test( const npc &listener, const std::string &request_id )
+{
+    return get_manager().has_request_state_for_test( listener, request_id );
 }
 
 void enqueue_random_requests()

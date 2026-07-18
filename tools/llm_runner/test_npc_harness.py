@@ -86,6 +86,23 @@ class NpcHarnessParsingTest(unittest.TestCase):
         )
         self.assertTrue(ok, error)
         self.assertEqual(actions, ["equip_melee"])
+        leading_separator = validate_response_like_game(
+            " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee"
+        )
+        self.assertEqual(
+            leading_separator["parsed_speech"],
+            "Inspecting inventory... I'm carrying a sharpened rebar.",
+        )
+        self.assertEqual(leading_separator["parsed_actions"], ["equip_melee"])
+        strict_prefix = validate_response_like_game(
+            "Listener NPC: Holding here. | hold_position"
+        )
+        self.assertEqual(strict_prefix["parsed_speech"], "Holding here.")
+        lenient_prefix = validate_response_like_game(
+            "Listener NPC: Switching weapons. | equip_melee extra_prose"
+        )
+        self.assertEqual(lenient_prefix["mode"], "lenient")
+        self.assertEqual(lenient_prefix["parsed_speech"], "Switching weapons.")
 
         ok, error, actions = validate_csv_payload("||Speech|equip_melee")
         self.assertFalse(ok)

@@ -693,20 +693,35 @@ def extract_lenient_csv(payload: str) -> Tuple[bool, str, List[str], str]:
     return True, speech, actions, "Used lenient CSV parsing."
 
 
+def strip_speaker_prefix(text: str) -> str:
+    trimmed = text.strip()
+    colon = trimmed.find(":")
+    if 0 <= colon < 40:
+        return trimmed[colon + 1:].strip()
+    return trimmed
+
+
 def validate_response_like_game(payload: str) -> Dict[str, object]:
     ok, error, parsed_actions = validate_csv_payload(payload)
+    parsed_payload = payload
     if not ok:
         normalized = normalize_csv_separators(payload)
         if normalized != payload:
             ok, error, parsed_actions = validate_csv_payload(normalized)
+            if ok:
+                parsed_payload = normalized
     if ok:
+        fields = [field.strip() for field in parsed_payload.split("|")]
+        if len(fields) > 1 and not fields[0]:
+            fields.pop(0)
         return {
             "ok": True,
             "mode": "strict",
             "error": "",
+            "parsed_speech": strip_speaker_prefix(fields[0]),
             "parsed_actions": parsed_actions,
         }
-    lenient_ok, _speech, lenient_actions, lenient_error = extract_lenient_csv(payload)
+    lenient_ok, speech, lenient_actions, lenient_error = extract_lenient_csv(payload)
     if lenient_ok:
         attack_target = extract_attack_target_hint(payload)
         if attack_target:
@@ -715,12 +730,14 @@ def validate_response_like_game(payload: str) -> Dict[str, object]:
             "ok": True,
             "mode": "lenient",
             "error": lenient_error,
+            "parsed_speech": strip_speaker_prefix(speech),
             "parsed_actions": lenient_actions,
         }
     return {
         "ok": False,
         "mode": "strict",
         "error": error,
+        "parsed_speech": "",
         "parsed_actions": [],
     }
 
@@ -780,6 +797,29 @@ def run_self_test() -> int:
     )
     check(ok and not error and actions == ["equip_melee"],
           "strict CSV tolerates one echoed leading separator")
+    leading_separator = validate_response_like_game(
+        " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee"
+    )
+    check(
+        leading_separator.get("parsed_speech") ==
+        "Inspecting inventory... I'm carrying a sharpened rebar.",
+        "game-like validation preserves speech after one echoed leading separator",
+    )
+    strict_prefix = validate_response_like_game(
+        "Listener NPC: Holding here. | hold_position"
+    )
+    check(
+        strict_prefix.get("parsed_speech") == "Holding here.",
+        "game-like strict validation strips a speaker prefix from visible speech",
+    )
+    lenient_prefix = validate_response_like_game(
+        "Listener NPC: Switching weapons. | equip_melee extra_prose"
+    )
+    check(
+        lenient_prefix.get("mode") == "lenient" and
+        lenient_prefix.get("parsed_speech") == "Switching weapons.",
+        "game-like lenient validation strips a speaker prefix from visible speech",
+    )
 
     ok, error, actions = validate_csv_payload("||Speech|equip_melee")
     check(not ok and error == "CSV speech field missing." and not actions,

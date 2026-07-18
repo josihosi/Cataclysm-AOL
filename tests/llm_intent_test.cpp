@@ -14,6 +14,7 @@
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
+#include "messages.h"
 #include "monster.h"
 #include "npc.h"
 #include "options_helpers.h"
@@ -241,6 +242,43 @@ TEST_CASE( "llm_intent_action_csv_applies_move_and_attack_contract", "[llm_inten
     CHECK( llm_intent::parse_action_csv_for_test(
                normalized, actions, attack_target, move_delta, terminal_state, error ) );
     CHECK( move_delta == point( -20, 20 ) );
+}
+
+TEST_CASE( "llm_intent_leading_separator_reaches_visible_speech_and_action_route",
+           "[llm_intent]" )
+{
+    override_option opt_llm_intent( "LLM_INTENT_ENABLE", "true" );
+    setup_snapshot_test_scene();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 48, 50, 0 ) );
+
+    npc &listener = spawn_test_npc_at( point_bub_ms( 50, 50 ), "Listener NPC" );
+    listener.set_fac( faction_your_followers );
+    REQUIRE( listener.is_player_ally() );
+    Messages::clear_messages();
+
+    llm_intent::process_response_for_test(
+        listener, "req-leading-separator", "What are you carrying?",
+        " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee" );
+
+    const std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages( 0 );
+    REQUIRE_FALSE( messages.empty() );
+    CHECK( messages.back().second ==
+           "Listener NPC says: \"Inspecting inventory... I'm carrying a sharpened rebar.\"" );
+    CHECK( listener.has_llm_intent_actions() );
+    CHECK( listener.get_llm_intent_actions_for_test() ==
+           std::vector<llm_intent_action>{ llm_intent_action::equip_melee } );
+    CHECK_FALSE( llm_intent::has_request_state_for_test( listener, "req-leading-separator" ) );
+
+    const std::vector<npc::llm_intent_memory_entry> memory = listener.get_llm_intent_memory();
+    REQUIRE_FALSE( memory.empty() );
+    CHECK( memory.back().player_utterance == "What are you carrying?" );
+    CHECK( memory.back().npc_response ==
+           "Inspecting inventory... I'm carrying a sharpened rebar." );
+    CHECK( memory.back().actions == std::vector<std::string>{ "equip_melee" } );
 }
 
 TEST_CASE( "llm_intent_machine_event_log_preserves_utf8_json_punctuation", "[llm_intent]" )

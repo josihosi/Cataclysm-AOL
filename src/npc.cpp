@@ -3255,6 +3255,17 @@ bool npc::has_llm_intent_actions() const
     return state.active != llm_intent_action::none || !state.queue.empty();
 }
 
+std::vector<llm_intent_action> npc::get_llm_intent_actions_for_test() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    std::vector<llm_intent_action> actions;
+    if( state.active != llm_intent_action::none ) {
+        actions.push_back( state.active );
+    }
+    actions.insert( actions.end(), state.queue.begin(), state.queue.end() );
+    return actions;
+}
+
 bool npc::is_friendly( const Character &p ) const
 {
     return is_ally( p ) || ( p.is_avatar() && ( is_walking_with() || is_player_ally() ) );
