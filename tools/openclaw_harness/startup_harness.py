@@ -141,7 +141,8 @@ STARTUP_HUD_BODY_PATTERNS: Tuple[Pattern[str], ...] = (
 STARTUP_HUD_STATUS_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\bmove\s*:", re.IGNORECASE),
     re.compile(r"\bsafe\s*:", re.IGNORECASE),
-    re.compile(r"\bactivity\s*:", re.IGNORECASE),
+    re.compile(r"\b(?:activity|hctivitu)\s*:", re.IGNORECASE),
+    re.compile(r"\bwield\s*:", re.IGNORECASE),
     re.compile(r"\bweary(?:\s+malus)?\s*:", re.IGNORECASE),
 )
 STARTUP_BLOCKING_OVERLAY_PATTERNS: Tuple[Pattern[str], ...] = (

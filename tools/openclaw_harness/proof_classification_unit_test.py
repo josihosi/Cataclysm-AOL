@@ -1558,6 +1558,31 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertTrue(probe["gameplay_hud_present"])
         self.assertEqual(probe["classification"], "green_gameplay_hud_present")
 
+    def test_mac_sidebar_ocr_activity_and_wield_fallback_counts_as_gameplay_hud(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": [
+                    "L REG",
+                    "P LES",
+                    "? ARM",
+                    "Per:",
+                    "Dex: 8",
+                    "Hctivitu: None",
+                    "thirsti",
+                    "12:00:00AM",
+                    "Wield: fists",
+                    "your left foot getting warm.",
+                ],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertTrue(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "green_gameplay_hud_present")
+        self.assertIn("Hctivitu: None", probe["hud_status_markers"])
+
     def test_body_label_without_map_status_is_not_enough(self) -> None:
         probe = startup_screen_probe_classification(
             ocr_payload={"ok": True, "lines": ["ARM"]},
