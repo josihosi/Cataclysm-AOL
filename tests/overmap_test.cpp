@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <cmath>
 #include <cstdio>
 #include <functional>
@@ -18,6 +19,7 @@
 
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "city.h"
 #include "common_types.h"
 #include "coordinates.h"
@@ -51,14 +53,7 @@
 #include "vehicle.h"
 #include "vpart_position.h"
 
-static const oter_str_id oter_cabin( "cabin" );
-static const oter_str_id oter_cabin_east( "cabin_east" );
-static const oter_str_id oter_cabin_north( "cabin_north" );
-static const oter_str_id oter_cabin_south( "cabin_south" );
-static const oter_str_id oter_cabin_west( "cabin_west" );
-
 static const overmap_special_id overmap_special_Cabin( "Cabin" );
-static const overmap_special_id overmap_special_Lab( "Lab" );
 
 class overmap_test_helper
 {
@@ -71,6 +66,13 @@ class overmap_test_helper
         static const std::array<tripoint_om_omt, 4> &get_highway_connections(
             const overmap &om ) {
             return om.highway_connections;
+        }
+        static bool highway_select_end_points(
+            overmap &om, const std::vector<const overmap *> &neighbor_overmaps,
+            std::array<tripoint_om_omt, 4> &end_points,
+            std::bitset<4> &neighbor_connections ) {
+            return om.highway_select_end_points( neighbor_overmaps, end_points,
+                                                 neighbor_connections, std::bitset<4>(), 0 );
         }
 };
 
@@ -202,73 +204,107 @@ TEST_CASE( "default_overmap_generation_always_succeeds", "[overmap][slow]" )
 
 TEST_CASE( "default_overmap_generation_has_non_mandatory_specials_at_origin", "[overmap][slow]" )
 {
-    const point_abs_om origin{};
-
-    overmap_special mandatory;
-    overmap_special optional;
-
     overmap_buffer.clear();
-    // Get some specific overmap specials so we can assert their presence later.
-    // This should probably be replaced with some custom specials created in
-    // memory rather than tying this test to these, but it works for now...
-    for( const overmap_special &elem : overmap_specials::get_all() ) {
-        if( elem.id == overmap_special_Cabin ) {
-            optional = elem;
-        } else if( elem.id == overmap_special_Lab ) {
-            mandatory = elem;
+    on_out_of_scope clear_overmaps_after_test( []() {
+        overmap_buffer.clear();
+    } );
+    // Other tests can save the shared world.  clear() drops RAM state but does
+    // not delete overmap files, and populate() would load one instead of using
+    // this test's custom special batch.
+    point_abs_om origin;
+    bool found_unsaved_origin = false;
+    for( const point_abs_om &candidate : closest_points_first( point_abs_om(), 50 ) ) {
+        bool block_is_unsaved = true;
+        for( const point_abs_om &nearby : closest_points_first( candidate, 2 ) ) {
+            if( overmap_buffer.has( nearby ) ) {
+                block_is_unsaved = false;
+                break;
+            }
+        }
+        if( block_is_unsaved ) {
+            origin = candidate;
+            found_unsaved_origin = true;
+            break;
         }
     }
+    REQUIRE( found_unsaved_origin );
 
-    // Make this mandatory special impossible to place.
-    const_cast<int &>( mandatory.get_constraints().city_size.min ) = 999;
+    const overmap_special_id mandatory_id( "test_impossible_mandatory_special" );
+    const overmap_special_id optional_id( "test_optional_special" );
+    const cata::flat_set<overmap_location_id> open_air_locations = {
+        overmap_location_id( "open_air" )
+    };
+    const overmap_special_terrain open_air_terrain(
+        tripoint_rel_omt( 0, 0, 1 ), oter_str_id( "open_air" ),
+        open_air_locations, {} );
+    overmap_special mandatory( mandatory_id, open_air_terrain );
+    overmap_special optional( optional_id, open_air_terrain );
 
-    // Construct our own overmap_special_batch containing only our single mandatory
-    // and single optional special, so we can make some assertions.
-    std::vector<const overmap_special *> specials;
-    specials.push_back( &mandatory );
-    specials.push_back( &optional );
+    overmap_special_placement_constraints &mandatory_constraints =
+        const_cast<overmap_special_placement_constraints &>( mandatory.get_constraints() );
+    mandatory_constraints.city_size.min = 999;
+    mandatory_constraints.city_size.max = 999;
+    mandatory_constraints.occurrences.min = 1;
+    mandatory_constraints.occurrences.max = 1;
+
+    overmap_special_placement_constraints &optional_constraints =
+        const_cast<overmap_special_placement_constraints &>( optional.get_constraints() );
+    optional_constraints.occurrences.min = 0;
+    optional_constraints.occurrences.max = 1;
+
+    const std::vector<const overmap_special *> specials = { &mandatory, &optional };
     overmap_special_batch test_specials = overmap_special_batch( origin, specials );
 
-    // Run the overmap creation, which will try to place our specials.
+    // The impossible mandatory special may spill placement attempts into nearby
+    // overmaps.  The always-placeable optional marker must still be placed on
+    // the origin overmap after that recursion unwinds.
     overmap_buffer.create_custom_overmap( origin, test_specials );
 
-    // Get the origin overmap...
-    overmap *test_overmap = overmap_buffer.get_existing( origin );
+    bool created_neighbor = false;
+    for( const point_abs_om &nearby : closest_points_first( origin, 2 ) ) {
+        if( nearby != origin && overmap_buffer.get_existing( nearby ) != nullptr ) {
+            created_neighbor = true;
+            break;
+        }
+    }
+    REQUIRE( created_neighbor );
 
-    // ...and assert that the optional special exists on this map.
+    overmap *test_overmap = overmap_buffer.get_existing( origin );
+    REQUIRE( test_overmap != nullptr );
+
     bool found_optional = false;
     for( int x = 0; x < OMAPX; ++x ) {
         for( int y = 0; y < OMAPY; ++y ) {
-            const oter_id t = test_overmap->ter( { x, y, 0 } );
-            if( t->id == oter_cabin ||
-                t->id == oter_cabin_north || t->id == oter_cabin_east ||
-                t->id == oter_cabin_south || t->id == oter_cabin_west ) {
+            if( test_overmap->overmap_special_at( { x, y, 1 } ) == optional_id ) {
                 found_optional = true;
             }
         }
     }
 
-    INFO( "Failed to place optional special on origin " );
-    CHECK( found_optional == true );
+    CHECK( found_optional );
 }
 
 TEST_CASE( "overmap_special_instance_origins_roundtrip", "[overmap][save]" )
 {
     const point_abs_om origin{};
+    const overmap_special &single_cabin = overmap_special_Cabin.obj();
+    const city no_city;
+    const std::array<tripoint_om_omt, 2> placement_origins = {
+        tripoint_om_omt( 30, 30, 0 ), tripoint_om_omt( 90, 90, 0 )
+    };
+    std::map<tripoint_om_omt, int> expected_origin_counts;
 
-    overmap_buffer.clear();
-    overmap_special single_cabin = overmap_special_Cabin.obj();
-    single_cabin.force_one_occurrence();
-    std::vector<const overmap_special *> specials;
-    specials.push_back( &single_cabin );
-    specials.push_back( &single_cabin );
-    overmap_special_batch test_specials = overmap_special_batch( origin, specials );
-    overmap_buffer.create_custom_overmap( origin, test_specials );
+    // Place directly on an isolated overmap so this serialization test does not
+    // depend on random world terrain or overmaps left in the shared test buffer.
+    std::unique_ptr<overmap> test_overmap = std::make_unique<overmap>( origin );
+    for( const tripoint_om_omt &placement_origin : placement_origins ) {
+        const std::vector<tripoint_om_omt> placed = test_overmap->place_special(
+                    single_cabin, placement_origin, om_direction::type::north, no_city, false, true );
+        REQUIRE( !placed.empty() );
+        expected_origin_counts[placement_origin] = static_cast<int>( placed.size() );
+    }
 
-    overmap *test_overmap = overmap_buffer.get_existing( origin );
-    REQUIRE( test_overmap != nullptr );
-
-    const auto collect_origin_counts = []( const overmap &om ) {
+    const auto collect_origin_counts = []( const overmap & om ) {
         std::map<tripoint_om_omt, int> counts;
         for( int x = 0; x < OMAPX; ++x ) {
             for( int y = 0; y < OMAPY; ++y ) {
@@ -288,11 +324,7 @@ TEST_CASE( "overmap_special_instance_origins_roundtrip", "[overmap][save]" )
     };
 
     const std::map<tripoint_om_omt, int> live_origin_counts = collect_origin_counts( *test_overmap );
-    REQUIRE( live_origin_counts.size() == 2 );
-    for( const auto &[placement_origin, count] : live_origin_counts ) {
-        CAPTURE( placement_origin );
-        CHECK( count == 2 );
-    }
+    CHECK( live_origin_counts == expected_origin_counts );
 
     std::ostringstream serialized;
     test_overmap->serialize( serialized );
@@ -1019,76 +1051,31 @@ TEST_CASE( "highway_connections_default_to_invalid", "[overmap][highway]" )
 
 TEST_CASE( "highway_neighbor_missing_connections_no_crash", "[overmap][highway]" )
 {
-    overmap_buffer.clear();
-
-    // Find a clean block with no on-disk saves.
-    point_abs_om cluster_origin;
-    bool found_cluster = false;
-    for( const point_abs_om &candidate : closest_points_first( point_abs_om(), 50 ) ) {
-        bool block_clean = true;
-        for( const point_abs_om &p : closest_points_first( candidate, 0, 4 ) ) {
-            if( overmap_buffer.has( p ) ) {
-                block_clean = false;
-                break;
-            }
-        }
-        if( block_clean ) {
-            cluster_origin = candidate;
-            found_cluster = true;
-            break;
-        }
-    }
-    overmap_buffer.clear();
-    REQUIRE( found_cluster );
-
-    // Generate a radius-2 cluster, leaving an ungenerated ring around it.
-    for( const point_abs_om &om_pos : closest_points_first( cluster_origin, 0, 2 ) ) {
-        const point_abs_omt omt = project_to<coords::omt>( om_pos );
-        overmap_buffer.ter( tripoint_abs_omt( omt, 0 ) );
-    }
-
-    // Find a boundary highway overmap with a valid outward connection
-    // toward an ungenerated neighbor.
-    overmap *target = nullptr;
-    point_abs_om target_pos;
-    int outward_dir = -1;
-    for( const point_abs_om &om_pos : closest_points_first( cluster_origin, 2, 2 ) ) {
-        overmap *om = overmap_buffer.get_existing( om_pos );
-        if( om == nullptr ) {
-            continue;
-        }
-        const auto &conns = overmap_test_helper::get_highway_connections( *om );
-        for( int i = 0; i < 4; i++ ) {
-            if( conns[i] == tripoint_om_omt::zero || conns[i] == tripoint_om_omt::invalid ) {
-                continue;
-            }
-            const point_abs_om neighbor = om_pos + four_adjacent_offsets[i];
-            if( overmap_buffer.get_existing( neighbor ) == nullptr ) {
-                target = om;
-                target_pos = om_pos;
-                outward_dir = i;
-                break;
-            }
-        }
-        if( target != nullptr ) {
-            break;
-        }
-    }
-    REQUIRE( target != nullptr );
-
-    // Corrupt to simulate old-save or cascading failure.
-    overmap_test_helper::set_highway_connections( *target, {
+    auto target = std::make_unique<overmap>( point_abs_om::zero );
+    auto corrupted_neighbor = std::make_unique<overmap>( point_abs_om( 0, -1 ) );
+    overmap_test_helper::set_highway_connections( *corrupted_neighbor, {
         tripoint_om_omt::zero, tripoint_om_omt::zero,
         tripoint_om_omt::zero, tripoint_om_omt::zero
     } );
 
-    // Generate the neighbor that reads the corrupted connection.
-    const point_abs_om victim = target_pos + four_adjacent_offsets[outward_dir];
+    std::vector<const overmap *> neighbors( 4, nullptr );
+    neighbors[0] = corrupted_neighbor.get();
+    std::array<tripoint_om_omt, 4> end_points = {
+        tripoint_om_omt::invalid, tripoint_om_omt::invalid,
+        tripoint_om_omt::invalid, tripoint_om_omt::invalid
+    };
+    std::bitset<4> neighbor_connections;
+    neighbor_connections.set( 0 );
+
+    bool selected = false;
     std::string dmsg = capture_debugmsg_during( [&]() {
-        const point_abs_omt omt = project_to<coords::omt>( victim );
-        overmap_buffer.ter( tripoint_abs_omt( omt, 0 ) );
+        selected = overmap_test_helper::highway_select_end_points(
+                       *target, neighbors, end_points, neighbor_connections );
     } );
 
+    CHECK( selected );
+    CHECK_FALSE( neighbor_connections[0] );
+    CHECK( end_points[0] == tripoint_om_omt::invalid );
     CHECK_THAT( dmsg, !Catch::Contains( "highway connections not initialized" ) );
 }
 
