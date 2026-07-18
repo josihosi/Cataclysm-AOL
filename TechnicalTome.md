@@ -25,6 +25,13 @@
 - Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
 - Repeated site reinforcement is deliberately modest: a site mark only gets reinforcement credit from mixed ordinary smoke/light/route activity, repeated one-kind noise stays weak, and the bonus tops out as bounded confidence/bounty amplification instead of unlocking magical settlement truth or free extraction jobs.
 
+## Zombie-rider camp-light pressure handoff
+- The overmap model keeps a bounded 36-OMT candidate envelope, but the live adapter deliberately commands only already-loaded zombie riders. It does not simulate offscreen migration or claim a complete camp siege.
+- A viable light observation carries one deterministic map-square source. Searchlights outrank ordinary lights when both share an OMT, then intensity and coordinates break ties, so scan order cannot change the target square.
+- Each selected rider receives a serialized, expiring Creature-value intent containing posture, exact source, formation slot, and expiry turn. A rider is reserved after the first light cluster selects it, so another cluster in the same scan cannot overwrite that order.
+- Posture is consumed by normal monster planning: lone riders investigate to a safe stand-off, intact bands circle on reachable danger-free routes when no breach exists, a direct attack requires a visible defender and actionable opening, and wounded riders withdraw. Healthy attacking strength excludes selected riders that are withdrawing, and an empty bow does not override an active circle order.
+- The live harness contract requires both the producer and consumer sides: distinct slot-0 and slot-1 intent writes plus distinct `decision=circle_harass` planning lines. A chooser result or generic log line mentioning the posture is not behavioral proof.
+
 ## Smart Zone Manager v1 spine
 - Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.
 - The current v1 packet is deliberately narrow: one crafting niche, one food/drink niche, one equipment niche, plus support zones for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
