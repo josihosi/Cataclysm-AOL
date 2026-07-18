@@ -1170,31 +1170,17 @@ static bool zombie_rider_camp_target_relevant(
                      std::abs( target_pos.y() - intent.source.y() ) ) <= 30;
 }
 
-static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monster &rider,
-        map &here, const tripoint_abs_ms &desired )
+static std::optional<tripoint_abs_ms> zombie_rider_camp_reachable_destination_near(
+    monster &rider, map &here, const tripoint_bub_ms &waypoint, int &route_attempts,
+    int attempt_limit )
 {
-    tripoint_bub_ms desired_bub = here.get_bub( desired );
-    const int route_limit = rider.get_pathfinding_settings().max_dist;
-    // Leave enough of the route budget for a local detour around camp walls.
-    constexpr int route_detour_margin = 10;
-    const int desired_distance = rl_dist( rider.pos_bub(), desired_bub );
-    if( route_limit > route_detour_margin &&
-        desired_distance > route_limit - route_detour_margin ) {
-        const int delta_x = desired_bub.x() - rider.pos_bub().x();
-        const int delta_y = desired_bub.y() - rider.pos_bub().y();
-        const int span = std::max( std::abs( delta_x ), std::abs( delta_y ) );
-        const int hop = route_limit - route_detour_margin;
-        desired_bub = tripoint_bub_ms( rider.pos_bub().x() + delta_x * hop / span,
-                                      rider.pos_bub().y() + delta_y * hop / span,
-                                      rider.posz() );
-    }
-    if( !here.inbounds( desired_bub ) ) {
+    if( !here.inbounds( waypoint ) ) {
         return std::nullopt;
     }
 
     creature_tracker &creatures = get_creature_tracker();
     std::vector<std::pair<int, tripoint_bub_ms>> candidates;
-    for( const tripoint_bub_ms &candidate : here.points_in_radius( desired_bub, 4 ) ) {
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( waypoint, 4 ) ) {
         if( candidate.z() != rider.posz() || !here.inbounds( candidate ) ||
             !rider.can_move_to( candidate ) || !rider.know_danger_at( candidate ) ) {
             continue;
@@ -1204,7 +1190,7 @@ static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monste
             continue;
         }
 
-        const int score = 100 * rl_dist( candidate, desired_bub ) +
+        const int score = 100 * rl_dist( candidate, waypoint ) +
                           rl_dist( rider.pos_bub(), candidate );
         candidates.emplace_back( score, candidate );
     }
@@ -1221,13 +1207,11 @@ static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monste
         return lhs.second.x() < rhs.second.x();
     } );
 
-    constexpr int max_route_attempts = 8;
-    int route_attempts = 0;
     for( const auto &candidate : candidates ) {
         if( candidate.second == rider.pos_bub() ) {
-            return here.get_abs( candidate.second );
+            continue;
         }
-        if( route_attempts >= max_route_attempts ) {
+        if( route_attempts >= attempt_limit ) {
             break;
         }
         route_attempts++;
@@ -1238,6 +1222,52 @@ static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monste
             return rider.know_danger_at( step );
         } ) ) {
             return here.get_abs( candidate.second );
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monster &rider,
+        map &here, const tripoint_abs_ms &desired )
+{
+    const tripoint_bub_ms rider_pos = rider.pos_bub();
+    const tripoint_bub_ms desired_bub = here.get_bub( desired );
+    const int delta_x = desired_bub.x() - rider_pos.x();
+    const int delta_y = desired_bub.y() - rider_pos.y();
+    const int span = std::max( std::abs( delta_x ), std::abs( delta_y ) );
+    const int route_limit = rider.get_pathfinding_settings().max_dist;
+    if( desired_bub.z() != rider.posz() || span == 0 || route_limit <= 0 ) {
+        return std::nullopt;
+    }
+
+    // Start inside the pathfinder's distance bound, then backtrack toward the rider until a
+    // known, reachable waypoint is found.  This lets distant camp pressure advance around
+    // unseen walls instead of resolving to the rider's current tile.
+    constexpr int route_detour_margin = 10;
+    constexpr int fallback_step = 4;
+    constexpr int max_route_attempts = 12;
+    const int bounded_route_limit = route_limit > route_detour_margin ?
+                                    route_limit - route_detour_margin : route_limit;
+    int route_attempts = 0;
+    if( span <= bounded_route_limit ) {
+        return zombie_rider_camp_reachable_destination_near( rider, here, desired_bub,
+                route_attempts, max_route_attempts );
+    }
+
+    const int first_hop = std::min( span, bounded_route_limit );
+    for( int hop = first_hop; hop > 0; hop -= std::min( hop, fallback_step ) ) {
+        const tripoint_bub_ms waypoint( rider_pos.x() + delta_x * hop / span,
+                                        rider_pos.y() + delta_y * hop / span,
+                                        rider.posz() );
+        const int attempt_limit = std::min( max_route_attempts, route_attempts + 1 );
+        const std::optional<tripoint_abs_ms> reachable =
+            zombie_rider_camp_reachable_destination_near( rider, here, waypoint, route_attempts,
+                    attempt_limit );
+        if( reachable ) {
+            return reachable;
+        }
+        if( route_attempts >= max_route_attempts ) {
+            break;
         }
     }
     return std::nullopt;
