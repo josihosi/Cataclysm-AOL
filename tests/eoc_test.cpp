@@ -272,27 +272,27 @@ JsonObject find_eoc_definition( const cata_path &path, const std::string &id )
     return JsonObject();
 }
 
-JsonObject find_effect_with_member( const JsonArray &effects, const std::string &member )
+std::string find_effect_json_with_member( const JsonArray &effects, const std::string &member )
 {
     for( JsonObject effect : effects ) {
         effect.allow_omitted_members();
         if( effect.has_member( member ) ) {
-            return effect;
+            return effect.str();
         }
     }
-    return JsonObject();
+    return {};
 }
 
 effect_on_condition_id load_dimension_route_eoc( const std::string &id,
-        const std::vector<JsonObject> &effects )
+        const std::vector<std::string> &effects )
 {
-    std::string effect_json = effects.size() == 1 ? effects.front().str() : "[";
+    std::string effect_json = effects.size() == 1 ? effects.front() : "[";
     if( effects.size() > 1 ) {
         for( std::size_t index = 0; index < effects.size(); ++index ) {
             if( index != 0 ) {
                 effect_json += ",";
             }
-            effect_json += effects[index].str();
+            effect_json += effects[index];
         }
         effect_json += "]";
     }
@@ -420,9 +420,9 @@ TEST_CASE( "EOC_dimension_travel_resolves_gameplay_return_routes", "[eoc][dimens
                                           "effectoncondition" / "teleport.json";
         JsonObject sky_return = find_eoc_definition( sky_island_path, "EOC_return_OM_teleport" );
         REQUIRE( sky_return.size() != 0 );
-        JsonObject sky_dimension_travel = find_effect_with_member( sky_return.get_array( "effect" ),
-                                          "u_travel_to_dimension" );
-        REQUIRE( sky_dimension_travel.size() != 0 );
+        const std::string sky_dimension_travel = find_effect_json_with_member(
+                    sky_return.get_array( "effect" ), "u_travel_to_dimension" );
+        REQUIRE( !sky_dimension_travel.empty() );
         const effect_on_condition_id sky_return_route = load_dimension_route_eoc(
                     "EOC_TEST_ACTUAL_SKY_ISLAND_RETURN_ROUTE", { sky_dimension_travel } );
         REQUIRE( sky_return_route.is_valid() );
@@ -442,11 +442,11 @@ TEST_CASE( "EOC_dimension_travel_resolves_gameplay_return_routes", "[eoc][dimens
                                            "EOC_BOMBASTIC_PERKS_CLOSET_STORAGE_TRAVEL_BACK_FROM_CLOSETLAND" );
         REQUIRE( closetland_return.size() != 0 );
         const JsonArray closetland_effects = closetland_return.get_array( "effect" );
-        JsonObject legacy_fallback = find_effect_with_member( closetland_effects, "if" );
-        JsonObject closetland_dimension_travel = find_effect_with_member(
+        const std::string legacy_fallback = find_effect_json_with_member( closetland_effects, "if" );
+        const std::string closetland_dimension_travel = find_effect_json_with_member(
                     closetland_effects, "u_travel_to_dimension" );
-        REQUIRE( legacy_fallback.size() != 0 );
-        REQUIRE( closetland_dimension_travel.size() != 0 );
+        REQUIRE( !legacy_fallback.empty() );
+        REQUIRE( !closetland_dimension_travel.empty() );
         const effect_on_condition_id closetland_return_route = load_dimension_route_eoc(
                     "EOC_TEST_ACTUAL_CLOSETLAND_RETURN_ROUTE",
                     { legacy_fallback, closetland_dimension_travel } );
