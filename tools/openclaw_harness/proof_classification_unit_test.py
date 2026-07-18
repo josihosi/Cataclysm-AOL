@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List
 from unittest.mock import patch
 
@@ -46,9 +47,11 @@ from startup_harness import (  # noqa: E402
     require_peekaboo_permissions,
     repeatability_run_is_green,
     repeatability_run_summary,
+    run_repeatability,
     runtime_relevant_worktree_changes,
     screen_checkpoint_verdict,
     startup_proof_classification,
+    startup_result_status,
     startup_screen_probe_classification,
     summarize_peekaboo_image_capture,
     summarize_probe_step_ledger,
@@ -1248,6 +1251,106 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(run["proof_status"], "red")
         self.assertFalse(run["feature_proof"])
         self.assertFalse(repeatability_run_is_green(run))
+
+    def test_startup_command_status_rejects_non_green_proof(self) -> None:
+        for status in ("red", "yellow", ""):
+            with self.subTest(status=status or "unclassified"):
+                ok, reason = startup_result_status(
+                    base_ok=True,
+                    proof_classification={"status": status},
+                )
+                self.assertFalse(ok)
+                self.assertEqual(reason, f"startup_proof_{status or 'unclassified'}")
+
+        ok, reason = startup_result_status(
+            base_ok=True,
+            proof_classification={"status": "green"},
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_compact_repeatability_preserves_proof_and_runtime_fields(self) -> None:
+        report = {
+            "ok": True,
+            "scenario": "repeatability.compact",
+            "feature_proof": True,
+            "verdict": "artifacts_matched",
+            "proof_classification": {
+                "status": "green",
+                "verdict": "green_feature_path_proven",
+                "evidence_class": "feature-path",
+                "feature_proof": True,
+            },
+            "startup": {
+                "run_dir": "/tmp/repeatability-compact",
+                "screen": {
+                    "window_title": "C-AOL 69a04c7783",
+                    "version_matches_runtime_paths": True,
+                },
+                "proof_classification": {
+                    "status": "green",
+                    "startup_clean_for_feature_steps": True,
+                },
+            },
+            "cleanup": {"status": "terminated"},
+            "portal_storm_warning": {
+                "classification": "not_observed",
+                "contaminates_result": False,
+            },
+        }
+        compact = compact_probe_report_for_stdout(
+            report,
+            run_dir=Path("/tmp/repeatability-compact"),
+            report_filename="probe.report.json",
+        )
+        run = repeatability_run_summary(1, 0, compact, [])
+
+        self.assertEqual(run["proof_status"], "green")
+        self.assertTrue(run["feature_proof"])
+        self.assertTrue(run["version_matches_runtime_paths"])
+        self.assertFalse(run["portal_storm_warning"]["contaminates_result"])
+        self.assertTrue(repeatability_run_is_green(run))
+
+    def test_repeatability_command_returns_failure_for_mixed_proof(self) -> None:
+        report = {
+            "ok": True,
+            "feature_proof": False,
+            "verdict": "blocked_feature_phase_error_logged",
+            "proof_classification": {"status": "red", "feature_proof": False},
+            "startup": {"screen": {"version_matches_runtime_paths": True}},
+            "cleanup": {"status": "terminated"},
+        }
+        args = SimpleNamespace(
+            scenario="repeatability.mixed",
+            profile="",
+            world="",
+            fixture=None,
+            count=1,
+            replace_existing_worlds=False,
+            compact_stdout=True,
+            dry_run=False,
+        )
+        scenario = {
+            "name": "repeatability.mixed",
+            "profile": "repeatability-test",
+            "world": "Repeatability Test",
+            "repeatability_count": 1,
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with (
+                patch("startup_harness.load_scenario", return_value=scenario),
+                patch("startup_harness.resolve_profile_name", return_value="repeatability-test"),
+                patch("startup_harness.create_run_dir", return_value=run_dir),
+                patch("startup_harness.run_json_command", return_value=(0, report, "", "")),
+                patch("builtins.print"),
+            ):
+                returncode = run_repeatability(args)
+
+            summary = json.loads((run_dir / "repeatability.report.json").read_text(encoding="utf-8"))
+        self.assertEqual(returncode, 1)
+        self.assertFalse(summary["ok"])
+        self.assertEqual(summary["overall_verdict"], "mixed_repeatability")
 
     def test_wait_ledger_accepts_claim_scoped_artifact_delta_after_bounded_wait(self) -> None:
         result = classify_wait_step_ledger(

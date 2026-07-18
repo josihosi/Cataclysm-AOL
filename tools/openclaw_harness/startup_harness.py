@@ -12036,6 +12036,21 @@ def startup_proof_classification(
     }
 
 
+def startup_result_status(
+    *,
+    base_ok: bool,
+    proof_classification: Dict[str, Any],
+    failure_reason: str = "",
+) -> Tuple[bool, str]:
+    """Make the command result fail closed when startup proof is not green."""
+    proof_status = str(proof_classification.get("status", "")).strip()
+    result_ok = bool(base_ok and proof_status == "green")
+    reason = str(failure_reason or "").strip()
+    if not result_ok and not reason:
+        reason = f"startup_proof_{proof_status or 'unclassified'}"
+    return result_ok, reason
+
+
 def probe_proof_classification(
     *,
     verdict: str,
@@ -12372,13 +12387,18 @@ def run_startup(args: argparse.Namespace) -> int:
                 startup_failure_reason = "debug_log_tail_unclassified"
             else:
                 startup_failure_reason = ""
-            startup_ok = not startup_failure_reason
+            base_startup_ok = not startup_failure_reason
             proof_classification = startup_proof_classification(
-                ok=startup_ok,
+                ok=base_startup_ok,
                 screen_summary=screen_summary,
                 focus_result=focus_result,
                 debug_popups_recorded=debug_popup_evidence_count,
                 debug_errors_recorded=debug_error_evidence_count,
+                failure_reason=startup_failure_reason,
+            )
+            startup_ok, startup_failure_reason = startup_result_status(
+                base_ok=base_startup_ok,
+                proof_classification=proof_classification,
                 failure_reason=startup_failure_reason,
             )
             result = {
@@ -12599,12 +12619,14 @@ def compact_probe_report_for_stdout(
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
     startup_screen_probe = startup_screen.get("startup_screen_probe", {}) if isinstance(startup_screen.get("startup_screen_probe"), dict) else {}
     startup_classification = startup.get("proof_classification", {}) if isinstance(startup.get("proof_classification"), dict) else {}
+    proof_classification = report.get("proof_classification", {}) if isinstance(report.get("proof_classification"), dict) else {}
     artifacts = report.get("artifacts", {}) if isinstance(report.get("artifacts"), dict) else {}
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
     abort = report.get("abort", {}) if isinstance(report.get("abort"), dict) else {}
     feature_debug_guard = report.get("feature_debug_guard", {}) if isinstance(report.get("feature_debug_guard"), dict) else {}
     step_ledger_summary = report.get("step_ledger_summary", {}) if isinstance(report.get("step_ledger_summary"), dict) else {}
     step_ledger = report.get("step_ledger", []) if isinstance(report.get("step_ledger"), list) else []
+    portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
     non_green_steps = [
         {
             "label": str(row.get("label", "")),
@@ -12644,6 +12666,12 @@ def compact_probe_report_for_stdout(
         "verdict": str(report.get("verdict", "")),
         "evidence_class": str(report.get("evidence_class", "")),
         "feature_proof": bool(report.get("feature_proof", False)),
+        "proof_classification": {
+            "status": str(proof_classification.get("status", "")),
+            "verdict": str(proof_classification.get("verdict", "")),
+            "evidence_class": str(proof_classification.get("evidence_class", "")),
+            "feature_proof": bool(proof_classification.get("feature_proof", False)),
+        },
         "startup_screen": {
             "window_title": str(startup_screen.get("window_title", "")),
             "screenshot": str(startup_screen.get("png_path", startup_screen.get("screenshot", ""))),
@@ -12688,6 +12716,7 @@ def compact_probe_report_for_stdout(
             ] if isinstance(feature_debug_guard.get("error_evidence_lines"), list) else [],
             "artifact_path": str(feature_debug_guard.get("artifact_path", "")),
         },
+        "portal_storm_warning": portal_storm_warning,
         "non_green_steps": non_green_steps,
         "abort": abort,
         "cleanup": cleanup,
@@ -12769,6 +12798,8 @@ def repeatability_run_summary(
 ) -> Dict[str, Any]:
     startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
+    if not startup_screen and isinstance(report.get("startup_screen"), dict):
+        startup_screen = report.get("startup_screen", {})
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
     proof_classification = report.get("proof_classification", {}) if isinstance(report.get("proof_classification"), dict) else {}
     portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
@@ -12921,14 +12952,17 @@ def run_repeatability(args: argparse.Namespace) -> int:
         and str(warning.get("classification", "")) not in {"required_missing", "required_unknown"}
         for warning in portal_storm_warnings
     )
-    overall_verdict = (
-        "stable_repeatability_pass"
-        if all_runs_ok and all_runtime_current and all_cleanup_ok and all_expectations_ok and portal_storm_clean
-        else "mixed_repeatability"
+    stable_repeatability = bool(
+        all_runs_ok
+        and all_runtime_current
+        and all_cleanup_ok
+        and all_expectations_ok
+        and portal_storm_clean
     )
+    overall_verdict = "stable_repeatability_pass" if stable_repeatability else "mixed_repeatability"
 
     summary = {
-        "ok": True,
+        "ok": stable_repeatability,
         "scenario": str(scenario.get("name", args.scenario)),
         "profile": profile,
         "world": world,
@@ -12953,7 +12987,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
-    return 0
+    return 0 if stable_repeatability else 1
 
 
 def scenario_contract_dict(
