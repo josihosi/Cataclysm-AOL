@@ -1369,6 +1369,27 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "matched_markers": activity_markers,
         }
 
+    safe_mode_markers = [
+        marker
+        for marker in ("safe mode", "spotted", "press ' to turn it off", "ignore monster")
+        if marker in lowered
+    ]
+    if len(safe_mode_markers) == 4:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "safe_mode_spotted_hostile_prompt",
+            "response_key": "'",
+            "matched_markers": safe_mode_markers,
+        }
+    if safe_mode_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_safe_mode_spotted_hostile_prompt",
+            "matched_markers": safe_mode_markers,
+        }
+
     portal_yes_markers = [
         marker
         for marker in ("yes, i will", "yes, i must", "yes, i shall")

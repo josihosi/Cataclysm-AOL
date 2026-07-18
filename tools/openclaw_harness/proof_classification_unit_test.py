@@ -890,6 +890,20 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertTrue(portal_query["contaminating"])
         self.assertEqual((portal_notice["classification"], portal_notice["response_key"]), ("portal_storm_notice", "space"))
 
+    def test_safe_mode_spotted_hostile_prompt_turns_safe_mode_off(self) -> None:
+        prompt = self.classify(
+            "Spotted zombie rider 17 tiles to the west\n"
+            "Safe mode is ON. Press ' to turn it off, press \" to ignore monster."
+        )
+        partial = self.classify("Spotted zombie rider nearby")
+
+        self.assertEqual(prompt["status"], "known_prompt")
+        self.assertEqual(prompt["classification"], "safe_mode_spotted_hostile_prompt")
+        self.assertEqual(prompt["response_key"], "'")
+        self.assertFalse(prompt["contaminating"])
+        self.assertEqual(partial["status"], "unknown_prompt")
+        self.assertEqual(partial["response_key"], "")
+
     def test_destructive_and_unknown_confirmations_never_get_an_auto_key(self) -> None:
         save_prompt = self.classify("Save and quit? (Case Sensitive) Y/N")
         unknown_prompt = self.classify("Really cross the unstable bridge? (Y/N)")
