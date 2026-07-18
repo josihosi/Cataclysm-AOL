@@ -1371,10 +1371,19 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
 
     safe_mode_markers = [
         marker
-        for marker in ("safe mode", "spotted", "press ' to turn it off", "ignore monster")
+        for marker in (
+            "safe mode",
+            "spotted",
+            "press ' to turn it off",
+            "off, press",
+            "ignore monster",
+        )
         if marker in lowered
     ]
-    if len(safe_mode_markers) == 4:
+    if (
+        ("press ' to turn it off" in safe_mode_markers and "ignore monster" in safe_mode_markers)
+        or ("off, press" in safe_mode_markers and "ignore monster" in safe_mode_markers)
+    ):
         return {
             **base,
             "status": "known_prompt",
