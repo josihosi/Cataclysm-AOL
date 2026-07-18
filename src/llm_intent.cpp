@@ -194,6 +194,9 @@ constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
 constexpr int llm_snapshot_map_radius = 20;
+// Primary replies are one short pipe-delimited line.  A large generation budget can leave
+// local models producing text until the request times out instead of returning that line.
+constexpr int primary_response_max_tokens = 256;
 
 struct llm_intent_request {
     std::string request_id;
@@ -2598,7 +2601,6 @@ bool should_attempt_parse( const std::string &line )
 
 [[maybe_unused]] runner_config current_runner_config()
 {
-    static constexpr int default_max_tokens = 20000;
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
     cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
@@ -2640,7 +2642,7 @@ bool should_attempt_parse( const std::string &line )
         cfg.python_path = configured_python;
     }
 
-    cfg.max_tokens = default_max_tokens;
+    cfg.max_tokens = primary_response_max_tokens;
     cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
     if( cfg.max_prompt_len <= 0 ) {
         cfg.max_prompt_len = default_max_prompt_len;
@@ -3380,14 +3382,13 @@ class llm_intent_manager
                 }
                 pending_primary_npcs.insert( listener.getID() );
             }
-            static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
             req.request_id = next_request_id();
             req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
-            req.max_tokens = default_max_tokens;
+            req.max_tokens = primary_response_max_tokens;
             req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
             req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
             req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
@@ -3468,14 +3469,13 @@ class llm_intent_manager
                     }
                     return;
                 }
-                static constexpr int default_max_tokens = 20000;
                 llm_intent_request req;
                 req.request_id = next_request_id();
                 req.npc_id = listener->getID();
                 req.npc_name = listener->get_name();
                 req.snapshot = build_snapshot_json( *listener, pending.player_utterance, req.request_id );
                 req.prompt = build_prompt( req.npc_name, pending.player_utterance, req.snapshot );
-                req.max_tokens = default_max_tokens;
+                req.max_tokens = primary_response_max_tokens;
                 req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
                 req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
                 req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
@@ -4230,6 +4230,11 @@ std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &snapshot )
 {
     return build_prompt( npc_name, player_utterance, snapshot );
+}
+
+int primary_response_max_tokens_for_test()
+{
+    return primary_response_max_tokens;
 }
 
 size_t look_around_selection_limit_for_test()

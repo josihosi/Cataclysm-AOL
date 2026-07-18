@@ -26,6 +26,7 @@ std::string build_snapshot_for_test( npc &listener, const std::string &player_ut
 std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &player_utterance,
         const std::string &snapshot );
+int primary_response_max_tokens_for_test();
 size_t look_around_selection_limit_for_test();
 std::vector<std::string> parse_look_around_response_for_test( const std::string &text,
         const std::vector<std::string> &allowed_names );

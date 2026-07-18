@@ -1036,6 +1036,32 @@ TEST_CASE( "EOC_run_with_test_queue", "[eoc]" )
     CHECK( !d.maybe_get_value( "key3" ) );
 }
 
+TEST_CASE( "removed queued EOCs are discarded while loading an existing character",
+           "[eoc][savegame]" )
+{
+    clear_avatar();
+    avatar &you = get_avatar();
+    effect_on_conditions::clear( you );
+    on_out_of_scope clear_eocs( [&you]() {
+        effect_on_conditions::clear( you );
+    } );
+
+    const effect_on_condition_id removed_eoc( "EOC_TEST_REMOVED_FROM_DATA" );
+    REQUIRE_FALSE( removed_eoc.is_valid() );
+    g->queued_global_effect_on_conditions.push( queued_eoc{
+        removed_eoc, calendar::turn + 1_hours, {}
+    } );
+
+    const std::string debug_message = capture_debugmsg_during( [&you]() {
+        effect_on_conditions::load_existing_character( you );
+    } );
+
+    CHECK( debug_message.empty() );
+    for( const queued_eoc &queued : g->queued_global_effect_on_conditions.list ) {
+        CHECK( queued.eoc != removed_eoc );
+    }
+}
+
 TEST_CASE( "EOC_run_inv_test", "[eoc]" )
 {
     clear_avatar();

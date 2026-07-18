@@ -183,12 +183,15 @@ static void process_new_eocs( queued_eocs &eoc_queue,
 {
     queued_eocs temp_queued_eocs;
     while( !eoc_queue.empty() ) {
+        const effect_on_condition_id eoc_id = eoc_queue.top().eoc;
+        if( !eoc_id.is_valid() ) {
+            eoc_queue.pop();
+            continue;
+        }
         // Check if EoC is moved from global to local, or vice versa
-        if( global_queue == eoc_queue.top().eoc->global ) {
-            if( eoc_queue.top().eoc.is_valid() ) {
-                temp_queued_eocs.push( eoc_queue.top() );
-            }
-            new_eocs[eoc_queue.top().eoc] = false;
+        if( global_queue == eoc_id->global ) {
+            temp_queued_eocs.push( eoc_queue.top() );
+            new_eocs[eoc_id] = false;
         }
         eoc_queue.pop();
     }

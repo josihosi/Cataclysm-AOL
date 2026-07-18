@@ -115,6 +115,11 @@ TEST_CASE( "llm_intent_prompt_uses_delta_move_contract", "[llm_intent]" )
     CHECK( prompt.find( "move: S S S S S hold_position" ) == std::string::npos );
 }
 
+TEST_CASE( "llm_intent_primary_response_generation_is_bounded", "[llm_intent]" )
+{
+    CHECK( llm_intent::primary_response_max_tokens_for_test() == 256 );
+}
+
 TEST_CASE( "llm_intent_can_parse_delta_move_fields", "[llm_intent]" )
 {
     point delta;

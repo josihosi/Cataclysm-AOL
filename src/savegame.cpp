@@ -16,6 +16,7 @@
 #include "basecamp.h"
 #include "cata_io.h"
 #include "cata_path.h"
+#include "cata_scope_helpers.h"
 #include "city.h"
 #include "colony.h"
 #include "coordinates.h"
@@ -258,13 +259,18 @@ void game::unserialize_impl( const JsonObject &data )
     calendar::initial_season = static_cast<season_type>( data.get_int( "initial_season",
                                static_cast<int>( SPRING ) ) );
 
-    dimension_id loaded_dimension_prefix;
+    dimension_id loaded_dimension_prefix = dimension_world_default;
     if( data.read( "dimension_prefix", loaded_dimension_prefix ) ) {
-        if( !loaded_dimension_prefix.is_valid() ) {
+        if( loaded_dimension_prefix.str().empty() ) {
+            loaded_dimension_prefix = dimension_world_default;
+        } else if( !loaded_dimension_prefix.is_valid() ) {
             debugmsg( "invalid dimension loaded, using default dimension instead" );
             loaded_dimension_prefix = dimension_world_default;
         }
-        dimension_prefix = loaded_dimension_prefix;
+    }
+    dimension_prefix = loaded_dimension_prefix;
+    {
+        restore_on_out_of_scope restore_character_save_version( savegame_loading_version );
         load_dimension_data();
     }
 
