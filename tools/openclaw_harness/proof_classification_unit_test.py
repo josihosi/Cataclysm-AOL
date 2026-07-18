@@ -23,6 +23,8 @@ HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
 from startup_harness import (  # noqa: E402
+    acknowledge_blocking_interruptions,
+    advance_turns,
     audit_saved_weather_state,
     apply_direct_child_liveness,
     build_feature_debug_guard,
@@ -33,8 +35,13 @@ from startup_harness import (  # noqa: E402
     capture_feature_phase_guard,
     capture_stable_final_debug_delta,
     classify_wait_step_ledger,
+    classify_blocking_interruption,
     compact_probe_report_for_stdout,
+    collect_weather_audits_from_step_reports,
+    count_pause_dispatches_since,
     extract_window_build_info,
+    execute_long_wait_action,
+    execute_probe_steps,
     filter_debug_log_text,
     log_file_identity,
     missing_peekaboo_capabilities,
@@ -50,11 +57,14 @@ from startup_harness import (  # noqa: E402
     run_repeatability,
     runtime_relevant_worktree_changes,
     screen_checkpoint_verdict,
+    should_auto_acknowledge_after_step,
     startup_proof_classification,
     startup_result_status,
     startup_screen_probe_classification,
+    step_interruption_flags,
     summarize_peekaboo_image_capture,
     summarize_probe_step_ledger,
+    summarize_wait_step_ledgers,
 )
 
 
@@ -846,6 +856,557 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertTrue(compact["startup_screen"]["visible_error_popup"])
         self.assertEqual(compact["startup_gate"]["feature_gate"], "visible_error_popup")
         self.assertEqual(compact["startup_gate"]["debug_popups_recorded"], 1)
+
+
+class BlockingInterruptionTest(unittest.TestCase):
+    @staticmethod
+    def classify(text: str) -> Dict[str, Any]:
+        return classify_blocking_interruption({"ok": True, "text": text})
+
+    def test_known_prompts_use_only_source_defined_safe_keys(self) -> None:
+        debug_popup = self.classify(
+            "An error has occurred!\nPress space bar to continue the game.\n"
+            "Press I to also ignore this particular message in the future."
+        )
+        activity_prompt = self.classify(
+            "Ouch, something hurts! Stop activity? (Case Sensitive)\n"
+            "Yes\nNo\nOpen manager\nIgnore this distraction and continue"
+        )
+        portal_query = self.classify(
+            "The storm claws at your thoughts.\nYes, I will!\nYes, I must!\nYes, I shall!"
+        )
+        portal_notice = self.classify(
+            "You suddenly register a buzzing in your senses. Someone nearby, "
+            "a tiny cataclysm has begun."
+        )
+
+        self.assertEqual(
+            (debug_popup["classification"], debug_popup["response_key"]),
+            ("debug_error_popup", "space"),
+        )
+        self.assertTrue(debug_popup["release_blocking"])
+        self.assertEqual((activity_prompt["classification"], activity_prompt["response_key"]), ("activity_distraction_prompt", "I"))
+        self.assertEqual((portal_query["classification"], portal_query["response_key"]), ("portal_storm_activity_prompt", "Y"))
+        self.assertTrue(portal_query["contaminating"])
+        self.assertEqual((portal_notice["classification"], portal_notice["response_key"]), ("portal_storm_notice", "space"))
+
+    def test_destructive_and_unknown_confirmations_never_get_an_auto_key(self) -> None:
+        save_prompt = self.classify("Save and quit? (Case Sensitive) Y/N")
+        unknown_prompt = self.classify("Really cross the unstable bridge? (Y/N)")
+        gameplay_hud = self.classify("HEAD\nTORSO\nMove: 100\nSafe: Off")
+
+        self.assertEqual(save_prompt["status"], "unsafe_prompt")
+        self.assertEqual(save_prompt["response_key"], "")
+        self.assertEqual(unknown_prompt["status"], "unknown_prompt")
+        self.assertEqual(unknown_prompt["response_key"], "")
+        self.assertEqual(gameplay_hud["status"], "clear")
+
+    def test_partial_source_specific_prompts_fail_closed_with_their_evidence_flags(self) -> None:
+        partial_debug = self.classify("An error has occurred! Press space bar to continue the game.")
+        partial_activity = self.classify("Ignore this distraction and continue")
+        partial_portal_query = self.classify("Yes, I must!")
+        partial_portal_notice = self.classify("Somewhere nearby, a tiny cataclysm has begun.")
+
+        self.assertEqual(partial_debug["status"], "unknown_prompt")
+        self.assertTrue(partial_debug["release_blocking"])
+        self.assertEqual(partial_activity["status"], "unknown_prompt")
+        self.assertEqual(partial_activity["response_key"], "")
+        self.assertEqual(partial_portal_query["status"], "unknown_prompt")
+        self.assertTrue(partial_portal_query["contaminating"])
+        self.assertEqual(partial_portal_notice["status"], "unknown_prompt")
+        self.assertTrue(partial_portal_notice["contaminating"])
+
+    def test_acknowledgement_never_turns_debug_or_portal_contamination_green(self) -> None:
+        reports = [
+            {
+                "index": 1,
+                "kind": "press",
+                "label": "debug_popup",
+                "interruption_handling": {"release_blocking": True, "contaminating": False},
+            },
+            {
+                "index": 2,
+                "kind": "advance_turns",
+                "label": "portal_popup",
+                "timing": {
+                    "batches": [{
+                        "interruption_reports": [{"release_blocking": False, "contaminating": True}],
+                    }],
+                },
+            },
+        ]
+
+        ledger = build_probe_step_ledger(reports)
+
+        self.assertEqual(ledger[0]["verdict"], "red_step_acknowledged_release_blocking_popup")
+        self.assertEqual(ledger[1]["verdict"], "yellow_step_acknowledged_contaminating_popup")
+
+    @patch("startup_harness.persist_interruption_scan_artifacts", return_value=["modal.png"])
+    @patch("startup_harness.capture_screen_text_artifact")
+    @patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}})
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_handler_acknowledges_release_blocking_prompt_without_recapture(
+        self,
+        press_mock: Any,
+        _capture_mock: Any,
+        screen_text_mock: Any,
+        _persist_mock: Any,
+    ) -> None:
+        screen_text_mock.side_effect = [
+            {
+                "ok": True,
+                "text": (
+                    "An error has occurred! Press space bar to continue the game. "
+                    "Press I to ignore this particular message in the future."
+                ),
+            },
+            {"ok": True, "text": "HEAD TORSO Move: 100 Safe: Off"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "known_modal",
+                settle_seconds=0,
+            )
+
+        self.assertEqual(result["status"], "acknowledged_release_blocking")
+        self.assertEqual(result["scan_count"], 1)
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertTrue(result["release_blocking"])
+        self.assertEqual(press_mock.call_args.args[1], ["space"])
+
+    @patch("startup_harness.persist_interruption_scan_artifacts", return_value=["modal.png"])
+    @patch("startup_harness.capture_screen_text_artifact")
+    @patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}})
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_allowed_portal_chain_uses_space_then_i_and_suppresses_immediate_retained_notice_text(
+        self,
+        press_mock: Any,
+        _capture_mock: Any,
+        screen_text_mock: Any,
+        _persist_mock: Any,
+    ) -> None:
+        portal_notice = {
+            "ok": True,
+            "text": "You register a buzzing in your senses; a tiny cataclysm has begun.",
+        }
+        screen_text_mock.side_effect = [
+            portal_notice,
+            {
+                "ok": True,
+                "text": "Open manager\nIgnore this distraction and continue",
+            },
+            {
+                "ok": True,
+                "text": "Somewhere nearby, a tiny cataclysm has begun.",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "allowed_portal",
+                settle_seconds=0,
+                continue_after_contaminating=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertTrue(result["contaminating"])
+        self.assertEqual(result["acknowledgement_count"], 2)
+        self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["space"], ["I"]])
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "acknowledged_prompt_text_retained_on_hud",
+        )
+
+    @patch("startup_harness.persist_interruption_scan_artifacts", return_value=["modal.png"])
+    @patch("startup_harness.capture_screen_text_artifact")
+    @patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}})
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_retained_portal_notice_suppression_does_not_persist_between_handler_calls(
+        self,
+        press_mock: Any,
+        _capture_mock: Any,
+        screen_text_mock: Any,
+        _persist_mock: Any,
+    ) -> None:
+        portal_notice = {
+            "ok": True,
+            "text": "You register a buzzing in your senses; a tiny cataclysm has begun.",
+        }
+        screen_text_mock.side_effect = [
+            portal_notice,
+            {"ok": True, "text": "HEAD TORSO Move: 100 Safe: Off"},
+            portal_notice,
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            first = acknowledge_blocking_interruptions(
+                42,
+                run_dir,
+                "allowed_portal_first",
+                settle_seconds=0,
+                continue_after_contaminating=True,
+            )
+            second = acknowledge_blocking_interruptions(
+                42,
+                run_dir,
+                "portal_second_call",
+                settle_seconds=0,
+            )
+
+        self.assertEqual(first["status"], "clear")
+        self.assertEqual(second["status"], "acknowledged_contaminating")
+        self.assertEqual(second["acknowledgement_count"], 1)
+        self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["space"], ["space"]])
+
+    @patch("startup_harness.persist_interruption_scan_artifacts", return_value=["modal.png"])
+    @patch("startup_harness.capture_screen_text_artifact")
+    @patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}})
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_portal_yes_query_is_retried_when_it_remains_visible(
+        self,
+        press_mock: Any,
+        _capture_mock: Any,
+        screen_text_mock: Any,
+        _persist_mock: Any,
+    ) -> None:
+        portal_query = {
+            "ok": True,
+            "text": "Yes, I will!\nYes, I must!\nYes, I shall!",
+        }
+        screen_text_mock.side_effect = [
+            portal_query,
+            portal_query,
+            {"ok": True, "text": "HEAD TORSO Move: 100 Safe: Off"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "portal_query_retry",
+                settle_seconds=0,
+                continue_after_contaminating=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 2)
+        self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["Y"], ["Y"]])
+
+    @patch("startup_harness.persist_interruption_scan_artifacts", return_value=["clear-scan.png"])
+    @patch("startup_harness.capture_screen_text_artifact")
+    @patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}})
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_clear_interruption_scan_can_be_preserved_for_deficit_blocker_evidence(
+        self,
+        press_mock: Any,
+        _capture_mock: Any,
+        screen_text_mock: Any,
+        persist_mock: Any,
+    ) -> None:
+        screen_text_mock.return_value = {"ok": True, "text": "HEAD TORSO Move: 100 Safe: Off"}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "dispatch_deficit",
+                settle_seconds=0,
+                persist_clear_scan=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["final_artifacts"], ["clear-scan.png"])
+        self.assertEqual(persist_mock.call_args.args[2], "dispatch_deficit.interruption_final")
+        press_mock.assert_not_called()
+
+    def test_lookup_trace_does_not_count_as_an_executed_pause(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            debug_log = Path(temp_dir) / "debug.log"
+            debug_log.write_bytes(
+                b'openclaw_harness_ui_trace: component=default_action_dispatch '
+                b'event=lookup raw_action="pause" action_id="pause"\n'
+                b'openclaw_harness_ui_trace: component=default_action_dispatch '
+                b'event=invoke_pause raw_action="pause" action_id="pause"\n'
+            )
+
+            self.assertEqual(count_pause_dispatches_since(debug_log, 0), 1)
+
+    @patch("startup_harness.acknowledge_blocking_interruptions")
+    @patch("startup_harness.wait_for_pause_dispatch_count")
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_turn_advance_retries_only_missing_pause_dispatches_after_acknowledgement(
+        self,
+        press_mock: Any,
+        dispatch_count_mock: Any,
+        acknowledge_mock: Any,
+    ) -> None:
+        dispatch_count_mock.side_effect = [1, 3]
+        acknowledge_mock.side_effect = [
+            {
+                "status": "clear",
+                "acknowledgement_count": 1,
+                "acknowledgements": [{"response_key": "I"}],
+            },
+            {"status": "clear", "acknowledgement_count": 0, "acknowledgements": []},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            debug_log = run_dir / "debug.log"
+            debug_log.write_bytes(b"")
+
+            result = advance_turns(
+                42,
+                3,
+                run_dir=run_dir,
+                label="modal_retry",
+                action_trace_log=debug_log,
+            )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["accepted_pause_dispatch_count"], 3)
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertEqual(press_mock.call_args_list[0].args[1], [".", ".", "."])
+        self.assertEqual(press_mock.call_args_list[1].args[1], [".", "."])
+        self.assertEqual(acknowledge_mock.call_count, 2)
+
+    def test_runtime_portal_prompt_is_visible_to_top_level_weather_warning(self) -> None:
+        reports = [{
+            "label": "portal_interruption",
+            "timing": {
+                "batches": [{
+                    "interruption_reports": [{"contaminating": True}],
+                }],
+            },
+        }]
+
+        audits = collect_weather_audits_from_step_reports(reports)
+
+        self.assertEqual(audits[0]["observed_weather_id"], "runtime_portal_storm_prompt")
+        self.assertEqual(audits[0]["source"], "blocking_interruption_handler")
+
+    def test_explicit_portal_allow_policy_prevents_duplicate_step_contamination(self) -> None:
+        flags = step_interruption_flags({
+            "timing": {
+                "portal_storm_allowed": True,
+                "batches": [{
+                    "interruption_reports": [{"contaminating": True}],
+                }],
+            },
+        })
+
+        self.assertFalse(flags["contaminating"])
+
+    def test_completed_helpers_auto_scan_but_ambiguous_raw_menu_keys_require_opt_in(self) -> None:
+        self.assertTrue(should_auto_acknowledge_after_step("debug_spawn_monster", {}))
+        self.assertFalse(should_auto_acknowledge_after_step("press", {"keys": ["down"]}))
+        self.assertTrue(should_auto_acknowledge_after_step(
+            "press",
+            {"keys": ["down"], "auto_acknowledge_interruptions": True},
+        ))
+        self.assertFalse(should_auto_acknowledge_after_step(
+            "debug_spawn_monster",
+            {"auto_acknowledge_interruptions": False},
+        ))
+
+    @patch("startup_harness.advance_turns")
+    def test_execute_shaped_portal_stop_stays_yellow_without_generic_abort(
+        self,
+        advance_mock: Any,
+    ) -> None:
+        advance_mock.return_value = {
+            "status": "blocked_contaminating_interruption",
+            "portal_storm_allowed": False,
+            "batches": [{
+                "interruption_reports": [{"contaminating": True}],
+            }],
+            "abort": {"status": "blocked_contaminating_interruption"},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_bytes(b"")
+            reports = execute_probe_steps(
+                42,
+                run_dir,
+                [{"kind": "advance_turns", "label": "portal_stop", "count": 1}],
+                profile="test-profile",
+                world="test-world",
+                action_trace_log=trace_log,
+            )
+
+        self.assertTrue(reports[0]["stop_after_step"])
+        self.assertNotIn("abort", reports[0])
+        self.assertEqual(
+            build_probe_step_ledger(reports)[0]["verdict"],
+            "yellow_step_acknowledged_contaminating_popup",
+        )
+        self.assertEqual(advance_mock.call_args.kwargs["action_trace_log"], trace_log)
+
+    def test_long_wait_uses_classified_activity_key_not_static_scenario_key(self) -> None:
+        handler_result = {
+            "status": "clear",
+            "acknowledgement_count": 1,
+            "acknowledgements": [{"response_key": "I"}],
+            "release_blocking": False,
+            "contaminating": False,
+        }
+        with patch("startup_harness.peekaboo_press_sequence") as press_mock, \
+                patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "HUD"},
+                ), \
+                patch("startup_harness.classify_wait_screen_text") as wait_classify_mock, \
+                patch(
+                    "startup_harness.classify_wait_step_ledger",
+                    return_value={"verdict": "green_wait_step_proven", "issues": []},
+                ), \
+                patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=handler_result,
+                ) as handler_mock:
+            wait_classify_mock.side_effect = [
+                {"status": "interrupted_or_prompt_visible"},
+                {"status": "completed"},
+            ]
+            with tempfile.TemporaryDirectory() as temp_dir:
+                result = execute_long_wait_action(
+                    42,
+                    Path(temp_dir),
+                    "classified_wait",
+                    {
+                        "choice_key": "3",
+                        "interrupt_response_key": "Y",
+                        "max_interrupt_responses": 2,
+                        "menu_settle_seconds": -1,
+                        "pre_menu_settle_seconds": -1,
+                        "after_choice_settle_seconds": -1,
+                        "completion_wait_seconds": -1,
+                        "interrupt_response_wait_seconds": -1,
+                    },
+                )
+
+        self.assertEqual(result["configured_interrupt_response_key_ignored"], "Y")
+        self.assertEqual(result["wait_classification"]["status"], "completed")
+        self.assertNotIn("stop_after_step", result)
+        self.assertEqual(
+            result["interrupt_responses"][0]["interruption_handling"]
+            ["acknowledgements"][0]["response_key"],
+            "I",
+        )
+        self.assertTrue(handler_mock.call_args.kwargs["stop_on_unknown"])
+        self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["|"], ["3"]])
+
+    def test_long_wait_never_uses_static_key_on_unsafe_prompt(self) -> None:
+        handler_result = {
+            "status": "blocked_unsafe_prompt",
+            "acknowledgement_count": 0,
+            "acknowledgements": [],
+            "release_blocking": False,
+            "contaminating": False,
+            "final_classification": {"response_key": ""},
+        }
+        with patch("startup_harness.peekaboo_press_sequence") as press_mock, \
+                patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "Save and quit? Y/N"},
+                ), \
+                patch(
+                    "startup_harness.classify_wait_screen_text",
+                    return_value={"status": "interrupted_or_prompt_visible"},
+                ), \
+                patch(
+                    "startup_harness.classify_wait_step_ledger",
+                    return_value={"verdict": "blocked_wait_step_unproven", "issues": []},
+                ), \
+                patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=handler_result,
+                ):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                result = execute_long_wait_action(
+                    42,
+                    Path(temp_dir),
+                    "unsafe_wait",
+                    {
+                        "choice_key": "3",
+                        "interrupt_response_key": "Y",
+                        "max_interrupt_responses": 2,
+                        "menu_settle_seconds": -1,
+                        "pre_menu_settle_seconds": -1,
+                        "after_choice_settle_seconds": -1,
+                        "completion_wait_seconds": -1,
+                    },
+                )
+
+        self.assertTrue(result["stop_after_step"])
+        self.assertEqual(result["abort"]["status"], "blocked_unsafe_prompt")
+        self.assertEqual(result["abort"]["verdict"], "red_wait_unknown_or_unsafe_interruption")
+        self.assertEqual(result["interrupt_responses"], [])
+        self.assertEqual(result["interruption_handling"]["status"], "blocked_unsafe_prompt")
+        self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["|"], ["3"]])
+
+    def test_long_wait_portal_stop_remains_yellow_in_both_ledgers(self) -> None:
+        handler_result = {
+            "status": "acknowledged_contaminating",
+            "acknowledgement_count": 1,
+            "acknowledgements": [{"response_key": "space"}],
+            "release_blocking": False,
+            "contaminating": True,
+        }
+        with patch("startup_harness.peekaboo_press_sequence"), \
+                patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "A tiny cataclysm has begun."},
+                ), \
+                patch(
+                    "startup_harness.classify_wait_screen_text",
+                    return_value={"status": "interrupted_or_prompt_visible"},
+                ), \
+                patch(
+                    "startup_harness.classify_wait_step_ledger",
+                    return_value={
+                        "verdict": "blocked_wait_interrupted_or_prompt_visible",
+                        "issues": ["wait_interrupted_or_prompt_visible"],
+                    },
+                ), \
+                patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=handler_result,
+                ):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                result = execute_long_wait_action(
+                    42,
+                    Path(temp_dir),
+                    "portal_wait",
+                    {
+                        "choice_key": "3",
+                        "max_interrupt_responses": 2,
+                        "menu_settle_seconds": -1,
+                        "pre_menu_settle_seconds": -1,
+                        "after_choice_settle_seconds": -1,
+                        "completion_wait_seconds": -1,
+                    },
+                )
+
+        self.assertTrue(result["stop_after_step"])
+        self.assertNotIn("abort", result)
+        self.assertEqual(
+            result["wait_step_ledger"]["verdict"],
+            "yellow_wait_step_portal_storm_contamination",
+        )
+        self.assertEqual(
+            summarize_wait_step_ledgers([result])["status"],
+            "yellow_wait_step_unverified",
+        )
+        self.assertEqual(
+            build_probe_step_ledger([{"index": 1, "kind": "wait_action", **result}])[0]
+            ["verdict"],
+            "yellow_step_acknowledged_contaminating_popup",
+        )
 
 
 class StartupScreenGateTest(unittest.TestCase):

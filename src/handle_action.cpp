@@ -2429,6 +2429,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
         case ACTION_PAUSE:
             if( check_safe_mode_allowed() ) {
                 player_character.pause();
+                openclaw_harness_trace_default_action_dispatch( "invoke_pause", action_ident( act ), act );
             }
             break;
 

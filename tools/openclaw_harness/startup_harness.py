@@ -25,6 +25,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime
 from dataclasses import asdict, dataclass
@@ -120,6 +121,11 @@ PEEKABOO_INPUT_TRANSPORT_ENV = "CAOL_PEEKABOO_INPUT_TRANSPORT"
 PEEKABOO_CAPTURE_TRANSPORT_ENV = "CAOL_PEEKABOO_CAPTURE_TRANSPORT"
 PEEKABOO_BRIDGE_SOCKET_ENV = "CAOL_PEEKABOO_BRIDGE_SOCKET"
 PEEKABOO_BINARY_ENV = "CAOL_PEEKABOO_BIN"
+
+PAUSE_DISPATCH_MARKER = (
+    b'openclaw_harness_ui_trace: component=default_action_dispatch '
+    b'event=invoke_pause raw_action="pause" action_id="pause"'
+)
 
 STARTUP_ERROR_SCREEN_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\ban error has occurred\b", re.IGNORECASE),
@@ -966,15 +972,56 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
         run_peekaboo_interaction(pid, cmd)
 
 
-def advance_turns(pid: int, count: int) -> Dict[str, Any]:
+def count_pause_dispatches_since(log_path: Path, start_offset: int) -> int:
+    if not log_path.exists():
+        return 0
+    size = log_path.stat().st_size
+    offset = start_offset if 0 <= start_offset <= size else 0
+    with log_path.open("rb") as handle:
+        handle.seek(offset)
+        return handle.read().count(PAUSE_DISPATCH_MARKER)
+
+
+def wait_for_pause_dispatch_count(
+    log_path: Path,
+    start_offset: int,
+    expected_count: int,
+    *,
+    timeout_seconds: float = 3.0,
+) -> int:
+    deadline = time.monotonic() + max(0.0, timeout_seconds)
+    observed = count_pause_dispatches_since(log_path, start_offset)
+    while observed < expected_count and time.monotonic() < deadline:
+        time.sleep(0.05)
+        observed = count_pause_dispatches_since(log_path, start_offset)
+    return observed
+
+
+def advance_turns(
+    pid: int,
+    count: int,
+    *,
+    run_dir: Optional[Path] = None,
+    label: str = "advance_turns",
+    action_trace_log: Optional[Path] = None,
+    auto_acknowledge_interruptions: bool = True,
+    max_acknowledgements: int = 6,
+    portal_storm_allowed: bool = False,
+) -> Dict[str, Any]:
     timing: Dict[str, Any] = {
         "count": max(count, 0),
-        "batch_size": 120,
+        "batch_size": 20,
         "batches": [],
         "total_duration_seconds": 0.0,
         "avg_turn_ms": 0.0,
         "max_batch_duration_seconds": 0.0,
         "max_batch_turn_ms": 0.0,
+        "status": "completed" if count > 0 else "no_turns_requested",
+        "pause_dispatch_verification": bool(action_trace_log),
+        "acknowledgement_count": 0,
+        "release_blocking": False,
+        "contaminating": False,
+        "portal_storm_allowed": portal_storm_allowed,
     }
     if count <= 0:
         return timing
@@ -982,12 +1029,153 @@ def advance_turns(pid: int, count: int) -> Dict[str, Any]:
     batch_size = timing["batch_size"]
     for start in range(0, count, batch_size):
         batch_count = min(batch_size, count - start)
+        batch_log_start = (
+            action_trace_log.stat().st_size
+            if action_trace_log is not None and action_trace_log.exists()
+            else 0
+        )
         started_at = time.perf_counter()
-        peekaboo_press_sequence(pid, ["."] * batch_count)
+        accepted_count = 0
+        attempts: List[Dict[str, Any]] = []
+        interruption_reports: List[Dict[str, Any]] = []
+        while accepted_count < batch_count:
+            missing_count = batch_count - accepted_count
+            peekaboo_press_sequence(pid, ["."] * missing_count)
+            if action_trace_log is not None:
+                observed_count = wait_for_pause_dispatch_count(
+                    action_trace_log,
+                    batch_log_start,
+                    batch_count,
+                )
+            else:
+                observed_count = batch_count
+            observed_count = min(observed_count, batch_count)
+            accepted_this_attempt = max(0, observed_count - accepted_count)
+            accepted_count = observed_count
+            attempts.append({
+                "sent_count": missing_count,
+                "accepted_pause_dispatch_count": accepted_this_attempt,
+                "cumulative_accepted_pause_dispatch_count": accepted_count,
+            })
+            if accepted_count >= batch_count:
+                break
+            if not auto_acknowledge_interruptions or run_dir is None:
+                timing["status"] = "blocked_missing_pause_dispatches"
+                break
+            if timing["acknowledgement_count"] >= max_acknowledgements:
+                timing["status"] = "blocked_acknowledgement_limit"
+                break
+
+            dispatches_before_recovery = (
+                count_pause_dispatches_since(action_trace_log, batch_log_start)
+                if action_trace_log is not None
+                else accepted_count
+            )
+            interruption = acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                (
+                    f"{label}.batch_{len(timing['batches']) + 1:02d}"
+                    f".attempt_{len(attempts):02d}"
+                ),
+                max_acknowledgements=max_acknowledgements - timing["acknowledgement_count"],
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+                persist_clear_scan=True,
+            )
+            interruption_reports.append(interruption)
+            dispatches_after_recovery = (
+                count_pause_dispatches_since(action_trace_log, batch_log_start)
+                if action_trace_log is not None
+                else dispatches_before_recovery
+            )
+            if dispatches_after_recovery > dispatches_before_recovery:
+                interruption["recovery_pause_dispatch_delta"] = (
+                    dispatches_after_recovery - dispatches_before_recovery
+                )
+                timing["status"] = "blocked_recovery_key_reached_gameplay"
+                break
+            acknowledged = int(interruption.get("acknowledgement_count", 0) or 0)
+            timing["acknowledgement_count"] += acknowledged
+            timing["release_blocking"] = timing["release_blocking"] or bool(
+                interruption.get("release_blocking", False)
+            )
+            timing["contaminating"] = timing["contaminating"] or bool(
+                interruption.get("contaminating", False)
+            )
+            interruption_status = str(interruption.get("status", "unobservable"))
+            if timing["release_blocking"]:
+                timing["status"] = "blocked_release_blocking_interruption"
+                break
+            if timing["contaminating"] and not portal_storm_allowed:
+                timing["status"] = "blocked_contaminating_interruption"
+                break
+            if interruption_status.startswith("blocked_"):
+                timing["status"] = interruption_status
+                break
+            if acknowledged <= 0:
+                if interruption_status.startswith("blocked_"):
+                    timing["status"] = interruption_status
+                elif interruption_status == "clear":
+                    timing["status"] = "blocked_unclassified_transient_interruption"
+                else:
+                    timing["status"] = f"blocked_missing_pause_dispatches_{interruption_status}"
+                break
+
         duration = time.perf_counter() - started_at
+        final_batch = start + batch_count >= count
+        if timing["status"] == "completed" and final_batch and \
+                auto_acknowledge_interruptions and run_dir is not None:
+            dispatches_before_boundary = (
+                count_pause_dispatches_since(action_trace_log, batch_log_start)
+                if action_trace_log is not None
+                else accepted_count
+            )
+            boundary_interruption = acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                f"{label}.batch_{len(timing['batches']) + 1:02d}.boundary",
+                max_acknowledgements=max_acknowledgements - timing["acknowledgement_count"],
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+            )
+            interruption_reports.append(boundary_interruption)
+            dispatches_after_boundary = (
+                count_pause_dispatches_since(action_trace_log, batch_log_start)
+                if action_trace_log is not None
+                else dispatches_before_boundary
+            )
+            if dispatches_after_boundary > dispatches_before_boundary:
+                boundary_interruption["recovery_pause_dispatch_delta"] = (
+                    dispatches_after_boundary - dispatches_before_boundary
+                )
+                timing["status"] = "blocked_recovery_key_reached_gameplay"
+            boundary_acknowledged = int(
+                boundary_interruption.get("acknowledgement_count", 0) or 0
+            )
+            timing["acknowledgement_count"] += boundary_acknowledged
+            timing["release_blocking"] = timing["release_blocking"] or bool(
+                boundary_interruption.get("release_blocking", False)
+            )
+            timing["contaminating"] = timing["contaminating"] or bool(
+                boundary_interruption.get("contaminating", False)
+            )
+            boundary_status = str(boundary_interruption.get("status", "unobservable"))
+            if timing["status"] == "blocked_recovery_key_reached_gameplay":
+                pass
+            elif timing["release_blocking"]:
+                timing["status"] = "blocked_release_blocking_interruption"
+            elif timing["contaminating"] and not portal_storm_allowed:
+                timing["status"] = "blocked_contaminating_interruption"
+            elif boundary_status.startswith("blocked_"):
+                timing["status"] = boundary_status
+
         batch = {
             "start_turn": start + 1,
             "count": batch_count,
+            "accepted_pause_dispatch_count": accepted_count,
+            "attempts": attempts,
+            "interruption_reports": interruption_reports,
             "duration_seconds": round(duration, 6),
             "per_turn_ms": round((duration / batch_count) * 1000.0, 3),
         }
@@ -995,11 +1183,35 @@ def advance_turns(pid: int, count: int) -> Dict[str, Any]:
         timing["total_duration_seconds"] += duration
         timing["max_batch_duration_seconds"] = max(timing["max_batch_duration_seconds"], duration)
         timing["max_batch_turn_ms"] = max(timing["max_batch_turn_ms"], batch["per_turn_ms"])
+        if timing["status"] != "completed":
+            timing["abort"] = {
+                "status": timing["status"],
+                "batch": len(timing["batches"]),
+                "accepted_pause_dispatch_count": accepted_count,
+                "requested_pause_dispatch_count": batch_count,
+            }
+            break
         if start + batch_size < count:
             time.sleep(0.05)
 
+    if timing["status"] != "completed" and "abort" not in timing:
+        timing["abort"] = {
+            "status": timing["status"],
+            "batch": len(timing["batches"]),
+            "accepted_pause_dispatch_count": sum(
+                int(batch.get("accepted_pause_dispatch_count", 0) or 0)
+                for batch in timing["batches"]
+            ),
+            "requested_pause_dispatch_count": count,
+        }
+
     timing["total_duration_seconds"] = round(timing["total_duration_seconds"], 6)
-    timing["avg_turn_ms"] = round((timing["total_duration_seconds"] / count) * 1000.0, 3)
+    accepted_total = sum(int(batch.get("accepted_pause_dispatch_count", 0) or 0) for batch in timing["batches"])
+    timing["accepted_pause_dispatch_count"] = accepted_total
+    timing["avg_turn_ms"] = round(
+        (timing["total_duration_seconds"] / max(1, accepted_total)) * 1000.0,
+        3,
+    )
     timing["max_batch_duration_seconds"] = round(timing["max_batch_duration_seconds"], 6)
     return timing
 
@@ -1066,6 +1278,176 @@ def screen_text_body( screen_text_report: Dict[str, Any] ) -> str:
             if isinstance( payload_lines, list ):
                 return "\n".join( str( line ) for line in payload_lines )
     return ""
+
+
+def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[str, Any]:
+    body = screen_text_body(screen_text_report).strip()
+    lowered = body.lower()
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    base = {
+        "text": body,
+        "response_key": "",
+        "release_blocking": False,
+        "contaminating": False,
+        "matched_markers": [],
+    }
+    if not body:
+        return {
+            **base,
+            "status": "unobservable" if not bool(screen_text_report.get("ok", False)) else "clear",
+            "classification": "ocr_unavailable" if not bool(screen_text_report.get("ok", False)) else "no_prompt",
+        }
+
+    unsafe_markers = [
+        marker
+        for marker in (
+            "save and quit",
+            "unable to save, quit anyway",
+            "really quit",
+            "unsaved changes will be lost",
+            "abandon this character",
+            "this will kill your character",
+            "really delete",
+            "crash the game",
+        )
+        if marker in lowered
+    ]
+    if unsafe_markers:
+        return {
+            **base,
+            "status": "unsafe_prompt",
+            "classification": "unsafe_confirmation_requires_scenario_choice",
+            "matched_markers": unsafe_markers,
+        }
+
+    debug_markers = [
+        marker
+        for marker in (
+            "an error has occurred",
+            "space bar to continue the game",
+            "ignore this particular message",
+        )
+        if marker in lowered
+    ]
+    if len(debug_markers) == 3:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "debug_error_popup",
+            "response_key": "space",
+            "release_blocking": True,
+            "matched_markers": debug_markers,
+        }
+    if debug_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_debug_error_popup",
+            "release_blocking": True,
+            "matched_markers": debug_markers,
+        }
+
+    activity_markers = [
+        marker
+        for marker in ("ignore this distraction and continue", "open manager")
+        if marker in lowered
+    ]
+    if len(activity_markers) == 2:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "activity_distraction_prompt",
+            "response_key": "I",
+            "matched_markers": activity_markers,
+        }
+    if activity_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_activity_distraction_prompt",
+            "matched_markers": activity_markers,
+        }
+
+    portal_yes_markers = [
+        marker
+        for marker in ("yes, i will", "yes, i must", "yes, i shall")
+        if marker in lowered
+    ]
+    if len(portal_yes_markers) >= 2:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "portal_storm_activity_prompt",
+            "response_key": "Y",
+            "contaminating": True,
+            "matched_markers": portal_yes_markers,
+        }
+    if portal_yes_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_portal_storm_activity_prompt",
+            "contaminating": True,
+            "matched_markers": portal_yes_markers,
+        }
+
+    portal_notice_markers = [
+        marker
+        for marker in ("buzzing in your senses", "tiny cataclysm has begun")
+        if marker in lowered
+    ]
+    if len(portal_notice_markers) == 2:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "portal_storm_notice",
+            "response_key": "space",
+            "contaminating": True,
+            "matched_markers": portal_notice_markers,
+        }
+    if portal_notice_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_portal_storm_notice",
+            "contaminating": True,
+            "matched_markers": portal_notice_markers,
+        }
+
+    continue_markers = [
+        marker
+        for marker in ("press any key to continue", "space bar to continue")
+        if marker in lowered
+    ]
+    if continue_markers:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "continue_popup",
+            "response_key": "space",
+            "matched_markers": continue_markers,
+        }
+
+    unknown_markers = []
+    if "case sensitive" in lowered and any(marker in lowered for marker in ("yes", "no", "ignore")):
+        unknown_markers.append("case sensitive confirmation")
+    if any(marker in lowered for marker in ("(y/n)", "[y/n]", "yes/no")):
+        unknown_markers.append("yes/no confirmation")
+    if any(line.lower() == "actions" for line in lines):
+        unknown_markers.append("actions overlay")
+    if unknown_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "unhandled_blocking_menu",
+            "matched_markers": unknown_markers,
+        }
+
+    return {
+        **base,
+        "status": "clear",
+        "classification": "no_known_prompt",
+    }
 
 
 def artifact_delta_matches_all_patterns( artifact_report: Optional[Dict[str, Any]] ) -> Dict[str, Any]:
@@ -1600,6 +1982,7 @@ def execute_long_wait_action(
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
+    portal_storm_allowed: bool = False,
 ) -> Dict[str, Any]:
     wait_key = str(step.get("wait_key", "|") or "|")
     choice_key = str(step.get("choice_key", step.get("choice", "3")) or "3")
@@ -1649,6 +2032,7 @@ def execute_long_wait_action(
             "does not type through prompts; interruptions remain evidence and must not be classified green by default"
         ),
         "artifact_state_patterns": state_patterns,
+        "portal_storm_allowed": portal_storm_allowed,
         "elapsed_time_evidence": {
             "duration_choice_key": choice_key,
             "expected_duration": expected_duration,
@@ -1718,16 +2102,74 @@ def execute_long_wait_action(
         classification_text, complete_patterns, interrupt_patterns
     )
 
-    interrupt_response_key = str(step.get("interrupt_response_key", "") or "").strip()
-    max_interrupt_responses = int(step.get("max_interrupt_responses", 0) or 0)
-    if interrupt_response_key and max_interrupt_responses > 0:
+    configured_interrupt_response_key = str(
+        step.get("interrupt_response_key", "") or ""
+    ).strip()
+    max_interrupt_responses = int(step.get("max_interrupt_responses", 6) or 0)
+    auto_acknowledge_interruptions = bool(step.get("auto_acknowledge_interruptions", True))
+    if configured_interrupt_response_key:
+        report["configured_interrupt_response_key_ignored"] = configured_interrupt_response_key
+        report["interrupt_response_policy"] = (
+            "response keys are selected only by the strict live-screen classifier"
+        )
+
+    if auto_acknowledge_interruptions and max_interrupt_responses > 0:
         responses: List[Dict[str, Any]] = []
-        for response_index in range(max_interrupt_responses):
-            if report["wait_classification"].get("status") != "interrupted_or_prompt_visible":
+        interruption_reports: List[Dict[str, Any]] = []
+        response_count = 0
+        while response_count < max_interrupt_responses:
+            interruption = acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                f"{label}.interrupt_handler_{len(interruption_reports) + 1:02d}",
+                max_acknowledgements=max_interrupt_responses - response_count,
+                delay_ms=delay_ms,
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+            )
+            interruption_reports.append(interruption)
+            acknowledged = int(interruption.get("acknowledgement_count", 0) or 0)
+            response_count += acknowledged
+            release_blocking = any(
+                bool(handler.get("release_blocking", False))
+                for handler in interruption_reports
+            )
+            contaminating = any(
+                bool(handler.get("contaminating", False))
+                for handler in interruption_reports
+            )
+            interruption_status = str(interruption.get("status", "unobservable"))
+
+            if release_blocking:
+                report["abort"] = {
+                    "guard": "blocking_interruption",
+                    "status": "blocked_release_blocking_interruption",
+                    "verdict": "red_wait_release_blocking_interruption",
+                    "reason": "a captured debug-error interruption invalidated the playtest row",
+                }
+                report["stop_after_step"] = True
                 break
-            response_label = f"{label}.interrupt_response_{response_index + 1}"
-            response_wait_seconds = float(step.get("interrupt_response_wait_seconds", completion_wait_seconds) or 0.0)
-            peekaboo_press_sequence(pid, [interrupt_response_key], delay_ms=delay_ms)
+            if contaminating and not portal_storm_allowed:
+                report["status"] = "stopped_by_contaminating_interruption"
+                report["verdict"] = "yellow_wait_portal_storm_contamination"
+                report["stop_after_step"] = True
+                break
+            if interruption_status.startswith("blocked_"):
+                report["abort"] = {
+                    "guard": "blocking_interruption",
+                    "status": interruption_status,
+                    "verdict": "red_wait_unknown_or_unsafe_interruption",
+                    "reason": "the wait reached an unsafe or unrecognized blocking menu",
+                }
+                report["stop_after_step"] = True
+                break
+            if acknowledged <= 0:
+                break
+
+            response_label = f"{label}.interrupt_response_{response_count}"
+            response_wait_seconds = float(
+                step.get("interrupt_response_wait_seconds", completion_wait_seconds) or 0.0
+            )
             if response_wait_seconds > 0:
                 time.sleep(response_wait_seconds)
             response_capture = capture_screenshot(pid, run_dir, response_label)
@@ -1738,7 +2180,7 @@ def execute_long_wait_action(
                 artifact_log,
                 run_dir,
                 label,
-                f"after_interrupt_response_{response_index + 1}",
+                f"after_interrupt_response_{response_count}",
                 wait_start_size,
                 state_patterns,
                 filter_debug_noise=filter_debug_noise,
@@ -1747,10 +2189,10 @@ def execute_long_wait_action(
                 response_text, complete_patterns, interrupt_patterns
             )
             responses.append({
-                "response_key": interrupt_response_key,
-                "response_index": response_index + 1,
+                "response_index": response_count,
                 "response_label": response_label,
                 "response_wait_seconds": response_wait_seconds,
+                "interruption_handling": interruption,
                 "screen_after_response": response_capture.get("screen_summary", {}),
                 "screen_after_response_text": response_text,
                 "artifact_after_response": response_artifact_after,
@@ -1759,7 +2201,27 @@ def execute_long_wait_action(
             classification_text = response_text
             report["artifact_after_wait"] = response_artifact_after
             report["wait_classification"] = response_classification
+            if response_classification.get("status") != "interrupted_or_prompt_visible":
+                break
+
         report["interrupt_responses"] = responses
+        report["interruption_handling"] = {
+            "status": (
+                str(interruption_reports[-1].get("status", "clear"))
+                if interruption_reports
+                else "clear"
+            ),
+            "acknowledgement_count": response_count,
+            "release_blocking": any(
+                bool(handler.get("release_blocking", False))
+                for handler in interruption_reports
+            ),
+            "contaminating": any(
+                bool(handler.get("contaminating", False))
+                for handler in interruption_reports
+            ),
+            "reports": interruption_reports,
+        }
 
     report["wait_step_ledger"] = classify_wait_step_ledger(
         label=label,
@@ -1774,7 +2236,17 @@ def execute_long_wait_action(
             step.get("allow_artifact_elapsed_without_menu_ocr", False)
         ),
     )
-    if bool(step.get("abort_on_interrupt", False)) and \
+    if report.get("status") == "stopped_by_contaminating_interruption":
+        base_wait_verdict = str(report["wait_step_ledger"].get("verdict", ""))
+        report["wait_step_ledger"]["base_verdict_before_portal_stop"] = base_wait_verdict
+        report["wait_step_ledger"]["verdict"] = "yellow_wait_step_portal_storm_contamination"
+        wait_issues = [
+            str(issue) for issue in report["wait_step_ledger"].get("issues", [])
+        ]
+        if "unallowed_portal_storm_interruption" not in wait_issues:
+            wait_issues.append("unallowed_portal_storm_interruption")
+        report["wait_step_ledger"]["issues"] = wait_issues
+    if not report.get("stop_after_step") and bool(step.get("abort_on_interrupt", False)) and \
             report["wait_classification"].get("status") == "interrupted_or_prompt_visible":
         report["status"] = "aborted_by_wait_interruption"
         report["verdict"] = str(step.get("abort_verdict", "inconclusive_wait_interrupted"))
@@ -3330,6 +3802,26 @@ def collect_weather_audits_from_step_reports(step_reports: List[Dict[str, Any]])
     for report in step_reports:
         if not isinstance(report, dict):
             continue
+        interruption_handlers: List[Dict[str, Any]] = []
+        direct_handler = report.get("interruption_handling")
+        if isinstance(direct_handler, dict):
+            interruption_handlers.append(direct_handler)
+        timing = report.get("timing")
+        if isinstance(timing, dict):
+            for batch in timing.get("batches", []):
+                if isinstance(batch, dict):
+                    interruption_handlers.extend(
+                        handler
+                        for handler in batch.get("interruption_reports", [])
+                        if isinstance(handler, dict)
+                    )
+        if any(bool(handler.get("contaminating", False)) for handler in interruption_handlers):
+            audits.append({
+                "status": "runtime_prompt_observed",
+                "observed_weather_id": "runtime_portal_storm_prompt",
+                "source": "blocking_interruption_handler",
+                "step": str(report.get("label", "")),
+            })
         metadata = report.get("metadata")
         if not isinstance(metadata, dict):
             continue
@@ -5590,6 +6082,135 @@ def capture_screen_text_artifact(
     return result
 
 
+def persist_interruption_scan_artifacts(
+    scan_dir: Path,
+    run_dir: Path,
+    evidence_label: str,
+) -> List[str]:
+    artifacts: List[str] = []
+    for source in sorted(scan_dir.iterdir(), key=lambda path: path.name):
+        if not source.is_file():
+            continue
+        suffix = source.name[len("scan"):] if source.name.startswith("scan") else f".{source.name}"
+        destination = run_dir / f"{evidence_label}{suffix}"
+        shutil.copy2(source, destination)
+        artifacts.append(str(destination))
+    return artifacts
+
+
+def acknowledge_blocking_interruptions(
+    pid: int,
+    run_dir: Path,
+    label: str,
+    *,
+    max_acknowledgements: int = 6,
+    delay_ms: int = 200,
+    settle_seconds: float = 0.35,
+    stop_on_unknown: bool = False,
+    continue_after_contaminating: bool = False,
+    persist_clear_scan: bool = False,
+) -> Dict[str, Any]:
+    acknowledgements: List[Dict[str, Any]] = []
+    scan_count = 0
+    release_blocking = False
+    contaminating = False
+    suppress_retained_portal_notice_once = False
+    portal_notice_family = {"portal_storm_notice", "partial_portal_storm_notice"}
+
+    while True:
+        scan_count += 1
+        with tempfile.TemporaryDirectory(prefix="interrupt-scan-", dir=str(run_dir)) as temp_path:
+            scan_dir = Path(temp_path)
+            capture = capture_screenshot(pid, scan_dir, "scan")
+            screen_text = capture_screen_text_artifact(scan_dir, "scan", capture, tail_lines=48)
+            classification = classify_blocking_interruption(screen_text)
+            status = str(classification.get("status", "unobservable"))
+            classification_name = str(classification.get("classification", ""))
+            if suppress_retained_portal_notice_once and classification_name in portal_notice_family:
+                classification = {
+                    **classification,
+                    "status": "clear",
+                    "classification": "acknowledged_prompt_text_retained_on_hud",
+                    "response_key": "",
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "suppressed_classification": classification_name,
+                }
+                status = "clear"
+                suppress_retained_portal_notice_once = False
+
+            if status == "known_prompt":
+                evidence_label = f"{label}.interruption_{len(acknowledgements) + 1:02d}.before"
+                artifacts = persist_interruption_scan_artifacts(scan_dir, run_dir, evidence_label)
+            elif acknowledgements or status in {"unsafe_prompt", "unknown_prompt"} or persist_clear_scan:
+                evidence_label = f"{label}.interruption_final"
+                artifacts = persist_interruption_scan_artifacts(scan_dir, run_dir, evidence_label)
+            else:
+                artifacts = []
+
+        release_blocking = release_blocking or bool(classification.get("release_blocking", False))
+        contaminating = contaminating or bool(classification.get("contaminating", False))
+
+        if status == "known_prompt":
+            current_release_blocking = bool(classification.get("release_blocking", False))
+            current_contaminating = bool(classification.get("contaminating", False))
+            if len(acknowledgements) >= max_acknowledgements:
+                return {
+                    "status": "blocked_acknowledgement_limit",
+                    "scan_count": scan_count,
+                    "acknowledgement_count": len(acknowledgements),
+                    "acknowledgements": acknowledgements,
+                    "final_classification": classification,
+                    "final_artifacts": artifacts,
+                    "release_blocking": release_blocking,
+                    "contaminating": contaminating,
+                }
+            response_key = str(classification.get("response_key", ""))
+            if not response_key:
+                raise SystemExit("Known blocking interruption did not provide a response key")
+            peekaboo_press_sequence(pid, [response_key], delay_ms=delay_ms)
+            if settle_seconds > 0:
+                time.sleep(settle_seconds)
+            acknowledgements.append({
+                "index": len(acknowledgements) + 1,
+                "classification": classification,
+                "response_key": response_key,
+                "artifacts": artifacts,
+            })
+            if current_release_blocking or (
+                current_contaminating and not continue_after_contaminating
+            ):
+                return {
+                    "status": (
+                        "acknowledged_release_blocking"
+                        if release_blocking
+                        else "acknowledged_contaminating"
+                    ),
+                    "scan_count": scan_count,
+                    "acknowledgement_count": len(acknowledgements),
+                    "acknowledgements": acknowledgements,
+                    "final_classification": classification,
+                    "final_artifacts": artifacts,
+                    "release_blocking": release_blocking,
+                    "contaminating": contaminating,
+                }
+            if current_contaminating and classification_name == "portal_storm_notice":
+                suppress_retained_portal_notice_once = True
+            continue
+
+        blocked = status in {"unsafe_prompt", "unknown_prompt"} and stop_on_unknown
+        return {
+            "status": f"blocked_{status}" if blocked else status,
+            "scan_count": scan_count,
+            "acknowledgement_count": len(acknowledgements),
+            "acknowledgements": acknowledgements,
+            "final_classification": classification,
+            "final_artifacts": artifacts,
+            "release_blocking": release_blocking,
+            "contaminating": contaminating,
+        }
+
+
 def normalize_screen_text_patterns(raw_value: Any) -> List[str]:
     if isinstance(raw_value, str):
         return [raw_value.strip()] if raw_value.strip() else []
@@ -5854,6 +6475,33 @@ def auto_step_action_description(report: Dict[str, Any]) -> str:
     return kind or "scenario step"
 
 
+def step_interruption_flags(report: Dict[str, Any]) -> Dict[str, bool]:
+    handlers: List[Dict[str, Any]] = []
+    portal_storm_allowed = bool(report.get("portal_storm_allowed", False))
+    direct = report.get("interruption_handling")
+    if isinstance(direct, dict):
+        handlers.append(direct)
+    timing = report.get("timing")
+    if isinstance(timing, dict):
+        portal_storm_allowed = portal_storm_allowed or bool(
+            timing.get("portal_storm_allowed", False)
+        )
+        for batch in timing.get("batches", []):
+            if not isinstance(batch, dict):
+                continue
+            handlers.extend(
+                handler
+                for handler in batch.get("interruption_reports", [])
+                if isinstance(handler, dict)
+            )
+    return {
+        "release_blocking": any(bool(handler.get("release_blocking", False)) for handler in handlers),
+        "contaminating": not portal_storm_allowed and any(
+            bool(handler.get("contaminating", False)) for handler in handlers
+        ),
+    }
+
+
 def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ledger: List[Dict[str, Any]] = []
     reports_by_label = {str(report.get("label", "")).strip(): report for report in step_reports}
@@ -5881,6 +6529,7 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
 
         issues: List[str] = []
         deferred_evidence_artifact = ""
+        interruption_flags = step_interruption_flags(report)
         if isinstance(report.get("abort"), dict) and report["abort"].get("guard") == "metadata":
             verdict, issues = metadata_checkpoint_verdict(metadata_summary)
             if not verdict.startswith(("red", "blocked")):
@@ -5889,6 +6538,12 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
         elif isinstance(report.get("abort"), dict):
             verdict = "red_step_aborted_by_screen_text_guard"
             issues.append("screen_text_abort_guard")
+        elif interruption_flags["release_blocking"]:
+            verdict = "red_step_acknowledged_release_blocking_popup"
+            issues.append("release_blocking_popup_acknowledged")
+        elif interruption_flags["contaminating"]:
+            verdict = "yellow_step_acknowledged_contaminating_popup"
+            issues.append("contaminating_popup_acknowledged")
         elif kind in {"long_wait", "wait_action"} and isinstance(report.get("wait_step_ledger"), dict):
             wait_verdict = str(report["wait_step_ledger"].get("verdict", ""))
             if wait_verdict.startswith("green"):
@@ -9917,6 +10572,28 @@ def normalize_scenario_steps(raw_steps: Any, advance_count: int, settle_seconds:
     return []
 
 
+AUTO_ACKNOWLEDGE_COMPLETED_INTERACTION_KINDS = frozenset({
+    "assign_nearby_npc_to_camp_dialog",
+    "debug_force_temperature",
+    "debug_map_editor_place_field",
+    "debug_map_editor_place_furniture",
+    "debug_map_editor_place_radiation",
+    "debug_map_editor_place_terrain",
+    "debug_map_editor_place_trap",
+    "debug_spawn_follower_npc",
+    "debug_spawn_item",
+    "debug_spawn_monster",
+    "debug_spawn_overmap_threat",
+    "drop_item",
+})
+
+
+def should_auto_acknowledge_after_step(kind: str, step: Dict[str, Any]) -> bool:
+    if "auto_acknowledge_interruptions" in step:
+        return bool(step.get("auto_acknowledge_interruptions", False))
+    return kind in AUTO_ACKNOWLEDGE_COMPLETED_INTERACTION_KINDS
+
+
 def execute_probe_steps(
     pid: int,
     run_dir: Path,
@@ -9925,9 +10602,11 @@ def execute_probe_steps(
     profile: str,
     world: str,
     artifact_log: Optional[Path] = None,
+    action_trace_log: Optional[Path] = None,
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
+    portal_storm_allowed: bool = False,
 ) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for index, step in enumerate(steps, start=1):
@@ -9993,7 +10672,33 @@ def execute_probe_steps(
             if count <= 0:
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
             report["count"] = count
-            report["timing"] = advance_turns(pid, count)
+            report["timing"] = advance_turns(
+                pid,
+                count,
+                run_dir=run_dir,
+                label=label,
+                action_trace_log=action_trace_log,
+                auto_acknowledge_interruptions=bool(step.get("auto_acknowledge_interruptions", True)),
+                max_acknowledgements=int(step.get("max_auto_acknowledgements", 6) or 0),
+                portal_storm_allowed=portal_storm_allowed,
+            )
+            timing_status = str(report["timing"].get("status", ""))
+            if timing_status == "blocked_contaminating_interruption":
+                report["status"] = "stopped_by_contaminating_interruption"
+                report["verdict"] = "yellow_turn_advance_portal_storm_contamination"
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
+            if timing_status != "completed":
+                report["abort"] = {
+                    "guard": "blocking_interruption",
+                    "status": str(report["timing"].get("status", "blocked_turn_advance")),
+                    "verdict": "blocked_turn_advance_interruption",
+                    "reason": "requested pause actions were not all accepted after bounded prompt recovery",
+                    "timing_abort": report["timing"].get("abort", {}),
+                }
+                reports.append(report)
+                return reports
         elif kind in {"long_wait", "wait_action"}:
             report.update(execute_long_wait_action(
                 pid,
@@ -10004,7 +10709,11 @@ def execute_probe_steps(
                 artifact_baseline=artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,
+                portal_storm_allowed=portal_storm_allowed,
             ))
+            if report.get("stop_after_step"):
+                reports.append(report)
+                return reports
             if report.get("status") == "aborted_by_wait_interruption":
                 report["artifact_log_end_size"] = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_log_start_size
                 reports.append(report)
@@ -11458,6 +12167,44 @@ def execute_probe_steps(
             raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
         if settle_seconds > 0:
             time.sleep(settle_seconds)
+        if should_auto_acknowledge_after_step(kind, step):
+            interruption_handling = acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                label,
+                max_acknowledgements=int(step.get("max_auto_acknowledgements", 6) or 0),
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+            )
+            report["portal_storm_allowed"] = portal_storm_allowed
+            if interruption_handling.get("acknowledgement_count") or interruption_handling.get("status") in {
+                "blocked_unsafe_prompt",
+                "blocked_unknown_prompt",
+                "blocked_acknowledgement_limit",
+            }:
+                report["interruption_handling"] = interruption_handling
+            release_blocking = bool(interruption_handling.get("release_blocking", False))
+            contaminating = bool(interruption_handling.get("contaminating", False))
+            interruption_status = str(interruption_handling.get("status", ""))
+            if release_blocking:
+                interruption_status = "blocked_release_blocking_interruption"
+            elif contaminating and not portal_storm_allowed:
+                interruption_status = "blocked_contaminating_interruption"
+            if interruption_status == "blocked_contaminating_interruption":
+                report["status"] = "stopped_by_contaminating_interruption"
+                report["verdict"] = "yellow_input_step_portal_storm_contamination"
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
+            if interruption_status.startswith("blocked_"):
+                report["abort"] = {
+                    "guard": "blocking_interruption",
+                    "status": interruption_status,
+                    "verdict": "blocked_input_step_interruption",
+                    "reason": "input step reached an unsafe, unknown, or release-invalidating interruption",
+                }
+                reports.append(report)
+                return reports
         if kind != "capture" and bool(step.get("capture_after", False)):
             capture_after_crop = normalize_capture_crop(
                 step.get("capture_after_crop", step.get("capture_crop", step.get("crop")))
@@ -13831,9 +14578,11 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         profile=profile,
         world=world,
         artifact_log=artifact_log,
+        action_trace_log=feature_debug_log,
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
         artifact_patterns=artifact_patterns,
+        portal_storm_allowed=bool(portal_storm_policy.get("allowed", False)),
     )
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")
