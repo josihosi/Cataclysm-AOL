@@ -3,13 +3,17 @@
 #include "bandit_mark_generation.h"
 #include "coordinates.h"
 
+#include <optional>
 #include <string>
 #include <vector>
+
+class monster;
 
 namespace zombie_rider_overmap_ai
 {
 constexpr int mature_world_gate_days = 730;
 constexpr int max_riders_drawn_by_light = 2;
+// Abstract candidate envelope.  The live adapter currently supplies loaded monsters only.
 constexpr int rider_convergence_response_radius_omt = 36;
 constexpr int rider_band_minimum_size = 2;
 constexpr int rider_light_memory_decay_interval_turns = 60;
@@ -78,6 +82,13 @@ struct rider_camp_pressure_result {
     std::vector<std::string> notes;
 };
 
+struct rider_camp_pressure_intent {
+    rider_camp_pressure_posture posture = rider_camp_pressure_posture::none;
+    tripoint_abs_ms source = tripoint_abs_ms::zero;
+    int formation_slot = 0;
+    int turns_remaining = 0;
+};
+
 rider_light_interest evaluate_light_attraction(
     const bandit_mark_generation::light_projection &projection,
     int world_age_days,
@@ -88,8 +99,15 @@ rider_convergence_result evaluate_rider_convergence(
     const rider_light_memory &memory,
     const tripoint_abs_omt &light_omt,
     const std::vector<rider_overmap_agent> &riders );
+void reserve_rider_convergence( std::vector<rider_overmap_agent> &riders,
+                                const rider_convergence_result &convergence );
 rider_camp_pressure_result choose_camp_pressure_posture(
     const rider_camp_pressure_input &input );
 std::string to_string( rider_camp_pressure_posture posture );
+void set_camp_pressure_intent( monster &rider, rider_camp_pressure_posture posture,
+                               const tripoint_abs_ms &source, int duration_turns,
+                               int formation_slot = 0 );
+std::optional<rider_camp_pressure_intent> get_camp_pressure_intent( monster &rider );
+void clear_camp_pressure_intent( monster &rider );
 
 } // namespace zombie_rider_overmap_ai

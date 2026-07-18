@@ -3,10 +3,41 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include "calendar.h"
+#include "math_parser_diag_value.h"
+#include "monster.h"
+
 namespace zombie_rider_overmap_ai
 {
 namespace
 {
+const std::string camp_posture_key( "caol_zombie_rider_camp_posture" );
+const std::string camp_source_key( "caol_zombie_rider_camp_source" );
+const std::string camp_intent_until_key( "caol_zombie_rider_camp_intent_until" );
+const std::string camp_slot_key( "caol_zombie_rider_camp_slot" );
+
+int current_turn_number()
+{
+    return to_turns<int>( calendar::turn - calendar::turn_zero );
+}
+
+rider_camp_pressure_posture posture_from_string( const std::string &posture )
+{
+    if( posture == "investigate" ) {
+        return rider_camp_pressure_posture::investigate;
+    }
+    if( posture == "circle_harass" ) {
+        return rider_camp_pressure_posture::circle_harass;
+    }
+    if( posture == "direct_attack" ) {
+        return rider_camp_pressure_posture::direct_attack;
+    }
+    if( posture == "withdraw" ) {
+        return rider_camp_pressure_posture::withdraw;
+    }
+    return rider_camp_pressure_posture::none;
+}
+
 void clear_memory( rider_light_memory &memory, const std::string &reason )
 {
     memory.interest_score = 0;
@@ -136,6 +167,9 @@ rider_convergence_result evaluate_rider_convergence(
         if( !rider.available || rider.already_in_band || rider.cooldown_turns > 0 ) {
             continue;
         }
+        if( rider.pos.z() != light_omt.z() ) {
+            continue;
+        }
         if( omt_distance( rider.pos, light_omt ) > rider_convergence_response_radius_omt ) {
             continue;
         }
@@ -176,6 +210,17 @@ rider_convergence_result evaluate_rider_convergence(
     result.notes.push_back(
         "convergence uses temporary light memory and the rider draw cap; no permanent horde magic" );
     return result;
+}
+
+void reserve_rider_convergence( std::vector<rider_overmap_agent> &riders,
+                                const rider_convergence_result &convergence )
+{
+    for( rider_overmap_agent &rider : riders ) {
+        if( std::find( convergence.rider_ids.begin(), convergence.rider_ids.end(), rider.rider_id ) !=
+            convergence.rider_ids.end() ) {
+            rider.already_in_band = true;
+        }
+    }
 }
 
 rider_camp_pressure_result choose_camp_pressure_posture(
@@ -231,6 +276,56 @@ std::string to_string( rider_camp_pressure_posture posture )
             return "withdraw";
     }
     return "none";
+}
+
+void clear_camp_pressure_intent( monster &rider )
+{
+    rider.remove_value( camp_posture_key );
+    rider.remove_value( camp_source_key );
+    rider.remove_value( camp_intent_until_key );
+    rider.remove_value( camp_slot_key );
+}
+
+void set_camp_pressure_intent( monster &rider, rider_camp_pressure_posture posture,
+                               const tripoint_abs_ms &source, int duration_turns,
+                               int formation_slot )
+{
+    if( posture == rider_camp_pressure_posture::none || duration_turns <= 0 ) {
+        clear_camp_pressure_intent( rider );
+        return;
+    }
+
+    rider.set_value( camp_posture_key, to_string( posture ) );
+    rider.set_value( camp_source_key, source );
+    rider.set_value( camp_intent_until_key, current_turn_number() + std::max( 1, duration_turns ) );
+    rider.set_value( camp_slot_key, std::max( 0, formation_slot ) );
+}
+
+std::optional<rider_camp_pressure_intent> get_camp_pressure_intent( monster &rider )
+{
+    const diag_value *posture_value = rider.maybe_get_value( camp_posture_key );
+    const diag_value *source_value = rider.maybe_get_value( camp_source_key );
+    const diag_value *until_value = rider.maybe_get_value( camp_intent_until_key );
+    const diag_value *slot_value = rider.maybe_get_value( camp_slot_key );
+    if( posture_value == nullptr || !posture_value->is_str() ||
+        source_value == nullptr || !source_value->is_tripoint() ||
+        until_value == nullptr || !until_value->is_dbl() ||
+        slot_value == nullptr || !slot_value->is_dbl() ) {
+        clear_camp_pressure_intent( rider );
+        return std::nullopt;
+    }
+
+    rider_camp_pressure_intent intent;
+    intent.posture = posture_from_string( posture_value->str() );
+    intent.source = source_value->tripoint();
+    intent.formation_slot = std::max( 0, static_cast<int>( slot_value->dbl() ) );
+    intent.turns_remaining = static_cast<int>( until_value->dbl() ) - current_turn_number();
+    if( intent.posture == rider_camp_pressure_posture::none || intent.turns_remaining <= 0 ) {
+        clear_camp_pressure_intent( rider );
+        return std::nullopt;
+    }
+
+    return intent;
 }
 
 } // namespace zombie_rider_overmap_ai

@@ -134,7 +134,14 @@
         "aggregate_sources=3",
         "selected_riders=2",
         "band_formed=yes",
-        "posture=circle_harass"
+        "posture=circle_harass",
+        "applied_circle_harass=2",
+        "combat_ready_riders=2",
+        "zombie_rider camp_pressure_apply:",
+        "zombie_rider live_plan:",
+        "decision=circle_harass",
+        "slot=0",
+        "slot=1"
       ],
       "expected_visible_fact": "bounded live turn window reaches the camp-light signal cadence and records rider light interest, capped two-rider selection, band formation, and circle-harass posture"
     },
@@ -150,7 +157,33 @@
           "aggregate_sources=3",
           "selected_riders=2",
           "band_formed=yes",
-          "posture=circle_harass"
+          "posture=circle_harass",
+          "applied_circle_harass=2",
+          "combat_ready_riders=2"
+        ],
+        [
+          "zombie_rider camp_pressure_apply:",
+          "posture=circle_harass",
+          "opening=no",
+          "slot=0"
+        ],
+        [
+          "zombie_rider camp_pressure_apply:",
+          "posture=circle_harass",
+          "opening=no",
+          "slot=1"
+        ],
+        [
+          "zombie_rider live_plan:",
+          "decision=circle_harass",
+          "camp_posture=circle_harass",
+          "slot=0"
+        ],
+        [
+          "zombie_rider live_plan:",
+          "decision=circle_harass",
+          "camp_posture=circle_harass",
+          "slot=1"
         ],
         [
           "bandit_live_world horde light signal:",
@@ -160,14 +193,14 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_zombie_rider_camp_light_band_trace_missing",
       "abort_reason": "same-run artifact lacked the live zombie-rider camp-light/band trace or the underlying horde light signal",
-      "expected_visible_fact": "same-run debug artifact proves nearby live fire observations aggregate into one bounded camp-light rider signal, selecting a capped two-rider band with circle-harass posture"
+      "expected_visible_fact": "same-run debug artifact proves nearby live fire observations select two combat-ready riders, write a distinct circle-harass slot to each, and execute the circle branch for both slots in subsequent monster planning"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_camp_light_band_mcw",
   "evidence_contract": {
-    "claim": "staged mature-world camp lights enter the live light-signal path, aggregate as one nearby camp-light cluster, and feed zombie-rider overmap convergence into a capped two-rider band with circle-harass posture",
-    "setup_guard": "the run uses harness-only game_turn, remove-overmap-NPC, map_fields, and active_monsters save transforms plus saved-turn/NPC/rider/fire audits before live turns; it proves a nearby live camp-light cluster hook, not natural discovery, persistent rider travel, or physical camp assault navigation",
+    "claim": "staged mature-world camp lights enter the live light-signal path, aggregate as one nearby camp-light cluster, and steer both combat-ready members of a capped loaded band through persistent circle-harass movement planning",
+    "setup_guard": "the run uses harness-only game_turn, remove-overmap-NPC, map_fields, and active_monsters save transforms plus saved-turn/NPC/rider/fire audits before live turns; it proves the nearby loaded-rider source hook and planning handoff, not natural discovery, offscreen rider migration, or a full camp siege",
     "load_only_verdict": "load proof only / inconclusive for zombie-rider camp-light attraction behavior",
-    "writeback_note": "No save/writeback gate: this scenario proves bounded live source-hook and same-run artifact behavior; persistent overmap migration/camp assault remains future-only unless promoted."
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live source-hook and same-run loaded-rider planning behavior; offscreen overmap migration and full camp assault remain future-only unless promoted."
   }
 }

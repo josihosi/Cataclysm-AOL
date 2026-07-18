@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -73,6 +74,7 @@
 #include "options.h"
 #include "output.h"
 #include "overmapbuffer.h"
+#include "pathfinding.h"
 #include "pimpl.h"
 #include "player_activity.h"
 #include "point.h"
@@ -1267,6 +1269,7 @@ struct live_bandit_signal_observation {
     bandit_live_world::live_signal_mark mark;
     bandit_mark_generation::signal_input signal;
     tripoint_abs_omt source_omt;
+    std::optional<tripoint_abs_ms> source_ms;
     int range_cap_omt = 0;
     int horde_signal_power = 0;
     std::string weather_summary;
@@ -1294,6 +1297,8 @@ struct live_bandit_local_source_reading {
     int light_intensity = 0;
     bandit_mark_generation::light_source_band light_source =
         bandit_mark_generation::light_source_band::ordinary;
+    int representative_light_intensity = 0;
+    std::optional<tripoint_abs_ms> light_source_pos;
     bool outside = false;
     int side_leakage = 0;
     bool elevated_roof_exposed = false;
@@ -1499,14 +1504,33 @@ int live_bandit_light_side_leakage_near( const map &here, const tripoint_bub_ms 
 
 void live_bandit_note_light_source( live_bandit_local_source_reading &reading,
                                     const int intensity,
-                                    const bandit_mark_generation::light_source_band source )
+                                    const bandit_mark_generation::light_source_band source,
+                                    const tripoint_abs_ms &source_pos )
 {
     if( intensity <= 0 ) {
         return;
     }
-    if( source == bandit_mark_generation::light_source_band::searchlight &&
-        reading.light_source != bandit_mark_generation::light_source_band::searchlight ) {
+    const bool source_is_searchlight =
+        source == bandit_mark_generation::light_source_band::searchlight;
+    const bool reading_is_searchlight =
+        reading.light_source == bandit_mark_generation::light_source_band::searchlight;
+    const bool source_class_wins = source_is_searchlight && !reading_is_searchlight;
+    const bool same_class = source_is_searchlight == reading_is_searchlight;
+    const tripoint_abs_ms current_pos = reading.light_source_pos.value_or( source_pos );
+    const bool stable_position_wins = source_pos.z() < current_pos.z() ||
+                                      ( source_pos.z() == current_pos.z() &&
+                                        ( source_pos.y() < current_pos.y() ||
+                                          ( source_pos.y() == current_pos.y() &&
+                                            source_pos.x() < current_pos.x() ) ) );
+    const bool representative_wins = source_class_wins ||
+                                     ( same_class &&
+                                       ( intensity > reading.representative_light_intensity ||
+                                         ( intensity == reading.representative_light_intensity &&
+                                           stable_position_wins ) ) );
+    if( !reading.light_source_pos || representative_wins ) {
         reading.light_source = source;
+        reading.representative_light_intensity = intensity;
+        reading.light_source_pos = source_pos;
     }
     reading.light_intensity = std::max( reading.light_intensity, intensity );
 }
@@ -1556,7 +1580,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         live_bandit_local_source_reading &reading = readings[source_omt];
         reading.fire_intensity = std::max( reading.fire_intensity, fire_intensity );
         reading.smoke_intensity = std::max( reading.smoke_intensity, smoke_intensity );
-        live_bandit_note_light_source( reading, light_intensity, light_source );
+        live_bandit_note_light_source( reading, light_intensity, light_source, here.get_abs( p ) );
         reading.outside |= here.is_outside( p );
         reading.side_leakage = std::max( reading.side_leakage,
                                          live_bandit_light_side_leakage_near( here, p ) );
@@ -1584,7 +1608,8 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
             live_bandit_local_source_reading &reading = readings[source_omt];
             live_bandit_note_light_source( reading, light_intensity,
                                            directional ? bandit_mark_generation::light_source_band::searchlight :
-                                           bandit_mark_generation::light_source_band::ordinary );
+                                           bandit_mark_generation::light_source_band::ordinary,
+                                           here.get_abs( p ) );
             reading.outside |= here.is_outside( p );
             reading.side_leakage = std::max( reading.side_leakage,
                                              live_bandit_light_side_leakage_near( here, p ) );
@@ -1671,6 +1696,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         live_bandit_signal_observation light_observation;
         light_observation.signal = light_projection.signal;
         light_observation.source_omt = source_omt;
+        light_observation.source_ms = reading.light_source_pos;
         light_observation.range_cap_omt = light_projection.projected_range_omt;
         light_observation.weather_summary = light_projection.concealment.summary;
         light_observation.mark.mark_id = light_projection.packet.id;
@@ -1915,27 +1941,168 @@ void advance_zombie_rider_light_memories()
     last_turn = calendar::turn;
 }
 
-int command_live_zombie_riders_to_light(
+struct live_zombie_rider_pressure_summary {
+    int commanded = 0;
+    int combat_ready = 0;
+    int investigate = 0;
+    int circle_harass = 0;
+    int direct_attack = 0;
+    int withdraw = 0;
+    int selected_wounded = 0;
+};
+
+std::string live_zombie_rider_aggregate_posture(
+    const live_zombie_rider_pressure_summary &summary )
+{
+    if( summary.commanded == 0 ) {
+        return "none";
+    }
+    if( summary.investigate == summary.commanded ) {
+        return "investigate";
+    }
+    if( summary.circle_harass == summary.commanded ) {
+        return "circle_harass";
+    }
+    if( summary.direct_attack == summary.commanded ) {
+        return "direct_attack";
+    }
+    if( summary.withdraw == summary.commanded ) {
+        return "withdraw";
+    }
+    return "mixed";
+}
+
+Creature *nearest_live_camp_defender( const tripoint_abs_ms &source, const monster &rider,
+                                      int &defender_strength )
+{
+    Creature *nearest = nullptr;
+    int nearest_distance = INT_MAX;
+    defender_strength = 0;
+    avatar &u = get_avatar();
+    if( !u.is_dead_state() && u.posz() == source.z() && rl_dist( u.pos_abs(), source ) <= 30 ) {
+        defender_strength++;
+        nearest = &u;
+        nearest_distance = rl_dist( rider.pos_abs(), u.pos_abs() );
+    }
+    for( npc &guy : g->all_npcs() ) {
+        if( guy.is_dead() || !guy.is_player_ally() || guy.posz() != source.z() ||
+            rl_dist( guy.pos_abs(), source ) > 30 ) {
+            continue;
+        }
+        defender_strength++;
+        const int distance = rl_dist( rider.pos_abs(), guy.pos_abs() );
+        if( distance < nearest_distance ) {
+            nearest = &guy;
+            nearest_distance = distance;
+        }
+    }
+    defender_strength = std::max( 1, defender_strength );
+    return nearest;
+}
+
+bool live_camp_has_actionable_opening( map &here, const tripoint_abs_ms &source,
+                                       monster &rider, const Creature *defender )
+{
+    if( defender == nullptr || defender->posz() != rider.posz() ||
+        !rider.sees( here, *defender ) ) {
+        return false;
+    }
+    const tripoint_bub_ms source_bub = here.get_bub( source );
+    if( !here.inbounds( source_bub ) ) {
+        return false;
+    }
+
+    int nearby_barriers = 0;
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( source_bub, 6 ) ) {
+        if( here.inbounds( candidate ) && !here.passable( candidate ) ) {
+            nearby_barriers++;
+        }
+    }
+    if( nearby_barriers < 8 ) {
+        return false;
+    }
+
+    return !here.route( rider, pathfinding_target::point( defender->pos_bub() ) ).empty();
+}
+
+live_zombie_rider_pressure_summary command_live_zombie_riders_to_light(
     const zombie_rider_overmap_ai::rider_convergence_result &convergence,
     const std::unordered_map<std::string, monster *> &live_riders_by_id,
     const tripoint_abs_ms &light_source, int memory_turns )
 {
-    int commanded = 0;
+    live_zombie_rider_pressure_summary summary;
     if( !convergence.should_converge ) {
-        return commanded;
+        return summary;
     }
-    const int wander_interest = std::max( 1, memory_turns );
+    map &here = get_map();
     for( const std::string &rider_id : convergence.rider_ids ) {
+        const auto rider_iter = live_riders_by_id.find( rider_id );
+        if( rider_iter != live_riders_by_id.end() && rider_iter->second != nullptr &&
+            rider_iter->second->hp_percentage() > 50 ) {
+            summary.combat_ready++;
+        }
+    }
+    for( size_t rider_index = 0; rider_index < convergence.rider_ids.size(); ++rider_index ) {
+        const std::string &rider_id = convergence.rider_ids[rider_index];
         const auto rider_iter = live_riders_by_id.find( rider_id );
         if( rider_iter == live_riders_by_id.end() || rider_iter->second == nullptr ) {
             continue;
         }
         monster &rider = *rider_iter->second;
-        rider.wander_to( light_source, wander_interest );
-        rider.anger = std::max( rider.anger, 100 );
-        commanded++;
+        int defender_strength = 0;
+        Creature *defender = nearest_live_camp_defender( light_source, rider, defender_strength );
+        const bool rider_wounded = rider.hp_percentage() <= 50;
+        const bool actionable_opening = live_camp_has_actionable_opening(
+                                            here, light_source, rider, defender );
+
+        zombie_rider_overmap_ai::rider_camp_pressure_input pressure_input;
+        pressure_input.light_memory_active = true;
+        pressure_input.rider_count = summary.combat_ready;
+        pressure_input.band_formed =
+            summary.combat_ready >= zombie_rider_overmap_ai::rider_band_minimum_size;
+        pressure_input.breach_or_opening = actionable_opening;
+        pressure_input.defender_strength = defender_strength;
+        pressure_input.rider_wounded = rider_wounded;
+        const zombie_rider_overmap_ai::rider_camp_pressure_result pressure =
+            zombie_rider_overmap_ai::choose_camp_pressure_posture( pressure_input );
+
+        zombie_rider_overmap_ai::set_camp_pressure_intent( rider, pressure.posture,
+                light_source, memory_turns, static_cast<int>( rider_index ) );
+        rider.unset_dest();
+        if( pressure.posture != zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw ) {
+            rider.anger = std::max( rider.anger, 100 );
+        }
+        summary.commanded++;
+        summary.selected_wounded += rider_wounded ? 1 : 0;
+        switch( pressure.posture ) {
+            case zombie_rider_overmap_ai::rider_camp_pressure_posture::investigate:
+                summary.investigate++;
+                break;
+            case zombie_rider_overmap_ai::rider_camp_pressure_posture::circle_harass:
+                summary.circle_harass++;
+                break;
+            case zombie_rider_overmap_ai::rider_camp_pressure_posture::direct_attack:
+                summary.direct_attack++;
+                break;
+            case zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw:
+                summary.withdraw++;
+                break;
+            case zombie_rider_overmap_ai::rider_camp_pressure_posture::none:
+                break;
+        }
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider camp_pressure_apply: rider=" << rider_id
+                                   << " posture=" << zombie_rider_overmap_ai::to_string( pressure.posture )
+                                   << " reason=" << pressure.reason
+                                   << " source=" << light_source.to_string_writable()
+                                   << " rider_pos=" << rider.pos_abs().to_string_writable()
+                                   << " slot=" << rider_index
+                                   << " intent_turns=" << memory_turns
+                                   << " combat_ready_riders=" << summary.combat_ready
+                                   << " defender_strength=" << defender_strength
+                                   << " opening=" << ( actionable_opening ? "yes" : "no" )
+                                   << " rider_wounded=" << ( rider_wounded ? "yes" : "no" ) << '\n';
     }
-    return commanded;
+    return summary;
 }
 
 int signal_live_zombie_riders_from_light_observations(
@@ -1957,7 +2124,9 @@ int signal_live_zombie_riders_from_light_observations(
         rider.rider_id = "active@" + critter.pos_abs().to_string();
         rider.pos = critter.pos_abs_omt();
         rider.available = true;
-        rider.already_in_band = false;
+        const std::optional<zombie_rider_overmap_ai::rider_camp_pressure_intent> existing_intent =
+            zombie_rider_overmap_ai::get_camp_pressure_intent( critter );
+        rider.already_in_band = existing_intent.has_value();
         rider.cooldown_turns = critter.has_effect( effect_run ) ? 1 : 0;
         riders.push_back( rider );
         live_riders_by_id.emplace( rider.rider_id, &critter );
@@ -2016,20 +2185,11 @@ int signal_live_zombie_riders_from_light_observations(
         zombie_rider_overmap_ai::refresh_light_memory( memory, interest );
         const zombie_rider_overmap_ai::rider_convergence_result convergence =
             zombie_rider_overmap_ai::evaluate_rider_convergence( memory, signal.source_omt, riders );
-        const int live_riders_commanded = command_live_zombie_riders_to_light(
-                                              convergence, live_riders_by_id,
-                                              coords::project_to<coords::ms>( signal.source_omt ),
-                                              memory.turns_remaining );
-
-        zombie_rider_overmap_ai::rider_camp_pressure_input pressure_input;
-        pressure_input.light_memory_active = memory.active();
-        pressure_input.rider_count = convergence.selected_riders;
-        pressure_input.band_formed = convergence.band_formed;
-        pressure_input.breach_or_opening = false;
-        pressure_input.defender_strength = 2;
-        pressure_input.rider_wounded = wounded_riders > 0;
-        const zombie_rider_overmap_ai::rider_camp_pressure_result pressure =
-            zombie_rider_overmap_ai::choose_camp_pressure_posture( pressure_input );
+        const tripoint_abs_ms light_source = signal.source_ms.value_or(
+                                                coords::project_to<coords::ms>( signal.source_omt ) );
+        const live_zombie_rider_pressure_summary pressure = command_live_zombie_riders_to_light(
+                    convergence, live_riders_by_id, light_source, memory.turns_remaining );
+        zombie_rider_overmap_ai::reserve_rider_convergence( riders, convergence );
 
         DebugLog( D_INFO, DC_ALL ) << "zombie_rider camp_light: signal=yes source_omt="
                                    << signal.source_omt.to_string()
@@ -2044,14 +2204,19 @@ int signal_live_zombie_riders_from_light_observations(
                                    << " memory_turns=" << memory.turns_remaining
                                    << " riders_observed=" << riders.size()
                                    << " selected_riders=" << convergence.selected_riders
-                                   << " live_riders_commanded=" << live_riders_commanded
+                                   << " live_riders_commanded=" << pressure.commanded
+                                   << " combat_ready_riders=" << pressure.combat_ready
                                    << " cap=" << convergence.cap
                                    << " band_formed=" << ( convergence.band_formed ? "yes" : "no" )
                                    << " band_size=" << convergence.band_size
                                    << " convergence_reason=" << convergence.reason
-                                   << " posture=" << zombie_rider_overmap_ai::to_string( pressure.posture )
-                                   << " posture_reason=" << pressure.reason
-                                   << " wounded_riders=" << wounded_riders << '\n';
+                                   << " posture=" << live_zombie_rider_aggregate_posture( pressure )
+                                   << " applied_investigate=" << pressure.investigate
+                                   << " applied_circle_harass=" << pressure.circle_harass
+                                   << " applied_direct_attack=" << pressure.direct_attack
+                                   << " applied_withdraw=" << pressure.withdraw
+                                   << " selected_wounded=" << pressure.selected_wounded
+                                   << " wounded_riders_observed=" << wounded_riders << '\n';
         if( !memory.active() ) {
             overmap_buffer.global_state.zombie_rider_light_memory.erase( signal.source_omt );
         }

@@ -11,6 +11,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,7 @@
 #include "viewer.h"
 #include "vpart_position.h"
 #include "writhing_stalker_ai.h"
+#include "zombie_rider_overmap_ai.h"
 
 static const damage_type_id damage_bash( "bash" );
 static const damage_type_id damage_cut( "cut" );
@@ -1158,6 +1160,206 @@ static int zombie_rider_ammo_remaining( const monster &rider )
     return ammo_it == rider.ammo.end() ? 0 : ammo_it->second;
 }
 
+static bool zombie_rider_camp_target_relevant(
+    const zombie_rider_overmap_ai::rider_camp_pressure_intent &intent,
+    const Creature &target )
+{
+    const tripoint_abs_ms target_pos = target.pos_abs();
+    return target_pos.z() == intent.source.z() &&
+           std::max( std::abs( target_pos.x() - intent.source.x() ),
+                     std::abs( target_pos.y() - intent.source.y() ) ) <= 30;
+}
+
+static std::optional<tripoint_abs_ms> zombie_rider_camp_open_destination( monster &rider,
+        map &here, const tripoint_abs_ms &desired )
+{
+    tripoint_bub_ms desired_bub = here.get_bub( desired );
+    const int route_limit = rider.get_pathfinding_settings().max_dist;
+    constexpr int route_margin = 6;
+    const int desired_distance = rl_dist( rider.pos_bub(), desired_bub );
+    if( route_limit > route_margin && desired_distance > route_limit - route_margin ) {
+        const int delta_x = desired_bub.x() - rider.pos_bub().x();
+        const int delta_y = desired_bub.y() - rider.pos_bub().y();
+        const int span = std::max( std::abs( delta_x ), std::abs( delta_y ) );
+        const int hop = route_limit - route_margin;
+        desired_bub = tripoint_bub_ms( rider.pos_bub().x() + delta_x * hop / span,
+                                      rider.pos_bub().y() + delta_y * hop / span,
+                                      rider.posz() );
+    }
+    if( !here.inbounds( desired_bub ) ) {
+        return std::nullopt;
+    }
+
+    creature_tracker &creatures = get_creature_tracker();
+    std::vector<std::pair<int, tripoint_bub_ms>> candidates;
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( desired_bub, 4 ) ) {
+        if( candidate.z() != rider.posz() || !here.inbounds( candidate ) ||
+            !rider.can_move_to( candidate ) || !rider.know_danger_at( candidate ) ) {
+            continue;
+        }
+        const Creature *occupant = creatures.creature_at( candidate, true );
+        if( occupant != nullptr && occupant != &rider ) {
+            continue;
+        }
+
+        const int score = 100 * rl_dist( candidate, desired_bub ) +
+                          rl_dist( rider.pos_bub(), candidate );
+        candidates.emplace_back( score, candidate );
+    }
+    std::sort( candidates.begin(), candidates.end(), []( const auto &lhs, const auto &rhs ) {
+        if( lhs.first != rhs.first ) {
+            return lhs.first < rhs.first;
+        }
+        if( lhs.second.z() != rhs.second.z() ) {
+            return lhs.second.z() < rhs.second.z();
+        }
+        if( lhs.second.y() != rhs.second.y() ) {
+            return lhs.second.y() < rhs.second.y();
+        }
+        return lhs.second.x() < rhs.second.x();
+    } );
+
+    constexpr int max_route_attempts = 8;
+    int route_attempts = 0;
+    for( const auto &candidate : candidates ) {
+        if( candidate.second == rider.pos_bub() ) {
+            return here.get_abs( candidate.second );
+        }
+        if( route_attempts >= max_route_attempts ) {
+            break;
+        }
+        route_attempts++;
+        const std::vector<tripoint_bub_ms> route = here.route(
+                    rider, pathfinding_target::point( candidate.second ) );
+        if( !route.empty() && route.back() == candidate.second &&
+            std::all_of( route.begin(), route.end(), [&rider]( const tripoint_bub_ms &step ) {
+            return rider.know_danger_at( step );
+        } ) ) {
+            return here.get_abs( candidate.second );
+        }
+    }
+    return std::nullopt;
+}
+
+static tripoint_abs_ms zombie_rider_camp_circle_destination( monster &rider, map &here,
+        const zombie_rider_overmap_ai::rider_camp_pressure_intent &intent )
+{
+    int relative_x = rider.pos_abs().x() - intent.source.x();
+    int relative_y = rider.pos_abs().y() - intent.source.y();
+    int span = std::max( std::abs( relative_x ), std::abs( relative_y ) );
+    if( span == 0 ) {
+        switch( intent.formation_slot % 4 ) {
+            case 0:
+                relative_x = 1;
+                break;
+            case 1:
+                relative_y = 1;
+                break;
+            case 2:
+                relative_x = -1;
+                break;
+            default:
+                relative_y = -1;
+                break;
+        }
+        span = 1;
+    }
+
+    const int radius = std::clamp( span + intent.formation_slot % 2, 8, 18 );
+    int radial_x = relative_x * radius / span;
+    int radial_y = relative_y * radius / span;
+    if( radial_x == 0 && radial_y == 0 ) {
+        radial_x = radius;
+    }
+    const tripoint_abs_ms preferred( intent.source.x() - radial_y,
+                                    intent.source.y() + radial_x, intent.source.z() );
+    const std::optional<tripoint_abs_ms> open_preferred =
+        zombie_rider_camp_open_destination( rider, here, preferred );
+    if( open_preferred ) {
+        return *open_preferred;
+    }
+
+    const tripoint_abs_ms opposite( intent.source.x() + radial_y,
+                                   intent.source.y() - radial_x, intent.source.z() );
+    const std::optional<tripoint_abs_ms> open_opposite =
+        zombie_rider_camp_open_destination( rider, here, opposite );
+    return open_opposite ? *open_opposite : rider.pos_abs();
+}
+
+static tripoint_abs_ms zombie_rider_camp_approach_destination( monster &rider, map &here,
+        const zombie_rider_overmap_ai::rider_camp_pressure_intent &intent )
+{
+    const int relative_x = rider.pos_abs().x() - intent.source.x();
+    const int relative_y = rider.pos_abs().y() - intent.source.y();
+    const int span = std::max( std::abs( relative_x ), std::abs( relative_y ) );
+    constexpr int stand_off = 8;
+    if( span <= stand_off ) {
+        return zombie_rider_camp_circle_destination( rider, here, intent );
+    }
+
+    const tripoint_abs_ms desired( intent.source.x() + relative_x * stand_off / span,
+                                   intent.source.y() + relative_y * stand_off / span,
+                                   intent.source.z() );
+    const std::optional<tripoint_abs_ms> open = zombie_rider_camp_open_destination( rider, here,
+            desired );
+    return open ? *open : rider.pos_abs();
+}
+
+static tripoint_abs_ms zombie_rider_camp_withdraw_destination( const monster &rider,
+        const tripoint_abs_ms &away_from, int formation_slot )
+{
+    int away_x = rider.pos_abs().x() - away_from.x();
+    int away_y = rider.pos_abs().y() - away_from.y();
+    int span = std::max( std::abs( away_x ), std::abs( away_y ) );
+    if( span == 0 ) {
+        away_x = formation_slot % 2 == 0 ? 1 : -1;
+        away_y = formation_slot % 4 < 2 ? 1 : -1;
+        span = 1;
+    }
+
+    const int step = std::clamp( span, 8, 18 );
+    return tripoint_abs_ms( rider.pos_abs().x() + away_x * step / span,
+                            rider.pos_abs().y() + away_y * step / span, rider.posz() );
+}
+
+static bool apply_zombie_rider_camp_intent_without_target( monster &rider, map &here,
+        const zombie_rider_overmap_ai::rider_camp_pressure_intent &intent,
+        const char *reason )
+{
+    zombie_rider_overmap_ai::rider_camp_pressure_posture posture = intent.posture;
+    if( rider.hp_percentage() <= 50 ) {
+        posture = zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw;
+    }
+
+    tripoint_abs_ms destination = zombie_rider_camp_approach_destination( rider, here, intent );
+    if( posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::circle_harass ) {
+        destination = zombie_rider_camp_circle_destination( rider, here, intent );
+    } else if( posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw ) {
+        destination = zombie_rider_camp_withdraw_destination( rider, intent.source,
+                      intent.formation_slot );
+    }
+
+    rider.set_dest( destination );
+    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision="
+                               << zombie_rider_overmap_ai::to_string( posture )
+                               << " reason=" << reason
+                               << " camp_posture=" << zombie_rider_overmap_ai::to_string( intent.posture )
+                               << " camp_source=" << intent.source.to_string_writable()
+                               << " destination=" << destination.to_string_writable()
+                               << " slot=" << intent.formation_slot
+                               << " intent_turns=" << intent.turns_remaining
+                               << " hp=" << rider.hp_percentage() << '\n';
+    return true;
+}
+
+static bool apply_active_zombie_rider_camp_intent_without_target( monster &rider, map &here,
+        const char *reason )
+{
+    const std::optional<zombie_rider_overmap_ai::rider_camp_pressure_intent> intent =
+        zombie_rider_overmap_ai::get_camp_pressure_intent( rider );
+    return intent && apply_zombie_rider_camp_intent_without_target( rider, here, *intent, reason );
+}
+
 static tripoint_abs_ms zombie_rider_direct_withdraw_destination( const monster &rider,
         const Creature &target )
 {
@@ -1234,7 +1436,17 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     }
 
     const auto perf_started = std::chrono::steady_clock::now();
+    const std::optional<zombie_rider_overmap_ai::rider_camp_pressure_intent> camp_intent =
+        zombie_rider_overmap_ai::get_camp_pressure_intent( rider );
+    const bool camp_target_relevant = camp_intent &&
+                                      zombie_rider_camp_target_relevant( *camp_intent, target );
+    const std::string camp_posture = camp_intent ?
+                                     zombie_rider_overmap_ai::to_string( camp_intent->posture ) : "none";
     if( target.posz() != rider.posz() || !rider.sees( here, target ) ) {
+        if( camp_intent ) {
+            return apply_zombie_rider_camp_intent_without_target( rider, here, *camp_intent,
+                    "camp_pressure_no_visible_target" );
+        }
         const auto perf_done = std::chrono::steady_clock::now();
         const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                                 perf_started ).count();
@@ -1244,6 +1456,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                    << " special_ready=" << ( rider.special_available( zombie_rider_bone_bow_shot ) ? "yes" : "no" )
                                    << " ammo=" << zombie_rider_ammo_remaining( rider )
                                    << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " camp_posture=" << camp_posture
                                    << " eval_us=" << elapsed_us << '\n';
         return false;
     }
@@ -1268,8 +1481,24 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                    << " special_ready=" << ( special_ready ? "yes" : "no" )
                                    << " ammo=" << ammo_remaining
                                    << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " camp_posture=" << camp_posture
                                    << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( zombie_rider_direct_withdraw_destination( rider, target ) );
+        return true;
+    }
+
+    if( camp_target_relevant &&
+        camp_intent->posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw ) {
+        const tripoint_abs_ms destination = zombie_rider_camp_withdraw_destination( rider,
+                                            target.pos_abs(), camp_intent->formation_slot );
+        rider.set_dest( destination );
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw"
+                                   << " reason=camp_pressure_withdraw"
+                                   << " camp_posture=" << camp_posture
+                                   << " destination=" << destination.to_string_writable()
+                                   << " intent_turns=" << camp_intent->turns_remaining
+                                   << " distance=" << distance_to_target
+                                   << " hp=" << rider.hp_percentage() << '\n';
         return true;
     }
 
@@ -1283,8 +1512,48 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                    << " special_ready=yes ammo=" << ammo_remaining
                                    << " aggro_before=" << ( aggro_before ? "yes" : "no" )
                                    << " aggro_after=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " camp_posture=" << camp_posture
+                                   << " camp_relevant=" << ( camp_target_relevant ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( target.pos_abs() );
+        return true;
+    }
+
+    if( camp_target_relevant &&
+        camp_intent->posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::direct_attack ) {
+        rider.aggro_character = true;
+        rider.anger = std::max( rider.anger, 80 );
+        rider.set_dest( target.pos_abs() );
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=direct_attack"
+                                   << " reason=camp_pressure_opening"
+                                   << " camp_posture=" << camp_posture
+                                   << " intent_turns=" << camp_intent->turns_remaining
+                                   << " distance=" << distance_to_target
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " hp=" << rider.hp_percentage() << '\n';
+        return true;
+    }
+
+    if( camp_target_relevant &&
+        camp_intent->posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::investigate ) {
+        return apply_zombie_rider_camp_intent_without_target( rider, here, *camp_intent,
+                "camp_pressure_no_opening" );
+    }
+
+    if( camp_target_relevant &&
+        camp_intent->posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::circle_harass ) {
+        const tripoint_abs_ms destination = zombie_rider_camp_circle_destination( rider, here,
+                                            *camp_intent );
+        rider.set_dest( destination );
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=circle_harass"
+                                   << " reason=camp_pressure_no_breach"
+                                   << " camp_posture=" << camp_posture
+                                   << " destination=" << destination.to_string_writable()
+                                   << " slot=" << camp_intent->formation_slot
+                                   << " intent_turns=" << camp_intent->turns_remaining
+                                   << " distance=" << distance_to_target
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " hp=" << rider.hp_percentage() << '\n';
         return true;
     }
 
@@ -1300,6 +1569,8 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                    << " ammo=0"
                                    << " aggro_before=" << ( aggro_before ? "yes" : "no" )
                                    << " aggro_after=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " camp_posture=" << camp_posture
+                                   << " camp_relevant=" << ( camp_target_relevant ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( target.pos_abs() );
         return true;
@@ -1320,6 +1591,8 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                    << " special_ready=" << ( special_ready ? "yes" : "no" )
                                    << " ammo=" << ammo_remaining
                                    << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
+                                   << " camp_posture=" << camp_posture
+                                   << " camp_relevant=" << ( camp_target_relevant ? "yes" : "no" )
                                    << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( pressure_dest );
         return true;
@@ -1333,6 +1606,8 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
                                << " special_ready=" << ( special_ready ? "yes" : "no" )
                                << " ammo=" << ammo_remaining
                                << " aggro=" << ( rider.aggro_character ? "yes" : "no" )
+                               << " camp_posture=" << camp_posture
+                               << " camp_relevant=" << ( camp_target_relevant ? "yes" : "no" )
                                << " eval_us=" << elapsed_us << '\n';
     rider.set_dest( zombie_rider_direct_withdraw_destination( rider, target ) );
     return true;
@@ -1638,6 +1913,10 @@ void monster::plan()
     }
 
     if( mon_plan.target == nullptr && type->id == mon_zombie_rider ) {
+        if( apply_active_zombie_rider_camp_intent_without_target( *this, here,
+                "camp_pressure_no_acquired_target" ) ) {
+            return;
+        }
         const auto perf_started = std::chrono::steady_clock::now();
         const bool player_same_level = player_character.posz() == posz() &&
                                        seen_levels.test( player_character.posz() + OVERMAP_DEPTH );

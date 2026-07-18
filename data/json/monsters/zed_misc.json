@@ -825,7 +825,7 @@
     "vision_day": 55,
     "vision_night": 20,
     "grab_strength": 20,
-    "path_settings": { "max_dist": 45, "avoid_traps": true, "avoid_sharp": true },
+    "path_settings": { "max_dist": 45, "avoid_traps": true, "avoid_sharp": true, "avoid_dangerous_fields": true },
     "starting_ammo": { "zombie_rider_tainted_bone_arrow": 18 },
     "special_attacks": [
       {
