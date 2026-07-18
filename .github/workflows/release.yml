@@ -52,15 +52,15 @@ on:
           - port/ctlg-master
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   REPOSITORY_NAME: ${{ github.event.repository.name }}
   TARGET_REF: ${{ github.event.inputs.target_branch || github.ref_name }}
 
 jobs:
   release:
-    name: Create Release
+    name: Resolve Release Metadata
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: read
     outputs:
       timestamp: ${{ steps.get-timestamp.outputs.time }}
       target_ref: ${{ steps.metadata.outputs.target_ref }}
@@ -180,40 +180,6 @@ jobs:
           python tools/llm_runner/run_action_status_fixtures.py
           python -m unittest discover -s tools/openclaw_harness -p 'test*.py' -v
 
-      - name: Generate release notes
-        id: generate-release-notes
-        run: |
-          set -eu
-          npm install @actions/github@8
-          node build-scripts/generate-release-notes.js \
-            '${{ secrets.GITHUB_TOKEN }}' \
-            '${{ steps.metadata.outputs.tag_name }}' \
-            '${{ steps.resolve-target.outputs.target_sha }}' \
-            '${{ steps.metadata.outputs.release_tag_prefix }}' \
-            '${{ steps.metadata.outputs.target_ref }}' \
-            > auto-notes.txt
-
-          {
-            printf '# %s\n\n' '${{ steps.metadata.outputs.release_name }}'
-            printf -- '- target branch: `%s`\n' '${{ steps.metadata.outputs.target_ref }}'
-            printf -- '- commit: `%s`\n' "$(git rev-parse --short HEAD)"
-            printf -- '- built at: `%s` UTC\n\n' '${{ steps.get-timestamp.outputs.time }}'
-            cat auto-notes.txt
-          } > notes.txt
-
-      - name: Create or reuse GitHub release
-        run: |
-          set -eu
-          if gh release view '${{ steps.metadata.outputs.tag_name }}' >/dev/null 2>&1; then
-            echo "Release ${{ steps.metadata.outputs.tag_name }} already exists, reusing it."
-          else
-            gh release create '${{ steps.metadata.outputs.tag_name }}' \
-              --notes-file notes.txt \
-              --prerelease \
-              --title '${{ steps.metadata.outputs.release_name }}' \
-              --target '${{ steps.resolve-target.outputs.target_sha }}'
-          fi
-
   compose-tilesets:
     needs: release
     uses: ./.github/workflows/compose-tilesets.yml
@@ -287,7 +253,8 @@ jobs:
             sound: 1
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    permissions: write-all
+    permissions:
+      contents: read
     env:
       ZSTD_CLEVEL: 17
     steps:
@@ -677,7 +644,10 @@ jobs:
         run: |
           python tools/openclaw_harness/verify_release_asset.py \
             '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}' \
-            --platform '${{ matrix.release_os }}'
+            --platform '${{ matrix.release_os }}' \
+            --expected-branch '${{ needs.release.outputs.target_ref }}' \
+            --expected-build-number '${{ needs.release.outputs.timestamp }}' \
+            --expected-commit '${{ needs.release.outputs.target_sha }}'
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -686,17 +656,21 @@ jobs:
           path: ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
           if-no-files-found: error
 
-      - name: Upload release asset
-        run: gh release upload '${{ needs.release.outputs.tag_name }}' '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}' --clobber
-
-  checksums:
-    name: Publish SHA256SUMS
+  publish:
+    name: Publish verified prerelease
     needs:
       - release
       - builds
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ needs.release.outputs.target_sha }}
+          fetch-tags: true
+          persist-credentials: false
+
       - name: Download built artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -704,12 +678,127 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Generate checksum file
+      - name: Verify exact artifact set and generate checksums
+        shell: bash
         run: |
-          set -eu
-          cd dist
-          shasum -a 256 * > SHA256SUMS.txt
+          set -euo pipefail
+          expected=(
+            '${{ needs.release.outputs.asset_prefix }}_linux.tar.gz'
+            '${{ needs.release.outputs.asset_prefix }}_macos.dmg'
+            '${{ needs.release.outputs.asset_prefix }}_windows.zip'
+          )
 
-      - name: Upload checksum asset
+          mapfile -t actual < <(find dist -maxdepth 1 -type f -printf '%f\n' | sort)
+          if [ "${#actual[@]}" -ne "${#expected[@]}" ]; then
+            printf 'Expected exactly %s release artifacts, found %s:\n' "${#expected[@]}" "${#actual[@]}" >&2
+            printf '  %s\n' "${actual[@]}" >&2
+            exit 1
+          fi
+          for index in "${!expected[@]}"; do
+            if [ "${actual[$index]}" != "${expected[$index]}" ]; then
+              printf 'Release artifact mismatch at index %s: expected %s, found %s\n' \
+                "$index" "${expected[$index]}" "${actual[$index]}" >&2
+              exit 1
+            fi
+            if [ ! -s "dist/${expected[$index]}" ]; then
+              printf 'Release artifact is missing or empty: %s\n' "dist/${expected[$index]}" >&2
+              exit 1
+            fi
+          done
+
+          cd dist
+          sha256sum "${expected[@]}" > SHA256SUMS.txt
+          test "$(wc -l < SHA256SUMS.txt)" -eq 3
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Fail on release or tag collision
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload '${{ needs.release.outputs.tag_name }}' dist/SHA256SUMS.txt --repo '${{ github.repository }}' --clobber
+          set -euo pipefail
+          tag='${{ needs.release.outputs.tag_name }}'
+
+          require_absent() {
+            endpoint="$1"
+            description="$2"
+            response_file="$(mktemp)"
+            status=0
+            if ! status="$(curl --silent --show-error --location \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              --header 'Accept: application/vnd.github+json' \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/${{ github.repository }}/$endpoint")"; then
+              echo "Unable to check $description; refusing to publish." >&2
+              cat "$response_file" >&2
+              rm -f "$response_file"
+              exit 1
+            fi
+            case "$status" in
+              404)
+                rm -f "$response_file"
+                ;;
+              200)
+                echo "$description already exists; refusing to reuse it." >&2
+                cat "$response_file" >&2
+                rm -f "$response_file"
+                exit 1
+                ;;
+              *)
+                echo "Unexpected HTTP $status while checking $description; refusing to publish." >&2
+                cat "$response_file" >&2
+                rm -f "$response_file"
+                exit 1
+                ;;
+            esac
+          }
+
+          require_absent "releases/tags/$tag" "release for $tag"
+          require_absent "git/ref/tags/$tag" "tag $tag"
+
+      - name: Generate non-empty release notes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node build-scripts/generate-release-notes.js \
+            '${{ needs.release.outputs.tag_name }}' \
+            '${{ needs.release.outputs.target_sha }}' \
+            '${{ needs.release.outputs.release_tag_prefix }}' \
+            '${{ needs.release.outputs.target_ref }}' \
+            > auto-notes.txt
+          if [ ! -s auto-notes.txt ]; then
+            echo 'Generated release notes are empty; refusing to publish.' >&2
+            exit 1
+          fi
+
+          {
+            printf '# %s\n\n' '${{ needs.release.outputs.release_name }}'
+            printf -- '- target branch: `%s`\n' '${{ needs.release.outputs.target_ref }}'
+            printf -- '- commit: `%s`\n' '${{ needs.release.outputs.target_sha }}'
+            printf -- '- built at: `%s` UTC\n' '${{ needs.release.outputs.timestamp }}'
+            printf -- '- macOS trust: ad-hoc signed and integrity-checked; not Developer ID signed or notarized\n\n'
+            cat auto-notes.txt
+          } > notes.txt
+          test -s notes.txt
+
+      - name: Create prerelease with all verified assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create '${{ needs.release.outputs.tag_name }}' \
+            'dist/${{ needs.release.outputs.asset_prefix }}_windows.zip' \
+            'dist/${{ needs.release.outputs.asset_prefix }}_linux.tar.gz' \
+            'dist/${{ needs.release.outputs.asset_prefix }}_macos.dmg' \
+            dist/SHA256SUMS.txt \
+            --latest=false \
+            --notes-file notes.txt \
+            --prerelease \
+            --repo '${{ github.repository }}' \
+            --target '${{ needs.release.outputs.target_sha }}' \
+            --title '${{ needs.release.outputs.release_name }}'
