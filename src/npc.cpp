@@ -3259,10 +3259,13 @@ std::vector<llm_intent_action> npc::get_llm_intent_actions_for_test() const
 {
     const llm_intent_state &state = llm_intent_state_for( *this );
     std::vector<llm_intent_action> actions;
+    actions.reserve( state.queue.size() + ( state.active != llm_intent_action::none ? 1 : 0 ) );
     if( state.active != llm_intent_action::none ) {
         actions.push_back( state.active );
     }
-    actions.insert( actions.end(), state.queue.begin(), state.queue.end() );
+    for( const llm_intent_action action : state.queue ) {
+        actions.push_back( action );
+    }
     return actions;
 }
 
