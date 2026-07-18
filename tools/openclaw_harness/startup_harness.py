@@ -126,6 +126,8 @@ PAUSE_DISPATCH_MARKER = (
     b'openclaw_harness_ui_trace: component=default_action_dispatch '
     b'event=invoke_pause raw_action="pause" action_id="pause"'
 )
+DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS = 32
+DEFAULT_STEP_MAX_AUTO_ACKNOWLEDGEMENTS = 6
 
 STARTUP_ERROR_SCREEN_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\ban error has occurred\b", re.IGNORECASE),
@@ -1006,7 +1008,7 @@ def advance_turns(
     label: str = "advance_turns",
     action_trace_log: Optional[Path] = None,
     auto_acknowledge_interruptions: bool = True,
-    max_acknowledgements: int = 6,
+    max_acknowledgements: int = DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
     portal_storm_allowed: bool = False,
 ) -> Dict[str, Any]:
     timing: Dict[str, Any] = {
@@ -10713,7 +10715,12 @@ def execute_probe_steps(
                 label=label,
                 action_trace_log=action_trace_log,
                 auto_acknowledge_interruptions=bool(step.get("auto_acknowledge_interruptions", True)),
-                max_acknowledgements=int(step.get("max_auto_acknowledgements", 6) or 0),
+                max_acknowledgements=int(
+                    step.get(
+                        "max_auto_acknowledgements",
+                        DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
+                    ) or 0
+                ),
                 portal_storm_allowed=portal_storm_allowed,
             )
             timing_status = str(report["timing"].get("status", ""))
@@ -12206,7 +12213,9 @@ def execute_probe_steps(
                 pid,
                 run_dir,
                 label,
-                max_acknowledgements=int(step.get("max_auto_acknowledgements", 6) or 0),
+                max_acknowledgements=int(
+                    step.get("max_auto_acknowledgements", DEFAULT_STEP_MAX_AUTO_ACKNOWLEDGEMENTS) or 0
+                ),
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
             )

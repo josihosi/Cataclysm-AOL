@@ -23,6 +23,7 @@ HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
 from startup_harness import (  # noqa: E402
+    DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
     acknowledge_blocking_interruptions,
     advance_turns,
     audit_saved_weather_state,
@@ -1262,6 +1263,10 @@ class BlockingInterruptionTest(unittest.TestCase):
             "yellow_step_acknowledged_contaminating_popup",
         )
         self.assertEqual(advance_mock.call_args.kwargs["action_trace_log"], trace_log)
+        self.assertEqual(
+            advance_mock.call_args.kwargs["max_acknowledgements"],
+            DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
+        )
 
     def test_long_wait_uses_classified_activity_key_not_static_scenario_key(self) -> None:
         handler_result = {
