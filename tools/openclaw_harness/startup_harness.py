@@ -5389,7 +5389,7 @@ def startup_screen_probe_classification(
     blocking_overlay_present = bool(blocking_overlay_markers)
     gameplay_hud_present = (
         len(body_marker_types) >= 1
-        and len(status_marker_types) >= 2
+        and len(status_marker_types) >= 1
         and not blocking_overlay_present
     )
     debug_error_lines = startup_error_log_lines(debug_delta_text)
@@ -5425,7 +5425,7 @@ def startup_screen_probe_classification(
         "black_capture_warning": black_capture_warning,
         "ocr_ok": bool(ocr_payload.get("ok")),
         "ocr_line_count": len(lines),
-        "rule": "A clean startup needs at least one body label and two map-sidebar-only status labels, with no blocking Actions overlay; visible debug/error UI is red.",
+        "rule": "A clean startup needs at least one body label and one map-sidebar-only status label, with no blocking Actions overlay; visible debug/error UI is red.",
     }
 
 

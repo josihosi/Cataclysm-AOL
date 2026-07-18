@@ -984,12 +984,32 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertTrue(probe["gameplay_hud_present"])
         self.assertEqual(probe["classification"], "green_gameplay_hud_present")
 
-    def test_one_body_label_and_one_status_label_are_not_enough(self) -> None:
+    def test_one_body_label_and_one_status_label_match_the_compact_mac_hud(self) -> None:
         probe = startup_screen_probe_classification(
             ocr_payload={
                 "ok": True,
                 "lines": ["ARM", "Move: 0(W)"],
             },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertTrue(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "green_gameplay_hud_present")
+
+    def test_body_label_without_map_status_is_not_enough(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={"ok": True, "lines": ["ARM"]},
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertFalse(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "yellow_gameplay_hud_absent")
+
+    def test_map_status_without_body_label_is_not_enough(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={"ok": True, "lines": ["Move: 0(W)"]},
             capture_warnings=[],
             debug_delta_text="",
         )
