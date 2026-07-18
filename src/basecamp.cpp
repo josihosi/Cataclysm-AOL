@@ -3920,6 +3920,7 @@ void basecamp::clear_patrol_shift_cache() {
   patrol_shift_cache_kind = camp_patrol_shift::day;
   patrol_shift_cache_alarm_active = false;
   patrol_shift_cache = camp_patrol_shift_plan();
+  patrol_shift_cache_eligible_workers.clear();
 }
 
 bool basecamp::refresh_patrol_shift_cache() {
@@ -3938,7 +3939,30 @@ bool basecamp::refresh_patrol_shift_cache() {
       patrol_shift_cache_valid && patrol_shift_cache_day == current_day &&
       patrol_shift_cache_kind == current_shift &&
       patrol_shift_cache_alarm_active == current_alarm_active;
+  std::set<character_id> eligible_worker_ids;
+  bool eligible_worker_ids_collected = false;
+  const auto collect_eligible_worker_ids = [&]() {
+    if( eligible_worker_ids_collected ) {
+      return;
+    }
+    for( const npc_ptr &worker : assigned_npcs ) {
+      if( worker && camp_patrol_worker_is_eligible( *worker ) &&
+          worker->job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
+          patrol_shift_excluded_workers.count( worker->getID() ) == 0 ) {
+        eligible_worker_ids.insert( worker->getID() );
+      }
+    }
+    eligible_worker_ids_collected = true;
+  };
+  bool empty_cache_eligibility_changed = false;
+  if( cache_matches_shift && patrol_shift_cache.roster.empty() ) {
+    collect_eligible_worker_ids();
+    // Nonempty rosters stay latched; only revive an empty plan when its pool changes.
+    empty_cache_eligibility_changed =
+        patrol_shift_cache_eligible_workers != eligible_worker_ids;
+  }
   if( cache_matches_shift &&
+      !empty_cache_eligibility_changed &&
       camp_patrol_cached_roster_is_eligible( patrol_shift_cache, omt_pos ) ) {
     return !patrol_shift_cache.clusters.empty() &&
            !patrol_shift_cache.roster.empty();
@@ -3967,7 +3991,8 @@ bool basecamp::refresh_patrol_shift_cache() {
     return false;
   }
 
-  std::vector<npc_ptr> eligible_npcs = get_npcs_assigned();
+  collect_eligible_worker_ids();
+  std::vector<npc_ptr> eligible_npcs = assigned_npcs;
   eligible_npcs.erase(
       std::remove_if(
           eligible_npcs.begin(), eligible_npcs.end(),
@@ -3994,6 +4019,7 @@ bool basecamp::refresh_patrol_shift_cache() {
   patrol_shift_cache_day = current_day;
   patrol_shift_cache_kind = current_shift;
   patrol_shift_cache_alarm_active = current_alarm_active;
+  patrol_shift_cache_eligible_workers = std::move( eligible_worker_ids );
   DebugLog( D_INFO, DC_ALL )
       << string_format(
              "camp patrol: cache camp=%s shift=%s alarm=%s workers=%zu roster=%zu active=%zu reserve=%zu clusters=%s",

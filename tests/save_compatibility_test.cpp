@@ -53,7 +53,7 @@ JsonValue legacy_npc_save_with( const std::string &fields )
 }
 } // namespace
 
-TEST_CASE( "C-AOL numeric npc mission save layout remains stable",
+TEST_CASE( "C-AOL_numeric_npc_mission_save_layout_remains_stable",
            "[savegame][npc][regression]" )
 {
     STATIC_REQUIRE( static_cast<int>( NPC_MISSION_NULL ) == 0 );
@@ -67,7 +67,7 @@ TEST_CASE( "C-AOL numeric npc mission save layout remains stable",
     STATIC_REQUIRE( static_cast<int>( NPC_MISSION_CAMP_RESIDENT ) == 11 );
 }
 
-TEST_CASE( "C-AOL numeric npc attitude save layout remains stable",
+TEST_CASE( "C-AOL_numeric_npc_attitude_save_layout_remains_stable",
            "[savegame][npc][regression]" )
 {
     STATIC_REQUIRE( static_cast<int>( NPCATT_NULL ) == 0 );
@@ -92,7 +92,7 @@ TEST_CASE( "C-AOL numeric npc attitude save layout remains stable",
     STATIC_REQUIRE( static_cast<int>( NPCATT_END ) == 19 );
 }
 
-TEST_CASE( "npc validates legacy mission fields independently",
+TEST_CASE( "npc_validates_legacy_mission_fields_independently",
            "[savegame][npc][regression]" )
 {
     for( const int legacy_mission : std::array<int, 3> { 1, 4, 5 } ) {
@@ -117,7 +117,7 @@ TEST_CASE( "npc validates legacy mission fields independently",
     }
 }
 
-TEST_CASE( "npc validates legacy attitude fields independently",
+TEST_CASE( "npc_validates_legacy_attitude_fields_independently",
            "[savegame][npc][regression]" )
 {
     for( const int legacy_attitude : std::array<int, 6> { 2, 4, 7, 12, 14, 15 } ) {
@@ -143,7 +143,7 @@ TEST_CASE( "npc validates legacy attitude fields independently",
     }
 }
 
-TEST_CASE( "npc loads established C-AOL numeric mission values",
+TEST_CASE( "npc_loads_established_C-AOL_numeric_mission_values",
            "[savegame][npc][regression]" )
 {
     JsonValue old_save = legacy_npc_save_with( "\"mission\":8,\"previous_mission\":10" );
@@ -155,7 +155,7 @@ TEST_CASE( "npc loads established C-AOL numeric mission values",
     CHECK( loaded.get_previous_mission() == NPC_MISSION_TRAVELLING );
 }
 
-TEST_CASE( "overmap global save fields coexist across a round trip",
+TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
            "[savegame][overmap][regression]" )
 {
     const overmap_global_state loaded = round_trip_global_state( populated_global_state() );
@@ -178,7 +178,7 @@ TEST_CASE( "overmap global save fields coexist across a round trip",
     CHECK( region->second == region_settings_id( "default" ) );
 }
 
-TEST_CASE( "overmap global load clears newer fields when an older save omits them",
+TEST_CASE( "overmap_global_load_clears_newer_fields_when_an_older_save_omits_them",
            "[savegame][overmap][regression]" )
 {
     overmap_global_state loaded = populated_global_state();

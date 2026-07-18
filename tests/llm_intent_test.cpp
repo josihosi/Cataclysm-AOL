@@ -22,7 +22,7 @@
 #include "type_id.h"
 
 static const faction_id faction_your_followers( "your_followers" );
-static const furn_str_id furn_f_table( "f_table" );
+static const furn_str_id furn_f_parkour_bars( "f_parkour_bars" );
 static const mtype_id mon_zombie( "mon_zombie" );
 static const string_id<npc_template> npc_template_test_talker( "test_talker" );
 static const ter_str_id ter_t_rock_wall( "t_rock_wall" );
@@ -388,7 +388,9 @@ TEST_CASE( "llm_intent_snapshot_request_resolves_lettered_neutral_targets", "[ll
 
     npc &neutral_npc = spawn_test_npc_at( point_bub_ms( 54, 50 ), "Neutral NPC" );
     REQUIRE( listener.attitude_to( neutral_npc ) == Creature::Attitude::NEUTRAL );
-    REQUIRE( here.furn_set( neutral_npc.pos_bub(), furn_f_table ) );
+    REQUIRE( here.furn_set( neutral_npc.pos_bub(), furn_f_parkour_bars ) );
+    REQUIRE( listener.sees( here, neutral_npc ) );
+    REQUIRE( here.move_cost( neutral_npc.pos_bub() ) * 50 > 100 );
 
     const std::string snapshot = llm_intent::build_snapshot_for_test(
                                      listener, "Attack the neutral target.", "req-target" );

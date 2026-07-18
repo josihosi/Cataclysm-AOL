@@ -1036,7 +1036,7 @@ TEST_CASE( "EOC_run_with_test_queue", "[eoc]" )
     CHECK( !d.maybe_get_value( "key3" ) );
 }
 
-TEST_CASE( "removed queued EOCs are discarded while loading an existing character",
+TEST_CASE( "removed_queued_EOCs_are_discarded_while_loading_an_existing_character",
            "[eoc][savegame]" )
 {
     clear_avatar();
@@ -1048,8 +1048,30 @@ TEST_CASE( "removed queued EOCs are discarded while loading an existing characte
 
     const effect_on_condition_id removed_eoc( "EOC_TEST_REMOVED_FROM_DATA" );
     REQUIRE_FALSE( removed_eoc.is_valid() );
+
+    REQUIRE( effect_on_condition_EOC_teleport_test.is_valid() );
+    REQUIRE( effect_on_condition_EOC_teleport_test->global );
+    REQUIRE( effect_on_condition_EOC_string_test.is_valid() );
+    REQUIRE_FALSE( effect_on_condition_EOC_string_test->global );
+
+    const time_point global_time = calendar::turn + 2_hours;
+    global_variables::impl_t global_context;
+    global_context.emplace( "sentinel_scope", diag_value( "global" ) );
+    g->queued_global_effect_on_conditions.push( queued_eoc{
+        effect_on_condition_EOC_teleport_test, global_time, global_context
+    } );
     g->queued_global_effect_on_conditions.push( queued_eoc{
         removed_eoc, calendar::turn + 1_hours, {}
+    } );
+
+    const time_point local_time = calendar::turn + 3_hours;
+    global_variables::impl_t local_context;
+    local_context.emplace( "sentinel_scope", diag_value( "local" ) );
+    you.queued_effect_on_conditions.push( queued_eoc{
+        effect_on_condition_EOC_string_test, local_time, local_context
+    } );
+    you.queued_effect_on_conditions.push( queued_eoc{
+        removed_eoc, calendar::turn + 90_minutes, {}
     } );
 
     const std::string debug_message = capture_debugmsg_during( [&you]() {
@@ -1057,9 +1079,27 @@ TEST_CASE( "removed queued EOCs are discarded while loading an existing characte
     } );
 
     CHECK( debug_message.empty() );
+    int global_sentinels = 0;
     for( const queued_eoc &queued : g->queued_global_effect_on_conditions.list ) {
         CHECK( queued.eoc != removed_eoc );
+        if( queued.eoc == effect_on_condition_EOC_teleport_test ) {
+            global_sentinels++;
+            CHECK( queued.time == global_time );
+            CHECK( queued.context == global_context );
+        }
     }
+    CHECK( global_sentinels == 1 );
+
+    int local_sentinels = 0;
+    for( const queued_eoc &queued : you.queued_effect_on_conditions.list ) {
+        CHECK( queued.eoc != removed_eoc );
+        if( queued.eoc == effect_on_condition_EOC_string_test ) {
+            local_sentinels++;
+            CHECK( queued.time == local_time );
+            CHECK( queued.context == local_context );
+        }
+    }
+    CHECK( local_sentinels == 1 );
 }
 
 TEST_CASE( "EOC_run_inv_test", "[eoc]" )
