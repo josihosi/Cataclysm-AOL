@@ -1290,8 +1290,10 @@ $(PCH_P): $(PCH_H)
 $(BUILD_PREFIX)$(TARGET_NAME).a: $(OBJS)
 	$(AR) rcs $(AR_FLAGS) $(BUILD_PREFIX)$(TARGET_NAME).a $(filter-out $(ODIR)/main.o $(ODIR)/messages.o,$(OBJS))
 
-.PHONY: version prefix llm-bg-summary-short
-version:
+.PHONY: version version-force prefix llm-bg-summary-short
+version: $(SRC_DIR)/version.h
+
+$(SRC_DIR)/version.h: version-force
 	@( VERSION_STRING=$(VERSION) ; \
         [ -e ".git" ] && \
           GITVERSION=$$( git describe --tags --always --match "[0-9A-Z]*.[0-9A-Z]*" --match "cdda-experimental-*" --exact-match 2>/dev/null || true ) && \
@@ -1305,6 +1307,8 @@ version:
           printf '// NOLINT(cata-header-guard)\n#define VERSION "%s"\n' "$$VERSION_STRING" | tee $(SRC_DIR)/version.h ; \
         fi \
      )
+
+version-force:
 
 prefix:
 	@( PREFIX_STRING=$(PREFIX) ; \
@@ -1348,8 +1352,6 @@ $(ODIR)/%.o: $(SRC_DIR)/%.rc
 	$(RC) $(RFLAGS) $< -o $@
 
 $(ODIR)/resource.o: data/cataicon.ico data/application_manifest.xml
-
-src/version.h: version
 
 src/version.cpp: src/version.h
 
