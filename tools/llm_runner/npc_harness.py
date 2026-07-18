@@ -554,6 +554,8 @@ def parse_move_field(field: str) -> Tuple[Optional[Tuple[int, int]], Optional[st
 
 def validate_csv_payload(payload: str) -> Tuple[bool, str, List[str]]:
     fields = [field.strip() for field in payload.split("|")]
+    if len(fields) > 1 and not fields[0]:
+        fields.pop(0)
     if len(fields) < 2:
         return False, "CSV must include at least one action field separated by '|'.", []
     if len(fields) > 4:
@@ -772,6 +774,26 @@ def run_self_test() -> int:
     )
     check(ok and not error and actions == ["move=4,-2 wait_here", "equip_gun"],
           "strict CSV accepts delta move with another action")
+
+    ok, error, actions = validate_csv_payload(
+        " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee"
+    )
+    check(ok and not error and actions == ["equip_melee"],
+          "strict CSV tolerates one echoed leading separator")
+
+    ok, error, actions = validate_csv_payload("||Speech|equip_melee")
+    check(not ok and error == "CSV speech field missing." and not actions,
+          "strict CSV rejects two leading empty fields")
+
+    ok, error, actions = validate_csv_payload(
+        "|Speech|equip_melee|follow_close|panic_off|wait_here"
+    )
+    check(not ok and error == "CSV has too many action fields." and not actions,
+          "strict CSV keeps the four-field limit after a leading separator")
+
+    ok, error, actions = validate_csv_payload("|Speech|equip_melee|")
+    check(not ok and error == "CSV action token is invalid." and not actions,
+          "strict CSV rejects a trailing empty action after a leading separator")
 
     ok, _error, _actions = validate_csv_payload(
         "On it|move=1,2 wait_here|move=2,1 hold_position"

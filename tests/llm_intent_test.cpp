@@ -183,6 +183,31 @@ TEST_CASE( "llm_intent_action_csv_applies_move_and_attack_contract", "[llm_inten
     CHECK( terminal_state == "wait_here" );
 
     CHECK( llm_intent::parse_action_csv_for_test(
+               " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee",
+               actions, attack_target, move_delta, terminal_state, error ) );
+    CHECK( actions == std::vector<std::string>{ "equip_melee" } );
+    CHECK( attack_target.empty() );
+    CHECK_FALSE( move_delta.has_value() );
+    CHECK( llm_intent::parse_action_csv_speech_for_test(
+               " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee" ) ==
+           "Inspecting inventory... I'm carrying a sharpened rebar." );
+
+    CHECK_FALSE( llm_intent::parse_action_csv_for_test(
+                     "||Speech|equip_melee", actions, attack_target,
+                     move_delta, terminal_state, error ) );
+    CHECK( error == "CSV speech field missing." );
+
+    CHECK_FALSE( llm_intent::parse_action_csv_for_test(
+                     "|Speech|equip_melee|follow_close|panic_off|wait_here", actions, attack_target,
+                     move_delta, terminal_state, error ) );
+    CHECK( error == "CSV has too many action fields." );
+
+    CHECK_FALSE( llm_intent::parse_action_csv_for_test(
+                     "|Speech|equip_melee|", actions, attack_target,
+                     move_delta, terminal_state, error ) );
+    CHECK( error == "CSV action token is invalid." );
+
+    CHECK( llm_intent::parse_action_csv_for_test(
                "Engaging|attack=a|equip_gun|follow_close panic_off", actions, attack_target,
                move_delta, terminal_state, error ) );
     CHECK( actions == std::vector<std::string>{ "equip_gun", "follow_close", "panic_off" } );

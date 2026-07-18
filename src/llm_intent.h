@@ -36,6 +36,7 @@ bool parse_move_field_for_test( const std::string &field, point &delta,
 bool parse_action_csv_for_test( const std::string &csv, std::vector<std::string> &actions,
                                 std::string &attack_target, std::optional<point> &move_delta,
                                 std::string &move_terminal_state, std::string &error );
+std::string parse_action_csv_speech_for_test( const std::string &csv );
 std::string normalize_csv_separators_for_test( const std::string &csv );
 std::string prepare_event_log_payload_for_test( const std::string &payload );
 tripoint_abs_ms resolve_move_target_for_test( const tripoint_abs_ms &origin,

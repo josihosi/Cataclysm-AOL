@@ -82,6 +82,29 @@ class NpcHarnessParsingTest(unittest.TestCase):
         self.assertEqual(actions, ["move=4,-2 wait_here", "equip_gun"])
 
         ok, error, actions = validate_csv_payload(
+            " | Inspecting inventory... I'm carrying a sharpened rebar. | equip_melee"
+        )
+        self.assertTrue(ok, error)
+        self.assertEqual(actions, ["equip_melee"])
+
+        ok, error, actions = validate_csv_payload("||Speech|equip_melee")
+        self.assertFalse(ok)
+        self.assertEqual(error, "CSV speech field missing.")
+        self.assertEqual(actions, [])
+
+        ok, error, actions = validate_csv_payload(
+            "|Speech|equip_melee|follow_close|panic_off|wait_here"
+        )
+        self.assertFalse(ok)
+        self.assertEqual(error, "CSV has too many action fields.")
+        self.assertEqual(actions, [])
+
+        ok, error, actions = validate_csv_payload("|Speech|equip_melee|")
+        self.assertFalse(ok)
+        self.assertEqual(error, "CSV action token is invalid.")
+        self.assertEqual(actions, [])
+
+        ok, error, actions = validate_csv_payload(
             "No|move=1,0 wait_here|move=2,0 hold_position"
         )
         self.assertFalse(ok)

@@ -1009,6 +1009,11 @@ bool parse_csv_payload( std::string_view csv, std::string &speech,
         }
     }
     fields.push_back( trim_copy( current ) );
+    // Small local models sometimes echo the first separator before field 1.  Tolerate one
+    // leading empty field while keeping the speech and action contracts strict.
+    if( fields.size() > 1 && fields.front().empty() ) {
+        fields.erase( fields.begin() );
+    }
     if( fields.size() < 2 ) {
         error = "CSV must include at least one action field separated by '|'.";
         return false;
@@ -3825,18 +3830,6 @@ class llm_intent_manager
                     std::string csv_text = extract_csv_from_text( resp.text );
                     csv_text = sanitize_llm_csv( csv_text );
                     speak_text = strip_speaker_prefix( extract_speech_field( csv_text ) );
-                    if( !speak_text.empty() ) {
-                        if( g->find_npc( resp.npc_id ) ) {
-                            add_msg( _( "%s says: \"%s\"" ), resp.npc_name, speak_text );
-                            if( debug_log ) {
-                                say_log_line = string_format( "say %s (%s)\n%s\n\n",
-                                                              resp.npc_name, resp.request_id, speak_text );
-                            }
-                        } else if( debug_log ) {
-                            say_failed_log_line = string_format( "say failed %s (%s)\n%s\n\n",
-                                                                 resp.npc_name, resp.request_id, speak_text );
-                        }
-                    }
                     bool parsed = false;
                     std::string normalized = normalize_csv_separators( csv_text );
                     normalized = sanitize_llm_csv( normalized );
@@ -3869,6 +3862,21 @@ class llm_intent_manager
                         }
                     } else {
                         parse_error = "CSV parse failed.";
+                    }
+                    if( speak_text.empty() && !speech.empty() ) {
+                        speak_text = strip_speaker_prefix( speech );
+                    }
+                    if( !speak_text.empty() ) {
+                        if( g->find_npc( resp.npc_id ) ) {
+                            add_msg( _( "%s says: \"%s\"" ), resp.npc_name, speak_text );
+                            if( debug_log ) {
+                                say_log_line = string_format( "say %s (%s)\n%s\n\n",
+                                                              resp.npc_name, resp.request_id, speak_text );
+                            }
+                        } else if( debug_log ) {
+                            say_failed_log_line = string_format( "say failed %s (%s)\n%s\n\n",
+                                                                 resp.npc_name, resp.request_id, speak_text );
+                        }
                     }
                 }
 
@@ -4277,6 +4285,21 @@ bool parse_action_csv_for_test( const std::string &csv, std::vector<std::string>
     std::string speech;
     return parse_csv_payload( csv, speech, actions, attack_target, move_delta,
                               move_terminal_state, error );
+}
+
+std::string parse_action_csv_speech_for_test( const std::string &csv )
+{
+    std::string speech;
+    std::vector<std::string> actions;
+    std::string attack_target;
+    std::optional<point> move_delta;
+    std::string move_terminal_state;
+    std::string error;
+    if( !parse_csv_payload( csv, speech, actions, attack_target, move_delta,
+                           move_terminal_state, error ) ) {
+        return {};
+    }
+    return strip_speaker_prefix( speech );
 }
 
 std::string normalize_csv_separators_for_test( const std::string &csv )
