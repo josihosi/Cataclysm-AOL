@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 import ctypes
 import ctypes.util
+import io
 import json
 import os
 import re
@@ -14,9 +16,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Set
+from unittest import mock
 
 from flatbuffers import flexbuffers
 
@@ -33,19 +36,126 @@ RELEASE_GATE_SCENARIOS = (
     "basecamp.organic_board_speech_probe_mcw",
     "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
     "zombie_rider.live_camp_light_band_mcw",
+    "zombie_rider.live_no_camp_light_control_mcw",
     "locker.weather_wait",
 )
 
 from startup_harness import (  # noqa: E402
+    StartupPlan,
+    load_profile_config,
     load_scenario,
     resolve_fixture_payload,
     resolve_profile_name,
+    resolve_startup_config_profile,
+    run_launch_only_handoff,
+    run_probe_mode,
     scenarios_root,
 )
 
 
 class SaveValidationError(RuntimeError):
     """A stable, user-facing reason a player save cannot be trusted."""
+
+
+class ScenarioStartupProfileContractTest(unittest.TestCase):
+    def test_isolated_userdir_keeps_scenario_startup_policy(self) -> None:
+        scenario = {"profile": "dev-harness"}
+        target_profile = "mac-verification-isolated"
+
+        config_profile = resolve_startup_config_profile(scenario, target_profile)
+        scenario_config = load_profile_config(config_profile)
+        direct_master_config = load_profile_config("master")
+
+        self.assertEqual(config_profile, "dev-harness")
+        self.assertEqual(scenario_config["startup"]["post_lastworld_continue_keys"], [])
+        self.assertEqual(direct_master_config["startup"]["post_lastworld_continue_keys"], ["return"])
+
+    def test_probe_passes_scenario_config_profile_to_isolated_start(self) -> None:
+        args = SimpleNamespace(
+            scenario="test.isolated_profile",
+            profile="mac-verification-isolated",
+            world="",
+            fixture=None,
+            replace_existing_worlds=False,
+            advance_turns=None,
+            settle_seconds=None,
+            artifact_pattern="",
+            test_command="",
+            dry_run=True,
+        )
+        scenario = {
+            "name": "test.isolated_profile",
+            "profile": "dev-harness",
+            "steps": [],
+        }
+        stdout = io.StringIO()
+
+        with (
+            mock.patch("startup_harness.load_scenario", return_value=scenario),
+            mock.patch("startup_harness.run_json_command", return_value=(0, {}, "", "")) as run_command,
+            redirect_stdout(stdout),
+        ):
+            self.assertEqual(run_probe_mode(args), 0)
+
+        start_command = run_command.call_args.args[0]
+        self.assertEqual(
+            start_command[start_command.index("--profile") + 1],
+            "mac-verification-isolated",
+        )
+        self.assertEqual(
+            start_command[start_command.index("--config-profile") + 1],
+            "dev-harness",
+        )
+
+    def test_launch_only_dry_run_records_both_profile_identities(self) -> None:
+        args = SimpleNamespace(
+            scenario="test.launch_only",
+            dry_run=True,
+            compact_stdout=False,
+        )
+        plan = StartupPlan(
+            profile="mac-verification-isolated",
+            userdir=".userdata/mac-verification-isolated",
+            executable="cataclysm-tiles",
+            strategy="load_world",
+            reason="test",
+            target_world="McWilliams",
+            existing_worlds=[],
+            fixture="fixture",
+            run_dir=".userdata/mac-verification-isolated/harness_runs/test",
+        )
+        stdout = io.StringIO()
+
+        with (
+            mock.patch("startup_harness.zzip_binary", return_value=Path("zzip")),
+            mock.patch("startup_harness.build_plan", return_value=plan),
+            redirect_stdout(stdout),
+        ):
+            rc = run_launch_only_handoff(
+                args,
+                scenario={"name": "test.launch_only"},
+                profile="mac-verification-isolated",
+                config_profile="dev-harness",
+                world="McWilliams",
+                fixture="fixture",
+                fixture_profile="live-debug",
+                profile_snapshot="snapshot",
+                profile_snapshot_profile="live-debug",
+                replace_existing_worlds=True,
+                advance_count=0,
+                settle_seconds=0.0,
+                artifact_source="debug.log",
+                artifact_patterns=[],
+                recommended_test_command="",
+                steps=[],
+                capture_world_after=False,
+                portal_storm_policy={},
+            )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(rc, 0)
+        self.assertEqual(payload["resolved_contract"]["profile"], "mac-verification-isolated")
+        self.assertEqual(payload["resolved_contract"]["config_profile"], "dev-harness")
 
 
 def _rotate_left_64(value: int, count: int) -> int:

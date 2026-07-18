@@ -16,6 +16,7 @@
       "label": "post_load_rider_no_camp_light_settle",
       "seconds": 1.0,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_no_camp_light_no_band_trace",
       "expected_visible_fact": "staged mature-world no-camp-light rider control fixture loads to live map"
     },
     {
@@ -82,6 +83,7 @@
       "delay_ms": 250,
       "settle_seconds": 0.4,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_no_camp_light_no_band_trace",
       "expected_visible_fact": "safe mode is toggled off so the bounded no-camp-light window is not consumed by warnings"
     },
     {
@@ -90,6 +92,7 @@
       "count": 310,
       "settle_seconds": 0.8,
       "capture_after": true,
+      "proof_deferred_to_label": "audit_zombie_rider_no_camp_light_no_band_trace",
       "expected_visible_fact": "bounded live turn window matches the positive camp-light cadence duration while no staged camp-light source exists"
     },
     {

@@ -1023,6 +1023,35 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result["feature_gate"], "gameplay_hud_absent")
         self.assertFalse(result["startup_clean_for_feature_steps"])
 
+    def test_actions_overlay_blocks_background_gameplay_hud_markers(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": [
+                    "Actions",
+                    "HEAD",
+                    "TORSO",
+                    "ARM",
+                    "LEG",
+                    "Move: 100",
+                    "Safe:",
+                ],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+        result = startup_proof_classification(
+            ok=True,
+            screen_summary=self.screen_summary(probe),
+            focus_result={"ok": True},
+        )
+
+        self.assertFalse(probe["gameplay_hud_present"])
+        self.assertTrue(probe["blocking_overlay_present"])
+        self.assertEqual(probe["classification"], "yellow_blocking_overlay_present")
+        self.assertEqual(result["feature_gate"], "blocking_overlay_present")
+        self.assertFalse(result["startup_clean_for_feature_steps"])
+
     def test_verified_focus_and_real_hud_are_the_only_clean_startup_path(self) -> None:
         probe = self.gameplay_probe()
         result = startup_proof_classification(

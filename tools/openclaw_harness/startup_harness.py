@@ -138,6 +138,9 @@ STARTUP_HUD_STATUS_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\bactivity\s*:", re.IGNORECASE),
     re.compile(r"\bweary(?:\s+malus)?\s*:", re.IGNORECASE),
 )
+STARTUP_BLOCKING_OVERLAY_PATTERNS: Tuple[Pattern[str], ...] = (
+    re.compile(r"^actions$", re.IGNORECASE),
+)
 
 PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
     "corrupted": 0,
@@ -418,6 +421,11 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
     merged["profile_name"] = profile
     merged["startup"] = merged_startup
     return merged
+
+
+def resolve_startup_config_profile(scenario: Dict[str, Any], target_profile: str) -> str:
+    scenario_profile = str(scenario.get("profile", "")).strip()
+    return resolve_profile_name(scenario_profile or target_profile)
 
 
 def world_save_marker_paths(world_dir: Path) -> List[Path]:
@@ -5373,7 +5381,17 @@ def startup_screen_probe_classification(
         for pattern in STARTUP_HUD_STATUS_PATTERNS
         if pattern.search(screen_text)
     ]
-    gameplay_hud_present = len(body_marker_types) >= 3 and len(status_marker_types) >= 2
+    blocking_overlay_markers = [
+        line
+        for line in lines
+        if any(pattern.fullmatch(line) for pattern in STARTUP_BLOCKING_OVERLAY_PATTERNS)
+    ]
+    blocking_overlay_present = bool(blocking_overlay_markers)
+    gameplay_hud_present = (
+        len(body_marker_types) >= 3
+        and len(status_marker_types) >= 2
+        and not blocking_overlay_present
+    )
     debug_error_lines = startup_error_log_lines(debug_delta_text)
     normalized_warnings = [str(warning).strip() for warning in capture_warnings if str(warning).strip()]
     black_capture_warning = any("solid black" in warning.lower() for warning in normalized_warnings)
@@ -5384,6 +5402,8 @@ def startup_screen_probe_classification(
         classification = "red_visible_error_popup"
     elif startup_error_logged:
         classification = "red_startup_error_logged"
+    elif blocking_overlay_present:
+        classification = "yellow_blocking_overlay_present"
     elif gameplay_hud_present:
         classification = "green_gameplay_hud_present"
     else:
@@ -5393,6 +5413,8 @@ def startup_screen_probe_classification(
         "gameplay_hud_present": gameplay_hud_present,
         "visible_error_popup": visible_error_popup,
         "startup_error_logged": startup_error_logged,
+        "blocking_overlay_present": blocking_overlay_present,
+        "blocking_overlay_markers": blocking_overlay_markers,
         "error_screen_markers": error_markers,
         "hud_body_markers": body_markers,
         "hud_body_marker_types": body_marker_types,
@@ -5403,7 +5425,7 @@ def startup_screen_probe_classification(
         "black_capture_warning": black_capture_warning,
         "ocr_ok": bool(ocr_payload.get("ok")),
         "ocr_line_count": len(lines),
-        "rule": "A clean startup needs at least three distinct body labels and two map-sidebar-only status labels; visible debug/error UI is red.",
+        "rule": "A clean startup needs at least three distinct body labels and two map-sidebar-only status labels, with no blocking Actions overlay; visible debug/error UI is red.",
     }
 
 
@@ -12001,6 +12023,11 @@ def startup_proof_classification(
         verdict = "startup_load_only_startup_error_logged"
         clean_for_feature_steps = False
         feature_gate = "startup_error_logged"
+    elif screen_probe.get("blocking_overlay_present"):
+        status = "yellow"
+        verdict = "startup_load_only_blocking_overlay_present"
+        clean_for_feature_steps = False
+        feature_gate = "blocking_overlay_present"
     elif screen_summary.get("version_matches_runtime_paths") is False:
         status = "yellow"
         verdict = "startup_load_only_runtime_version_mismatch"
@@ -12182,7 +12209,8 @@ def success_from_world_save_marker(
 
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
-    config = load_profile_config(profile)
+    config_profile = resolve_profile_name(getattr(args, "config_profile", "") or profile)
+    config = load_profile_config(config_profile)
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
 
     if args.dry_run:
@@ -12190,6 +12218,8 @@ def run_startup(args: argparse.Namespace) -> int:
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
         dry_result = asdict(plan)
+        dry_result["config_profile"] = config_profile
+        dry_result["startup_config"] = config.get("startup", {})
         dry_result["dry_run_contract"] = {
             "profile_snapshot_install": "not_run_dry_run",
             "fixture_install": "not_run_dry_run",
@@ -12305,6 +12335,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "returncode": code,
                 "pid": proc.pid,
                 "profile": profile,
+                "config_profile": config_profile,
                 "debug_popups_recorded": debug_popup_evidence_count,
                 "debug_errors_recorded": debug_error_evidence_count,
                 "debug_popup_dismissals": debug_popup_dismissals,
@@ -12406,6 +12437,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "reason": startup_failure_reason,
                 "pid": proc.pid,
                 "profile": profile,
+                "config_profile": config_profile,
                 "ok_with_debug_popups": debug_popup_evidence_count > 0,
                 "ok_with_debug_errors": debug_error_evidence_count > 0,
                 "debug_popups_recorded": debug_popup_evidence_count,
@@ -12505,6 +12537,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "reason": "startup_timeout",
         "pid": proc.pid,
         "profile": profile,
+        "config_profile": config_profile,
         "debug_popups_recorded": debug_popup_evidence_count,
         "debug_errors_recorded": debug_error_evidence_count,
         "debug_popup_dismissals": debug_popup_dismissals,
@@ -12619,6 +12652,7 @@ def compact_probe_report_for_stdout(
     startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
     startup_screen_probe = startup_screen.get("startup_screen_probe", {}) if isinstance(startup_screen.get("startup_screen_probe"), dict) else {}
     startup_classification = startup.get("proof_classification", {}) if isinstance(startup.get("proof_classification"), dict) else {}
+    contract = report.get("contract", {}) if isinstance(report.get("contract"), dict) else {}
     proof_classification = report.get("proof_classification", {}) if isinstance(report.get("proof_classification"), dict) else {}
     artifacts = report.get("artifacts", {}) if isinstance(report.get("artifacts"), dict) else {}
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
@@ -12658,7 +12692,8 @@ def compact_probe_report_for_stdout(
         "ok": bool(report.get("ok")),
         "scenario": str(report.get("scenario", "")),
         "mode": str(report.get("mode", "")),
-        "profile": str(report.get("profile", "")),
+        "profile": str(report.get("profile", "") or startup.get("profile", "") or contract.get("profile", "")),
+        "config_profile": str(report.get("config_profile", "") or startup.get("config_profile", "") or contract.get("config_profile", "")),
         "world": str(report.get("world", "")),
         "fixture": str(report.get("fixture", "")),
         "run_dir": str(startup.get("run_dir", "") or report.get("run_dir", "") or (run_dir or "")),
@@ -12802,6 +12837,7 @@ def repeatability_run_summary(
         startup_screen = report.get("startup_screen", {})
     cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
     proof_classification = report.get("proof_classification", {}) if isinstance(report.get("proof_classification"), dict) else {}
+    contract = report.get("contract", {}) if isinstance(report.get("contract"), dict) else {}
     portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
     expectation_results, helper_lines = evaluate_repeatability_expectations(report, expectations)
     cleanup_status = str(cleanup.get("status", "")).strip()
@@ -12810,6 +12846,8 @@ def repeatability_run_summary(
         "returncode": returncode,
         "report_ok": bool(report.get("ok")),
         "scenario": str(report.get("scenario", "")).strip(),
+        "profile": str(report.get("profile", "") or startup.get("profile", "") or contract.get("profile", "")).strip(),
+        "config_profile": str(report.get("config_profile", "") or startup.get("config_profile", "") or contract.get("config_profile", "")).strip(),
         "run_dir": str(startup.get("run_dir", "") or report.get("run_dir", "")).strip(),
         "verdict": str(report.get("verdict", "")).strip(),
         "proof_status": str(proof_classification.get("status", "")).strip(),
@@ -12875,6 +12913,7 @@ def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
 def run_repeatability(args: argparse.Namespace) -> int:
     scenario = load_scenario(args.scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
+    config_profile = resolve_startup_config_profile(scenario, profile)
     world = args.world or str(scenario.get("world", ""))
     fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
     repeat_count = int(args.count if args.count is not None else scenario.get("repeatability_count", 3) or 3)
@@ -12899,6 +12938,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
         payload = {
             "scenario": str(scenario.get("name", args.scenario)),
             "profile": profile,
+            "config_profile": config_profile,
             "world": world,
             "fixture": fixture,
             "count": repeat_count,
@@ -12965,6 +13005,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
         "ok": stable_repeatability,
         "scenario": str(scenario.get("name", args.scenario)),
         "profile": profile,
+        "config_profile": config_profile,
         "world": world,
         "fixture": fixture,
         "run_count": repeat_count,
@@ -12993,6 +13034,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
 def scenario_contract_dict(
     *,
     profile: str,
+    config_profile: str,
     world: str,
     profile_snapshot: str,
     profile_snapshot_profile: str,
@@ -13010,6 +13052,7 @@ def scenario_contract_dict(
 ) -> Dict[str, Any]:
     return {
         "profile": profile,
+        "config_profile": config_profile,
         "world": world,
         "profile_snapshot": profile_snapshot,
         "profile_snapshot_profile": profile_snapshot_profile,
@@ -13032,6 +13075,7 @@ def run_launch_only_handoff(
     *,
     scenario: Dict[str, Any],
     profile: str,
+    config_profile: str,
     world: str,
     fixture: str,
     fixture_profile: str,
@@ -13051,6 +13095,7 @@ def run_launch_only_handoff(
     scenario_name = str(scenario.get("name", args.scenario))
     contract = scenario_contract_dict(
         profile=profile,
+        config_profile=config_profile,
         world=world,
         profile_snapshot=profile_snapshot,
         profile_snapshot_profile=profile_snapshot_profile,
@@ -13117,6 +13162,7 @@ def run_launch_only_handoff(
                 "mode": "handoff",
                 "scenario": scenario_name,
                 "profile": profile,
+                "config_profile": config_profile,
                 "world": world,
                 "fixture": fixture,
                 "reason": "target_world_not_found_after_fixture_install",
@@ -13146,6 +13192,7 @@ def run_launch_only_handoff(
                 "mode": "handoff",
                 "scenario": scenario_name,
                 "profile": profile,
+                "config_profile": config_profile,
                 "world": world,
                 "fixture": fixture,
                 "reason": "no_target_world_to_launch",
@@ -13187,6 +13234,7 @@ def run_launch_only_handoff(
             "launch_only": True,
             "pid": proc.pid,
             "profile": profile,
+            "config_profile": config_profile,
             "world": plan.target_world,
             "strategy": plan.strategy,
             "reason": plan.reason,
@@ -13212,6 +13260,7 @@ def run_launch_only_handoff(
             "mode": "handoff",
             "scenario": scenario_name,
             "profile": profile,
+            "config_profile": config_profile,
             "world": plan.target_world,
             "fixture": fixture,
             "contract": contract,
@@ -13272,6 +13321,7 @@ def run_launch_only_handoff(
             "mode": "handoff",
             "scenario": scenario_name,
             "profile": profile,
+            "config_profile": config_profile,
             "world": world,
             "fixture": fixture,
             "reason": "launch_only_handoff_failed",
@@ -13294,6 +13344,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
+    config_profile = resolve_startup_config_profile(scenario, profile)
     world = args.world or str(scenario.get("world", ""))
     fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
     fixture_profile = str(scenario.get("fixture_profile", "")).strip()
@@ -13337,6 +13388,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "scenario": str(scenario.get("name", args.scenario)),
             "contract": {
                 "profile": profile,
+                "config_profile": config_profile,
                 "world": world,
                 "profile_snapshot": profile_snapshot,
                 "profile_snapshot_profile": profile_snapshot_profile,
@@ -13402,6 +13454,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             args,
             scenario=scenario,
             profile=profile,
+            config_profile=config_profile,
             world=world,
             fixture=fixture,
             fixture_profile=fixture_profile,
@@ -13419,7 +13472,15 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             report_filename=report_filename,
         )
 
-    start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
+    start_cmd = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "start",
+        "--profile",
+        profile,
+        "--config-profile",
+        config_profile,
+    ]
     if world:
         start_cmd.extend(["--world", world])
     if profile_snapshot:
@@ -13442,6 +13503,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "scenario": scenario,
             "resolved_contract": {
                 "profile": profile,
+                "config_profile": config_profile,
                 "world": world,
                 "profile_snapshot": profile_snapshot,
                 "profile_snapshot_profile": profile_snapshot_profile,
@@ -13547,6 +13609,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "profile": profile,
+            "config_profile": config_profile,
             "world": world,
             "fixture": fixture,
             "reason": "startup_gate_not_clean",
@@ -13620,6 +13683,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "scenario": str(scenario.get("name", args.scenario)),
             "contract": {
                 "profile": profile,
+                "config_profile": config_profile,
                 "world": world,
                 "profile_snapshot": profile_snapshot,
                 "profile_snapshot_profile": profile_snapshot_profile,
@@ -13862,6 +13926,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "scenario": str(scenario.get("name", args.scenario)),
         "contract": {
             "profile": profile,
+            "config_profile": config_profile,
             "world": world,
             "profile_snapshot": profile_snapshot,
             "profile_snapshot_profile": profile_snapshot_profile,
@@ -13963,6 +14028,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     start_p = subparsers.add_parser("start", help="Launch and try to reach gameplay.")
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
+    start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
