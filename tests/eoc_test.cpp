@@ -30,6 +30,7 @@
 #include "global_vars.h"
 #include "item.h"
 #include "item_location.h"
+#include "json_loader.h"
 #include "line.h"
 #include "magic.h"
 #include "map.h"
@@ -90,6 +91,10 @@ static const effect_on_condition_id
 effect_on_condition_EOC_TEST_CLEAR_DIMENSION_VARIABLE( "EOC_TEST_CLEAR_DIMENSION_VARIABLE" );
 static const effect_on_condition_id
 effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT( "EOC_TEST_DIMENSION_ID_CONTRACT" );
+static const effect_on_condition_id
+effect_on_condition_EOC_TEST_TRAVEL_TO_TEST_DIMENSION( "EOC_TEST_TRAVEL_TO_TEST_DIMENSION" );
+static const effect_on_condition_id
+effect_on_condition_EOC_TEST_TRAVEL_TO_DEFAULT_DIMENSION( "EOC_TEST_TRAVEL_TO_DEFAULT_DIMENSION" );
 static const effect_on_condition_id
 effect_on_condition_EOC_increment_var_var( "EOC_increment_var_var" );
 static const effect_on_condition_id
@@ -256,6 +261,46 @@ void check_ter_in_line( tripoint_abs_ms const &first, tripoint_abs_ms const &sec
     }
 }
 
+JsonObject find_eoc_definition( const cata_path &path, const std::string &id )
+{
+    for( JsonObject definition : json_loader::from_path( path ).get_array() ) {
+        definition.allow_omitted_members();
+        if( definition.get_string( "id", "" ) == id ) {
+            return definition;
+        }
+    }
+    return JsonObject();
+}
+
+JsonObject find_effect_with_member( const JsonArray &effects, const std::string &member )
+{
+    for( JsonObject effect : effects ) {
+        effect.allow_omitted_members();
+        if( effect.has_member( member ) ) {
+            return effect;
+        }
+    }
+    return JsonObject();
+}
+
+effect_on_condition_id load_dimension_route_eoc( const std::string &id,
+        const std::vector<JsonObject> &effects )
+{
+    std::string effect_json = effects.size() == 1 ? effects.front().str() : "[";
+    if( effects.size() > 1 ) {
+        for( std::size_t index = 0; index < effects.size(); ++index ) {
+            if( index != 0 ) {
+                effect_json += ",";
+            }
+            effect_json += effects[index].str();
+        }
+        effect_json += "]";
+    }
+    JsonValue eoc_json = json_loader::from_string(
+                             string_format( R"({"id":"%s","effect":%s})", id, effect_json ) );
+    return effect_on_conditions::load_inline_eoc( eoc_json, "dimension route semantic test" );
+}
+
 } // namespace
 
 TEST_CASE( "EOC_teleport", "[eoc]" )
@@ -339,6 +384,82 @@ TEST_CASE( "EOC_dimension_ids_use_registered_default", "[eoc][dimension]" )
     CHECK( effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT->test_condition( d ) );
     CHECK( effect_on_condition_EOC_TEST_DIMENSION_ID_CONTRACT->activate( d ) );
     CHECK( globvars.get_global_value( global_key ) == default_dimension.str() );
+}
+
+TEST_CASE( "EOC_dimension_travel_resolves_gameplay_return_routes", "[eoc][dimension]" )
+{
+    const dimension_id default_dimension( "default" );
+    const dimension_id test_dimension( "test" );
+    global_variables &globvars = get_globals();
+
+    clear_avatar();
+    clear_map_without_vision();
+    REQUIRE( g->get_dimension_prefix() == default_dimension );
+    REQUIRE( effect_on_condition_EOC_TEST_TRAVEL_TO_TEST_DIMENSION.is_valid() );
+    REQUIRE( effect_on_condition_EOC_TEST_TRAVEL_TO_DEFAULT_DIMENSION.is_valid() );
+
+    on_out_of_scope cleanup( [&]() {
+        globvars.remove_global_value( "closetland_last_dimension" );
+        if( g->get_dimension_prefix() != default_dimension ) {
+            g->travel_to_dimension( default_dimension, {}, {}, std::nullopt, nullptr );
+        }
+    } );
+
+    dialogue d( get_talker_for( get_avatar() ), std::make_unique<talker>() );
+
+    SECTION( "default to test and back to default" ) {
+        CHECK( effect_on_condition_EOC_TEST_TRAVEL_TO_TEST_DIMENSION->activate( d ) );
+        REQUIRE( g->get_dimension_prefix() == test_dimension );
+
+        CHECK( effect_on_condition_EOC_TEST_TRAVEL_TO_DEFAULT_DIMENSION->activate( d ) );
+        CHECK( g->get_dimension_prefix() == default_dimension );
+    }
+
+    SECTION( "Sky Island raid return resolves the registered default dimension" ) {
+        const cata_path sky_island_path = PATH_INFO::base_path() / "data" / "mods" / "Sky_Island" /
+                                          "effectoncondition" / "teleport.json";
+        JsonObject sky_return = find_eoc_definition( sky_island_path, "EOC_return_OM_teleport" );
+        REQUIRE( sky_return.size() != 0 );
+        JsonObject sky_dimension_travel = find_effect_with_member( sky_return.get_array( "effect" ),
+                                          "u_travel_to_dimension" );
+        REQUIRE( sky_dimension_travel.size() != 0 );
+        const effect_on_condition_id sky_return_route = load_dimension_route_eoc(
+                    "EOC_TEST_ACTUAL_SKY_ISLAND_RETURN_ROUTE", { sky_dimension_travel } );
+        REQUIRE( sky_return_route.is_valid() );
+
+        CHECK( effect_on_condition_EOC_TEST_TRAVEL_TO_TEST_DIMENSION->activate( d ) );
+        REQUIRE( g->get_dimension_prefix() == test_dimension );
+
+        CHECK( sky_return_route->activate( d ) );
+        CHECK( g->get_dimension_prefix() == default_dimension );
+    }
+
+    SECTION( "legacy empty Closetland return state falls back to default" ) {
+        const cata_path closetland_path = PATH_INFO::base_path() / "data" / "mods" /
+                                         "BombasticPerks" / "perkdata" / "closetland.json";
+        JsonObject closetland_return = find_eoc_definition(
+                                           closetland_path,
+                                           "EOC_BOMBASTIC_PERKS_CLOSET_STORAGE_TRAVEL_BACK_FROM_CLOSETLAND" );
+        REQUIRE( closetland_return.size() != 0 );
+        const JsonArray closetland_effects = closetland_return.get_array( "effect" );
+        JsonObject legacy_fallback = find_effect_with_member( closetland_effects, "if" );
+        JsonObject closetland_dimension_travel = find_effect_with_member(
+                    closetland_effects, "u_travel_to_dimension" );
+        REQUIRE( legacy_fallback.size() != 0 );
+        REQUIRE( closetland_dimension_travel.size() != 0 );
+        const effect_on_condition_id closetland_return_route = load_dimension_route_eoc(
+                    "EOC_TEST_ACTUAL_CLOSETLAND_RETURN_ROUTE",
+                    { legacy_fallback, closetland_dimension_travel } );
+        REQUIRE( closetland_return_route.is_valid() );
+
+        globvars.set_global_value( "closetland_last_dimension", "" );
+        CHECK( effect_on_condition_EOC_TEST_TRAVEL_TO_TEST_DIMENSION->activate( d ) );
+        REQUIRE( g->get_dimension_prefix() == test_dimension );
+
+        CHECK( closetland_return_route->activate( d ) );
+        CHECK( globvars.get_global_value( "closetland_last_dimension" ) == default_dimension.str() );
+        CHECK( g->get_dimension_prefix() == default_dimension );
+    }
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity): false positive

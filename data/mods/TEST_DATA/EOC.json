@@ -879,5 +879,15 @@
     "id": "EOC_TEST_DIMENSION_ID_CONTRACT",
     "condition": { "current_dimension": "default" },
     "effect": { "dimension_name": { "global_val": "eoc_test_current_dimension" } }
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_TEST_TRAVEL_TO_TEST_DIMENSION",
+    "effect": { "u_travel_to_dimension": "test" }
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_TEST_TRAVEL_TO_DEFAULT_DIMENSION",
+    "effect": { "u_travel_to_dimension": "default" }
   }
 ]
