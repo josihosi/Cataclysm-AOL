@@ -118,6 +118,9 @@ PORTAL_STORM_REQUIRED_MISSING_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT NOT OBSER
 PORTAL_STORM_REQUIRED_UNKNOWN_SUMMARY = "⚠ PORTAL STORM REQUIRED BUT WEATHER STATUS IS UNKNOWN"
 
 PEEKABOO_INPUT_TRANSPORT_ENV = "CAOL_PEEKABOO_INPUT_TRANSPORT"
+LLM_API_KEYCHAIN_SERVICE = "Cataclysm-AOL LLM API"
+LLM_API_KEY_FALLBACK_ENVS: Tuple[str, ...] = ("OPENAI_API_KEY",)
+LLM_KEYCHAIN_TIMEOUT_SECONDS = 15.0
 PEEKABOO_CAPTURE_TRANSPORT_ENV = "CAOL_PEEKABOO_CAPTURE_TRANSPORT"
 PEEKABOO_BRIDGE_SOCKET_ENV = "CAOL_PEEKABOO_BRIDGE_SOCKET"
 PEEKABOO_BINARY_ENV = "CAOL_PEEKABOO_BIN"
@@ -529,6 +532,41 @@ def normalize_profile_option_overrides(raw_overrides: Any) -> Dict[str, str]:
     return overrides
 
 
+def current_harness_platform_key() -> str:
+    if os.name == "nt":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    return "linux"
+
+
+def resolve_scenario_profile_option_overrides(
+    scenario: Dict[str, Any], platform_key: str = ""
+) -> Dict[str, str]:
+    overrides = normalize_profile_option_overrides(
+        scenario.get("profile_option_overrides", {})
+    )
+    raw_platform_overrides = scenario.get("profile_option_overrides_by_platform", {})
+    if raw_platform_overrides in (None, {}):
+        return overrides
+    if not isinstance(raw_platform_overrides, dict):
+        raise ValueError("profile_option_overrides_by_platform must be a JSON object")
+
+    supported_platforms = {"windows", "macos", "linux"}
+    unknown_platforms = sorted(set(raw_platform_overrides) - supported_platforms)
+    if unknown_platforms:
+        raise ValueError(
+            "profile_option_overrides_by_platform contains unsupported platform(s): "
+            + ", ".join(unknown_platforms)
+        )
+    selected_platform = platform_key or current_harness_platform_key()
+    selected_overrides = normalize_profile_option_overrides(
+        raw_platform_overrides.get(selected_platform, {})
+    )
+    overrides.update(selected_overrides)
+    return overrides
+
+
 def parse_profile_option_args(raw_options: Sequence[str]) -> Dict[str, str]:
     overrides: Dict[str, str] = {}
     for raw_option in raw_options:
@@ -571,50 +609,310 @@ def apply_profile_option_overrides(profile: str, overrides: Dict[str, str]) -> D
     return apply_option_overrides_to_file(config_dir_for_profile(profile) / "options.json", overrides)
 
 
-def resolve_configured_python_command(raw_value: str) -> Tuple[List[str], str]:
+def resolve_configured_python_command(
+    raw_value: str,
+    *,
+    allow_command_lookup: bool = True,
+) -> Tuple[List[str], str]:
     raw = str(raw_value).strip()
     if not raw:
+        return [], ""
+
+    is_windows_absolute = re.match(r"^[A-Za-z]:[\\\\/]", raw) is not None
+    is_posix_absolute = raw.startswith("/")
+    if (os.name == "nt" and is_posix_absolute) or (
+        os.name != "nt" and is_windows_absolute
+    ):
         return [], ""
 
     expanded = Path(raw).expanduser()
     candidates: List[Path] = []
     if expanded.is_dir():
-        candidates = [
-            expanded / "bin" / "python3",
-            expanded / "bin" / "python",
-            expanded / "Scripts" / "python.exe",
-            expanded / "Scripts" / "python",
-        ]
-    elif expanded.exists():
+        if os.name == "nt":
+            candidates = [expanded / "Scripts" / "python.exe"]
+        else:
+            candidates = [
+                expanded / "bin" / "python3",
+                expanded / "bin" / "python",
+            ]
+    elif expanded.is_file():
         candidates = [expanded]
 
     for candidate in candidates:
-        if candidate.exists():
+        if candidate.is_file() and (os.name == "nt" or os.access(candidate, os.X_OK)):
             return [str(candidate)], str(candidate)
 
-    return [raw], raw
+    is_path_like = is_windows_absolute or is_posix_absolute or "/" in raw or "\\" in raw
+    if is_path_like:
+        return [], ""
+
+    if not allow_command_lookup:
+        return [], ""
+    resolved_command = shutil.which(raw)
+    if resolved_command:
+        return [resolved_command], resolved_command
+    return [], ""
+
+
+def llm_credential_target(env_name: str) -> str:
+    return f"Cataclysm-AOL/LLM/{env_name}"
+
+
+def read_windows_llm_credential(env_name: str) -> str:
+    """Read one generic Windows credential without exposing it to stdout."""
+
+    import ctypes
+    from ctypes import wintypes
+
+    class Credential(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", wintypes.FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+
+    credential_pointer = ctypes.POINTER(Credential)()
+    advapi32 = ctypes.WinDLL("Advapi32.dll")
+    advapi32.CredReadW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(ctypes.POINTER(Credential)),
+    ]
+    advapi32.CredReadW.restype = wintypes.BOOL
+    advapi32.CredFree.argtypes = [ctypes.c_void_p]
+    advapi32.CredFree.restype = None
+
+    if not advapi32.CredReadW(
+        llm_credential_target(env_name), 1, 0, ctypes.byref(credential_pointer)
+    ):
+        return ""
+    try:
+        credential = credential_pointer.contents
+        if credential.CredentialBlobSize <= 0 or not credential.CredentialBlob:
+            return ""
+        raw = ctypes.string_at(credential.CredentialBlob, credential.CredentialBlobSize)
+        return raw.decode("utf-16-le")
+    finally:
+        advapi32.CredFree(credential_pointer)
+
+
+def write_windows_llm_credential(env_name: str, secret: str) -> None:
+    """Persist one API key in Windows Credential Manager."""
+
+    import ctypes
+    from ctypes import wintypes
+
+    class Credential(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", wintypes.FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+
+    raw = secret.encode("utf-16-le")
+    blob = ctypes.create_string_buffer(raw)
+    credential = Credential()
+    credential.Type = 1
+    credential.TargetName = llm_credential_target(env_name)
+    credential.CredentialBlobSize = len(raw)
+    credential.CredentialBlob = ctypes.cast(blob, ctypes.POINTER(ctypes.c_ubyte))
+    credential.Persist = 2
+    credential.UserName = env_name
+
+    advapi32 = ctypes.WinDLL("Advapi32.dll", use_last_error=True)
+    advapi32.CredWriteW.argtypes = [ctypes.POINTER(Credential), wintypes.DWORD]
+    advapi32.CredWriteW.restype = wintypes.BOOL
+    if not advapi32.CredWriteW(ctypes.byref(credential), 0):
+        raise OSError(ctypes.get_last_error(), "CredWriteW failed")
+
+
+def read_secure_llm_credential(env_name: str) -> Tuple[str, str]:
+    if os.name == "nt":
+        try:
+            return read_windows_llm_credential(env_name), "windows_credential_manager"
+        except (OSError, UnicodeError):
+            return "", "windows_credential_manager"
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(
+                [
+                    "/usr/bin/security",
+                    "find-generic-password",
+                    "-a",
+                    env_name,
+                    "-s",
+                    LLM_API_KEYCHAIN_SERVICE,
+                    "-w",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=LLM_KEYCHAIN_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return "", "macos_keychain_timeout"
+        if result.returncode == 0:
+            return result.stdout.rstrip("\r\n"), "macos_keychain"
+        return "", "macos_keychain"
+    return "", "unsupported_secure_store"
+
+
+def store_secure_llm_credential(env_name: str, secret: str) -> str:
+    if not env_name or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", env_name):
+        raise ValueError("Credential env name must be a valid environment-variable name.")
+    if not secret:
+        raise ValueError("Credential secret is empty.")
+    if os.name == "nt":
+        write_windows_llm_credential(env_name, secret)
+        return "windows_credential_manager"
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(
+                [
+                    "/usr/bin/security",
+                    "add-generic-password",
+                    "-U",
+                    "-a",
+                    env_name,
+                    "-s",
+                    LLM_API_KEYCHAIN_SERVICE,
+                    "-w",
+                ],
+                input=secret + "\n",
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=LLM_KEYCHAIN_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(
+                "macOS Keychain interaction timed out; unlock or approve Keychain access and retry."
+            ) from None
+        if result.returncode != 0:
+            detail = result.stderr.strip()
+            raise RuntimeError(detail or "macOS Keychain write failed")
+        return "macos_keychain"
+    raise RuntimeError("No supported secure credential store is available on this platform.")
+
+
+def llm_api_mode_enabled(options: Dict[str, str]) -> bool:
+    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
+    use_api = options.get("LLM_INTENT_USE_API", "").strip().lower() == "true"
+    enabled = options.get("LLM_INTENT_ENABLE", "").strip().lower() == "true"
+    return enabled and (backend == "api" or use_api)
+
+
+def provision_llm_api_key_environment(
+    options: Dict[str, str],
+) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Resolve the configured key into a game-child environment overlay.
+
+    The secret is absent from the diagnostic packet and the harness process
+    environment is never mutated.
+    """
+
+    if not llm_api_mode_enabled(options):
+        return {"status": "not_required", "source": "", "env_var": ""}, {}
+    env_name = options.get("LLM_INTENT_API_KEY_ENV", "").strip()
+    if not env_name:
+        return {"status": "missing_env_name", "source": "", "env_var": ""}, {}
+    configured_secret = os.environ.get(env_name, "")
+    if configured_secret:
+        return {
+            "status": "ready",
+            "source": "configured_environment",
+            "env_var": env_name,
+        }, {env_name: configured_secret}
+
+    provider = options.get("LLM_INTENT_API_PROVIDER", "").strip().lower() or "openai"
+    if provider == "openai":
+        for fallback_env in LLM_API_KEY_FALLBACK_ENVS:
+            fallback_secret = os.environ.get(fallback_env, "")
+            if fallback_secret:
+                return {
+                    "status": "ready",
+                    "source": f"environment:{fallback_env}",
+                    "env_var": env_name,
+                }, {env_name: fallback_secret}
+
+    secret, source = read_secure_llm_credential(env_name)
+    if secret:
+        return {
+            "status": "ready",
+            "source": source,
+            "env_var": env_name,
+        }, {env_name: secret}
+    return {"status": "missing", "source": source, "env_var": env_name}, {}
+
+
+def run_store_llm_credential(args: argparse.Namespace) -> int:
+    env_name = str(args.env_name or "").strip()
+    source_env = str(args.from_env or "").strip()
+    if args.stdin:
+        secret = sys.stdin.read().rstrip("\r\n")
+        source = "stdin"
+    else:
+        secret = os.environ.get(source_env, "")
+        source = f"environment:{source_env}"
+    if not secret:
+        raise SystemExit(f"No API key was available from {source}.")
+    store = store_secure_llm_credential(env_name, secret)
+    print(json.dumps({
+        "ok": True,
+        "env_var": env_name,
+        "source": source,
+        "store": store,
+        "secret_logged": False,
+    }, indent=2))
+    return 0
 
 
 def resolve_game_runtime_python(options: Dict[str, str]) -> Tuple[List[str], str, str]:
-    configured_value = options.get("LLM_INTENT_PYTHON", "")
-    configured_cmd, configured_label = resolve_configured_python_command(configured_value)
-    if configured_cmd:
-        return configured_cmd, configured_label, "configured_option"
+    configured_value = options.get("LLM_INTENT_PYTHON", "").strip()
+    if configured_value:
+        configured_cmd, configured_label = resolve_configured_python_command(
+            configured_value,
+            allow_command_lookup=False,
+        )
+        if configured_cmd:
+            return configured_cmd, configured_label, "configured_option"
+        return [], configured_value, "configured_option_invalid"
 
     backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
-    if backend == "api":
+    if backend == "api" and sys.platform == "darwin":
         fallback_cmd, fallback_label = resolve_configured_python_command("/Users/josefhorvath/ollama/api_env311")
         if fallback_cmd:
             return fallback_cmd, fallback_label, "api_fallback_venv"
 
     if backend in {"api", "ollama"}:
-        platform_default = "python" if os.name == "nt" else "/usr/bin/python3"
+        if os.name == "nt":
+            return [], "python", f"{backend}_platform_default_invalid"
+        platform_default = "/usr/bin/python3"
         platform_cmd, platform_label = resolve_configured_python_command(platform_default)
         if platform_cmd:
             return platform_cmd, platform_label, f"{backend}_platform_default"
-        return [platform_default], platform_default, f"{backend}_platform_default"
+        return [], "", f"{backend}_platform_default"
 
-    return configured_cmd, configured_label, "configured_option"
+    return [], "", "configured_option"
 
 
 def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str, str]]:
@@ -639,24 +937,34 @@ def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str,
             "option": "DEBUG_LLM_INTENT_LOG",
         })
 
-    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
     python_cmd, python_label, python_source = resolve_game_runtime_python(options)
     if not python_cmd:
+        configured_invalid = python_source == "configured_option_invalid"
         blockers.append({
-            "code": "llm_python_missing",
-            "message": "LLM runner Python path is empty and no runtime fallback resolved.",
+            "code": "llm_python_configured_invalid" if configured_invalid else "llm_python_missing",
+            "message": (
+                f"Configured LLM runner Python path does not resolve: {python_label}"
+                if configured_invalid
+                else "LLM runner Python path is empty and no runtime fallback resolved."
+            ),
             "option": "LLM_INTENT_PYTHON",
+            "python": python_label,
+            "python_source": python_source,
         })
-    elif backend == "api":
-        import_check = subprocess.run(
-            python_cmd + ["-c", "import any_llm"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if import_check.returncode != 0:
+    elif llm_api_mode_enabled(options):
+        try:
+            import_check = subprocess.run(
+                python_cmd + ["-c", "import any_llm"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             detail_text = (import_check.stderr or import_check.stdout).strip()
             detail = detail_text.splitlines()[0] if detail_text else "import any_llm failed"
+        except OSError as error:
+            import_check = None
+            detail = str(error)
+        if import_check is None or import_check.returncode != 0:
             blockers.append({
                 "code": "llm_python_missing_any_llm",
                 "message": f"Resolved LLM runner Python cannot import any_llm ({detail}).",
@@ -678,10 +986,9 @@ def probe_runtime_warnings(profile: str, artifact_source: str) -> List[Dict[str,
 
     options = load_game_options(profile)
     warnings: List[Dict[str, str]] = []
-    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
     python_cmd, python_label, python_source = resolve_game_runtime_python(options)
 
-    if backend == "api" and options.get("LLM_INTENT_PYTHON", "").strip() == "" and python_cmd:
+    if llm_api_mode_enabled(options) and options.get("LLM_INTENT_PYTHON", "").strip() == "" and python_cmd:
         warnings.append({
             "code": "llm_python_option_empty_using_runtime_fallback",
             "message": f"LLM_INTENT_PYTHON is empty; the runtime will fall back to {python_label} ({python_source}).",
@@ -690,18 +997,19 @@ def probe_runtime_warnings(profile: str, artifact_source: str) -> List[Dict[str,
             "python_source": python_source,
         })
 
-    if backend == "api":
-        api_key_env = options.get("LLM_INTENT_API_KEY_ENV", "").strip()
-        if not api_key_env:
+    if llm_api_mode_enabled(options):
+        provision, _ = provision_llm_api_key_environment(options)
+        api_key_env = provision["env_var"]
+        if provision["status"] == "missing_env_name":
             warnings.append({
                 "code": "llm_api_key_env_missing",
                 "message": "API backend is selected, but no API key env-var name is configured; prompt logging may still work, but responses will fail.",
                 "option": "LLM_INTENT_API_KEY_ENV",
             })
-        elif not os.environ.get(api_key_env):
+        elif provision["status"] == "missing":
             warnings.append({
                 "code": "llm_api_key_env_unset",
-                "message": f"API backend is selected, but env var '{api_key_env}' is not set for the harness process; prompt logging may still work, but responses will fail.",
+                "message": f"API backend is selected, but no credential for '{api_key_env}' is available to the game child; responses will fail.",
                 "option": "LLM_INTENT_API_KEY_ENV",
                 "env_var": api_key_env,
             })
@@ -6919,15 +7227,66 @@ def kill_existing_game_processes() -> List[int]:
     return pids
 
 
-def launch_game(profile: str, target_world: str, run_dir: Path) -> subprocess.Popen[str]:
+def validate_enabled_api_runtime(options: Dict[str, str]) -> None:
+    if not llm_api_mode_enabled(options):
+        return
+
+    python_cmd, python_label, python_source = resolve_game_runtime_python(options)
+    if not python_cmd:
+        raise RuntimeError(
+            "API LLM is enabled, but its Python runner is unavailable "
+            f"({python_label or 'no resolved interpreter'}; {python_source})."
+        )
+    try:
+        import_check = subprocess.run(
+            python_cmd + ["-c", "import any_llm"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        raise RuntimeError(
+            f"API LLM Python runner could not start ({python_label}): {error}"
+        ) from error
+    if import_check.returncode != 0:
+        detail_text = (import_check.stderr or import_check.stdout).strip()
+        detail = detail_text.splitlines()[0] if detail_text else "import any_llm failed"
+        raise RuntimeError(
+            f"API LLM Python runner is incomplete ({python_label}): {detail}"
+        )
+
+
+def game_child_environment(profile: str) -> Dict[str, str]:
+    options = load_game_options(profile)
+    validate_enabled_api_runtime(options)
+    provision, child_overlay = provision_llm_api_key_environment(options)
+    if provision["status"] in {"missing", "missing_env_name"}:
+        env_name = provision["env_var"] or "LLM_INTENT_API_KEY_ENV"
+        raise RuntimeError(
+            "API LLM is enabled, but its credential is unavailable "
+            f"({env_name}; status={provision['status']}; source={provision['source'] or 'none'}). "
+            "Store it with the harness before launching."
+        )
+    env = os.environ.copy()
+    env.update(child_overlay)
+    env["OPENCLAW_HARNESS_UI_TRACE"] = "1"
+    return env
+
+
+def launch_game(
+    profile: str,
+    target_world: str,
+    run_dir: Path,
+    *,
+    child_environment: Optional[Dict[str, str]] = None,
+) -> subprocess.Popen[str]:
     exe = detect_executable()
     cmd = [str(exe), "--userdir", f".userdata/{profile}/"]
     if target_world:
         cmd.extend(["--world", target_world])
+    env = child_environment or game_child_environment(profile)
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
-    env = os.environ.copy()
-    env["OPENCLAW_HARNESS_UI_TRACE"] = "1"
     return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True, env=env)
 
 
@@ -13340,6 +13699,7 @@ def run_startup(args: argparse.Namespace) -> int:
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
 
+    child_environment = game_child_environment(profile)
     peekaboo_permissions = require_peekaboo_permissions()
     write_json(run_dir / "peekaboo.permissions.json", peekaboo_permissions)
     killed_pids = kill_existing_game_processes()
@@ -13352,7 +13712,12 @@ def run_startup(args: argparse.Namespace) -> int:
     baseline_save_marker = latest_world_save_marker(profile, plan.target_world)
     baseline_save_marker_mtime = float(baseline_save_marker.get("mtime", 0.0) or 0.0)
     copy_file_if_exists(lastworld, run_dir / "lastworld.before.json")
-    proc = launch_game(profile, plan.target_world, run_dir)
+    proc = launch_game(
+        profile,
+        plan.target_world,
+        run_dir,
+        child_environment=child_environment,
+    )
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
         "command": [plan.executable, "--userdir", f".userdata/{profile}/"] + (["--world", plan.target_world] if plan.target_world else []),
@@ -14453,7 +14818,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     fixture_profile = str(scenario.get("fixture_profile", "")).strip()
     profile_snapshot = str(scenario.get("profile_snapshot", "")).strip()
     profile_snapshot_profile = str(scenario.get("profile_snapshot_profile", "")).strip()
-    profile_option_overrides = normalize_profile_option_overrides(scenario.get("profile_option_overrides", {}))
+    profile_option_overrides = resolve_scenario_profile_option_overrides(scenario)
     replace_existing_worlds = args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False))
     advance_count = int(args.advance_turns if args.advance_turns is not None else scenario.get("advance_turns", 0))
     settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
@@ -15204,6 +15569,15 @@ def build_parser() -> argparse.ArgumentParser:
     repeat_p.add_argument("--compact-stdout", action="store_true", help="Run child probes with compact stdout to keep repeatability raw logs small.")
     repeat_p.add_argument("--dry-run", action="store_true", help="Resolve the repeatability contract only.")
 
+    credential_p = subparsers.add_parser(
+        "store-llm-credential",
+        help="Store an API key in the platform secure store for automatic harness launch inheritance.",
+    )
+    credential_p.add_argument("--env-name", default="CATA_API_KEY", help="Environment name configured in the game profile.")
+    credential_source = credential_p.add_mutually_exclusive_group(required=True)
+    credential_source.add_argument("--from-env", default="", help="Read the key from this already-set environment variable.")
+    credential_source.add_argument("--stdin", action="store_true", help="Read the key from stdin without putting it in shell history.")
+
     return parser
 
 
@@ -15240,6 +15614,8 @@ def main() -> int:
         return run_handoff(args)
     if args.command == "repeatability":
         return run_repeatability(args)
+    if args.command == "store-llm-credential":
+        return run_store_llm_credential(args)
     parser.error(f"Unknown command: {args.command}")
     return 2
 

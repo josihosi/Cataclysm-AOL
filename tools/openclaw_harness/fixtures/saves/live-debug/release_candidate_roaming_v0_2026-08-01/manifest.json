@@ -2,7 +2,7 @@
   "name": "release_candidate_roaming_v0_2026-08-01",
   "source_fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
   "source_profile": "live-debug",
-  "description": "Windows release-candidate free-play footing: start safely inside the completed McWilliams evacuation shelter, repair both inherited basecamp NPC assignments without changing their job priorities or schedule, remove the orphaned test-run scout beside the shelter, preserve a real bandit camp south and the seeded cannibal camp east, reset both camp rosters to home, set a daytime start, and place one zombie rider north plus one flesh raptor west as overmap entities outside the initial reality bubble. This is deliberate nearby roaming setup, not natural world-generation proof.",
+  "description": "Windows release-candidate free-play footing: start safely inside the completed McWilliams evacuation shelter, repair both inherited basecamp NPC assignments without changing their job priorities or schedule, remove the orphaned test-run scout beside the shelter, preserve a real bandit camp south and the seeded cannibal camp east, reset both camp rosters to home, set a daytime start, and place one zombie rider north, one flesh raptor west, and one early writhing stalker southeast as overmap entities outside the initial reality bubble. This is deliberate nearby roaming setup, not natural world-generation proof.",
   "save_transforms": [
     {
       "kind": "player_location_offset_ms",
@@ -79,6 +79,16 @@
       "offset_ms": [-96, 0, 0],
       "destination_offset_ms": [-48, 0, 0],
       "tracking_intensity": 4,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_writhing_stalker",
+      "offset_ms": [72, 72, 0],
+      "destination_offset_ms": [48, 48, 0],
+      "tracking_intensity": 3,
       "last_processed": 0,
       "moves": 0
     }

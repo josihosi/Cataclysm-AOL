@@ -1,6 +1,6 @@
 {
   "name": "manual.release_candidate_roaming_mcw",
-  "description": "Manual Windows release-candidate free-play handoff: calm daytime evacuation-shelter start with repaired basecamp NPC assignments, bandits south, cannibals east, a zombie rider north, and a flesh raptor west. The NPC repair preserves the save's game-owned job priorities and schedule. The orphaned scout from the source test fixture is removed and every intended threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
+  "description": "Manual Windows release-candidate free-play handoff: calm daytime evacuation-shelter start with repaired basecamp NPC assignments, bandits south, cannibals east, a zombie rider north, a flesh raptor west, and an early writhing stalker southeast. The NPC repair preserves the save's game-owned job priorities and schedule. The orphaned scout from the source test fixture is removed and every intended threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "release_candidate_roaming_v0_2026-08-01",
@@ -14,8 +14,15 @@
     "LLM_INTENT_API_MODEL": "gpt-5.4-nano",
     "LLM_INTENT_BACKEND": "api",
     "LLM_INTENT_ENABLE": "true",
-    "LLM_INTENT_PYTHON": "C:\\Users\\josef\\openvino_models\\openvino_env",
     "TILES": "UltimateCataclysm"
+  },
+  "profile_option_overrides_by_platform": {
+    "windows": {
+      "LLM_INTENT_PYTHON": "C:\\Users\\josef\\openvino_models\\openvino_env"
+    },
+    "macos": {
+      "LLM_INTENT_PYTHON": "/Users/josefhorvath/ollama/api_env311"
+    }
   },
   "replace_existing_worlds": true,
   "artifact_source": "debug.log",
@@ -23,7 +30,8 @@
     "bandit_live_world",
     "cannibal_camp",
     "zombie_rider",
-    "flesh_raptor"
+    "flesh_raptor",
+    "writhing_stalker"
   ],
   "steps": [
     {
@@ -100,7 +108,7 @@
     },
     {
       "kind": "audit_saved_hordes_near_player",
-      "label": "audit_release_candidate_roaming_rider_and_raptor",
+      "label": "audit_release_candidate_roaming_release_threats",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "radius_ms": 180,
       "required_hordes": [
@@ -117,11 +125,18 @@
           "destination_offset_ms": [-48, 0, 0],
           "tracking_intensity": 4,
           "moves": 0
+        },
+        {
+          "monster_id": "mon_writhing_stalker",
+          "offset_ms": [72, 72, 0],
+          "destination_offset_ms": [48, 48, 0],
+          "tracking_intensity": 3,
+          "moves": 0
         }
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_release_candidate_roaming_predators",
-      "abort_reason": "saved overmap horde metadata did not contain the staged north rider and west flesh raptor outside the initial reality bubble"
+      "abort_reason": "saved overmap horde metadata did not contain the staged north rider, west flesh raptor, and southeast writhing stalker outside the initial reality bubble"
     }
   ],
   "recommended_test_command": "python tools/openclaw_harness/startup_harness.py handoff manual.release_candidate_roaming_mcw --launch-only --compact-stdout",
@@ -129,7 +144,7 @@
     "question": "During ordinary roaming, do C-AOL's new hostile systems feel distinct, readable, and fair without announcing themselves like scripted test actors?",
     "tester_notes": [
       "Play normally from the loaded daytime evacuation shelter; there is no required order or target checklist.",
-      "If you want orientation only: rider north, flesh raptor west, cannibals east-northeast, bandits south.",
+      "If you want orientation only: rider north, flesh raptor west, writhing stalker southeast, cannibals east-northeast, bandits south.",
       "Save after a memorable encounter or failure so the resulting state can be audited with the note."
     ],
     "metadata_to_check_after": [
@@ -139,7 +154,7 @@
     ]
   },
   "evidence_contract": {
-    "claim": "manual load starts inside the completed evacuation shelter with all four requested hostile families nearby but outside immediate combat range",
+    "claim": "manual load starts inside the completed evacuation shelter with all five intended hostile families nearby but outside immediate combat range",
     "load_only_verdict": "manual handoff footing only; gameplay feel comes from Josef's unscripted play after handoff"
   }
 }

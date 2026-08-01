@@ -47,15 +47,23 @@ from startup_harness import (  # noqa: E402
     apply_option_overrides_to_file,
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
+    launch_game,
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
+    provision_llm_api_key_environment,
+    read_secure_llm_credential,
+    resolve_configured_python_command,
     resolve_fixture_payload,
+    resolve_game_runtime_python,
     resolve_profile_name,
+    resolve_scenario_profile_option_overrides,
     resolve_startup_config_profile,
     run_launch_only_handoff,
     run_probe_mode,
     scenarios_root,
+    store_secure_llm_credential,
+    validate_enabled_api_runtime,
 )
 from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E402
 
@@ -65,11 +73,351 @@ class SaveValidationError(RuntimeError):
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
-    def test_release_candidate_pins_working_windows_api_runner(self) -> None:
+    def test_foreign_absolute_python_path_does_not_block_platform_fallback(self) -> None:
+        with mock.patch("startup_harness.os.name", "posix"):
+            mac_result = resolve_configured_python_command(
+                r"C:\Users\josef\openvino_models\openvino_env"
+            )
+        with mock.patch("startup_harness.os.name", "nt"):
+            windows_result = resolve_configured_python_command(
+                "/Users/josefhorvath/ollama/api_env311"
+            )
+
+        self.assertEqual(mac_result, ([], ""))
+        self.assertEqual(windows_result, ([], ""))
+
+    def test_missing_same_platform_python_path_is_not_treated_as_executable(self) -> None:
+        with mock.patch("startup_harness.os.name", "posix"):
+            posix_result = resolve_configured_python_command(
+                "/definitely/missing/caol-api-venv"
+            )
+        with mock.patch("startup_harness.os.name", "nt"):
+            windows_result = resolve_configured_python_command(
+                r"Z:\definitely\missing\caol-api-venv"
+            )
+
+        self.assertEqual(posix_result, ([], ""))
+        self.assertEqual(windows_result, ([], ""))
+
+    def test_python_command_name_requires_path_resolution(self) -> None:
+        with mock.patch("startup_harness.shutil.which", return_value=None):
+            missing_result = resolve_configured_python_command("python3")
+        with mock.patch(
+            "startup_harness.shutil.which", return_value="/usr/bin/python3"
+        ):
+            resolved_result = resolve_configured_python_command("python3")
+
+        self.assertEqual(missing_result, ([], ""))
+        self.assertEqual(
+            resolved_result,
+            (["/usr/bin/python3"], "/usr/bin/python3"),
+        )
+
+    def test_linux_runtime_reports_nonempty_macos_venv_as_invalid(self) -> None:
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "linux"),
+        ):
+            result = resolve_game_runtime_python({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_PYTHON": "/Users/josefhorvath/ollama/api_env311",
+            })
+
+        self.assertEqual(
+            result,
+            ([], "/Users/josefhorvath/ollama/api_env311", "configured_option_invalid"),
+        )
+
+    def test_linux_empty_runner_option_uses_same_default_as_game(self) -> None:
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "linux"),
+            mock.patch("startup_harness.Path.is_file", return_value=True),
+            mock.patch("startup_harness.os.access", return_value=True),
+        ):
+            result = resolve_game_runtime_python({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_PYTHON": "",
+            })
+
+        self.assertEqual(
+            result,
+            (["/usr/bin/python3"], "/usr/bin/python3", "api_platform_default"),
+        )
+
+    def test_empty_openvino_runner_option_stays_unresolved(self) -> None:
+        self.assertEqual(
+            resolve_game_runtime_python({
+                "LLM_INTENT_BACKEND": "openvino",
+                "LLM_INTENT_PYTHON": "",
+            }),
+            ([], "", "configured_option"),
+        )
+
+    def test_windows_empty_api_runner_fails_closed_like_the_game_path(self) -> None:
+        with mock.patch("startup_harness.os.name", "nt"):
+            result = resolve_game_runtime_python({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_PYTHON": "",
+            })
+
+        self.assertEqual(
+            result,
+            ([], "python", "api_platform_default_invalid"),
+        )
+
+    def test_api_key_provisioning_prefers_configured_environment(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"CATA_API_KEY": "configured", "OPENAI_API_KEY": "fallback"}, clear=True),
+            mock.patch("startup_harness.read_secure_llm_credential") as read_secure,
+        ):
+            result = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+            })
+
+        diagnostic, child_overlay = result
+        self.assertEqual(diagnostic["status"], "ready")
+        self.assertEqual(diagnostic["source"], "configured_environment")
+        self.assertEqual(child_overlay, {"CATA_API_KEY": "configured"})
+        read_secure.assert_not_called()
+
+    def test_api_key_provisioning_maps_openai_environment_for_game_child(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"OPENAI_API_KEY": "fallback"}, clear=True),
+            mock.patch("startup_harness.read_secure_llm_credential") as read_secure,
+        ):
+            result = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+            })
+            inherited_value = os.environ.get("CATA_API_KEY")
+
+        diagnostic, child_overlay = result
+        self.assertEqual(diagnostic["status"], "ready")
+        self.assertEqual(diagnostic["source"], "environment:OPENAI_API_KEY")
+        self.assertEqual(child_overlay, {"CATA_API_KEY": "fallback"})
+        self.assertIsNone(inherited_value)
+        read_secure.assert_not_called()
+
+    def test_api_key_provisioning_reads_platform_secure_store(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch(
+                "startup_harness.read_secure_llm_credential",
+                return_value=("stored", "test_secure_store"),
+            ),
+        ):
+            result = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+            })
+            inherited_value = os.environ.get("CATA_API_KEY")
+
+        diagnostic, child_overlay = result
+        self.assertEqual(diagnostic["status"], "ready")
+        self.assertEqual(diagnostic["source"], "test_secure_store")
+        self.assertEqual(child_overlay, {"CATA_API_KEY": "stored"})
+        self.assertIsNone(inherited_value)
+
+    def test_non_openai_provider_does_not_consume_openai_environment_key(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"OPENAI_API_KEY": "unrelated"}, clear=True),
+            mock.patch(
+                "startup_harness.read_secure_llm_credential",
+                return_value=("provider-stored", "test_secure_store"),
+            ) as read_secure,
+        ):
+            diagnostic, child_overlay = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+                "LLM_INTENT_API_PROVIDER": "anthropic",
+            })
+
+        self.assertEqual(diagnostic["status"], "ready")
+        self.assertEqual(diagnostic["source"], "test_secure_store")
+        self.assertEqual(child_overlay, {"CATA_API_KEY": "provider-stored"})
+        read_secure.assert_called_once_with("CATA_API_KEY")
+
+    def test_legacy_use_api_mode_provisions_secure_credential(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch(
+                "startup_harness.read_secure_llm_credential",
+                return_value=("stored", "test_secure_store"),
+            ),
+        ):
+            diagnostic, child_overlay = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "openvino",
+                "LLM_INTENT_USE_API": "true",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+            })
+
+        self.assertEqual(diagnostic["status"], "ready")
+        self.assertEqual(child_overlay, {"CATA_API_KEY": "stored"})
+
+    def test_macos_keychain_writer_keeps_secret_out_of_process_arguments(self) -> None:
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "darwin"),
+            mock.patch("startup_harness.subprocess.run", return_value=completed) as run,
+        ):
+            store = store_secure_llm_credential("CATA_API_KEY", "secret-value")
+
+        command = run.call_args.args[0]
+        self.assertEqual(store, "macos_keychain")
+        self.assertEqual(command[-1], "-w")
+        self.assertNotIn("secret-value", command)
+        self.assertEqual(run.call_args.kwargs["input"], "secret-value\n")
+        self.assertEqual(run.call_args.kwargs["timeout"], 15.0)
+
+    def test_macos_keychain_read_timeout_is_secret_free(self) -> None:
+        timeout = subprocess.TimeoutExpired(
+            cmd=["/usr/bin/security"],
+            timeout=15.0,
+            output="partial-secret",
+        )
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "darwin"),
+            mock.patch("startup_harness.subprocess.run", side_effect=timeout),
+        ):
+            result = read_secure_llm_credential("CATA_API_KEY")
+
+        self.assertEqual(result, ("", "macos_keychain_timeout"))
+        self.assertNotIn("partial-secret", repr(result))
+
+    def test_macos_keychain_write_timeout_is_secret_free(self) -> None:
+        timeout = subprocess.TimeoutExpired(
+            cmd=["/usr/bin/security"],
+            timeout=15.0,
+            output="partial-secret",
+        )
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "darwin"),
+            mock.patch("startup_harness.subprocess.run", side_effect=timeout),
+            self.assertRaisesRegex(RuntimeError, "Keychain interaction timed out") as caught,
+        ):
+            store_secure_llm_credential("CATA_API_KEY", "secret-value")
+
+        self.assertNotIn("partial-secret", str(caught.exception))
+        self.assertNotIn("secret-value", str(caught.exception))
+
+    def test_disabled_api_backend_does_not_require_credential(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch("startup_harness.read_secure_llm_credential") as read_secure,
+        ):
+            diagnostic, child_overlay = provision_llm_api_key_environment({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "false",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+            })
+
+        self.assertEqual(diagnostic["status"], "not_required")
+        self.assertEqual(child_overlay, {})
+        read_secure.assert_not_called()
+
+    def test_enabled_api_runtime_rejects_invalid_configured_python(self) -> None:
+        with mock.patch("startup_harness.subprocess.run") as run:
+            with self.assertRaisesRegex(RuntimeError, "Python runner is unavailable"):
+                validate_enabled_api_runtime({
+                    "LLM_INTENT_BACKEND": "api",
+                    "LLM_INTENT_ENABLE": "true",
+                    "LLM_INTENT_PYTHON": r"Z:\definitely\missing\caol-api-venv",
+                })
+
+        run.assert_not_called()
+
+    def test_enabled_api_runtime_turns_runner_oserror_into_configuration_error(self) -> None:
+        with (
+            mock.patch(
+                "startup_harness.resolve_game_runtime_python",
+                return_value=(["python"], "python", "configured_option"),
+            ),
+            mock.patch(
+                "startup_harness.subprocess.run",
+                side_effect=FileNotFoundError("runner disappeared"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "could not start"),
+        ):
+            validate_enabled_api_runtime({
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+            })
+
+    def test_launch_game_inherits_provisioned_api_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with (
+                mock.patch.dict(os.environ, {}, clear=True),
+                mock.patch(
+                    "startup_harness.load_game_options",
+                    return_value={
+                        "LLM_INTENT_BACKEND": "api",
+                        "LLM_INTENT_ENABLE": "true",
+                        "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+                    },
+                ),
+                mock.patch(
+                    "startup_harness.read_secure_llm_credential",
+                    return_value=("stored", "test_secure_store"),
+                ),
+                mock.patch("startup_harness.validate_enabled_api_runtime"),
+                mock.patch("startup_harness.detect_executable", return_value=Path("game")),
+                mock.patch("startup_harness.repo_root", return_value=Path("repo")),
+                mock.patch("startup_harness.subprocess.Popen") as popen,
+            ):
+                launch_game("test-profile", "Test World", run_dir)
+                child_environment = popen.call_args.kwargs["env"]
+                parent_contains_key = "CATA_API_KEY" in os.environ
+                popen.call_args.kwargs["stdout"].close()
+                popen.call_args.kwargs["stderr"].close()
+
+            self.assertEqual(child_environment["CATA_API_KEY"], "stored")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_UI_TRACE"], "1")
+            self.assertFalse(parent_contains_key)
+
+    def test_launch_game_refuses_missing_enabled_api_credential(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with (
+                mock.patch.dict(os.environ, {}, clear=True),
+                mock.patch(
+                    "startup_harness.load_game_options",
+                    return_value={
+                        "LLM_INTENT_BACKEND": "api",
+                        "LLM_INTENT_ENABLE": "true",
+                        "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+                    },
+                ),
+                mock.patch(
+                    "startup_harness.read_secure_llm_credential",
+                    return_value=("", "test_secure_store"),
+                ),
+                mock.patch("startup_harness.validate_enabled_api_runtime"),
+                mock.patch("startup_harness.detect_executable", return_value=Path("game")),
+                mock.patch("startup_harness.subprocess.Popen") as popen,
+                self.assertRaisesRegex(RuntimeError, "credential is unavailable"),
+            ):
+                launch_game("test-profile", "Test World", run_dir)
+
+            popen.assert_not_called()
+            self.assertFalse((run_dir / "game.stdout.log").exists())
+            self.assertFalse((run_dir / "game.stderr.log").exists())
+
+    def test_release_candidate_selects_platform_api_runner(self) -> None:
         scenario = load_scenario("manual.release_candidate_roaming_mcw")
 
         self.assertEqual(
-            scenario["profile_option_overrides"],
+            resolve_scenario_profile_option_overrides(scenario, "windows"),
             {
                 "DEBUG_LLM_INTENT_LOG": "true",
                 "DEBUG_LLM_INTENT_UI": "true",
@@ -81,6 +429,24 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
                 "TILES": "UltimateCataclysm",
             },
         )
+        self.assertEqual(
+            resolve_scenario_profile_option_overrides(scenario, "macos")[
+                "LLM_INTENT_PYTHON"
+            ],
+            "/Users/josefhorvath/ollama/api_env311",
+        )
+        self.assertNotIn(
+            "LLM_INTENT_PYTHON",
+            resolve_scenario_profile_option_overrides(scenario, "linux"),
+        )
+
+    def test_platform_option_overrides_reject_unknown_platform(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unsupported platform"):
+            resolve_scenario_profile_option_overrides({
+                "profile_option_overrides_by_platform": {
+                    "plan9": {"LLM_INTENT_PYTHON": "python"}
+                }
+            })
 
     def test_isolated_userdir_keeps_scenario_startup_policy(self) -> None:
         scenario = {"profile": "dev-harness"}
@@ -923,6 +1289,24 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(repairs[0]["assigned_camp_omt"], [140, 41, 0])
         self.assertNotIn("job", repairs[0])
         self.assertNotIn("task_priorities", repairs[0])
+
+    def test_release_candidate_includes_stalker_outside_initial_reality_bubble(self) -> None:
+        resolved = resolve_fixture_payload(
+            "release_candidate_roaming_v0_2026-08-01",
+            "live-debug",
+        )
+        hordes = {
+            transform["monster_id"]: transform
+            for transform in resolved["save_transforms"]
+            if transform["kind"] == "horde_entity_near_player"
+        }
+
+        self.assertEqual(
+            set(hordes),
+            {"mon_zombie_rider", "mon_spawn_raptor", "mon_writhing_stalker"},
+        )
+        self.assertEqual(hordes["mon_writhing_stalker"]["offset_ms"], [72, 72, 0])
+        self.assertGreater(max(abs(value) for value in hordes["mon_writhing_stalker"]["offset_ms"][:2]), 60)
 
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):
