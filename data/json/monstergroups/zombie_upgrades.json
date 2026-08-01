@@ -43,6 +43,14 @@
   },
   {
     "type": "monstergroup",
+    "id": "GROUP_ZOMBIE_PREDATOR_UPGRADE",
+    "default": "mon_zombie_predator",
+    "freq_total": 1000,
+    "//": "After the predator's eight-season world-age gate, each normal 168-day evolution roll has a 5 percent chance to reach the zombie rider endpoint.",
+    "monsters": [ { "monster": "mon_zombie_rider", "weight": 50 } ]
+  },
+  {
+    "type": "monstergroup",
     "id": "GROUP_ZOMBIE_DEVOURER_UPGRADE",
     "default": "mon_devourer",
     "//": "devourer zombie upgrades",

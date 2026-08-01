@@ -1073,10 +1073,12 @@ void mtype::load( const JsonObject &jo, const std::string_view src )
         upgrade_into = mtype_id::NULL_ID();
         upgrades = false;
         upgrade_null_despawn = false;
+        upgrade_world_age_gate_seasons = 0;
     } else if( jo.has_member( "upgrades" ) ) {
         JsonObject up = jo.get_object( "upgrades" );
         optional( up, was_loaded, "half_life", half_life, -1 );
         optional( up, was_loaded, "age_grow", age_grow, -1 );
+        optional( up, was_loaded, "starts_after_seasons", upgrade_world_age_gate_seasons, 0 );
         if( up.has_string( "into_group" ) ) {
             if( up.has_string( "into" ) ) {
                 jo.throw_error_at( "upgrades", "Cannot specify both into_group and into." );
@@ -1499,6 +1501,10 @@ void MonsterGenerator::check_monster_definitions() const
             if( mon.half_life < 0 && mon.age_grow < 0 ) {
                 debugmsg( "half_life %d and age_grow %d (<0) of monster %s is invalid",
                           mon.half_life, mon.age_grow, mon.id.c_str() );
+            }
+            if( mon.upgrade_world_age_gate_seasons < 0 ) {
+                debugmsg( "starts_after_seasons %d (<0) of monster %s is invalid",
+                          mon.upgrade_world_age_gate_seasons, mon.id.c_str() );
             }
             if( !mon.upgrade_into && !mon.upgrade_group ) {
                 debugmsg( "no into nor into_group defined for monster %s", mon.id.c_str() );

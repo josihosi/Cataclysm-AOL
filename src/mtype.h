@@ -533,6 +533,7 @@ struct mtype {
         // Monster upgrade variables
         int half_life;
         int age_grow;
+        int upgrade_world_age_gate_seasons;
 
         // Monster reproduction variables
         int baby_count;

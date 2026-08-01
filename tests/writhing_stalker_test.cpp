@@ -220,7 +220,8 @@ TEST_CASE( "writhing_stalker_monster_footing", "[writhing_stalker][monster]" )
     CHECK_FALSE( stalker.upgrades );
 }
 
-TEST_CASE( "writhing_stalker_spawn_footing_is_rare_singleton", "[writhing_stalker][monster][mongroup]" )
+TEST_CASE( "writhing_stalker_spawn_footing_is_early_uncommon_singleton",
+           "[writhing_stalker][monster][mongroup]" )
 {
     const MonsterGroup &group = GROUP_ZOMBIE.obj();
 
@@ -240,13 +241,13 @@ TEST_CASE( "writhing_stalker_spawn_footing_is_rare_singleton", "[writhing_stalke
 
     REQUIRE( direct_entries == 1 );
     REQUIRE( stalker_entry.has_value() );
-    CHECK( stalker_entry->frequency == 1 );
-    CHECK( stalker_entry->cost_multiplier >= 50 );
+    CHECK( stalker_entry->frequency == 50 );
+    CHECK( stalker_entry->cost_multiplier == 25 );
     CHECK( stalker_entry->pack_minimum == 1 );
     CHECK( stalker_entry->pack_maximum == 1 );
     CHECK( stalker_entry->starts == 0_turns );
     CHECK( total_direct_weight > 9000 );
-    CHECK( stalker_entry->frequency * 5000 < total_direct_weight );
+    CHECK( stalker_entry->frequency * 100 < total_direct_weight );
 }
 
 TEST_CASE( "writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam",

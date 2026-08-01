@@ -9,6 +9,12 @@
 
 namespace zombie_rider_overmap_ai
 {
+
+int mature_world_gate_days()
+{
+    return to_days<int>( mature_world_gate_seasons * calendar::season_length() );
+}
+
 namespace
 {
 const std::string camp_posture_key( "caol_zombie_rider_camp_posture" );
@@ -61,7 +67,7 @@ rider_light_interest evaluate_light_attraction(
     rider_light_interest interest;
     interest.notes.push_back( projection.review_summary );
 
-    if( world_age_days < mature_world_gate_days ) {
+    if( world_age_days < mature_world_gate_days() ) {
         interest.reason = "early_world_gate";
         interest.notes.push_back( "zombie rider light interest suppressed before mature-world gate" );
         return interest;

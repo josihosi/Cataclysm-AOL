@@ -473,6 +473,12 @@ void monster::try_upgrade( bool pin_time )
         return;
     }
 
+    if( type->upgrade_world_age_gate_seasons > 0 &&
+        calendar::turn < calendar::start_of_cataclysm +
+        type->upgrade_world_age_gate_seasons * calendar::season_length() ) {
+        return;
+    }
+
     const int current_day = to_days<int>( calendar::turn - calendar::turn_zero );
     //This should only occur when a monster is created or upgraded to a new form
     if( upgrade_time < 0 ) {

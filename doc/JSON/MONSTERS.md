@@ -612,6 +612,7 @@ Field               | Description
 `into_group`        | (string, optional) The upgraded monster's type is taken from the specified group.
 `into`              | (string, optional) The upgraded monster's type.
 `age_grow`          | (int, optional) Number of days needed for monster to change into another monster. Does not scale with the evolution factor.
+`starts_after_seasons` | (int, optional) Do not initialize or apply this upgrade until this many configured seasons have elapsed since the Cataclysm. Defaults to 0.
 `multiple_spawns`   | (bool, optional) If using `into_group`, the selected entry spawns a number of monsters based on the entry's `pack_size`.
 `spawn_range`       | (int, optional) Mandatory when `multiple_spawns` is true. Determines how far away from the original monster the upgraded monsters can spawn.
 `despawn_when_null` | (bool, optional) For `into_group`, when `mon_null` is selected as the group entry upgrade, the monster will despawn leaving no trace when this is true. Otherwise the monster "dies" naturally. Defaults to false.

@@ -11,12 +11,14 @@ class monster;
 
 namespace zombie_rider_overmap_ai
 {
-constexpr int mature_world_gate_days = 730;
+constexpr int mature_world_gate_seasons = 8;
 constexpr int max_riders_drawn_by_light = 2;
 // Abstract candidate envelope.  The live adapter currently supplies loaded monsters only.
 constexpr int rider_convergence_response_radius_omt = 36;
 constexpr int rider_band_minimum_size = 2;
 constexpr int rider_light_memory_decay_interval_turns = 60;
+
+int mature_world_gate_days();
 
 struct rider_light_interest {
     bool should_investigate = false;

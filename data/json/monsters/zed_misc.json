@@ -763,6 +763,7 @@
     ],
     "armor": { "electric": 1 },
     "bleed_rate": 0,
+    "upgrades": false,
     "extend": { "flags": [ "SMELLS", "REVIVES_HEALTHY", "NO_NECRO" ] }
   },
   {
@@ -795,7 +796,11 @@
       },
       { "id": "impale" }
     ],
-    "upgrades": false,
+    "upgrades": {
+      "half_life": 168,
+      "into_group": "GROUP_ZOMBIE_PREDATOR_UPGRADE",
+      "starts_after_seasons": 8
+    },
     "armor": { "bash": 5, "cut": 5, "bullet": 4, "electric": 1 }
   },
   {
@@ -807,7 +812,7 @@
       "//NOLINT(cata-text-style)": true
     },
     "copy-from": "mon_zombie_predator",
-    "//": "Release 0.3 endpoint cavalry footing.  Intended lineage smell is hunter -> predator -> rider after mature-world pressure; do not wire through normal upgrade groups until the mature gate is explicit.",
+    "//": "Release 0.3 endpoint cavalry footing.  The rider is a rare predator evolution after eight configured seasons, not a direct new-area spawn.",
     "species": [ "ZOMBIE" ],
     "diff": 8,
     "volume": "900 L",

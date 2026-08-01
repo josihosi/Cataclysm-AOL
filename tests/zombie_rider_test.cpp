@@ -27,6 +27,7 @@ static const efftype_id effect_run( "run" );
 static const itype_id zombie_rider_tainted_bone_arrow( "zombie_rider_tainted_bone_arrow" );
 static const mongroup_id GROUP_DEBUG_ZOMBIE_RIDER( "GROUP_DEBUG_ZOMBIE_RIDER" );
 static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
+static const mongroup_id GROUP_ZOMBIE_PREDATOR_UPGRADE( "GROUP_ZOMBIE_PREDATOR_UPGRADE" );
 static const mongroup_id GROUP_ZOMBIE_UPGRADE( "GROUP_ZOMBIE_UPGRADE" );
 static const mtype_id mon_zombie( "mon_zombie" );
 static const mtype_id mon_zombie_hunter( "mon_zombie_hunter" );
@@ -720,38 +721,36 @@ TEST_CASE( "zombie_rider_blocked_los_prevents_bow_shot", "[zombie_rider][monster
     clear_map_without_vision();
 }
 
-TEST_CASE( "zombie_rider_endpoint_spawn_and_evolution_gate", "[zombie_rider][monster][mongroup]" )
+TEST_CASE( "zombie_rider_endpoint_uses_mature_predator_evolution",
+           "[zombie_rider][monster][mongroup]" )
 {
-    constexpr time_duration mature_world_gate = 730_days;
     const mtype &hunter = *mon_zombie_hunter;
     const mtype &predator = *mon_zombie_predator;
 
     REQUIRE( hunter.upgrades );
     CHECK( hunter.upgrade_into == mon_zombie_predator );
-    CHECK_FALSE( predator.upgrades );
-    CHECK( predator.upgrade_into != mon_zombie_rider );
+    REQUIRE( predator.upgrades );
+    CHECK( predator.half_life == 168 );
+    CHECK( predator.upgrade_group == GROUP_ZOMBIE_PREDATOR_UPGRADE );
+    CHECK( predator.upgrade_world_age_gate_seasons ==
+           zombie_rider_overmap_ai::mature_world_gate_seasons );
+    CHECK( GROUP_ZOMBIE_PREDATOR_UPGRADE->defaultMonster == mon_zombie_predator );
+    CHECK( GROUP_ZOMBIE_PREDATOR_UPGRADE->freq_total == 1000 );
+    CHECK( GROUP_ZOMBIE_PREDATOR_UPGRADE->IsMonsterInGroup( mon_zombie_rider ) );
     CHECK_FALSE( GROUP_ZOMBIE_UPGRADE->IsMonsterInGroup( mon_zombie_rider ) );
 
     const MonsterGroup &zombie_group = GROUP_ZOMBIE.obj();
-    std::optional<MonsterGroupEntry> rider_entry;
     int direct_entries = 0;
     for( const MonsterGroupEntry &entry : zombie_group.monsters ) {
         if( entry.is_group() ) {
             continue;
         }
         if( entry.mtype == mon_zombie_rider ) {
-            rider_entry = entry;
             direct_entries++;
         }
     }
 
-    REQUIRE( direct_entries == 1 );
-    REQUIRE( rider_entry.has_value() );
-    CHECK( rider_entry->frequency == 1 );
-    CHECK( rider_entry->cost_multiplier >= 80 );
-    CHECK( rider_entry->pack_minimum == 1 );
-    CHECK( rider_entry->pack_maximum == 1 );
-    CHECK( rider_entry->starts >= mature_world_gate );
+    CHECK( direct_entries == 0 );
 
     int natural_direct_entries = 0;
     int debug_direct_entries = 0;
@@ -767,13 +766,42 @@ TEST_CASE( "zombie_rider_endpoint_spawn_and_evolution_gate", "[zombie_rider][mon
                 continue;
             }
             natural_direct_entries++;
-            CHECK( entry.starts >= mature_world_gate );
-            CHECK( entry.pack_minimum == 1 );
-            CHECK( entry.pack_maximum == 1 );
         }
     }
-    CHECK( natural_direct_entries == 1 );
+    CHECK( natural_direct_entries == 0 );
     CHECK( debug_direct_entries == 1 );
+}
+
+TEST_CASE( "zombie_rider_predator_evolution_gate_scales_with_configured_seasons",
+           "[zombie_rider][monster][calendar]" )
+{
+    const int season_length_days = GENERATE( 14, 91, 127 );
+    CAPTURE( season_length_days );
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    on_out_of_scope restore_season_length( []() {
+        calendar::set_season_length( 91 );
+    } );
+    calendar::set_season_length( season_length_days );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+
+    monster predator( mon_zombie_predator );
+    REQUIRE( predator.can_upgrade() );
+    predator.allow_upgrade();
+    const time_duration gate = zombie_rider_overmap_ai::mature_world_gate_seasons *
+                               calendar::season_length();
+    CHECK( zombie_rider_overmap_ai::mature_world_gate_days() == to_days<int>( gate ) );
+
+    calendar::turn = calendar::start_of_cataclysm + gate - 1_turns;
+    predator.try_upgrade( false );
+    CHECK( predator.type->id == mon_zombie_predator );
+    CHECK( predator.get_upgrade_time() == 0 );
+
+    calendar::turn = calendar::start_of_cataclysm + gate;
+    predator.try_upgrade( false );
+    CHECK( ( predator.type->id == mon_zombie_rider ||
+             predator.get_upgrade_time() > to_days<int>( calendar::turn - calendar::turn_zero ) ||
+             !predator.can_upgrade() ) );
 }
 
 TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",
@@ -799,14 +827,14 @@ TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",
 
     const zombie_rider_overmap_ai::rider_light_interest early =
         zombie_rider_overmap_ai::evaluate_light_attraction( projection,
-                zombie_rider_overmap_ai::mature_world_gate_days - 1, 3 );
+                zombie_rider_overmap_ai::mature_world_gate_days() - 1, 3 );
     CHECK_FALSE( early.should_investigate );
     CHECK( early.reason == "early_world_gate" );
     CHECK( early.max_riders_drawn == 0 );
 
     const zombie_rider_overmap_ai::rider_light_interest mature =
         zombie_rider_overmap_ai::evaluate_light_attraction( projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 3 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 3 );
     CHECK( mature.should_investigate );
     CHECK( mature.reason == "exposed_bright_light" );
     CHECK( mature.interest_score > 0 );
@@ -816,7 +844,7 @@ TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",
 
     const zombie_rider_overmap_ai::rider_light_interest no_riders =
         zombie_rider_overmap_ai::evaluate_light_attraction( projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 0 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 0 );
     CHECK_FALSE( no_riders.should_investigate );
     CHECK( no_riders.reason == "no_riders_available" );
     CHECK( no_riders.max_riders_drawn == 0 );
@@ -841,7 +869,7 @@ TEST_CASE( "zombie_rider_overmap_light_negative_controls_do_not_call_riders",
         bandit_mark_generation::adapt_light_packet( no_light );
     const zombie_rider_overmap_ai::rider_light_interest dark_interest =
         zombie_rider_overmap_ai::evaluate_light_attraction( dark_projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 2 );
     CHECK_FALSE( dark_interest.should_investigate );
     CHECK( dark_interest.reason == "no_viable_light_signal" );
 
@@ -858,7 +886,7 @@ TEST_CASE( "zombie_rider_overmap_light_negative_controls_do_not_call_riders",
 
     const zombie_rider_overmap_ai::rider_light_interest weak_interest =
         zombie_rider_overmap_ai::evaluate_light_attraction( weak_projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 2 );
     CHECK_FALSE( weak_interest.should_investigate );
     CHECK( weak_interest.reason == "below_rider_light_threshold" );
 
@@ -878,7 +906,7 @@ TEST_CASE( "zombie_rider_overmap_light_negative_controls_do_not_call_riders",
 
     const zombie_rider_overmap_ai::rider_light_interest daylight_interest =
         zombie_rider_overmap_ai::evaluate_light_attraction( daylight_projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 2 );
     CHECK_FALSE( daylight_interest.should_investigate );
     CHECK( daylight_interest.reason == "below_rider_light_threshold" );
 }
@@ -909,7 +937,7 @@ TEST_CASE( "zombie_rider_overmap_light_memory_decays_and_caps_accumulation",
 
     const zombie_rider_overmap_ai::rider_light_interest interest =
         zombie_rider_overmap_ai::evaluate_light_attraction( projection,
-                zombie_rider_overmap_ai::mature_world_gate_days + 30, 9 );
+                zombie_rider_overmap_ai::mature_world_gate_days() + 30, 9 );
     REQUIRE( interest.should_investigate );
     CHECK( interest.reason == "elevated_bright_light" );
     CHECK( interest.interest_score == 6 );
