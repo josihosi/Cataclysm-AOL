@@ -42,7 +42,9 @@ RELEASE_GATE_SCENARIOS = (
 
 from startup_harness import (  # noqa: E402
     StartupPlan,
+    apply_bandit_clone_site_transform,
     apply_game_turn_to_payload,
+    apply_option_overrides_to_file,
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
@@ -53,6 +55,7 @@ from startup_harness import (  # noqa: E402
     run_probe_mode,
     scenarios_root,
 )
+from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E402
 
 
 class SaveValidationError(RuntimeError):
@@ -88,6 +91,7 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         scenario = {
             "name": "test.isolated_profile",
             "profile": "dev-harness",
+            "profile_option_overrides": {"TILES": "UltimateCataclysm"},
             "steps": [],
         }
         stdout = io.StringIO()
@@ -107,6 +111,10 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(
             start_command[start_command.index("--config-profile") + 1],
             "dev-harness",
+        )
+        self.assertEqual(
+            start_command[start_command.index("--profile-option") + 1],
+            "TILES=UltimateCataclysm",
         )
 
     def test_launch_only_dry_run_records_both_profile_identities(self) -> None:
@@ -143,6 +151,7 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
                 fixture_profile="live-debug",
                 profile_snapshot="snapshot",
                 profile_snapshot_profile="live-debug",
+                profile_option_overrides={},
                 replace_existing_worlds=True,
                 advance_count=0,
                 settle_seconds=0.0,
@@ -158,6 +167,78 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(payload["resolved_contract"]["profile"], "mac-verification-isolated")
         self.assertEqual(payload["resolved_contract"]["config_profile"], "dev-harness")
+
+
+class BanditLiveWorldAuditContractTest(unittest.TestCase):
+    def test_windows_uses_exe_zzip_helper(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            helper = repo_root / "zzip.exe"
+            helper.touch()
+
+            self.assertEqual(bandit_zzip_binary(repo_root, platform_name="nt"), helper)
+
+    def test_posix_uses_extensionless_executable_zzip_helper(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            helper = repo_root / "zzip"
+            helper.touch(mode=0o700)
+
+            self.assertEqual(bandit_zzip_binary(repo_root, platform_name="posix"), helper)
+
+
+class ProfileOptionOverrideContractTest(unittest.TestCase):
+    def test_updates_existing_profile_option_without_changing_other_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            options_path = Path(temp_dir) / "options.json"
+            options_path.write_text(
+                json.dumps([
+                    {"name": "TILES", "value": "ASCIITiles", "info": "tileset"},
+                    {"name": "SOUND_ENABLED", "value": "true"},
+                ]),
+                encoding="utf-8",
+            )
+
+            result = apply_option_overrides_to_file(options_path, {"TILES": "UltimateCataclysm"})
+            updated = json.loads(options_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(result["applied"], {"TILES": "UltimateCataclysm"})
+            self.assertEqual(updated[0], {"name": "TILES", "value": "UltimateCataclysm", "info": "tileset"})
+            self.assertEqual(updated[1], {"name": "SOUND_ENABLED", "value": "true"})
+
+
+class BanditCloneSiteTransformContractTest(unittest.TestCase):
+    def test_clone_can_set_cannibal_profile_explicitly(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [{
+                                "site_id": "source",
+                                "site_kind": "bandit_camp",
+                                "hostile_profile": "camp_style",
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            result = apply_bandit_clone_site_transform(world_dir, {
+                "source_site_id": "source",
+                "new_site_id": "cannibal",
+                "new_site_kind": "cannibal_camp",
+                "new_hostile_profile": "cannibal_camp",
+            })
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            cloned = payload["overmapbuffer"]["bandit_live_world"]["sites"][1]
+
+            self.assertEqual(result["new_hostile_profile"], "cannibal_camp")
+            self.assertEqual(cloned["site_kind"], "cannibal_camp")
+            self.assertEqual(cloned["hostile_profile"], "cannibal_camp")
 
 
 def _rotate_left_64(value: int, count: int) -> int:

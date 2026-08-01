@@ -60,6 +60,15 @@ def repo_root_from_script(script_path: Path) -> Path:
     return script_path.resolve().parents[2]
 
 
+def zzip_binary(repo_root: Path, platform_name: str | None = None) -> Path:
+    platform_name = platform_name or os.name
+    helper_name = "zzip.exe" if platform_name == "nt" else "zzip"
+    helper = repo_root / helper_name
+    if not helper.is_file() or (platform_name != "nt" and not os.access(helper, os.X_OK)):
+        raise FileNotFoundError(f"Needed zzip helper at {helper}")
+    return helper
+
+
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -189,9 +198,7 @@ def load_text_from_overmap_file(repo_root: Path, path: Path) -> str:
     if path.suffix != ".zzip":
         return path.read_text(encoding="utf-8")
 
-    zzip_binary = repo_root / "zzip"
-    if not zzip_binary.exists():
-        raise FileNotFoundError(f"Needed zzip helper at {zzip_binary}")
+    helper = zzip_binary(repo_root)
 
     candidate_plain_paths = [path.with_suffix("")]
     if path.parent.name == "overmaps":
@@ -201,7 +208,7 @@ def load_text_from_overmap_file(repo_root: Path, path: Path) -> str:
     created_plain = False
     if plain_path is None:
         subprocess.run(
-            [str(zzip_binary), str(path)],
+            [str(helper), str(path)],
             cwd=path.parent,
             check=True,
             stdout=subprocess.DEVNULL,

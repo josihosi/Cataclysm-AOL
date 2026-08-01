@@ -515,6 +515,62 @@ def load_game_options(profile: str) -> Dict[str, str]:
     return options
 
 
+def normalize_profile_option_overrides(raw_overrides: Any) -> Dict[str, str]:
+    if raw_overrides in (None, {}):
+        return {}
+    if not isinstance(raw_overrides, dict):
+        raise ValueError("profile_option_overrides must be a JSON object")
+    overrides: Dict[str, str] = {}
+    for raw_name, raw_value in raw_overrides.items():
+        name = str(raw_name).strip()
+        if not name:
+            raise ValueError("profile_option_overrides contains an empty option name")
+        overrides[name] = str(raw_value)
+    return overrides
+
+
+def parse_profile_option_args(raw_options: Sequence[str]) -> Dict[str, str]:
+    overrides: Dict[str, str] = {}
+    for raw_option in raw_options:
+        if "=" not in raw_option:
+            raise ValueError(f"Profile option override must use NAME=VALUE: {raw_option}")
+        raw_name, value = raw_option.split("=", 1)
+        name = raw_name.strip()
+        if not name:
+            raise ValueError(f"Profile option override has an empty name: {raw_option}")
+        overrides[name] = value
+    return overrides
+
+
+def apply_option_overrides_to_file(path: Path, overrides: Dict[str, str]) -> Dict[str, Any]:
+    normalized = normalize_profile_option_overrides(overrides)
+    if not normalized:
+        return {"path": str(path), "applied": {}}
+    if not path.is_file():
+        raise FileNotFoundError(f"Profile options file not found: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"Profile options file must contain a JSON list: {path}")
+
+    applied: Dict[str, str] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip()
+        if name in normalized:
+            entry["value"] = normalized[name]
+            applied[name] = normalized[name]
+    missing = sorted(set(normalized) - set(applied))
+    if missing:
+        raise ValueError(f"Profile option(s) not found in {path}: {', '.join(missing)}")
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {"path": str(path), "applied": applied}
+
+
+def apply_profile_option_overrides(profile: str, overrides: Dict[str, str]) -> Dict[str, Any]:
+    return apply_option_overrides_to_file(config_dir_for_profile(profile) / "options.json", overrides)
+
+
 def resolve_configured_python_command(raw_value: str) -> Tuple[List[str], str]:
     raw = str(raw_value).strip()
     if not raw:
@@ -7679,6 +7735,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "new_site_id": new_site_id,
                 "new_source_id": str(raw.get("new_source_id", raw.get("source_id", "")) or "").strip(),
                 "new_site_kind": str(raw.get("new_site_kind", raw.get("site_kind", "")) or "").strip(),
+                "new_hostile_profile": str(raw.get("new_hostile_profile", raw.get("hostile_profile", "")) or "").strip(),
                 "new_anchor": new_anchor,
                 "new_footprint": new_footprint,
                 "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
@@ -10275,6 +10332,9 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
     new_site_kind = str(transform.get("new_site_kind", "") or "").strip()
     if new_site_kind:
         cloned_site["site_kind"] = new_site_kind
+    new_hostile_profile = str(transform.get("new_hostile_profile", "") or "").strip()
+    if new_hostile_profile:
+        cloned_site["hostile_profile"] = new_hostile_profile
     new_anchor = transform.get("new_anchor")
     if isinstance(new_anchor, list) and len(new_anchor) >= 3:
         cloned_site["anchor"] = [int(new_anchor[0]), int(new_anchor[1]), int(new_anchor[2])]
@@ -10313,6 +10373,7 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
         "new_site_id": new_site_id,
         "new_source_id": str(cloned_site.get("source_id", "")),
         "new_site_kind": str(cloned_site.get("site_kind", "")),
+        "new_hostile_profile": str(cloned_site.get("hostile_profile", "")),
         "new_anchor": cloned_site.get("anchor", []),
         "new_footprint": cloned_site.get("footprint", []),
         "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
@@ -13070,6 +13131,7 @@ def run_startup(args: argparse.Namespace) -> int:
     config_profile = resolve_profile_name(getattr(args, "config_profile", "") or profile)
     config = load_profile_config(config_profile)
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
+    profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
 
     if args.dry_run:
         plan = build_plan(profile, args.world, args.fixture)
@@ -13078,6 +13140,7 @@ def run_startup(args: argparse.Namespace) -> int:
         dry_result = asdict(plan)
         dry_result["config_profile"] = config_profile
         dry_result["startup_config"] = config.get("startup", {})
+        dry_result["profile_option_overrides"] = profile_option_overrides
         dry_result["dry_run_contract"] = {
             "profile_snapshot_install": "not_run_dry_run",
             "fixture_install": "not_run_dry_run",
@@ -13095,6 +13158,9 @@ def run_startup(args: argparse.Namespace) -> int:
             profile_snapshot,
             snapshot_profile=getattr(args, "profile_snapshot_profile", ""),
         )
+    profile_option_override_result: Dict[str, Any] = {}
+    if profile_option_overrides:
+        profile_option_override_result = apply_profile_option_overrides(profile, profile_option_overrides)
     fixture_install_result: Dict[str, Any] = {}
     if args.fixture:
         fixture_install_result = install_fixture(
@@ -13203,6 +13269,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "debug_log_identity": final_evidence["debug_log_identity"],
                 "final_startup_evidence": final_evidence,
                 "profile_snapshot": profile_snapshot_result,
+                "profile_option_overrides": profile_option_override_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "peekaboo_permissions": peekaboo_permissions,
@@ -13308,6 +13375,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "final_startup_evidence": final_evidence,
                 "strategy": plan.strategy,
                 "profile_snapshot": profile_snapshot_result,
+                "profile_option_overrides": profile_option_override_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "peekaboo_permissions": peekaboo_permissions,
@@ -13406,6 +13474,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "final_startup_evidence": final_evidence,
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
+        "profile_option_overrides": profile_option_override_result,
         "fixture_install": fixture_install_result,
         "flexbuffer_cache_purge": flexbuffer_cache_purge,
         "peekaboo_permissions": peekaboo_permissions,
@@ -13896,6 +13965,7 @@ def scenario_contract_dict(
     world: str,
     profile_snapshot: str,
     profile_snapshot_profile: str,
+    profile_option_overrides: Dict[str, str],
     fixture: str,
     fixture_profile: str,
     replace_existing_worlds: bool,
@@ -13914,6 +13984,7 @@ def scenario_contract_dict(
         "world": world,
         "profile_snapshot": profile_snapshot,
         "profile_snapshot_profile": profile_snapshot_profile,
+        "profile_option_overrides": profile_option_overrides,
         "fixture": fixture,
         "fixture_profile": fixture_profile,
         "replace_existing_worlds": replace_existing_worlds,
@@ -13939,6 +14010,7 @@ def run_launch_only_handoff(
     fixture_profile: str,
     profile_snapshot: str,
     profile_snapshot_profile: str,
+    profile_option_overrides: Dict[str, str],
     replace_existing_worlds: bool,
     advance_count: int,
     settle_seconds: float,
@@ -13957,6 +14029,7 @@ def run_launch_only_handoff(
         world=world,
         profile_snapshot=profile_snapshot,
         profile_snapshot_profile=profile_snapshot_profile,
+        profile_option_overrides=profile_option_overrides,
         fixture=fixture,
         fixture_profile=fixture_profile,
         replace_existing_worlds=replace_existing_worlds,
@@ -14003,6 +14076,9 @@ def run_launch_only_handoff(
                 profile_snapshot,
                 snapshot_profile=profile_snapshot_profile,
             )
+        profile_option_override_result: Dict[str, Any] = {}
+        if profile_option_overrides:
+            profile_option_override_result = apply_profile_option_overrides(profile, profile_option_overrides)
         if fixture:
             fixture_install_result = install_fixture(
                 profile,
@@ -14030,6 +14106,7 @@ def run_launch_only_handoff(
                     "launch_only": True,
                     "plan": asdict(plan),
                     "profile_snapshot": profile_snapshot_result,
+                    "profile_option_overrides": profile_option_override_result,
                     "fixture_install": fixture_install_result,
                     "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 },
@@ -14060,6 +14137,7 @@ def run_launch_only_handoff(
                     "launch_only": True,
                     "plan": asdict(plan),
                     "profile_snapshot": profile_snapshot_result,
+                    "profile_option_overrides": profile_option_override_result,
                     "fixture_install": fixture_install_result,
                     "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 },
@@ -14099,6 +14177,7 @@ def run_launch_only_handoff(
             "run_dir": str(run_dir),
             "plan": asdict(plan),
             "profile_snapshot": profile_snapshot_result,
+            "profile_option_overrides": profile_option_override_result,
             "fixture_install": fixture_install_result,
             "flexbuffer_cache_purge": flexbuffer_cache_purge,
             "process": process,
@@ -14208,6 +14287,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     fixture_profile = str(scenario.get("fixture_profile", "")).strip()
     profile_snapshot = str(scenario.get("profile_snapshot", "")).strip()
     profile_snapshot_profile = str(scenario.get("profile_snapshot_profile", "")).strip()
+    profile_option_overrides = normalize_profile_option_overrides(scenario.get("profile_option_overrides", {}))
     replace_existing_worlds = args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False))
     advance_count = int(args.advance_turns if args.advance_turns is not None else scenario.get("advance_turns", 0))
     settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
@@ -14250,6 +14330,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "world": world,
                 "profile_snapshot": profile_snapshot,
                 "profile_snapshot_profile": profile_snapshot_profile,
+                "profile_option_overrides": profile_option_overrides,
                 "fixture": fixture,
                 "fixture_profile": fixture_profile,
                 "replace_existing_worlds": replace_existing_worlds,
@@ -14318,6 +14399,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             fixture_profile=fixture_profile,
             profile_snapshot=profile_snapshot,
             profile_snapshot_profile=profile_snapshot_profile,
+            profile_option_overrides=profile_option_overrides,
             replace_existing_worlds=replace_existing_worlds,
             advance_count=advance_count,
             settle_seconds=settle_seconds,
@@ -14345,6 +14427,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--profile-snapshot", profile_snapshot])
     if profile_snapshot_profile:
         start_cmd.extend(["--profile-snapshot-profile", profile_snapshot_profile])
+    for option_name, option_value in sorted(profile_option_overrides.items()):
+        start_cmd.extend(["--profile-option", f"{option_name}={option_value}"])
     if fixture:
         start_cmd.extend(["--fixture", fixture])
     if fixture_profile:
@@ -14365,6 +14449,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "world": world,
                 "profile_snapshot": profile_snapshot,
                 "profile_snapshot_profile": profile_snapshot_profile,
+                "profile_option_overrides": profile_option_overrides,
                 "fixture": fixture,
                 "fixture_profile": fixture_profile,
                 "replace_existing_worlds": replace_existing_worlds,
@@ -14892,6 +14977,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
+    start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")
     start_p.add_argument("--fixture", default="", help="Install this fixture before startup.")
     start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
     start_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
