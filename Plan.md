@@ -41,9 +41,11 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-For the 2026-07-17 release-recovery cycle, `port/cdda-master` is the explicitly promoted working/integration branch. It contains `upstream/master` at `89c6aef1b3` through merge `0fdc380371`, with the hardened C-AOL production stack checkpointed through `dcaa9439b3` and the fail-closed macOS proof stack through `533363fff3`. The affected Windows/MSYS2 and Linux/WSL compile gates are green; the current Windows Python contract gates and independent exact-tree audit are green.
+**Production priority (2026-08-01): `port/cdda-master` is the only current production-candidate branch.** `master`, `dev`, and every other `port/*` branch are behind this line. Do not use them for production playtesting or merge them over the candidate unless the roadmap explicitly promotes a replacement.
 
-Windows owns integration edits; the Mac Mini is the exact-commit build, gameplay, and GUI verification lane. `origin/port/cdda-master` remains deliberately unadvanced until the final tested commit is green. `master` and `dev` are not to be merged over this lane or renamed yet. `josihosi/C-AOL-mirror` remains green-dot-only.
+The Windows laptop is Josef's playtest machine and the canonical integration checkout. The Mac Mini is the background build, repository-sync, and evidence lane. Both machines should resolve to the same clean candidate commit before handoff. `origin/port/cdda-master` remains deliberately unadvanced until the current candidate is green enough to publish.
+
+The candidate contains `upstream/master` through `8d4959bee4` (2026-07-18). The latest fetched upstream tip is `7cf1d08ae8` (2026-08-01), 104 commits ahead. A read-only merge simulation finds two conflicts: `src/npcmove.cpp` and Bombastic Perks `closetland.json`. The upstream batch contains useful incremental content and NPC fixes, but no release-blocking C-AOL feature; do not interrupt the current feel playtest with that refresh.
 
 `doc/work-ledger.md` is now the compact receipt book for meaningful asks, state changes, evidence links, owners, supersessions, held lanes, and red/non-credit proof. Use it before trimming active docs.
 
@@ -53,15 +55,21 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ## Current execution posture
 
-### Active target - CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0
+### Active target - CAOL-WINDOWS-FREE-PLAY-RC-v0
 
-**Status:** AGENT TESTING / RELEASE HELD
+**Status:** PREPARING WINDOWS HANDOFF / RELEASE HELD
 
-Goal: produce one exact `port/cdda-master` commit containing current upstream CDDA plus preserved C-AOL behavior, prove the affected paths on Windows/WSL/macOS, and release only that tested commit.
+Goal: leave one clean Windows checkout on `port/cdda-master`, build the real Windows candidate, and provide one ordinary-play save where flesh raptors, zombie riders, bandits, and cannibals are all discoverable within a reasonable trip from the starting location.
 
-Boundary: do not rename or overwrite `master`/`dev` yet; do not update the other `port/*` branches; do not count compile-only checks, stale binaries, authored-checkpoint playback, startup/load screenshots, or old Mac runs as gameplay proof.
+Playtest posture: Josef should roam and play normally rather than execute four isolated test scripts. The staged threats must not begin in immediate melee range, and the handoff must state what was staged without turning the session into a checklist. Debug notes collected during play become the next repair queue.
 
-Recommended next action: sync this exact ledger checkpoint to the Mac Mini, run the focused macOS and broad gameplay/stress gates, then fetch upstream once more and push only if the tested commit and upstream tip are still unchanged.
+Boundary: do not merge the newly fetched upstream batch before this feel pass, do not update the other `port/*` branches, and do not push/release a commit merely because it compiles or loads.
+
+Recommended next action: finish the roaming save, prove its load/footing on the Windows build, sync the exact commit to the clean Mac Mini checkout, then hand the live Windows session to Josef and collect free-form debug notes.
+
+### Next decision - CAOL-CDDA-UPSTREAM-REFRESH-2026-08-v0
+
+After the feel pass, decide whether to merge `7cf1d08ae8` or a newer stable upstream tip. Current estimate: mechanically small-to-moderate (two conflicts), behaviorally moderate because the `src/npcmove.cpp` conflict touches C-AOL's most customized NPC path and therefore needs focused NPC/camp/LLM validation.
 
 ---
 

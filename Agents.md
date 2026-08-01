@@ -40,7 +40,13 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - When adding new automation, keep paths and commands portable across Linux and Windows.
 - Do not disable CI workflows; fix the root cause instead.
 
+### Platform contract
+- C-AOL must keep Windows, Linux/WSL, and macOS paths healthy.
+- Choose validation proportional to the change, but do not call a feature done until the relevant platform route has been built, run, or isolated behind a concrete test.
+- Prefer direct fixes over fallback layers that hide porting or runtime problems. Preserve compatibility only where the active roadmap, branch target, or porting contract requires it.
+
 ### C-AOL release branch flow
+- Current production priority is `port/cdda-master`. Treat `master`, `dev`, and every other `port/*` branch as behind this production-candidate line until the roadmap explicitly promotes a successor.
 - Do active development on `dev`.
 - When a dev cycle is ready, commit and verify on `dev`, then merge `dev` into `master`.
 - For release playtesting, update `port/cdda-master` against `upstream/master` and the AOL source branch through the porting orchestrator, then playtest on `port/cdda-master`.
