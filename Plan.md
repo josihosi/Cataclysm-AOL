@@ -43,7 +43,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 **Production priority (2026-08-01): `port/cdda-master` is the only current production-candidate branch.** `master`, `dev`, and every other `port/*` branch are behind this line. Do not use them for production playtesting or merge them over the candidate unless the roadmap explicitly promotes a replacement.
 
-The Windows laptop is Josef's playtest machine and the canonical integration checkout. The Mac Mini is the background build, repository-sync, and evidence lane. Both machines should resolve to the same clean candidate commit before handoff. `origin/port/cdda-master` remains deliberately unadvanced until the current candidate is green enough to publish.
+The Windows laptop is Josef's playtest machine and the canonical integration checkout. The Mac Mini is the background build, repository-sync, and evidence lane. Both machines should resolve to the same clean candidate commit before handoff. Josef has authorized advancing `origin/port/cdda-master` only as needed to synchronize the reviewed preparation commit; that is not release/tag/publication authorization.
 
 The candidate contains `upstream/master` through `8d4959bee4` (2026-07-18). The latest fetched upstream tip is `7cf1d08ae8` (2026-08-01), 104 commits ahead. A read-only merge simulation finds two conflicts: `src/npcmove.cpp` and Bombastic Perks `closetland.json`. The upstream batch contains useful incremental content and NPC fixes, but no release-blocking C-AOL feature; do not interrupt the current feel playtest with that refresh.
 
@@ -59,13 +59,13 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 **Status:** PREPARING WINDOWS HANDOFF / RELEASE HELD
 
-Goal: leave one clean Windows checkout on `port/cdda-master`, build the real Windows candidate, and provide one ordinary-play save where flesh raptors, zombie riders, bandits, and cannibals are all discoverable within a reasonable trip from the starting location.
+Goal: leave one clean Windows checkout on `port/cdda-master`, build the real Windows candidate, and provide one ordinary-play save where flesh raptors, zombie riders, writhing stalkers, bandits, and cannibals are all discoverable within a reasonable trip from the starting location.
 
-Playtest posture: Josef should roam and play normally rather than execute four isolated test scripts. The staged threats must not begin in immediate melee range, and the handoff must state what was staged without turning the session into a checklist. Debug notes collected during play become the next repair queue.
+Playtest posture: Josef should roam and play normally rather than execute isolated test scripts. The staged threats must not begin in immediate melee range, and the handoff must state what was staged without turning the session into a checklist. Debug notes collected during play become the next repair queue.
 
-Boundary: do not merge the newly fetched upstream batch before this feel pass, do not update the other `port/*` branches, and do not push/release a commit merely because it compiles or loads.
+Boundary: do not merge the newly fetched upstream batch before this feel pass, do not update the other `port/*` branches, and do not release merely because the candidate compiles or loads. Writhing-stalker and zombie-rider AI/progression now belong to a separate read-only design discussion; the dormant hostile-camp implementation package covers bandits/cannibals only and must not start until Josef explicitly promotes it after the Mac transfer.
 
-Recommended next action: finish the roaming save, prove its load/footing on the Windows build, sync the exact commit to the clean Mac Mini checkout, then hand the live Windows session to Josef and collect free-form debug notes.
+The large Mac transfer is complete. Recommended next action: checkpoint the five-family roaming/automatic-API harness packet, synchronize that exact commit to the clean Mac Mini checkout, run the narrow Mac harness/API checks, then hand the live Windows session to Josef and collect free-form debug notes.
 
 ### Next decision - CAOL-CDDA-UPSTREAM-REFRESH-2026-08-v0
 

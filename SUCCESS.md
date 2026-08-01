@@ -24,12 +24,14 @@ Status: READY FOR CROSS-MACHINE SYNC / RELEASE HELD
 Success state:
 - [x] `port/cdda-master` is recorded as the only current production-candidate branch; `master`, `dev`, and the other `port/*` branches are explicitly behind it.
 - [x] Windows has one canonical C-AOL checkout at `C:\Users\josef\dev\Cataclysm-AOL`, and the Mac Mini has one C-AOL checkout; old worktrees and repo-local bulk are removed or archived under Mac Mini `codexbulk`.
-- [x] One loadable free-play scenario stages flesh-raptor, zombie-rider, bandit, and cannibal presence within a reasonable trip of the player without beginning in immediate combat.
-- [x] The current Windows candidate builds and the scenario passes load plus saved-state footing checks on that binary.
+- [ ] One loadable free-play scenario stages flesh-raptor, zombie-rider, writhing-stalker, bandit, and cannibal presence within a reasonable trip of the player without beginning in immediate combat. _All five families now pass fixture/post-install saved-state footing; the exact committed packet still needs its final normal-map load._
+- [ ] The current Windows candidate builds and the scenario passes load plus saved-state footing checks on that binary. _The build and prior four-family load receipt are green; the new stalker transform passes post-install saved-state audit and still needs the exact-packet load._
+- [x] The Windows handoff provisions its API key from the platform secure store without a per-run shell export, selects the known API venv, and passes a real clean-environment runner self-test without logging the secret.
+- [ ] The synchronized Mac handoff selects its native API venv, reads its Keychain credential without logging it, and passes the same runner self-test.
 - [ ] Windows and Mac Mini resolve to the exact same clean candidate commit before handoff.
-- [x] A concise debug-note capture path is ready for Josef's free play without turning the session into four targeted scripts.
+- [x] A concise debug-note capture path is ready for Josef's free play without turning the session into isolated targeted scripts.
 
-Claim boundary: the staged save proves deliberate nearby footing and current-build loadability. Josef's later play supplies product feel; it is useful feedback, not a completion blocker in this ledger.
+Claim boundary: the fixture contract and disposable post-install audit prove deliberate nearby footing for all five families. Exact-packet current-build loadability remains unchecked until the final normal-map load. Josef's later play supplies product feel; it is useful feedback, not a completion blocker in this ledger.
 
 ---
 

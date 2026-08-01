@@ -64,15 +64,18 @@ Source reference:
 
 Latest Windows candidate evidence (2026-08-01):
 - A clean `just_build.cmd` SDL3 tiles-and-sound build completed with exit `0`; `cataclysm-tiles.exe` and the Windows `zzip.exe` helper were produced. The runtime reports SDL compile/link/runtime `3.4.0`.
-- `python -m unittest tools.openclaw_harness.test_fixture_contract` passes all `30` fixture/handoff contract tests, including Windows `zzip.exe`, explicit cannibal profile cloning, and post-snapshot `UltimateCataclysm` selection.
-- Direct saved-state audits return `required_state_present` for the 10:00 start, four at-home bandits, three at-home cannibals, the north zombie rider, and the west flesh raptor.
+- `python -m unittest tools.openclaw_harness.test_fixture_contract` passes all `57` fixture/handoff contract tests, including Windows `zzip.exe`, explicit cannibal profile cloning, post-snapshot `UltimateCataclysm` selection, five-family fixture staging, child-only API-key inheritance, provider-aware fallback, bounded secure macOS Keychain stdin, missing-key launch refusal, exact game-runner resolution, foreign-path rejection, and platform-specific runner overrides.
+- The combined fixture/proof-classification/release-asset Python packet passes `243` tests.
+- The release scenario dry-resolves on Windows with the known Windows API venv and no gameplay input after load. A real clean-environment API runner self-test passes after the harness retrieves `CATA_API_KEY` from Windows Credential Manager without logging the secret. The harness no longer mutates its own process environment, and an enabled API launch fails before process replacement when either the key or exact runner is unavailable.
+- Prior direct saved-state audits return `required_state_present` for the 10:00 start, four at-home bandits, three at-home cannibals, the north zombie rider, and the west flesh raptor. A fresh disposable fixture installation now also returns `required_state_present` with exact counts of one north zombie rider, one west flesh raptor, and one southeast writhing stalker; the isolated audit profile was removed afterward. The exact committed packet still needs its final normal-map load.
 - Manual handoff run `.userdata/dev-harness/harness_runs/20260801_193053/` stayed responsive with no hard startup error; direct Windows window capture showed the ordinary map, no immediate combat, and the `UltimateCataclysm` tileset.
 - Catapult Dabubu's current Playtest tab already invokes packaged `manual.*` scenarios through `handoff --launch-only`; no launcher edit is needed for this scenario or option override.
 - The GitHub release workflow still defines Windows, Linux, and macOS assets and verifies each package before publishing. That workflow is deliberately not triggered until after Josef's feel pass.
 
 Required evidence:
 - scenario and fixture manifests parse and remain discoverable through `startup_harness.py list-scenarios`;
-- saved-state audits prove the flesh raptor and zombie rider are staged outside the initial reality bubble and prove nearby bandit/cannibal site or pressure state;
+- saved-state audits prove the flesh raptor, zombie rider, and writhing stalker are staged outside the initial reality bubble and prove nearby bandit/cannibal site or pressure state;
+- Windows and Mac secure-store API resolution, native runner selection, and real self-tests pass without printing the key or requiring a per-run shell export;
 - the exact Windows tiles binary builds from the current candidate and reaches the normal map through the manual handoff scenario;
 - the handoff does not advance a scripted combat window after load;
 - Windows and Mac Mini Git heads match and both working trees are clean before Josef starts;
@@ -80,6 +83,7 @@ Required evidence:
 
 Claim boundary:
 - this is deliberate staged roaming footing, not natural world-generation discovery proof;
+- the writhing-stalker row is observation footing only; its AI and zombie-rider AI/progression are being discussed separately from the dormant bandit/cannibal ecology plan;
 - load and saved-state audits prove availability, not final behavior quality;
 - Josef's free play is the product-feel pass and is not replaced by old targeted harness receipts;
 - the unmerged upstream batch is assessed separately and remains held until after the feel pass.
