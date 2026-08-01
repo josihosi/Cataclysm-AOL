@@ -25,6 +25,11 @@
 - Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
 - Repeated site reinforcement is deliberately modest: a site mark only gets reinforcement credit from mixed ordinary smoke/light/route activity, repeated one-kind noise stays weak, and the bonus tops out as bounded confidence/bounty amplification instead of unlocking magical settlement truth or free extraction jobs.
 
+## Mature-world monster evolution gates
+- Monster `upgrades` may set `starts_after_seasons` when their first legal evolution must track the world's configured calendar instead of a fixed real-day count. `monster::try_upgrade()` returns before initializing or consuming the normal upgrade timer until that many seasons have elapsed since `start_of_cataclysm`.
+- Zombie riders use this through `hunter -> predator -> rider`: predator evolution remains on the normal 168-day half-life rhythm, but is blocked for the first eight configured seasons and then has a 5% rider endpoint chance per roll. Riders are not direct `GROUP_ZOMBIE` spawns, so already-generated regions can still acquire them when their concrete zombie population loads and evolves.
+- The rider light-attraction gate uses the same eight-season calendar rule. With default 91-day seasons this is day 728; shorter or longer season worlds scale with their own two-year length instead of silently using day 730.
+
 ## Zombie-rider camp-light pressure handoff
 - The overmap model keeps a bounded 36-OMT candidate envelope, but the live adapter deliberately commands only already-loaded zombie riders. It does not simulate offscreen migration or claim a complete camp siege.
 - A viable light observation carries one deterministic map-square source. Searchlights outrank ordinary lights when both share an OMT, then intensity and coordinates break ties, so scan order cannot change the target square.
