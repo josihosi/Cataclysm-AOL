@@ -1,6 +1,6 @@
 {
   "name": "manual.release_candidate_roaming_mcw",
-  "description": "Manual Windows release-candidate free-play handoff: daytime McWilliams/Basecamp start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. Every threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
+  "description": "Manual Windows release-candidate free-play handoff: daytime evacuation-shelter start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. Every threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "release_candidate_roaming_v0_2026-08-01",
@@ -26,7 +26,22 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 32,
-      "expected_visible_fact": "manual handoff reaches the ordinary daytime map before Josef begins free play"
+      "expected_visible_fact": "manual handoff reaches the completed evacuation-shelter interior before Josef begins free play"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_release_candidate_roaming_evac_shelter_start",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius": 2,
+      "required_terrain": [
+        "t_floor"
+      ],
+      "required_furniture": [
+        "f_bench"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_evac_shelter",
+      "abort_reason": "saved map metadata did not contain the evacuation-shelter floor and bench footprint around the player"
     },
     {
       "kind": "audit_saved_game_turn",
@@ -61,7 +76,7 @@
       "required_active_outside_count": 0,
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_release_candidate_roaming_cannibal_site",
-      "abort_reason": "saved hostile-world state did not contain the three-member at-home cannibal camp east of the player"
+      "abort_reason": "saved hostile-world state did not contain the three-member at-home cannibal camp east-northeast of the player"
     },
     {
       "kind": "audit_saved_hordes_near_player",
@@ -93,8 +108,8 @@
   "manual_playtest": {
     "question": "During ordinary roaming, do C-AOL's new hostile systems feel distinct, readable, and fair without announcing themselves like scripted test actors?",
     "tester_notes": [
-      "Play normally from the loaded daytime state; there is no required order or target checklist.",
-      "If you want orientation only: rider north, flesh raptor west, cannibals east, bandits south.",
+      "Play normally from the loaded daytime evacuation shelter; there is no required order or target checklist.",
+      "If you want orientation only: rider north, flesh raptor west, cannibals east-northeast, bandits south.",
       "Save after a memorable encounter or failure so the resulting state can be audited with the note."
     ],
     "metadata_to_check_after": [
@@ -104,7 +119,7 @@
     ]
   },
   "evidence_contract": {
-    "claim": "manual load starts from a current staged roaming footing with all four requested hostile families nearby but outside immediate combat range",
+    "claim": "manual load starts inside the completed evacuation shelter with all four requested hostile families nearby but outside immediate combat range",
     "load_only_verdict": "manual handoff footing only; gameplay feel comes from Josef's unscripted play after handoff"
   }
 }

@@ -2,8 +2,13 @@
   "name": "release_candidate_roaming_v0_2026-08-01",
   "source_fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
   "source_profile": "live-debug",
-  "description": "Windows release-candidate free-play footing: keep the established McWilliams/Basecamp start, preserve a real bandit camp south and the seeded cannibal camp east, reset both camp rosters to home, set a daytime start, and place one zombie rider north plus one flesh raptor west as overmap entities outside the initial reality bubble. This is deliberate nearby roaming setup, not natural world-generation proof.",
+  "description": "Windows release-candidate free-play footing: start inside the completed McWilliams evacuation shelter, preserve a real bandit camp south and the seeded cannibal camp east, reset both camp rosters to home, set a daytime start, and place one zombie rider north plus one flesh raptor west as overmap entities outside the initial reality bubble. This is deliberate nearby roaming setup, not natural world-generation proof.",
   "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [0, 48, 0]
+    },
     {
       "kind": "bandit_clone_site",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",

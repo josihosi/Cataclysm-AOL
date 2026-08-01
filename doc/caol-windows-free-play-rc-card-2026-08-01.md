@@ -8,7 +8,7 @@ Launch from the repo root:
 python tools\openclaw_harness\startup_harness.py handoff manual.release_candidate_roaming_mcw --launch-only --compact-stdout
 ```
 
-The handoff selects the standard `UltimateCataclysm` tileset, opens the daytime McWilliams/Basecamp save, and then stops sending gameplay input. Play normally. The staged world has a zombie rider north, a flesh raptor west, cannibal pressure east, and bandit pressure south. They begin outside the starting reality bubble; there is no required order and no target checklist.
+The handoff selects the standard `UltimateCataclysm` tileset, starts you inside the completed evacuation shelter at 10:00, and then stops sending gameplay input. Play normally. The staged world has a zombie rider north, a flesh raptor west, cannibal pressure east-northeast, and bandit pressure south. They begin outside the starting reality bubble; there is no required order and no target checklist.
 
 For a useful debug note, send one short block:
 
