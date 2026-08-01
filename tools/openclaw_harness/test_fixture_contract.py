@@ -45,6 +45,7 @@ from startup_harness import (  # noqa: E402
     apply_bandit_clone_site_transform,
     apply_game_turn_to_payload,
     apply_option_overrides_to_file,
+    apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
     load_profile_config,
     load_scenario,
@@ -64,6 +65,23 @@ class SaveValidationError(RuntimeError):
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
+    def test_release_candidate_pins_working_windows_api_runner(self) -> None:
+        scenario = load_scenario("manual.release_candidate_roaming_mcw")
+
+        self.assertEqual(
+            scenario["profile_option_overrides"],
+            {
+                "DEBUG_LLM_INTENT_LOG": "true",
+                "DEBUG_LLM_INTENT_UI": "true",
+                "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+                "LLM_INTENT_API_MODEL": "gpt-5.4-nano",
+                "LLM_INTENT_BACKEND": "api",
+                "LLM_INTENT_ENABLE": "true",
+                "LLM_INTENT_PYTHON": r"C:\Users\josef\openvino_models\openvino_env",
+                "TILES": "UltimateCataclysm",
+            },
+        )
+
     def test_isolated_userdir_keeps_scenario_startup_policy(self) -> None:
         scenario = {"profile": "dev-harness"}
         target_profile = "mac-verification-isolated"
@@ -828,6 +846,83 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(len(removals), 1)
         self.assertEqual(removals[0]["npc_ids"], [4])
         self.assertTrue(removals[0]["scan_all_overmaps"])
+
+    def test_basecamp_assignment_repair_preserves_game_owned_schedule(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "World"
+            overmaps_dir = world_dir / "overmaps"
+            overmaps_dir.mkdir(parents=True)
+            overmap_path = overmaps_dir / "o.0.0.zzip"
+            overmap_path.write_bytes(b"fixture")
+            plain_path = overmaps_dir / "o.0.0"
+            plain_path.write_text("fixture", encoding="utf-8")
+            katharina_job = {"task_priorities": {"ACT_CAMP_PATROL": 8, "ACT_MOVE_LOOT": 8}}
+            robbie_job = {"task_priorities": {"ACT_CAMP_PATROL": 6, "ACT_MOVE_LOOT": 4}}
+            payload = {
+                "npcs": [
+                    {
+                        "id": 2,
+                        "name": "Katharina Leach",
+                        "assigned_camp": [140, 41, 0],
+                        "attitude": 3,
+                        "mission": 0,
+                        "chair_pos": [3, 4, 0],
+                        "job": katharina_job,
+                        "chatbin": {"first_topic": "TALK_FRIEND"},
+                    },
+                    {
+                        "id": 3,
+                        "name": "Robbie Knox",
+                        "assigned_camp": [140, 41, 0],
+                        "attitude": 0,
+                        "mission": 11,
+                        "chair_pos": [4, 4, 0],
+                        "job": robbie_job,
+                        "chatbin": {"first_topic": "TALK_FRIEND_CAMP_RESIDENT"},
+                    },
+                ],
+            }
+
+            with (
+                mock.patch(
+                    "startup_harness.extract_overmap_payload",
+                    return_value=(plain_path, "# version 1", payload),
+                ),
+                mock.patch("startup_harness.write_overmap_payload") as write_payload,
+                mock.patch("startup_harness.cleanup_extracted_overmap"),
+            ):
+                report = apply_repair_basecamp_npc_assignments_transform(
+                    world_dir,
+                    {
+                        "npc_ids": [2, 3],
+                        "assigned_camp_omt": [140, 41, 0],
+                    },
+                )
+
+        self.assertEqual([npc["mission"] for npc in payload["npcs"]], [11, 11])
+        self.assertEqual([npc["attitude"] for npc in payload["npcs"]], [0, 0])
+        self.assertEqual([npc["chair_pos"] for npc in payload["npcs"]], [None, None])
+        self.assertIs(payload["npcs"][0]["job"], katharina_job)
+        self.assertIs(payload["npcs"][1]["job"], robbie_job)
+        self.assertFalse(report["schedule_or_job_priorities_modified"])
+        write_payload.assert_called_once()
+
+    def test_release_candidate_repairs_both_assignments_without_schedule_fields(self) -> None:
+        resolved = resolve_fixture_payload(
+            "release_candidate_roaming_v0_2026-08-01",
+            "live-debug",
+        )
+        repairs = [
+            transform
+            for transform in resolved["save_transforms"]
+            if transform["kind"] == "repair_basecamp_npc_assignments"
+        ]
+
+        self.assertEqual(len(repairs), 1)
+        self.assertEqual(repairs[0]["npc_ids"], [2, 3])
+        self.assertEqual(repairs[0]["assigned_camp_omt"], [140, 41, 0])
+        self.assertNotIn("job", repairs[0])
+        self.assertNotIn("task_priorities", repairs[0])
 
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):

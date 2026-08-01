@@ -1,6 +1,6 @@
 {
   "name": "manual.release_candidate_roaming_mcw",
-  "description": "Manual Windows release-candidate free-play handoff: calm daytime evacuation-shelter start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. The orphaned scout from the source test fixture is removed and every intended threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
+  "description": "Manual Windows release-candidate free-play handoff: calm daytime evacuation-shelter start with repaired basecamp NPC assignments, bandits south, cannibals east, a zombie rider north, and a flesh raptor west. The NPC repair preserves the save's game-owned job priorities and schedule. The orphaned scout from the source test fixture is removed and every intended threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "release_candidate_roaming_v0_2026-08-01",
@@ -8,6 +8,13 @@
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
   "profile_option_overrides": {
+    "DEBUG_LLM_INTENT_LOG": "true",
+    "DEBUG_LLM_INTENT_UI": "true",
+    "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
+    "LLM_INTENT_API_MODEL": "gpt-5.4-nano",
+    "LLM_INTENT_BACKEND": "api",
+    "LLM_INTENT_ENABLE": "true",
+    "LLM_INTENT_PYTHON": "C:\\Users\\josef\\openvino_models\\openvino_env",
     "TILES": "UltimateCataclysm"
   },
   "replace_existing_worlds": true,
@@ -27,6 +34,19 @@
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 32,
       "expected_visible_fact": "manual handoff reaches the completed evacuation-shelter interior before Josef begins free play"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_release_candidate_roaming_camp_assignments",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true,
+      "required_npcs": [
+        { "name": "Katharina Leach", "my_fac": "your_followers", "attitude": 0, "mission": 11 },
+        { "name": "Robbie Knox", "my_fac": "your_followers", "attitude": 0, "mission": 11 }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_camp_assignments",
+      "abort_reason": "saved NPC metadata did not contain two coherent camp-resident assignments"
     },
     {
       "kind": "audit_saved_map_tile_near_player",

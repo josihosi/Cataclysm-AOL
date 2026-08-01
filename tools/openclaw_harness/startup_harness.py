@@ -7394,6 +7394,36 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "repair_basecamp_npc_assignments":
+            raw_npc_ids = raw.get("npc_ids", [])
+            raw_camp = raw.get("assigned_camp_omt", [])
+            if not isinstance(raw_npc_ids, list) or not raw_npc_ids:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] repair_basecamp_npc_assignments needs non-empty npc_ids in {manifest_path}"
+                )
+            if not isinstance(raw_camp, list) or len(raw_camp) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] repair_basecamp_npc_assignments needs assigned_camp_omt=[x,y,z] in {manifest_path}"
+                )
+            try:
+                npc_ids = sorted({int(value) for value in raw_npc_ids})
+                assigned_camp_omt = [int(raw_camp[0]), int(raw_camp[1]), int(raw_camp[2])]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] repair_basecamp_npc_assignments needs integer npc_ids/assigned_camp_omt in {manifest_path}"
+                )
+            if any(value <= 0 for value in npc_ids):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] repair_basecamp_npc_assignments npc_ids must be positive in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "npc_ids": npc_ids,
+                "assigned_camp_omt": assigned_camp_omt,
+            })
+            continue
+
         if kind == "basecamp_assigned_npc_items":
             raw_offset = raw.get("offset_ms", [16, 0, 0])
             if not isinstance(raw_offset, list) or len(raw_offset) != 3:
@@ -7806,7 +7836,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
-            "overmap_npcs_near_player, basecamp_assigned_npc_items, active_monsters_near_player, horde_entity_near_player, game_turn, "
+            "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
+            "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
@@ -9532,6 +9563,101 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
 
 
 
+def apply_repair_basecamp_npc_assignments_transform(
+    world_dir: Path, transform: Dict[str, Any]
+) -> Dict[str, Any]:
+    requested_ids = {int(value) for value in transform.get("npc_ids", [])}
+    assigned_camp = [int(value) for value in transform.get("assigned_camp_omt", [])]
+    repaired: List[Dict[str, Any]] = []
+    found_ids: set[int] = set()
+
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.zzip")):
+        plain_path: Optional[Path] = None
+        payload: Dict[str, Any] = {}
+        changed = False
+        try:
+            plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+            npcs = payload.get("npcs", [])
+            if not isinstance(npcs, list):
+                continue
+            for npc_payload in npcs:
+                if not isinstance(npc_payload, dict):
+                    continue
+                try:
+                    npc_id = int(npc_payload.get("id", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if npc_id not in requested_ids:
+                    continue
+
+                found_ids.add(npc_id)
+                before = {
+                    "assigned_camp": npc_payload.get("assigned_camp"),
+                    "attitude": npc_payload.get("attitude"),
+                    "mission": npc_payload.get("mission"),
+                    "first_topic": (
+                        npc_payload.get("chatbin", {}).get("first_topic")
+                        if isinstance(npc_payload.get("chatbin"), dict)
+                        else None
+                    ),
+                }
+
+                npc_payload["assigned_camp"] = list(assigned_camp)
+                npc_payload["attitude"] = 0  # NPCATT_NULL
+                npc_payload["mission"] = 11  # NPC_MISSION_CAMP_RESIDENT
+                npc_payload["guard_pos"] = None
+                npc_payload["camp_patrol_order_active"] = False
+                npc_payload["chair_pos"] = None
+                npc_payload["wander_pos"] = None
+                npc_payload["destination_point"] = None
+                npc_payload["omt_path"] = []
+                npc_payload["path"] = []
+                chatbin = npc_payload.setdefault("chatbin", {})
+                if not isinstance(chatbin, dict):
+                    raise SystemExit(
+                        f"NPC {npc_id} chatbin is not an object in {overmap_path}"
+                    )
+                chatbin["first_topic"] = "TALK_FRIEND_CAMP_RESIDENT"
+
+                repaired.append({
+                    "npc_id": npc_id,
+                    "npc_name": npc_payload.get("name"),
+                    "before": before,
+                    "after": {
+                        "assigned_camp": list(assigned_camp),
+                        "attitude": 0,
+                        "mission": 11,
+                        "first_topic": "TALK_FRIEND_CAMP_RESIDENT",
+                    },
+                    "job_unchanged": True,
+                })
+                changed = True
+
+            if changed:
+                write_overmap_payload(plain_path, version_line, payload)
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(
+                    plain_path,
+                    keep=not bool(payload.get("_created_plain", False)),
+                )
+
+    missing_ids = sorted(requested_ids - found_ids)
+    if missing_ids:
+        raise SystemExit(
+            f"Basecamp assignment repair could not find NPC ids {missing_ids} in {world_dir / 'overmaps'}"
+        )
+
+    repaired.sort(key=lambda row: int(row["npc_id"]))
+    return {
+        "kind": "repair_basecamp_npc_assignments",
+        "world": world_dir.name,
+        "assigned_camp_omt": assigned_camp,
+        "repaired_npcs": repaired,
+        "schedule_or_job_priorities_modified": False,
+    }
+
+
 def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     selected_player_save = str(transform.get("player_save", "") or "").strip()
     if not selected_player_save:
@@ -10578,6 +10704,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "overmap_npcs_near_player":
             reports.append(apply_overmap_npcs_near_player_transform(world_dir, transform))
+            continue
+        if kind == "repair_basecamp_npc_assignments":
+            reports.append(apply_repair_basecamp_npc_assignments_transform(world_dir, transform))
             continue
         if kind == "basecamp_assigned_npc_items":
             reports.append(apply_basecamp_assigned_npc_items_transform(world_dir, transform))
