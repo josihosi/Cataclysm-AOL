@@ -7476,10 +7476,28 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             continue
 
         if kind == "remove_overmap_npcs":
+            raw_npc_ids = raw.get("npc_ids", [])
+            if raw_npc_ids in (None, ""):
+                raw_npc_ids = []
+            if not isinstance(raw_npc_ids, list):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_overmap_npcs npc_ids must be a list in {manifest_path}"
+                )
+            try:
+                npc_ids = sorted({int(value) for value in raw_npc_ids})
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_overmap_npcs npc_ids must contain integers in {manifest_path}"
+                )
+            if any(value <= 0 for value in npc_ids):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_overmap_npcs npc_ids must be positive in {manifest_path}"
+                )
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "scan_all_overmaps": bool(raw.get("scan_all_overmaps", True)),
+                "npc_ids": npc_ids,
             })
             continue
 
@@ -7807,6 +7825,10 @@ def validate_fixture_save_transform_chain(
         kind = str(transform.get("kind", "") or "").strip().lower()
         player_save = str(transform.get("player_save", "") or "").strip()
         if kind == "remove_overmap_npcs":
+            if transform.get("npc_ids"):
+                # A selective removal does not prove that the target overmap
+                # has been emptied of every possible NPC cloning template.
+                continue
             if bool(transform.get("scan_all_overmaps", True)):
                 remove_all_index = index
                 partial_remove_indices.clear()
@@ -9333,6 +9355,8 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
 def apply_remove_overmap_npcs_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     selected_player_save = str(transform.get("player_save", "") or "").strip()
     scan_all_overmaps = bool(transform.get("scan_all_overmaps", True))
+    requested_npc_ids = sorted({int(value) for value in transform.get("npc_ids", [])})
+    requested_npc_id_set = set(requested_npc_ids)
     if selected_player_save:
         player_abs_omt, _player_location = load_player_abs_omt(world_dir, selected_player_save)
     else:
@@ -9364,16 +9388,28 @@ def apply_remove_overmap_npcs_transform(world_dir: Path, transform: Dict[str, An
                 raise SystemExit(f"Overmap has non-list npcs array: {overmap_path}")
             if not raw_npcs:
                 continue
+            kept_npcs: List[Any] = []
             for index, npc_payload in enumerate(raw_npcs):
-                if isinstance(npc_payload, dict):
-                    removed.append({
-                        "overmap": str(overmap_path.relative_to(world_dir)),
-                        "index": index,
-                        "id": npc_payload.get("id"),
-                        "name": str(npc_payload.get("name", "") or ""),
-                        "location": npc_payload.get("location", []),
-                    })
-            payload["npcs"] = []
+                npc_id = npc_payload.get("id") if isinstance(npc_payload, dict) else None
+                remove_npc = not requested_npc_id_set
+                if requested_npc_id_set:
+                    try:
+                        remove_npc = int(npc_id) in requested_npc_id_set
+                    except (TypeError, ValueError):
+                        remove_npc = False
+                if not remove_npc:
+                    kept_npcs.append(npc_payload)
+                    continue
+                removed.append({
+                    "overmap": str(overmap_path.relative_to(world_dir)),
+                    "index": index,
+                    "id": npc_id,
+                    "name": str(npc_payload.get("name", "") or "") if isinstance(npc_payload, dict) else "",
+                    "location": npc_payload.get("location", []) if isinstance(npc_payload, dict) else [],
+                })
+            if len(kept_npcs) == len(raw_npcs):
+                continue
+            payload["npcs"] = kept_npcs
             write_overmap_payload(plain_path, version_line, payload)
             touched.append(str(overmap_path.relative_to(world_dir)))
         finally:
@@ -9383,6 +9419,7 @@ def apply_remove_overmap_npcs_transform(world_dir: Path, transform: Dict[str, An
         "kind": "remove_overmap_npcs",
         "player_save": selected_player_save,
         "scan_all_overmaps": scan_all_overmaps,
+        "requested_npc_ids": requested_npc_ids,
         "removed_count": len(removed),
         "removed_npcs": removed,
         "touched_overmaps": touched,

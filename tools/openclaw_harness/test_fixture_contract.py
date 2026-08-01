@@ -45,6 +45,7 @@ from startup_harness import (  # noqa: E402
     apply_bandit_clone_site_transform,
     apply_game_turn_to_payload,
     apply_option_overrides_to_file,
+    apply_remove_overmap_npcs_transform,
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
@@ -772,6 +773,61 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
     def test_repository_zzip_is_fully_decodable_player_json(self) -> None:
         self.assertEqual(player_save_error(self.sample_zzip_save()), "")
+
+    def test_selective_overmap_npc_removal_preserves_bystanders(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "World"
+            overmaps_dir = world_dir / "overmaps"
+            overmaps_dir.mkdir(parents=True)
+            overmap_path = overmaps_dir / "o.0.0.zzip"
+            overmap_path.write_bytes(b"fixture")
+            plain_path = overmaps_dir / "o.0.0"
+            plain_path.write_text("fixture", encoding="utf-8")
+            payload = {
+                "npcs": [
+                    {"id": 4, "name": "orphaned scout", "location": [10, 11, 0]},
+                    {"id": 5, "name": "camp member", "location": [10, 240, 0]},
+                ],
+            }
+
+            with (
+                mock.patch("startup_harness.load_player_abs_omt", return_value=([0, 0, 0], [0, 0, 0])),
+                mock.patch(
+                    "startup_harness.extract_overmap_payload",
+                    return_value=(plain_path, "# version 1", payload),
+                ),
+                mock.patch("startup_harness.write_overmap_payload") as write_payload,
+                mock.patch("startup_harness.cleanup_extracted_overmap"),
+            ):
+                report = apply_remove_overmap_npcs_transform(
+                    world_dir,
+                    {
+                        "player_save": "player.sav.zzip",
+                        "scan_all_overmaps": True,
+                        "npc_ids": [4],
+                    },
+                )
+
+        self.assertEqual([npc["id"] for npc in payload["npcs"]], [5])
+        self.assertEqual(report["requested_npc_ids"], [4])
+        self.assertEqual(report["removed_count"], 1)
+        self.assertEqual(report["removed_npcs"][0]["name"], "orphaned scout")
+        write_payload.assert_called_once()
+
+    def test_release_candidate_fixture_removes_only_orphaned_scout(self) -> None:
+        resolved = resolve_fixture_payload(
+            "release_candidate_roaming_v0_2026-08-01",
+            "live-debug",
+        )
+        removals = [
+            transform
+            for transform in resolved["save_transforms"]
+            if transform["kind"] == "remove_overmap_npcs"
+        ]
+
+        self.assertEqual(len(removals), 1)
+        self.assertEqual(removals[0]["npc_ids"], [4])
+        self.assertTrue(removals[0]["scan_all_overmaps"])
 
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):

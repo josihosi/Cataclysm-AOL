@@ -1,6 +1,6 @@
 {
   "name": "manual.release_candidate_roaming_mcw",
-  "description": "Manual Windows release-candidate free-play handoff: daytime evacuation-shelter start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. Every threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
+  "description": "Manual Windows release-candidate free-play handoff: calm daytime evacuation-shelter start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. The orphaned scout from the source test fixture is removed and every intended threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "release_candidate_roaming_v0_2026-08-01",
