@@ -54,36 +54,35 @@ Before promoting, closing, or handing off a lane, confirm that `TESTING.md` pend
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-## Current validation target - CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0
+## Current validation target - CAOL-WINDOWS-FREE-PLAY-RC-v0
 
 Source reference:
-- upstream tip: `89c6aef1b3`
-- integration merge: `0fdc380371`
-- hardened production stack: `dcaa9439b3`
-- fail-closed proof stack: `533363fff3`
-- exact Mac candidate: the committed ledger checkpoint containing this receipt
+- production branch: `port/cdda-master`
+- candidate before this playtest packet: `a35c2b932a`
+- included upstream base: `8d4959bee4`
+- latest reviewed-but-unmerged upstream tip: `7cf1d08ae8`
 
-Latest current-candidate evidence (2026-07-18):
-- An independent exact-tree audit found no remaining actionable defect in the save/LLM fixes, fixture contracts, log-rotation/tail handling, process-liveness checks, feature-phase gates, repeatability verdicts, or macOS proof transport. A subsequent structured review found three result-propagation gaps; `533363fff3` fixed them so non-green startup and mixed repeatability set `ok=false` and exit nonzero, while compact child reports retain the proof/runtime fields used by repeatability.
-- Windows/MSYS2 rebuilt the eight affected production translation units with `-Werror`; the final dense-snapshot, save-compatibility, and camp-patrol test translation units also compile cleanly.
-- Linux/WSL rebuilt the eight affected production translation units and all ten affected test/helper translation units with `-Werror`.
-- The current Windows tree passes 14 runner/parser tests, the NPC harness self-test, all 7 action-status fixtures, all 57 standalone proof tests, all 74 non-duplicated OpenClaw discovery tests, and a real Ollama runner self-test.
-- The WSL tiled target is not credited: its installed SDL3 is older than the upstream `3.4.0` GPU-shader requirement. The exact tiled build/test/runtime gate is assigned to the correctly provisioned Mac Mini.
+Latest Windows candidate evidence (2026-08-01):
+- A clean `just_build.cmd` SDL3 tiles-and-sound build completed with exit `0`; `cataclysm-tiles.exe` and the Windows `zzip.exe` helper were produced. The runtime reports SDL compile/link/runtime `3.4.0`.
+- `python -m unittest tools.openclaw_harness.test_fixture_contract` passes all `30` fixture/handoff contract tests, including Windows `zzip.exe`, explicit cannibal profile cloning, and post-snapshot `UltimateCataclysm` selection.
+- Direct saved-state audits return `required_state_present` for the 10:00 start, four at-home bandits, three at-home cannibals, the north zombie rider, and the west flesh raptor.
+- Manual handoff run `.userdata/dev-harness/harness_runs/20260801_193053/` stayed responsive with no hard startup error; direct Windows window capture showed the ordinary map, no immediate combat, and the `UltimateCataclysm` tileset.
+- Catapult Dabubu's current Playtest tab already invokes packaged `manual.*` scenarios through `handoff --launch-only`; no launcher edit is needed for this scenario or option override.
+- The GitHub release workflow still defines Windows, Linux, and macOS assets and verifies each package before publishing. That workflow is deliberately not triggered until after Josef's feel pass.
 
 Required evidence:
-- Windows/MSYS2 and Linux/WSL affected C++ compile/test gates.
-- Python runner discovery, NPC harness self-test, action-status fixtures, and OpenClaw harness discovery.
-- macOS build/test link plus focused filters for LLM/NPC, save migration, camp patrol, rider, stalker, bandit playback classification, and firestarter behavior.
-- Feature-path scenarios for assigned-camp speech, writhing-stalker withdrawal, zombie-rider light response, and camp locker service.
-- A broader Mac Mini playtest/stress series on the exact candidate, including save/load and ordinary gameplay as well as affected C-AOL paths.
-- Fresh Peekaboo artifacts and same-run logs from the current binary.
+- scenario and fixture manifests parse and remain discoverable through `startup_harness.py list-scenarios`;
+- saved-state audits prove the flesh raptor and zombie rider are staged outside the initial reality bubble and prove nearby bandit/cannibal site or pressure state;
+- the exact Windows tiles binary builds from the current candidate and reaches the normal map through the manual handoff scenario;
+- the handoff does not advance a scripted combat window after load;
+- Windows and Mac Mini Git heads match and both working trees are clean before Josef starts;
+- Josef receives a short note format for observations, reproduction clues, and severity without a target-by-target checklist.
 
 Claim boundary:
-- The bandit playback suite evaluates authored checkpoints; it does not execute every intervening game turn.
-- Startup/load and menu movement prove launchability, not gameplay behavior.
-- Action-status proof must come from the dedicated same-run event stream.
-- Restored save files count only when tracked, structurally valid, and consumed by a real scenario.
-- Staged-fixture feature paths are not natural-discovery or full-siege proof.
+- this is deliberate staged roaming footing, not natural world-generation discovery proof;
+- load and saved-state audits prove availability, not final behavior quality;
+- Josef's free play is the product-feel pass and is not replaced by old targeted harness receipts;
+- the unmerged upstream batch is assessed separately and remains held until after the feel pass.
 
 ## Recent historical receipts
 

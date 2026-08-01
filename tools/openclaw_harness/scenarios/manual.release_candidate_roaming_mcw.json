@@ -1,0 +1,110 @@
+{
+  "name": "manual.release_candidate_roaming_mcw",
+  "description": "Manual Windows release-candidate free-play handoff: daytime McWilliams/Basecamp start with bandits south, cannibals east, a zombie rider north, and a flesh raptor west. Every threat starts outside the initial reality bubble; the harness prepares and launches the audited save but sends no gameplay input after load.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "release_candidate_roaming_v0_2026-08-01",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides": {
+    "TILES": "UltimateCataclysm"
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world",
+    "cannibal_camp",
+    "zombie_rider",
+    "flesh_raptor"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_release_candidate_roaming_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "manual handoff reaches the ordinary daytime map before Josef begins free play"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_release_candidate_roaming_daytime",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 36000,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_time",
+      "abort_reason": "saved game turn did not prove the intended 10:00 daytime start"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_release_candidate_roaming_bandit_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 4,
+      "required_ready_at_home_count": 4,
+      "required_active_outside_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_bandit_site",
+      "abort_reason": "saved hostile-world state did not contain the four-member at-home bandit camp south of the player"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_release_candidate_roaming_cannibal_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "overmap_special:cannibal_camp@150,39,0",
+      "required_member_count": 3,
+      "required_ready_at_home_count": 3,
+      "required_active_outside_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_cannibal_site",
+      "abort_reason": "saved hostile-world state did not contain the three-member at-home cannibal camp east of the player"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_release_candidate_roaming_rider_and_raptor",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 180,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie_rider",
+          "offset_ms": [0, -120, 0],
+          "destination_offset_ms": [0, -48, 0],
+          "tracking_intensity": 6,
+          "moves": 0
+        },
+        {
+          "monster_id": "mon_spawn_raptor",
+          "offset_ms": [-96, 0, 0],
+          "destination_offset_ms": [-48, 0, 0],
+          "tracking_intensity": 4,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_release_candidate_roaming_predators",
+      "abort_reason": "saved overmap horde metadata did not contain the staged north rider and west flesh raptor outside the initial reality bubble"
+    }
+  ],
+  "recommended_test_command": "python tools/openclaw_harness/startup_harness.py handoff manual.release_candidate_roaming_mcw --launch-only --compact-stdout",
+  "manual_playtest": {
+    "question": "During ordinary roaming, do C-AOL's new hostile systems feel distinct, readable, and fair without announcing themselves like scripted test actors?",
+    "tester_notes": [
+      "Play normally from the loaded daytime state; there is no required order or target checklist.",
+      "If you want orientation only: rider north, flesh raptor west, cannibals east, bandits south.",
+      "Save after a memorable encounter or failure so the resulting state can be audited with the note."
+    ],
+    "metadata_to_check_after": [
+      "debug.log actor-specific live-plan and hostile-world rows",
+      "saved hostile-world sites, overmap entities, NPC positions, and monster state",
+      "the exact location/time immediately before a surprising interaction"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "manual load starts from a current staged roaming footing with all four requested hostile families nearby but outside immediate combat range",
+    "load_only_verdict": "manual handoff footing only; gameplay feel comes from Josef's unscripted play after handoff"
+  }
+}

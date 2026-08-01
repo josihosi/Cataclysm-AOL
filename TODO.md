@@ -7,8 +7,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Sync the exact committed HEAD to the Mac Mini without touching its user-owned `Agents.md`.
-2. Run macOS focused C++/Python tests and the strongest existing feature-path scenarios.
-3. Run a broader in-game Mac Mini stress/playtest series across NPC/LLM, camp, predators, save/load, and ordinary gameplay.
-4. Fetch upstream again; if unchanged and green, push the exact tested HEAD.
-5. Verify the release workflow and assets, then record the final release state.
+1. Commit the proved Windows free-play packet and sync that exact clean commit to the Mac Mini checkout.
+2. Incrementally relink the committed Windows candidate so its visible version names the exact handoff commit.
+3. Start the ordinary-play Windows handoff and leave it open for Josef with the lightweight debug-note format.
+4. After the feel pass, decide whether the 104-commit upstream batch is worth merging before release.

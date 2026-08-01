@@ -17,9 +17,25 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-WINDOWS-FREE-PLAY-RC-v0 - Windows production-candidate roaming playtest
+
+Status: READY FOR CROSS-MACHINE SYNC / RELEASE HELD
+
+Success state:
+- [x] `port/cdda-master` is recorded as the only current production-candidate branch; `master`, `dev`, and the other `port/*` branches are explicitly behind it.
+- [x] Windows has one canonical C-AOL checkout at `C:\Users\josef\dev\Cataclysm-AOL`, and the Mac Mini has one C-AOL checkout; old worktrees and repo-local bulk are removed or archived under Mac Mini `codexbulk`.
+- [x] One loadable free-play scenario stages flesh-raptor, zombie-rider, bandit, and cannibal presence within a reasonable trip of the player without beginning in immediate combat.
+- [x] The current Windows candidate builds and the scenario passes load plus saved-state footing checks on that binary.
+- [ ] Windows and Mac Mini resolve to the exact same clean candidate commit before handoff.
+- [x] A concise debug-note capture path is ready for Josef's free play without turning the session into four targeted scripts.
+
+Claim boundary: the staged save proves deliberate nearby footing and current-build loadability. Josef's later play supplies product feel; it is useful feedback, not a completion blocker in this ledger.
+
+---
+
 ## CAOL-CDDA-UPSTREAM-RELEASE-READINESS-v0 - Current CDDA master integration and release candidate
 
-Status: AGENT TESTING / RELEASE HELD
+Status: HELD BEHIND WINDOWS FEEL PASS / RELEASE HELD
 
 Success state:
 - [x] `upstream/master` at `89c6aef1b3` is merged into `port/cdda-master` through `0fdc380371`.

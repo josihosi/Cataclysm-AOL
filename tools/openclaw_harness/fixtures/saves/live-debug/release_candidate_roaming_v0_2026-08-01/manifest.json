@@ -1,0 +1,69 @@
+{
+  "name": "release_candidate_roaming_v0_2026-08-01",
+  "source_fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
+  "source_profile": "live-debug",
+  "description": "Windows release-candidate free-play footing: keep the established McWilliams/Basecamp start, preserve a real bandit camp south and the seeded cannibal camp east, reset both camp rosters to home, set a daytime start, and place one zombie rider north plus one flesh raptor west as overmap entities outside the initial reality bubble. This is deliberate nearby roaming setup, not natural world-generation proof.",
+  "save_transforms": [
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@150,39,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_hostile_profile": "cannibal_camp",
+      "new_anchor": [150, 39, 0],
+      "new_footprint": [
+        [150, 39, 0],
+        [151, 39, 0],
+        [150, 40, 0],
+        [151, 40, 0]
+      ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 4,
+      "member_start_index": 1,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@150,39,0",
+      "living_member_count": 3,
+      "member_start_index": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 3
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5220000
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie_rider",
+      "offset_ms": [0, -120, 0],
+      "destination_offset_ms": [0, -48, 0],
+      "tracking_intensity": 6,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_spawn_raptor",
+      "offset_ms": [-96, 0, 0],
+      "destination_offset_ms": [-48, 0, 0],
+      "tracking_intensity": 4,
+      "last_processed": 0,
+      "moves": 0
+    }
+  ]
+}
