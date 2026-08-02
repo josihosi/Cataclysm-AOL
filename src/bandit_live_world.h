@@ -442,6 +442,11 @@ struct live_signal_mark {
     std::vector<std::string> notes;
 };
 
+struct abstract_bootstrap_result {
+    int created_sites = 0;
+    int recognized_tiles = 0;
+};
+
 bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -456,6 +461,9 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
                              const std::string &source_id, const tripoint_abs_omt &origin,
                              const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup,
                              int abstract_headcount = 0 );
+abstract_bootstrap_result register_abstract_sites_near(
+    world_state &state, const tripoint_abs_omt &center, int radius_omt,
+    const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
 bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,
                           character_id npc_id, const tripoint_abs_ms &spawn_tile,
                           const std::optional<std::string> &overmap_special_id,

@@ -1515,6 +1515,43 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
     return true;
 }
 
+abstract_bootstrap_result register_abstract_sites_near(
+    world_state &state, const tripoint_abs_omt &center, int radius_omt,
+    const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup )
+{
+    abstract_bootstrap_result result;
+    if( !special_lookup || radius_omt < 0 ) {
+        return result;
+    }
+
+    for( int dx = -radius_omt; dx <= radius_omt; ++dx ) {
+        for( int dy = -radius_omt; dy <= radius_omt; ++dy ) {
+            const tripoint_abs_omt candidate( center.x() + dx, center.y() + dy, center.z() );
+            if( rl_dist( center, candidate ) > radius_omt ) {
+                continue;
+            }
+            const std::optional<std::string> source_id = special_lookup( candidate );
+            if( !source_id ) {
+                continue;
+            }
+            const std::optional<owned_site_kind> site_kind = classify_tracked_source(
+                        anchor_source_kind::overmap_special, *source_id );
+            if( !site_kind ) {
+                continue;
+            }
+            result.recognized_tiles++;
+            const size_t old_site_count = state.sites.size();
+            register_abstract_site( state, anchor_source_kind::overmap_special, *source_id, candidate,
+                                    special_lookup, abstract_roster_seed_for_site_kind( *site_kind ) );
+            if( state.sites.size() > old_site_count ) {
+                result.created_sites++;
+            }
+        }
+    }
+
+    return result;
+}
+
 bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,
                           character_id npc_id, const tripoint_abs_ms &spawn_tile,
                           const std::optional<std::string> &overmap_special_id,

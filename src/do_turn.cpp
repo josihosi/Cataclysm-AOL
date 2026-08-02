@@ -1758,8 +1758,6 @@ int bootstrap_live_bandit_abstract_sites_near_player()
     avatar &u = get_avatar();
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const tripoint_abs_omt center = u.pos_abs_omt();
-    int created_sites = 0;
-    int recognized_tiles = 0;
 
     const auto special_lookup = []( const tripoint_abs_omt &candidate ) -> std::optional<std::string> {
         if( const std::optional<overmap_special_id> special =
@@ -1769,40 +1767,17 @@ int bootstrap_live_bandit_abstract_sites_near_player()
         return std::nullopt;
     };
 
-    for( int dx = -live_bandit_system_envelope_omt; dx <= live_bandit_system_envelope_omt; ++dx ) {
-        for( int dy = -live_bandit_system_envelope_omt; dy <= live_bandit_system_envelope_omt; ++dy ) {
-            const tripoint_abs_omt candidate( center.x() + dx, center.y() + dy, center.z() );
-            if( rl_dist( center, candidate ) > live_bandit_system_envelope_omt ) {
-                continue;
-            }
-            const std::optional<std::string> source_id = special_lookup( candidate );
-            if( !source_id ) {
-                continue;
-            }
-            const std::optional<bandit_live_world::owned_site_kind> site_kind =
-                bandit_live_world::classify_tracked_source(
-                    bandit_live_world::anchor_source_kind::overmap_special, *source_id );
-            if( !site_kind ) {
-                continue;
-            }
-            recognized_tiles++;
-            const size_t old_site_count = state.sites.size();
-            bandit_live_world::register_abstract_site( state,
-                    bandit_live_world::anchor_source_kind::overmap_special, *source_id, candidate,
-                    special_lookup, bandit_live_world::abstract_roster_seed_for_site_kind( *site_kind ) );
-            if( state.sites.size() > old_site_count ) {
-                created_sites++;
-            }
-        }
-    }
+    const bandit_live_world::abstract_bootstrap_result result =
+        bandit_live_world::register_abstract_sites_near( state, center,
+                live_bandit_system_envelope_omt, special_lookup );
 
-    if( created_sites > 0 ) {
+    if( result.created_sites > 0 ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world abstract_bootstrap created_sites="
-                                   << created_sites << " recognized_tiles=" << recognized_tiles
+                                   << result.created_sites << " recognized_tiles=" << result.recognized_tiles
                                    << " scan_radius_omt=" << live_bandit_system_envelope_omt
                                    << " total_sites=" << state.sites.size() << '\n';
     }
-    return created_sites;
+    return result.created_sites;
 }
 
 int refresh_live_bandit_signal_marks(
