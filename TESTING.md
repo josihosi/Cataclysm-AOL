@@ -356,8 +356,18 @@ AutoReview found and the patch fixed one real malformed schema-3 hybrid that cou
 harvested bounty; the single post-fix rerun is clean at 0.97. The test binary is 79,754,792 bytes
 with SHA-256 `8129cf98478e32fe0fc82477f5dae07b882033f812bebbd6031be36de7df99ff`.
 
+The bounded-supply checkpoint `37498066ba` is green on the Mac. The final redirected incremental
+build `build_logs/macos-tests-build-phase1-supply-roster-fix.log` exits `0`; supply migration/time
+tests pass 2 cases / 77 assertions, full `[bandit][live_world]` passes 91 / 4,848, and overmap-global
+save compatibility passes 2 / 24. Coverage includes cap boundaries, abstract-to-materialized seed,
+schema-v5 migration, incomplete schema-v6 fail-closed behavior, sub-day remainder round trip,
+one-jump versus daily equivalence, backward-time no-op, zero-living stability, exact casualty-time
+roster reconciliation, and a 730-day O(1) jump. Saturated scout/camp JSON is 29,730 bytes below
+64 KiB. The test binary is 79,788,840 bytes with SHA-256
+`6ee20c0fd4c8472e91323713d8a3b640e1742d9fd553435d654ba7808768831b`.
+
 The active missing evidence is Phase 1:
-- bounded supply, per-camp resource estimates, dossier/report policy, and bounded transition owners;
+- per-camp resource estimates, dossier/report policy, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 

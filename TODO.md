@@ -7,8 +7,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Add bounded generic camp `supply_units` stock, consumption, catch-up, cap, and migration.
-2. Add per-camp resource estimates, then complete Phase-1 pruning, report/transition owners, and
+1. Add per-camp resource estimates, then complete Phase-1 pruning, report/transition owners, and
    serialized-size evidence.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more

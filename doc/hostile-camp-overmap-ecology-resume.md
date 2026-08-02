@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: add the bounded generic camp supply stock with
-  deterministic catch-up, cap enforcement, and legacy seeding.
+- First unchecked deterministic execution row: keep each camp's resource knowledge as a private
+  estimate with timestamp and confidence.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -143,15 +143,21 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   is 29 bytes per harvested OMT. AutoReview found one schema-3 hybrid resurrection defect; the
   accepted fix rejects that malformed packet transactionally and the one permitted rerun is clean
   at 0.97. Binary SHA-256 is `8129cf98478e32fe0fc82477f5dae07b882033f812bebbd6031be36de7df99ff`.
+- Bounded-supply checkpoint `37498066ba` adds one capped member-day stock with O(1) minute catch-up,
+  sub-day remainder, immediate roster-shrink cap, exact casualty-time reconciliation, and
+  seven-member-day legacy/new-camp seed. The final redirected build exits `0`; supply-focused tests
+  pass 2/77, live-world passes 91/4,848, save compatibility passes 2/24, and saturated JSON is
+  29,730 bytes. Binary SHA-256 is
+  `6ee20c0fd4c8472e91323713d8a3b640e1742d9fd553435d654ba7808768831b`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume bounded camp supply on top of `432c0f9da7`. Do not reopen Phase-0
+3. Resume private per-camp resource estimates on top of `37498066ba`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `432c0f9da7`-source test binary where valid; run one redirected build at a
+5. Reuse the current `37498066ba`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
 6. Complete operation, resource, and dossier owners with legacy/missing-field,
    phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.

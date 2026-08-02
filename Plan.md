@@ -117,10 +117,10 @@ Scout and hostile state changes now require the same serialized activity/generat
 last-advanced cursor. Ambiguous dual owners, stale epochs, duplicate advances, and inconsistent
 save parity fail closed; exact compare-and-swap owner transfers are atomic.
 
-Current execution row: add the bounded camp supply stock, then the per-camp resource estimate.
-World-global finite resources are checkpointed at `432c0f9da7`: one compact OMT-keyed authority,
-exact revision claims, persistent depleted tombstones, and harvested-only legacy migration.
-Post-close
+Current execution row: keep per-camp resource knowledge as an estimate with timestamp and
+confidence. Bounded camp supply is checkpointed at `37498066ba`: one member-day stock, O(1)
+catch-up, immediate roster-cap enforcement, and seven-member-day legacy seeding. World-global
+finite resources remain checkpointed at `432c0f9da7`. Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac
 Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work

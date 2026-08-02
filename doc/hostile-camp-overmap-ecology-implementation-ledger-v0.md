@@ -6,17 +6,16 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Add one bounded generic camp supply stock.**
+First deterministic execution row: **Keep per-camp resource knowledge as an estimate with timestamp/confidence.**
 
-Latest resume packet (behavior checkpoint `432c0f9da7`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `37498066ba`, 2026-08-02): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at bounded camp supply. The resource checkpoint provides one compact
-OMT-keyed authority, exact-revision idempotent claims, permanent depleted tombstones, and
-harvested-only legacy migration. Its redirected Mac test build exited `0`; resource-focused
-evidence is 3/2,057, full live-world is 89/4,771, and save compatibility is 2/20. The compact save
-slope is 29 bytes per harvested OMT; post-fix autoreview is clean at 0.97. Test binary SHA-256 is
-`8129cf98478e32fe0fc82477f5dae07b882033f812bebbd6031be36de7df99ff` (79,754,792 bytes). No
-current blocker; next permitted action is the bounded-supply vertical slice.
+untouched. Phase 1 is active at per-camp resource estimates. Supply schema v6 provides one bounded
+member-day stock, O(1) minute catch-up, roster-cap enforcement, and seven-member-day legacy seed.
+Its final redirected Mac build exited `0`; supply-focused evidence is 2/77, full live-world is
+91/4,848, and save compatibility is 2/24. Saturated JSON is 29,730 bytes below 64 KiB. Test binary
+SHA-256 is `6ee20c0fd4c8472e91323713d8a3b640e1742d9fd553435d654ba7808768831b`
+(79,788,840 bytes). No current blocker; next permitted action is the private resource-estimate slice.
 
 Production target: `port/cdda-master`
 
@@ -437,7 +436,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Give both scout sorties and hostile operations a serialized `simulation_owner` (`abstract` or `local`), handoff generation/epoch, and `last_advanced_turn`; any transient handoff state must commit or roll back before a save is accepted.
 - [x] Remove or migrate competing scalar state rather than maintaining two authorities indefinitely.
 - [x] Define a world-global finite resource record keyed by OMT.
-- [ ] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
+- [x] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
 - [ ] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
 - [ ] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
 - [ ] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
@@ -478,7 +477,9 @@ Evidence:
   exact compare-and-swap owner transfer, strictly newer state advances, atomic same-minute
   start/contact handoff, safe legacy migration, and fail-closed current-schema repair;
   `432c0f9da7` adds the schema-v4 OMT-keyed finite-resource authority, exact revision claims,
-  persistent depletion, transactional malformed-load rejection, and harvested-only pre-v4 migration.
+  persistent depletion, transactional malformed-load rejection, and harvested-only pre-v4 migration;
+  `37498066ba` adds schema-v6 bounded member-day supply, O(1) catch-up, roster-cap enforcement,
+  exact casualty-time reconciliation, and seven-member-day legacy/new-camp seeding.
 - Tests: latest strict redirected Mac build exit `0`; `[hostile_operation]` 3 cases/243
   assertions, `[bandit][live_world]` 86/2,714, `[bandit][handoff]` 9/202, and 2 overmap-global
   save compatibility cases/16 assertions pass. Exact-source autoreview is clean at 0.99. Binary
@@ -489,6 +490,9 @@ Evidence:
 - Resource persistence adds 29 bytes per harvested OMT over the measured 500-to-1,000 record
   interval, below the ratified 32-byte incremental gate. Competing stale claims and exact depleted
   replays are byte-identical no-ops; a malformed pre-v4/current-field hybrid is rejected before commit.
+- Supply tests cover cap edges, schema-v5 migration, incomplete-v6 fail-closed behavior, fractional
+  round trip, daily/large-jump equivalence, backward-time no-op, zero-living stability, roster shrink,
+  and 730-day bounded catch-up. Saturated camp/scout JSON remains 29,730 bytes below 64 KiB.
 - Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
   malformed reservation release, all scout-phase round trips, partial casualty persistence,
   exact casualty/job agreement, report/cargo receipt before slot close, universal watermark
