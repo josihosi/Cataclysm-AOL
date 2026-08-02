@@ -6,8 +6,8 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Independently audit the existing serialized schema and
-migration behavior.**
+First deterministic execution row: **Expand the checkpointed active-outing identity into the
+durable bounded `scout_sortie` record and phases without creating a second authority.**
 
 Production target: `port/cdda-master`
 
@@ -419,7 +419,7 @@ Evidence:
 
 Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, existing active-group fields, `bandit_pursuit_handoff`, savegame member `bandit_live_world`.
 
-- [ ] Independently audit the existing serialized schema and migration behavior.
+- [x] Independently audit the existing serialized schema and migration behavior.
 - [ ] Define a durable `scout_sortie` with stable ID, generation, camp ID, selected member IDs, leader, shared route, waypoint, target/resource lead revision, observations, cargo, casualties, timestamps, and idempotency keys.
 - [ ] End a scout sortie only after every member is returned, confirmed dead, or declared missing after its fixed grace. A first-survivor report may update a provisional dossier, but no follow-on operation can reserve the slot until the sortie closes. Do not carry scout member reservations into a later response.
 - [ ] Define scout phases: assembling, outbound, searching, observing, harvesting, burned-withdrawal, returning-exposed, returning-report, returning-home, and lost. `returning-exposed` is the bounded fallback after coherent burn-origin evacuation when no concealed rally exists; it can only advance toward home and cannot re-enter observation.
@@ -452,10 +452,17 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 
 Evidence:
 
-- Commit:
-- Tests:
+- Commits: `673a900067` makes malformed return application and world deserialization atomic;
+  `4995a3c64e` adds schema-v2 typed outing identity, generation/key/watermark persistence,
+  legacy migration/repair, and routes runtime consumers off the old group-id scalar.
+- Tests: redirected Mac build exit `0`; 72 `[bandit][live_world]` cases/1,536 assertions,
+  6 `[bandit][handoff]` cases/99 assertions, the active shakedown patrol consumer (12 assertions),
+  and 2 overmap-global save compatibility cases/16 assertions pass. Binary SHA-256
+  `503542ceccc53dc9697a643303c0f2cddcf5b1cefb52cf62cebd6b999f8ab3f9`.
 - Serialized sizes:
-- Migration fixtures:
+- Migration fixtures: valid legacy active group -> generation-1 typed identity; duplicate legacy
+  reservation -> safely closed slot/member release; completed return -> save/load -> redispatch ->
+  stale replay is byte-for-byte no-op.
 
 ## Phase 2 - roster authority, paired dispatch, and reservations
 

@@ -87,10 +87,15 @@ ratified provisional budgets and caveats are recorded in the canonical ledger an
 manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 updates; that is an
 explicit Phase-3 repair target, not hidden or normalized away.
 
-Current execution row: independently audit the existing serialized `bandit_live_world` schema and
-migration behavior, then implement the smallest reviewable Phase-1 slice toward one authoritative
-persistent owner for each camp, outing, resource, and dossier. The repaired Mac Keychain/API path
-remains a Phase-10 release-harness gate. Retain the existing shell export and do not retry or pause
+The independent schema/authority audit is complete. Checkpoints `673a900067` and `4995a3c64e`
+make world deserialization and return application atomic, replace the persisted group-id scalar
+with one typed active-outing identity, migrate valid legacy groups, safely close inconsistent
+reservations, and reject stale generation/key replay after save/load.
+
+Current execution row: expand that identity envelope into the durable bounded `scout_sortie`
+record and phases without creating a second authority, then define the separate follow-on
+operation, resource, supply, and dossier owners. The repaired Mac Keychain/API path remains a
+Phase-10 release-harness gate. Retain the existing shell export and do not retry or pause
 deterministic work for `OSStatus -25308`.
 
 The prior five-family Windows free-play handoff remains useful held observation footing. It is not

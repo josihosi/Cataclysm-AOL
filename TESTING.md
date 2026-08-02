@@ -169,9 +169,21 @@ Phase-0 evidence (complete 2026-08-02):
   Phase-9/10 gates rather than reasons to extend Phase 0.
 
 Current Phase-1 evidence target:
-- map every serialized field and competing authority before editing the model;
-- prove missing/new-field and legacy migration behavior with focused round trips;
-- keep malformed packet application atomic and replay idempotent;
+- The independent audit mapped the single top-level save seam but found competing outing,
+  roster, intelligence, and resource authorities. It also found two concrete transactional bugs:
+  malformed returns mutated before survivor validation, and world deserialization cleared live
+  state before nested JSON succeeded.
+- `673a900067` fixes both atomicity defects. `4995a3c64e` adds world/site schema v2, one typed
+  persisted active-outing identity, monotonic per-camp generation and return watermark,
+  abstract/local owner plus handoff epoch, legacy active-group migration/normalization, and
+  generation/key replay rejection across save/load. The old `active_group_id` is read only as a
+  legacy field and is no longer serialized or consulted by runtime consumers.
+- Redirected Mac test build `macos-tests-build-phase1-identity-673a900067.log` exited `0`; binary
+  SHA-256 is `503542ce...`. Focused gates pass 72 live-world cases/1,536 assertions, 6 handoff
+  cases/99 assertions, 1 patrol/shakedown case/12 assertions, and 2 overmap-global save cases/16
+  assertions.
+- Still required: expand the identity into complete scout/operation/resource/dossier owners and
+  prove all of their phase round trips, pruning, and idempotency;
 - measure empty/normal/saturated bytes for each newly real bounded component.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:
@@ -274,9 +286,9 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 1:
-- independent current-schema/migration/authority audit;
-- the smallest one-authority persistent-state slice with focused legacy, missing-field,
-  round-trip, malformed-input, replay, and serialized-size proof.
+- complete typed scout, hostile-operation, resource, supply, dossier/report, phase, and bounded
+  transition state on top of the checkpointed atomic identity/generation seam;
+- empty/normal/saturated serialized-size proof plus all-active-phase round trips.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

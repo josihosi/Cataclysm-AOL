@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: independently audit the existing serialized
-  `bandit_live_world` schema, migration behavior, and competing authorities.
+- First unchecked deterministic execution row: expand the checkpointed active-outing identity
+  into the durable bounded `scout_sortie` record and phases without a mirror authority.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -96,25 +96,29 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   Provisional CPU/memory/size/save budgets are ratified in the canonical ledger. The known legacy
   500-site result starves 125/250 eligible camps after 250 updates; Phase 3 must reach zero starved
   and <=32 hourly waits.
+- Phase-1 audit/atomicity checkpoint `673a900067` fixes prevalidation-before-mutation for return
+  packets and transactionally parses the world save before replacing live state. Model checkpoint
+  `4995a3c64e` adds schema-v2 active-outing identity, per-camp generation and return watermark,
+  owner/epoch/last-advance/key persistence, legacy active-group migration/repair, and stale replay
+  rejection. Its redirected Mac build exits `0`; focused evidence passes 72 live-world cases,
+  6 handoff cases, the patrol/shakedown consumer, and both overmap-global save cases.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume the Phase-1 schema/migration/authority audit. Do not reopen Phase-0 statistics unless a
-   later real implementation measurement approaches or exceeds a ratified budget.
+3. Resume the durable `scout_sortie` model on top of `4995a3c64e`. Do not reopen Phase-0
+   statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the exact `fee1e44d38` source-built `cata_test` where valid; run one redirected build at a
+5. Reuse the current `4995a3c64e`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Implement the smallest authoritative Phase-1 state slice with legacy/missing-field,
-   round-trip, malformed-packet atomicity, replay, and serialized-size evidence.
+6. Complete scout/operation/resource/dossier owners with legacy/missing-field, all-phase
+   round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
-abandoned early log remains classified incomplete. The committed exact `dev` and baseline builds,
-focused tests, whole-save qualification, official matrix, independent validation, and summary are
-complete. Both comparison worktrees are clean apart from ignored regenerated runtime caches; the
-production candidate remains clean and untouched. Do not start another build until Phase-1 source
-changes invalidate the current test binary.
+Phase-1 identity build and focused tests completed with explicit exit `0`; the abandoned early log
+remains classified incomplete. The baseline and production candidate remain untouched. Do not
+start another build until the next Phase-1 source change invalidates the current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
 future Apple prompt may pause only the later release-harness action that requires it; ordinary
