@@ -21,6 +21,8 @@ using bandit_live_world::camp_lead_kind;
 using bandit_live_world::camp_lead_status;
 using bandit_live_world::camp_map_lead;
 using bandit_live_world::hostile_site_profile;
+using bandit_live_world::hostile_operation_kind;
+using bandit_live_world::hostile_operation_phase;
 using bandit_live_world::member_state;
 using bandit_live_world::owned_site_kind;
 using bandit_live_world::outing_kind;
@@ -29,6 +31,7 @@ using bandit_live_world::simulation_owner;
 
 constexpr std::size_t max_active_outing_members = 16;
 constexpr std::size_t max_active_outing_route_steps = 256;
+constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_sortie_fact_key_length = 128;
@@ -339,6 +342,51 @@ std::optional<camp_decision_state> camp_decision_state_from_string( const std::s
     }
     if( value == "abandoned" ) {
         return camp_decision_state::abandoned;
+    }
+    return std::nullopt;
+}
+
+std::optional<hostile_operation_kind> hostile_operation_kind_from_string(
+    const std::string &value )
+{
+    if( value == "shakedown" ) {
+        return hostile_operation_kind::shakedown;
+    }
+    if( value == "raid" ) {
+        return hostile_operation_kind::raid;
+    }
+    if( value == "none" ) {
+        return hostile_operation_kind::none;
+    }
+    return std::nullopt;
+}
+
+std::optional<hostile_operation_phase> hostile_operation_phase_from_string(
+    const std::string &value )
+{
+    if( value == "assembling" ) {
+        return hostile_operation_phase::assembling;
+    }
+    if( value == "outbound" ) {
+        return hostile_operation_phase::outbound;
+    }
+    if( value == "rallying" ) {
+        return hostile_operation_phase::rallying;
+    }
+    if( value == "waiting_night" ) {
+        return hostile_operation_phase::waiting_night;
+    }
+    if( value == "approaching" ) {
+        return hostile_operation_phase::approaching;
+    }
+    if( value == "committed_contact" ) {
+        return hostile_operation_phase::committed_contact;
+    }
+    if( value == "returning_home" ) {
+        return hostile_operation_phase::returning_home;
+    }
+    if( value == "lost" ) {
+        return hostile_operation_phase::lost;
     }
     return std::nullopt;
 }
@@ -823,6 +871,17 @@ int required_home_reserve( const bandit_live_world::site_record &site )
     return std::max( 3, ( living_roster * 35 + 99 ) / 100 );
 }
 
+bool hostile_operation_party_preserves_home( const bandit_live_world::site_record &site,
+        const std::size_t party_size )
+{
+    const int ready_at_home = static_cast<int>( std::count_if( site.members.begin(),
+                              site.members.end(), []( const bandit_live_world::member_record & member ) {
+        return member.state == member_state::at_home && !member.wounded_or_unready;
+    } ) );
+    const int remaining_ready = ready_at_home - static_cast<int>( party_size );
+    return remaining_ready >= required_home_reserve( site );
+}
+
 bool cannibal_job_requires_attack_pack( bandit_dry_run::job_template job )
 {
     switch( job ) {
@@ -977,12 +1036,71 @@ bool report_matches_camp_decision( const bandit_live_world::scout_report_record 
            decision.target_lead_revision == report.target_lead_revision;
 }
 
+bool hostile_operation_job_matches( const hostile_operation_kind operation_kind,
+                                    const std::string &job_type )
+{
+    switch( operation_kind ) {
+        case hostile_operation_kind::shakedown:
+            return job_type == "stalk" || job_type == "toll";
+        case hostile_operation_kind::raid:
+            return job_type == "raid";
+        case hostile_operation_kind::none:
+            return false;
+    }
+
+    return false;
+}
+
+hostile_operation_kind hostile_operation_kind_for_job( const std::string &job_type )
+{
+    return job_type == "raid" ? hostile_operation_kind::raid :
+           hostile_operation_kind::shakedown;
+}
+
+hostile_operation_kind hostile_operation_kind_for_profile( const hostile_site_profile profile )
+{
+    return profile == hostile_site_profile::cannibal_camp ? hostile_operation_kind::raid :
+           hostile_operation_kind::shakedown;
+}
+
+bool report_matches_hostile_operation( const bandit_live_world::scout_report_record &report,
+                                       const bandit_live_world::hostile_operation_state &operation )
+{
+    return report.is_present() && !report.provisional && report.source_job_type == "scout" &&
+           operation.source_report_revision == report.revision &&
+           operation.source_report_generation == report.source_generation &&
+           operation.source_report_activity_id == report.source_activity_id &&
+           operation.source_report_application_key == report.application_key &&
+           operation.reservation.target_id == report.target_id &&
+           operation.reservation.target_omt == report.target_omt &&
+           operation.reservation.target_lead_revision == report.target_lead_revision;
+}
+
+bool hostile_operation_phase_matches_reservation(
+    const bandit_live_world::hostile_operation_state &operation )
+{
+    switch( operation.phase ) {
+        case hostile_operation_phase::assembling:
+            return operation.reservation.phase == scout_phase::assembling;
+        case hostile_operation_phase::committed_contact:
+            return operation.reservation.phase == scout_phase::observing;
+        case hostile_operation_phase::returning_home:
+            return operation.reservation.phase == scout_phase::returning_home;
+        case hostile_operation_phase::lost:
+            return operation.reservation.phase == scout_phase::lost;
+        default:
+            return operation.reservation.phase == scout_phase::outbound;
+    }
+}
+
 bool camp_decision_allows_dispatch( const bandit_live_world::camp_decision_record &decision,
                                     const bandit_dry_run::job_template job )
 {
-    return decision.state == camp_decision_state::idle ||
-           ( decision.state == camp_decision_state::abandoned &&
-             job == bandit_dry_run::job_template::scout );
+    if( job == bandit_dry_run::job_template::scout ) {
+        return decision.state == camp_decision_state::idle ||
+               decision.state == camp_decision_state::abandoned;
+    }
+    return decision.state == camp_decision_state::preparing_follow_on;
 }
 } // namespace
 
@@ -1228,6 +1346,44 @@ std::string to_string( camp_decision_state state )
     return "abandoned";
 }
 
+std::string to_string( hostile_operation_kind kind )
+{
+    switch( kind ) {
+        case hostile_operation_kind::none:
+            return "none";
+        case hostile_operation_kind::shakedown:
+            return "shakedown";
+        case hostile_operation_kind::raid:
+            return "raid";
+    }
+
+    return "none";
+}
+
+std::string to_string( hostile_operation_phase phase )
+{
+    switch( phase ) {
+        case hostile_operation_phase::assembling:
+            return "assembling";
+        case hostile_operation_phase::outbound:
+            return "outbound";
+        case hostile_operation_phase::rallying:
+            return "rallying";
+        case hostile_operation_phase::waiting_night:
+            return "waiting_night";
+        case hostile_operation_phase::approaching:
+            return "approaching";
+        case hostile_operation_phase::committed_contact:
+            return "committed_contact";
+        case hostile_operation_phase::returning_home:
+            return "returning_home";
+        case hostile_operation_phase::lost:
+            return "lost";
+    }
+
+    return "lost";
+}
+
 bool is_valid_scout_phase_transition( const scout_phase previous_phase,
                                       const scout_phase next_phase )
 {
@@ -1311,6 +1467,139 @@ scout_phase_transition_result transition_active_scout_phase( site_record &site,
     site.active_outing.last_progress_minutes = current_minutes;
     site.active_outing.last_advanced_minutes = current_minutes;
     return scout_phase_transition_result::applied;
+}
+
+bool is_valid_hostile_operation_phase_transition(
+    const hostile_operation_phase previous_phase,
+    const hostile_operation_phase next_phase )
+{
+    if( previous_phase == next_phase ) {
+        return true;
+    }
+    if( next_phase == hostile_operation_phase::lost ) {
+        return previous_phase != hostile_operation_phase::lost;
+    }
+
+    switch( previous_phase ) {
+        case hostile_operation_phase::assembling:
+            return next_phase == hostile_operation_phase::outbound;
+        case hostile_operation_phase::outbound:
+            return next_phase == hostile_operation_phase::rallying ||
+                   next_phase == hostile_operation_phase::returning_home;
+        case hostile_operation_phase::rallying:
+            return next_phase == hostile_operation_phase::waiting_night ||
+                   next_phase == hostile_operation_phase::approaching ||
+                   next_phase == hostile_operation_phase::returning_home;
+        case hostile_operation_phase::waiting_night:
+            return next_phase == hostile_operation_phase::approaching ||
+                   next_phase == hostile_operation_phase::returning_home;
+        case hostile_operation_phase::approaching:
+            return next_phase == hostile_operation_phase::committed_contact ||
+                   next_phase == hostile_operation_phase::returning_home;
+        case hostile_operation_phase::committed_contact:
+            return next_phase == hostile_operation_phase::returning_home;
+        case hostile_operation_phase::returning_home:
+        case hostile_operation_phase::lost:
+            return false;
+    }
+
+    return false;
+}
+
+hostile_operation_transition_result transition_hostile_operation_phase(
+    site_record &site, const std::string &expected_activity_id,
+    const int expected_generation, const hostile_operation_phase expected_phase,
+    const hostile_operation_phase next_phase, const int current_minutes,
+    const std::string &reason )
+{
+    const hostile_operation_state &operation = site.active_hostile_operation;
+    const active_outing_state &reservation = operation.reservation;
+    if( !operation.is_active() || reservation.activity_id != expected_activity_id ||
+        reservation.generation != expected_generation || operation.phase != expected_phase ||
+        current_minutes < 0 || current_minutes < reservation.last_progress_minutes ||
+        current_minutes < reservation.last_advanced_minutes ||
+        !is_valid_hostile_operation_phase_transition( expected_phase, next_phase ) ||
+        ( expected_phase != next_phase && reason.empty() ) ||
+        ( operation.legacy_unpinned && expected_phase != next_phase &&
+          next_phase != hostile_operation_phase::lost ) ) {
+        return hostile_operation_transition_result::rejected;
+    }
+    if( expected_phase == next_phase ) {
+        return hostile_operation_transition_result::unchanged;
+    }
+
+    site_record candidate = site;
+    hostile_operation_state &next_operation = candidate.active_hostile_operation;
+    active_outing_state &next_reservation = next_operation.reservation;
+    if( expected_phase == hostile_operation_phase::assembling &&
+        next_phase == hostile_operation_phase::outbound ) {
+        if( !hostile_operation_party_preserves_home( candidate,
+                next_reservation.member_ids.size() ) ) {
+            return hostile_operation_transition_result::rejected;
+        }
+        for( const character_id &member_id : next_reservation.member_ids ) {
+            member_record *member = candidate.find_member( member_id );
+            if( member == nullptr || member->state != member_state::at_home ||
+                member->wounded_or_unready ) {
+                return hostile_operation_transition_result::rejected;
+            }
+        }
+        for( const character_id &member_id : next_reservation.member_ids ) {
+            member_record *member = candidate.find_member( member_id );
+            member->state = member_state::outbound;
+            member->last_writeback_summary = "hostile operation departed camp";
+        }
+    } else if( expected_phase == hostile_operation_phase::assembling &&
+               next_phase == hostile_operation_phase::lost ) {
+        next_reservation.resolved_member_ids = next_reservation.member_ids;
+    }
+    if( next_phase == hostile_operation_phase::committed_contact ) {
+        for( const character_id &member_id : next_reservation.member_ids ) {
+            member_record *member = candidate.find_member( member_id );
+            if( member != nullptr && member->state == member_state::outbound &&
+                !next_reservation.member_is_resolved( member_id ) ) {
+                member->state = member_state::local_contact;
+                member->last_writeback_summary = "hostile operation committed contact";
+            }
+        }
+        if( next_reservation.local_contact_minutes < 0 ) {
+            next_reservation.local_contact_minutes = current_minutes;
+        }
+    } else if( next_phase == hostile_operation_phase::returning_home ) {
+        for( const character_id &member_id : next_reservation.member_ids ) {
+            member_record *member = candidate.find_member( member_id );
+            if( member != nullptr && member->state == member_state::local_contact &&
+                !next_reservation.member_is_resolved( member_id ) ) {
+                member->state = member_state::outbound;
+                member->last_writeback_summary = "hostile operation withdrawing home";
+            }
+        }
+    }
+
+    next_operation.phase = next_phase;
+    switch( next_phase ) {
+        case hostile_operation_phase::assembling:
+            next_reservation.phase = scout_phase::assembling;
+            break;
+        case hostile_operation_phase::committed_contact:
+            next_reservation.phase = scout_phase::observing;
+            break;
+        case hostile_operation_phase::returning_home:
+            next_reservation.phase = scout_phase::returning_home;
+            break;
+        case hostile_operation_phase::lost:
+            next_reservation.phase = scout_phase::lost;
+            break;
+        default:
+            next_reservation.phase = scout_phase::outbound;
+            break;
+    }
+    next_reservation.last_progress_minutes = current_minutes;
+    next_reservation.last_advanced_minutes = current_minutes;
+    next_operation.last_transition_reason = reason.substr( 0,
+            max_camp_decision_reason_length );
+    site = std::move( candidate );
+    return hostile_operation_transition_result::applied;
 }
 
 bool is_valid_camp_decision_transition( const camp_decision_state previous_state,
@@ -1959,6 +2248,72 @@ void active_outing_state::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void hostile_operation_state::clear()
+{
+    *this = hostile_operation_state();
+}
+
+bool hostile_operation_state::is_active() const
+{
+    return operation_kind != hostile_operation_kind::none && reservation.is_active() &&
+           reservation.kind == outing_kind::hostile_operation;
+}
+
+void hostile_operation_state::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "schema_version", schema_version );
+    json.member( "operation_kind", to_string( operation_kind ) );
+    json.member( "phase", to_string( phase ) );
+    json.member( "reservation", reservation );
+    json.member( "source_report_revision", std::max( 0, source_report_revision ) );
+    json.member( "source_report_generation", std::max( 0, source_report_generation ) );
+    json.member( "source_report_activity_id", source_report_activity_id );
+    json.member( "source_report_application_key", source_report_application_key );
+    json.member( "has_rally", has_rally );
+    json.member( "rally_omt", rally_omt );
+    json.member( "last_transition_reason",
+                 last_transition_reason.substr( 0, max_camp_decision_reason_length ) );
+    json.member( "legacy_unpinned", legacy_unpinned );
+    json.end_object();
+}
+
+void hostile_operation_state::deserialize( const JsonObject &jo )
+{
+    hostile_operation_state candidate;
+    jo.read( "schema_version", candidate.schema_version );
+    std::string kind_string = "none";
+    jo.read( "operation_kind", kind_string );
+    candidate.operation_kind = hostile_operation_kind_from_string( kind_string ).value_or(
+                                   hostile_operation_kind::none );
+    const bool phase_was_present = jo.has_member( "phase" );
+    std::string phase_string = "assembling";
+    jo.read( "phase", phase_string );
+    candidate.phase = hostile_operation_phase_from_string( phase_string ).value_or(
+                          phase_was_present ? hostile_operation_phase::lost :
+                          hostile_operation_phase::assembling );
+    if( jo.has_member( "reservation" ) ) {
+        jo.read( "reservation", candidate.reservation );
+    }
+    jo.read( "source_report_revision", candidate.source_report_revision );
+    jo.read( "source_report_generation", candidate.source_report_generation );
+    jo.read( "source_report_activity_id", candidate.source_report_activity_id );
+    jo.read( "source_report_application_key", candidate.source_report_application_key );
+    jo.read( "has_rally", candidate.has_rally );
+    jo.read( "rally_omt", candidate.rally_omt );
+    jo.read( "last_transition_reason", candidate.last_transition_reason );
+    jo.read( "legacy_unpinned", candidate.legacy_unpinned );
+    candidate.schema_version = 1;
+    candidate.source_report_revision = std::max( 0, candidate.source_report_revision );
+    candidate.source_report_generation = std::max( 0, candidate.source_report_generation );
+    candidate.last_transition_reason.resize( std::min( candidate.last_transition_reason.size(),
+                                             max_camp_decision_reason_length ) );
+    if( candidate.reservation.is_active() ) {
+        candidate.reservation.kind = outing_kind::hostile_operation;
+    }
+    *this = std::move( candidate );
+}
+
 void site_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -1982,6 +2337,7 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "camp_decision", camp_decision );
     json.member( "returned_cargo_stock", returned_cargo_stock );
     json.member( "active_outing", active_outing );
+    json.member( "active_hostile_operation", active_hostile_operation );
     json.member( "remembered_target_or_mark", remembered_target_or_mark );
     json.member( "remembered_threat_estimate", remembered_threat_estimate );
     json.member( "remembered_bounty_estimate", remembered_bounty_estimate );
@@ -2011,7 +2367,7 @@ void site_record::serialize( JsonOut &json ) const
 
 void site_record::deserialize( const JsonObject &jo )
 {
-    schema_version = 4;
+    schema_version = 5;
     next_outing_generation = 1;
     applied_return_generation = 0;
     applied_report_generation = 0;
@@ -2021,6 +2377,7 @@ void site_record::deserialize( const JsonObject &jo )
     camp_decision.clear();
     returned_cargo_stock = sortie_cargo();
     active_outing.clear();
+    active_hostile_operation.clear();
     jo.read( "schema_version", schema_version );
     jo.read( "site_id", site_id );
     std::string source_kind_string = "none";
@@ -2061,6 +2418,11 @@ void site_record::deserialize( const JsonObject &jo )
         active_outing.deserialize( active_outing_json );
     } else {
         jo.read( "active_group_id", legacy_active_group_id );
+    }
+    const bool active_hostile_operation_was_present =
+        jo.has_member( "active_hostile_operation" );
+    if( active_hostile_operation_was_present ) {
+        jo.read( "active_hostile_operation", active_hostile_operation );
     }
     std::string legacy_active_target_id;
     tripoint_abs_omt legacy_active_target_omt;
@@ -2169,6 +2531,83 @@ void site_record::deserialize( const JsonObject &jo )
         }
         next_outing_generation = std::max( next_outing_generation, active_outing.generation + 1 );
     }
+    const bool new_hostile_payload_present = active_hostile_operation.is_active() ||
+            !active_hostile_operation.reservation.member_ids.empty();
+    if( active_outing.is_active() && active_outing.kind == outing_kind::hostile_operation &&
+        !new_hostile_payload_present ) {
+        active_hostile_operation.clear();
+        active_hostile_operation.operation_kind = hostile_operation_kind_for_job(
+                    active_outing.job_type );
+        active_hostile_operation.reservation = std::move( active_outing );
+        active_hostile_operation.reservation.kind = outing_kind::hostile_operation;
+        switch( active_hostile_operation.reservation.phase ) {
+            case scout_phase::observing:
+                active_hostile_operation.phase = hostile_operation_phase::committed_contact;
+                break;
+            case scout_phase::returning_home:
+                active_hostile_operation.phase = hostile_operation_phase::returning_home;
+                break;
+            case scout_phase::lost:
+                active_hostile_operation.phase = hostile_operation_phase::lost;
+                break;
+            default:
+                active_hostile_operation.phase = hostile_operation_phase::outbound;
+                break;
+        }
+        const bool exact_report_pin = report_matches_camp_decision( current_scout_report,
+                                      camp_decision ) &&
+                                      active_hostile_operation.reservation.target_id ==
+                                      current_scout_report.target_id &&
+                                      active_hostile_operation.reservation.target_omt ==
+                                      current_scout_report.target_omt &&
+                                      active_hostile_operation.reservation.target_lead_revision ==
+                                      current_scout_report.target_lead_revision;
+        if( exact_report_pin ) {
+            active_hostile_operation.source_report_revision = current_scout_report.revision;
+            active_hostile_operation.source_report_generation = current_scout_report.source_generation;
+            active_hostile_operation.source_report_activity_id = current_scout_report.source_activity_id;
+            active_hostile_operation.source_report_application_key = current_scout_report.application_key;
+        }
+        const active_outing_state &reservation = active_hostile_operation.reservation;
+        if( !reservation.shared_route.empty() ) {
+            const int rally_index = std::clamp( reservation.waypoint_index, 0,
+                                                static_cast<int>( reservation.shared_route.size() ) - 1 );
+            active_hostile_operation.has_rally = true;
+            active_hostile_operation.rally_omt = reservation.shared_route[rally_index];
+        }
+        active_hostile_operation.legacy_unpinned = true;
+        if( active_hostile_operation.legacy_unpinned &&
+            active_hostile_operation.phase != hostile_operation_phase::lost ) {
+            active_hostile_operation.phase = hostile_operation_phase::returning_home;
+            active_hostile_operation.reservation.phase = scout_phase::returning_home;
+            active_hostile_operation.last_transition_reason =
+                "legacy hostile operation retained for safe withdrawal";
+        } else {
+            active_hostile_operation.last_transition_reason =
+                "migrated legacy hostile outing owner";
+        }
+        active_outing.clear();
+    }
+    if( active_hostile_operation.reservation.is_active() ) {
+        active_hostile_operation.schema_version = 1;
+        active_hostile_operation.reservation.schema_version = 3;
+        active_hostile_operation.reservation.kind = outing_kind::hostile_operation;
+        if( active_hostile_operation.reservation.camp_id.empty() ) {
+            active_hostile_operation.reservation.camp_id = site_id;
+        }
+        if( active_hostile_operation.reservation.return_application_key.empty() ) {
+            active_hostile_operation.reservation.return_application_key =
+                active_hostile_operation.reservation.activity_id + ":return:" +
+                std::to_string( active_hostile_operation.reservation.generation );
+        }
+        if( active_hostile_operation.reservation.cargo_application_key.empty() ) {
+            active_hostile_operation.reservation.cargo_application_key =
+                active_hostile_operation.reservation.activity_id + ":cargo:" +
+                std::to_string( active_hostile_operation.reservation.generation );
+        }
+        next_outing_generation = std::max( next_outing_generation,
+                                           active_hostile_operation.reservation.generation + 1 );
+    }
     applied_return_generation = std::max( 0, applied_return_generation );
     if( !current_scout_report.provisional ) {
         applied_report_generation = std::max( applied_report_generation,
@@ -2179,6 +2618,34 @@ void site_record::deserialize( const JsonObject &jo )
     next_outing_generation = std::max( next_outing_generation, applied_return_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_report_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_cargo_generation + 1 );
+
+    const bool both_external_owners_present =
+        ( active_outing.is_active() || !active_outing.member_ids.empty() ) &&
+        ( active_hostile_operation.is_active() ||
+          !active_hostile_operation.reservation.member_ids.empty() );
+    if( both_external_owners_present ) {
+        active_outing_state &duplicate = active_outing.kind == outing_kind::hostile_operation ?
+                                         active_outing : active_hostile_operation.reservation;
+        const active_outing_state &retained = active_outing.kind == outing_kind::hostile_operation ?
+                                              active_hostile_operation.reservation : active_outing;
+        for( const character_id &member_id : duplicate.member_ids ) {
+            if( std::find( retained.member_ids.begin(), retained.member_ids.end(), member_id ) !=
+                retained.member_ids.end() ) {
+                continue;
+            }
+            member_record *member = find_member( member_id );
+            if( member != nullptr && ( member->state == member_state::outbound ||
+                                      member->state == member_state::local_contact ) ) {
+                member->state = member_state::at_home;
+                member->last_writeback_summary = "closed duplicate persisted external owner";
+            }
+        }
+        if( active_outing.kind == outing_kind::hostile_operation ) {
+            active_outing.clear();
+        } else {
+            active_hostile_operation.clear();
+        }
+    }
 
     const bool scout_job_is_consistent = active_outing.kind != outing_kind::scout_sortie ||
                                          active_outing.job_type == "scout" ||
@@ -2224,6 +2691,107 @@ void site_record::deserialize( const JsonObject &jo )
             }
         }
         active_outing.clear();
+    }
+    active_outing_state &hostile_reservation = active_hostile_operation.reservation;
+    const bool legacy_withdrawal_only = active_hostile_operation.legacy_unpinned &&
+                                        ( active_hostile_operation.phase ==
+                                          hostile_operation_phase::returning_home ||
+                                          active_hostile_operation.phase == hostile_operation_phase::lost );
+    const bool rally_is_on_route = active_hostile_operation.has_rally &&
+                                   std::find( hostile_reservation.shared_route.begin(),
+                                           hostile_reservation.shared_route.end(),
+                                           active_hostile_operation.rally_omt ) !=
+                                   hostile_reservation.shared_route.end();
+    const bool hostile_job_is_consistent = hostile_operation_job_matches(
+                active_hostile_operation.operation_kind, hostile_reservation.job_type ) ||
+            legacy_withdrawal_only;
+    const bool hostile_report_is_consistent = legacy_withdrawal_only ||
+            ( camp_decision.state == camp_decision_state::preparing_follow_on &&
+              report_matches_camp_decision( current_scout_report, camp_decision ) &&
+              report_matches_hostile_operation( current_scout_report,
+                                                active_hostile_operation ) );
+    const bool hostile_route_is_consistent = legacy_withdrawal_only ||
+            ( hostile_reservation.shared_route.size() >= 2 &&
+              hostile_reservation.shared_route.front() == anchor &&
+              hostile_reservation.shared_route.back() == hostile_reservation.target_omt &&
+              rally_is_on_route );
+    const std::string expected_hostile_activity_id = site_id + "#hostile:" +
+            std::to_string( hostile_reservation.generation );
+    const bool hostile_identity_is_consistent = legacy_withdrawal_only ||
+            ( hostile_reservation.activity_id == expected_hostile_activity_id &&
+              hostile_reservation.generation >
+              active_hostile_operation.source_report_generation &&
+              hostile_reservation.return_application_key == expected_hostile_activity_id +
+              ":return:" + std::to_string( hostile_reservation.generation ) &&
+              hostile_reservation.report_application_key == expected_hostile_activity_id +
+              ":report:" + std::to_string( hostile_reservation.generation ) &&
+              hostile_reservation.cargo_application_key == expected_hostile_activity_id +
+              ":cargo:" + std::to_string( hostile_reservation.generation ) );
+    const bool hostile_reserve_is_consistent = legacy_withdrawal_only ||
+            active_hostile_operation.phase != hostile_operation_phase::assembling ||
+            hostile_operation_party_preserves_home( *this,
+                    hostile_reservation.member_ids.size() );
+    bool hostile_operation_is_consistent = active_hostile_operation.is_active() &&
+            hostile_reservation.camp_id == site_id &&
+            hostile_reservation.generation > applied_return_generation &&
+            hostile_reservation.generation > applied_cargo_generation &&
+            !hostile_reservation.member_ids.empty() &&
+            ( legacy_withdrawal_only ?
+              hostile_reservation.member_ids.size() <= max_active_outing_members :
+              hostile_reservation.member_ids.size() >= 2 &&
+              hostile_reservation.member_ids.size() <= max_hostile_operation_members ) &&
+            hostile_reservation.shared_route.size() <= max_active_outing_route_steps &&
+            hostile_route_is_consistent && hostile_job_is_consistent &&
+            hostile_report_is_consistent && hostile_identity_is_consistent &&
+            hostile_reserve_is_consistent &&
+            hostile_operation_phase_matches_reservation( active_hostile_operation );
+    std::vector<character_id> checked_hostile_member_ids;
+    checked_hostile_member_ids.reserve( hostile_reservation.member_ids.size() );
+    for( const character_id &member_id : hostile_reservation.member_ids ) {
+        const member_record *member = find_member( member_id );
+        const bool recorded_casualty = std::find( hostile_reservation.casualty_ids.begin(),
+                                       hostile_reservation.casualty_ids.end(), member_id ) !=
+                                       hostile_reservation.casualty_ids.end();
+        const bool resolved_member = hostile_reservation.member_is_resolved( member_id );
+        bool member_state_matches_reservation = member != nullptr;
+        if( member_state_matches_reservation && recorded_casualty ) {
+            member_state_matches_reservation = resolved_member &&
+                                               ( member->state == member_state::dead ||
+                                                 member->state == member_state::missing );
+        } else if( member_state_matches_reservation && resolved_member ) {
+            member_state_matches_reservation = member->state == member_state::at_home;
+        } else if( member_state_matches_reservation &&
+                   active_hostile_operation.phase == hostile_operation_phase::assembling ) {
+            member_state_matches_reservation = member->state == member_state::at_home;
+        } else if( member_state_matches_reservation &&
+                   active_hostile_operation.phase == hostile_operation_phase::committed_contact ) {
+            member_state_matches_reservation = member->state == member_state::local_contact ||
+                                               member->state == member_state::outbound;
+        } else if( member_state_matches_reservation ) {
+            member_state_matches_reservation = member->state == member_state::outbound ||
+                                               member->state == member_state::local_contact;
+        }
+        if( !member_state_matches_reservation ||
+            std::find( checked_hostile_member_ids.begin(), checked_hostile_member_ids.end(),
+                       member_id ) != checked_hostile_member_ids.end() ) {
+            hostile_operation_is_consistent = false;
+            break;
+        }
+        checked_hostile_member_ids.push_back( member_id );
+    }
+    if( !hostile_operation_is_consistent &&
+        ( active_hostile_operation.is_active() ||
+          !hostile_reservation.member_ids.empty() ) ) {
+        for( const character_id &member_id : hostile_reservation.member_ids ) {
+            member_record *member = find_member( member_id );
+            if( member != nullptr && ( member->state == member_state::outbound ||
+                                      member->state == member_state::local_contact ) ) {
+                member->state = member_state::at_home;
+                member->last_writeback_summary =
+                    "closed inconsistent persisted hostile operation";
+            }
+        }
+        active_hostile_operation.clear();
     }
     if( current_scout_report.provisional ) {
         const int returned_member_count = static_cast<int>( std::count_if(
@@ -2278,7 +2846,7 @@ void site_record::deserialize( const JsonObject &jo )
         camp_decision.next_eligible_minutes = -1;
         camp_decision.transition_reason = "repaired inconsistent persisted camp decision";
     }
-    schema_version = 4;
+    schema_version = 5;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -2337,13 +2905,17 @@ int site_record::count_live_members() const
 
 int site_record::active_outing_survivor_count() const
 {
-    return static_cast<int>( std::count_if( active_outing.member_ids.begin(),
-    active_outing.member_ids.end(), [this]( const character_id & member_id ) {
-        if( active_outing.member_is_resolved( member_id ) ) {
+    const active_outing_state *outing = active_external_outing();
+    if( outing == nullptr ) {
+        return 0;
+    }
+    return static_cast<int>( std::count_if( outing->member_ids.begin(),
+    outing->member_ids.end(), [this, outing]( const character_id & member_id ) {
+        if( outing->member_is_resolved( member_id ) ) {
             return false;
         }
-        if( std::find( active_outing.casualty_ids.begin(), active_outing.casualty_ids.end(), member_id ) !=
-            active_outing.casualty_ids.end() ) {
+        if( std::find( outing->casualty_ids.begin(), outing->casualty_ids.end(), member_id ) !=
+            outing->casualty_ids.end() ) {
             return false;
         }
         const member_record *member = find_member( member_id );
@@ -2368,8 +2940,13 @@ int site_record::dispatchable_member_capacity() const
         return 0;
     }
     const int ready_at_home_members = static_cast<int>( std::count_if( members.begin(), members.end(),
-    []( const member_record & member ) {
-        return member.state == member_state::at_home && !member.wounded_or_unready;
+    [this]( const member_record & member ) {
+        const bool reserved_for_hostile_operation = active_hostile_operation.is_active() &&
+                std::find( active_hostile_operation.reservation.member_ids.begin(),
+                           active_hostile_operation.reservation.member_ids.end(), member.npc_id ) !=
+                active_hostile_operation.reservation.member_ids.end();
+        return member.state == member_state::at_home && !member.wounded_or_unready &&
+               !reserved_for_hostile_operation;
     } ) );
     return std::max( 0, ready_at_home_members - required_home_reserve( *this ) );
 }
@@ -2377,8 +2954,34 @@ int site_record::dispatchable_member_capacity() const
 bool site_record::has_active_outside_pressure() const
 {
     return active_outing.is_active() || !active_outing.member_ids.empty() ||
+           active_hostile_operation.is_active() ||
+           !active_hostile_operation.reservation.member_ids.empty() ||
            count_members_in_state( member_state::outbound ) > 0 ||
            count_members_in_state( member_state::local_contact ) > 0;
+}
+
+active_outing_state *site_record::active_external_outing()
+{
+    if( active_outing.is_active() || !active_outing.member_ids.empty() ) {
+        return &active_outing;
+    }
+    if( active_hostile_operation.is_active() ||
+        !active_hostile_operation.reservation.member_ids.empty() ) {
+        return &active_hostile_operation.reservation;
+    }
+    return nullptr;
+}
+
+const active_outing_state *site_record::active_external_outing() const
+{
+    if( active_outing.is_active() || !active_outing.member_ids.empty() ) {
+        return &active_outing;
+    }
+    if( active_hostile_operation.is_active() ||
+        !active_hostile_operation.reservation.member_ids.empty() ) {
+        return &active_hostile_operation.reservation;
+    }
+    return nullptr;
 }
 
 bool site_record::eligible_for_empty_site_retirement() const
@@ -3900,13 +4503,176 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     return plan;
 }
 
+hostile_operation_plan plan_hostile_operation( const site_record &site,
+        const hostile_operation_kind operation_kind,
+        const std::vector<character_id> &member_ids,
+        const std::vector<tripoint_abs_omt> &route,
+        const tripoint_abs_omt &rally_omt, const int current_minutes )
+{
+    hostile_operation_plan plan;
+    const hostile_operation_kind expected_kind = hostile_operation_kind_for_profile(
+                effective_profile( site ) );
+    if( site.retired_empty_site || site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
+        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ||
+        operation_kind != expected_kind || current_minutes < 0 ||
+        current_minutes < site.camp_decision.last_transition_minutes ) {
+        plan.notes.push_back( "hostile operation blocked: camp decision/report/profile is not ready" );
+        return plan;
+    }
+    if( member_ids.size() < 2 || member_ids.size() > max_hostile_operation_members ||
+        !hostile_operation_party_preserves_home( site, member_ids.size() ) ) {
+        plan.notes.push_back( "hostile operation blocked: fresh party violates size or home reserve" );
+        return plan;
+    }
+    if( route.size() < 2 || route.size() > max_active_outing_route_steps ||
+        route.front() != site.anchor || route.back() != site.camp_decision.target_omt ||
+        std::find( route.begin(), route.end(), rally_omt ) == route.end() ) {
+        plan.notes.push_back( "hostile operation blocked: route/rally does not connect camp to report target" );
+        return plan;
+    }
+
+    std::vector<character_id> checked_member_ids;
+    checked_member_ids.reserve( member_ids.size() );
+    for( const character_id &member_id : member_ids ) {
+        const member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state != member_state::at_home ||
+            member->wounded_or_unready ||
+            std::find( checked_member_ids.begin(), checked_member_ids.end(), member_id ) !=
+            checked_member_ids.end() ) {
+            plan.notes.push_back( "hostile operation blocked: party is not a fresh unique home reservation" );
+            return plan;
+        }
+        checked_member_ids.push_back( member_id );
+    }
+
+    hostile_operation_state &operation = plan.operation;
+    active_outing_state &reservation = operation.reservation;
+    operation.operation_kind = operation_kind;
+    operation.phase = hostile_operation_phase::assembling;
+    operation.source_report_revision = site.current_scout_report.revision;
+    operation.source_report_generation = site.current_scout_report.source_generation;
+    operation.source_report_activity_id = site.current_scout_report.source_activity_id;
+    operation.source_report_application_key = site.current_scout_report.application_key;
+    operation.has_rally = true;
+    operation.rally_omt = rally_omt;
+    operation.last_transition_reason = "fresh hostile operation reserved from final scout report";
+    reservation.kind = outing_kind::hostile_operation;
+    reservation.activity_id = site.site_id + "#hostile:" +
+                              std::to_string( site.next_outing_generation );
+    reservation.camp_id = site.site_id;
+    reservation.generation = site.next_outing_generation;
+    reservation.member_ids = checked_member_ids;
+    reservation.leader_id = checked_member_ids.front();
+    reservation.shared_route = route;
+    reservation.waypoint_index = 0;
+    reservation.target_id = site.camp_decision.target_id;
+    reservation.target_omt = site.camp_decision.target_omt;
+    reservation.job_type = operation_kind == hostile_operation_kind::raid ? "raid" : "toll";
+    reservation.target_lead_revision = site.camp_decision.target_lead_revision;
+    reservation.phase = scout_phase::assembling;
+    reservation.started_minutes = current_minutes;
+    reservation.last_progress_minutes = current_minutes;
+    reservation.last_advanced_minutes = current_minutes;
+    reservation.owner = simulation_owner::abstract;
+    reservation.return_application_key = reservation.activity_id + ":return:" +
+                                         std::to_string( reservation.generation );
+    reservation.report_application_key = reservation.activity_id + ":report:" +
+                                         std::to_string( reservation.generation );
+    reservation.cargo_application_key = reservation.activity_id + ":cargo:" +
+                                        std::to_string( reservation.generation );
+    plan.valid = true;
+    plan.notes.push_back( "hostile operation ready: fresh report-pinned party at rally " +
+                          rally_omt.to_string() );
+    return plan;
+}
+
+bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan )
+{
+    const hostile_operation_state &operation = plan.operation;
+    const active_outing_state &reservation = operation.reservation;
+    const hostile_operation_kind expected_kind = hostile_operation_kind_for_profile(
+                effective_profile( site ) );
+    const std::string expected_activity_id = site.site_id + "#hostile:" +
+            std::to_string( site.next_outing_generation );
+    const bool rally_is_on_route = operation.has_rally &&
+                                   std::find( reservation.shared_route.begin(),
+                                           reservation.shared_route.end(),
+                                           operation.rally_omt ) != reservation.shared_route.end();
+    if( !plan.valid || site.retired_empty_site || site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
+        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ||
+        !report_matches_hostile_operation( site.current_scout_report, operation ) ||
+        operation.operation_kind != expected_kind || operation.legacy_unpinned ||
+        operation.phase != hostile_operation_phase::assembling ||
+        reservation.kind != outing_kind::hostile_operation ||
+        reservation.phase != scout_phase::assembling || reservation.camp_id != site.site_id ||
+        reservation.activity_id != expected_activity_id ||
+        reservation.generation != site.next_outing_generation ||
+        reservation.member_ids.size() < 2 ||
+        reservation.member_ids.size() > max_hostile_operation_members ||
+        !hostile_operation_party_preserves_home( site, reservation.member_ids.size() ) ||
+        reservation.shared_route.size() < 2 ||
+        reservation.shared_route.size() > max_active_outing_route_steps ||
+        reservation.shared_route.front() != site.anchor ||
+        reservation.shared_route.back() != site.camp_decision.target_omt ||
+        !rally_is_on_route || reservation.target_id != site.camp_decision.target_id ||
+        reservation.target_omt != site.camp_decision.target_omt ||
+        reservation.target_lead_revision != site.camp_decision.target_lead_revision ||
+        !hostile_operation_job_matches( operation.operation_kind, reservation.job_type ) ||
+        reservation.started_minutes < site.camp_decision.last_transition_minutes ||
+        reservation.started_minutes != reservation.last_progress_minutes ||
+        reservation.started_minutes != reservation.last_advanced_minutes ||
+        reservation.owner != simulation_owner::abstract || reservation.handoff_epoch != 0 ||
+        reservation.return_application_key != reservation.activity_id + ":return:" +
+        std::to_string( reservation.generation ) ||
+        reservation.report_application_key != reservation.activity_id + ":report:" +
+        std::to_string( reservation.generation ) ||
+        reservation.cargo_application_key != reservation.activity_id + ":cargo:" +
+        std::to_string( reservation.generation ) ||
+        !reservation.observations.empty() || !reservation.casualty_ids.empty() ||
+        !reservation.resolved_member_ids.empty() || reservation.cargo.supply_units != 0 ||
+        reservation.cargo.trade_value != 0 ) {
+        return false;
+    }
+
+    std::vector<character_id> checked_member_ids;
+    checked_member_ids.reserve( reservation.member_ids.size() );
+    for( const character_id &member_id : reservation.member_ids ) {
+        const member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state != member_state::at_home ||
+            member->wounded_or_unready ||
+            std::find( checked_member_ids.begin(), checked_member_ids.end(), member_id ) !=
+            checked_member_ids.end() ) {
+            return false;
+        }
+        checked_member_ids.push_back( member_id );
+    }
+
+    site_record candidate = site;
+    candidate.active_hostile_operation = operation;
+    candidate.next_outing_generation++;
+    const camp_map_lead *lead = find_camp_map_dispatch_lead_for_target(
+                                    candidate, reservation.target_omt,
+                                    reservation.target_id );
+    if( lead != nullptr ) {
+        candidate.remembered_target_or_mark = reservation.target_id;
+        candidate.remembered_threat_estimate = std::max( 0, lead->threat );
+        candidate.remembered_bounty_estimate = std::max( 0, lead->bounty );
+        push_unique_mark( candidate.known_recent_marks, reservation.target_id );
+    }
+    site = std::move( candidate );
+    return true;
+}
+
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::live_dispatch_apply );
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::live_dispatch_applies );
-    if( !plan.valid || plan.site_id != site.site_id || plan.member_ids.empty() ||
+    if( !plan.valid || plan.entry.job_type != bandit_dry_run::job_template::scout ||
+        plan.site_id != site.site_id || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
         !camp_decision_allows_dispatch( site.camp_decision, plan.entry.job_type ) ||
         site.has_active_outside_pressure() || plan.group.activity_generation != site.next_outing_generation ||
@@ -3937,8 +4703,7 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
         }
     }
     site.active_outing.clear();
-    site.active_outing.kind = plan.entry.job_type == bandit_dry_run::job_template::scout ?
-                              outing_kind::scout_sortie : outing_kind::hostile_operation;
+    site.active_outing.kind = outing_kind::scout_sortie;
     site.active_outing.activity_id = plan.entry.group_id;
     site.active_outing.camp_id = site.site_id;
     site.active_outing.generation = plan.entry.activity_generation;
@@ -3973,23 +4738,24 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
 {
     local_gate_decision decision;
     const hostile_site_profile profile = effective_profile( site );
+    const active_outing_state *outing = site.active_external_outing();
     decision.dispatch_strength = site.active_outing_survivor_count();
     decision.pressure_margin = decision.dispatch_strength + input.local_opportunity - input.local_threat;
 
-    if( !site.active_outing.is_active() || site.active_outing.member_ids.empty() ) {
+    if( outing == nullptr || !outing->is_active() || outing->member_ids.empty() ) {
         decision.notes.push_back( "local gate blocked: no active owned outing is present" );
         return decision;
     }
 
     decision.valid = true;
-    decision.notes.push_back( "active owned outing " + site.active_outing.activity_id + " toward " +
-                              site.active_outing.target_id );
+    decision.notes.push_back( "active owned outing " + outing->activity_id + " toward " +
+                              outing->target_id );
     decision.notes.push_back( "inputs: strength " + std::to_string( decision.dispatch_strength ) +
                               ", threat " + std::to_string( input.local_threat ) +
                               ", opportunity " + std::to_string( input.local_opportunity ) +
                               ", margin " + std::to_string( decision.pressure_margin ) );
     const std::optional<bandit_dry_run::job_template> active_job =
-        job_template_from_string( site.active_outing.job_type );
+        job_template_from_string( outing->job_type );
     const bool cannibal_attack_intent = profile == hostile_site_profile::cannibal_camp &&
                                         active_job.has_value() &&
                                         cannibal_job_requires_attack_pack( *active_job );
@@ -4172,11 +4938,12 @@ bool hot_defended_doorstep_blocks_pickup( const site_record &site,
         const local_gate_input &input, const local_gate_decision &decision,
         const character_id &member_id )
 {
-    if( !site.active_outing.is_active() || site.active_outing.member_ids.empty() ) {
+    const active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr || !outing->is_active() || outing->member_ids.empty() ) {
         return false;
     }
-    if( std::find( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end(), member_id ) ==
-        site.active_outing.member_ids.end() ) {
+    if( std::find( outing->member_ids.begin(), outing->member_ids.end(), member_id ) ==
+        outing->member_ids.end() ) {
         return false;
     }
     if( !input.basecamp_or_camp_scene || input.rolling_travel_scene ) {
@@ -4197,13 +4964,18 @@ bool hot_defended_doorstep_blocks_pickup( const site_record &site,
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision )
 {
+    const active_outing_state *outing = site.active_external_outing();
+    const active_outing_state empty_outing;
+    if( outing == nullptr ) {
+        outing = &empty_outing;
+    }
     std::ostringstream out;
     out << "local_gate site=" << site.site_id
-        << " active_group=" << site.active_outing.activity_id
-        << " target=" << site.active_outing.target_id
-        << " live_dispatch_goal=" << site.active_outing.target_omt.x() << ',' << site.active_outing.target_omt.y() << ','
-        << site.active_outing.target_omt.z()
-        << " active_job=" << ( site.active_outing.job_type.empty() ? "unknown" : site.active_outing.job_type )
+        << " active_group=" << outing->activity_id
+        << " target=" << outing->target_id
+        << " live_dispatch_goal=" << outing->target_omt.x() << ',' << outing->target_omt.y() << ','
+        << outing->target_omt.z()
+        << " active_job=" << ( outing->job_type.empty() ? "unknown" : outing->job_type )
         << " profile=" << to_string( effective_profile( site ) )
         << " posture=" << to_string( decision.posture )
         << " strength=" << decision.dispatch_strength

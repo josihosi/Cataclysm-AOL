@@ -136,6 +136,29 @@ enum class camp_decision_transition_result {
     applied,
 };
 
+enum class hostile_operation_kind {
+    none,
+    shakedown,
+    raid,
+};
+
+enum class hostile_operation_phase {
+    assembling,
+    outbound,
+    rallying,
+    waiting_night,
+    approaching,
+    committed_contact,
+    returning_home,
+    lost,
+};
+
+enum class hostile_operation_transition_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -308,6 +331,32 @@ struct active_outing_state {
     void deserialize( const JsonObject &jo );
 };
 
+struct hostile_operation_state {
+    int schema_version = 1;
+    hostile_operation_kind operation_kind = hostile_operation_kind::none;
+    hostile_operation_phase phase = hostile_operation_phase::assembling;
+    active_outing_state reservation;
+    int source_report_revision = 0;
+    int source_report_generation = 0;
+    std::string source_report_activity_id;
+    std::string source_report_application_key;
+    bool has_rally = false;
+    tripoint_abs_omt rally_omt;
+    std::string last_transition_reason;
+    bool legacy_unpinned = false;
+
+    void clear();
+    bool is_active() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct hostile_operation_plan {
+    bool valid = false;
+    hostile_operation_state operation;
+    std::vector<std::string> notes;
+};
+
 struct scout_resolution_effect {
     bool valid = false;
     bool changed = false;
@@ -319,7 +368,7 @@ struct scout_resolution_effect {
 };
 
 struct site_record {
-    int schema_version = 4;
+    int schema_version = 5;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -339,6 +388,7 @@ struct site_record {
     camp_decision_record camp_decision;
     sortie_cargo returned_cargo_stock;
     active_outing_state active_outing;
+    hostile_operation_state active_hostile_operation;
     std::string remembered_target_or_mark;
     int remembered_threat_estimate = 0;
     int remembered_bounty_estimate = 0;
@@ -379,6 +429,8 @@ struct site_record {
     int dispatchable_member_capacity() const;
     bool has_active_outside_pressure() const;
     bool eligible_for_empty_site_retirement() const;
+    active_outing_state *active_external_outing();
+    const active_outing_state *active_external_outing() const;
 };
 
 struct world_state {
@@ -691,6 +743,17 @@ camp_decision_transition_result transition_camp_decision_state( site_record &sit
         camp_decision_state expected_state, camp_decision_state next_state,
         int expected_report_revision, int expected_report_generation, int current_minutes,
         int next_eligible_minutes, const std::string &reason );
+bool is_valid_hostile_operation_phase_transition( hostile_operation_phase previous_phase,
+        hostile_operation_phase next_phase );
+hostile_operation_transition_result transition_hostile_operation_phase( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        hostile_operation_phase expected_phase, hostile_operation_phase next_phase,
+        int current_minutes, const std::string &reason );
+hostile_operation_plan plan_hostile_operation( const site_record &site,
+        hostile_operation_kind operation_kind, const std::vector<character_id> &member_ids,
+        const std::vector<tripoint_abs_omt> &route, const tripoint_abs_omt &rally_omt,
+        int current_minutes );
+bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
                                       int sortie_limit_minutes );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
@@ -728,6 +791,8 @@ std::string to_string( outing_kind kind );
 std::string to_string( simulation_owner owner );
 std::string to_string( scout_phase phase );
 std::string to_string( camp_decision_state state );
+std::string to_string( hostile_operation_kind kind );
+std::string to_string( hostile_operation_phase phase );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,
