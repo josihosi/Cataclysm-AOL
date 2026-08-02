@@ -225,7 +225,20 @@ Current Phase-1 evidence target:
   `cae011df1eea90a9a28c4375699cc325fea60365b03ee2bfe7bc014cad4a8a20`.
   The exact phase case passes 1/144; `[bandit][live_world]` passes 81/2,230. The adjacent handoff
   gate remains 8/145 and overmap save compatibility remains 2/16.
-- Still required: camp-decision, hostile-operation, resource, supply, dossier, pruning, and
+- `687d7bcecb` adds the five-state camp decision owner and pins final scout report revision,
+  generation, identity, target, transition time, eligibility, and bounded reason. Provisional and
+  scavenge reports remain inert; all-loss stays idle; stale dispatch plans cannot overlap pending
+  assessment; cooldown-to-idle preserves the watermark; unknown/malformed saves fail closed.
+- The first broad attempt compiled successfully but its final link selected unavailable
+  `-lncursesw` (`build_logs/macos-phase1-camp-decision-tests.log`, exit `2`). The established Mac
+  `CXXFLAGS=-D_DARWIN_C_SOURCE LDFLAGS=-lncurses` envelope then linked with exit `0`; final source
+  and fixture builds are `build_logs/macos-phase1-camp-decision-dispatch-guard.log` and
+  `build_logs/macos-phase1-camp-decision-replay-fixture.log`, both exit `0`.
+- Exact camp-decision coverage passes 1/74; `[bandit][live_world]` passes 82/2,318;
+  `[bandit][handoff]` passes 8/148; save compatibility passes 2/16. The 79,533,976-byte binary is
+  SHA-256 `7bbd3f0a24a5cdc0f012bdf27b6dd9660d25bc3ae560fa06c3f79e501645c38c`.
+  Empty/normal/saturated JSON is 87/4,558/28,534 bytes and saturated round-trip is byte-stable.
+- Still required: hostile-operation, resource, supply, dossier, pruning, and
   component-idempotency owners. Detailed burn perception/egress remains Phase 5 behavior work.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:

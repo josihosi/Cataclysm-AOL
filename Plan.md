@@ -88,7 +88,7 @@ manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 upda
 explicit Phase-3 repair target, not hidden or normalized away.
 
 The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`,
-`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, and `7acc011951`. The typed active outing is the only runtime owner of a
+`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, `7acc011951`, and `687d7bcecb`. The typed active outing is the only runtime owner of a
 bounded scout's members, leader, route, target revision, observations, cargo, casualties, phases,
 clocks, simulation owner, and independent return/report/cargo receipts. It migrates legacy scalar
 saves, releases malformed reservations, preserves split casualties, and rejects contradictory,
@@ -101,12 +101,16 @@ One expected-phase transition authority now makes burn/return phases irreversibl
 unknown future saved phase to safe `lost`, and prevents homeward scouts from re-entering the target
 gate. Missing legacy phase data still migrates as `assembling`; legacy scavenge keeps its non-report
 return owner.
-Empty/normal/cap-saturated JSON is 87/4,190/28,166 bytes; the saturated state is byte-stable after
+Final physical scout reports now open a separate persisted assessment owner. Provisional reports
+and all-loss returns cannot do so; cooldown/idle retain the acted-report watermark, and only a
+newer report can revive abandoned pressure. Existing routine dispatch is blocked while assessment,
+preparation, or cooldown is active.
+Empty/normal/cap-saturated JSON is 87/4,558/28,534 bytes; the saturated state is byte-stable after
 reload and remains below 64 KiB.
 
-Current execution row: define the separate bounded camp decision owner with idle,
-report-awaiting-assessment, preparing-follow-on, and cooldown/abandoned states. Then define the
-fresh follow-on operation owner before resource, supply, and dossier completion. Post-close
+Current execution row: define the fresh `hostile_operation` owner with a new identity/generation,
+fresh member reservation, pinned report revision, route/rally state, and one-way phases. Then
+complete shared owner/handoff, resource, supply, and dossier state. Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac
 Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work
