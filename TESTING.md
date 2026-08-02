@@ -88,6 +88,30 @@ Current Phase-0 evidence (2026-08-02):
   reconciles both to 14 members, and JSON round-trip remains duplicate-free. The test passed under
   a deliberately different CLI seed; the full `[bandit][live_world]` tag passed 68 cases/1,459
   assertions. Final autoreview reported no accepted/actionable findings.
+- Behavior-neutral benchmark checkpoint `22ca8759f239c3196a158c026cb64f6aeca2ae80` is on `dev`;
+  the preserved `660057ff` comparison worktree carries cherry-pick
+  `b7e9a6a1f6138e3b2546157b9aa97887172e8bbd`. Both diffs have stable patch ID
+  `de11c834a4e0075a8695a8b7b4d5bdca698cfa48`. The driver has bounded timing histograms,
+  deterministic seeded AB/BA ordering, immutable binary/matrix/data identities, isolated child
+  users/environments, and fail-closed packet validation. The Python suite passes 77 tests; the
+  visible histogram case passes 1 case/13 assertions; `[bandit][live_world]` passes 68 cases/1,459
+  assertions; final xhigh autoreview reports no actionable finding.
+- Both committed comparison binaries were built one at a time with
+  `PATH=/opt/homebrew/opt/gettext/bin:/opt/homebrew/bin:/usr/bin:/bin /usr/bin/make -j4 tests
+  LINTJSON=0 ASTYLE=0`. Dev build log `macos-tests-build-instrumentation-dev-22ca8759f2.log`
+  records exit `0`; its 79,150,952-byte binary SHA-256 is
+  `858ddd88ec9c8cf77639392620a136cc112caa5e34f46c39aea0cb1c828918e0`. Baseline build log
+  `macos-tests-build-instrumentation-baseline-b7e9a6a1f6.log` records exit `0`; its
+  79,112,952-byte binary SHA-256 is
+  `eb14211166ca4021c88933f88f3103b00cdd061a1283ee7fc63a058b4b66b146`.
+- The first committed one-pair A/B smoke is red/non-credit by design. Runner exit `2` and
+  independent validator exit `2` rejected raw artifact SHA-256
+  `0c5d1431c120ae0f8913e98543da64c7cf1bd968915ef1dc6320fca3e396249c` because the baseline
+  data-root hash changed during execution. The child created 3,418 ignored FlatBuffer files under
+  `data/cache` after initial identity capture (8,156 -> 11,574 files). Both worktrees stayed
+  Git-clean. The next instrumentation slice must perform and record a sacrificial data-load
+  warmup before identity capture, hash the complete warmed tree including cache, and separately
+  prove invariant non-cache source data; an incidental now-warm rerun receives no credit.
 
 Required Phase-0 evidence:
 - exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;

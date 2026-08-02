@@ -188,6 +188,11 @@ Preparation receipts are not Phase 0 credit; re-verify every preflight condition
 
 ### Release/harness preflight
 
+The unchecked roaming-save/API-platform rows in this subsection are deferred release-harness
+qualification for Phase 10. They are not execution-order blockers for the deterministic Mac-only
+Phase-0 benchmark rows below and must not trigger Windows work or another Keychain retry in this
+run.
+
 - [x] Run `python -m unittest tools.openclaw_harness.test_fixture_contract` on the synchronized exact HEAD and record the count.
 - [ ] Dry-resolve `manual.release_candidate_roaming_mcw` on Windows and Mac; prove the Windows and macOS `LLM_INTENT_PYTHON` values resolve to existing native environments and Linux is not assigned either foreign absolute path.
 - [x] Record the bounded Mac secure-store attempt without exposing the credential: writer tests pass, one guarded native write returned `OSStatus -25308`, the existing shell export remains intact, and final clean-environment retrieval/API proof is deferred to the Phase-10 release-harness gate without pausing deterministic work.
@@ -202,9 +207,9 @@ Preparation receipts are not Phase 0 credit; re-verify every preflight condition
 
 ### Baseline performance and save evidence
 
-- [ ] Land the deterministic benchmark driver and scoped hostile-maintenance timers/counters as an isolated, behavior-neutral instrumentation commit.
-- [ ] Apply the identical benchmark-only commit to both the pre-change baseline and final comparison worktrees.
-- [ ] Preserve an exact pre-change baseline binary/buildable worktree at the same compiler and flags as the final comparison.
+- [x] Land the deterministic benchmark driver and scoped hostile-maintenance timers/counters as an isolated, behavior-neutral instrumentation commit.
+- [x] Apply the identical benchmark-only commit to both the pre-change baseline and final comparison worktrees.
+- [x] Preserve an exact pre-change baseline binary/buildable worktree at the same compiler and flags as the final comparison.
 - [ ] Split fixtures into (a) legacy-equivalent 0/1/10/50/100-camp scenarios runnable on both builds and (b) forward-schema capacity/churn scenarios added as each new state becomes real and judged against absolute/scaling budgets.
 - [ ] For the legacy-equivalent packet, measure idle camps, existing lead saturation, current structural maintenance, current dispatch, current return/writeback, and current save round trip.
 - [ ] Do not pretend paired outings, evidence expiry, ownership handoff, or new report state exists in the old build; add those forward fixtures at the implementing phase.
@@ -248,13 +253,15 @@ These budgets must be reviewed before implementation. They may be tightened. The
 
 - [ ] Baseline functional and performance packets are reproducible and archived.
 - [ ] Provisional budgets are accepted or explicitly revised before behavior implementation.
-- [ ] Checkout and process preflight is green.
-- [ ] Checkpoint/ledger commit created if repo roadmap truth changed.
+- [x] Checkout and process preflight is green.
+- [x] Checkpoint/ledger commit created if repo roadmap truth changed.
 
 Evidence:
 
-- Baseline commit: pre-change candidate `660057ff728bdf77531f607b1bd42a175f027a5f`;
-  behavior-neutral instrumentation commit pending.
+- Baseline commit: pre-change candidate `660057ff728bdf77531f607b1bd42a175f027a5f`.
+  Behavior-neutral instrumentation is `22ca8759f239c3196a158c026cb64f6aeca2ae80` on `dev` and
+  `b7e9a6a1f6138e3b2546157b9aa97887172e8bbd` on the preserved baseline worktree. Both diffs have
+  stable patch ID `de11c834a4e0075a8695a8b7b4d5bdca698cfa48`.
 - Repository/process preflight: Mac candidate and `origin/port/cdda-master` both
   `660057ff728bdf77531f607b1bd42a175f027a5f`; authorized transfer receipt records the
   same Windows candidate. Old `dev`/`master` preserved at
@@ -326,6 +333,27 @@ Evidence:
   returned clean with no accepted/actionable findings. Raw logs are
   `natural-worldgen-registration-internal-seed.log` and
   `live-world-regression-natural-cleanup.log` under the Phase-0 artifact root.
+- Benchmark instrumentation evidence: the Python driver suite passes 77 tests; the visible
+  histogram validation case passes 1 case/13 assertions; the full `[bandit][live_world]` tag
+  passes 68 cases/1,459 assertions; `git diff --check` passes; and final xhigh autoreview artifact
+  `autoreview-benchmark-instrumentation-checkpoint-clean.txt` reports no actionable finding. Both
+  exact commits were built sequentially with
+  `PATH=/opt/homebrew/opt/gettext/bin:/opt/homebrew/bin:/usr/bin:/bin /usr/bin/make -j4 tests
+  LINTJSON=0 ASTYLE=0`. Dev log `macos-tests-build-instrumentation-dev-22ca8759f2.log` ends
+  `CAOL_BUILD_EXIT=0`; binary size/SHA-256 are 79,150,952 bytes and
+  `858ddd88ec9c8cf77639392620a136cc112caa5e34f46c39aea0cb1c828918e0`. Baseline log
+  `macos-tests-build-instrumentation-baseline-b7e9a6a1f6.log` ends `CAOL_BUILD_EXIT=0`; binary
+  size/SHA-256 are 79,112,952 bytes and
+  `eb14211166ca4021c88933f88f3103b00cdd061a1283ee7fc63a058b4b66b146`.
+- Rejected comparison smoke: one committed AB pair completed two valid children, then the runner
+  correctly rejected the packet with exit `2`; independent `validate --verify-files` also exited
+  `2`. Raw artifact SHA-256 is
+  `0c5d1431c120ae0f8913e98543da64c7cf1bd968915ef1dc6320fca3e396249c`. The baseline child
+  populated 3,418 ignored FlatBuffer entries under `data/cache` after initial identity capture,
+  changing the manifest from 8,156 to 11,574 files. Both Git worktrees remained clean. This is
+  red/non-credit evidence and requires a recorded sacrificial data-load warmup before identity
+  capture, complete warmed-tree rehash, and a separate invariant source-data hash. An incidental
+  rerun against the now-warm cache is not a reproducible baseline.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority
