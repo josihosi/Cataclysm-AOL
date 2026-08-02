@@ -384,8 +384,23 @@ writer/load normalization are covered. Empty/normal/full saturated JSON is 87/5,
 and byte-stable below 64 KiB. Final binary is 79,898,584 bytes at SHA-256
 `f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`.
 
+Semantic observation compaction is green at `9be3e8c044`. The exact build envelope was
+`PATH=/opt/homebrew/opt/gettext/bin:/opt/homebrew/opt/ncurses/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin CXXFLAGS=-D_DARWIN_C_SOURCE LDFLAGS=-lncurses make -j8 tests TESTS=1 RELEASE=0 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0`.
+Two non-credit compile attempts exited `2` on a dead helper and then eight explicit aggregate
+compatibility fields; both concrete defects were removed. The final incremental invocation exited
+`0` in 9.2 seconds. Each test used
+`./tests/cata_test '<filter>' --rng-seed 830204929 --reporter compact`; exact filters pass
+`[observation]` 1 case / 47
+assertions, `[scout_state][save]` 4 / 413, `[bandit][live_world]` 96 / 4,981,
+`[bandit][handoff]` 9 / 203, `[savegame][overmap][regression]` 2 / 24, and `[save_size]` 1 / 10.
+The one root review found no further correctness defect; `git diff --check` is green. The
+79,978,136-byte binary SHA-256 is
+`b487d7e72208bcc8ebe0ecd4413da37c3ab079cfc23e92a14b640048bed12445`. Exact logs and their
+hashes are archived at
+`/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase1-20260802/observation-progress/`.
+
 The active missing evidence is Phase 1:
-- observation compaction, dossier/report policy, and bounded transition owners;
+- dossier/report policy, component idempotency/watermarks, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 

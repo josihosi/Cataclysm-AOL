@@ -121,8 +121,11 @@ Reference-aware intelligence pruning is checkpointed at `ddd1afe480`: every reta
 a stable ID/revision, active scout/report/decision/hostile owners carry that exact reference,
 legacy positive revisions migrate without downgrade, identical evidence is revision-stable, stale
 plans reject atomically, and deterministic 64-lead/8-mark/string caps keep the full saturated camp
-at 48,070 bytes. Current execution row: compact/replace observations by fact value and define real
-progress without letting polling or duplicate strength reset `last_progress_at`.
+at 48,070 bytes. Semantic observation compaction is checkpointed at `9be3e8c044`: the 16-fact
+working set protects burn/casualty/contradiction/hard-danger/target-revision facts, deduplicates by
+stable fact and semantic state, and advances progress only for retained certainty/bounds/route/
+alert change. Current execution row: version reports and enforce the last acted report revision by
+target/faction policy.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

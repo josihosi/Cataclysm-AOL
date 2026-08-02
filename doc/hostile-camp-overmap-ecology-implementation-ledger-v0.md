@@ -6,18 +6,19 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Compact observations by fact value and define real progress.**
+First deterministic execution row: **Version reports and enforce per-target/faction acted revision.**
 
-Latest resume packet (behavior checkpoint `ddd1afe480`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `9be3e8c044`, 2026-08-02): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at observation compaction. The completed cap slice preserves exact
-stable lead ID/revision references across scout/report/decision/hostile owners, canonicalizes at
-64 dossiers and eight recent marks, rejects stale plans before mutation, preserves positive legacy
-revisions, and bounds strings/default JSON. Its final redirected Mac build exited `0`; intelligence
-tests pass 3/48, full live-world 95/4,931, handoff 9/203, and save compatibility 2/24. The saturated
-camp is byte-stable at 48,070 bytes. Test binary SHA-256 is
-`f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`
-(79,898,584 bytes). No current blocker; next permitted action is deterministic observation value.
+untouched. Phase 1 is active at report policy. The completed observation slice canonicalizes at 16
+facts, protects the five safety classes plus legacy-critical evidence, uses stable fact/semantic
+state to distinguish real progress from polling or strength-only duplicates, preserves semantic
+age, and applies a cursor-checked batch atomically. Final redirected Mac build exits `0`; observation
+tests pass 1/47, scout save 4/413, full live-world 96/4,981, handoff 9/203, save compatibility 2/24,
+and save-size 1/10. Test binary SHA-256 is
+`b487d7e72208bcc8ebe0ecd4413da37c3ab079cfc23e92a14b640048bed12445`
+(79,978,136 bytes). Logs are archived under `phase1-20260802/observation-progress`; no current
+blocker, and the next permitted action is per-target/faction report revision policy.
 
 Production target: `port/cdda-master`
 
@@ -441,7 +442,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
 - [x] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
 - [x] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
-- [ ] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
+- [x] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
 - [ ] Version reports and record the last report revision acted upon per target/faction policy.
 - [ ] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
 - [ ] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.

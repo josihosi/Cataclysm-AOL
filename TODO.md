@@ -7,7 +7,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Complete Phase-1 observation compaction, report/transition owners, component idempotency,
+1. Complete Phase-1 report policy, component idempotency/watermarks, bounded transition events,
    all-phase save proof, and serialized-size evidence.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
