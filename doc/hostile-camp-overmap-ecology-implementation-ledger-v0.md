@@ -6,8 +6,17 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Define the fresh hostile-operation owner, pinned report,
-route/rally state, and one-way operation phases.**
+First deterministic execution row: **Give scout sorties and hostile operations one validated
+serialized simulation-owner/handoff contract.**
+
+Latest resume packet (behavior checkpoint `67cd68e416`, 2026-08-02): `dev` on the isolated Mac
+worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
+untouched. Phase 1 is active at the shared simulation-owner/handoff row. The behavior checkpoint
+left no dirty code paths and no build/review process running; ledger alignment follows as a
+separate documentation checkpoint. The redirected Mac test build exited `0`; focused evidence is
+3/217 hostile-operation, 85/2567 live-world, 8/150 handoff, and 2/16 save-regression, with scoped
+autoreview clean at 0.93. Test binary SHA-256 is `8edf71fe...` (79,644,680 bytes). No current
+blocker; next permitted action is the shared owner/handoff vertical slice.
 
 Production target: `port/cdda-master`
 
@@ -424,7 +433,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] End a scout sortie only after every member is returned, confirmed dead, or declared missing after its fixed grace. A first-survivor report may update a provisional dossier, but no follow-on operation can reserve the slot until the sortie closes. Do not carry scout member reservations into a later response.
 - [x] Define scout phases: assembling, outbound, searching, observing, harvesting, burned-withdrawal, returning-exposed, returning-report, returning-home, and lost. `returning-exposed` is the bounded fallback after coherent burn-origin evacuation when no concealed rally exists; it can only advance toward home and cannot re-enter observation.
 - [x] Define separate bounded camp decision state: idle, report-awaiting-assessment, preparing-follow-on, and cooldown/abandoned.
-- [ ] Define a new `hostile_operation` for a shakedown or raid with a new operation ID/generation, fresh member reservations, `source_report_revision`, route/rally state, and phases assembling, outbound, rallying, waiting-night, approaching, committed-contact, returning-home, and lost.
+- [x] Define a new `hostile_operation` for a shakedown or raid with a new operation ID/generation, fresh member reservations, `source_report_revision`, route/rally state, and phases assembling, outbound, rallying, waiting-night, approaching, committed-contact, returning-home, and lost.
 - [ ] Give both scout sorties and hostile operations a serialized `simulation_owner` (`abstract` or `local`), handoff generation/epoch, and `last_advanced_turn`; any transient handoff state must commit or roll back before a save is accepted.
 - [x] Remove or migrate competing scalar state rather than maintaining two authorities indefinitely.
 - [ ] Define a world-global finite resource record keyed by OMT.
@@ -462,11 +471,16 @@ Evidence:
   a missing declaration before the persisted grace deadline and accepts it at the boundary;
   `7acc011951` centralizes expected-phase transitions, enforces irreversible homeward phases, and
   safely repairs unknown phases or malformed scout/job pairs; `687d7bcecb` adds a five-state
-  report-pinned camp decision owner, safe migration, and stale-dispatch exclusion.
-- Tests: strict redirected Mac build exit `0`; 82 `[bandit][live_world]` cases/2,318 assertions,
-  8 `[bandit][handoff]` cases/148 assertions, the active shakedown patrol consumer (12 assertions),
-  and 2 overmap-global save compatibility cases/16 assertions pass. Binary SHA-256 is
-  `7bbd3f0a24a5cdc0f012bdf27b6dd9660d25bc3ae560fa06c3f79e501645c38c`.
+  report-pinned camp decision owner, safe migration, and stale-dispatch exclusion; `67cd68e416`
+  adds the schema-v5 fresh hostile-operation owner, report/route/rally pins, canonical identity and
+  receipt keys, one-way identity-CAS phases, safe legacy withdrawal migration, and save-time
+  consistency repair. Mac gates: redirected test build exit `0`; `[hostile_operation]` 3/217;
+  `[bandit][live_world]` 85/2567; `[bandit][handoff]` 8/150;
+  `[savegame][overmap][regression]` 2/16; scoped autoreview clean at 0.93.
+- Tests: latest strict redirected Mac build exit `0`; `[hostile_operation]` 3 cases/217
+  assertions, `[bandit][live_world]` 85/2,567, `[bandit][handoff]` 8/150, and 2 overmap-global
+  save compatibility cases/16 assertions pass. Binary SHA-256 is
+  `8edf71fea6b7088e3893b620af4904bf29b46357935e04ccf8f57f8c23d1074e`.
 - Serialized sizes: empty world 87 bytes; normal four-member camp with active scout 4,558 bytes;
   cap-saturated route plus active/current observations 28,534 bytes. Saturated output is
   byte-stable across round trip and below the 64 KiB per-full-camp provisional gate.

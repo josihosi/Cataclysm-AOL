@@ -88,7 +88,8 @@ manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 upda
 explicit Phase-3 repair target, not hidden or normalized away.
 
 The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`,
-`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, `7acc011951`, and `687d7bcecb`. The typed active outing is the only runtime owner of a
+`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, `7acc011951`, `687d7bcecb`, and
+`67cd68e416`. The typed active outing is the only runtime owner of a
 bounded scout's members, leader, route, target revision, observations, cargo, casualties, phases,
 clocks, simulation owner, and independent return/report/cargo receipts. It migrates legacy scalar
 saves, releases malformed reservations, preserves split casualties, and rejects contradictory,
@@ -105,12 +106,16 @@ Final physical scout reports now open a separate persisted assessment owner. Pro
 and all-loss returns cannot do so; cooldown/idle retain the acted-report watermark, and only a
 newer report can revive abandoned pressure. Existing routine dispatch is blocked while assessment,
 preparation, or cooldown is active.
+Fresh shakedowns and raids now use a separate schema-v5 hostile-operation owner with a new
+generation, fresh party, exact report pin, route/rally, canonical receipt keys, and one-way
+identity-checked phases. Fresh save repair rejects malformed report, route, key, phase, size, and
+home-reserve state; legacy hostile outings remain withdrawal-only.
 Empty/normal/cap-saturated JSON is 87/4,558/28,534 bytes; the saturated state is byte-stable after
 reload and remains below 64 KiB.
 
-Current execution row: define the fresh `hostile_operation` owner with a new identity/generation,
-fresh member reservation, pinned report revision, route/rally state, and one-way phases. Then
-complete shared owner/handoff, resource, supply, and dossier state. Post-close
+Current execution row: give scout sorties and hostile operations one validated serialized
+simulation-owner/handoff contract, including epoch and last-advanced ownership. Then complete
+resource, supply, and dossier state. Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac
 Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work

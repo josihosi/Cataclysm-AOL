@@ -340,9 +340,14 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
+The fresh hostile-operation owner checkpoint `67cd68e416` is green on the Mac: redirected test
+build exit `0`; `[hostile_operation]` 3 cases / 217 assertions; `[bandit][live_world]` 85 / 2567;
+`[bandit][handoff]` 8 / 150; `[savegame][overmap][regression]` 2 / 16; final scoped autoreview
+clean at 0.93. The test binary is 79,644,680 bytes with SHA-256 `8edf71fe...`.
+
 The active missing evidence is Phase 1:
-- camp-decision, hostile-operation, resource, supply, dossier/report policy, and bounded
-  transition owners;
+- shared scout/hostile simulation-owner and handoff validation, then resource, supply,
+  dossier/report policy, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 
