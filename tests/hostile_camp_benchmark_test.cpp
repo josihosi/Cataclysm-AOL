@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "bandit_live_world_probe.h"
+#include "calendar.h"
 #include "cata_catch.h"
 #include "json.h"
 #include "json_loader.h"
@@ -28,6 +29,16 @@ namespace
 {
 using benchmark_clock = std::chrono::steady_clock;
 constexpr int legacy_loaded_roster_members = 14;
+constexpr int legacy_saturated_leads_per_bandit_site = 12;
+constexpr int benchmark_default_calendar_turn = 5220000;
+constexpr int benchmark_default_season_length_days = 91;
+constexpr int benchmark_max_season_length_days = std::numeric_limits<int>::max() /
+        ( 24 * 60 * 60 );
+
+struct benchmark_calendar_configuration {
+    int turn = benchmark_default_calendar_turn;
+    int season_length_days = benchmark_default_season_length_days;
+};
 
 struct cardinality {
     std::size_t sites = 0;
@@ -49,6 +60,61 @@ class scoped_rng_restore
     private:
         cata_default_random_engine previous_;
 };
+
+class scoped_calendar_restore
+{
+    public:
+        scoped_calendar_restore() : turn_( calendar::turn ),
+            start_of_cataclysm_( calendar::start_of_cataclysm ),
+            start_of_game_( calendar::start_of_game ), initial_season_( calendar::initial_season ),
+            season_length_days_( to_days<int>( calendar::season_length() ) ),
+            eternal_season_( calendar::eternal_season() ),
+            eternal_night_( calendar::eternal_night() ), eternal_day_( calendar::eternal_day() ) {}
+        ~scoped_calendar_restore() {
+            calendar::turn = turn_;
+            calendar::start_of_cataclysm = start_of_cataclysm_;
+            calendar::start_of_game = start_of_game_;
+            calendar::initial_season = initial_season_;
+            calendar::set_season_length( season_length_days_ );
+            calendar::set_eternal_season( eternal_season_ );
+            calendar::set_eternal_night( eternal_night_ );
+            calendar::set_eternal_day( eternal_day_ );
+        }
+
+        scoped_calendar_restore( const scoped_calendar_restore & ) = delete;
+        scoped_calendar_restore &operator=( const scoped_calendar_restore & ) = delete;
+
+    private:
+        time_point turn_;
+        time_point start_of_cataclysm_;
+        time_point start_of_game_;
+        season_type initial_season_;
+        int season_length_days_;
+        bool eternal_season_;
+        bool eternal_night_;
+        bool eternal_day_;
+};
+
+void apply_benchmark_calendar( const benchmark_calendar_configuration &configuration )
+{
+    calendar::set_season_length( configuration.season_length_days );
+    calendar::set_eternal_season( false );
+    calendar::set_eternal_night( false );
+    calendar::set_eternal_day( false );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
+    calendar::initial_season = SPRING;
+    calendar::turn = time_point::from_turn( configuration.turn );
+}
+
+bool benchmark_calendar_matches( const benchmark_calendar_configuration &configuration )
+{
+    return to_turn<int>( calendar::turn ) == configuration.turn &&
+           calendar::start_of_cataclysm == calendar::turn_zero &&
+           calendar::start_of_game == calendar::turn_zero && calendar::initial_season == SPRING &&
+           to_days<int>( calendar::season_length() ) == configuration.season_length_days &&
+           !calendar::eternal_season() && !calendar::eternal_night() && !calendar::eternal_day();
+}
 
 std::string environment_string( const char *name, const std::string &fallback = {} )
 {
@@ -194,7 +260,40 @@ cardinality measure_cardinality( const bandit_live_world::world_state &world )
     return result;
 }
 
-bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count )
+void add_legacy_saturated_leads( bandit_live_world::site_record &site )
+{
+    static const std::array<std::pair<int, int>, legacy_saturated_leads_per_bandit_site>
+    near_offsets = { {
+            { -4, 0 }, { 4, 0 }, { 0, -4 }, { 0, 4 },
+            { -5, -1 }, { 5, 1 }, { -1, 5 }, { 1, -5 },
+            { -6, 0 }, { 6, 0 }, { 0, -6 }, { 0, 6 },
+        } };
+
+    site.intelligence_map.known_radius_omt = 8;
+    site.intelligence_map.leads.reserve( near_offsets.size() );
+    for( const std::pair<int, int> &offset : near_offsets ) {
+        bandit_live_world::camp_map_lead lead;
+        lead.kind = bandit_live_world::camp_lead_kind::structural_bounty;
+        lead.status = bandit_live_world::camp_lead_status::harvested;
+        lead.target_id = "forest";
+        lead.omt = tripoint_abs_omt( site.anchor.x() + offset.first,
+                                    site.anchor.y() + offset.second, site.anchor.z() );
+        lead.lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                           site.site_id, lead.omt, lead.target_id );
+        lead.source_key = "structural_bounty:forest";
+        lead.source_summary = "low structural forest/woods bounty";
+        lead.first_seen_minutes = 0;
+        lead.last_seen_minutes = 0;
+        lead.last_checked_minutes = 0;
+        lead.confidence = 1;
+        lead.times_harvested = 1;
+        lead.last_outcome = "harvested_structural_bounty";
+        site.intelligence_map.leads.push_back( std::move( lead ) );
+    }
+}
+
+bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count,
+        const bool saturate_existing_leads )
 {
     bandit_live_world::world_state world;
     world.owner_id = "hostile_camp_benchmark_legacy_v1";
@@ -230,6 +329,9 @@ bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count
             spawn_tile.tile = member.home_spawn_tile;
             spawn_tile.headcount = 1;
             site.spawn_tiles.push_back( spawn_tile );
+        }
+        if( saturate_existing_leads && structural_camp ) {
+            add_legacy_saturated_leads( site );
         }
         world.sites.push_back( std::move( site ) );
     }
@@ -433,7 +535,9 @@ void run_workload_update( const std::string &workload, bandit_live_world::world_
 
     const int now_minutes = static_cast<int>( update_index %
                             static_cast<std::size_t>( std::numeric_limits<int>::max() ) );
-    const int scan_budget = workload == "structural" ? 4 : 0;
+    const bool saturated_leads = workload == "lead_saturated";
+    const int scan_budget = saturated_leads ? static_cast<int>( world.sites.size() * 4 ) :
+                            workload == "structural" ? 4 : 0;
     const int dispatch_cap = workload == "structural" ? 1 : 0;
     bandit_live_world::advance_structural_bounty_maintenance( world, now_minutes, scan_budget,
             dispatch_cap,
@@ -448,6 +552,7 @@ void run_workload_update( const std::string &workload, bandit_live_world::world_
 std::string make_result_json( const std::string &fixture, const std::string &workload,
                               const std::string &fixture_sha256, const std::size_t repetition,
                               const std::string &variant, const unsigned int rng_seed,
+                              const benchmark_calendar_configuration &calendar_configuration,
                               const std::size_t updates, const std::size_t clock_floor_samples,
                               const bandit_live_world_probe::latency_summary &update_latency,
                               const bandit_live_world_probe::latency_summary &clock_floor,
@@ -472,6 +577,20 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
     json.member( "rng_seed", rng_seed );
     json.member( "updates", updates );
     json.member( "clock_floor_samples", clock_floor_samples );
+
+    json.member( "calendar" );
+    json.start_object();
+    json.member( "turn", calendar_configuration.turn );
+    json.member( "start_of_cataclysm_turn", 0 );
+    json.member( "start_of_game_turn", 0 );
+    json.member( "initial_season", "spring" );
+    json.member( "season_length_days", calendar_configuration.season_length_days );
+    json.member( "eternal_season", false );
+    json.member( "eternal_night", false );
+    json.member( "eternal_day", false );
+    json.member( "reset_before_timing_replay", true );
+    json.member( "reset_before_fairness_replay", true );
+    json.end_object();
 
     json.member( "metrics" );
     json.start_object();
@@ -521,9 +640,16 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
     json.member( "abstract_bandit_roster_members", 6 );
     json.member( "abstract_cannibal_roster_members", 5 );
     json.member( "active_roster_model", "loaded" );
+    json.member( "existing_leads_per_bandit_site",
+                 workload == "lead_saturated" ? legacy_saturated_leads_per_bandit_site : 0 );
+    json.member( "existing_lead_status",
+                 workload == "lead_saturated" ? "harvested" : "none" );
     json.member( "serialize_workload", "world_state serialize plus deserialize round trip" );
     json.member( "structural_workload",
-                 "bounded scan, lead saturation, dispatch, and structural return" );
+                 "zero-lead bounded scan, dispatch, and structural return" );
+    json.member( "lead_saturated_workload",
+                 "all current near-ring structural leads already harvested; bounded scan tests "
+                 "existing-memory saturation without dispatch" );
     json.member( "dispatch_return_workload",
                  "representative current dispatch and physical return writeback" );
     json.member( "stress_packet", terminal_world.sites.size() == 500 ?
@@ -606,6 +732,11 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     const std::size_t updates = environment_size( "CAOL_HOSTILE_BENCHMARK_UPDATES", 10000 );
     const std::size_t clock_floor_samples = environment_size(
             "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES", 10000 );
+    const std::size_t configured_calendar_turn = environment_size(
+            "CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN", benchmark_default_calendar_turn );
+    const std::size_t configured_season_length_days = environment_size(
+            "CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS",
+            benchmark_default_season_length_days );
     const std::string variant = environment_string( "CAOL_HOSTILE_BENCHMARK_VARIANT",
                                 "sites-" + std::to_string( site_count ) );
     const std::string output_path = environment_string( "CAOL_HOSTILE_BENCHMARK_OUTPUT" );
@@ -615,13 +746,17 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     REQUIRE( sha256( "abc" ) ==
              "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" );
     const bool supported_workload = workload == "idle" || workload == "structural" ||
-                                    workload == "serialize" || workload == "dispatch_return";
+                                    workload == "lead_saturated" || workload == "serialize" ||
+                                    workload == "dispatch_return";
     REQUIRE( supported_workload );
     REQUIRE( site_count <= 1000 );
     REQUIRE( updates > 0 );
     REQUIRE( updates <= 1000000 );
     REQUIRE( clock_floor_samples > 0 );
     REQUIRE( clock_floor_samples <= 1000000 );
+    REQUIRE( configured_calendar_turn <= std::numeric_limits<int>::max() );
+    REQUIRE( configured_season_length_days > 0 );
+    REQUIRE( configured_season_length_days <= benchmark_max_season_length_days );
     REQUIRE( recorded_seed > 0 );
     REQUIRE( recorded_seed <= std::numeric_limits<unsigned int>::max() );
     REQUIRE( effective_seed == static_cast<unsigned int>( recorded_seed ) );
@@ -629,8 +764,19 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
                                          std::to_string( site_count ) + "_v1";
     REQUIRE( fixture == expected_fixture );
 
-    bandit_live_world::world_state world = make_legacy_fixture( site_count );
+    const benchmark_calendar_configuration calendar_configuration = {
+        static_cast<int>( configured_calendar_turn ),
+        static_cast<int>( configured_season_length_days )
+    };
+    const bool saturate_existing_leads = workload == "lead_saturated";
+    const scoped_calendar_restore restore_calendar;
+    apply_benchmark_calendar( calendar_configuration );
+    bandit_live_world::world_state world = make_legacy_fixture( site_count,
+            saturate_existing_leads );
     const cardinality initial_cardinality = measure_cardinality( world );
+    const std::size_t expected_initial_leads = saturate_existing_leads ?
+            ( site_count + 1 ) / 2 * legacy_saturated_leads_per_bandit_site : 0;
+    REQUIRE( initial_cardinality.leads == expected_initial_leads );
     const std::string initial_serialized = serialize_world( world );
     if( fixture_hash_kind == "serialized_state_sha256" ) {
         REQUIRE( fixture_sha256 == sha256( initial_serialized ) );
@@ -647,6 +793,7 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     bandit_live_world_probe::snapshot timing_probe_result;
     std::int64_t wall_time_ns = 0;
 
+    apply_benchmark_calendar( calendar_configuration );
     rng_set_engine_seed( effective_seed );
     {
         bandit_live_world_probe::session probe_session(
@@ -663,11 +810,14 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
                                                       benchmark_clock::now() - wall_started ).count() );
         timing_probe_result = probe_session.result();
     }
+    REQUIRE( benchmark_calendar_matches( calendar_configuration ) );
 
     const std::string terminal_serialized = serialize_world( world );
     const cardinality terminal_cardinality = measure_cardinality( world );
 
-    bandit_live_world::world_state fairness_world = make_legacy_fixture( site_count );
+    apply_benchmark_calendar( calendar_configuration );
+    bandit_live_world::world_state fairness_world = make_legacy_fixture( site_count,
+            saturate_existing_leads );
     bandit_live_world_probe::snapshot fairness_probe_result;
     rng_set_engine_seed( effective_seed );
     {
@@ -681,6 +831,7 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
         }
         fairness_probe_result = fairness_session.result();
     }
+    REQUIRE( benchmark_calendar_matches( calendar_configuration ) );
     const std::string fairness_terminal_serialized = serialize_world( fairness_world );
     const bandit_live_world_probe::latency_summary update_latency =
         update_latency_histogram.summarize();
@@ -703,7 +854,7 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     REQUIRE( fairness_terminal_serialized == terminal_serialized );
 
     emit_result( output_path, make_result_json( fixture, workload, fixture_sha256, repetition,
-                 variant, effective_seed, updates, clock_floor_samples, update_latency,
+                 variant, effective_seed, calendar_configuration, updates, clock_floor_samples, update_latency,
                  clock_floor,
                  wall_time_ns, world, timing_probe_result, fairness_probe_result,
                  initial_serialized, terminal_serialized, initial_cardinality,

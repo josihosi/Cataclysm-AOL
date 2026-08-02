@@ -1,6 +1,6 @@
 {
   "schema": "caol-hostile-camp-benchmark-matrix-v1",
-  "description": "Behavior-neutral legacy hostile-camp Phase-0 matrix: mixed loaded bandit/cannibal camps, current structural lead saturation, save round trips, and one representative dispatch/return-writeback case.",
+  "description": "Behavior-neutral legacy hostile-camp Phase-0 matrix: mixed loaded bandit/cannibal camps, zero-lead structural maintenance, save round trips, one representative dispatch/return-writeback case, and the 500-site fairness stress. Existing-lead saturation is a separate bounded companion packet.",
   "fixture_hash_kind": "serialized_state_sha256",
   "require_equivalent_terminal_state": true,
   "isolated_user_dir_argument": "--user-dir",

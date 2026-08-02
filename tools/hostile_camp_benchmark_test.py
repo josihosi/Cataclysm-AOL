@@ -28,9 +28,18 @@ def data_root_record(label):
         "data_path": str(pathlib.Path(root) / "data"),
         "manifest_kind": "recursive_file_content_sha256_v1",
         "manifest_sha256": ("7" if label == "A" else "8") * 64,
-        "file_count": 1,
-        "total_bytes": 10,
+        "file_count": 2,
+        "total_bytes": 14,
     }
+
+
+def source_data_root_record(label):
+    record = data_root_record(label)
+    record["manifest_kind"] = "recursive_source_file_content_sha256_excluding_cache_v1"
+    record["manifest_sha256"] = "5" * 64
+    record["file_count"] = 1
+    record["total_bytes"] = 10
+    return record
 
 
 def streaming_summary(values):
@@ -104,6 +113,18 @@ def child_result(label="A", repetition=0, wall_time=100, latencies=None,
         "rng_seed": rng_seed if rng_seed is not None else 123 + repetition,
         "updates": 4,
         "clock_floor_samples": 4,
+        "calendar": {
+            "turn": benchmark._DEFAULT_CALENDAR_TURN,
+            "start_of_cataclysm_turn": 0,
+            "start_of_game_turn": 0,
+            "initial_season": "spring",
+            "season_length_days": benchmark._DEFAULT_SEASON_LENGTH_DAYS,
+            "eternal_season": False,
+            "eternal_night": False,
+            "eternal_day": False,
+            "reset_before_timing_replay": True,
+            "reset_before_fairness_replay": True,
+        },
         "metrics": metrics,
         "probe": {
             "timings_collected": True,
@@ -154,7 +175,7 @@ def sample_run(label, repetition, wall_time, binary_hash, latencies=None, rss=No
         "binary_sha256": binary_hash,
         "working_directory": data_root_record(label)["path"],
         "data_root_manifest_sha256": data_root_record(label)["manifest_sha256"],
-        "command": [f"/{label}"],
+        "command": [f"/{label}", "--rng-seed", str(child_seed)],
         "exit_code": 0,
         "runner_wall_time_ns": wall_time + 50,
         "rss_samples": [
@@ -171,6 +192,34 @@ def sample_run(label, repetition, wall_time, binary_hash, latencies=None, rss=No
         "child_result_sha256": CHILD_HASH,
         "result": child_result(label, repetition, wall_time, latencies,
                                rng_seed=child_seed),
+    }
+
+
+def warmup_record(label, warmup_index, orchestration_seed=77):
+    child_seed = benchmark._warmup_seed(orchestration_seed)
+    result = child_result(label, 0, rng_seed=child_seed)
+    return {
+        "status": "accepted",
+        "warmup_index": warmup_index,
+        "case_id": "legacy-10-idle",
+        "fixture_sha256": FIXTURE_HASH,
+        "variant": label,
+        "child_seed": child_seed,
+        "binary_sha256": BINARY_A_HASH if label == "A" else BINARY_B_HASH,
+        "working_directory": data_root_record(label)["path"],
+        "source_manifest_sha256": source_data_root_record(label)["manifest_sha256"],
+        "command": [f"/{label}", "--rng-seed", str(child_seed)],
+        "exit_code": 0,
+        "runner_wall_time_ns": 50,
+        "stdout_sha256": "3" * 64,
+        "stdout_bytes": 10,
+        "stderr_sha256": "4" * 64,
+        "stderr_bytes": 0,
+        "diagnostic_stderr_tail": "",
+        "child_result_source": "output_file",
+        "child_result_sha256": benchmark.sha256_bytes(benchmark.canonical_json_bytes(result)),
+        "child_result_binding": benchmark._warmup_result_binding(result),
+        "failure_code": None,
     }
 
 
@@ -200,6 +249,7 @@ def raw_packet(a_walls=(100, 100), b_walls=(105, 105), thresholds=None,
         "created_utc": "2026-08-02T00:00:00+00:00",
         "seed": 77,
         "pair_count": len(a_walls),
+        "common_arguments": [],
         "label_order": ["A", "B"],
         "pair_orders": orders,
         "update_observation_limit": benchmark._MAX_PACKET_UPDATE_OBSERVATIONS,
@@ -215,8 +265,20 @@ def raw_packet(a_walls=(100, 100), b_walls=(105, 105), thresholds=None,
             "A": {"path": "/A", "size_bytes": 1, "sha256": BINARY_A_HASH},
             "B": {"path": "/B", "size_bytes": 1, "sha256": BINARY_B_HASH},
         },
+        "source_data_roots": {
+            "A": source_data_root_record("A"), "B": source_data_root_record("B"),
+        },
+        "pre_warm_data_roots": {
+            "A": source_data_root_record("A") | {
+                "manifest_kind": "recursive_file_content_sha256_v1"
+            },
+            "B": source_data_root_record("B") | {
+                "manifest_kind": "recursive_file_content_sha256_v1"
+            },
+        },
         "data_roots": {"A": data_root_record("A"), "B": data_root_record("B")},
         "host": {"platform": "test", "machine": "arm64", "python": "test"},
+        "warmups": [warmup_record("A", 0), warmup_record("B", 1)],
         "runs": runs,
         "failures": [],
     }
@@ -286,6 +348,20 @@ class HashTests(unittest.TestCase):
 
 
 class SchemaTests(unittest.TestCase):
+    def test_packaged_matrices_fit_default_ten_pair_observation_cap(self):
+        repository = pathlib.Path(__file__).resolve().parent.parent
+        matrix_directory = repository / "tests" / "data" / "hostile_camp_benchmark"
+        for name in ("legacy_matrix_v1.json", "legacy_lead_saturation_matrix_v1.json"):
+            with self.subTest(name=name):
+                matrix, _raw, _digest = benchmark.load_matrix(matrix_directory / name)
+                observations = sum(
+                    benchmark._case_expected_count(
+                        case, "CAOL_HOSTILE_BENCHMARK_UPDATES")
+                    for case in matrix["cases"]
+                ) * 2 * 10
+                self.assertLessEqual(observations,
+                                     benchmark._MAX_PACKET_UPDATE_OBSERVATIONS)
+
     def test_matrix_accepts_portable_case(self):
         document = sample_matrix([{
             "metric": "wall_time_ns", "statistic": "mean", "ratio_max": 1.05,
@@ -471,6 +547,25 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(benchmark.BenchmarkError, "clock_floor_summary_ns"):
             benchmark.validate_child_result(document)
 
+    def test_child_rejects_calendar_without_both_replay_resets(self):
+        document = child_result()
+        document["calendar"]["reset_before_fairness_replay"] = False
+        with self.assertRaisesRegex(benchmark.BenchmarkError,
+                                    "reset_before_fairness_replay must be true"):
+            benchmark.validate_child_result(document)
+
+    def test_matrix_and_child_reject_season_length_that_overflows_turns(self):
+        matrix = sample_matrix()
+        matrix["cases"][0]["env"]["CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS"] = str(
+            benchmark._MAX_SEASON_LENGTH_DAYS + 1)
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "representable as int32 turns"):
+            benchmark.validate_matrix(matrix)
+
+        document = child_result()
+        document["calendar"]["season_length_days"] = benchmark._MAX_SEASON_LENGTH_DAYS + 1
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "representable as int32 turns"):
+            benchmark.validate_child_result(document)
+
     def test_child_rejects_incomplete_scoped_probe(self):
         document = child_result()
         document["probe"]["sections"].pop("structural_scan")
@@ -530,6 +625,67 @@ class SchemaTests(unittest.TestCase):
         document["payload"]["runs"][0]["working_directory"] = "/wrong-root"
         document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
         with self.assertRaisesRegex(benchmark.BenchmarkError, "working directory"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_binds_recorded_warmup_seed(self):
+        document = raw_packet()
+        document["payload"]["warmups"][0]["child_seed"] += 1
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "warmup seed mismatch"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_binds_recorded_warmup_command(self):
+        document = raw_packet()
+        document["payload"]["warmups"][0]["command"].append("unexpected")
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "command binding"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_uses_same_warmup_seed_for_both_variants(self):
+        document = raw_packet()
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["warmups"][0]["child_seed"],
+                         payload["warmups"][1]["child_seed"])
+
+    def test_accepted_raw_packet_rejects_different_source_manifests(self):
+        document = raw_packet()
+        document["payload"]["source_data_roots"]["B"]["manifest_sha256"] = "6" * 64
+        document["payload"]["warmups"][1]["source_manifest_sha256"] = "6" * 64
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError,
+                                    "identical non-cache source data"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_requires_populated_runtime_cache(self):
+        document = raw_packet()
+        payload = document["payload"]
+        payload["data_roots"]["A"] = copy.deepcopy(payload["pre_warm_data_roots"]["A"])
+        for run in payload["runs"]:
+            if run["variant"] == "A":
+                run["data_root_manifest_sha256"] = payload["data_roots"]["A"][
+                    "manifest_sha256"
+                ]
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, payload)
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "did not populate"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_binds_measured_command_and_exit(self):
+        document = raw_packet()
+        document["payload"]["runs"][0]["command"].append("unexpected")
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "run command binding"):
+            benchmark.validate_raw(document)
+
+        document = raw_packet()
+        document["payload"]["runs"][0]["exit_code"] = 9
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "exited non-zero"):
+            benchmark.validate_raw(document)
+
+        document = raw_packet()
+        document["payload"]["runs"][0]["exit_code"] = False
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "must be an integer"):
             benchmark.validate_raw(document)
 
     def test_accepted_raw_packet_rejects_missing_rss_accounting(self):
@@ -704,8 +860,8 @@ class RunPolicyTests(unittest.TestCase):
         self.data_root_b = self.root / "b-worktree"
         (self.data_root_a / "data").mkdir(parents=True)
         (self.data_root_b / "data").mkdir(parents=True)
-        (self.data_root_a / "data" / "identity.json").write_text("A", encoding="utf-8")
-        (self.data_root_b / "data" / "identity.json").write_text("B", encoding="utf-8")
+        (self.data_root_a / "data" / "identity.json").write_text("same", encoding="utf-8")
+        (self.data_root_b / "data" / "identity.json").write_text("same", encoding="utf-8")
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -724,15 +880,20 @@ class RunPolicyTests(unittest.TestCase):
     def fake_child(identity, label, case, pair_index, order_index, child_seed,
                    common_arguments, timeout_seconds, rss_interval_seconds,
                    fixture_hash_kind, isolated_user_dir_argument, data_root):
-        del common_arguments, timeout_seconds, rss_interval_seconds
-        del fixture_hash_kind, isolated_user_dir_argument
+        del timeout_seconds, rss_interval_seconds, fixture_hash_kind
         result = child_result(label, pair_index, 100 + pair_index, rng_seed=child_seed)
+        result["calendar"] = benchmark._case_calendar(case)
         raw = benchmark.canonical_json_bytes(result)
+        command = [identity["path"], "--rng-seed", str(child_seed), *common_arguments,
+                   *case.get("arguments", [])]
+        if isolated_user_dir_argument is not None:
+            command.extend((isolated_user_dir_argument,
+                            str(pathlib.Path(data_root["path"]) / "measured-user")))
         return {
             "case_id": benchmark._case_id(case), "pair_index": pair_index,
             "fixture_sha256": benchmark._case_fixture_sha256(case),
             "order_index": order_index, "variant": label, "child_seed": child_seed,
-            "binary_sha256": identity["sha256"], "command": [identity["path"]],
+            "binary_sha256": identity["sha256"], "command": command,
             "working_directory": data_root["path"],
             "data_root_manifest_sha256": data_root["manifest_sha256"],
             "exit_code": 0, "runner_wall_time_ns": 150 + pair_index,
@@ -745,6 +906,40 @@ class RunPolicyTests(unittest.TestCase):
             "child_result_sha256": benchmark.sha256_bytes(raw), "result": result,
         }
 
+    @staticmethod
+    def fake_warmup(identity, label, case, warmup_index, child_seed,
+                    common_arguments, timeout_seconds, fixture_hash_kind,
+                    isolated_user_dir_argument, source_data_root):
+        del timeout_seconds, fixture_hash_kind
+        cache = pathlib.Path(source_data_root["data_path"]) / "cache"
+        cache.mkdir(parents=True, exist_ok=True)
+        (cache / "generated.fb").write_bytes(b"warm")
+        result = child_result(label, 0, rng_seed=child_seed)
+        result["calendar"] = benchmark._case_calendar(case)
+        raw = benchmark.canonical_json_bytes(result)
+        command = [identity["path"], "--rng-seed", str(child_seed), *common_arguments,
+                   *case.get("arguments", [])]
+        if isolated_user_dir_argument is not None:
+            command.extend((isolated_user_dir_argument,
+                            str(pathlib.Path(source_data_root["path"]) / "warmup-user")))
+        return {
+            "status": "accepted", "warmup_index": warmup_index,
+            "case_id": benchmark._case_id(case),
+            "fixture_sha256": benchmark._case_fixture_sha256(case),
+            "variant": label, "child_seed": child_seed,
+            "binary_sha256": identity["sha256"],
+            "working_directory": source_data_root["path"],
+            "source_manifest_sha256": source_data_root["manifest_sha256"],
+            "command": command, "exit_code": 0, "runner_wall_time_ns": 50,
+            "stdout_sha256": "3" * 64, "stdout_bytes": 10,
+            "stderr_sha256": "4" * 64, "stderr_bytes": 0,
+            "diagnostic_stderr_tail": "",
+            "child_result_source": "output_file",
+            "child_result_sha256": benchmark.sha256_bytes(raw),
+            "child_result_binding": benchmark._warmup_result_binding(result),
+            "failure_code": None,
+        }
+
     def test_run_executes_all_valid_children_in_seeded_serial_order(self):
         calls = []
 
@@ -755,12 +950,223 @@ class RunPolicyTests(unittest.TestCase):
         document = benchmark.run_benchmarks(
             self.matrix_path, {"A": self.binary_a, "B": self.binary_b}, 10, 123,
             data_roots=self.declared_data_roots("A", "B"),
-            build_detector=lambda: [], child_runner=recording_child)
+            build_detector=lambda: [], warmup_runner=self.fake_warmup,
+            child_runner=recording_child)
         payload = benchmark.validate_raw(document, verify_files=True)
         self.assertEqual(payload["status"], "accepted")
         self.assertEqual(len(calls), 20)
         for pair_index, order in enumerate(payload["pair_orders"]):
             self.assertEqual([label for pair, label in calls if pair == pair_index], order)
+
+    def test_run_binds_explicit_calendar_environment_to_warmup_and_measurement(self):
+        matrix = sample_matrix()
+        matrix["cases"][0]["env"].update({
+            "CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN": "6000000",
+            "CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS": "120",
+        })
+        self.matrix_path.write_text(json.dumps(matrix), encoding="utf-8")
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 17,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=self.fake_warmup, child_runner=self.fake_child)
+        payload = benchmark.validate_raw(document)
+        expected_calendar = benchmark._case_calendar(matrix["cases"][0])
+        self.assertEqual(payload["warmups"][0]["child_result_binding"]["calendar"],
+                         expected_calendar)
+        self.assertEqual(payload["runs"][0]["result"]["calendar"], expected_calendar)
+
+    def test_cold_cache_is_created_by_recorded_warmup_before_full_identity_capture(self):
+        template = json.dumps(child_result(rng_seed=1), sort_keys=True)
+        self.binary_a.write_text(
+            "#!/usr/bin/python3\n"
+            "import json, os, pathlib\n"
+            "secret_names = ('CATA_API_KEY', 'OPENAI_API_KEY', 'GH_TOKEN', "
+            "'AWS_SECRET_ACCESS_KEY', 'ANTHROPIC_API_KEY')\n"
+            "raise_code = 91 if any(name in os.environ for name in secret_names) else 0\n"
+            "if raise_code: raise SystemExit(raise_code)\n"
+            "os.write(1, b'x' * (1024 * 1024))\n"
+            "os.write(2, b'y' * (1024 * 1024))\n"
+            f"result = json.loads({template!r})\n"
+            "result['fixture'] = os.environ['CAOL_HOSTILE_BENCHMARK_FIXTURE']\n"
+            "result['workload'] = os.environ['CAOL_HOSTILE_BENCHMARK_WORKLOAD']\n"
+            "result['repetition'] = os.environ['CAOL_HOSTILE_BENCHMARK_REPETITION']\n"
+            "result['variant'] = os.environ['CAOL_HOSTILE_BENCHMARK_VARIANT']\n"
+            "result['rng_seed'] = int(os.environ['CAOL_HOSTILE_BENCHMARK_SEED'])\n"
+            "result['calendar']['turn'] = int(os.environ['CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN'])\n"
+            "result['calendar']['season_length_days'] = int(os.environ['CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS'])\n"
+            "cache = pathlib.Path('data/cache')\n"
+            "cache.mkdir()\n"
+            "(cache / 'generated.fb').write_bytes(b'warm')\n"
+            "pathlib.Path(os.environ['CAOL_HOSTILE_BENCHMARK_OUTPUT']).write_text(json.dumps(result))\n",
+            encoding="utf-8")
+        os.chmod(self.binary_a, 0o700)
+
+        with mock.patch.dict(os.environ, {"CATA_API_KEY": "sentinel-a",
+                                          "OPENAI_API_KEY": "sentinel-b",
+                                          "GH_TOKEN": "sentinel-c"}):
+            document = benchmark.run_benchmarks(
+                self.matrix_path, {"A": self.binary_a}, 1, 19,
+                data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+                child_runner=self.fake_child)
+        payload = benchmark.validate_raw(document, verify_files=True)
+        self.assertEqual(payload["status"], "accepted")
+        self.assertEqual(len(payload["warmups"]), 1)
+        self.assertEqual(payload["source_data_roots"]["A"]["file_count"], 1)
+        self.assertEqual(payload["data_roots"]["A"]["file_count"], 2)
+        self.assertEqual(payload["warmups"][0]["stdout_bytes"], 1024 * 1024)
+        self.assertEqual(payload["warmups"][0]["stderr_bytes"], 1024 * 1024)
+        self.assertEqual(payload["warmups"][0]["diagnostic_stderr_tail"], "")
+
+    def test_warmup_rejects_stream_that_exceeds_byte_cap(self):
+        template = json.dumps(child_result(rng_seed=1), sort_keys=True)
+        self.binary_a.write_text(
+            "#!/usr/bin/python3\n"
+            "import json, os, pathlib\n"
+            f"result = json.loads({template!r})\n"
+            "result['fixture'] = os.environ['CAOL_HOSTILE_BENCHMARK_FIXTURE']\n"
+            "result['workload'] = os.environ['CAOL_HOSTILE_BENCHMARK_WORKLOAD']\n"
+            "result['repetition'] = os.environ['CAOL_HOSTILE_BENCHMARK_REPETITION']\n"
+            "result['variant'] = os.environ['CAOL_HOSTILE_BENCHMARK_VARIANT']\n"
+            "result['rng_seed'] = int(os.environ['CAOL_HOSTILE_BENCHMARK_SEED'])\n"
+            "os.write(1, b'x' * 4096)\n"
+            "pathlib.Path(os.environ['CAOL_HOSTILE_BENCHMARK_OUTPUT']).write_text(json.dumps(result))\n",
+            encoding="utf-8")
+        os.chmod(self.binary_a, 0o700)
+        identity = benchmark._binary_identity(self.binary_a)
+        source_identity = benchmark._data_source_identity(self.data_root_a)
+        with mock.patch.object(benchmark, "_MAX_WARMUP_STREAM_BYTES", 1024):
+            record = benchmark._run_warmup(
+                identity, "A", sample_case(), 0, benchmark._warmup_seed(41), (), 10,
+                source_data_root=source_identity)
+        self.assertEqual(record["status"], "failed")
+        self.assertEqual(record["failure_code"], "stream_limit")
+        self.assertGreater(record["stdout_bytes"], 1024)
+        self.assertIsNone(record["child_result_binding"])
+
+    def test_already_warm_cache_rejects_before_warmup_or_measurement(self):
+        cache = self.data_root_a / "data" / "cache"
+        cache.mkdir()
+        (cache / "existing.fb").write_bytes(b"already warm")
+        warmed = False
+        measured = False
+
+        def warmup(*args):
+            nonlocal warmed
+            warmed = True
+            return self.fake_warmup(*args)
+
+        def child(*args):
+            nonlocal measured
+            measured = True
+            return self.fake_child(*args)
+
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 21,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=warmup, child_runner=child)
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["status"], "rejected")
+        self.assertEqual(payload["failures"][0]["code"], "warmup")
+        self.assertIn("empty runtime data cache", payload["failures"][0]["message"])
+        self.assertFalse(warmed)
+        self.assertFalse(measured)
+
+    def test_noop_warmup_rejects_before_measurement(self):
+        measured = False
+
+        def noop_warmup(*args):
+            source_data_root = args[-1]
+            result = self.fake_warmup(*args)
+            cache = pathlib.Path(source_data_root["data_path"]) / "cache"
+            (cache / "generated.fb").unlink()
+            cache.rmdir()
+            return result
+
+        def child(*args):
+            nonlocal measured
+            measured = True
+            return self.fake_child(*args)
+
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 22,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=noop_warmup, child_runner=child)
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["status"], "rejected")
+        self.assertEqual(payload["failures"][0]["code"], "warmup")
+        self.assertIn("did not populate", payload["failures"][0]["message"])
+        self.assertFalse(measured)
+
+    def test_source_mutation_during_warmup_rejects_before_measurement(self):
+        measured = False
+
+        def source_mutating_warmup(*args):
+            source_data_root = args[-1]
+            (pathlib.Path(source_data_root["data_path"]) / "identity.json").write_text(
+                "mutated", encoding="utf-8")
+            return self.fake_warmup(*args)
+
+        def child(*args):
+            nonlocal measured
+            measured = True
+            return self.fake_child(*args)
+
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 23,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=source_mutating_warmup, child_runner=child)
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["status"], "rejected")
+        self.assertEqual(payload["failures"][0]["code"], "hash")
+        self.assertIn("changed during warmup", payload["failures"][0]["message"])
+        self.assertFalse(measured)
+
+    def test_cache_mutation_after_warmed_identity_capture_rejects_packet(self):
+        def cache_creating_warmup(*args):
+            source_data_root = args[-1]
+            cache = pathlib.Path(source_data_root["data_path"]) / "cache"
+            cache.mkdir()
+            (cache / "generated.fb").write_bytes(b"warm")
+            return self.fake_warmup(*args)
+
+        def cache_mutating_child(*args):
+            data_root = args[-1]
+            (pathlib.Path(data_root["data_path"]) / "cache" / "late.fb").write_bytes(b"late")
+            return self.fake_child(*args)
+
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 29,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=cache_creating_warmup, child_runner=cache_mutating_child)
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["status"], "rejected")
+        self.assertEqual(payload["failures"][0]["code"], "hash")
+        self.assertIn("data root 'A' changed", payload["failures"][0]["message"])
+
+    def test_failed_warmup_is_recorded_and_rejects_before_measurement(self):
+        measured = False
+
+        def failed_warmup(*args):
+            record = self.fake_warmup(*args)
+            record.update({"status": "failed", "exit_code": 9,
+                           "child_result_binding": None, "failure_code": "child"})
+            return record
+
+        def child(*args):
+            nonlocal measured
+            measured = True
+            return self.fake_child(*args)
+
+        document = benchmark.run_benchmarks(
+            self.matrix_path, {"A": self.binary_a}, 1, 31,
+            data_roots=self.declared_data_roots("A"), build_detector=lambda: [],
+            warmup_runner=failed_warmup, child_runner=child)
+        payload = benchmark.validate_raw(document)
+        self.assertEqual(payload["status"], "rejected")
+        self.assertEqual(payload["failures"][0]["code"], "warmup")
+        self.assertEqual(payload["warmups"][0]["exit_code"], 9)
+        self.assertTrue(benchmark._valid_sha256(payload["warmups"][0]["stdout_sha256"]))
+        self.assertFalse(measured)
 
     def test_concurrent_build_rejects_before_first_child(self):
         called = False
@@ -882,7 +1288,8 @@ class RunPolicyTests(unittest.TestCase):
         document = benchmark.run_benchmarks(
             self.matrix_path, {"A": self.binary_a}, 3, 1,
             data_roots=self.declared_data_roots("A"),
-            build_detector=lambda: [], child_runner=child)
+            build_detector=lambda: [], warmup_runner=self.fake_warmup,
+            child_runner=child)
         payload = benchmark.validate_raw(document)
         self.assertEqual(payload["status"], "rejected")
         self.assertEqual(len(payload["runs"]), 1)
@@ -902,7 +1309,8 @@ class RunPolicyTests(unittest.TestCase):
         document = benchmark.run_benchmarks(
             self.matrix_path, {"A": self.binary_a, "B": self.binary_b}, 1, 1,
             data_roots=self.declared_data_roots("A", "B"),
-            build_detector=lambda: [], child_runner=divergent_child)
+            build_detector=lambda: [], warmup_runner=self.fake_warmup,
+            child_runner=divergent_child)
         payload = benchmark.validate_raw(document)
         self.assertEqual(payload["status"], "rejected")
         self.assertEqual(payload["failures"][0]["code"], "hash")

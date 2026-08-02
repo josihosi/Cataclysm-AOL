@@ -121,6 +121,13 @@ _MAX_PACKET_RSS_SAMPLES = 500_000
 _RSS_READ_TIMEOUT_SECONDS = 2.0
 _RSS_SAMPLER_JOIN_TIMEOUT_SECONDS = 5.0
 _UINT32_MAX = (1 << 32) - 1
+_INT32_MAX = (1 << 31) - 1
+_DEFAULT_CALENDAR_TURN = 5_220_000
+_DEFAULT_SEASON_LENGTH_DAYS = 91
+_MAX_SEASON_LENGTH_DAYS = _INT32_MAX // (24 * 60 * 60)
+_WARMUP_DIAGNOSTIC_TAIL_BYTES = 4096
+_MAX_WARMUP_STREAM_BYTES = 16 * 1024 * 1024
+_MAX_CHILD_RESULT_BYTES = 16 * 1024 * 1024
 
 
 class BenchmarkError(RuntimeError):
@@ -233,6 +240,32 @@ def _case_expected_count(case: Mapping[str, Any], environment_name: str) -> int:
     return int(value)
 
 
+def _case_calendar(case: Mapping[str, Any]) -> dict[str, Any]:
+    environment = case.get("env", {})
+    turn_text = environment.get("CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN",
+                                str(_DEFAULT_CALENDAR_TURN))
+    season_text = environment.get("CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS",
+                                  str(_DEFAULT_SEASON_LENGTH_DAYS))
+    _require(isinstance(turn_text, str) and turn_text.isdigit() and
+             int(turn_text) <= _INT32_MAX, "matrix_schema",
+             f"case {_case_id(case)!r} needs a non-negative int32 calendar turn")
+    _require(isinstance(season_text, str) and season_text.isdigit() and
+             0 < int(season_text) <= _MAX_SEASON_LENGTH_DAYS, "matrix_schema",
+             f"case {_case_id(case)!r} needs season days representable as int32 turns")
+    return {
+        "turn": int(turn_text),
+        "start_of_cataclysm_turn": 0,
+        "start_of_game_turn": 0,
+        "initial_season": "spring",
+        "season_length_days": int(season_text),
+        "eternal_season": False,
+        "eternal_night": False,
+        "eternal_day": False,
+        "reset_before_timing_replay": True,
+        "reset_before_fairness_replay": True,
+    }
+
+
 def _matrix_fixture_hash_kind(matrix: Mapping[str, Any], case: Mapping[str, Any]) -> str:
     configured = matrix.get("fixture_hash_kind")
     if configured is not None:
@@ -299,6 +332,7 @@ def validate_matrix(document: Any) -> dict[str, Any]:
         _require(updates <= _MAX_CHILD_UPDATE_OBSERVATIONS, "matrix_schema",
                  f"case {case_id!r} exceeds the per-child update observation cap")
         _case_expected_count(case, "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES")
+        _case_calendar(case)
         thresholds = case.get("thresholds", [])
         _require(isinstance(thresholds, list), "matrix_schema",
                  f"case {case_id!r} thresholds must be a list")
@@ -447,6 +481,36 @@ def _validate_probe_and_modes(document: Mapping[str, Any]) -> None:
              "timing and fairness replay terminal states must match")
 
 
+def _validate_calendar(document: Any, expected: Mapping[str, Any] | None = None) -> None:
+    required = {
+        "turn", "start_of_cataclysm_turn", "start_of_game_turn", "initial_season",
+        "season_length_days", "eternal_season", "eternal_night", "eternal_day",
+        "reset_before_timing_replay", "reset_before_fairness_replay",
+    }
+    _require(isinstance(document, dict) and set(document) == required, "child_schema",
+             "child calendar must contain the complete deterministic configuration")
+    _require(_is_nonnegative_int(document["turn"]) and document["turn"] <= _INT32_MAX,
+             "child_schema", "child calendar turn must be a non-negative int32")
+    _require(_is_nonnegative_int(document["season_length_days"]) and
+             0 < document["season_length_days"] <= _MAX_SEASON_LENGTH_DAYS,
+             "child_schema",
+             "child calendar season length must be representable as int32 turns")
+    _require(document["start_of_cataclysm_turn"] == 0 and
+             document["start_of_game_turn"] == 0 and
+             document["initial_season"] == "spring", "child_schema",
+             "child calendar origin or initial season is not deterministic")
+    for name in ("eternal_season", "eternal_night", "eternal_day"):
+        _require(document[name] is False, "child_schema",
+                 f"child calendar {name} must be false")
+    for name in ("reset_before_timing_replay", "reset_before_fairness_replay"):
+        _require(document[name] is True, "child_schema",
+                 f"child calendar {name} must be true")
+    if expected is not None:
+        _require(document == expected, "child_schema",
+                 "child echoed wrong calendar configuration",
+                 expected=dict(expected), actual=document)
+
+
 def validate_child_result(document: Any, expected: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Validate a child result, including its echoed invocation identity."""
 
@@ -493,6 +557,7 @@ def validate_child_result(document: Any, expected: Mapping[str, Any] | None = No
             _require(metrics[name] is None or _is_nonnegative_int(metrics[name]), "child_schema",
                      f"metrics.{name} must be a non-negative integer or null")
     _validate_probe_and_modes(document)
+    _validate_calendar(document.get("calendar"), expected.get("calendar") if expected else None)
     deterministic_state = document.get("deterministic_state")
     _require(isinstance(deterministic_state, dict), "child_schema",
              "child deterministic_state must be an object")
@@ -621,6 +686,12 @@ def _derived_seed(seed: int, case_index: int, pair_index: int) -> int:
     return digest % (_UINT32_MAX - 1) + 1
 
 
+def _warmup_seed(seed: int) -> int:
+    value = f"warmup:{seed}".encode("ascii")
+    digest = int.from_bytes(hashlib.sha256(value).digest()[:4], "big")
+    return digest % (_UINT32_MAX - 1) + 1
+
+
 def _binary_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
     resolved = pathlib.Path(path).expanduser().resolve()
     _require(resolved.is_file(), "binary", f"binary does not exist: {resolved}")
@@ -629,7 +700,8 @@ def _binary_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
     return {"path": str(resolved), "size_bytes": stat.st_size, "sha256": sha256_file(resolved)}
 
 
-def _data_root_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
+def _data_tree_identity(path: os.PathLike[str] | str,
+                        include_runtime_cache: bool) -> dict[str, Any]:
     root = pathlib.Path(path).expanduser().resolve()
     _require(root.is_dir(), "data_root", f"data root does not exist: {root}")
     data_path = root / "data"
@@ -664,6 +736,7 @@ def _data_root_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
         directory_names.sort()
         file_names.sort()
         current = pathlib.Path(current_root)
+        retained_directories: list[str] = []
         for name in directory_names:
             source = current / name
             if source.is_symlink():
@@ -673,6 +746,10 @@ def _data_root_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
                     f"data root contains a symlink at relative path {relative}",
                     {"relative_path": relative},
                 )
+            if (not include_runtime_cache and current == data_path and name == "cache"):
+                continue
+            retained_directories.append(name)
+        directory_names[:] = retained_directories
         for name in file_names:
             source = current / name
             relative = source.relative_to(data_path).as_posix()
@@ -693,11 +770,38 @@ def _data_root_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
     return {
         "path": str(root),
         "data_path": str(data_path),
-        "manifest_kind": "recursive_file_content_sha256_v1",
+        "manifest_kind": ("recursive_file_content_sha256_v1" if include_runtime_cache else
+                          "recursive_source_file_content_sha256_excluding_cache_v1"),
         "manifest_sha256": digest.hexdigest(),
         "file_count": file_count,
         "total_bytes": total_bytes,
     }
+
+
+def _data_root_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
+    return _data_tree_identity(path, include_runtime_cache=True)
+
+
+def _data_source_identity(path: os.PathLike[str] | str) -> dict[str, Any]:
+    return _data_tree_identity(path, include_runtime_cache=False)
+
+
+def _require_warmed_data_root_transition(label: str, pre_warm_identity: Mapping[str, Any],
+                                         source_identity: Mapping[str, Any],
+                                         warmed_identity: Mapping[str, Any]) -> None:
+    _require(
+        warmed_identity["file_count"] > source_identity["file_count"] and
+        (warmed_identity["manifest_sha256"], warmed_identity["file_count"],
+         warmed_identity["total_bytes"]) !=
+        (pre_warm_identity["manifest_sha256"], pre_warm_identity["file_count"],
+         pre_warm_identity["total_bytes"]),
+        "warmup", f"variant {label!r} warmup did not populate the runtime data cache",
+        variant=label,
+        pre_warm_manifest_sha256=pre_warm_identity["manifest_sha256"],
+        warmed_manifest_sha256=warmed_identity["manifest_sha256"],
+        source_file_count=source_identity["file_count"],
+        warmed_file_count=warmed_identity["file_count"],
+    )
 
 
 def find_concurrent_build_processes() -> list[dict[str, Any]]:
@@ -793,6 +897,197 @@ def _minimal_child_environment(temp_dir: str,
     return environment
 
 
+def _child_expected(case: Mapping[str, Any], label: str, repetition: int,
+                    child_seed: int, fixture_hash_kind: str) -> dict[str, Any]:
+    return {
+        "fixture": case["fixture"],
+        "fixture_sha256": _case_fixture_sha256(case, fixture_hash_kind),
+        "fixture_hash_kind": fixture_hash_kind,
+        "workload": case["workload"],
+        "repetition": repetition,
+        "variant": label,
+        "rng_seed": child_seed,
+        "updates": _case_expected_count(case, "CAOL_HOSTILE_BENCHMARK_UPDATES"),
+        "clock_floor_samples": _case_expected_count(
+            case, "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES"),
+        "calendar": _case_calendar(case),
+    }
+
+
+def _warmup_result_binding(result: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": result["schema"],
+        "fixture": result["fixture"],
+        "fixture_sha256": result.get("fixture_sha256"),
+        "workload": result["workload"],
+        "repetition": result["repetition"],
+        "variant": result["variant"],
+        "rng_seed": result["rng_seed"],
+        "updates": result["updates"],
+        "clock_floor_samples": result["clock_floor_samples"],
+        "calendar": result["calendar"],
+        "initial_state_sha256": result["deterministic_state"]["initial_sha256"],
+        "terminal_state_sha256": result["deterministic_state"]["terminal_sha256"],
+    }
+
+
+def _drain_bounded_stream(stream: Any, process: subprocess.Popen[bytes],
+                          state: dict[str, Any], byte_limit: int,
+                          tail_bytes: int = 0) -> None:
+    digest = hashlib.sha256()
+    total_bytes = 0
+    tail = bytearray()
+    try:
+        while True:
+            chunk = stream.read(64 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+            total_bytes += len(chunk)
+            if tail_bytes:
+                tail.extend(chunk)
+                if len(tail) > tail_bytes:
+                    del tail[:-tail_bytes]
+            if total_bytes > byte_limit and not state.get("exceeded", False):
+                state["exceeded"] = True
+                try:
+                    process.terminate()
+                except OSError:
+                    pass
+    finally:
+        stream.close()
+        state.update({"sha256": digest.hexdigest(), "bytes": total_bytes,
+                      "tail": bytes(tail)})
+
+
+def _read_bounded_child_result(path: pathlib.Path) -> bytes:
+    _require(path.is_file(), "child", "child produced no benchmark output file")
+    size = path.stat().st_size
+    _require(0 < size <= _MAX_CHILD_RESULT_BYTES, "child",
+             "child benchmark output file is empty or exceeds its byte cap",
+             size_bytes=size, limit_bytes=_MAX_CHILD_RESULT_BYTES)
+    return path.read_bytes()
+
+
+def _run_warmup(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
+                warmup_index: int, child_seed: int, common_arguments: Sequence[str],
+                timeout_seconds: float, fixture_hash_kind: str = "opaque_sha256",
+                isolated_user_dir_argument: str | None = None,
+                source_data_root: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Run one untimed sacrificial data load without retaining child output text."""
+
+    _require(isinstance(source_data_root, Mapping), "data_root",
+             f"variant {label!r} needs an explicit source data-root identity")
+    expected = _child_expected(case, label, 0, child_seed, fixture_hash_kind)
+    with tempfile.TemporaryDirectory(prefix="caol-hostile-warmup-") as temp_dir:
+        output_path = pathlib.Path(temp_dir) / "child-result.json"
+        environment = _minimal_child_environment(temp_dir, case.get("env", {}))
+        environment.update({
+            "CAOL_HOSTILE_BENCHMARK_FIXTURE": case["fixture"],
+            "CAOL_HOSTILE_BENCHMARK_FIXTURE_SHA256": _case_fixture_sha256(
+                case, fixture_hash_kind),
+            "CAOL_HOSTILE_BENCHMARK_FIXTURE_HASH_KIND": fixture_hash_kind,
+            "CAOL_HOSTILE_BENCHMARK_WORKLOAD": case["workload"],
+            "CAOL_HOSTILE_BENCHMARK_REPETITION": "0",
+            "CAOL_HOSTILE_BENCHMARK_PAIR_INDEX": "0",
+            "CAOL_HOSTILE_BENCHMARK_VARIANT": label,
+            "CAOL_HOSTILE_BENCHMARK_SEED": str(child_seed),
+            "CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN": str(expected["calendar"]["turn"]),
+            "CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS": str(
+                expected["calendar"]["season_length_days"]),
+            "CAOL_HOSTILE_BENCHMARK_OUTPUT": str(output_path),
+        })
+        command = [binary["path"], "--rng-seed", str(child_seed), *common_arguments,
+                   *case.get("arguments", [])]
+        if isolated_user_dir_argument is not None:
+            user_dir = pathlib.Path(temp_dir) / "user"
+            user_dir.mkdir()
+            command.extend((isolated_user_dir_argument, str(user_dir)))
+        started_ns = time.perf_counter_ns()
+        failure_code: str | None = None
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       env=environment, cwd=source_data_root["path"])
+        except OSError as error:
+            raise BenchmarkError("warmup", f"could not launch warmup: {error}") from error
+        _require(process.stdout is not None and process.stderr is not None, "warmup",
+                 "warmup stream pipes were not created")
+        stdout_state: dict[str, Any] = {"exceeded": False}
+        stderr_state: dict[str, Any] = {"exceeded": False}
+        stdout_thread = threading.Thread(
+            target=_drain_bounded_stream,
+            args=(process.stdout, process, stdout_state, _MAX_WARMUP_STREAM_BYTES, 0),
+            name="hostile-warmup-stdout", daemon=True)
+        stderr_thread = threading.Thread(
+            target=_drain_bounded_stream,
+            args=(process.stderr, process, stderr_state, _MAX_WARMUP_STREAM_BYTES,
+                  _WARMUP_DIAGNOSTIC_TAIL_BYTES),
+            name="hostile-warmup-stderr", daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
+        try:
+            process.wait(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            failure_code = "timeout"
+        stdout_thread.join(timeout=_RSS_SAMPLER_JOIN_TIMEOUT_SECONDS)
+        stderr_thread.join(timeout=_RSS_SAMPLER_JOIN_TIMEOUT_SECONDS)
+        _require(not stdout_thread.is_alive() and not stderr_thread.is_alive(), "warmup",
+                 "warmup stream drain did not quiesce within its bounded timeout")
+        if failure_code is None and (stdout_state["exceeded"] or stderr_state["exceeded"]):
+            failure_code = "stream_limit"
+        elapsed_ns = time.perf_counter_ns() - started_ns
+        stdout_sha256 = stdout_state["sha256"]
+        stdout_bytes = stdout_state["bytes"]
+        stderr_sha256 = stderr_state["sha256"]
+        stderr_bytes = stderr_state["bytes"]
+        stderr_tail = stderr_state["tail"]
+        raw = b""
+        result_source = "output_file"
+        if failure_code is None and process.returncode == 0:
+            try:
+                raw = _read_bounded_child_result(output_path)
+            except BenchmarkError as error:
+                failure_code = error.code
+        binding: dict[str, Any] | None = None
+        if failure_code is None and process.returncode == 0:
+            try:
+                binding = _warmup_result_binding(_decode_child_result(raw, expected))
+            except BenchmarkError as error:
+                failure_code = error.code
+        elif failure_code is None:
+            failure_code = "child"
+        return {
+            "status": "accepted" if failure_code is None else "failed",
+            "warmup_index": warmup_index,
+            "case_id": _case_id(case),
+            "fixture_sha256": _case_fixture_sha256(case, fixture_hash_kind),
+            "variant": label,
+            "child_seed": child_seed,
+            "binary_sha256": binary["sha256"],
+            "working_directory": source_data_root["path"],
+            "source_manifest_sha256": source_data_root["manifest_sha256"],
+            "command": command,
+            "exit_code": process.returncode,
+            "runner_wall_time_ns": elapsed_ns,
+            "stdout_sha256": stdout_sha256,
+            "stdout_bytes": stdout_bytes,
+            "stderr_sha256": stderr_sha256,
+            "stderr_bytes": stderr_bytes,
+            "diagnostic_stderr_tail": (stderr_tail.decode("utf-8", errors="replace")
+                                       if failure_code is not None else ""),
+            "child_result_source": result_source,
+            "child_result_sha256": sha256_bytes(raw),
+            "child_result_binding": binding,
+            "failure_code": failure_code,
+        }
+
+
 def _decode_child_result(raw: bytes, expected: Mapping[str, Any]) -> dict[str, Any]:
     _require(bool(raw.strip()), "child", "child produced no benchmark JSON")
     try:
@@ -810,18 +1105,7 @@ def _run_child(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
                data_root: Mapping[str, Any] | None = None) -> dict[str, Any]:
     _require(isinstance(data_root, Mapping), "data_root",
              f"variant {label!r} needs an explicit data root identity")
-    expected = {
-        "fixture": case["fixture"],
-        "fixture_sha256": _case_fixture_sha256(case, fixture_hash_kind),
-        "fixture_hash_kind": fixture_hash_kind,
-        "workload": case["workload"],
-        "repetition": pair_index,
-        "variant": label,
-        "rng_seed": child_seed,
-        "updates": _case_expected_count(case, "CAOL_HOSTILE_BENCHMARK_UPDATES"),
-        "clock_floor_samples": _case_expected_count(
-            case, "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES"),
-    }
+    expected = _child_expected(case, label, pair_index, child_seed, fixture_hash_kind)
     with tempfile.TemporaryDirectory(prefix="caol-hostile-benchmark-") as temp_dir:
         output_path = pathlib.Path(temp_dir) / "child-result.json"
         environment = _minimal_child_environment(temp_dir, case.get("env", {}))
@@ -835,6 +1119,9 @@ def _run_child(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
             "CAOL_HOSTILE_BENCHMARK_PAIR_INDEX": str(pair_index),
             "CAOL_HOSTILE_BENCHMARK_VARIANT": label,
             "CAOL_HOSTILE_BENCHMARK_SEED": str(child_seed),
+            "CAOL_HOSTILE_BENCHMARK_CALENDAR_TURN": str(expected["calendar"]["turn"]),
+            "CAOL_HOSTILE_BENCHMARK_SEASON_LENGTH_DAYS": str(
+                expected["calendar"]["season_length_days"]),
             "CAOL_HOSTILE_BENCHMARK_OUTPUT": str(output_path),
         })
         command = [binary["path"], "--rng-seed", str(child_seed), *common_arguments,
@@ -935,6 +1222,7 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
                    timeout_seconds: float = 300.0, rss_interval_seconds: float = 0.1,
                    data_roots: Mapping[str, os.PathLike[str] | str] | None = None,
                    build_detector: Callable[[], list[dict[str, Any]]] = find_concurrent_build_processes,
+                   warmup_runner: Callable[..., dict[str, Any]] = _run_warmup,
                    child_runner: Callable[..., dict[str, Any]] = _run_child) -> dict[str, Any]:
     """Execute a complete serial benchmark packet and return its raw envelope."""
 
@@ -948,10 +1236,16 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
              actual=sorted(data_roots) if isinstance(data_roots, Mapping) else None)
     matrix, _matrix_raw, matrix_hash = load_matrix(matrix_path)
     identities = {label: _binary_identity(path) for label, path in binaries.items()}
-    data_root_identities = {label: _data_root_identity(data_roots[label]) for label in binaries}
+    source_data_root_identities = {
+        label: _data_source_identity(data_roots[label]) for label in binaries
+    }
+    pre_warm_data_root_identities = {
+        label: _data_root_identity(data_roots[label]) for label in binaries
+    }
     _require(len(identities) == len(set(identities)), "binary", "binary labels must be distinct")
     labels = list(identities)
-    _require(len({identity["path"] for identity in data_root_identities.values()}) == len(labels),
+    _require(len({identity["path"] for identity in
+                  pre_warm_data_root_identities.values()}) == len(labels),
              "data_root", "each benchmark variant needs its own declared data root")
     orders = paired_orders(seed, pair_count, labels)
     total_update_observations = sum(
@@ -971,6 +1265,7 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
         "created_utc": _utc_now(),
         "seed": seed,
         "pair_count": pair_count,
+        "common_arguments": list(common_arguments),
         "label_order": labels,
         "pair_orders": [list(order) for order in orders],
         "update_observation_limit": _MAX_PACKET_UPDATE_OBSERVATIONS,
@@ -982,16 +1277,87 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
         "matrix_sha256": matrix_hash,
         "matrix": matrix,
         "binaries": identities,
-        "data_roots": data_root_identities,
+        "source_data_roots": source_data_root_identities,
+        "pre_warm_data_roots": pre_warm_data_root_identities,
+        "data_roots": pre_warm_data_root_identities,
         "host": {
             "platform": platform.platform(),
             "machine": platform.machine(),
             "python": platform.python_version(),
         },
+        "warmups": [],
         "runs": [],
         "failures": [],
     }
     try:
+        source_manifests = {
+            (identity["manifest_sha256"], identity["file_count"], identity["total_bytes"])
+            for identity in source_data_root_identities.values()
+        }
+        _require(len(source_manifests) == 1, "hash",
+                 "paired variants do not have identical non-cache source data",
+                 manifests=sorted(source_manifests))
+        for label, pre_warm_identity in pre_warm_data_root_identities.items():
+            source_identity = source_data_root_identities[label]
+            _require(
+                (pre_warm_identity["manifest_sha256"], pre_warm_identity["file_count"],
+                 pre_warm_identity["total_bytes"]) ==
+                (source_identity["manifest_sha256"], source_identity["file_count"],
+                 source_identity["total_bytes"]),
+                "warmup", f"variant {label!r} must start with an empty runtime data cache",
+                variant=label,
+                pre_warm_manifest_sha256=pre_warm_identity["manifest_sha256"],
+                source_manifest_sha256=source_identity["manifest_sha256"],
+                pre_warm_file_count=pre_warm_identity["file_count"],
+                source_file_count=source_identity["file_count"],
+            )
+        warmup_case = matrix["cases"][0]
+        warmup_fixture_hash_kind = _matrix_fixture_hash_kind(matrix, warmup_case)
+        for warmup_index, label in enumerate(labels):
+            active_builds = build_detector()
+            _require(not active_builds, "concurrent_build",
+                     "compiler/build process is active", processes=active_builds)
+            _require(sha256_bytes(pathlib.Path(matrix_path).read_bytes()) == matrix_hash,
+                     "hash", "matrix changed before warmup")
+            identity = identities[label]
+            _require(sha256_file(identity["path"]) == identity["sha256"], "hash",
+                     f"binary {label!r} changed before warmup")
+            child_seed = _warmup_seed(seed)
+            warmup = warmup_runner(identity, label, warmup_case, warmup_index, child_seed,
+                                   common_arguments, timeout_seconds,
+                                   warmup_fixture_hash_kind,
+                                   matrix.get("isolated_user_dir_argument"),
+                                   source_data_root_identities[label])
+            payload["warmups"].append(warmup)
+            _require(isinstance(warmup, dict) and warmup.get("variant") == label, "schema",
+                     "warmup variant does not match stable label order")
+            _validate_warmup_record(
+                warmup, identity, source_data_root_identities[label], warmup_case,
+                warmup_fixture_hash_kind, seed, warmup_index, common_arguments,
+                matrix.get("isolated_user_dir_argument"))
+            _require(warmup["status"] == "accepted", "warmup",
+                     f"sacrificial data-load warmup failed for variant {label!r}",
+                     variant=label, exit_code=warmup["exit_code"],
+                     failure_code=warmup["failure_code"],
+                     stdout_sha256=warmup["stdout_sha256"],
+                     stderr_sha256=warmup["stderr_sha256"],
+                     diagnostic_stderr_tail=warmup["diagnostic_stderr_tail"])
+            _require(sha256_file(identity["path"]) == identity["sha256"], "hash",
+                     f"binary {label!r} changed during warmup")
+            _require(_data_source_identity(source_data_root_identities[label]["path"]) ==
+                     source_data_root_identities[label], "hash",
+                     f"source data root {label!r} changed during warmup")
+        _require(sha256_bytes(pathlib.Path(matrix_path).read_bytes()) == matrix_hash, "hash",
+                 "matrix changed during warmup")
+        data_root_identities = {
+            label: _data_root_identity(source_data_root_identities[label]["path"])
+            for label in labels
+        }
+        payload["data_roots"] = data_root_identities
+        for label, warmed_identity in data_root_identities.items():
+            _require_warmed_data_root_transition(
+                label, pre_warm_data_root_identities[label],
+                source_data_root_identities[label], warmed_identity)
         for pair_index, order in enumerate(orders):
             for case_index, case in enumerate(matrix["cases"]):
                 for order_index, label in enumerate(order):
@@ -1015,6 +1381,12 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
                              f"binary {label!r} changed during child execution")
         _require(sha256_bytes(pathlib.Path(matrix_path).read_bytes()) == matrix_hash, "hash",
                  "matrix changed during the run")
+        for label, identity in identities.items():
+            _require(sha256_file(identity["path"]) == identity["sha256"], "hash",
+                     f"binary {label!r} changed during the run")
+        for label, identity in source_data_root_identities.items():
+            _require(_data_source_identity(identity["path"]) == identity, "hash",
+                     f"source data root {label!r} changed during the run")
         for label, identity in data_root_identities.items():
             _require(_data_root_identity(identity["path"]) == identity, "hash",
                      f"data root {label!r} changed during the run")
@@ -1066,6 +1438,130 @@ def _validate_data_root_identity(identity: Any, verify_files: bool) -> dict[str,
     return identity
 
 
+def _validate_source_data_root_identity(identity: Any, verify_files: bool) -> dict[str, Any]:
+    required = {"path", "data_path", "manifest_kind", "manifest_sha256", "file_count",
+                "total_bytes"}
+    _require(isinstance(identity, dict) and set(identity) == required, "schema",
+             "invalid source data-root identity")
+    _require(isinstance(identity["path"], str) and pathlib.Path(identity["path"]).is_absolute(),
+             "schema", "source data-root path must be absolute")
+    _require(identity["data_path"] == str(pathlib.Path(identity["path"]) / "data"),
+             "schema", "source data-root data path does not match its working directory")
+    _require(identity["manifest_kind"] ==
+             "recursive_source_file_content_sha256_excluding_cache_v1", "schema",
+             "unsupported source data-root manifest kind")
+    _require(_valid_sha256(identity["manifest_sha256"]), "schema",
+             "invalid source data-root manifest hash")
+    _require(_is_nonnegative_int(identity["file_count"]) and
+             _is_nonnegative_int(identity["total_bytes"]), "schema",
+             "invalid source data-root manifest counts")
+    if verify_files:
+        _require(_data_source_identity(identity["path"]) == identity, "hash",
+                 "source data-root content hash changed", path=identity["path"])
+    return identity
+
+
+def _validate_warmup_result_binding(binding: Any, expected: Mapping[str, Any]) -> None:
+    required = {
+        "schema", "fixture", "fixture_sha256", "workload", "repetition", "variant",
+        "rng_seed", "updates", "clock_floor_samples", "calendar", "initial_state_sha256",
+        "terminal_state_sha256",
+    }
+    _require(isinstance(binding, dict) and set(binding) == required, "schema",
+             "invalid warmup child-result binding")
+    _require(binding["schema"] == CHILD_SCHEMA, "schema", "warmup child schema mismatch")
+    for name in ("fixture", "workload", "variant"):
+        _require(binding[name] == expected[name], "hash",
+                 f"warmup child {name} binding mismatch")
+    _require(str(binding["repetition"]) == str(expected["repetition"]), "hash",
+             "warmup child repetition binding mismatch")
+    for name in ("rng_seed", "updates", "clock_floor_samples"):
+        _require(binding[name] == expected[name], "hash",
+                 f"warmup child {name} binding mismatch")
+    _require(binding["fixture_sha256"] in (None, expected["fixture_sha256"]), "hash",
+             "warmup child fixture hash binding mismatch")
+    _validate_calendar(binding["calendar"], expected["calendar"])
+    for name in ("initial_state_sha256", "terminal_state_sha256"):
+        _require(_valid_sha256(binding[name]), "schema",
+                 f"invalid warmup child {name}")
+    if expected["fixture_hash_kind"] == "serialized_state_sha256":
+        _require(binding["initial_state_sha256"] == expected["fixture_sha256"], "hash",
+                 "warmup serialized fixture binding mismatch")
+
+
+def _validate_warmup_record(record: Any, binary: Mapping[str, Any],
+                            source_data_root: Mapping[str, Any], case: Mapping[str, Any],
+                            fixture_hash_kind: str, orchestration_seed: int,
+                            warmup_index: int, common_arguments: Sequence[str],
+                            isolated_user_dir_argument: str | None) -> None:
+    required = {
+        "status", "warmup_index", "case_id", "fixture_sha256", "variant", "child_seed",
+        "binary_sha256", "working_directory", "source_manifest_sha256", "command",
+        "exit_code", "runner_wall_time_ns", "stdout_sha256", "stdout_bytes",
+        "stderr_sha256", "stderr_bytes", "diagnostic_stderr_tail",
+        "child_result_source", "child_result_sha256", "child_result_binding",
+        "failure_code",
+    }
+    _require(isinstance(record, dict) and set(record) == required, "schema",
+             "invalid warmup record")
+    label = record["variant"]
+    expected_seed = _warmup_seed(orchestration_seed)
+    expected = _child_expected(case, label, 0, expected_seed, fixture_hash_kind)
+    _require(record["status"] in ("accepted", "failed"), "schema",
+             "invalid warmup status")
+    _require(record["warmup_index"] == warmup_index, "schema",
+             "warmup index mismatch")
+    _require(record["case_id"] == _case_id(case), "hash", "warmup case binding mismatch")
+    _require(record["fixture_sha256"] == expected["fixture_sha256"], "hash",
+             "warmup fixture hash mismatch")
+    _require(record["child_seed"] == expected_seed, "hash", "warmup seed mismatch")
+    _require(record["binary_sha256"] == binary["sha256"], "hash",
+             "warmup binary hash mismatch")
+    _require(record["working_directory"] == source_data_root["path"], "hash",
+             "warmup working directory mismatch")
+    _require(record["source_manifest_sha256"] == source_data_root["manifest_sha256"], "hash",
+             "warmup source manifest mismatch")
+    command = record["command"]
+    command_prefix = [binary["path"], "--rng-seed", str(expected_seed), *common_arguments,
+                      *case.get("arguments", [])]
+    _require(isinstance(command, list) and all(isinstance(value, str) for value in command),
+             "schema", "warmup command must be a string list")
+    if isolated_user_dir_argument is None:
+        _require(command == command_prefix, "hash", "warmup command binding mismatch")
+    else:
+        _require(len(command) == len(command_prefix) + 2 and
+                 command[:-2] == command_prefix and command[-2] == isolated_user_dir_argument and
+                 pathlib.Path(command[-1]).is_absolute(), "hash",
+                 "warmup isolated user-directory command binding mismatch")
+    _require(isinstance(record["exit_code"], int) and
+             not isinstance(record["exit_code"], bool), "schema", "invalid warmup exit code")
+    _require(_is_nonnegative_int(record["runner_wall_time_ns"]), "schema",
+             "invalid warmup runner wall time")
+    for name in ("stdout_sha256", "stderr_sha256", "child_result_sha256"):
+        _require(_valid_sha256(record[name]), "schema", f"invalid warmup {name}")
+    for name in ("stdout_bytes", "stderr_bytes"):
+        _require(_is_nonnegative_int(record[name]), "schema", f"invalid warmup {name}")
+    _require(isinstance(record["diagnostic_stderr_tail"], str) and
+             len(record["diagnostic_stderr_tail"]) <= _WARMUP_DIAGNOSTIC_TAIL_BYTES,
+             "schema", "warmup diagnostic stderr tail exceeds its character cap")
+    _require(record["child_result_source"] == "output_file", "schema",
+             "warmup child result must use its bounded output file")
+    if record["status"] == "accepted":
+        _require(record["exit_code"] == 0 and record["failure_code"] is None, "schema",
+                 "accepted warmup has failure state")
+        _require(record["stdout_bytes"] <= _MAX_WARMUP_STREAM_BYTES and
+                 record["stderr_bytes"] <= _MAX_WARMUP_STREAM_BYTES, "schema",
+                 "accepted warmup exceeded its stream byte cap")
+        _require(record["diagnostic_stderr_tail"] == "", "schema",
+                 "accepted warmup must not retain stderr text")
+        _validate_warmup_result_binding(record["child_result_binding"], expected)
+    else:
+        _require(isinstance(record["failure_code"], str) and record["failure_code"], "schema",
+                 "failed warmup needs a failure code")
+        _require(record["child_result_binding"] is None, "schema",
+                 "failed warmup must not retain a child-result binding")
+
+
 def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
     """Validate a raw packet's envelope, identities, order, and child results."""
 
@@ -1086,6 +1582,12 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
                      f"binary missing: {identity.get('path')}")
             _require(sha256_file(identity["path"]) == identity["sha256"], "hash",
                      f"binary hash changed: {label}")
+    pre_warm_data_roots = payload.get("pre_warm_data_roots")
+    _require(isinstance(pre_warm_data_roots, dict) and
+             set(pre_warm_data_roots) == set(binaries), "schema",
+             "pre-warm data-root identities must cover every binary label exactly")
+    for identity in pre_warm_data_roots.values():
+        _validate_data_root_identity(identity, False)
     data_roots = payload.get("data_roots")
     _require(isinstance(data_roots, dict) and set(data_roots) == set(binaries), "schema",
              "data-root identities must cover every binary label exactly")
@@ -1093,10 +1595,24 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
         _validate_data_root_identity(identity, verify_files)
     _require(len({identity["path"] for identity in data_roots.values()}) == len(binaries),
              "schema", "benchmark variants must not share a data root")
+    source_data_roots = payload.get("source_data_roots")
+    _require(isinstance(source_data_roots, dict) and
+             set(source_data_roots) == set(binaries), "schema",
+             "source data-root identities must cover every binary label exactly")
+    for label, identity in source_data_roots.items():
+        _validate_source_data_root_identity(identity, verify_files)
+        _require(identity["path"] == data_roots[label]["path"], "hash",
+                 "source and warmed data-root paths differ")
+        _require(identity["path"] == pre_warm_data_roots[label]["path"], "hash",
+                 "source and pre-warm data-root paths differ")
     pair_count = payload.get("pair_count")
     _require(_is_nonnegative_int(pair_count) and pair_count > 0, "schema", "invalid pair count")
     _require(isinstance(payload.get("seed"), int) and not isinstance(payload["seed"], bool),
              "schema", "invalid orchestration seed")
+    common_arguments = payload.get("common_arguments")
+    _require(isinstance(common_arguments, list) and
+             all(isinstance(value, str) for value in common_arguments), "schema",
+             "invalid common argument list")
     expected_update_observations = sum(
         _case_expected_count(case, "CAOL_HOSTILE_BENCHMARK_UPDATES")
         for case in matrix["cases"] ) * len(binaries) * pair_count
@@ -1126,6 +1642,19 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
     _require(orders == expected_orders, "schema",
              "pair orders do not match the recorded seed and stable label order",
              expected=expected_orders, actual=orders)
+    warmups = payload.get("warmups")
+    _require(isinstance(warmups, list) and len(warmups) <= len(labels), "schema",
+             "invalid warmup record count")
+    warmup_case = matrix["cases"][0]
+    warmup_fixture_hash_kind = _matrix_fixture_hash_kind(matrix, warmup_case)
+    for warmup_index, warmup in enumerate(warmups):
+        label = labels[warmup_index]
+        _require(isinstance(warmup, dict) and warmup.get("variant") == label, "schema",
+                 "warmup variants must form the stable label-order prefix")
+        _validate_warmup_record(
+            warmup, binaries[label], source_data_roots[label], warmup_case,
+            warmup_fixture_hash_kind, payload["seed"], warmup_index, common_arguments,
+            matrix.get("isolated_user_dir_argument"))
     runs = payload.get("runs")
     _require(isinstance(runs, list), "schema", "runs must be a list")
     case_by_id = {_case_id(case): case for case in matrix["cases"]}
@@ -1161,21 +1690,37 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
         _require(run.get("child_seed") == derived_child_seed, "hash",
                  "run child seed does not match the recorded orchestration seed",
                  expected=derived_child_seed, actual=run.get("child_seed"))
-        expected = {"fixture": case["fixture"],
-                    "fixture_sha256": _case_fixture_sha256(
-                        case, _matrix_fixture_hash_kind(matrix, case)),
-                    "fixture_hash_kind": _matrix_fixture_hash_kind(matrix, case),
-                    "workload": case["workload"], "repetition": pair_index, "variant": label,
-                    "rng_seed": run.get("child_seed"),
-                    "updates": _case_expected_count(case, "CAOL_HOSTILE_BENCHMARK_UPDATES"),
-                    "clock_floor_samples": _case_expected_count(
-                        case, "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES")}
+        expected = _child_expected(case, label, pair_index, run.get("child_seed"),
+                                   _matrix_fixture_hash_kind(matrix, case))
         _require(run.get("fixture_sha256") == expected["fixture_sha256"], "hash",
                  "run fixture hash mismatch", expected=expected["fixture_sha256"],
                  actual=run.get("fixture_sha256"))
+        command = run.get("command")
+        command_prefix = [binaries[label]["path"], "--rng-seed",
+                          str(derived_child_seed), *common_arguments,
+                          *case.get("arguments", [])]
+        _require(isinstance(command, list) and
+                 all(isinstance(value, str) for value in command), "schema",
+                 "run command must be a string list")
+        isolated_user_dir_argument = matrix.get("isolated_user_dir_argument")
+        if isolated_user_dir_argument is None:
+            _require(command == command_prefix, "hash", "run command binding mismatch")
+        else:
+            _require(len(command) == len(command_prefix) + 2 and
+                     command[:-2] == command_prefix and
+                     command[-2] == isolated_user_dir_argument and
+                     pathlib.Path(command[-1]).is_absolute(), "hash",
+                     "run isolated user-directory command binding mismatch")
+        _require(isinstance(run.get("exit_code"), int) and
+                 not isinstance(run.get("exit_code"), bool), "schema",
+                 "recorded run exit code must be an integer")
+        _require(run["exit_code"] == 0, "child", "recorded run exited non-zero")
+        for stream_name in ("stdout_sha256", "stderr_sha256", "child_result_sha256"):
+            _require(_valid_sha256(run.get(stream_name)), "schema",
+                     f"invalid run {stream_name}")
+        _require(run.get("child_result_source") in ("output_file", "stdout"), "schema",
+                 "invalid run child-result source")
         validate_child_result(run.get("result"), expected)
-        _require(_valid_sha256(run.get("child_result_sha256")), "schema",
-                 "invalid child raw hash")
         _require(_is_nonnegative_int(run.get("runner_wall_time_ns")), "schema",
                  "invalid runner wall time")
         samples = run.get("rss_samples")
@@ -1217,6 +1762,28 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
             _require(peak_bytes is not None and sample["rss_bytes"] <= peak_bytes, "schema",
                      "retained RSS sample exceeds recorded peak")
     if payload["status"] == "accepted":
+        source_manifests = {
+            (identity["manifest_sha256"], identity["file_count"], identity["total_bytes"])
+            for identity in source_data_roots.values()
+        }
+        _require(len(source_manifests) == 1, "hash",
+                 "paired variants do not have identical non-cache source data",
+                 manifests=sorted(source_manifests))
+        for label, pre_warm_identity in pre_warm_data_roots.items():
+            source_identity = source_data_roots[label]
+            _require(
+                (pre_warm_identity["manifest_sha256"], pre_warm_identity["file_count"],
+                 pre_warm_identity["total_bytes"]) ==
+                (source_identity["manifest_sha256"], source_identity["file_count"],
+                 source_identity["total_bytes"]),
+                "warmup", "accepted packet did not start from an empty runtime data cache",
+                variant=label,
+            )
+            _require_warmed_data_root_transition(
+                label, pre_warm_identity, source_identity, data_roots[label])
+        _require(len(warmups) == len(labels) and
+                 all(warmup["status"] == "accepted" for warmup in warmups), "schema",
+                 "accepted packet needs one accepted warmup per variant")
         expected_runs = pair_count * len(matrix["cases"]) * len(binaries)
         _require(len(runs) == expected_runs, "schema", "accepted packet is incomplete",
                  expected=expected_runs, actual=len(runs))

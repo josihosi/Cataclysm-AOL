@@ -1,0 +1,49 @@
+{
+  "schema": "caol-hostile-camp-benchmark-matrix-v1",
+  "description": "Bounded companion packet for legacy-equivalent existing near-ring lead saturation. All current structural leads begin harvested, so the packet measures bounded memory suppression without pretending forward-schema state exists.",
+  "fixture_hash_kind": "serialized_state_sha256",
+  "require_equivalent_terminal_state": true,
+  "isolated_user_dir_argument": "--user-dir",
+  "cases": [
+    {
+      "id": "legacy-lead-saturated-sites-0",
+      "fixture": "legacy_lead_saturated_sites_0_v1",
+      "fixture_sha256": "80f5a9c6a407799bcade4d03c1fc894b239ccfc3b418fdd625617f7cf1dd89fa",
+      "workload": "lead_saturated",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "0", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-lead-saturated-sites-1",
+      "fixture": "legacy_lead_saturated_sites_1_v1",
+      "fixture_sha256": "2f890c96ec37d557a3de7468ce392cde7701950e11f0d61f6bdb759187aa3ff7",
+      "workload": "lead_saturated",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "1", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-lead-saturated-sites-10",
+      "fixture": "legacy_lead_saturated_sites_10_v1",
+      "fixture_sha256": "34f6ffddbc381b1c3cbcbcf69af53b2c2cfd036e7c85f9aae8871753fb490f8e",
+      "workload": "lead_saturated",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-lead-saturated-sites-50",
+      "fixture": "legacy_lead_saturated_sites_50_v1",
+      "fixture_sha256": "3e8d4bcf99dce500afc47c2c7e860562ab0fb765c3691e6e6ccb5ef8584bcec9",
+      "workload": "lead_saturated",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "50", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-lead-saturated-sites-100",
+      "fixture": "legacy_lead_saturated_sites_100_v1",
+      "fixture_sha256": "e00f18894d0ecbc01c417813091e9f2b16d5a4e97d23dff50ba6bc3c4743a933",
+      "workload": "lead_saturated",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    }
+  ]
+}
