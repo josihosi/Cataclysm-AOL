@@ -7,10 +7,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Finish scout phase-transition constraints, including the one-way burned/exposed return path and
-   save/load coverage for every permitted and forbidden transition.
-2. Define the separate camp decision owner and `hostile_operation`; keep scout and follow-on
-   reservations mutually exclusive and use fresh response-party reservations.
+1. Define and persist the separate bounded camp decision owner; prove valid/forbidden transitions,
+   migration, and replay-safe assessment/report pinning.
+2. Define the fresh `hostile_operation`; keep scout and follow-on reservations mutually exclusive
+   and use fresh response-party reservations.
 3. Add the world-resource, bounded supply, dossier/report revision, pruning, and component
    idempotency owners with focused migration/replay tests.
 4. Extend the existing empty/normal/saturated byte evidence only as each new Phase-1 component

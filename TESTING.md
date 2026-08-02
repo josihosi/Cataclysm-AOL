@@ -215,9 +215,18 @@ Current Phase-1 evidence target:
   The two new cases pass 1/66 and 1/52; `[bandit][live_world]` passes 80/2,085;
   `[bandit][handoff]` passes 8/145; patrol passes 1/12; save compatibility passes 2/16.
   Empty/normal/saturated state is 87/4,190/28,166 bytes and remains byte-stable below 64 KiB.
-- Still required: phase-transition constraints, then operation/resource/supply/dossier owners,
-  pruning, and component idempotency. Post-close physical return by a member already declared
-  missing is not part of this checkpoint's claim.
+- `7acc011951` adds one expected-phase, monotonic scout transition authority and exhaustive 10x10
+  policy coverage. Burned/exposed/reporting/home/lost phases bypass the target gate and can move
+  only homeward; stale/wrong-kind/wrong-job transitions are atomic rejects; unknown future saved
+  phases normalize to `lost`, while missing legacy phase data remains `assembling`. Malformed
+  scout-kind/raid-job reservations close on load, and legacy scavenge retains its non-report return.
+- Final redirected build `build_logs/macos-tests-build-phase1-scout-transitions-fixtures-final-48d6b708a1.log`
+  exited `0`. The 79,479,080-byte binary is SHA-256
+  `cae011df1eea90a9a28c4375699cc325fea60365b03ee2bfe7bc014cad4a8a20`.
+  The exact phase case passes 1/144; `[bandit][live_world]` passes 81/2,230. The adjacent handoff
+  gate remains 8/145 and overmap save compatibility remains 2/16.
+- Still required: camp-decision, hostile-operation, resource, supply, dossier, pruning, and
+  component-idempotency owners. Detailed burn perception/egress remains Phase 5 behavior work.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:
 - non-interactive Mac Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
@@ -319,8 +328,6 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 1:
-- scout phase-transition constraints, including one-way burned/exposed withdrawal and forbidden
-  re-entry into observation;
 - camp-decision, hostile-operation, resource, supply, dossier/report policy, and bounded
   transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
