@@ -37,6 +37,8 @@ constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_sortie_fact_key_length = 128;
 constexpr std::size_t max_sortie_summary_length = 512;
 constexpr std::size_t max_camp_decision_reason_length = 256;
+constexpr int max_finite_resource_units = 3;
+constexpr int max_finite_resource_claim_units = 2;
 constexpr int scout_return_cohesion_minutes = 2 * 60;
 constexpr int scout_missing_grace_minutes = 24 * 60;
 
@@ -47,6 +49,13 @@ int minutes_after_saturated( const int base_minutes, const int delta_minutes )
     }
     const long long result = static_cast<long long>( base_minutes ) + delta_minutes;
     return static_cast<int>( std::min<long long>( result, std::numeric_limits<int>::max() ) );
+}
+
+bool finite_resource_record_is_valid( const bandit_live_world::finite_resource_record &record )
+{
+    return record.remaining_units >= 0 && record.remaining_units < max_finite_resource_units &&
+           record.revision > 0 && record.revision <= max_finite_resource_units &&
+           record.remaining_units + record.revision <= max_finite_resource_units;
 }
 
 struct bounded_route_state {
@@ -3191,9 +3200,10 @@ bool site_record::eligible_for_empty_site_retirement() const
 
 void world_state::clear()
 {
-    schema_version = 3;
+    schema_version = 4;
     owner_id = "hells_raiders_live_owner_v0";
     sites.clear();
+    finite_resources.clear();
 }
 
 void world_state::serialize( JsonOut &json ) const
@@ -3206,6 +3216,20 @@ void world_state::serialize( JsonOut &json ) const
     json.member( "schema_version", schema_version );
     json.member( "owner_id", owner_id );
     json.member( "sites", sites );
+    if( !finite_resources.empty() ) {
+        json.member( "finite_resources" );
+        json.start_array();
+        for( const auto &entry : finite_resources ) {
+            json.start_array();
+            json.write( entry.first.x() );
+            json.write( entry.first.y() );
+            json.write( entry.first.z() );
+            json.write( entry.second.remaining_units );
+            json.write( entry.second.revision );
+            json.end_array();
+        }
+        json.end_array();
+    }
     json.end_object();
 }
 
@@ -3216,10 +3240,43 @@ void world_state::deserialize( const JsonObject &jo )
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::world_deserialize_calls );
     world_state candidate;
-    jo.read( "schema_version", candidate.schema_version );
+    int loaded_schema_version = 0;
+    jo.read( "schema_version", loaded_schema_version );
     jo.read( "owner_id", candidate.owner_id );
     jo.read( "sites", candidate.sites );
-    candidate.schema_version = 3;
+    if( jo.has_member( "finite_resources" ) ) {
+        if( loaded_schema_version < 4 ) {
+            jo.throw_error( "pre-v4 world cannot contain finite resource state" );
+        }
+        for( JsonArray packed_resource : jo.get_array( "finite_resources" ) ) {
+            if( packed_resource.size() != 5 ) {
+                packed_resource.throw_error( "finite resource must be [x,y,z,remaining,revision]" );
+            }
+            const tripoint_abs_omt omt( packed_resource.get_int( 0 ),
+                                        packed_resource.get_int( 1 ),
+                                        packed_resource.get_int( 2 ) );
+            finite_resource_record resource;
+            resource.remaining_units = packed_resource.get_int( 3 );
+            resource.revision = packed_resource.get_int( 4 );
+            if( !finite_resource_record_is_valid( resource ) ) {
+                packed_resource.throw_error( "finite resource has invalid remaining units or revision" );
+            }
+            if( !candidate.finite_resources.emplace( omt, resource ).second ) {
+                packed_resource.throw_error( "finite resource OMT is duplicated" );
+            }
+        }
+    }
+    if( loaded_schema_version < 4 ) {
+        for( const site_record &site : candidate.sites ) {
+            for( const camp_map_lead &lead : site.intelligence_map.leads ) {
+                if( lead.kind == camp_lead_kind::structural_bounty &&
+                    lead.status == camp_lead_status::harvested ) {
+                    candidate.finite_resources.emplace( lead.omt, finite_resource_record { 0, 1 } );
+                }
+            }
+        }
+    }
+    candidate.schema_version = 4;
     *this = std::move( candidate );
 }
 
@@ -3237,6 +3294,77 @@ const site_record *world_state::find_site( const std::string &site_id ) const
         return site.site_id == site_id;
     } );
     return iter != sites.end() ? &*iter : nullptr;
+}
+
+const finite_resource_record *world_state::find_finite_resource(
+    const tripoint_abs_omt &omt ) const
+{
+    const auto iter = finite_resources.find( omt );
+    return iter != finite_resources.end() ? &iter->second : nullptr;
+}
+
+finite_resource_record finite_resource_snapshot( const world_state &state,
+        const tripoint_abs_omt &omt, const int undiscovered_units )
+{
+    if( const finite_resource_record *resource = state.find_finite_resource( omt ) ) {
+        return *resource;
+    }
+    return finite_resource_record { std::clamp( undiscovered_units, 0,
+                                    max_finite_resource_units ), 0 };
+}
+
+finite_resource_claim_result claim_finite_resource_units( world_state &state,
+        const tripoint_abs_omt &omt, const finite_resource_record &expected,
+        const int requested_units )
+{
+    finite_resource_claim_result result;
+    if( requested_units <= 0 || requested_units > max_finite_resource_claim_units ||
+        expected.remaining_units < 0 || expected.remaining_units > max_finite_resource_units ||
+        expected.revision < 0 || expected.revision > max_finite_resource_units ) {
+        return result;
+    }
+
+    const auto current = state.finite_resources.find( omt );
+    if( current != state.finite_resources.end() ) {
+        result.remaining_units = current->second.remaining_units;
+        result.revision = current->second.revision;
+        if( !finite_resource_record_is_valid( current->second ) ) {
+            return result;
+        }
+        if( current->second.remaining_units != expected.remaining_units ||
+            current->second.revision != expected.revision ) {
+            result.status = finite_resource_claim_status::stale;
+            return result;
+        }
+    } else if( expected.revision != 0 ) {
+        result.status = finite_resource_claim_status::stale;
+        return result;
+    }
+
+    if( expected.remaining_units == 0 ) {
+        result.status = finite_resource_claim_status::depleted;
+        return result;
+    }
+
+    const int claimed_units = std::min( requested_units, expected.remaining_units );
+    finite_resource_record updated;
+    updated.remaining_units = expected.remaining_units - claimed_units;
+    updated.revision = expected.revision + 1;
+    if( !finite_resource_record_is_valid( updated ) ) {
+        return result;
+    }
+
+    if( current == state.finite_resources.end() ) {
+        state.finite_resources.emplace( omt, updated );
+    } else {
+        current->second = updated;
+    }
+    state.schema_version = 4;
+    result.status = finite_resource_claim_status::applied;
+    result.claimed_units = claimed_units;
+    result.remaining_units = updated.remaining_units;
+    result.revision = updated.revision;
+    return result;
 }
 
 bool is_tracked_hostile_template( const std::string &npc_template_id )

@@ -481,6 +481,177 @@ TEST_CASE( "bandit_live_world_deserialize_commits_only_after_the_packet_is_valid
     CHECK( serialize_world( world ) == before );
 }
 
+TEST_CASE( "bandit_live_world_finite_resource_claim_is_global_atomic_and_idempotent",
+           "[bandit][live_world][resource]" )
+{
+    bandit_live_world::world_state world;
+    const tripoint_abs_omt resource_omt( 120, -45, 0 );
+
+    const bandit_live_world::finite_resource_record first_snapshot =
+        bandit_live_world::finite_resource_snapshot( world, resource_omt, 3 );
+    CHECK( first_snapshot.remaining_units == 3 );
+    CHECK( first_snapshot.revision == 0 );
+    CHECK( world.finite_resources.empty() );
+
+    const bandit_live_world::finite_resource_claim_result first_claim =
+        bandit_live_world::claim_finite_resource_units( world, resource_omt, first_snapshot, 1 );
+    CHECK( first_claim.status == bandit_live_world::finite_resource_claim_status::applied );
+    CHECK( first_claim.claimed_units == 1 );
+    CHECK( first_claim.remaining_units == 2 );
+    CHECK( first_claim.revision == 1 );
+    REQUIRE( world.finite_resources.size() == 1 );
+
+    const std::string after_first_claim = serialize_world( world );
+    const bandit_live_world::finite_resource_claim_result replay =
+        bandit_live_world::claim_finite_resource_units( world, resource_omt, first_snapshot, 1 );
+    CHECK( replay.status == bandit_live_world::finite_resource_claim_status::stale );
+    CHECK( replay.claimed_units == 0 );
+    CHECK( replay.remaining_units == 2 );
+    CHECK( replay.revision == 1 );
+    CHECK( serialize_world( world ) == after_first_claim );
+
+    const bandit_live_world::finite_resource_record second_snapshot =
+        bandit_live_world::finite_resource_snapshot( world, resource_omt, 3 );
+    const bandit_live_world::finite_resource_claim_result second_claim =
+        bandit_live_world::claim_finite_resource_units( world, resource_omt, second_snapshot, 2 );
+    CHECK( second_claim.status == bandit_live_world::finite_resource_claim_status::applied );
+    CHECK( second_claim.claimed_units == 2 );
+    CHECK( second_claim.remaining_units == 0 );
+    CHECK( second_claim.revision == 2 );
+    REQUIRE( world.finite_resources.size() == 1 );
+
+    const std::string depleted_bytes = serialize_world( world );
+    const bandit_live_world::finite_resource_record depleted_snapshot =
+        bandit_live_world::finite_resource_snapshot( world, resource_omt, 3 );
+    const bandit_live_world::finite_resource_claim_result depleted_claim =
+        bandit_live_world::claim_finite_resource_units( world, resource_omt, depleted_snapshot, 1 );
+    CHECK( depleted_claim.status == bandit_live_world::finite_resource_claim_status::depleted );
+    CHECK( serialize_world( world ) == depleted_bytes );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.finite_resources.size() == 1 );
+    CHECK( serialize_world( loaded ) == depleted_bytes );
+    bandit_live_world::world_state replay_loaded = loaded;
+    CHECK( bandit_live_world::claim_finite_resource_units( replay_loaded, resource_omt,
+            second_snapshot, 2 ).status == bandit_live_world::finite_resource_claim_status::stale );
+    CHECK( serialize_world( replay_loaded ) == depleted_bytes );
+
+    const tripoint_abs_omt absent_omt( 121, -45, 0 );
+    const bandit_live_world::finite_resource_record empty_snapshot =
+        bandit_live_world::finite_resource_snapshot( world, absent_omt, 0 );
+    CHECK( bandit_live_world::claim_finite_resource_units( world, absent_omt,
+            empty_snapshot, 1 ).status == bandit_live_world::finite_resource_claim_status::depleted );
+    CHECK( world.finite_resources.size() == 1 );
+    CHECK( bandit_live_world::claim_finite_resource_units( world, absent_omt,
+            bandit_live_world::finite_resource_record { 1, 1 }, 1 ).status ==
+           bandit_live_world::finite_resource_claim_status::stale );
+    CHECK( bandit_live_world::claim_finite_resource_units( world, absent_omt,
+            bandit_live_world::finite_resource_record { 1, 0 }, 0 ).status ==
+           bandit_live_world::finite_resource_claim_status::rejected );
+    CHECK( serialize_world( world ) == depleted_bytes );
+}
+
+TEST_CASE( "bandit_live_world_finite_resource_save_contract_is_canonical_and_fail_closed",
+           "[bandit][live_world][resource][save][migration]" )
+{
+    const std::array<tripoint_abs_omt, 3> omts = {
+        tripoint_abs_omt( -8, 4, -1 ),
+        tripoint_abs_omt( 3, 7, 0 ),
+        tripoint_abs_omt( 11, -2, 1 ),
+    };
+    bandit_live_world::world_state forward;
+    bandit_live_world::world_state reverse;
+    for( const tripoint_abs_omt &omt : omts ) {
+        const bandit_live_world::finite_resource_record expected =
+            bandit_live_world::finite_resource_snapshot( forward, omt, 1 );
+        REQUIRE( bandit_live_world::claim_finite_resource_units( forward, omt, expected, 1 ).status ==
+                 bandit_live_world::finite_resource_claim_status::applied );
+    }
+    for( auto iter = omts.rbegin(); iter != omts.rend(); ++iter ) {
+        const bandit_live_world::finite_resource_record expected =
+            bandit_live_world::finite_resource_snapshot( reverse, *iter, 1 );
+        REQUIRE( bandit_live_world::claim_finite_resource_units( reverse, *iter, expected, 1 ).status ==
+                 bandit_live_world::finite_resource_claim_status::applied );
+    }
+    CHECK( serialize_world( forward ) == serialize_world( reverse ) );
+    CHECK( serialize_world( round_trip_world( reverse ) ) == serialize_world( reverse ) );
+
+    bandit_live_world::world_state legacy;
+    legacy.schema_version = 3;
+    bandit_live_world::site_record legacy_site;
+    legacy_site.site_id = "legacy-resource-camp";
+    bandit_live_world::camp_map_lead harvested;
+    harvested.lead_id = "legacy-harvested";
+    harvested.kind = bandit_live_world::camp_lead_kind::structural_bounty;
+    harvested.status = bandit_live_world::camp_lead_status::harvested;
+    harvested.omt = tripoint_abs_omt( 40, 50, 0 );
+    legacy_site.intelligence_map.leads.push_back( harvested );
+    bandit_live_world::camp_map_lead unharvested = harvested;
+    unharvested.lead_id = "legacy-unharvested";
+    unharvested.status = bandit_live_world::camp_lead_status::suspected;
+    unharvested.omt = tripoint_abs_omt( 41, 50, 0 );
+    legacy_site.intelligence_map.leads.push_back( unharvested );
+    legacy.sites.push_back( legacy_site );
+
+    const bandit_live_world::world_state migrated = round_trip_world( legacy );
+    CHECK( migrated.schema_version == 4 );
+    REQUIRE( migrated.finite_resources.size() == 1 );
+    const bandit_live_world::finite_resource_record *migrated_resource =
+        migrated.find_finite_resource( harvested.omt );
+    REQUIRE( migrated_resource != nullptr );
+    CHECK( migrated_resource->remaining_units == 0 );
+    CHECK( migrated_resource->revision == 1 );
+    CHECK( migrated.find_finite_resource( unharvested.omt ) == nullptr );
+
+    bandit_live_world::world_state protected_world = forward;
+    const std::string protected_bytes = serialize_world( protected_world );
+    const std::array<std::string, 4> malformed_packets = {
+        R"({"schema_version":4,"sites":[],"finite_resources":[[1,2,0,2,1],[1,2,0,1,2]]})",
+        R"({"schema_version":4,"sites":[],"finite_resources":[[1,2,0,-1,1]]})",
+        R"({"schema_version":4,"sites":[],"finite_resources":[[1,2,0,2,0]]})",
+        R"({"schema_version":4,"sites":[],"finite_resources":[[1,2,0,1]]})",
+    };
+    for( const std::string &packet : malformed_packets ) {
+        JsonValue malformed = json_loader::from_string( packet );
+        CHECK_THROWS( protected_world.deserialize( malformed.get_object() ) );
+        CHECK( serialize_world( protected_world ) == protected_bytes );
+    }
+
+    std::string hybrid_legacy_packet = serialize_world( legacy );
+    const std::size_t object_end = hybrid_legacy_packet.rfind( '}' );
+    REQUIRE( object_end != std::string::npos );
+    hybrid_legacy_packet.insert( object_end,
+                                 ",\n  \"finite_resources\": [[40,50,0,2,1]]\n" );
+    JsonValue hybrid_legacy = json_loader::from_string( hybrid_legacy_packet );
+    CHECK_THROWS( protected_world.deserialize( hybrid_legacy.get_object() ) );
+    CHECK( serialize_world( protected_world ) == protected_bytes );
+}
+
+TEST_CASE( "bandit_live_world_finite_resource_serialization_has_a_bounded_slope",
+           "[bandit][live_world][resource][save]" )
+{
+    bandit_live_world::world_state world;
+    std::size_t bytes_at_500 = 0;
+    for( int index = 0; index < 1000; ++index ) {
+        const tripoint_abs_omt omt( 100000 + index, 200000 + index, 0 );
+        bandit_live_world::finite_resource_record expected =
+            bandit_live_world::finite_resource_snapshot( world, omt, 3 );
+        REQUIRE( bandit_live_world::claim_finite_resource_units( world, omt, expected, 1 ).status ==
+                 bandit_live_world::finite_resource_claim_status::applied );
+        expected = bandit_live_world::finite_resource_snapshot( world, omt, 3 );
+        REQUIRE( bandit_live_world::claim_finite_resource_units( world, omt, expected, 2 ).status ==
+                 bandit_live_world::finite_resource_claim_status::applied );
+        if( index == 499 ) {
+            bytes_at_500 = serialize_world( world ).size();
+        }
+    }
+    const std::size_t bytes_at_1000 = serialize_world( world ).size();
+    CAPTURE( bytes_at_500, bytes_at_1000 );
+    REQUIRE( bytes_at_1000 > bytes_at_500 );
+    CHECK( bytes_at_1000 - bytes_at_500 <= 32 * 500 );
+    CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+}
+
 TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_identity",
            "[bandit][live_world][migration]" )
 {
@@ -821,20 +992,20 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
                bandit_live_world::member_state::outbound );
         CHECK( site.next_outing_generation == 5 );
         const std::string before_escalation = serialize_world(
-                                                  bandit_live_world::world_state { 3,
-                                                      "hells_raiders_live_owner_v0", { site } } );
+                                                  bandit_live_world::world_state { 4,
+                                                      "hells_raiders_live_owner_v0", { site }, {} } );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::approaching, 130, "unsafe legacy escalation" ) ==
                bandit_live_world::hostile_operation_transition_result::rejected );
-        CHECK( serialize_world( bandit_live_world::world_state { 3,
-                                "hells_raiders_live_owner_v0", { site } } ) == before_escalation );
+        CHECK( serialize_world( bandit_live_world::world_state { 4,
+                                "hells_raiders_live_owner_v0", { site }, {} } ) == before_escalation );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::lost, 130, "legacy party lost" ) ==
                bandit_live_world::hostile_operation_transition_result::applied );
-        CHECK( serialize_world( bandit_live_world::world_state { 3,
-                                "hells_raiders_live_owner_v0", { site } } ) != before_escalation );
+        CHECK( serialize_world( bandit_live_world::world_state { 4,
+                                "hells_raiders_live_owner_v0", { site }, {} } ) != before_escalation );
     }
 
     SECTION( "malformed new operation releases every known in-flight reservation" ) {
@@ -976,7 +1147,7 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
     for( const bandit_live_world::scout_phase phase : phases ) {
         original.sites.front().active_outing.phase = phase;
         const bandit_live_world::world_state loaded = round_trip_world( original );
-        REQUIRE( loaded.schema_version == 3 );
+        REQUIRE( loaded.schema_version == 4 );
         REQUIRE( loaded.sites.size() == 1 );
         const bandit_live_world::active_outing_state &outing = loaded.sites.front().active_outing;
         CHECK( outing.schema_version == 4 );

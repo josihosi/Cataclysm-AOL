@@ -4,6 +4,7 @@
 #include "bandit_pursuit_handoff.h"
 
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -381,6 +382,25 @@ struct scout_resolution_effect {
     bool cargo_credited = false;
 };
 
+struct finite_resource_record {
+    int remaining_units = 0;
+    int revision = 0;
+};
+
+enum class finite_resource_claim_status {
+    rejected,
+    stale,
+    depleted,
+    applied,
+};
+
+struct finite_resource_claim_result {
+    finite_resource_claim_status status = finite_resource_claim_status::rejected;
+    int claimed_units = 0;
+    int remaining_units = 0;
+    int revision = 0;
+};
+
 struct site_record {
     int schema_version = 5;
     std::string site_id;
@@ -448,9 +468,10 @@ struct site_record {
 };
 
 struct world_state {
-    int schema_version = 3;
+    int schema_version = 4;
     std::string owner_id = "hells_raiders_live_owner_v0";
     std::vector<site_record> sites;
+    std::map<tripoint_abs_omt, finite_resource_record> finite_resources;
 
     void clear();
     void serialize( JsonOut &json ) const;
@@ -458,6 +479,7 @@ struct world_state {
 
     site_record *find_site( const std::string &site_id );
     const site_record *find_site( const std::string &site_id ) const;
+    const finite_resource_record *find_finite_resource( const tripoint_abs_omt &omt ) const;
 };
 
 struct footprint_snapshot {
@@ -693,6 +715,11 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::optional<std::string> &overmap_special_id,
                           const std::optional<std::string> &map_extra_id,
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
+finite_resource_claim_result claim_finite_resource_units( world_state &state,
+        const tripoint_abs_omt &omt, const finite_resource_record &expected,
+        int requested_units );
+finite_resource_record finite_resource_snapshot( const world_state &state,
+        const tripoint_abs_omt &omt, int undiscovered_units );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,

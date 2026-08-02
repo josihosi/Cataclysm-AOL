@@ -20,6 +20,11 @@ overmap_global_state populated_global_state()
     site.site_id = "save_compatibility_site";
     site.headcount = 2;
     state.bandit_live_world.sites.push_back( site );
+    const tripoint_abs_omt resource_omt( 8, 9, 0 );
+    const bandit_live_world::finite_resource_record resource_snapshot =
+        bandit_live_world::finite_resource_snapshot( state.bandit_live_world, resource_omt, 3 );
+    bandit_live_world::claim_finite_resource_units( state.bandit_live_world, resource_omt,
+            resource_snapshot, 1 );
 
     zombie_rider_overmap_ai::rider_light_memory rider_memory;
     rider_memory.interest_score = 8;
@@ -163,6 +168,11 @@ TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
     REQUIRE( loaded.bandit_live_world.sites.size() == 1 );
     CHECK( loaded.bandit_live_world.sites.front().site_id == "save_compatibility_site" );
     CHECK( loaded.bandit_live_world.sites.front().headcount == 2 );
+    const bandit_live_world::finite_resource_record *resource =
+        loaded.bandit_live_world.find_finite_resource( tripoint_abs_omt( 8, 9, 0 ) );
+    REQUIRE( resource != nullptr );
+    CHECK( resource->remaining_units == 2 );
+    CHECK( resource->revision == 1 );
 
     const auto rider = loaded.zombie_rider_light_memory.find( tripoint_abs_omt( 4, 5, 0 ) );
     REQUIRE( rider != loaded.zombie_rider_light_memory.end() );
@@ -189,6 +199,7 @@ TEST_CASE( "overmap_global_load_clears_newer_fields_when_an_older_save_omits_the
     loaded.deserialize( old_save_object );
 
     CHECK( loaded.bandit_live_world.sites.empty() );
+    CHECK( loaded.bandit_live_world.finite_resources.empty() );
     CHECK( loaded.zombie_rider_light_memory.empty() );
     CHECK( loaded.zombie_rider_light_memory_last_turn == calendar::turn );
     CHECK( loaded.placed_regions.empty() );
