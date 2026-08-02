@@ -109,9 +109,33 @@ Current Phase-0 evidence (2026-08-02):
   `0c5d1431c120ae0f8913e98543da64c7cf1bd968915ef1dc6320fca3e396249c` because the baseline
   data-root hash changed during execution. The child created 3,418 ignored FlatBuffer files under
   `data/cache` after initial identity capture (8,156 -> 11,574 files). Both worktrees stayed
-  Git-clean. The next instrumentation slice must perform and record a sacrificial data-load
-  warmup before identity capture, hash the complete warmed tree including cache, and separately
-  prove invariant non-cache source data; an incidental now-warm rerun receives no credit.
+  Git-clean. It remains red/non-credit historical evidence; the next checkpoint repaired the
+  warmup/input contract and proved it from a newly cold start rather than crediting a now-warm
+  rerun.
+- Fixture/input hardening is checkpointed at `c2d7921d9f` on `dev` and identical-patch cherry-pick
+  `7e6d11091d` on the preserved baseline; stable patch ID is
+  `c8b72321516ccf34ce160121d4da4ab2d44aee42`. The split legacy matrices cover idle,
+  structural, serialization, representative dispatch/return, 500-site fairness stress, and
+  genuine 0/1/10/50/100-site existing-lead saturation. Calendar turn `5220000`, 91-day spring,
+  the shared seed, fixture hashes, replay resets, output/stream caps, and source/warmed tree
+  identities are fail-closed. The Python suite passes 94 tests, direct lead saturation passes
+  1 case/31 assertions, histogram validation passes 1/13, and `[bandit][live_world]` passes
+  68/1,459. Three xhigh review rounds were resolved; final closeout reports no actionable finding.
+- Exact sequential builds used the same gettext-qualified `make -j4 tests` command. Dev build
+  `macos-tests-build-dev-c2d7921d9f.log` exited `0` in 49 seconds; its 79,151,528-byte binary is
+  SHA-256 `d113a5480473f6e70f637aab2f030ba38bb4cf346fd0906ec8c766ad4051fa61`.
+  Baseline build `macos-tests-build-baseline-7e6d11091d.log` exited `0` in 53 seconds; its
+  79,113,576-byte binary is SHA-256
+  `708cfeb2fc763f9083809dd182f1f480d5677f02746c826acb6bd13798017f88`.
+- The first accepted cold-cache paired smoke is
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/paired-smoke-c2d7921d9f.raw.json`,
+  SHA-256 `62b57c1e88778576e1c1f248c637f5427543152268cdfdc923e0dc77c985c444`.
+  Runner and independent `validate --verify-files` exited `0`; two measured runs are valid.
+  Both variants began at the identical 8,156-file/102,972,091-byte non-cache manifest, then each
+  recorded an accepted warmup and a stable 11,574-file warmed tree. Initial/terminal fixture SHA
+  remained `80f5a9c...`, fixed calendar/RNG state matched, and terminal replay equivalence passed.
+  The 2,000-bootstrap summary is accepted at SHA-256 `de65f54b...`. This is integration proof,
+  not the still-pending ten-pair official performance baseline.
 
 Required Phase-0 evidence:
 - exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;

@@ -79,13 +79,13 @@ flesh-raptor behavior remain closed. Honest perception, paired scouting, physica
 coherent withdrawal, faction outcomes, persistence, performance, save-bloat, and cross-platform
 requirements may not be weakened for convenience.
 
-Current execution row: finish the reproducible fixture/input boundary on top of the checkpointed
-behavior-neutral benchmark driver. Add a recorded sacrificial data-load warmup before immutable
-identity capture, restore/echo identical RNG and calendar state, and split a genuine
-existing-lead-saturation fixture from the zero-lead structural case. Then close the missing
-whole-save, phase-scoped memory, wait-based fairness, and paired-statistics routes before the
-official baseline matrix and budget ratification. The identical instrumentation patch is on the
-preserved pre-change and `dev` worktrees, both exact commits build with the same flags, and the
+Current execution row: complete the legacy-equivalent performance/save packet. The reproducible
+fixture/input boundary is checkpointed: both comparison worktrees carry the identical patch,
+start without runtime cache, record one sacrificial warmup, preserve identical non-cache source
+manifests, bind RNG/calendar/fixture identity, and separate genuine existing-lead saturation from
+zero-lead structural work. Exact committed builds and the first paired cold-cache smoke are green.
+Close paired run-level confidence/process-CPU, phase-scoped retained-memory, wait-based fairness,
+and whole-save measurement before the official baseline matrices and budget ratification. The
 compiler/build/Mac/fixture/test-binary identity, pre-change functional packet, and natural
 bandit/cannibal creation/registration are recorded. The repaired Mac
 Keychain/API path is a later release-harness qualification gate, not a prerequisite for

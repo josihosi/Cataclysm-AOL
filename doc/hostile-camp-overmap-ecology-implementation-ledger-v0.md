@@ -210,10 +210,10 @@ run.
 - [x] Land the deterministic benchmark driver and scoped hostile-maintenance timers/counters as an isolated, behavior-neutral instrumentation commit.
 - [x] Apply the identical benchmark-only commit to both the pre-change baseline and final comparison worktrees.
 - [x] Preserve an exact pre-change baseline binary/buildable worktree at the same compiler and flags as the final comparison.
-- [ ] Split fixtures into (a) legacy-equivalent 0/1/10/50/100-camp scenarios runnable on both builds and (b) forward-schema capacity/churn scenarios added as each new state becomes real and judged against absolute/scaling budgets.
+- [x] Split fixtures into (a) legacy-equivalent 0/1/10/50/100-camp scenarios runnable on both builds and (b) forward-schema capacity/churn scenarios added as each new state becomes real and judged against absolute/scaling budgets.
 - [ ] For the legacy-equivalent packet, measure idle camps, existing lead saturation, current structural maintenance, current dispatch, current return/writeback, and current save round trip.
 - [ ] Do not pretend paired outings, evidence expiry, ownership handoff, or new report state exists in the old build; add those forward fixtures at the implementing phase.
-- [ ] Restore a pristine fixture snapshot with recorded content hash and identical RNG/calendar state before every warmup and measured run.
+- [x] Restore a pristine fixture snapshot with recorded content hash and identical RNG/calendar state before every warmup and measured run.
 - [ ] Randomize paired A/B or B/A execution order across at least ten run pairs; report run-level totals with dispersion/95% confidence intervals.
 - [ ] Collect enough per-update latency observations inside each run (target at least 10,000 when feasible) to report meaningful p50/p95/p99/max separately from run-level totals.
 - [ ] Record scoped inclusive/self hostile-maintenance time, update-call count, cache hits/misses, route/pathfinding calls, serialized component cardinalities, and bytes.
@@ -350,10 +350,25 @@ Evidence:
   `2`. Raw artifact SHA-256 is
   `0c5d1431c120ae0f8913e98543da64c7cf1bd968915ef1dc6320fca3e396249c`. The baseline child
   populated 3,418 ignored FlatBuffer entries under `data/cache` after initial identity capture,
-  changing the manifest from 8,156 to 11,574 files. Both Git worktrees remained clean. This is
-  red/non-credit evidence and requires a recorded sacrificial data-load warmup before identity
-  capture, complete warmed-tree rehash, and a separate invariant source-data hash. An incidental
-  rerun against the now-warm cache is not a reproducible baseline.
+  changing the manifest from 8,156 to 11,574 files. Both Git worktrees remained clean. This stays
+  red/non-credit historical evidence; the following checkpoint repaired the contract and proved
+  it from fresh cold roots instead of crediting an incidental now-warm rerun.
+- Fixture/input checkpoint: `c2d7921d9f` on `dev` and `7e6d11091d` on the preserved baseline have
+  identical stable patch ID `c8b72321516ccf34ce160121d4da4ab2d44aee42`. The Python runner
+  suite passes 94 tests; direct lead-saturation, histogram, and full live-world gates pass; final
+  xhigh closeout review is clean. Exact sequential builds exited `0` with dev binary
+  `d113a5480473f6e70f637aab2f030ba38bb4cf346fd0906ec8c766ad4051fa61` and baseline binary
+  `708cfeb2fc763f9083809dd182f1f480d5677f02746c826acb6bd13798017f88`.
+- Accepted cold-cache integration smoke: raw artifact
+  `paired-smoke-c2d7921d9f.raw.json` has SHA-256
+  `62b57c1e88778576e1c1f248c637f5427543152268cdfdc923e0dc77c985c444`; runner and independent
+  file-verifying validation exited `0` with two valid runs. Both roots started from the identical
+  8,156-file non-cache/source manifest, populated 3,418 recorded cache files during the
+  sacrificial warmup, then held immutable warmed identities through measurement. Fixture SHA,
+  seed, calendar turn `5220000`, 91-day season, initial/terminal state, and timing/fairness replay
+  reset all matched. The associated 2,000-bootstrap summary is accepted at SHA-256
+  `de65f54b01e9d6593f392ce17f2271f8f8e1ce9a56c5420f73ad46fe493aa18d`. This smoke receives
+  reproducibility/integration credit only; the ten-pair official packet remains unchecked.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority

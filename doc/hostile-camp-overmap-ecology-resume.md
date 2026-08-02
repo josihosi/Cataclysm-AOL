@@ -18,10 +18,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 0 - reproducible baselines and benchmark infrastructure.
-- First unchecked deterministic execution row: finish the fixture/input boundary. Add a recorded
-  sacrificial data-load warmup before immutable identity capture, prove the non-cache source tree
-  is invariant, restore/echo identical RNG and calendar state, and add a genuine existing-lead
-  saturation fixture before any official paired matrix receives credit.
+- First unchecked deterministic execution row: complete the legacy-equivalent performance/save
+  packet. Paired confidence/process CPU, phase-scoped retained memory, wait-based scheduler
+  fairness, and whole-save save/load support remain prerequisites to the official matrices.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -67,16 +66,31 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   validator both exited `2`; raw SHA-256 is
   `0c5d1431c120ae0f8913e98543da64c7cf1bd968915ef1dc6320fca3e396249c`. Test startup generated
   3,418 ignored `data/cache` FlatBuffers in the cold baseline after identity capture. Both
-  worktrees remain Git-clean. Do not credit a now-warm rerun; repair the warmup/input contract
-  first.
+  worktrees remained Git-clean. It remains red/non-credit history; the following checkpoint
+  repaired the contract with fresh cold roots.
+- Fixture/input hardening is checkpointed at `c2d7921d9f` on `dev` and identical-patch
+  `7e6d11091d` on the preserved baseline; stable patch ID is
+  `c8b72321516ccf34ce160121d4da4ab2d44aee42`. The Python runner suite passes 94 tests and the
+  direct lead-saturation, histogram, and full live-world C++ gates pass. Final xhigh closeout
+  review is clean. Same-command sequential builds exited `0`; dev binary is 79,151,528 bytes,
+  SHA-256 `d113a5480473f6e70f637aab2f030ba38bb4cf346fd0906ec8c766ad4051fa61`, and baseline binary is
+  79,113,576 bytes, SHA-256
+  `708cfeb2fc763f9083809dd182f1f480d5677f02746c826acb6bd13798017f88`.
+- The first accepted cold-cache paired integration smoke completed in 49 seconds with two valid
+  measured runs. Raw SHA-256 is
+  `62b57c1e88778576e1c1f248c637f5427543152268cdfdc923e0dc77c985c444`; independent
+  `validate --verify-files` exited `0`. Both variants began with the identical 8,156-file source
+  manifest and recorded their 11,574-file warmed trees before measurement. Fixed seed/calendar,
+  fixture hash, replay reset, and equivalent terminal state all validate. The accepted summary
+  SHA-256 is `de65f54b01e9d6593f392ce17f2271f8f8e1ce9a56c5420f73ad46fe493aa18d`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume the fixture/input-reproducibility row on top of the committed benchmark instrumentation;
-   functional and natural-world baselines are complete, while the official performance packet is
-   not.
+3. Resume paired-confidence/process-CPU, phase-scoped memory, wait-based fairness, and whole-save
+   instrumentation; functional, natural-world, and fixture/input baselines are complete, while the
+   official performance packet is not.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
 5. Reuse the current source-built `cata_test` where valid; run only one redirected build when the
    benchmark instrumentation invalidates it.
