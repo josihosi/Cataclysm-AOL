@@ -311,6 +311,9 @@ bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
             site.active_outing.member_ids.end() ) {
             continue;
         }
+        if( site.active_outing.member_is_resolved( who_id ) ) {
+            continue;
+        }
 
         map &here = get_map();
         bandit_live_world::local_gate_input input;

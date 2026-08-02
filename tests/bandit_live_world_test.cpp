@@ -486,7 +486,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
 
         REQUIRE( site.active_outing.is_active() );
         CHECK( site.schema_version == 3 );
-        CHECK( site.active_outing.schema_version == 2 );
+        CHECK( site.active_outing.schema_version == 3 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
         CHECK( site.active_outing.target_id == "legacy_nested_target" );
@@ -584,7 +584,7 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
         REQUIRE( loaded.schema_version == 3 );
         REQUIRE( loaded.sites.size() == 1 );
         const bandit_live_world::active_outing_state &outing = loaded.sites.front().active_outing;
-        CHECK( outing.schema_version == 2 );
+        CHECK( outing.schema_version == 3 );
         CHECK( outing.phase == phase );
         CHECK( outing.member_ids == original.sites.front().active_outing.member_ids );
         CHECK( outing.leader_id == character_id( 45000 ) );
@@ -703,6 +703,8 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     CHECK( site.active_outing.is_active() );
     CHECK( site.active_outing.casualty_ids ==
            std::vector<character_id> { character_id( 45301 ) } );
+    CHECK( site.active_outing.resolved_member_ids ==
+           std::vector<character_id> { character_id( 45301 ) } );
     bandit_pursuit_handoff::return_packet stale_pre_casualty_packet;
     stale_pre_casualty_packet.valid = true;
     stale_pre_casualty_packet.group_id = site.active_outing.activity_id;
@@ -734,6 +736,8 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     CHECK( loaded_site.active_outing.member_ids.size() == 2 );
     CHECK( loaded_site.active_outing.casualty_ids ==
            std::vector<character_id> { character_id( 45301 ) } );
+    CHECK( loaded_site.active_outing.resolved_member_ids ==
+           std::vector<character_id> { character_id( 45301 ) } );
     CHECK( loaded_site.active_outing.expected_return_minutes == 940 );
     CHECK( loaded_site.active_outing.missing_deadline_minutes == 2380 );
     REQUIRE( loaded_site.find_member( character_id( 45300 ) ) != nullptr );
@@ -753,6 +757,260 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     CHECK( safely_closed.sites.front().active_outing.casualty_ids.empty() );
     CHECK( safely_closed.sites.front().find_member( character_id( 45301 ) )->state ==
            bandit_live_world::member_state::at_home );
+}
+
+TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_once",
+           "[bandit][live_world][scout_state][split_return][replay]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45500 );
+    add_bandit_camp_member( world, 1, 45500 );
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 45500 ),
+             bandit_live_world::member_state::local_contact, "paired scout active" ) );
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 45501 ),
+             bandit_live_world::member_state::local_contact, "paired scout active" ) );
+    set_test_active_outing( site, site.site_id + "#scout:split" );
+    site.active_outing.member_ids = { character_id( 45500 ), character_id( 45501 ) };
+    site.active_outing.leader_id = character_id( 45500 );
+    site.active_outing.job_type = "scout";
+    site.active_outing.target_id = "split-target";
+    site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
+    site.active_outing.target_lead_revision = 4;
+    site.active_outing.observations = {
+        { "shared-visual", "one visible defender", 75, 490, false }
+    };
+    site.active_outing.cargo = { 3, 60 };
+    site.active_outing.started_minutes = 100;
+
+    const std::vector<bandit_live_world::active_member_observation> first_arrival = {
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
+          "first survivor returned" },
+        { character_id( 45501 ), bandit_live_world::active_member_observation_state::returning_home,
+          "partner still returning" }
+    };
+    const bandit_live_world::scout_resolution_effect first_effect =
+        bandit_live_world::apply_active_scout_observations( site, first_arrival, 500 );
+    CHECK( first_effect.valid );
+    CHECK( first_effect.changed );
+    CHECK_FALSE( first_effect.completed );
+    CHECK( first_effect.newly_resolved == 1 );
+    CHECK( first_effect.newly_returned == 1 );
+    CHECK( first_effect.provisional_report_applied );
+    CHECK( first_effect.cargo_credited );
+    CHECK( site.active_outing.is_active() );
+    CHECK( site.active_outing.member_ids.size() == 2 );
+    CHECK( site.active_outing.resolved_member_ids ==
+           std::vector<character_id> { character_id( 45500 ) } );
+    CHECK( site.find_member( character_id( 45500 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( site.find_member( character_id( 45501 ) )->state ==
+           bandit_live_world::member_state::local_contact );
+    REQUIRE( site.current_scout_report.is_present() );
+    CHECK( site.current_scout_report.provisional );
+    CHECK( site.current_scout_report.revision == 1 );
+    CHECK( site.current_scout_report.source_generation == site.active_outing.generation );
+    CHECK( site.current_scout_report.application_key.find( ":members:45500" ) !=
+           std::string::npos );
+    CHECK( site.returned_cargo_stock.supply_units == 3 );
+    CHECK( site.returned_cargo_stock.trade_value == 60 );
+    CHECK( site.active_outing.cargo.supply_units == 0 );
+    CHECK( site.active_outing.cargo.trade_value == 0 );
+    CHECK( site.applied_return_generation == 0 );
+    CHECK( site.applied_report_generation == 0 );
+    CHECK( site.applied_cargo_generation == 0 );
+
+    const bandit_live_world::dispatch_plan blocked_dispatch =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 19, 20, 0 ),
+                "new-target-before-partner-resolves" );
+    CHECK_FALSE( blocked_dispatch.valid );
+
+    const std::string before_replay = serialize_world( world );
+    const bandit_live_world::scout_resolution_effect replay_effect =
+        bandit_live_world::apply_active_scout_observations( site, first_arrival, 510 );
+    CHECK( replay_effect.valid );
+    CHECK_FALSE( replay_effect.changed );
+    CHECK( serialize_world( world ) == before_replay );
+
+    const std::vector<bandit_live_world::active_member_observation> contradictory_replay = {
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::dead,
+          "contradictory stale state" },
+        { character_id( 45501 ), bandit_live_world::active_member_observation_state::returning_home,
+          "partner still returning" }
+    };
+    CHECK_FALSE( bandit_live_world::apply_active_scout_observations(
+                     site, contradictory_replay, 520 ).valid );
+    CHECK( serialize_world( world ) == before_replay );
+
+    const std::vector<bandit_live_world::active_member_observation> duplicate_member = {
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
+          "first duplicate observation" },
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
+          "second duplicate observation" }
+    };
+    const bandit_live_world::scout_resolution_effect duplicate_effect =
+        bandit_live_world::apply_active_scout_observations( site, duplicate_member, 520 );
+    CHECK_FALSE( duplicate_effect.valid );
+    CHECK( duplicate_effect.newly_resolved == 0 );
+    CHECK( serialize_world( world ) == before_replay );
+
+    const std::vector<bandit_live_world::active_member_observation> unknown_member = {
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
+          "first survivor already home" },
+        { character_id( 49999 ), bandit_live_world::active_member_observation_state::home,
+          "unknown member" }
+    };
+    const bandit_live_world::scout_resolution_effect unknown_effect =
+        bandit_live_world::apply_active_scout_observations( site, unknown_member, 520 );
+    CHECK_FALSE( unknown_effect.valid );
+    CHECK( unknown_effect.newly_resolved == 0 );
+    CHECK( serialize_world( world ) == before_replay );
+
+    bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 1 );
+    bandit_live_world::site_record &loaded_site = loaded.sites.front();
+    CHECK( loaded_site.active_outing.is_active() );
+    CHECK( loaded_site.active_outing.resolved_member_ids ==
+           std::vector<character_id> { character_id( 45500 ) } );
+    REQUIRE( loaded_site.current_scout_report.is_present() );
+    CHECK( loaded_site.current_scout_report.schema_version == 2 );
+    CHECK( loaded_site.current_scout_report.provisional );
+    CHECK( loaded_site.applied_report_generation == 0 );
+    CHECK( loaded_site.returned_cargo_stock.supply_units == 3 );
+    const std::string loaded_before_replay = serialize_world( loaded );
+    CHECK_FALSE( bandit_live_world::apply_active_scout_observations(
+                     loaded_site, first_arrival, 530 ).changed );
+    CHECK( serialize_world( loaded ) == loaded_before_replay );
+
+    loaded_site.active_outing.cargo = { 1, 20 };
+    const std::vector<bandit_live_world::active_member_observation> final_arrival = {
+        { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
+          "first survivor already home" },
+        { character_id( 45501 ), bandit_live_world::active_member_observation_state::home,
+          "second survivor returned" }
+    };
+    const bandit_live_world::scout_resolution_effect final_effect =
+        bandit_live_world::apply_active_scout_observations( loaded_site, final_arrival, 600 );
+    CHECK( final_effect.valid );
+    CHECK( final_effect.changed );
+    CHECK( final_effect.completed );
+    CHECK( final_effect.newly_resolved == 1 );
+    CHECK_FALSE( loaded_site.active_outing.is_active() );
+    REQUIRE( loaded_site.current_scout_report.is_present() );
+    CHECK_FALSE( loaded_site.current_scout_report.provisional );
+    CHECK( loaded_site.current_scout_report.revision == 2 );
+    CHECK( loaded_site.current_scout_report.application_key.find( ":members" ) ==
+           std::string::npos );
+    CHECK( loaded_site.returned_cargo_stock.supply_units == 4 );
+    CHECK( loaded_site.returned_cargo_stock.trade_value == 80 );
+    CHECK( loaded_site.applied_return_generation == 1 );
+    CHECK( loaded_site.applied_report_generation == 1 );
+    CHECK( loaded_site.applied_cargo_generation == 1 );
+    CHECK( loaded_site.find_member( character_id( 45500 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( loaded_site.find_member( character_id( 45501 ) )->state ==
+           bandit_live_world::member_state::at_home );
+}
+
+TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bounded",
+           "[bandit][live_world][scout_state][split_return][save]" )
+{
+    bandit_live_world::world_state partial_world;
+    add_bandit_camp_member( partial_world, 0, 45600 );
+    add_bandit_camp_member( partial_world, 1, 45600 );
+    bandit_live_world::site_record &partial_site = partial_world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state( partial_site, character_id( 45600 ),
+             bandit_live_world::member_state::local_contact, "paired scout active" ) );
+    REQUIRE( bandit_live_world::update_member_state( partial_site, character_id( 45601 ),
+             bandit_live_world::member_state::local_contact, "paired scout active" ) );
+    set_test_active_outing( partial_site, partial_site.site_id + "#scout:deadline" );
+    partial_site.active_outing.member_ids = { character_id( 45600 ), character_id( 45601 ) };
+    partial_site.active_outing.leader_id = character_id( 45600 );
+    partial_site.active_outing.job_type = "scout";
+    partial_site.active_outing.target_id = "deadline-target";
+    partial_site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
+    partial_site.active_outing.cargo = { 2, 40 };
+
+    const std::vector<bandit_live_world::active_member_observation> first_arrival = {
+        { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
+          "first survivor returned" },
+        { character_id( 45601 ), bandit_live_world::active_member_observation_state::unresolved,
+          "partner not loaded before deadline" }
+    };
+    REQUIRE( bandit_live_world::apply_active_scout_observations(
+                 partial_site, first_arrival, 500 ).provisional_report_applied );
+
+    SECTION( "malformed provisional report is cleared without losing the active reservation" ) {
+        bandit_live_world::world_state malformed = partial_world;
+        malformed.sites.front().current_scout_report.target_id = "forged-target";
+        const bandit_live_world::world_state repaired = round_trip_world( malformed );
+        REQUIRE( repaired.sites.size() == 1 );
+        CHECK( repaired.sites.front().active_outing.is_active() );
+        CHECK( repaired.sites.front().active_outing.resolved_member_ids ==
+               std::vector<character_id> { character_id( 45600 ) } );
+        CHECK_FALSE( repaired.sites.front().current_scout_report.is_present() );
+        CHECK( repaired.sites.front().find_member( character_id( 45600 ) )->state ==
+               bandit_live_world::member_state::at_home );
+        CHECK( repaired.sites.front().find_member( character_id( 45601 ) )->state ==
+               bandit_live_world::member_state::local_contact );
+    }
+
+    SECTION( "partner declared missing at the fixed deadline finalizes the scout" ) {
+        const std::vector<bandit_live_world::active_member_observation> deadline = {
+            { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
+              "first survivor already home" },
+            { character_id( 45601 ), bandit_live_world::active_member_observation_state::missing,
+              "partner unresolved beyond fixed grace" }
+        };
+        const bandit_live_world::scout_resolution_effect effect =
+            bandit_live_world::apply_active_scout_observations( partial_site, deadline, 2400 );
+        CHECK( effect.valid );
+        CHECK( effect.completed );
+        CHECK_FALSE( partial_site.active_outing.is_active() );
+        CHECK( partial_site.find_member( character_id( 45600 ) )->state ==
+               bandit_live_world::member_state::at_home );
+        CHECK( partial_site.find_member( character_id( 45601 ) )->state ==
+               bandit_live_world::member_state::missing );
+        REQUIRE( partial_site.current_scout_report.is_present() );
+        CHECK_FALSE( partial_site.current_scout_report.provisional );
+        CHECK( partial_site.current_scout_report.casualty_ids ==
+               std::vector<character_id> { character_id( 45601 ) } );
+        CHECK( partial_site.returned_cargo_stock.supply_units == 2 );
+    }
+
+    SECTION( "all casualties close lost without creating a physical report or cargo credit" ) {
+        bandit_live_world::world_state lost_world;
+        add_bandit_camp_member( lost_world, 0, 45610 );
+        add_bandit_camp_member( lost_world, 1, 45610 );
+        bandit_live_world::site_record &lost_site = lost_world.sites.front();
+        REQUIRE( bandit_live_world::update_member_state( lost_site, character_id( 45610 ),
+                 bandit_live_world::member_state::local_contact, "paired scout active" ) );
+        REQUIRE( bandit_live_world::update_member_state( lost_site, character_id( 45611 ),
+                 bandit_live_world::member_state::local_contact, "paired scout active" ) );
+        set_test_active_outing( lost_site, lost_site.site_id + "#scout:lost" );
+        lost_site.active_outing.member_ids = { character_id( 45610 ), character_id( 45611 ) };
+        lost_site.active_outing.leader_id = character_id( 45610 );
+        lost_site.active_outing.job_type = "scout";
+        lost_site.active_outing.target_id = "lost-target";
+        lost_site.active_outing.cargo = { 5, 100 };
+        const std::vector<bandit_live_world::active_member_observation> lost = {
+            { character_id( 45610 ), bandit_live_world::active_member_observation_state::dead,
+              "lead scout killed" },
+            { character_id( 45611 ), bandit_live_world::active_member_observation_state::missing,
+              "escort never returned" }
+        };
+        const bandit_live_world::scout_resolution_effect effect =
+            bandit_live_world::apply_active_scout_observations( lost_site, lost, 2400 );
+        CHECK( effect.valid );
+        CHECK( effect.completed );
+        CHECK_FALSE( lost_site.active_outing.is_active() );
+        CHECK_FALSE( lost_site.current_scout_report.is_present() );
+        CHECK( lost_site.returned_cargo_stock.supply_units == 0 );
+        CHECK( lost_site.returned_cargo_stock.trade_value == 0 );
+        CHECK( lost_site.applied_return_generation == 1 );
+        CHECK( lost_site.applied_report_generation == 1 );
+        CHECK( lost_site.applied_cargo_generation == 1 );
+    }
 }
 
 TEST_CASE( "bandit_live_world_atomically_rehomes_scout_report_and_cargo_before_closing",

@@ -210,7 +210,7 @@ struct sortie_cargo {
 };
 
 struct scout_report_record {
-    int schema_version = 1;
+    int schema_version = 2;
     int revision = 0;
     std::string source_activity_id;
     int source_generation = 0;
@@ -221,6 +221,7 @@ struct scout_report_record {
     std::vector<sortie_observation> observations;
     std::vector<character_id> casualty_ids;
     int delivered_minutes = -1;
+    bool provisional = false;
 
     void clear();
     bool is_present() const;
@@ -229,7 +230,7 @@ struct scout_report_record {
 };
 
 struct active_outing_state {
-    int schema_version = 2;
+    int schema_version = 3;
     outing_kind kind = outing_kind::none;
     std::string activity_id;
     std::string camp_id;
@@ -246,6 +247,7 @@ struct active_outing_state {
     std::vector<sortie_observation> observations;
     sortie_cargo cargo;
     std::vector<character_id> casualty_ids;
+    std::vector<character_id> resolved_member_ids;
     int started_minutes = -1;
     int local_contact_minutes = -1;
     int last_progress_minutes = -1;
@@ -260,8 +262,19 @@ struct active_outing_state {
 
     void clear();
     bool is_active() const;
+    bool member_is_resolved( character_id npc_id ) const;
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
+};
+
+struct scout_resolution_effect {
+    bool valid = false;
+    bool changed = false;
+    bool completed = false;
+    int newly_resolved = 0;
+    int newly_returned = 0;
+    bool provisional_report_applied = false;
+    bool cargo_credited = false;
 };
 
 struct site_record {
@@ -639,6 +652,8 @@ bool is_active_shakedown_parley_member( const world_state &state, character_id n
 std::string render_empty_site_retirement_report( const site_record &site );
 int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
+scout_resolution_effect apply_active_scout_observations( site_record &site,
+        const std::vector<active_member_observation> &observations, int current_minutes );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,

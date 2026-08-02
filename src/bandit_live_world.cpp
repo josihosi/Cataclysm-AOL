@@ -587,6 +587,18 @@ bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
     return group;
 }
 
+std::string provisional_report_application_key( const bandit_live_world::site_record &site )
+{
+    std::string key = site.active_outing.report_application_key + ":members";
+    for( const character_id &member_id : site.active_outing.resolved_member_ids ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        if( member != nullptr && member->state == bandit_live_world::member_state::at_home ) {
+            key += ":" + std::to_string( member_id.get_value() );
+        }
+    }
+    return key;
+}
+
 void apply_group_memory( bandit_live_world::site_record &site,
                          const bandit_pursuit_handoff::abstract_group_state &group )
 {
@@ -1376,6 +1388,7 @@ void scout_report_record::serialize( JsonOut &json ) const
     }
     json.member( "casualty_ids", raw_casualty_ids );
     json.member( "delivered_minutes", std::max( -1, delivered_minutes ) );
+    json.member( "provisional", provisional );
     json.end_object();
 }
 
@@ -1406,10 +1419,12 @@ void scout_report_record::deserialize( const JsonObject &jo )
         }
     }
     jo.read( "delivered_minutes", candidate.delivered_minutes );
+    jo.read( "provisional", candidate.provisional );
     candidate.revision = std::max( 0, candidate.revision );
     candidate.source_generation = std::max( 0, candidate.source_generation );
     candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
     candidate.delivered_minutes = std::max( -1, candidate.delivered_minutes );
+    candidate.schema_version = 2;
     if( !candidate.is_present() ) {
         candidate.clear();
     }
@@ -1424,6 +1439,12 @@ void active_outing_state::clear()
 bool active_outing_state::is_active() const
 {
     return !activity_id.empty() && kind != outing_kind::none && generation > 0;
+}
+
+bool active_outing_state::member_is_resolved( const character_id npc_id ) const
+{
+    return std::find( resolved_member_ids.begin(), resolved_member_ids.end(), npc_id ) !=
+           resolved_member_ids.end();
 }
 
 void active_outing_state::serialize( JsonOut &json ) const
@@ -1458,6 +1479,14 @@ void active_outing_state::serialize( JsonOut &json ) const
         raw_casualty_ids.push_back( casualty_ids[index].get_value() );
     }
     json.member( "casualty_ids", raw_casualty_ids );
+    std::vector<int> raw_resolved_member_ids;
+    raw_resolved_member_ids.reserve( std::min( resolved_member_ids.size(),
+                                     max_active_outing_members ) );
+    for( std::size_t index = 0; index < resolved_member_ids.size() &&
+         index < max_active_outing_members; ++index ) {
+        raw_resolved_member_ids.push_back( resolved_member_ids[index].get_value() );
+    }
+    json.member( "resolved_member_ids", raw_resolved_member_ids );
     json.member( "started_minutes", std::max( -1, started_minutes ) );
     json.member( "local_contact_minutes", std::max( -1, local_contact_minutes ) );
     json.member( "last_progress_minutes", std::max( -1, last_progress_minutes ) );
@@ -1522,6 +1551,27 @@ void active_outing_state::deserialize( const JsonObject &jo )
         }
         if( candidate.casualty_ids.size() >= max_active_outing_casualties ) {
             break;
+        }
+    }
+    std::vector<int> raw_resolved_member_ids;
+    jo.read( "resolved_member_ids", raw_resolved_member_ids );
+    for( const int raw_resolved_member_id : raw_resolved_member_ids ) {
+        character_id resolved_member_id;
+        resolved_member_id.deserialize( raw_resolved_member_id );
+        if( std::find( candidate.member_ids.begin(), candidate.member_ids.end(), resolved_member_id ) !=
+            candidate.member_ids.end() &&
+            std::find( candidate.resolved_member_ids.begin(), candidate.resolved_member_ids.end(),
+                       resolved_member_id ) == candidate.resolved_member_ids.end() ) {
+            candidate.resolved_member_ids.push_back( resolved_member_id );
+        }
+        if( candidate.resolved_member_ids.size() >= max_active_outing_members ) {
+            break;
+        }
+    }
+    for( const character_id &casualty_id : candidate.casualty_ids ) {
+        if( std::find( candidate.resolved_member_ids.begin(), candidate.resolved_member_ids.end(),
+                      casualty_id ) == candidate.resolved_member_ids.end() ) {
+            candidate.resolved_member_ids.push_back( casualty_id );
         }
     }
     jo.read( "started_minutes", candidate.started_minutes );
@@ -1751,7 +1801,7 @@ void site_record::deserialize( const JsonObject &jo )
                                                 std::to_string( active_outing.generation );
     }
     if( active_outing.is_active() ) {
-        active_outing.schema_version = 2;
+        active_outing.schema_version = 3;
         if( active_outing.camp_id.empty() ) {
             active_outing.camp_id = site_id;
         }
@@ -1770,8 +1820,10 @@ void site_record::deserialize( const JsonObject &jo )
         next_outing_generation = std::max( next_outing_generation, active_outing.generation + 1 );
     }
     applied_return_generation = std::max( 0, applied_return_generation );
-    applied_report_generation = std::max( applied_report_generation,
-                                          current_scout_report.source_generation );
+    if( !current_scout_report.provisional ) {
+        applied_report_generation = std::max( applied_report_generation,
+                                              current_scout_report.source_generation );
+    }
     applied_report_generation = std::max( 0, applied_report_generation );
     applied_cargo_generation = std::max( 0, applied_cargo_generation );
     next_outing_generation = std::max( next_outing_generation, applied_return_generation + 1 );
@@ -1792,10 +1844,14 @@ void site_record::deserialize( const JsonObject &jo )
         const bool recorded_casualty = std::find( active_outing.casualty_ids.begin(),
                                        active_outing.casualty_ids.end(), member_id ) !=
                                        active_outing.casualty_ids.end();
+        const bool resolved_member = active_outing.member_is_resolved( member_id );
         const bool member_state_matches_reservation = member != nullptr &&
                 ( recorded_casualty ?
-                  ( member->state == member_state::dead || member->state == member_state::missing ) :
-                  ( member->state == member_state::outbound || member->state == member_state::local_contact ) );
+                  ( resolved_member && ( member->state == member_state::dead ||
+                                         member->state == member_state::missing ) ) :
+                  ( resolved_member ? member->state == member_state::at_home :
+                    ( member->state == member_state::outbound ||
+                      member->state == member_state::local_contact ) ) );
         if( !member_state_matches_reservation ||
             std::find( checked_active_member_ids.begin(), checked_active_member_ids.end(), member_id ) !=
             checked_active_member_ids.end() ) {
@@ -1815,6 +1871,26 @@ void site_record::deserialize( const JsonObject &jo )
             }
         }
         active_outing.clear();
+    }
+    if( current_scout_report.provisional ) {
+        const int returned_member_count = static_cast<int>( std::count_if(
+                    active_outing.resolved_member_ids.begin(),
+                    active_outing.resolved_member_ids.end(), [this]( const character_id & member_id ) {
+            const member_record *member = find_member( member_id );
+            return member != nullptr && member->state == member_state::at_home;
+        } ) );
+        const bool provisional_report_is_consistent =
+            active_outing.is_active() && active_outing.kind == outing_kind::scout_sortie &&
+            current_scout_report.source_activity_id == active_outing.activity_id &&
+            current_scout_report.source_generation == active_outing.generation &&
+            current_scout_report.target_id == active_outing.target_id &&
+            current_scout_report.target_omt == active_outing.target_omt &&
+            current_scout_report.target_lead_revision == active_outing.target_lead_revision &&
+            current_scout_report.application_key == provisional_report_application_key( *this ) &&
+            returned_member_count > 0;
+        if( !provisional_report_is_consistent ) {
+            current_scout_report.clear();
+        }
     }
     schema_version = 3;
 }
@@ -1877,6 +1953,9 @@ int site_record::active_outing_survivor_count() const
 {
     return static_cast<int>( std::count_if( active_outing.member_ids.begin(),
     active_outing.member_ids.end(), [this]( const character_id & member_id ) {
+        if( active_outing.member_is_resolved( member_id ) ) {
+            return false;
+        }
         if( std::find( active_outing.casualty_ids.begin(), active_outing.casualty_ids.end(), member_id ) !=
             active_outing.casualty_ids.end() ) {
             return false;
@@ -2315,6 +2394,9 @@ static int active_outside_member_count( const bandit_live_world::site_record &si
     std::vector<character_id> outside_members;
     outside_members.reserve( site.active_outing.member_ids.size() );
     for( const character_id &member_id : site.active_outing.member_ids ) {
+        if( site.active_outing.member_is_resolved( member_id ) ) {
+            continue;
+        }
         if( std::find( outside_members.begin(), outside_members.end(), member_id ) == outside_members.end() ) {
             outside_members.push_back( member_id );
         }
@@ -4273,6 +4355,21 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         update_tokens.push_back( update.id );
     }
 
+    for( const character_id &resolved_member_id : site.active_outing.resolved_member_ids ) {
+        const member_record *resolved_member = site.find_member( resolved_member_id );
+        const bool casualty = std::find( site.active_outing.casualty_ids.begin(),
+                                        site.active_outing.casualty_ids.end(), resolved_member_id ) !=
+                              site.active_outing.casualty_ids.end();
+        const std::string resolved_status = status_for_member( resolved_member_id );
+        if( resolved_member == nullptr ||
+            ( casualty && resolved_member->state != member_state::dead &&
+              resolved_member->state != member_state::missing ) ||
+            ( !casualty && ( resolved_member->state != member_state::at_home ||
+                             resolved_status == "dead" || resolved_status == "missing" ) ) ) {
+            return false;
+        }
+    }
+
     for( const character_id &casualty_id : site.active_outing.casualty_ids ) {
         const member_record *casualty = site.find_member( casualty_id );
         const std::string casualty_status = status_for_member( casualty_id );
@@ -4405,6 +4502,152 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     return true;
 }
 
+scout_resolution_effect apply_active_scout_observations( site_record &site,
+        const std::vector<active_member_observation> &observations, const int current_minutes )
+{
+    scout_resolution_effect effect;
+    if( !site.active_outing.is_active() ||
+        site.active_outing.kind != outing_kind::scout_sortie ||
+        site.active_outing.job_type != "scout" || current_minutes < 0 ||
+        observations.size() != site.active_outing.member_ids.size() ) {
+        return effect;
+    }
+
+    std::vector<character_id> observed_member_ids;
+    observed_member_ids.reserve( observations.size() );
+    for( const active_member_observation &observation : observations ) {
+        if( std::find( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end(),
+                      observation.npc_id ) == site.active_outing.member_ids.end() ||
+            std::find( observed_member_ids.begin(), observed_member_ids.end(), observation.npc_id ) !=
+            observed_member_ids.end() ) {
+            return effect;
+        }
+        observed_member_ids.push_back( observation.npc_id );
+    }
+
+    site_record candidate = site;
+    std::vector<character_id> newly_returned_ids;
+    int newly_resolved = 0;
+    for( const character_id &member_id : candidate.active_outing.member_ids ) {
+        const auto observation_iter = std::find_if( observations.begin(), observations.end(),
+        [&member_id]( const active_member_observation & observation ) {
+            return observation.npc_id == member_id;
+        } );
+        if( observation_iter == observations.end() ) {
+            return effect;
+        }
+
+        member_record *member = candidate.find_member( member_id );
+        if( member == nullptr ) {
+            return effect;
+        }
+        if( candidate.active_outing.member_is_resolved( member_id ) ) {
+            const bool observation_matches_resolution =
+                ( member->state == member_state::at_home &&
+                  observation_iter->state == active_member_observation_state::home ) ||
+                ( member->state == member_state::dead &&
+                  observation_iter->state == active_member_observation_state::dead ) ||
+                ( member->state == member_state::missing &&
+                  observation_iter->state == active_member_observation_state::missing );
+            if( !observation_matches_resolution ) {
+                return effect;
+            }
+            continue;
+        }
+
+        switch( observation_iter->state ) {
+            case active_member_observation_state::unresolved:
+            case active_member_observation_state::local_contact:
+            case active_member_observation_state::returning_home:
+                break;
+            case active_member_observation_state::home:
+                if( !update_member_state( candidate, member_id, member_state::at_home,
+                                         observation_iter->summary ) ) {
+                    return effect;
+                }
+                candidate.active_outing.resolved_member_ids.push_back( member_id );
+                newly_returned_ids.push_back( member_id );
+                newly_resolved++;
+                break;
+            case active_member_observation_state::dead:
+            case active_member_observation_state::missing: {
+                const member_state casualty_state =
+                    observation_iter->state == active_member_observation_state::dead ?
+                    member_state::dead : member_state::missing;
+                if( !record_active_outing_casualty( candidate, member_id, casualty_state,
+                                                    current_minutes, observation_iter->summary ) ) {
+                    return effect;
+                }
+                newly_resolved++;
+                break;
+            }
+        }
+    }
+
+    effect.valid = true;
+    effect.newly_resolved = newly_resolved;
+    effect.newly_returned = static_cast<int>( newly_returned_ids.size() );
+    const bool all_members_resolved =
+        candidate.active_outing.resolved_member_ids.size() ==
+        candidate.active_outing.member_ids.size();
+    if( newly_resolved == 0 && !all_members_resolved ) {
+        return effect;
+    }
+    if( newly_resolved > 0 ) {
+        candidate.active_outing.last_progress_minutes = std::max(
+                    candidate.active_outing.last_progress_minutes, current_minutes );
+        candidate.active_outing.last_advanced_minutes = std::max(
+                    candidate.active_outing.last_advanced_minutes, current_minutes );
+    }
+    if( all_members_resolved ) {
+        const std::optional<bandit_pursuit_handoff::return_packet> packet =
+            resolve_active_group_aftermath( candidate, observations );
+        if( !packet || !apply_return_packet( candidate, *packet ) ) {
+            return scout_resolution_effect();
+        }
+        site = std::move( candidate );
+        effect.changed = true;
+        effect.completed = true;
+        return effect;
+    }
+
+    if( !newly_returned_ids.empty() ) {
+        scout_report_record report;
+        report.revision = std::max( 0, candidate.current_scout_report.revision ) +
+                          static_cast<int>( newly_returned_ids.size() );
+        report.source_activity_id = candidate.active_outing.activity_id;
+        report.source_generation = candidate.active_outing.generation;
+        report.target_id = candidate.active_outing.target_id;
+        report.target_omt = candidate.active_outing.target_omt;
+        report.target_lead_revision = candidate.active_outing.target_lead_revision;
+        report.application_key = provisional_report_application_key( candidate );
+        report.observations = make_bounded_sortie_observations(
+                                  candidate.active_outing.observations );
+        report.casualty_ids = candidate.active_outing.casualty_ids;
+        report.delivered_minutes = current_minutes;
+        report.provisional = true;
+        candidate.current_scout_report = std::move( report );
+        effect.provisional_report_applied = true;
+
+        const int carried_supply = std::max( 0, candidate.active_outing.cargo.supply_units );
+        const int carried_trade = std::max( 0, candidate.active_outing.cargo.trade_value );
+        const long long supply_total =
+            static_cast<long long>( candidate.returned_cargo_stock.supply_units ) + carried_supply;
+        const long long trade_total =
+            static_cast<long long>( candidate.returned_cargo_stock.trade_value ) + carried_trade;
+        candidate.returned_cargo_stock.supply_units = static_cast<int>( std::min<long long>(
+                    supply_total, std::numeric_limits<int>::max() ) );
+        candidate.returned_cargo_stock.trade_value = static_cast<int>( std::min<long long>(
+                    trade_total, std::numeric_limits<int>::max() ) );
+        candidate.active_outing.cargo = sortie_cargo();
+        effect.cargo_credited = carried_supply > 0 || carried_trade > 0;
+    }
+
+    site = std::move( candidate );
+    effect.changed = true;
+    return effect;
+}
+
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations )
 {
@@ -4518,6 +4761,10 @@ bool record_active_outing_casualty( site_record &site, const character_id npc_id
     if( !casualty_was_recorded ) {
         candidate.active_outing.casualty_ids.push_back( npc_id );
     }
+    const bool resolution_was_recorded = candidate.active_outing.member_is_resolved( npc_id );
+    if( !resolution_was_recorded ) {
+        candidate.active_outing.resolved_member_ids.push_back( npc_id );
+    }
     candidate.active_outing.last_progress_minutes = std::max(
                 candidate.active_outing.last_progress_minutes, current_minutes );
     candidate.active_outing.last_advanced_minutes = std::max(
@@ -4526,6 +4773,6 @@ bool record_active_outing_casualty( site_record &site, const character_id npc_id
         candidate.active_outing.phase = scout_phase::lost;
     }
     site = std::move( candidate );
-    return state_changed || !casualty_was_recorded;
+    return state_changed || !casualty_was_recorded || !resolution_was_recorded;
 }
 } // namespace bandit_live_world
