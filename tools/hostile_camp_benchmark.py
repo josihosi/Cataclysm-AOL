@@ -77,6 +77,7 @@ import math
 import os
 import pathlib
 import platform
+import signal
 import shutil
 import subprocess
 import sys
@@ -89,8 +90,8 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 
 MATRIX_SCHEMA = "caol-hostile-camp-benchmark-matrix-v1"
 CHILD_SCHEMA = "caol-hostile-camp-benchmark-result-v1"
-RAW_SCHEMA = "caol-hostile-camp-benchmark-raw-v1"
-SUMMARY_SCHEMA = "caol-hostile-camp-benchmark-summary-v1"
+RAW_SCHEMA = "caol-hostile-camp-benchmark-raw-v2"
+SUMMARY_SCHEMA = "caol-hostile-camp-benchmark-summary-v2"
 COMPARE_SCHEMA = "caol-hostile-camp-benchmark-comparison-v1"
 _HEX_DIGITS = frozenset("0123456789abcdef")
 _NULLABLE_METRICS = ("allocation_count", "live_heap_bytes")
@@ -128,6 +129,25 @@ _MAX_SEASON_LENGTH_DAYS = _INT32_MAX // (24 * 60 * 60)
 _WARMUP_DIAGNOSTIC_TAIL_BYTES = 4096
 _MAX_WARMUP_STREAM_BYTES = 16 * 1024 * 1024
 _MAX_CHILD_RESULT_BYTES = 16 * 1024 * 1024
+_MAX_MEASURED_STREAM_BYTES = 16 * 1024 * 1024
+_PAIRED_CI_MINIMUM_PAIRS = 3
+_MAX_PAIRED_BOOTSTRAP_DRAWS = 10_000_000
+_PROCESS_CPU_TIME_SOURCES = frozenset((
+    "posix_wait4_rusage_v1", "windows_get_process_times_v1",
+))
+_PAIRED_RUN_METRICS = (
+    "benchmark_wall_time_ns", "runner_wall_time_ns", "runner_process_cpu_user_ns",
+    "runner_process_cpu_system_ns", "runner_process_cpu_total_ns",
+)
+_PROCESS_MEMORY_PHASES = (
+    "before_fixture_construction", "after_fixture_construction",
+    "before_initial_serialization", "after_initial_serialization",
+    "before_timing_replay", "after_timing_replay",
+    "before_terminal_serialization", "after_terminal_serialization",
+    "before_fairness_fixture_construction", "after_fairness_fixture_construction",
+    "before_fairness_replay", "after_fairness_replay",
+    "before_fairness_serialization", "after_fairness_serialization",
+)
 
 
 class BenchmarkError(RuntimeError):
@@ -881,6 +901,180 @@ def _quiesce_rss_sampler(sampler: threading.Thread, stop: threading.Event) -> No
              timeout_seconds=_RSS_SAMPLER_JOIN_TIMEOUT_SECONDS)
 
 
+def _process_cpu_time_source() -> str:
+    if sys.platform == "win32":
+        return "windows_get_process_times_v1"
+    _require(os.name == "posix" and hasattr(os, "wait4"), "child",
+             "exact child process CPU measurement is unavailable on this platform")
+    return "posix_wait4_rusage_v1"
+
+
+def _process_cpu_time_record(source: str, user_ns: int, system_ns: int) -> dict[str, Any]:
+    _require(source in _PROCESS_CPU_TIME_SOURCES, "child",
+             "unknown child process CPU measurement source")
+    _require(_is_nonnegative_int(user_ns) and _is_nonnegative_int(system_ns), "child",
+             "child process CPU measurements must be non-negative integer nanoseconds")
+    return {
+        "source": source,
+        "user_ns": user_ns,
+        "system_ns": system_ns,
+        "total_ns": user_ns + system_ns,
+    }
+
+
+def _process_cpu_time_from_rusage(usage: Any) -> dict[str, Any]:
+    user_seconds = float(usage.ru_utime)
+    system_seconds = float(usage.ru_stime)
+    _require(math.isfinite(user_seconds) and user_seconds >= 0 and
+             math.isfinite(system_seconds) and system_seconds >= 0, "child",
+             "wait4 returned invalid child process CPU measurements")
+    return _process_cpu_time_record(
+        "posix_wait4_rusage_v1", int(round(user_seconds * 1_000_000_000)),
+        int(round(system_seconds * 1_000_000_000)))
+
+
+def _windows_filetime_to_ns(value: Any) -> int:
+    ticks_100ns = (int(value.dwHighDateTime) << 32) | int(value.dwLowDateTime)
+    return ticks_100ns * 100
+
+
+def _windows_process_cpu_time(process: subprocess.Popen[bytes]) -> dict[str, Any]:
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        get_process_times = kernel32.GetProcessTimes
+        get_process_times.argtypes = [
+            wintypes.HANDLE, ctypes.POINTER(wintypes.FILETIME),
+            ctypes.POINTER(wintypes.FILETIME), ctypes.POINTER(wintypes.FILETIME),
+            ctypes.POINTER(wintypes.FILETIME),
+        ]
+        get_process_times.restype = wintypes.BOOL
+        creation = wintypes.FILETIME()
+        exit_time = wintypes.FILETIME()
+        kernel = wintypes.FILETIME()
+        user = wintypes.FILETIME()
+        handle = getattr(process, "_handle", None)
+        _require(handle is not None, "child",
+                 "Windows child process handle is unavailable for CPU measurement")
+        if not get_process_times(handle, ctypes.byref(creation), ctypes.byref(exit_time),
+                                 ctypes.byref(kernel), ctypes.byref(user)):
+            error_code = ctypes.get_last_error()
+            raise BenchmarkError(
+                "child", "GetProcessTimes failed for measured child",
+                {"windows_error": error_code})
+        return _process_cpu_time_record(
+            "windows_get_process_times_v1", _windows_filetime_to_ns(user),
+            _windows_filetime_to_ns(kernel))
+    except BenchmarkError:
+        raise
+    except (AttributeError, OSError, TypeError, ValueError) as error:
+        raise BenchmarkError(
+            "child", f"could not read exact Windows child process CPU time: {error}") from error
+
+
+def _signal_measured_process(process: subprocess.Popen[bytes], terminate: bool) -> None:
+    try:
+        if os.name == "posix":
+            os.kill(process.pid, signal.SIGTERM if terminate else signal.SIGKILL)
+        elif terminate:
+            process.terminate()
+        else:
+            process.kill()
+    except (OSError, ProcessLookupError):
+        pass
+
+
+def _drain_bounded_measured_stream(stream: Any, process: subprocess.Popen[bytes],
+                                   state: dict[str, Any]) -> None:
+    digest = hashlib.sha256()
+    total_bytes = 0
+    content = bytearray()
+    tail = bytearray()
+    try:
+        while True:
+            chunk = stream.read(64 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+            total_bytes += len(chunk)
+            tail.extend(chunk)
+            if len(tail) > _WARMUP_DIAGNOSTIC_TAIL_BYTES:
+                del tail[:-_WARMUP_DIAGNOSTIC_TAIL_BYTES]
+            remaining = _MAX_MEASURED_STREAM_BYTES - len(content)
+            if remaining > 0:
+                content.extend(chunk[:remaining])
+            if total_bytes > _MAX_MEASURED_STREAM_BYTES and not state.get("exceeded", False):
+                state["exceeded"] = True
+                _signal_measured_process(process, True)
+    finally:
+        stream.close()
+        state.update({
+            "sha256": digest.hexdigest(), "bytes": total_bytes,
+            "content": bytes(content), "tail": bytes(tail),
+        })
+
+
+def _wait_posix_child_cpu(process: subprocess.Popen[bytes],
+                          timeout_seconds: float) -> tuple[dict[str, Any], bool]:
+    state: dict[str, Any] = {}
+
+    def wait_exact_child() -> None:
+        try:
+            state["wait4"] = os.wait4(process.pid, 0)
+        except BaseException as error:  # communicated to the coordinator thread
+            state["error"] = error
+
+    waiter = threading.Thread(target=wait_exact_child, name="hostile-benchmark-wait4",
+                              daemon=True)
+    waiter.start()
+    waiter.join(timeout=timeout_seconds)
+    timed_out = waiter.is_alive()
+    if timed_out:
+        _signal_measured_process(process, True)
+        waiter.join(timeout=5)
+        if waiter.is_alive():
+            _signal_measured_process(process, False)
+            waiter.join(timeout=5)
+    _require(not waiter.is_alive(), "child",
+             "measured child did not exit after bounded termination")
+    if "error" in state:
+        raise BenchmarkError("child", f"wait4 failed for measured child: {state['error']}")
+    waited_pid, status, usage = state["wait4"]
+    _require(waited_pid == process.pid, "child", "wait4 returned the wrong child process")
+    process.returncode = os.waitstatus_to_exitcode(status)
+    return _process_cpu_time_from_rusage(usage), timed_out
+
+
+def _wait_windows_child_cpu(process: subprocess.Popen[bytes],
+                            timeout_seconds: float) -> tuple[dict[str, Any], bool]:
+    timed_out = False
+    try:
+        process.wait(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        _signal_measured_process(process, True)
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            _signal_measured_process(process, False)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired as error:
+                raise BenchmarkError(
+                    "child", "Windows measured child did not exit after bounded termination") \
+                    from error
+    return _windows_process_cpu_time(process), timed_out
+
+
+def _wait_exact_child_cpu(process: subprocess.Popen[bytes],
+                          timeout_seconds: float) -> tuple[dict[str, Any], bool]:
+    if _process_cpu_time_source() == "windows_get_process_times_v1":
+        return _wait_windows_child_cpu(process, timeout_seconds)
+    return _wait_posix_child_cpu(process, timeout_seconds)
+
+
 def _minimal_child_environment(temp_dir: str,
                                case_environment: Mapping[str, str]) -> dict[str, str]:
     environment = {name: os.environ[name] for name in _CHILD_ENV_ALLOWLIST
@@ -1136,6 +1330,18 @@ def _run_child(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
                                        env=environment, cwd=data_root["path"])
         except OSError as error:
             raise BenchmarkError("child", f"could not launch child: {error}") from error
+        _require(process.stdout is not None and process.stderr is not None, "child",
+                 "measured child stream pipes were not created")
+        stdout_state: dict[str, Any] = {"exceeded": False}
+        stderr_state: dict[str, Any] = {"exceeded": False}
+        stdout_thread = threading.Thread(
+            target=_drain_bounded_measured_stream,
+            args=(process.stdout, process, stdout_state),
+            name="hostile-benchmark-stdout", daemon=True)
+        stderr_thread = threading.Thread(
+            target=_drain_bounded_measured_stream,
+            args=(process.stderr, process, stderr_state),
+            name="hostile-benchmark-stderr", daemon=True)
         rss_samples: list[dict[str, int]] = []
         rss_state: dict[str, int | None] = {
             "observation_count": 0, "retention_stride": 1, "peak_bytes": None,
@@ -1145,29 +1351,45 @@ def _run_child(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
                                    args=(process.pid, stop, rss_interval_seconds, rss_samples,
                                          rss_state),
                                    name="hostile-benchmark-rss", daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
         sampler.start()
+        wait_error: BenchmarkError | None = None
+        process_cpu_time: dict[str, Any] | None = None
+        timed_out = False
         try:
-            stdout, stderr = process.communicate(timeout=timeout_seconds)
-        except subprocess.TimeoutExpired as error:
-            process.terminate()
-            try:
-                stdout, stderr = process.communicate(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                stdout, stderr = process.communicate()
-            raise BenchmarkError("child", "child exceeded declared timeout",
-                                 {"timeout_seconds": timeout_seconds}) from error
+            process_cpu_time, timed_out = _wait_exact_child_cpu(process, timeout_seconds)
+        except BenchmarkError as error:
+            wait_error = error
         finally:
             _quiesce_rss_sampler(sampler, stop)
+        stdout_thread.join(timeout=_RSS_SAMPLER_JOIN_TIMEOUT_SECONDS)
+        stderr_thread.join(timeout=_RSS_SAMPLER_JOIN_TIMEOUT_SECONDS)
+        _require(not stdout_thread.is_alive() and not stderr_thread.is_alive(), "child",
+                 "measured child stream drain did not quiesce within its bounded timeout")
+        if wait_error is not None:
+            raise wait_error
+        _require(process_cpu_time is not None, "child",
+                 "measured child CPU time was not captured")
         frozen_rss_samples = [dict(sample) for sample in rss_samples]
         frozen_rss_state = dict(rss_state)
         elapsed_ns = time.perf_counter_ns() - started_ns
+        if timed_out:
+            raise BenchmarkError("child", "child exceeded declared timeout",
+                                 {"timeout_seconds": timeout_seconds})
+        _require(not stdout_state["exceeded"] and not stderr_state["exceeded"], "child",
+                 "measured child exceeded its stream byte cap",
+                 limit_bytes=_MAX_MEASURED_STREAM_BYTES,
+                 stdout_bytes=stdout_state["bytes"], stderr_bytes=stderr_state["bytes"],
+                 stdout_sha256=stdout_state["sha256"], stderr_sha256=stderr_state["sha256"])
+        stdout = stdout_state["content"]
+        stderr = stderr_state["content"]
         _require(process.returncode == 0, "child", "child exited non-zero",
                  exit_code=process.returncode,
                  stderr_sha256=sha256_bytes(stderr),
                  stderr_tail=stderr[-4000:].decode("utf-8", errors="replace"))
         if output_path.is_file() and output_path.stat().st_size:
-            raw = output_path.read_bytes()
+            raw = _read_bounded_child_result(output_path)
             result_source = "output_file"
         else:
             raw = stdout
@@ -1186,6 +1408,10 @@ def _run_child(binary: Mapping[str, Any], label: str, case: Mapping[str, Any],
             "command": command,
             "exit_code": process.returncode,
             "runner_wall_time_ns": elapsed_ns,
+            "process_cpu_time": process_cpu_time,
+            "stream_byte_limit": _MAX_MEASURED_STREAM_BYTES,
+            "stdout_bytes": stdout_state["bytes"],
+            "stderr_bytes": stderr_state["bytes"],
             "rss_samples": frozen_rss_samples,
             "rss_observation_count": frozen_rss_state["observation_count"],
             "rss_sample_limit": _MAX_CHILD_RSS_SAMPLES,
@@ -1230,6 +1456,7 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
     _require(pair_count > 0, "matrix_schema", "pair count must be positive")
     _require(timeout_seconds > 0, "matrix_schema", "timeout must be positive")
     _require(rss_interval_seconds > 0, "matrix_schema", "RSS interval must be positive")
+    process_cpu_time_source = _process_cpu_time_source()
     _require(isinstance(data_roots, Mapping) and set(data_roots) == set(binaries),
              "data_root", "data roots must cover every binary label exactly",
              expected=sorted(binaries),
@@ -1273,6 +1500,7 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
         "rss_sample_limit_per_child": _MAX_CHILD_RSS_SAMPLES,
         "rss_sample_limit_per_packet": _MAX_PACKET_RSS_SAMPLES,
         "expected_max_retained_rss_samples": maximum_retained_rss_samples,
+        "process_cpu_time_source": process_cpu_time_source,
         "matrix_path": str(pathlib.Path(matrix_path).expanduser().resolve()),
         "matrix_sha256": matrix_hash,
         "matrix": matrix,
@@ -1284,6 +1512,8 @@ def run_benchmarks(matrix_path: os.PathLike[str] | str,
             "platform": platform.platform(),
             "machine": platform.machine(),
             "python": platform.python_version(),
+            "python_platform": sys.platform,
+            "os_name": os.name,
         },
         "warmups": [],
         "runs": [],
@@ -1633,6 +1863,20 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
              "schema", "raw packet expected retained RSS sample count mismatch")
     _require(expected_max_retained_rss_samples <= _MAX_PACKET_RSS_SAMPLES,
              "schema", "raw packet exceeds retained RSS-sample cap")
+    process_cpu_time_source = payload.get("process_cpu_time_source")
+    _require(process_cpu_time_source in _PROCESS_CPU_TIME_SOURCES, "schema",
+             "invalid process CPU time source")
+    host = payload.get("host")
+    _require(isinstance(host, dict), "schema", "raw packet host identity is invalid")
+    _require(isinstance(host.get("python_platform"), str) and host["python_platform"] and
+             isinstance(host.get("os_name"), str) and host["os_name"], "schema",
+             "raw packet host platform identity is incomplete")
+    if process_cpu_time_source == "windows_get_process_times_v1":
+        _require(host.get("python_platform") == "win32" and host.get("os_name") == "nt",
+                 "schema", "Windows process CPU source disagrees with host identity")
+    else:
+        _require(host.get("python_platform") != "win32" and host.get("os_name") == "posix",
+                 "schema", "POSIX process CPU source disagrees with host identity")
     labels = payload.get("label_order")
     _require(isinstance(labels, list) and len(labels) == len(binaries) and
              all(isinstance(label, str) for label in labels) and len(set(labels)) == len(labels) and
@@ -1723,6 +1967,25 @@ def validate_raw(document: Any, verify_files: bool = False) -> dict[str, Any]:
         validate_child_result(run.get("result"), expected)
         _require(_is_nonnegative_int(run.get("runner_wall_time_ns")), "schema",
                  "invalid runner wall time")
+        process_cpu_time = run.get("process_cpu_time")
+        required_cpu_fields = {"source", "user_ns", "system_ns", "total_ns"}
+        _require(isinstance(process_cpu_time, dict) and
+                 set(process_cpu_time) == required_cpu_fields, "schema",
+                 "invalid measured child process CPU record")
+        _require(process_cpu_time["source"] == process_cpu_time_source, "schema",
+                 "run process CPU source does not match packet provenance")
+        for cpu_field in ("user_ns", "system_ns", "total_ns"):
+            _require(_is_nonnegative_int(process_cpu_time[cpu_field]), "schema",
+                     f"invalid measured child process CPU {cpu_field}")
+        _require(process_cpu_time["total_ns"] ==
+                 process_cpu_time["user_ns"] + process_cpu_time["system_ns"], "schema",
+                 "measured child process CPU total does not match user plus system")
+        _require(run.get("stream_byte_limit") == _MAX_MEASURED_STREAM_BYTES, "schema",
+                 "measured child stream byte limit mismatch")
+        for stream_bytes_name in ("stdout_bytes", "stderr_bytes"):
+            _require(_is_nonnegative_int(run.get(stream_bytes_name)) and
+                     run[stream_bytes_name] <= _MAX_MEASURED_STREAM_BYTES, "schema",
+                     f"invalid measured child {stream_bytes_name}")
         samples = run.get("rss_samples")
         _require(isinstance(samples, list), "schema", "RSS samples must be a list")
         observation_count = run.get("rss_observation_count")
@@ -1829,25 +2092,40 @@ def _flatten_metrics(value: Any, prefix: str = "") -> Iterable[tuple[str, Any]]:
 
 
 def _result_measurements(result: Mapping[str, Any]) -> Iterable[tuple[str, Any]]:
-    """Expose child metrics plus probe/serialization/fairness evidence to summaries."""
+    """Expose child metrics plus probe/serialization/fairness/memory evidence."""
 
     yield from _flatten_metrics(result["metrics"])
     for section in ("probe", "serialization", "fairness"):
         if section in result:
             yield from _flatten_metrics(result[section], section)
+    process_memory = result.get("process_memory")
+    if isinstance(process_memory, Mapping):
+        yield ("process_memory.maximum_sampled_resident_bytes",
+               process_memory.get("maximum_sampled_resident_bytes"))
+        for sample in process_memory.get("samples", []):
+            if isinstance(sample, Mapping) and isinstance(sample.get("phase"), str):
+                phase = sample["phase"]
+                yield f"process_memory.{phase}.resident_bytes", sample.get("resident_bytes")
+                yield (f"process_memory.{phase}.delta_from_previous_bytes",
+                       sample.get("delta_from_previous_bytes"))
 
 
 def _stats(values: Sequence[float | int], seed: int, bootstrap_samples: int,
            kind: str) -> dict[str, Any]:
     if not values:
-        return {"kind": kind, "available": False, "count": 0}
+        return {"kind": kind, "available": False, "count": 0,
+                "confidence_status": "insufficient_sample", "mean_ci95": None}
     numeric = [float(value) for value in values]
+    confidence_eligible = kind != "run_scalar" or len(numeric) >= _PAIRED_CI_MINIMUM_PAIRS
     return {
         "kind": kind,
         "available": True,
         "count": len(numeric),
         "mean": sum(numeric) / len(numeric),
-        "mean_ci95": bootstrap_mean_ci(numeric, seed, bootstrap_samples),
+        "confidence_status": ("available" if confidence_eligible else
+                              "insufficient_sample"),
+        "mean_ci95": (bootstrap_mean_ci(numeric, seed, bootstrap_samples)
+                      if confidence_eligible else None),
         "min": min(numeric),
         "p50": nearest_rank_percentile(numeric, 50),
         "p95": nearest_rank_percentile(numeric, 95),
@@ -1874,7 +2152,14 @@ def _summarize_variant(runs: Sequence[Mapping[str, Any]], seed: int,
                     list_run_means[path].append(sum(value) / len(value))
             elif _is_number(value):
                 scalar_values[path].append(value)
+        scalar_values["benchmark_wall_time_ns"].append(run["result"]["metrics"]["wall_time_ns"])
         scalar_values["runner_wall_time_ns"].append(run["runner_wall_time_ns"])
+        scalar_values["runner_process_cpu_user_ns"].append(
+            run["process_cpu_time"]["user_ns"])
+        scalar_values["runner_process_cpu_system_ns"].append(
+            run["process_cpu_time"]["system_ns"])
+        scalar_values["runner_process_cpu_total_ns"].append(
+            run["process_cpu_time"]["total_ns"])
         if run["rss_peak_bytes"] is not None:
             scalar_values["runner_peak_rss_bytes"].append(run["rss_peak_bytes"])
         rss = [sample["rss_bytes"] for sample in run["rss_samples"]]
@@ -1890,13 +2175,119 @@ def _summarize_variant(runs: Sequence[Mapping[str, Any]], seed: int,
             summary = _stats(list_values[path], metric_seed, bootstrap_samples, "observations")
             if list_run_means[path]:
                 summary["per_run_mean"] = sum(list_run_means[path]) / len(list_run_means[path])
-                summary["per_run_mean_ci95"] = bootstrap_mean_ci(
-                    list_run_means[path], metric_seed ^ index, bootstrap_samples)
+                per_run_confidence_eligible = (
+                    len(list_run_means[path]) >= _PAIRED_CI_MINIMUM_PAIRS)
+                summary["per_run_confidence_status"] = (
+                    "available" if per_run_confidence_eligible else "insufficient_sample")
+                summary["per_run_mean_ci95"] = (
+                    bootstrap_mean_ci(list_run_means[path], metric_seed ^ index,
+                                      bootstrap_samples)
+                    if per_run_confidence_eligible else None)
         else:
             summary = _stats(scalar_values[path], metric_seed, bootstrap_samples, "run_scalar")
         summary["null_count"] = null_counts[path]
         summaries[path] = summary
     return {"run_count": len(runs), "metrics": summaries}
+
+
+def _run_scalar_metric(run: Mapping[str, Any], metric: str) -> int:
+    if metric == "benchmark_wall_time_ns":
+        return int(run["result"]["metrics"]["wall_time_ns"])
+    if metric == "runner_wall_time_ns":
+        return int(run["runner_wall_time_ns"])
+    cpu_field = metric.removeprefix("runner_process_cpu_")
+    return int(run["process_cpu_time"][cpu_field])
+
+
+def _distribution(values: Sequence[float | int]) -> dict[str, Any]:
+    _require(bool(values), "schema", "distribution needs at least one value")
+    numeric = [float(value) for value in values]
+    mean = sum(numeric) / len(numeric)
+    sample_stddev = None
+    if len(numeric) >= 2:
+        sample_stddev = math.sqrt(
+            sum((value - mean) ** 2 for value in numeric) / (len(numeric) - 1))
+    total: float | int = sum(values)
+    return {
+        "count": len(numeric), "total": total, "mean": mean,
+        "sample_stddev": sample_stddev, "min": min(values), "max": max(values),
+    }
+
+
+def _paired_effect(values: Sequence[float | int], seed: int, bootstrap_samples: int,
+                   confidence_eligible: bool) -> dict[str, Any]:
+    return {
+        "status": "available" if confidence_eligible else "insufficient_sample",
+        "distribution": _distribution(values),
+        "mean_ci95": (bootstrap_mean_ci(values, seed, bootstrap_samples)
+                      if confidence_eligible else None),
+    }
+
+
+def _summarize_paired_runs(grouped: Mapping[str, Sequence[Mapping[str, Any]]],
+                           labels: Sequence[str], pair_count: int, seed: int,
+                           bootstrap_samples: int) -> dict[str, Any]:
+    if len(labels) == 1:
+        return {
+            "status": "not_applicable_single_variant",
+            "minimum_pair_count_for_ci": _PAIRED_CI_MINIMUM_PAIRS,
+            "pair_count": pair_count,
+            "metrics": {},
+        }
+    baseline_label, candidate_label = labels
+    runs_by_label_and_pair = {
+        label: {run["pair_index"]: run for run in grouped[label]} for label in labels
+    }
+    _require(all(set(runs_by_label_and_pair[label]) == set(range(pair_count))
+                 for label in labels), "schema", "paired summary input is incomplete")
+    confidence_eligible = pair_count >= _PAIRED_CI_MINIMUM_PAIRS
+    metrics: dict[str, Any] = {}
+    for metric in _PAIRED_RUN_METRICS:
+        baseline_values = [
+            _run_scalar_metric(runs_by_label_and_pair[baseline_label][index], metric)
+            for index in range(pair_count)
+        ]
+        candidate_values = [
+            _run_scalar_metric(runs_by_label_and_pair[candidate_label][index], metric)
+            for index in range(pair_count)
+        ]
+        deltas = [candidate - baseline for baseline, candidate in
+                  zip(baseline_values, candidate_values)]
+        metric_seed = seed ^ int.from_bytes(
+            hashlib.sha256(f"paired:{metric}".encode()).digest()[:8], "big")
+        zero_baseline_pair_count = sum(value == 0 for value in baseline_values)
+        if zero_baseline_pair_count:
+            ratio = {
+                "status": "undefined_zero_baseline",
+                "zero_baseline_pair_count": zero_baseline_pair_count,
+                "distribution": None,
+                "mean_ci95": None,
+            }
+        else:
+            ratios = [candidate / baseline for baseline, candidate in
+                      zip(baseline_values, candidate_values)]
+            ratio = {
+                **_paired_effect(ratios, metric_seed ^ 0xA5A5A5A5,
+                                 bootstrap_samples, confidence_eligible),
+                "zero_baseline_pair_count": 0,
+            }
+        metrics[metric] = {
+            "kind": "paired_run_scalar",
+            "pair_count": pair_count,
+            "baseline": _distribution(baseline_values),
+            "candidate": _distribution(candidate_values),
+            "delta": _paired_effect(deltas, metric_seed, bootstrap_samples,
+                                    confidence_eligible),
+            "ratio": ratio,
+        }
+    return {
+        "status": "available" if confidence_eligible else "insufficient_sample",
+        "minimum_pair_count_for_ci": _PAIRED_CI_MINIMUM_PAIRS,
+        "pair_count": pair_count,
+        "baseline_label": baseline_label,
+        "candidate_label": candidate_label,
+        "metrics": metrics,
+    }
 
 
 def summarize_raw(document: Any, source_raw_sha256: str | None = None,
@@ -1905,7 +2296,17 @@ def summarize_raw(document: Any, source_raw_sha256: str | None = None,
 
     payload = validate_raw(document)
     _require(payload["status"] == "accepted", "schema", "cannot summarize a rejected packet")
+    _require(_is_nonnegative_int(bootstrap_samples) and bootstrap_samples > 0, "schema",
+             "bootstrap sample count must be a positive integer")
     seed = payload["seed"]
+    labels = payload["label_order"]
+    paired_bootstrap_draws = (payload["pair_count"] * bootstrap_samples *
+                              len(payload["matrix"]["cases"]) *
+                              len(_PAIRED_RUN_METRICS) * 2 if len(labels) == 2 else 0)
+    _require(paired_bootstrap_draws <= _MAX_PAIRED_BOOTSTRAP_DRAWS, "schema",
+             "paired bootstrap request exceeds its deterministic work cap",
+             requested_draws=paired_bootstrap_draws,
+             maximum_draws=_MAX_PAIRED_BOOTSTRAP_DRAWS)
     grouped: dict[str, dict[str, list[Mapping[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     for run in payload["runs"]:
         grouped[run["case_id"]][run["variant"]].append(run)
@@ -1916,10 +2317,13 @@ def summarize_raw(document: Any, source_raw_sha256: str | None = None,
                        "fixture_sha256": _case_fixture_sha256(case),
                        "workload": case["workload"],
                        "thresholds": case.get("thresholds", []), "variants": {}}
-        for label in payload["binaries"]:
+        for label in labels:
             variant_runs = sorted(grouped[case_id][label], key=lambda run: run["pair_index"])
             case_result["variants"][label] = _summarize_variant(
                 variant_runs, seed ^ case_index, bootstrap_samples)
+        case_result["paired"] = _summarize_paired_runs(
+            grouped[case_id], labels, payload["pair_count"],
+            seed ^ case_index, bootstrap_samples)
         cases[case_id] = case_result
     summary_payload = {
         "created_utc": _utc_now(),
@@ -1927,6 +2331,10 @@ def summarize_raw(document: Any, source_raw_sha256: str | None = None,
         "source_payload_sha256": document["content_sha256"],
         "seed": seed,
         "pair_count": payload["pair_count"],
+        "label_order": labels,
+        "process_cpu_time_source": payload["process_cpu_time_source"],
+        "paired_bootstrap_draw_limit": _MAX_PAIRED_BOOTSTRAP_DRAWS,
+        "expected_paired_bootstrap_draws": paired_bootstrap_draws,
         "bootstrap_samples": bootstrap_samples,
         "percentile_method": "nearest-rank: sorted[ceil(p*n/100)-1], p=0 selects minimum",
         "matrix_sha256": payload["matrix_sha256"],
@@ -1937,12 +2345,213 @@ def summarize_raw(document: Any, source_raw_sha256: str | None = None,
     return wrap_envelope(SUMMARY_SCHEMA, summary_payload)
 
 
+def _validate_distribution_summary(value: Any, path: str, expected_count: int) -> None:
+    required = {"count", "total", "mean", "sample_stddev", "min", "max"}
+    _require(isinstance(value, dict) and set(value) == required, "schema",
+             f"{path} must be a complete distribution")
+    _require(value["count"] == expected_count, "schema", f"{path} count mismatch")
+    for field in ("total", "mean", "min", "max"):
+        _require(_is_number(value[field]), "schema", f"{path}.{field} is invalid")
+    _require(value["min"] <= value["mean"] <= value["max"], "schema",
+             f"{path} mean is outside its range")
+    _require(math.isclose(float(value["mean"]),
+                          float(value["total"]) / expected_count,
+                          rel_tol=1e-12, abs_tol=1e-9), "schema",
+             f"{path} total and mean disagree")
+    if expected_count == 1:
+        _require(value["sample_stddev"] is None, "schema",
+                 f"{path} one-sample dispersion must be unavailable")
+    else:
+        _require(_is_number(value["sample_stddev"]) and
+                 value["sample_stddev"] >= 0, "schema",
+                 f"{path} sample dispersion is invalid")
+
+
+def _validate_run_scalar_summary(value: Any, path: str, pair_count: int) -> None:
+    _require(isinstance(value, dict) and value.get("kind") == "run_scalar" and
+             value.get("available") is True and value.get("count") == pair_count and
+             _is_number(value.get("mean")), "schema",
+             f"{path} must be an available run-scalar summary")
+    confidence_eligible = pair_count >= _PAIRED_CI_MINIMUM_PAIRS
+    _require(value.get("confidence_status") ==
+             ("available" if confidence_eligible else "insufficient_sample"), "schema",
+             f"{path} confidence status does not match pair count")
+    ci = value.get("mean_ci95")
+    if confidence_eligible:
+        _require(isinstance(ci, list) and len(ci) == 2 and
+                 all(_is_number(bound) for bound in ci) and ci[0] <= ci[1], "schema",
+                 f"{path} confidence interval is invalid")
+    else:
+        _require(ci is None, "schema",
+                 f"{path} must not invent a run-level confidence interval below the declared minimum")
+
+
+def _validate_paired_effect(value: Any, path: str, pair_count: int,
+                            confidence_eligible: bool) -> None:
+    required = {"status", "distribution", "mean_ci95"}
+    _require(isinstance(value, dict) and set(value) == required, "schema",
+             f"{path} must be a complete paired effect")
+    expected_status = "available" if confidence_eligible else "insufficient_sample"
+    _require(value["status"] == expected_status, "schema",
+             f"{path} confidence status does not match pair count")
+    _validate_distribution_summary(value["distribution"], f"{path}.distribution", pair_count)
+    if confidence_eligible:
+        ci = value["mean_ci95"]
+        _require(isinstance(ci, list) and len(ci) == 2 and
+                 all(_is_number(bound) for bound in ci) and ci[0] <= ci[1], "schema",
+                 f"{path} confidence interval is invalid")
+    else:
+        _require(value["mean_ci95"] is None, "schema",
+                 f"{path} must not invent a confidence interval below the declared minimum")
+
+
+def _validate_paired_summary(value: Any, labels: Sequence[str], pair_count: int,
+                             path: str) -> None:
+    if len(labels) == 1:
+        required = {"status", "minimum_pair_count_for_ci", "pair_count", "metrics"}
+        _require(isinstance(value, dict) and set(value) == required, "schema",
+                 f"{path} must be a complete single-variant pairing status")
+        _require(value["status"] == "not_applicable_single_variant" and
+                 value["metrics"] == {}, "schema",
+                 f"{path} must not invent a single-variant paired comparison")
+    else:
+        required = {
+            "status", "minimum_pair_count_for_ci", "pair_count", "baseline_label",
+            "candidate_label", "metrics",
+        }
+        _require(isinstance(value, dict) and set(value) == required, "schema",
+                 f"{path} must be a complete paired comparison")
+        confidence_eligible = pair_count >= _PAIRED_CI_MINIMUM_PAIRS
+        _require(value["status"] ==
+                 ("available" if confidence_eligible else "insufficient_sample"), "schema",
+                 f"{path} status does not match pair count")
+        _require(value["baseline_label"] == labels[0] and
+                 value["candidate_label"] == labels[1], "schema",
+                 f"{path} labels do not match stable variant order")
+        metrics = value["metrics"]
+        _require(isinstance(metrics, dict) and set(metrics) == set(_PAIRED_RUN_METRICS),
+                 "schema", f"{path} paired metric set is incomplete")
+        for metric in _PAIRED_RUN_METRICS:
+            metric_value = metrics[metric]
+            metric_path = f"{path}.metrics.{metric}"
+            required_metric = {"kind", "pair_count", "baseline", "candidate", "delta", "ratio"}
+            _require(isinstance(metric_value, dict) and
+                     set(metric_value) == required_metric, "schema",
+                     f"{metric_path} is incomplete")
+            _require(metric_value["kind"] == "paired_run_scalar" and
+                     metric_value["pair_count"] == pair_count, "schema",
+                     f"{metric_path} identity is invalid")
+            _validate_distribution_summary(
+                metric_value["baseline"], f"{metric_path}.baseline", pair_count)
+            _validate_distribution_summary(
+                metric_value["candidate"], f"{metric_path}.candidate", pair_count)
+            _validate_paired_effect(
+                metric_value["delta"], f"{metric_path}.delta", pair_count,
+                confidence_eligible)
+            baseline_total = metric_value["baseline"]["total"]
+            candidate_total = metric_value["candidate"]["total"]
+            delta_total = metric_value["delta"]["distribution"]["total"]
+            _require(math.isclose(float(delta_total),
+                                  float(candidate_total) - float(baseline_total),
+                                  rel_tol=1e-12, abs_tol=1e-9), "schema",
+                     f"{metric_path} paired delta total disagrees with variant totals")
+            ratio = metric_value["ratio"]
+            required_ratio = {"status", "zero_baseline_pair_count", "distribution", "mean_ci95"}
+            _require(isinstance(ratio, dict) and set(ratio) == required_ratio, "schema",
+                     f"{metric_path}.ratio is incomplete")
+            zero_count = ratio["zero_baseline_pair_count"]
+            _require(_is_nonnegative_int(zero_count) and zero_count <= pair_count, "schema",
+                     f"{metric_path}.ratio zero-baseline count is invalid")
+            if zero_count:
+                _require(ratio["status"] == "undefined_zero_baseline" and
+                         ratio["distribution"] is None and ratio["mean_ci95"] is None,
+                         "schema", f"{metric_path}.ratio must be unavailable for zero baselines")
+            else:
+                _validate_paired_effect(
+                    {name: ratio[name] for name in ("status", "distribution", "mean_ci95")},
+                    f"{metric_path}.ratio", pair_count, confidence_eligible)
+        for side in ("baseline", "candidate"):
+            _require(math.isclose(
+                float(metrics["runner_process_cpu_total_ns"][side]["total"]),
+                float(metrics["runner_process_cpu_user_ns"][side]["total"]) +
+                float(metrics["runner_process_cpu_system_ns"][side]["total"]),
+                rel_tol=1e-12, abs_tol=1e-9), "schema",
+                f"{path} {side} process CPU component totals disagree")
+        _require(math.isclose(
+            float(metrics["runner_process_cpu_total_ns"]["delta"]["distribution"]["total"]),
+            float(metrics["runner_process_cpu_user_ns"]["delta"]["distribution"]["total"]) +
+            float(metrics["runner_process_cpu_system_ns"]["delta"]["distribution"]["total"]),
+            rel_tol=1e-12, abs_tol=1e-9), "schema",
+            f"{path} process CPU delta component totals disagree")
+    _require(value["minimum_pair_count_for_ci"] == _PAIRED_CI_MINIMUM_PAIRS and
+             value["pair_count"] == pair_count, "schema",
+             f"{path} pairing policy mismatch")
+
+
 def validate_summary(document: Any) -> dict[str, Any]:
     payload = _verify_envelope(document, SUMMARY_SCHEMA)
-    validate_matrix(payload.get("matrix"))
-    _require(isinstance(payload.get("cases"), dict), "schema", "summary cases must be an object")
-    _require(_is_nonnegative_int(payload.get("bootstrap_samples")) and
-             payload["bootstrap_samples"] > 0, "schema", "invalid bootstrap count")
+    matrix = validate_matrix(payload.get("matrix"))
+    binaries = payload.get("binaries")
+    _require(isinstance(binaries, dict) and 1 <= len(binaries) <= 2, "schema",
+             "summary binaries must contain one or two variants")
+    pair_count = payload.get("pair_count")
+    _require(_is_nonnegative_int(pair_count) and pair_count > 0, "schema",
+             "invalid summary pair count")
+    labels = payload.get("label_order")
+    _require(isinstance(labels, list) and len(labels) == len(binaries) and
+             len(set(labels)) == len(labels) and set(labels) == set(binaries), "schema",
+             "invalid summary stable label order")
+    bootstrap_samples = payload.get("bootstrap_samples")
+    _require(_is_nonnegative_int(bootstrap_samples) and bootstrap_samples > 0, "schema",
+             "invalid bootstrap count")
+    expected_paired_bootstrap_draws = (pair_count * bootstrap_samples *
+                                       len(matrix["cases"]) * len(_PAIRED_RUN_METRICS) * 2
+                                       if len(labels) == 2 else 0)
+    _require(payload.get("paired_bootstrap_draw_limit") == _MAX_PAIRED_BOOTSTRAP_DRAWS and
+             payload.get("expected_paired_bootstrap_draws") ==
+             expected_paired_bootstrap_draws and
+             expected_paired_bootstrap_draws <= _MAX_PAIRED_BOOTSTRAP_DRAWS, "schema",
+             "summary paired bootstrap work accounting is invalid")
+    _require(payload.get("process_cpu_time_source") in _PROCESS_CPU_TIME_SOURCES, "schema",
+             "invalid summary process CPU time source")
+    cases = payload.get("cases")
+    expected_case_ids = {_case_id(case) for case in matrix["cases"]}
+    _require(isinstance(cases, dict) and set(cases) == expected_case_ids, "schema",
+             "summary cases do not match the matrix")
+    for case_id, case_summary in cases.items():
+        _require(isinstance(case_summary, dict), "schema",
+                 f"summary case {case_id!r} must be an object")
+        variants = case_summary.get("variants")
+        _require(isinstance(variants, dict) and set(variants) == set(labels), "schema",
+                 f"summary case {case_id!r} variants are incomplete")
+        for label in labels:
+            _require(isinstance(variants[label], dict) and
+                     variants[label].get("run_count") == pair_count, "schema",
+                     f"summary variant {label!r} run count mismatch")
+            metrics = variants[label].get("metrics")
+            _require(isinstance(metrics, dict), "schema",
+                     f"summary variant {label!r} metrics are invalid")
+            for metric in _PAIRED_RUN_METRICS:
+                _validate_run_scalar_summary(
+                    metrics.get(metric), f"cases.{case_id}.variants.{label}.{metric}",
+                    pair_count)
+            _require(math.isclose(
+                float(metrics["runner_process_cpu_total_ns"]["mean"]),
+                float(metrics["runner_process_cpu_user_ns"]["mean"]) +
+                float(metrics["runner_process_cpu_system_ns"]["mean"]),
+                rel_tol=1e-12, abs_tol=1e-9), "schema",
+                f"summary variant {label!r} process CPU components disagree")
+        _validate_paired_summary(case_summary.get("paired"), labels, pair_count,
+                                 f"cases.{case_id}.paired")
+        if len(labels) == 2:
+            paired_metrics = case_summary["paired"]["metrics"]
+            for metric in _PAIRED_RUN_METRICS:
+                for side, label in (("baseline", labels[0]), ("candidate", labels[1])):
+                    _require(math.isclose(
+                        float(paired_metrics[metric][side]["mean"]),
+                        float(variants[label]["metrics"][metric]["mean"]),
+                        rel_tol=1e-12, abs_tol=1e-9), "schema",
+                        f"summary paired {side} mean disagrees with variant {label!r}")
     return payload
 
 

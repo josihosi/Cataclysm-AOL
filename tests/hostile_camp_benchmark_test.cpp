@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -15,15 +16,26 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <unordered_map>
 #include <utility>
 #include <vector>
+
+#if defined(__APPLE__) && defined(__MACH__)
+#include <mach/mach.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
 
 #include "bandit_live_world_probe.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "game.h"
 #include "json.h"
 #include "json_loader.h"
+#include "overmapbuffer.h"
+#include "path_info.h"
 #include "rng.h"
+#include "worldfactory.h"
 
 namespace
 {
@@ -44,6 +56,36 @@ struct cardinality {
     std::size_t sites = 0;
     std::size_t members = 0;
     std::size_t leads = 0;
+};
+
+struct process_memory_snapshot {
+    std::string phase;
+    std::string source;
+    std::optional<std::uint64_t> resident_bytes;
+};
+
+struct whole_save_metrics {
+    bool performed = false;
+    bool save_succeeded = false;
+    bool load_succeeded = false;
+    bool directory_measurement_complete = false;
+    std::uint64_t directory_bytes_before = 0;
+    std::uint64_t directory_bytes_after = 0;
+    std::uint64_t directory_file_count_before = 0;
+    std::uint64_t directory_file_count_after = 0;
+    std::int64_t save_wall_time_ns = 0;
+    std::int64_t load_wall_time_ns = 0;
+};
+
+struct scheduler_wait_record {
+    std::string site_id;
+    bool structurally_eligible = false;
+    std::uint64_t scan_samples = 0;
+    std::uint64_t service_updates = 0;
+    std::optional<std::size_t> first_service_update;
+    std::optional<std::size_t> last_service_update;
+    std::optional<std::size_t> maximum_wait_updates;
+    std::optional<std::size_t> trailing_wait_updates;
 };
 
 class scoped_rng_restore
@@ -136,6 +178,84 @@ std::size_t environment_size( const char *name, const std::size_t fallback )
         throw std::runtime_error( std::string( "invalid nonnegative integer in " ) + name );
     }
     return static_cast<std::size_t>( value );
+}
+
+process_memory_snapshot sample_process_memory( const std::string &phase )
+{
+    process_memory_snapshot result;
+    result.phase = phase;
+#if defined(__APPLE__) && defined(__MACH__)
+    result.source = "mach_task_basic_info.resident_size";
+    mach_task_basic_info_data_t information = {};
+    mach_msg_type_number_t information_count = MACH_TASK_BASIC_INFO_COUNT;
+    if( task_info( mach_task_self(), MACH_TASK_BASIC_INFO,
+                   reinterpret_cast<task_info_t>( &information ),
+                   &information_count ) == KERN_SUCCESS ) {
+        result.resident_bytes = static_cast<std::uint64_t>( information.resident_size );
+    }
+#elif defined(__linux__)
+    result.source = "/proc/self/statm resident pages";
+    std::ifstream statm( "/proc/self/statm" );
+    std::uint64_t total_pages = 0;
+    std::uint64_t resident_pages = 0;
+    const long page_size = sysconf( _SC_PAGESIZE );
+    if( statm >> total_pages >> resident_pages && page_size > 0 &&
+        resident_pages <= std::numeric_limits<std::uint64_t>::max() /
+        static_cast<std::uint64_t>( page_size ) ) {
+        result.resident_bytes = resident_pages * static_cast<std::uint64_t>( page_size );
+    }
+#else
+    result.source = "unsupported on this platform";
+#endif
+    return result;
+}
+
+void record_process_memory( std::vector<process_memory_snapshot> &samples,
+                            const std::string &phase )
+{
+    samples.push_back( sample_process_memory( phase ) );
+}
+
+struct directory_measurement {
+    std::uint64_t bytes = 0;
+    std::uint64_t file_count = 0;
+    bool complete = false;
+};
+
+directory_measurement measure_directory( const std::filesystem::path &root )
+{
+    directory_measurement result;
+    std::error_code error;
+    const bool exists = std::filesystem::exists( root, error );
+    if( error ) {
+        return result;
+    }
+    if( !exists ) {
+        result.complete = true;
+        return result;
+    }
+
+    std::filesystem::recursive_directory_iterator entry( root,
+            std::filesystem::directory_options::none, error );
+    const std::filesystem::recursive_directory_iterator end;
+    bool measurement_complete = !error;
+    while( !error && entry != end ) {
+        if( entry->is_regular_file( error ) && !error ) {
+            const std::uintmax_t size = entry->file_size( error );
+            if( !error ) {
+                if( size > std::numeric_limits<std::uint64_t>::max() - result.bytes ||
+                    result.file_count == std::numeric_limits<std::uint64_t>::max() ) {
+                    measurement_complete = false;
+                    break;
+                }
+                result.bytes += static_cast<std::uint64_t>( size );
+                result.file_count++;
+            }
+        }
+        entry.increment( error );
+    }
+    result.complete = measurement_complete && !error;
+    return result;
 }
 
 std::string serialize_world( const bandit_live_world::world_state &world )
@@ -339,6 +459,108 @@ bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count
     return world;
 }
 
+class scheduler_wait_tracker
+{
+    public:
+        scheduler_wait_tracker( const bandit_live_world::world_state &world, const bool enabled ) :
+            enabled_( enabled ) {
+            records_.reserve( world.sites.size() );
+            record_indices_.reserve( world.sites.size() );
+            for( const bandit_live_world::site_record &site : world.sites ) {
+                scheduler_wait_record record;
+                record.site_id = site.site_id;
+                record.structurally_eligible = site.profile ==
+                                               bandit_live_world::hostile_site_profile::camp_style;
+                const std::size_t index = records_.size();
+                records_.push_back( std::move( record ) );
+                record_indices_.emplace( records_.back().site_id, index );
+            }
+        }
+
+        void observe_update( const std::size_t update_index,
+                             const bandit_live_world_probe::snapshot &probe ) {
+            if( !enabled_ ) {
+                return;
+            }
+            for( const bandit_live_world_probe::site_service_record &service : probe.site_services ) {
+                const auto found = record_indices_.find( service.site_id );
+                if( found == record_indices_.end() ) {
+                    continue;
+                }
+                scheduler_wait_record &record = records_[found->second];
+                if( !record.structurally_eligible ) {
+                    continue;
+                }
+                const std::uint64_t scan_samples = service.counts[static_cast<std::size_t>(
+                        bandit_live_world_probe::site_service::scan_samples )];
+                if( scan_samples <= record.scan_samples ) {
+                    continue;
+                }
+
+                const std::size_t wait_updates = record.last_service_update ?
+                                                 update_index - *record.last_service_update - 1 : update_index;
+                if( !record.maximum_wait_updates ||
+                    wait_updates > *record.maximum_wait_updates ) {
+                    record.maximum_wait_updates = wait_updates;
+                }
+                if( !record.first_service_update ) {
+                    record.first_service_update = update_index;
+                }
+                record.last_service_update = update_index;
+                record.scan_samples = scan_samples;
+                record.service_updates++;
+            }
+        }
+
+        void finish( const std::size_t update_count ) {
+            if( !enabled_ ) {
+                return;
+            }
+            for( scheduler_wait_record &record : records_ ) {
+                if( !record.structurally_eligible ) {
+                    continue;
+                }
+                const std::size_t trailing_wait = record.last_service_update ?
+                                                  update_count - *record.last_service_update - 1 : update_count;
+                record.trailing_wait_updates = trailing_wait;
+                if( !record.maximum_wait_updates ||
+                    trailing_wait > *record.maximum_wait_updates ) {
+                    record.maximum_wait_updates = trailing_wait;
+                }
+            }
+            update_count_ = update_count;
+            finished_ = true;
+        }
+
+        bool enabled() const {
+            return enabled_;
+        }
+
+        bool finished() const {
+            return finished_;
+        }
+
+        std::size_t update_count() const {
+            return update_count_;
+        }
+
+        const std::vector<scheduler_wait_record> &records() const {
+            return records_;
+        }
+
+        const scheduler_wait_record *find( const std::string &site_id ) const {
+            const auto found = record_indices_.find( site_id );
+            return found == record_indices_.end() ? nullptr : &records_[found->second];
+        }
+
+    private:
+        bool enabled_ = false;
+        bool finished_ = false;
+        std::size_t update_count_ = 0;
+        std::vector<scheduler_wait_record> records_;
+        std::unordered_map<std::string, std::size_t> record_indices_;
+};
+
 bandit_live_world_probe::bounded_latency_histogram measure_clock_floor(
     const std::size_t sample_count )
 {
@@ -375,6 +597,96 @@ void write_cardinality( JsonOut &json, const cardinality &value )
     json.member( "sites", value.sites );
     json.member( "members", value.members );
     json.member( "leads", value.leads );
+    json.end_object();
+}
+
+void write_optional_size( JsonOut &json, const std::string &name,
+                          const std::optional<std::size_t> &value )
+{
+    if( value ) {
+        json.member( name, *value );
+    } else {
+        json.null_member( name );
+    }
+}
+
+void write_process_memory( JsonOut &json,
+                           const std::vector<process_memory_snapshot> &samples )
+{
+    std::optional<std::uint64_t> maximum_sampled_resident_bytes;
+    const bool all_samples_supported = !samples.empty() && std::all_of( samples.begin(),
+                                       samples.end(), []( const process_memory_snapshot &sample ) {
+        return sample.resident_bytes.has_value();
+    } );
+    json.start_object();
+    json.member( "metric", "current process resident bytes sampled at phase boundaries" );
+    json.member( "all_samples_supported", all_samples_supported );
+    json.member( "samples" );
+    json.start_array();
+    std::optional<std::uint64_t> previous_resident_bytes;
+    for( const process_memory_snapshot &sample : samples ) {
+        json.start_object();
+        json.member( "phase", sample.phase );
+        json.member( "source", sample.source );
+        if( sample.resident_bytes ) {
+            json.member( "resident_bytes", *sample.resident_bytes );
+            if( previous_resident_bytes ) {
+                const std::int64_t delta = *sample.resident_bytes >= *previous_resident_bytes ?
+                                           static_cast<std::int64_t>( *sample.resident_bytes -
+                                                   *previous_resident_bytes ) :
+                                           -static_cast<std::int64_t>( *previous_resident_bytes -
+                                                   *sample.resident_bytes );
+                json.member( "delta_from_previous_bytes", delta );
+            } else {
+                json.null_member( "delta_from_previous_bytes" );
+            }
+            maximum_sampled_resident_bytes = std::max( maximum_sampled_resident_bytes.value_or( 0 ),
+                                              *sample.resident_bytes );
+            previous_resident_bytes = sample.resident_bytes;
+        } else {
+            json.null_member( "resident_bytes" );
+            json.null_member( "delta_from_previous_bytes" );
+            previous_resident_bytes.reset();
+        }
+        json.end_object();
+    }
+    json.end_array();
+    if( maximum_sampled_resident_bytes ) {
+        json.member( "maximum_sampled_resident_bytes", *maximum_sampled_resident_bytes );
+    } else {
+        json.null_member( "maximum_sampled_resident_bytes" );
+    }
+    json.member( "maximum_is_phase_sample_not_process_peak", true );
+    json.end_object();
+}
+
+void write_whole_save_metrics( JsonOut &json, const whole_save_metrics &metrics )
+{
+    json.start_object();
+    json.member( "performed", metrics.performed );
+    json.member( "route", "game::save then game::load(active test world)" );
+    json.member( "save_succeeded", metrics.save_succeeded );
+    json.member( "load_succeeded", metrics.load_succeeded );
+    json.member( "directory_measurement_complete", metrics.directory_measurement_complete );
+    if( metrics.performed && metrics.directory_measurement_complete ) {
+        json.member( "directory_bytes_before", metrics.directory_bytes_before );
+        json.member( "directory_bytes_after", metrics.directory_bytes_after );
+        json.member( "directory_growth_bytes",
+                     static_cast<std::int64_t>( metrics.directory_bytes_after ) -
+                     static_cast<std::int64_t>( metrics.directory_bytes_before ) );
+        json.member( "directory_file_count_before", metrics.directory_file_count_before );
+        json.member( "directory_file_count_after", metrics.directory_file_count_after );
+        json.member( "save_wall_time_ns", metrics.save_wall_time_ns );
+        json.member( "load_wall_time_ns", metrics.load_wall_time_ns );
+    } else {
+        json.null_member( "directory_bytes_before" );
+        json.null_member( "directory_bytes_after" );
+        json.null_member( "directory_growth_bytes" );
+        json.null_member( "directory_file_count_before" );
+        json.null_member( "directory_file_count_after" );
+        json.null_member( "save_wall_time_ns" );
+        json.null_member( "load_wall_time_ns" );
+    }
     json.end_object();
 }
 
@@ -424,7 +736,8 @@ void write_probe_result( JsonOut &json, const bandit_live_world_probe::snapshot 
 }
 
 void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
-                     const bandit_live_world_probe::snapshot &probe )
+                     const bandit_live_world_probe::snapshot &probe,
+                     const scheduler_wait_tracker &wait_tracker )
 {
     std::uint64_t minimum_scan_samples = 0;
     std::uint64_t maximum_scan_samples = 0;
@@ -435,6 +748,8 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
     std::uint64_t maximum_eligible_scan_samples = 0;
     bool have_site = false;
     bool have_eligible_site = false;
+    std::optional<std::size_t> maximum_scheduler_wait_updates;
+    std::uint64_t eligible_sites_eventually_serviced = 0;
 
     json.start_object();
     json.member( "per_site" );
@@ -475,6 +790,30 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
             const auto target = static_cast<bandit_live_world_probe::site_service>( index );
             json.member( bandit_live_world_probe::to_string( target ), counts[index] );
         }
+        const scheduler_wait_record *wait_record = wait_tracker.find( site.site_id );
+        json.member( "structurally_eligible", structurally_eligible );
+        if( wait_tracker.enabled() && structurally_eligible && wait_record != nullptr ) {
+            json.member( "scheduler_service_updates", wait_record->service_updates );
+            write_optional_size( json, "first_scheduler_service_update",
+                                 wait_record->first_service_update );
+            write_optional_size( json, "maximum_scheduler_wait_updates",
+                                 wait_record->maximum_wait_updates );
+            write_optional_size( json, "trailing_scheduler_wait_updates",
+                                 wait_record->trailing_wait_updates );
+            if( wait_record->service_updates > 0 ) {
+                eligible_sites_eventually_serviced++;
+            }
+            if( wait_record->maximum_wait_updates ) {
+                maximum_scheduler_wait_updates = std::max(
+                                                     maximum_scheduler_wait_updates.value_or( 0 ),
+                                                     *wait_record->maximum_wait_updates );
+            }
+        } else {
+            json.null_member( "scheduler_service_updates" );
+            json.null_member( "first_scheduler_service_update" );
+            json.null_member( "maximum_scheduler_wait_updates" );
+            json.null_member( "trailing_scheduler_wait_updates" );
+        }
         json.end_object();
     }
     json.end_array();
@@ -491,7 +830,23 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
                  maximum_eligible_scan_samples - minimum_eligible_scan_samples );
     json.member( "eventual_structural_service",
                  eligible_structural_sites_serviced == eligible_structural_sites );
-    json.null_member( "scheduler_wait_updates" );
+    json.member( "scheduler_wait_applicable", wait_tracker.enabled() );
+    json.member( "scheduler_wait_unit", "completed benchmark updates without scan samples" );
+    if( wait_tracker.enabled() ) {
+        json.member( "scheduler_updates_observed", wait_tracker.update_count() );
+        json.member( "eligible_sites_eventually_serviced", eligible_sites_eventually_serviced );
+        json.member( "eligible_sites_never_serviced",
+                     eligible_structural_sites - eligible_sites_eventually_serviced );
+        json.member( "eventual_scheduler_service",
+                     eligible_sites_eventually_serviced == eligible_structural_sites );
+        write_optional_size( json, "scheduler_wait_updates", maximum_scheduler_wait_updates );
+    } else {
+        json.null_member( "scheduler_updates_observed" );
+        json.null_member( "eligible_sites_eventually_serviced" );
+        json.null_member( "eligible_sites_never_serviced" );
+        json.null_member( "eventual_scheduler_service" );
+        json.null_member( "scheduler_wait_updates" );
+    }
     json.end_object();
 }
 
@@ -549,6 +904,52 @@ void run_workload_update( const std::string &workload, bandit_live_world::world_
     } );
 }
 
+void run_whole_save_round_trip( bandit_live_world::world_state &world,
+                                whole_save_metrics &metrics )
+{
+    if( !g || world_generator == nullptr || world_generator->active_world == nullptr ) {
+        throw std::runtime_error( "whole-save benchmark requires the initialized Catch test world" );
+    }
+
+    metrics.performed = true;
+    const std::string world_name = world_generator->active_world->world_name;
+    overmap_buffer.global_state.bandit_live_world = world;
+    const directory_measurement before = measure_directory(
+            PATH_INFO::world_base_save_path().get_unrelative_path() );
+    metrics.directory_bytes_before = before.bytes;
+    metrics.directory_file_count_before = before.file_count;
+
+    const benchmark_clock::time_point save_started = benchmark_clock::now();
+    metrics.save_succeeded = g->save();
+    metrics.save_wall_time_ns = std::max<std::int64_t>( 0,
+                                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    benchmark_clock::now() - save_started ).count() );
+    if( !metrics.save_succeeded ) {
+        throw std::runtime_error( "game::save failed in whole-save benchmark" );
+    }
+
+    const directory_measurement after = measure_directory(
+                                            PATH_INFO::world_base_save_path().get_unrelative_path() );
+    metrics.directory_bytes_after = after.bytes;
+    metrics.directory_file_count_after = after.file_count;
+    metrics.directory_measurement_complete = before.complete && after.complete;
+    overmap_buffer.global_state.bandit_live_world.clear();
+    // game::load( world_name ) is the menu-level route and rebuilds the world catalogue.  The
+    // test process is already inside its active world, so detach it first to clear the options
+    // manager's pointer into the catalogue entry that worldfactory::init() will destroy.
+    world_generator->set_active_world( nullptr );
+
+    const benchmark_clock::time_point load_started = benchmark_clock::now();
+    metrics.load_succeeded = g->load( world_name );
+    metrics.load_wall_time_ns = std::max<std::int64_t>( 0,
+                                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    benchmark_clock::now() - load_started ).count() );
+    if( !metrics.load_succeeded ) {
+        throw std::runtime_error( "game::load failed in whole-save benchmark" );
+    }
+    world = overmap_buffer.global_state.bandit_live_world;
+}
+
 std::string make_result_json( const std::string &fixture, const std::string &workload,
                               const std::string &fixture_sha256, const std::size_t repetition,
                               const std::string &variant, const unsigned int rng_seed,
@@ -560,6 +961,9 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
                               const bandit_live_world::world_state &terminal_world,
                               const bandit_live_world_probe::snapshot &timing_probe,
                               const bandit_live_world_probe::snapshot &fairness_probe,
+                              const scheduler_wait_tracker &wait_tracker,
+                              const std::vector<process_memory_snapshot> &memory_samples,
+                              const whole_save_metrics &whole_save,
                               const std::string &initial_serialized,
                               const std::string &terminal_serialized,
                               const cardinality &initial_cardinality,
@@ -606,6 +1010,9 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
     json.null_member( "live_heap_bytes" );
     json.end_object();
 
+    json.member( "process_memory" );
+    write_process_memory( json, memory_samples );
+
     json.member( "probe" );
     write_probe_result( json, timing_probe );
 
@@ -620,16 +1027,19 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
     json.member( "terminal_cardinality" );
     write_cardinality( json, terminal_cardinality );
     json.null_member( "compressed_save_bytes" );
+    json.member( "whole_save" );
+    write_whole_save_metrics( json, whole_save );
     json.end_object();
 
     json.member( "fairness" );
-    write_fairness( json, terminal_world, fairness_probe );
+    write_fairness( json, terminal_world, fairness_probe, wait_tracker );
 
     json.member( "measurement_modes" );
     json.start_object();
     json.member( "latency", "timing replay with fixed counters and per-site recording disabled" );
     json.member( "fairness",
-                 "untimed deterministic replay with clocks and timing samples disabled; serialization has no scheduler replay" );
+                 "untimed deterministic replay with clocks and timing samples disabled; "
+                 "serialization and whole-save have no scheduler replay" );
     json.member( "terminal_state_match", true );
     json.end_object();
 
@@ -645,6 +1055,8 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
     json.member( "existing_lead_status",
                  workload == "lead_saturated" ? "harvested" : "none" );
     json.member( "serialize_workload", "world_state serialize plus deserialize round trip" );
+    json.member( "whole_save_workload",
+                 "actual game::save plus game::load round trip in the isolated Catch test world" );
     json.member( "structural_workload",
                  "zero-lead bounded scan, dispatch, and structural return" );
     json.member( "lead_saturated_workload",
@@ -718,6 +1130,94 @@ TEST_CASE( "hostile camp latency histogram is bounded and conservative",
     CHECK_FALSE( summary.overflow );
 }
 
+TEST_CASE( "hostile camp memory evidence is current-process or explicitly unsupported",
+           "[bandit][hostile_camp_benchmark_memory]" )
+{
+    const process_memory_snapshot sample = sample_process_memory( "focused_test" );
+    CHECK( sample.phase == "focused_test" );
+    CHECK_FALSE( sample.source.empty() );
+#if ( defined(__APPLE__) && defined(__MACH__) ) || defined(__linux__)
+    REQUIRE( sample.resident_bytes );
+    CHECK( *sample.resident_bytes > 0 );
+#else
+    CHECK_FALSE( sample.resident_bytes );
+    CHECK( sample.source == "unsupported on this platform" );
+#endif
+}
+
+TEST_CASE( "hostile camp scheduler wait evidence records the 500-site stress fixture",
+           "[bandit][hostile_camp_benchmark_fairness]" )
+{
+    constexpr std::size_t site_count = 500;
+    constexpr std::size_t update_count = 250;
+    constexpr unsigned int seed = 424242;
+    const scoped_calendar_restore restore_calendar;
+    const scoped_rng_restore restore_rng;
+    const benchmark_calendar_configuration configuration;
+    apply_benchmark_calendar( configuration );
+
+    bandit_live_world::world_state timing_world = make_legacy_fixture( site_count, false );
+    rng_set_engine_seed( seed );
+    std::string timing_last_serialized;
+    for( std::size_t update = 0; update < update_count; ++update ) {
+        run_workload_update( "structural", timing_world, update, timing_last_serialized );
+    }
+
+    apply_benchmark_calendar( configuration );
+    bandit_live_world::world_state fairness_world = make_legacy_fixture( site_count, false );
+    scheduler_wait_tracker tracker( fairness_world, true );
+    bandit_live_world_probe::snapshot probe;
+    rng_set_engine_seed( seed );
+    {
+        bandit_live_world_probe::session session(
+            bandit_live_world_probe::collection_mode::site_services, 0, site_count );
+        std::string fairness_last_serialized;
+        for( std::size_t update = 0; update < update_count; ++update ) {
+            run_workload_update( "structural", fairness_world, update,
+                                 fairness_last_serialized );
+            tracker.observe_update( update, session.result() );
+        }
+        tracker.finish( update_count );
+        probe = session.result();
+    }
+
+    REQUIRE( tracker.finished() );
+    CHECK( tracker.update_count() == update_count );
+    CHECK_FALSE( probe.stack_overflow );
+    CHECK( serialize_world( fairness_world ) == serialize_world( timing_world ) );
+
+    std::size_t eligible_sites = 0;
+    std::size_t eventually_serviced_sites = 0;
+    std::size_t maximum_wait_updates = 0;
+    for( const scheduler_wait_record &record : tracker.records() ) {
+        if( !record.structurally_eligible ) {
+            CHECK_FALSE( record.maximum_wait_updates );
+            continue;
+        }
+        eligible_sites++;
+        INFO( record.site_id );
+        REQUIRE( record.maximum_wait_updates );
+        REQUIRE( record.trailing_wait_updates );
+        CHECK( *record.maximum_wait_updates <= update_count );
+        if( record.service_updates > 0 ) {
+            REQUIRE( record.first_service_update );
+            CHECK( record.scan_samples > 0 );
+            CHECK( *record.first_service_update < update_count );
+            eventually_serviced_sites++;
+        } else {
+            CHECK_FALSE( record.first_service_update );
+            CHECK( record.scan_samples == 0 );
+            CHECK( *record.maximum_wait_updates == update_count );
+        }
+        maximum_wait_updates = std::max( maximum_wait_updates,
+                                         *record.maximum_wait_updates );
+    }
+    CHECK( eligible_sites == 250 );
+    CHECK( eventually_serviced_sites > 0 );
+    CHECK( eventually_serviced_sites <= eligible_sites );
+    CHECK( maximum_wait_updates <= update_count );
+}
+
 TEST_CASE( "hostile camp deterministic benchmark driver",
            "[.][bandit][hostile_camp][hostile_camp_benchmark][benchmark]" )
 {
@@ -747,11 +1247,14 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
              "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" );
     const bool supported_workload = workload == "idle" || workload == "structural" ||
                                     workload == "lead_saturated" || workload == "serialize" ||
-                                    workload == "dispatch_return";
+                                    workload == "dispatch_return" || workload == "whole_save";
     REQUIRE( supported_workload );
     REQUIRE( site_count <= 1000 );
     REQUIRE( updates > 0 );
     REQUIRE( updates <= 1000000 );
+    if( workload == "whole_save" ) {
+        REQUIRE( updates == 1 );
+    }
     REQUIRE( clock_floor_samples > 0 );
     REQUIRE( clock_floor_samples <= 1000000 );
     REQUIRE( configured_calendar_turn <= std::numeric_limits<int>::max() );
@@ -771,13 +1274,19 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     const bool saturate_existing_leads = workload == "lead_saturated";
     const scoped_calendar_restore restore_calendar;
     apply_benchmark_calendar( calendar_configuration );
+    std::vector<process_memory_snapshot> memory_samples;
+    memory_samples.reserve( 12 );
+    record_process_memory( memory_samples, "before_fixture_construction" );
     bandit_live_world::world_state world = make_legacy_fixture( site_count,
             saturate_existing_leads );
+    record_process_memory( memory_samples, "after_fixture_construction" );
     const cardinality initial_cardinality = measure_cardinality( world );
     const std::size_t expected_initial_leads = saturate_existing_leads ?
             ( site_count + 1 ) / 2 * legacy_saturated_leads_per_bandit_site : 0;
     REQUIRE( initial_cardinality.leads == expected_initial_leads );
+    record_process_memory( memory_samples, "before_initial_serialization" );
     const std::string initial_serialized = serialize_world( world );
+    record_process_memory( memory_samples, "after_initial_serialization" );
     if( fixture_hash_kind == "serialized_state_sha256" ) {
         REQUIRE( fixture_sha256 == sha256( initial_serialized ) );
     } else {
@@ -792,16 +1301,22 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     std::string last_serialized;
     bandit_live_world_probe::snapshot timing_probe_result;
     std::int64_t wall_time_ns = 0;
+    whole_save_metrics whole_save;
 
     apply_benchmark_calendar( calendar_configuration );
     rng_set_engine_seed( effective_seed );
+    record_process_memory( memory_samples, "before_timing_replay" );
     {
         bandit_live_world_probe::session probe_session(
             bandit_live_world_probe::collection_mode::timings, updates, 0 );
         const benchmark_clock::time_point wall_started = benchmark_clock::now();
         for( std::size_t update = 0; update < updates; ++update ) {
             const benchmark_clock::time_point update_started = benchmark_clock::now();
-            run_workload_update( workload, world, update, last_serialized );
+            if( workload == "whole_save" ) {
+                run_whole_save_round_trip( world, whole_save );
+            } else {
+                run_workload_update( workload, world, update, last_serialized );
+            }
             update_latency_histogram.add( std::chrono::duration_cast<std::chrono::nanoseconds>(
                                               benchmark_clock::now() - update_started ).count() );
         }
@@ -810,29 +1325,41 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
                                                       benchmark_clock::now() - wall_started ).count() );
         timing_probe_result = probe_session.result();
     }
+    record_process_memory( memory_samples, "after_timing_replay" );
     REQUIRE( benchmark_calendar_matches( calendar_configuration ) );
 
+    record_process_memory( memory_samples, "before_terminal_serialization" );
     const std::string terminal_serialized = serialize_world( world );
+    record_process_memory( memory_samples, "after_terminal_serialization" );
     const cardinality terminal_cardinality = measure_cardinality( world );
 
     apply_benchmark_calendar( calendar_configuration );
+    record_process_memory( memory_samples, "before_fairness_fixture_construction" );
     bandit_live_world::world_state fairness_world = make_legacy_fixture( site_count,
             saturate_existing_leads );
+    record_process_memory( memory_samples, "after_fairness_fixture_construction" );
     bandit_live_world_probe::snapshot fairness_probe_result;
+    scheduler_wait_tracker wait_tracker( fairness_world, workload == "structural" );
     rng_set_engine_seed( effective_seed );
+    record_process_memory( memory_samples, "before_fairness_replay" );
     {
         bandit_live_world_probe::session fairness_session(
             bandit_live_world_probe::collection_mode::site_services, 0, site_count );
         std::string fairness_last_serialized;
-        if( workload != "serialize" ) {
+        if( workload != "serialize" && workload != "whole_save" ) {
             for( std::size_t update = 0; update < updates; ++update ) {
                 run_workload_update( workload, fairness_world, update, fairness_last_serialized );
+                wait_tracker.observe_update( update, fairness_session.result() );
             }
         }
+        wait_tracker.finish( updates );
         fairness_probe_result = fairness_session.result();
     }
+    record_process_memory( memory_samples, "after_fairness_replay" );
     REQUIRE( benchmark_calendar_matches( calendar_configuration ) );
+    record_process_memory( memory_samples, "before_fairness_serialization" );
     const std::string fairness_terminal_serialized = serialize_world( fairness_world );
+    record_process_memory( memory_samples, "after_fairness_serialization" );
     const bandit_live_world_probe::latency_summary update_latency =
         update_latency_histogram.summarize();
     const bandit_live_world_probe::latency_summary clock_floor = clock_floor_histogram.summarize();
@@ -845,6 +1372,12 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     if( workload == "serialize" ) {
         REQUIRE( last_serialized == terminal_serialized );
     }
+    if( workload == "whole_save" ) {
+        REQUIRE( whole_save.performed );
+        REQUIRE( whole_save.save_succeeded );
+        REQUIRE( whole_save.load_succeeded );
+        REQUIRE( whole_save.directory_measurement_complete );
+    }
     REQUIRE_FALSE( timing_probe_result.stack_overflow );
     REQUIRE_FALSE( fairness_probe_result.stack_overflow );
     REQUIRE( timing_probe_result.timings_collected );
@@ -856,7 +1389,8 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     emit_result( output_path, make_result_json( fixture, workload, fixture_sha256, repetition,
                  variant, effective_seed, calendar_configuration, updates, clock_floor_samples, update_latency,
                  clock_floor,
-                 wall_time_ns, world, timing_probe_result, fairness_probe_result,
+                 wall_time_ns, world, timing_probe_result, fairness_probe_result, wait_tracker,
+                 memory_samples, whole_save,
                  initial_serialized, terminal_serialized, initial_cardinality,
                  terminal_cardinality ) );
 }

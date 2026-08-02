@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import copy
 import errno
+import io
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -68,6 +70,53 @@ def probe_section(calls=0, inclusive_total=0, self_total=0):
             [inclusive_total // calls] * calls if calls else []),
         "self_total_ns": self_total,
         "self_summary_ns": streaming_summary([self_total // calls] * calls if calls else []),
+    }
+
+
+def process_memory_record():
+    if sys.platform == "darwin":
+        source = "mach_task_basic_info.resident_size"
+    elif sys.platform.startswith("linux"):
+        source = "/proc/self/statm resident pages"
+    else:
+        source = "unsupported on this platform"
+    supported = source != "unsupported on this platform"
+    samples = []
+    previous = None
+    for index, phase in enumerate(benchmark._PROCESS_MEMORY_PHASES):
+        resident = 1000 + index if supported else None
+        samples.append({
+            "phase": phase,
+            "source": source,
+            "resident_bytes": resident,
+            "delta_from_previous_bytes": (
+                None if resident is None or previous is None else resident - previous
+            ),
+        })
+        previous = resident
+    return {
+        "metric": "current process resident bytes sampled at phase boundaries",
+        "all_samples_supported": supported,
+        "samples": samples,
+        "maximum_sampled_resident_bytes": (1013 if supported else None),
+        "maximum_is_phase_sample_not_process_peak": True,
+    }
+
+
+def whole_save_record(performed=False):
+    return {
+        "performed": performed,
+        "route": "game::save then game::load(active test world)",
+        "save_succeeded": performed,
+        "load_succeeded": performed,
+        "directory_measurement_complete": performed,
+        "directory_bytes_before": 100 if performed else None,
+        "directory_bytes_after": 140 if performed else None,
+        "directory_growth_bytes": 40 if performed else None,
+        "directory_file_count_before": 2 if performed else None,
+        "directory_file_count_after": 3 if performed else None,
+        "save_wall_time_ns": 50 if performed else None,
+        "load_wall_time_ns": 60 if performed else None,
     }
 
 
@@ -139,10 +188,21 @@ def child_result(label="A", repetition=0, wall_time=100, latencies=None,
                 for name in benchmark._PROBE_COUNTERS
             },
         },
-        "serialization": {"initial_bytes": 128, "terminal_bytes": 128, "growth_bytes": 0},
+        "process_memory": process_memory_record(),
+        "serialization": {
+            "initial_bytes": 128, "terminal_bytes": 128, "growth_bytes": 0,
+            "whole_save": whole_save_record(False),
+        },
         "fairness": {"site_count": 2, "serviced_sites": 2,
                      "per_site": [{"site_id": "a", "scan_samples": 5},
-                                  {"site_id": "b", "scan_samples": 5}]},
+                                  {"site_id": "b", "scan_samples": 5}],
+                     "scheduler_wait_applicable": False,
+                     "scheduler_wait_unit": "completed benchmark updates without scan samples",
+                     "scheduler_updates_observed": None,
+                     "eligible_sites_eventually_serviced": None,
+                     "eligible_sites_never_serviced": None,
+                     "eventual_scheduler_service": None,
+                     "scheduler_wait_updates": None},
         "deterministic_state": {
             "hash_algorithm": "sha256",
             "initial_sha256": FIXTURE_HASH,
@@ -178,6 +238,15 @@ def sample_run(label, repetition, wall_time, binary_hash, latencies=None, rss=No
         "command": [f"/{label}", "--rng-seed", str(child_seed)],
         "exit_code": 0,
         "runner_wall_time_ns": wall_time + 50,
+        "process_cpu_time": {
+            "source": benchmark._process_cpu_time_source(),
+            "user_ns": wall_time * 2,
+            "system_ns": 10,
+            "total_ns": wall_time * 2 + 10,
+        },
+        "stream_byte_limit": benchmark._MAX_MEASURED_STREAM_BYTES,
+        "stdout_bytes": 0,
+        "stderr_bytes": 0,
         "rss_samples": [
             {"monotonic_ns": index + 1, "rss_bytes": value}
             for index, value in enumerate(rss_values)
@@ -258,6 +327,7 @@ def raw_packet(a_walls=(100, 100), b_walls=(105, 105), thresholds=None,
         "rss_sample_limit_per_packet": benchmark._MAX_PACKET_RSS_SAMPLES,
         "expected_max_retained_rss_samples": (
             len(matrix["cases"]) * 2 * len(a_walls) * benchmark._MAX_CHILD_RSS_SAMPLES),
+        "process_cpu_time_source": benchmark._process_cpu_time_source(),
         "matrix_path": "/matrix.json",
         "matrix_sha256": MATRIX_HASH,
         "matrix": matrix,
@@ -277,7 +347,10 @@ def raw_packet(a_walls=(100, 100), b_walls=(105, 105), thresholds=None,
             },
         },
         "data_roots": {"A": data_root_record("A"), "B": data_root_record("B")},
-        "host": {"platform": "test", "machine": "arm64", "python": "test"},
+        "host": {
+            "platform": "test", "machine": "arm64", "python": "test",
+            "python_platform": sys.platform, "os_name": os.name,
+        },
         "warmups": [warmup_record("A", 0), warmup_record("B", 1)],
         "runs": runs,
         "failures": [],
@@ -325,6 +398,49 @@ class StatisticsTests(unittest.TestCase):
 
     def test_bootstrap_single_value_is_exact(self):
         self.assertEqual(benchmark.bootstrap_mean_ci([17], 4, samples=20), [17.0, 17.0])
+
+    def test_wait4_cpu_conversion_records_user_system_and_exact_total(self):
+        usage = mock.Mock(ru_utime=0.125, ru_stime=0.03125)
+        record = benchmark._process_cpu_time_from_rusage(usage)
+        self.assertEqual(record, {
+            "source": "posix_wait4_rusage_v1",
+            "user_ns": 125_000_000,
+            "system_ns": 31_250_000,
+            "total_ns": 156_250_000,
+        })
+
+    @unittest.skipUnless(os.name == "posix" and hasattr(os, "wait4"),
+                         "POSIX wait4 is unavailable")
+    def test_posix_cpu_wait_targets_only_the_measured_child_pid(self):
+        process = mock.Mock(pid=4321, returncode=None)
+        usage = mock.Mock(ru_utime=0.001, ru_stime=0.002)
+        with mock.patch.object(benchmark.os, "wait4", return_value=(4321, 0, usage)) as wait4:
+            record, timed_out = benchmark._wait_posix_child_cpu(process, 1)
+        wait4.assert_called_once_with(4321, 0)
+        self.assertFalse(timed_out)
+        self.assertEqual(process.returncode, 0)
+        self.assertEqual(record["total_ns"], 3_000_000)
+
+    def test_windows_filetime_conversion_uses_100ns_ticks(self):
+        value = mock.Mock(dwHighDateTime=1, dwLowDateTime=2)
+        self.assertEqual(benchmark._windows_filetime_to_ns(value), ((1 << 32) | 2) * 100)
+
+    def test_process_cpu_source_selects_windows_without_posix_fallback(self):
+        with mock.patch.object(benchmark.sys, "platform", "win32"):
+            self.assertEqual(benchmark._process_cpu_time_source(),
+                             "windows_get_process_times_v1")
+
+    def test_measured_stream_drain_terminates_at_cap_and_bounds_retained_content(self):
+        state = {"exceeded": False}
+        process = mock.Mock()
+        stream = io.BytesIO(b"x" * 4096)
+        with mock.patch.object(benchmark, "_MAX_MEASURED_STREAM_BYTES", 1024), \
+                mock.patch.object(benchmark, "_signal_measured_process") as signal_process:
+            benchmark._drain_bounded_measured_stream(stream, process, state)
+        self.assertTrue(state["exceeded"])
+        self.assertEqual(state["bytes"], 4096)
+        self.assertEqual(len(state["content"]), 1024)
+        signal_process.assert_called_once_with(process, True)
 
 
 class HashTests(unittest.TestCase):
@@ -695,6 +811,40 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(benchmark.BenchmarkError, "RSS observation count"):
             benchmark.validate_raw(document)
 
+    def test_accepted_raw_packet_binds_exact_child_process_cpu_provenance(self):
+        mutations = (
+            (lambda payload: payload["runs"][0].pop("process_cpu_time"),
+             "process CPU record"),
+            (lambda payload: payload["runs"][0]["process_cpu_time"].__setitem__(
+                "source", "windows_get_process_times_v1"), "packet provenance"),
+            (lambda payload: payload["runs"][0]["process_cpu_time"].__setitem__(
+                "total_ns", 999), "user plus system"),
+            (lambda payload: payload["runs"][0]["process_cpu_time"].__setitem__(
+                "user_ns", False), "user_ns"),
+        )
+        for mutate, message in mutations:
+            with self.subTest(message=message):
+                document = raw_packet()
+                mutate(document["payload"])
+                document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+                with self.assertRaisesRegex(benchmark.BenchmarkError, message):
+                    benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_binds_measured_stream_caps(self):
+        document = raw_packet()
+        document["payload"]["runs"][0]["stdout_bytes"] = (
+            benchmark._MAX_MEASURED_STREAM_BYTES + 1)
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "stdout_bytes"):
+            benchmark.validate_raw(document)
+
+    def test_accepted_raw_packet_binds_cpu_source_to_host_identity(self):
+        document = raw_packet()
+        document["payload"]["host"].update({"python_platform": "win32", "os_name": "nt"})
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, document["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "host identity"):
+            benchmark.validate_raw(document)
+
     def test_accepted_raw_packet_binds_child_seed_to_orchestration_seed(self):
         document = raw_packet()
         document["payload"]["runs"][0]["child_seed"] += 1
@@ -762,6 +912,111 @@ class SummaryAndComparisonTests(unittest.TestCase):
         self.assertEqual(metrics["probe.counters.world_serialize_calls"]["mean"], 2)
         self.assertEqual(metrics["serialization.growth_bytes"]["mean"], 0)
         self.assertEqual(metrics["fairness.per_site[].scan_samples"]["count"], 4)
+
+    def test_summary_includes_exact_child_process_cpu_components(self):
+        summary = benchmark.summarize_raw(raw_packet(), bootstrap_samples=50)
+        payload = benchmark.validate_summary(summary)
+        metrics = payload["cases"]["legacy-10-idle"]["variants"]["A"]["metrics"]
+        self.assertEqual(metrics["runner_process_cpu_user_ns"]["mean"], 200)
+        self.assertEqual(metrics["runner_process_cpu_system_ns"]["mean"], 10)
+        self.assertEqual(metrics["runner_process_cpu_total_ns"]["mean"], 210)
+
+    def test_one_pair_smoke_marks_run_level_confidence_insufficient(self):
+        summary = benchmark.summarize_raw(
+            raw_packet(a_walls=(100,), b_walls=(105,)), bootstrap_samples=50)
+        payload = benchmark.validate_summary(summary)
+        case = payload["cases"]["legacy-10-idle"]
+        paired = case["paired"]
+        self.assertEqual(paired["status"], "insufficient_sample")
+        cpu = paired["metrics"]["runner_process_cpu_total_ns"]
+        self.assertEqual(cpu["baseline"]["total"], 210)
+        self.assertEqual(cpu["candidate"]["total"], 220)
+        self.assertEqual(cpu["delta"]["status"], "insufficient_sample")
+        self.assertIsNone(cpu["delta"]["mean_ci95"])
+        self.assertEqual(cpu["ratio"]["status"], "insufficient_sample")
+        self.assertIsNone(cpu["ratio"]["mean_ci95"])
+        variant_cpu = case["variants"]["A"]["metrics"]["runner_process_cpu_total_ns"]
+        self.assertEqual(variant_cpu["confidence_status"], "insufficient_sample")
+        self.assertIsNone(variant_cpu["mean_ci95"])
+
+    def test_three_pairs_report_deterministic_paired_totals_dispersion_and_ci(self):
+        a_walls = tuple(range(100, 103))
+        b_walls = tuple(value + 5 for value in a_walls)
+        raw = raw_packet(a_walls=a_walls, b_walls=b_walls)
+        first = benchmark.summarize_raw(raw, bootstrap_samples=200)
+        second = benchmark.summarize_raw(raw, bootstrap_samples=200)
+        first_pair = first["payload"]["cases"]["legacy-10-idle"]["paired"]
+        second_pair = second["payload"]["cases"]["legacy-10-idle"]["paired"]
+        self.assertEqual(first_pair, second_pair)
+        self.assertEqual(first_pair["status"], "available")
+        cpu = first_pair["metrics"]["runner_process_cpu_total_ns"]
+        self.assertEqual(cpu["baseline"]["total"], sum(value * 2 + 10 for value in a_walls))
+        self.assertEqual(cpu["candidate"]["total"], sum(value * 2 + 20 for value in a_walls))
+        self.assertGreater(cpu["baseline"]["sample_stddev"], 0)
+        self.assertEqual(cpu["delta"]["distribution"]["mean"], 10)
+        self.assertEqual(cpu["delta"]["mean_ci95"], [10.0, 10.0])
+        self.assertEqual(cpu["ratio"]["status"], "available")
+        benchmark.validate_summary(first)
+
+    def test_paired_roles_follow_recorded_label_order_not_sorted_json_keys(self):
+        document = raw_packet()
+        payload = document["payload"]
+        payload["label_order"] = ["B", "A"]
+        payload["pair_orders"] = [
+            list(order) for order in benchmark.paired_orders(
+                payload["seed"], payload["pair_count"], payload["label_order"])
+        ]
+        for run in payload["runs"]:
+            run["order_index"] = payload["pair_orders"][run["pair_index"]].index(
+                run["variant"])
+        payload["warmups"].reverse()
+        for index, warmup in enumerate(payload["warmups"]):
+            warmup["warmup_index"] = index
+        document = benchmark.wrap_envelope(benchmark.RAW_SCHEMA, payload)
+        document = json.loads(benchmark.canonical_json_bytes(document))
+        self.assertEqual(list(document["payload"]["binaries"]), ["A", "B"])
+        self.assertEqual(document["payload"]["label_order"], ["B", "A"])
+        summary = benchmark.summarize_raw(document, bootstrap_samples=50)
+        paired = summary["payload"]["cases"]["legacy-10-idle"]["paired"]
+        self.assertEqual(paired["baseline_label"], "B")
+        self.assertEqual(paired["candidate_label"], "A")
+        benchmark.validate_summary(summary)
+
+    def test_paired_bootstrap_work_is_bounded_before_resampling(self):
+        samples = benchmark._MAX_PAIRED_BOOTSTRAP_DRAWS // (2 * 1 * 4 * 2) + 1
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "work cap"):
+            benchmark.summarize_raw(raw_packet(), bootstrap_samples=samples)
+
+    def test_summary_rejects_invented_small_sample_ci_after_rehash(self):
+        summary = benchmark.summarize_raw(
+            raw_packet(a_walls=(100,), b_walls=(105,)), bootstrap_samples=50)
+        delta = summary["payload"]["cases"]["legacy-10-idle"]["paired"]["metrics"][
+            "runner_wall_time_ns"]["delta"]
+        delta["status"] = "available"
+        delta["mean_ci95"] = [5.0, 5.0]
+        summary = benchmark.wrap_envelope(benchmark.SUMMARY_SCHEMA, summary["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "pair count"):
+            benchmark.validate_summary(summary)
+
+    def test_summary_rejects_paired_delta_that_disagrees_with_variant_totals(self):
+        summary = benchmark.summarize_raw(raw_packet(), bootstrap_samples=50)
+        delta = summary["payload"]["cases"]["legacy-10-idle"]["paired"]["metrics"][
+            "runner_wall_time_ns"]["delta"]["distribution"]
+        delta["total"] += 2
+        delta["mean"] += 1
+        delta["min"] += 1
+        delta["max"] += 1
+        summary = benchmark.wrap_envelope(benchmark.SUMMARY_SCHEMA, summary["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "variant totals"):
+            benchmark.validate_summary(summary)
+
+    def test_summary_rejects_rehashed_variant_cpu_component_tampering(self):
+        summary = benchmark.summarize_raw(raw_packet(), bootstrap_samples=50)
+        summary["payload"]["cases"]["legacy-10-idle"]["variants"]["A"]["metrics"][
+            "runner_process_cpu_total_ns"]["mean"] += 1
+        summary = benchmark.wrap_envelope(benchmark.SUMMARY_SCHEMA, summary["payload"])
+        with self.assertRaisesRegex(benchmark.BenchmarkError, "CPU components"):
+            benchmark.validate_summary(summary)
 
     def test_compare_passes_ratio_and_absolute_thresholds(self):
         thresholds = [{
@@ -831,7 +1086,15 @@ class SummaryAndComparisonTests(unittest.TestCase):
             bootstrap_samples=50)
         payload = summary["payload"]
         payload["binaries"] = {"B": payload["binaries"]["B"]}
+        payload["label_order"] = ["B"]
+        payload["expected_paired_bootstrap_draws"] = 0
         payload["cases"]["legacy-10-idle"]["variants"].pop("A")
+        payload["cases"]["legacy-10-idle"]["paired"] = {
+            "status": "not_applicable_single_variant",
+            "minimum_pair_count_for_ci": benchmark._PAIRED_CI_MINIMUM_PAIRS,
+            "pair_count": payload["pair_count"],
+            "metrics": {},
+        }
         single_variant_summary = benchmark.wrap_envelope(benchmark.SUMMARY_SCHEMA, payload)
         comparison = benchmark.compare_summary(single_variant_summary, "B", "B")
         self.assertTrue(comparison["payload"]["overall_pass"])
@@ -897,6 +1160,13 @@ class RunPolicyTests(unittest.TestCase):
             "working_directory": data_root["path"],
             "data_root_manifest_sha256": data_root["manifest_sha256"],
             "exit_code": 0, "runner_wall_time_ns": 150 + pair_index,
+            "process_cpu_time": {
+                "source": benchmark._process_cpu_time_source(),
+                "user_ns": 100 + pair_index, "system_ns": 10,
+                "total_ns": 110 + pair_index,
+            },
+            "stream_byte_limit": benchmark._MAX_MEASURED_STREAM_BYTES,
+            "stdout_bytes": 0, "stderr_bytes": 0,
             "rss_samples": [], "stdout_sha256": "0" * 64,
             "rss_observation_count": 0,
             "rss_sample_limit": benchmark._MAX_CHILD_RSS_SAMPLES,
@@ -974,6 +1244,11 @@ class RunPolicyTests(unittest.TestCase):
         self.assertEqual(payload["warmups"][0]["child_result_binding"]["calendar"],
                          expected_calendar)
         self.assertEqual(payload["runs"][0]["result"]["calendar"], expected_calendar)
+        summary = benchmark.summarize_raw(document, bootstrap_samples=20)
+        summary_payload = benchmark.validate_summary(summary)
+        self.assertEqual(
+            summary_payload["cases"]["legacy-10-idle"]["paired"]["status"],
+            "not_applicable_single_variant")
 
     def test_cold_cache_is_created_by_recorded_warmup_before_full_identity_capture(self):
         template = json.dumps(child_result(rng_seed=1), sort_keys=True)
@@ -1417,6 +1692,13 @@ class RunPolicyTests(unittest.TestCase):
         self.assertEqual(run["result"]["observed_cwd"], str(self.data_root_a.resolve()))
         self.assertEqual(run["working_directory"], str(self.data_root_a.resolve()))
         self.assertEqual(run["command"][1:3], ["--rng-seed", "1"])
+        self.assertEqual(run["process_cpu_time"]["source"],
+                         benchmark._process_cpu_time_source())
+        self.assertEqual(run["process_cpu_time"]["total_ns"],
+                         run["process_cpu_time"]["user_ns"] +
+                         run["process_cpu_time"]["system_ns"])
+        self.assertLessEqual(run["stdout_bytes"], benchmark._MAX_MEASURED_STREAM_BYTES)
+        self.assertLessEqual(run["stderr_bytes"], benchmark._MAX_MEASURED_STREAM_BYTES)
         self.assertGreaterEqual(run["rss_observation_count"], len(run["rss_samples"]))
         self.assertEqual("CATA_API_KEY" in os.environ, parent_had_cata_key)
         self.assertEqual("OPENAI_API_KEY" in os.environ, parent_had_openai_key)
