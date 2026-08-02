@@ -781,6 +781,83 @@ TEST_CASE( "bandit_live_world_camp_supply_catch_up_is_bounded_and_stepwise_stabl
     CHECK( roster_site.supply_units == 14 );
 }
 
+TEST_CASE( "bandit_live_world_resource_estimates_remain_private_camp_knowledge",
+           "[bandit][live_world][resource][knowledge]" )
+{
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record camp_a;
+    camp_a.site_id = "resource-estimate-camp-a";
+    bandit_live_world::site_record camp_b;
+    camp_b.site_id = "resource-estimate-camp-b";
+    const tripoint_abs_omt resource_omt( 25, 30, 0 );
+    bandit_live_world::structural_bounty_read read;
+    read.terrain_class = "town";
+    read.bounty = 3;
+    read.confidence = 1;
+    read.eligible = true;
+    read.summary = "private structural estimate";
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( camp_a, resource_omt, read, 100 ) );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( camp_b, resource_omt, read, 100 ) );
+    world.sites = { camp_a, camp_b };
+
+    const std::string camp_a_lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                           world.sites[0].site_id, resource_omt, read.terrain_class );
+    const std::string camp_b_lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                           world.sites[1].site_id, resource_omt, read.terrain_class );
+    bandit_live_world::finite_resource_record snapshot =
+        bandit_live_world::finite_resource_snapshot( world, resource_omt, 3 );
+    REQUIRE( bandit_live_world::claim_finite_resource_units( world, resource_omt, snapshot, 1 ).status ==
+             bandit_live_world::finite_resource_claim_status::applied );
+    REQUIRE( world.sites[0].intelligence_map.find_lead( camp_a_lead_id ) != nullptr );
+    REQUIRE( world.sites[1].intelligence_map.find_lead( camp_b_lead_id ) != nullptr );
+    CHECK( world.sites[0].intelligence_map.find_lead( camp_a_lead_id )->bounty == 3 );
+    CHECK( world.sites[1].intelligence_map.find_lead( camp_b_lead_id )->bounty == 3 );
+
+    REQUIRE( bandit_live_world::record_camp_resource_estimate( world.sites[0], camp_a_lead_id,
+             2, 3, 200 ) );
+    const bandit_live_world::camp_map_lead *estimate_a =
+        world.sites[0].intelligence_map.find_lead( camp_a_lead_id );
+    const bandit_live_world::camp_map_lead *estimate_b =
+        world.sites[1].intelligence_map.find_lead( camp_b_lead_id );
+    REQUIRE( estimate_a != nullptr );
+    REQUIRE( estimate_b != nullptr );
+    CHECK( estimate_a->bounty == 2 );
+    CHECK( estimate_a->confidence == 3 );
+    CHECK( estimate_a->last_checked_minutes == 200 );
+    CHECK( estimate_b->bounty == 3 );
+    CHECK( estimate_b->confidence == 1 );
+    CHECK( estimate_b->last_checked_minutes == -1 );
+
+    const std::string before_stale_estimate = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_camp_resource_estimate( world.sites[0], camp_a_lead_id,
+                 1, 3, 199 ) );
+    CHECK_FALSE( bandit_live_world::record_camp_resource_estimate( world.sites[0], camp_a_lead_id,
+                 4, 3, 201 ) );
+    CHECK( serialize_world( world ) == before_stale_estimate );
+
+    snapshot = bandit_live_world::finite_resource_snapshot( world, resource_omt, 3 );
+    REQUIRE( bandit_live_world::claim_finite_resource_units( world, resource_omt, snapshot, 2 ).status ==
+             bandit_live_world::finite_resource_claim_status::applied );
+    CHECK( world.sites[0].intelligence_map.find_lead( camp_a_lead_id )->bounty == 2 );
+    CHECK( world.sites[1].intelligence_map.find_lead( camp_b_lead_id )->bounty == 3 );
+
+    REQUIRE( bandit_live_world::record_camp_resource_estimate( world.sites[0], camp_a_lead_id,
+             0, 3, 300 ) );
+    estimate_a = world.sites[0].intelligence_map.find_lead( camp_a_lead_id );
+    REQUIRE( estimate_a != nullptr );
+    CHECK( estimate_a->bounty == 0 );
+    CHECK( estimate_a->confidence == 3 );
+    CHECK( estimate_a->last_checked_minutes == 300 );
+    CHECK( estimate_a->status == bandit_live_world::camp_lead_status::harvested );
+    CHECK( world.sites[1].intelligence_map.find_lead( camp_b_lead_id )->bounty == 3 );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 2 );
+    CHECK( loaded.sites[0].intelligence_map.find_lead( camp_a_lead_id )->bounty == 0 );
+    CHECK( loaded.sites[0].intelligence_map.find_lead( camp_a_lead_id )->last_checked_minutes == 300 );
+    CHECK( loaded.sites[1].intelligence_map.find_lead( camp_b_lead_id )->bounty == 3 );
+}
+
 TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_identity",
            "[bandit][live_world][migration]" )
 {

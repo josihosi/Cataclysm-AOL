@@ -4266,6 +4266,35 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
     return true;
 }
 
+bool record_camp_resource_estimate( site_record &site, const std::string &lead_id,
+                                    const int estimated_units, const int confidence,
+                                    const int observed_minutes )
+{
+    if( lead_id.empty() || estimated_units < 0 || estimated_units > max_finite_resource_units ||
+        confidence < 0 || confidence > max_finite_resource_units || observed_minutes < 0 ) {
+        return false;
+    }
+    camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    if( lead == nullptr || lead->kind != camp_lead_kind::structural_bounty ||
+        observed_minutes <= lead->last_checked_minutes ||
+        ( lead->status == camp_lead_status::harvested && estimated_units > 0 ) ) {
+        return false;
+    }
+
+    lead->bounty = estimated_units;
+    lead->confidence = confidence;
+    lead->last_seen_minutes = std::max( lead->last_seen_minutes, observed_minutes );
+    lead->last_checked_minutes = observed_minutes;
+    lead->last_scouted_minutes = std::max( lead->last_scouted_minutes, observed_minutes );
+    if( estimated_units == 0 ) {
+        lead->status = camp_lead_status::harvested;
+        lead->last_outcome = "physical_resource_depletion_observed";
+    } else {
+        lead->last_outcome = "physical_resource_estimate_updated";
+    }
+    return true;
+}
+
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
         const int now_minutes, const int scan_budget,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup )

@@ -748,6 +748,8 @@ bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &i
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
                                    const structural_bounty_read &read, int now_minutes );
+bool record_camp_resource_estimate( site_record &site, const std::string &lead_id,
+                                    int estimated_units, int confidence, int observed_minutes );
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
         int now_minutes, int scan_budget,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup );
