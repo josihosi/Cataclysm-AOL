@@ -1167,6 +1167,91 @@ std::string to_string( scout_phase phase )
     return "assembling";
 }
 
+bool is_valid_scout_phase_transition( const scout_phase previous_phase,
+                                      const scout_phase next_phase )
+{
+    if( previous_phase == next_phase ) {
+        return true;
+    }
+    if( next_phase == scout_phase::lost ) {
+        return previous_phase != scout_phase::lost;
+    }
+
+    switch( previous_phase ) {
+        case scout_phase::assembling:
+            return next_phase == scout_phase::outbound;
+        case scout_phase::outbound:
+            return next_phase == scout_phase::searching ||
+                   next_phase == scout_phase::observing ||
+                   next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::searching:
+            return next_phase == scout_phase::observing ||
+                   next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::observing:
+            return next_phase == scout_phase::harvesting ||
+                   next_phase == scout_phase::burned_withdrawal ||
+                   next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::harvesting:
+            return next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::burned_withdrawal:
+            return next_phase == scout_phase::returning_exposed ||
+                   next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::returning_exposed:
+            return next_phase == scout_phase::returning_report ||
+                   next_phase == scout_phase::returning_home;
+        case scout_phase::returning_report:
+            return next_phase == scout_phase::returning_home;
+        case scout_phase::returning_home:
+        case scout_phase::lost:
+            return false;
+    }
+
+    return false;
+}
+
+scout_phase scout_phase_after_burned_evacuation( const bool concealed_rally_reached )
+{
+    return concealed_rally_reached ? scout_phase::returning_report :
+           scout_phase::returning_exposed;
+}
+
+bool scout_phase_requires_homeward_only( const scout_phase phase )
+{
+    return phase == scout_phase::burned_withdrawal ||
+           phase == scout_phase::returning_exposed ||
+           phase == scout_phase::returning_report ||
+           phase == scout_phase::returning_home || phase == scout_phase::lost;
+}
+
+scout_phase_transition_result transition_active_scout_phase( site_record &site,
+        const scout_phase expected_phase, const scout_phase next_phase,
+        const int current_minutes )
+{
+    if( !site.active_outing.is_active() ||
+        site.active_outing.kind != outing_kind::scout_sortie ||
+        ( site.active_outing.job_type != "scout" &&
+          site.active_outing.job_type != "scavenge" ) || current_minutes < 0 ||
+        site.active_outing.phase != expected_phase ||
+        !is_valid_scout_phase_transition( expected_phase, next_phase ) ||
+        current_minutes < site.active_outing.last_progress_minutes ||
+        current_minutes < site.active_outing.last_advanced_minutes ) {
+        return scout_phase_transition_result::rejected;
+    }
+    if( expected_phase == next_phase ) {
+        return scout_phase_transition_result::unchanged;
+    }
+
+    site.active_outing.phase = next_phase;
+    site.active_outing.last_progress_minutes = current_minutes;
+    site.active_outing.last_advanced_minutes = current_minutes;
+    return scout_phase_transition_result::applied;
+}
+
 void member_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -1532,9 +1617,11 @@ void active_outing_state::deserialize( const JsonObject &jo )
     jo.read( "job_type", candidate.job_type );
     jo.read( "target_lead_revision", candidate.target_lead_revision );
     candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
+    const bool phase_was_present = jo.has_member( "phase" );
     std::string phase_string = "assembling";
     jo.read( "phase", phase_string );
-    candidate.phase = scout_phase_from_string( phase_string ).value_or( scout_phase::assembling );
+    candidate.phase = scout_phase_from_string( phase_string ).value_or(
+                          phase_was_present ? scout_phase::lost : scout_phase::assembling );
     jo.read( "observations", candidate.observations );
     candidate.observations = make_bounded_sortie_observations( candidate.observations );
     jo.read( "cargo", candidate.cargo );
@@ -1830,7 +1917,10 @@ void site_record::deserialize( const JsonObject &jo )
     next_outing_generation = std::max( next_outing_generation, applied_report_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_cargo_generation + 1 );
 
-    bool active_outing_is_consistent = active_outing.is_active() &&
+    const bool scout_job_is_consistent = active_outing.kind != outing_kind::scout_sortie ||
+                                         active_outing.job_type == "scout" ||
+                                         active_outing.job_type == "scavenge";
+    bool active_outing_is_consistent = active_outing.is_active() && scout_job_is_consistent &&
                                        active_outing.camp_id == site_id &&
                                        active_outing.generation > applied_return_generation &&
                                        active_outing.generation > applied_cargo_generation &&
@@ -3922,24 +4012,43 @@ bool note_active_sortie_started( site_record &site, const int current_minutes )
     if( !site.active_outing.is_active() || site.active_outing.member_ids.empty() || current_minutes < 0 ) {
         return false;
     }
+    site_record candidate = site;
     bool changed = false;
-    if( site.active_outing.started_minutes < 0 ) {
-        site.active_outing.started_minutes = current_minutes;
-        site.active_outing.phase = scout_phase::outbound;
-        site.active_outing.last_progress_minutes = current_minutes;
-        site.active_outing.last_advanced_minutes = current_minutes;
+    if( candidate.active_outing.started_minutes < 0 ) {
+        if( candidate.active_outing.kind == outing_kind::scout_sortie &&
+            !is_valid_scout_phase_transition( candidate.active_outing.phase,
+                                              scout_phase::outbound ) ) {
+            return false;
+        }
+        candidate.active_outing.started_minutes = current_minutes;
+        if( candidate.active_outing.kind == outing_kind::scout_sortie ) {
+            const scout_phase_transition_result transition = transition_active_scout_phase(
+                        candidate, candidate.active_outing.phase, scout_phase::outbound,
+                        current_minutes );
+            if( transition == scout_phase_transition_result::rejected ) {
+                return false;
+            }
+        } else {
+            candidate.active_outing.phase = scout_phase::outbound;
+            candidate.active_outing.last_progress_minutes = current_minutes;
+            candidate.active_outing.last_advanced_minutes = current_minutes;
+        }
         changed = true;
     }
-    if( site.active_outing.expected_return_minutes < 0 ) {
-        site.active_outing.expected_return_minutes = minutes_after_saturated(
-                site.active_outing.started_minutes,
+    if( candidate.active_outing.expected_return_minutes < 0 ) {
+        candidate.active_outing.expected_return_minutes = minutes_after_saturated(
+                candidate.active_outing.started_minutes,
                 ordinary_scout_sortie_limit_minutes() + scout_return_cohesion_minutes );
         changed = true;
     }
-    if( site.active_outing.missing_deadline_minutes < site.active_outing.expected_return_minutes ) {
-        site.active_outing.missing_deadline_minutes = minutes_after_saturated(
-                site.active_outing.expected_return_minutes, scout_missing_grace_minutes );
+    if( candidate.active_outing.missing_deadline_minutes <
+        candidate.active_outing.expected_return_minutes ) {
+        candidate.active_outing.missing_deadline_minutes = minutes_after_saturated(
+                candidate.active_outing.expected_return_minutes, scout_missing_grace_minutes );
         changed = true;
+    }
+    if( changed ) {
+        site = std::move( candidate );
     }
     return changed;
 }
@@ -3950,18 +4059,34 @@ bool note_active_sortie_local_contact( site_record &site, const int current_minu
         site.active_outing.local_contact_minutes >= 0 ) {
         return false;
     }
-    site.active_outing.local_contact_minutes = current_minutes;
-    site.active_outing.phase = scout_phase::observing;
-    site.active_outing.last_progress_minutes = current_minutes;
-    site.active_outing.expected_return_minutes = minutes_after_saturated(
-            current_minutes, ordinary_scout_sortie_limit_minutes() + scout_return_cohesion_minutes );
-    site.active_outing.missing_deadline_minutes = minutes_after_saturated(
-            site.active_outing.expected_return_minutes, scout_missing_grace_minutes );
-    if( site.active_outing.owner != simulation_owner::local ) {
-        site.active_outing.owner = simulation_owner::local;
-        site.active_outing.handoff_epoch++;
+    site_record candidate = site;
+    if( candidate.active_outing.kind == outing_kind::scout_sortie &&
+        !is_valid_scout_phase_transition( candidate.active_outing.phase,
+                                          scout_phase::observing ) ) {
+        return false;
     }
-    site.active_outing.last_advanced_minutes = current_minutes;
+    candidate.active_outing.local_contact_minutes = current_minutes;
+    if( candidate.active_outing.kind == outing_kind::scout_sortie ) {
+        const scout_phase_transition_result transition = transition_active_scout_phase(
+                    candidate, candidate.active_outing.phase, scout_phase::observing,
+                    current_minutes );
+        if( transition == scout_phase_transition_result::rejected ) {
+            return false;
+        }
+    } else {
+        candidate.active_outing.phase = scout_phase::observing;
+        candidate.active_outing.last_progress_minutes = current_minutes;
+        candidate.active_outing.last_advanced_minutes = current_minutes;
+    }
+    candidate.active_outing.expected_return_minutes = minutes_after_saturated(
+            current_minutes, ordinary_scout_sortie_limit_minutes() + scout_return_cohesion_minutes );
+    candidate.active_outing.missing_deadline_minutes = minutes_after_saturated(
+            candidate.active_outing.expected_return_minutes, scout_missing_grace_minutes );
+    if( candidate.active_outing.owner != simulation_owner::local ) {
+        candidate.active_outing.owner = simulation_owner::local;
+        candidate.active_outing.handoff_epoch++;
+    }
+    site = std::move( candidate );
     return true;
 }
 
@@ -4775,7 +4900,16 @@ bool record_active_outing_casualty( site_record &site, const character_id npc_id
     candidate.active_outing.last_advanced_minutes = std::max(
                 candidate.active_outing.last_advanced_minutes, current_minutes );
     if( candidate.active_outing.casualty_ids.size() >= candidate.active_outing.member_ids.size() ) {
-        candidate.active_outing.phase = scout_phase::lost;
+        if( candidate.active_outing.kind == outing_kind::scout_sortie ) {
+            const scout_phase_transition_result transition = transition_active_scout_phase(
+                        candidate, candidate.active_outing.phase, scout_phase::lost,
+                        current_minutes );
+            if( transition == scout_phase_transition_result::rejected ) {
+                return false;
+            }
+        } else {
+            candidate.active_outing.phase = scout_phase::lost;
+        }
     }
     site = std::move( candidate );
     return state_changed || !casualty_was_recorded || !resolution_was_recorded;

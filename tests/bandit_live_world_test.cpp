@@ -106,6 +106,9 @@ void set_test_active_outing( bandit_live_world::site_record &site, const std::st
     site.active_outing.activity_id = activity_id;
     site.active_outing.camp_id = site.site_id;
     site.active_outing.generation = site.next_outing_generation++;
+    if( kind == bandit_live_world::outing_kind::scout_sortie ) {
+        site.active_outing.job_type = "scout";
+    }
     site.active_outing.return_application_key = activity_id + ":return:" +
                                                    std::to_string( site.active_outing.generation );
     site.active_outing.report_application_key = activity_id + ":report:" +
@@ -614,6 +617,206 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
     }
 }
 
+TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
+           "[bandit][live_world][scout_state][phase]" )
+{
+    using bandit_live_world::scout_phase;
+    using bandit_live_world::scout_phase_transition_result;
+
+    const std::vector<scout_phase> phases = {
+        scout_phase::assembling,
+        scout_phase::outbound,
+        scout_phase::searching,
+        scout_phase::observing,
+        scout_phase::harvesting,
+        scout_phase::burned_withdrawal,
+        scout_phase::returning_exposed,
+        scout_phase::returning_report,
+        scout_phase::returning_home,
+        scout_phase::lost,
+    };
+    const std::vector<std::pair<scout_phase, scout_phase>> forward_edges = {
+        { scout_phase::assembling, scout_phase::outbound },
+        { scout_phase::outbound, scout_phase::searching },
+        { scout_phase::outbound, scout_phase::observing },
+        { scout_phase::outbound, scout_phase::returning_report },
+        { scout_phase::outbound, scout_phase::returning_home },
+        { scout_phase::searching, scout_phase::observing },
+        { scout_phase::searching, scout_phase::returning_report },
+        { scout_phase::searching, scout_phase::returning_home },
+        { scout_phase::observing, scout_phase::harvesting },
+        { scout_phase::observing, scout_phase::burned_withdrawal },
+        { scout_phase::observing, scout_phase::returning_report },
+        { scout_phase::observing, scout_phase::returning_home },
+        { scout_phase::harvesting, scout_phase::returning_report },
+        { scout_phase::harvesting, scout_phase::returning_home },
+        { scout_phase::burned_withdrawal, scout_phase::returning_exposed },
+        { scout_phase::burned_withdrawal, scout_phase::returning_report },
+        { scout_phase::burned_withdrawal, scout_phase::returning_home },
+        { scout_phase::returning_exposed, scout_phase::returning_report },
+        { scout_phase::returning_exposed, scout_phase::returning_home },
+        { scout_phase::returning_report, scout_phase::returning_home },
+    };
+    for( const scout_phase previous : phases ) {
+        for( const scout_phase next : phases ) {
+            const bool same_phase = previous == next;
+            const bool terminal_loss = next == scout_phase::lost &&
+                                       previous != scout_phase::lost;
+            const bool forward = std::find( forward_edges.begin(), forward_edges.end(),
+                                            std::make_pair( previous, next ) ) !=
+                                 forward_edges.end();
+            CHECK( bandit_live_world::is_valid_scout_phase_transition( previous, next ) ==
+                   ( same_phase || terminal_loss || forward ) );
+        }
+    }
+
+    CHECK( bandit_live_world::scout_phase_after_burned_evacuation( true ) ==
+           scout_phase::returning_report );
+    CHECK( bandit_live_world::scout_phase_after_burned_evacuation( false ) ==
+           scout_phase::returning_exposed );
+    CHECK( bandit_live_world::scout_phase_requires_homeward_only(
+               scout_phase::burned_withdrawal ) );
+    CHECK( bandit_live_world::scout_phase_requires_homeward_only(
+               scout_phase::returning_exposed ) );
+    CHECK_FALSE( bandit_live_world::scout_phase_requires_homeward_only(
+                     scout_phase::observing ) );
+
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45100 );
+    bandit_live_world::site_record &site = world.sites.front();
+    set_test_active_outing( site, site.site_id + "#scout:phase" );
+    site.active_outing.member_ids = { character_id( 45100 ) };
+    site.active_outing.leader_id = character_id( 45100 );
+    site.active_outing.job_type = "scout";
+    site.active_outing.phase = scout_phase::outbound;
+    site.active_outing.started_minutes = 100;
+    site.active_outing.last_progress_minutes = 100;
+    site.active_outing.last_advanced_minutes = 100;
+
+    const std::string before_stale = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::assembling, scout_phase::searching, 110 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == before_stale );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::outbound, scout_phase::searching, 99 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == before_stale );
+
+    site.active_outing.kind = bandit_live_world::outing_kind::hostile_operation;
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+           scout_phase_transition_result::rejected );
+    site.active_outing.kind = bandit_live_world::outing_kind::scout_sortie;
+    site.active_outing.job_type = "raid";
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+           scout_phase_transition_result::rejected );
+    site.active_outing.job_type = "scout";
+    CHECK( serialize_world( world ) == before_stale );
+
+    bandit_live_world::site_record legacy_scavenge = site;
+    legacy_scavenge.active_outing.job_type = "scavenge";
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               legacy_scavenge, scout_phase::outbound, scout_phase::searching, 110 ) ==
+           scout_phase_transition_result::applied );
+
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+           scout_phase_transition_result::applied );
+    CHECK( site.active_outing.phase == scout_phase::searching );
+    CHECK( site.active_outing.last_progress_minutes == 110 );
+    CHECK( site.active_outing.last_advanced_minutes == 110 );
+    const std::string before_same = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::searching, scout_phase::searching, 120 ) ==
+           scout_phase_transition_result::unchanged );
+    CHECK( serialize_world( world ) == before_same );
+
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::searching, scout_phase::observing, 120 ) ==
+           scout_phase_transition_result::applied );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::observing, scout_phase::burned_withdrawal, 130 ) ==
+           scout_phase_transition_result::applied );
+    const std::string burned_state = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::burned_withdrawal, scout_phase::observing, 140 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == burned_state );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::burned_withdrawal, scout_phase::returning_exposed, 140 ) ==
+           scout_phase_transition_result::applied );
+    const std::string exposed_state = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::returning_exposed, scout_phase::harvesting, 150 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == exposed_state );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::returning_exposed, scout_phase::returning_report, 150 ) ==
+           scout_phase_transition_result::applied );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::returning_report, scout_phase::returning_home, 160 ) ==
+           scout_phase_transition_result::applied );
+    const std::string home_state = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::returning_home, scout_phase::outbound, 170 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == home_state );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, scout_phase::returning_home, scout_phase::lost, 170 ) ==
+           scout_phase_transition_result::applied );
+
+    bandit_live_world::world_state returning_world;
+    add_bandit_camp_member( returning_world, 0, 45110 );
+    bandit_live_world::site_record &returning_site = returning_world.sites.front();
+    set_test_active_outing( returning_site, returning_site.site_id + "#scout:returning" );
+    returning_site.active_outing.member_ids = { character_id( 45110 ) };
+    returning_site.active_outing.leader_id = character_id( 45110 );
+    returning_site.active_outing.job_type = "scout";
+    returning_site.active_outing.phase = scout_phase::returning_exposed;
+    returning_site.active_outing.started_minutes = 100;
+    returning_site.active_outing.last_progress_minutes = 200;
+    returning_site.active_outing.last_advanced_minutes = 200;
+    const std::string before_contact = serialize_world( returning_world );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_local_contact( returning_site, 210 ) );
+    CHECK( serialize_world( returning_world ) == before_contact );
+
+    returning_site.active_outing.started_minutes = -1;
+    returning_site.active_outing.phase = scout_phase::burned_withdrawal;
+    const std::string before_restart = serialize_world( returning_world );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_started( returning_site, 220 ) );
+    CHECK( serialize_world( returning_world ) == before_restart );
+
+    JsonValue future_phase_json = json_loader::from_string(
+        R"({"kind":"scout_sortie","activity_id":"future-phase","generation":1,"job_type":"scout","phase":"future_phase"})" );
+    bandit_live_world::active_outing_state future_phase;
+    future_phase.deserialize( future_phase_json.get_object() );
+    CHECK( future_phase.phase == scout_phase::lost );
+
+    JsonValue legacy_phase_json = json_loader::from_string(
+        R"({"kind":"scout_sortie","activity_id":"legacy-phase","generation":1,"job_type":"scout"})" );
+    bandit_live_world::active_outing_state legacy_phase;
+    legacy_phase.deserialize( legacy_phase_json.get_object() );
+    CHECK( legacy_phase.phase == scout_phase::assembling );
+
+    bandit_live_world::world_state malformed_job_world;
+    add_bandit_camp_member( malformed_job_world, 0, 45120 );
+    bandit_live_world::site_record &malformed_job_site = malformed_job_world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state( malformed_job_site, character_id( 45120 ),
+             bandit_live_world::member_state::outbound, "malformed scout reservation" ) );
+    set_test_active_outing( malformed_job_site,
+                            malformed_job_site.site_id + "#scout:malformed-job" );
+    malformed_job_site.active_outing.member_ids = { character_id( 45120 ) };
+    malformed_job_site.active_outing.leader_id = character_id( 45120 );
+    malformed_job_site.active_outing.job_type = "raid";
+    const bandit_live_world::world_state repaired_job = round_trip_world( malformed_job_world );
+    REQUIRE( repaired_job.sites.size() == 1 );
+    CHECK_FALSE( repaired_job.sites.front().active_outing.is_active() );
+    CHECK( repaired_job.sites.front().find_member( character_id( 45120 ) )->state ==
+           bandit_live_world::member_state::at_home );
+}
+
 TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on_load",
            "[bandit][live_world][scout_state][save]" )
 {
@@ -693,8 +896,8 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     site.active_outing.member_ids = { character_id( 45300 ), character_id( 45301 ) };
     site.active_outing.leader_id = character_id( 45300 );
     site.active_outing.job_type = "scout";
-    site.active_outing.phase = bandit_live_world::scout_phase::observing;
     REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 100 ) );
     CHECK( site.active_outing.expected_return_minutes == 940 );
     CHECK( site.active_outing.missing_deadline_minutes == 2380 );
 

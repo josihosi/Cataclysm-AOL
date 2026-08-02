@@ -116,6 +116,12 @@ enum class scout_phase {
     lost,
 };
 
+enum class scout_phase_transition_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -637,6 +643,11 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
         const std::vector<sight_avoid_candidate> &candidates, bool current_smoke_obscured = false );
 bool note_active_sortie_started( site_record &site, int current_minutes );
 bool note_active_sortie_local_contact( site_record &site, int current_minutes );
+bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
+scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
+bool scout_phase_requires_homeward_only( scout_phase phase );
+scout_phase_transition_result transition_active_scout_phase( site_record &site,
+        scout_phase expected_phase, scout_phase next_phase, int current_minutes );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
                                       int sortie_limit_minutes );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
