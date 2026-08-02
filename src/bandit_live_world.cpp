@@ -7,6 +7,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,14 @@ constexpr std::size_t max_active_outing_route_steps = 256;
 constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_active_outing_casualties = 16;
+constexpr std::size_t max_camp_intelligence_leads = 64;
+constexpr std::size_t max_live_signal_marks = 8;
+constexpr std::size_t max_camp_lead_id_length = 192;
+constexpr std::size_t max_camp_lead_target_id_length = 192;
+constexpr std::size_t max_camp_lead_source_key_length = 192;
+constexpr std::size_t max_camp_lead_summary_length = 256;
+constexpr std::size_t max_camp_lead_outcome_length = 128;
+constexpr std::size_t max_live_signal_mark_length = 192;
 constexpr std::size_t max_sortie_fact_key_length = 128;
 constexpr std::size_t max_sortie_summary_length = 512;
 constexpr std::size_t max_camp_decision_reason_length = 256;
@@ -45,6 +54,16 @@ constexpr int max_camp_supply_units = 256;
 constexpr int minutes_per_member_day = 24 * 60;
 constexpr int scout_return_cohesion_minutes = 2 * 60;
 constexpr int scout_missing_grace_minutes = 24 * 60;
+
+void bound_camp_map_lead_strings( camp_map_lead &lead )
+{
+    lead.lead_id.resize( std::min( lead.lead_id.size(), max_camp_lead_id_length ) );
+    lead.target_id.resize( std::min( lead.target_id.size(), max_camp_lead_target_id_length ) );
+    lead.source_key.resize( std::min( lead.source_key.size(), max_camp_lead_source_key_length ) );
+    lead.source_summary.resize( std::min( lead.source_summary.size(),
+                                         max_camp_lead_summary_length ) );
+    lead.last_outcome.resize( std::min( lead.last_outcome.size(), max_camp_lead_outcome_length ) );
+}
 
 int minutes_after_saturated( const int base_minutes, const int delta_minutes )
 {
@@ -603,17 +622,122 @@ bandit_dry_run::candidate_debug make_camp_map_dispatch_candidate( const camp_map
     return candidate;
 }
 
-void upsert_camp_map_lead( bandit_live_world::camp_intelligence_map &intelligence_map,
-                           const camp_map_lead &lead )
+std::optional<int> next_camp_map_lead_revision( const int revision )
 {
+    if( revision >= std::numeric_limits<int>::max() ) {
+        return std::nullopt;
+    }
+    return std::max( 1, revision + 1 );
+}
+
+bool camp_map_lead_payload_matches( const camp_map_lead &lhs, const camp_map_lead &rhs )
+{
+    return lhs.lead_id == rhs.lead_id && lhs.kind == rhs.kind && lhs.status == rhs.status &&
+           lhs.target_id == rhs.target_id && lhs.omt == rhs.omt &&
+           lhs.radius_omt == rhs.radius_omt && lhs.source_key == rhs.source_key &&
+           lhs.source_summary == rhs.source_summary &&
+           lhs.first_seen_minutes == rhs.first_seen_minutes &&
+           lhs.last_seen_minutes == rhs.last_seen_minutes &&
+           lhs.last_checked_minutes == rhs.last_checked_minutes &&
+           lhs.last_scouted_minutes == rhs.last_scouted_minutes && lhs.bounty == rhs.bounty &&
+           lhs.threat == rhs.threat && lhs.confidence == rhs.confidence &&
+           lhs.threat_confirmed == rhs.threat_confirmed && lhs.target_alert == rhs.target_alert &&
+           lhs.scout_seen == rhs.scout_seen &&
+           lhs.generated_by_this_camp_routine == rhs.generated_by_this_camp_routine &&
+           lhs.prior_bandit_losses == rhs.prior_bandit_losses &&
+           lhs.prior_defender_losses == rhs.prior_defender_losses &&
+           lhs.times_checked_empty == rhs.times_checked_empty &&
+           lhs.times_harvested == rhs.times_harvested && lhs.last_outcome == rhs.last_outcome;
+}
+
+void update_target_lead_reference( bandit_live_world::active_outing_state &outing,
+                                   const std::string &lead_id, const int old_revision,
+                                   const int new_revision )
+{
+    if( outing.target_lead_id == lead_id &&
+        ( outing.target_lead_revision == old_revision || outing.target_lead_revision <= 0 ) ) {
+        outing.target_lead_revision = new_revision;
+    }
+}
+
+void update_target_lead_reference( bandit_live_world::scout_report_record &report,
+                                   const std::string &lead_id, const int old_revision,
+                                   const int new_revision )
+{
+    if( report.target_lead_id == lead_id &&
+        ( report.target_lead_revision == old_revision || report.target_lead_revision <= 0 ) ) {
+        report.target_lead_revision = new_revision;
+    }
+}
+
+void update_target_lead_reference( bandit_live_world::camp_decision_record &decision,
+                                   const std::string &lead_id, const int old_revision,
+                                   const int new_revision )
+{
+    if( decision.target_lead_id == lead_id &&
+        ( decision.target_lead_revision == old_revision || decision.target_lead_revision <= 0 ) ) {
+        decision.target_lead_revision = new_revision;
+    }
+}
+
+void update_target_lead_references( bandit_live_world::site_record &site,
+                                    const std::string &lead_id, const int old_revision,
+                                    const int new_revision )
+{
+    update_target_lead_reference( site.active_outing, lead_id, old_revision, new_revision );
+    update_target_lead_reference( site.active_hostile_operation.reservation, lead_id,
+                                  old_revision, new_revision );
+    update_target_lead_reference( site.current_scout_report, lead_id, old_revision, new_revision );
+    update_target_lead_reference( site.camp_decision, lead_id, old_revision, new_revision );
+}
+
+bool advance_camp_map_lead_revision( bandit_live_world::site_record &site,
+                                     camp_map_lead &lead )
+{
+    const int old_revision = std::max( 1, lead.revision );
+    const std::optional<int> new_revision = next_camp_map_lead_revision( old_revision );
+    if( !new_revision ) {
+        return false;
+    }
+    lead.revision = *new_revision;
+    update_target_lead_references( site, lead.lead_id, old_revision, *new_revision );
+    return true;
+}
+
+bool upsert_camp_map_lead( bandit_live_world::site_record &site, camp_map_lead lead )
+{
+    bound_camp_map_lead_strings( lead );
     if( lead.lead_id.empty() ) {
-        return;
+        return false;
     }
-    if( camp_map_lead *existing = intelligence_map.find_lead( lead.lead_id ) ) {
+    const std::string lead_id = lead.lead_id;
+
+    bandit_live_world::site_record candidate = site;
+    if( camp_map_lead *existing = candidate.intelligence_map.find_lead( lead.lead_id ) ) {
+        const int old_revision = std::max( 1, existing->revision );
+        lead.revision = old_revision;
+        if( camp_map_lead_payload_matches( *existing, lead ) ) {
+            bandit_live_world::normalize_camp_intelligence( candidate );
+            site = std::move( candidate );
+            return true;
+        }
+        const std::optional<int> new_revision = next_camp_map_lead_revision( old_revision );
+        if( !new_revision ) {
+            return false;
+        }
+        lead.revision = *new_revision;
         *existing = lead;
-        return;
+        update_target_lead_references( candidate, lead.lead_id, old_revision, lead.revision );
+    } else {
+        lead.revision = std::max( 1, lead.revision );
+        candidate.intelligence_map.leads.push_back( std::move( lead ) );
     }
-    intelligence_map.leads.push_back( lead );
+    bandit_live_world::normalize_camp_intelligence( candidate );
+    if( candidate.intelligence_map.find_lead( lead_id ) == nullptr ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
 }
 
 void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &site,
@@ -639,7 +763,7 @@ void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &
     lead.threat_confirmed = lead.threat > 0;
     lead.last_outcome = "legacy_memory";
     lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
-    upsert_camp_map_lead( site.intelligence_map, lead );
+    upsert_camp_map_lead( site, lead );
 }
 
 void record_scout_return_lead( bandit_live_world::site_record &site,
@@ -670,7 +794,8 @@ void record_scout_return_lead( bandit_live_world::site_record &site,
     lead.prior_bandit_losses = bandit_losses;
     lead.last_outcome = bandit_pursuit_handoff::to_string( packet.result );
     lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
-    upsert_camp_map_lead( site.intelligence_map, lead );
+    lead.revision = std::max( 1, site.active_outing.target_lead_revision );
+    upsert_camp_map_lead( site, lead );
 }
 
 bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
@@ -1073,6 +1198,9 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
 bool report_matches_camp_decision( const bandit_live_world::scout_report_record &report,
                                    const bandit_live_world::camp_decision_record &decision )
 {
+    const bool lead_id_matches = report.target_lead_id.empty() ||
+                                 decision.target_lead_id.empty() ||
+                                 decision.target_lead_id == report.target_lead_id;
     return report.is_present() && !report.provisional && report.source_job_type == "scout" &&
            decision.has_pinned_report() &&
            decision.source_report_revision == report.revision &&
@@ -1080,6 +1208,7 @@ bool report_matches_camp_decision( const bandit_live_world::scout_report_record 
            decision.source_report_activity_id == report.source_activity_id &&
            decision.source_report_application_key == report.application_key &&
            decision.target_id == report.target_id && decision.target_omt == report.target_omt &&
+           lead_id_matches &&
            decision.target_lead_revision == report.target_lead_revision;
 }
 
@@ -1113,6 +1242,9 @@ hostile_operation_kind hostile_operation_kind_for_profile( const hostile_site_pr
 bool report_matches_hostile_operation( const bandit_live_world::scout_report_record &report,
                                        const bandit_live_world::hostile_operation_state &operation )
 {
+    const bool lead_id_matches = report.target_lead_id.empty() ||
+                                 operation.reservation.target_lead_id.empty() ||
+                                 operation.reservation.target_lead_id == report.target_lead_id;
     return report.is_present() && !report.provisional && report.source_job_type == "scout" &&
            operation.source_report_revision == report.revision &&
            operation.source_report_generation == report.source_generation &&
@@ -1120,6 +1252,7 @@ bool report_matches_hostile_operation( const bandit_live_world::scout_report_rec
            operation.source_report_application_key == report.application_key &&
            operation.reservation.target_id == report.target_id &&
            operation.reservation.target_omt == report.target_omt &&
+           lead_id_matches &&
            operation.reservation.target_lead_revision == report.target_lead_revision;
 }
 
@@ -1844,6 +1977,7 @@ camp_decision_transition_result accept_current_scout_report_for_assessment( site
     decision.source_report_application_key = report.application_key;
     decision.target_id = report.target_id;
     decision.target_omt = report.target_omt;
+    decision.target_lead_id = report.target_lead_id;
     decision.target_lead_revision = report.target_lead_revision;
     decision.last_transition_minutes = report.delivered_minutes;
     decision.next_eligible_minutes = -1;
@@ -1951,63 +2085,111 @@ void spawn_tile_record::deserialize( const JsonObject &jo )
 void camp_map_lead::serialize( JsonOut &json ) const
 {
     json.start_object();
-    json.member( "lead_id", lead_id );
+    json.member( "lead_id", lead_id.substr( 0, max_camp_lead_id_length ) );
+    json.member( "revision", std::max( 1, revision ) );
     json.member( "kind", to_string( kind ) );
     json.member( "status", to_string( status ) );
-    json.member( "target_id", target_id );
+    if( !target_id.empty() ) {
+        json.member( "target_id", target_id.substr( 0, max_camp_lead_target_id_length ) );
+    }
     json.member( "omt", omt );
-    json.member( "radius_omt", radius_omt );
-    json.member( "source_key", source_key );
-    json.member( "source_summary", source_summary );
-    json.member( "first_seen_minutes", first_seen_minutes );
-    json.member( "last_seen_minutes", last_seen_minutes );
-    json.member( "last_checked_minutes", last_checked_minutes );
-    json.member( "last_scouted_minutes", last_scouted_minutes );
-    json.member( "bounty", bounty );
-    json.member( "threat", threat );
-    json.member( "confidence", confidence );
-    json.member( "threat_confirmed", threat_confirmed );
-    json.member( "target_alert", target_alert );
-    json.member( "scout_seen", scout_seen );
-    json.member( "generated_by_this_camp_routine", generated_by_this_camp_routine );
-    json.member( "prior_bandit_losses", prior_bandit_losses );
-    json.member( "prior_defender_losses", prior_defender_losses );
-    json.member( "times_checked_empty", times_checked_empty );
-    json.member( "times_harvested", times_harvested );
-    json.member( "last_outcome", last_outcome );
+    if( radius_omt != 0 ) {
+        json.member( "radius_omt", radius_omt );
+    }
+    if( !source_key.empty() ) {
+        json.member( "source_key", source_key.substr( 0, max_camp_lead_source_key_length ) );
+    }
+    if( !source_summary.empty() ) {
+        json.member( "source_summary", source_summary.substr( 0, max_camp_lead_summary_length ) );
+    }
+    if( first_seen_minutes != -1 ) {
+        json.member( "first_seen_minutes", first_seen_minutes );
+    }
+    if( last_seen_minutes != -1 ) {
+        json.member( "last_seen_minutes", last_seen_minutes );
+    }
+    if( last_checked_minutes != -1 ) {
+        json.member( "last_checked_minutes", last_checked_minutes );
+    }
+    if( last_scouted_minutes != -1 ) {
+        json.member( "last_scouted_minutes", last_scouted_minutes );
+    }
+    if( bounty != 0 ) {
+        json.member( "bounty", bounty );
+    }
+    if( threat != 0 ) {
+        json.member( "threat", threat );
+    }
+    if( confidence != 0 ) {
+        json.member( "confidence", confidence );
+    }
+    if( threat_confirmed ) {
+        json.member( "threat_confirmed", true );
+    }
+    if( target_alert ) {
+        json.member( "target_alert", true );
+    }
+    if( scout_seen ) {
+        json.member( "scout_seen", true );
+    }
+    if( generated_by_this_camp_routine ) {
+        json.member( "generated_by_this_camp_routine", true );
+    }
+    if( prior_bandit_losses != 0 ) {
+        json.member( "prior_bandit_losses", prior_bandit_losses );
+    }
+    if( prior_defender_losses != 0 ) {
+        json.member( "prior_defender_losses", prior_defender_losses );
+    }
+    if( times_checked_empty != 0 ) {
+        json.member( "times_checked_empty", times_checked_empty );
+    }
+    if( times_harvested != 0 ) {
+        json.member( "times_harvested", times_harvested );
+    }
+    if( !last_outcome.empty() ) {
+        json.member( "last_outcome", last_outcome.substr( 0, max_camp_lead_outcome_length ) );
+    }
     json.end_object();
 }
 
 void camp_map_lead::deserialize( const JsonObject &jo )
 {
-    jo.read( "lead_id", lead_id );
+    camp_map_lead candidate;
+    jo.read( "lead_id", candidate.lead_id );
+    jo.read( "revision", candidate.revision );
+    candidate.revision = std::max( 1, candidate.revision );
     std::string kind_string = "human_activity";
     jo.read( "kind", kind_string );
-    kind = camp_lead_kind_from_string( kind_string ).value_or( camp_lead_kind::human_activity );
+    candidate.kind = camp_lead_kind_from_string( kind_string ).value_or(
+                         camp_lead_kind::human_activity );
     std::string status_string = "suspected";
     jo.read( "status", status_string );
-    status = camp_lead_status_from_string( status_string ).value_or( camp_lead_status::suspected );
-    jo.read( "target_id", target_id );
-    jo.read( "omt", omt );
-    jo.read( "radius_omt", radius_omt );
-    jo.read( "source_key", source_key );
-    jo.read( "source_summary", source_summary );
-    jo.read( "first_seen_minutes", first_seen_minutes );
-    jo.read( "last_seen_minutes", last_seen_minutes );
-    jo.read( "last_checked_minutes", last_checked_minutes );
-    jo.read( "last_scouted_minutes", last_scouted_minutes );
-    jo.read( "bounty", bounty );
-    jo.read( "threat", threat );
-    jo.read( "confidence", confidence );
-    jo.read( "threat_confirmed", threat_confirmed );
-    jo.read( "target_alert", target_alert );
-    jo.read( "scout_seen", scout_seen );
-    jo.read( "generated_by_this_camp_routine", generated_by_this_camp_routine );
-    jo.read( "prior_bandit_losses", prior_bandit_losses );
-    jo.read( "prior_defender_losses", prior_defender_losses );
-    jo.read( "times_checked_empty", times_checked_empty );
-    jo.read( "times_harvested", times_harvested );
-    jo.read( "last_outcome", last_outcome );
+    candidate.status = camp_lead_status_from_string( status_string ).value_or(
+                           camp_lead_status::suspected );
+    jo.read( "target_id", candidate.target_id );
+    jo.read( "omt", candidate.omt );
+    jo.read( "radius_omt", candidate.radius_omt );
+    jo.read( "source_key", candidate.source_key );
+    jo.read( "source_summary", candidate.source_summary );
+    jo.read( "first_seen_minutes", candidate.first_seen_minutes );
+    jo.read( "last_seen_minutes", candidate.last_seen_minutes );
+    jo.read( "last_checked_minutes", candidate.last_checked_minutes );
+    jo.read( "last_scouted_minutes", candidate.last_scouted_minutes );
+    jo.read( "bounty", candidate.bounty );
+    jo.read( "threat", candidate.threat );
+    jo.read( "confidence", candidate.confidence );
+    jo.read( "threat_confirmed", candidate.threat_confirmed );
+    jo.read( "target_alert", candidate.target_alert );
+    jo.read( "scout_seen", candidate.scout_seen );
+    jo.read( "generated_by_this_camp_routine", candidate.generated_by_this_camp_routine );
+    jo.read( "prior_bandit_losses", candidate.prior_bandit_losses );
+    jo.read( "prior_defender_losses", candidate.prior_defender_losses );
+    jo.read( "times_checked_empty", candidate.times_checked_empty );
+    jo.read( "times_harvested", candidate.times_harvested );
+    jo.read( "last_outcome", candidate.last_outcome );
+    bound_camp_map_lead_strings( candidate );
+    *this = std::move( candidate );
 }
 
 void camp_intelligence_map::serialize( JsonOut &json ) const
@@ -2052,6 +2234,279 @@ const camp_map_lead *camp_intelligence_map::find_lead( const std::string &lead_i
         return lead.lead_id == lead_id;
     } );
     return iter != leads.end() ? &*iter : nullptr;
+}
+
+static int camp_lead_status_retention_rank( const camp_lead_status status )
+{
+    switch( status ) {
+        case camp_lead_status::harvested:
+        case camp_lead_status::dangerous:
+            return 4;
+        case camp_lead_status::active:
+        case camp_lead_status::scout_confirmed:
+            return 3;
+        case camp_lead_status::suspected:
+        case camp_lead_status::stale:
+            return 2;
+        case camp_lead_status::invalidated:
+            return 1;
+    }
+    return 0;
+}
+
+static int camp_lead_recency( const camp_map_lead &lead )
+{
+    return std::max( { lead.first_seen_minutes, lead.last_seen_minutes,
+                       lead.last_checked_minutes, lead.last_scouted_minutes } );
+}
+
+static auto camp_lead_tie_breaker( const camp_map_lead &lead )
+{
+    return std::make_tuple( lead.lead_id, lead.revision, static_cast<int>( lead.kind ),
+                            static_cast<int>( lead.status ), lead.target_id,
+                            lead.omt.x(), lead.omt.y(), lead.omt.z(), lead.radius_omt,
+                            lead.source_key, lead.source_summary, lead.first_seen_minutes,
+                            lead.last_seen_minutes, lead.last_checked_minutes,
+                            lead.last_scouted_minutes, lead.bounty, lead.threat,
+                            lead.confidence, lead.threat_confirmed, lead.target_alert,
+                            lead.scout_seen, lead.generated_by_this_camp_routine,
+                            lead.prior_bandit_losses, lead.prior_defender_losses,
+                            lead.times_checked_empty, lead.times_harvested, lead.last_outcome );
+}
+
+static int target_lead_reference_strength( const camp_map_lead &lead,
+        const std::string &lead_id, const int revision, const std::string &target_id,
+        const tripoint_abs_omt &target_omt )
+{
+    if( !lead_id.empty() ) {
+        if( lead.lead_id != lead_id ) {
+            return 0;
+        }
+        return revision > 0 && lead.revision == revision ? 3 : 2;
+    }
+    if( target_id.empty() ) {
+        return 0;
+    }
+    if( lead.lead_id == target_id ) {
+        return 1;
+    }
+    return lead.target_id == target_id && lead.omt == target_omt ? 1 : 0;
+}
+
+static int camp_lead_reference_strength( const site_record &site, const camp_map_lead &lead )
+{
+    int strength = 0;
+    if( site.active_outing.is_active() ) {
+        strength = std::max( strength, target_lead_reference_strength( lead,
+                             site.active_outing.target_lead_id,
+                             site.active_outing.target_lead_revision,
+                             site.active_outing.target_id, site.active_outing.target_omt ) );
+    }
+    if( site.active_hostile_operation.is_active() ) {
+        const active_outing_state &reservation = site.active_hostile_operation.reservation;
+        strength = std::max( strength, target_lead_reference_strength( lead,
+                             reservation.target_lead_id, reservation.target_lead_revision,
+                             reservation.target_id, reservation.target_omt ) );
+    }
+    if( site.current_scout_report.is_present() ) {
+        strength = std::max( strength, target_lead_reference_strength( lead,
+                             site.current_scout_report.target_lead_id,
+                             site.current_scout_report.target_lead_revision,
+                             site.current_scout_report.target_id,
+                             site.current_scout_report.target_omt ) );
+    }
+    if( site.camp_decision.has_pinned_report() &&
+        ( site.camp_decision.state == camp_decision_state::report_awaiting_assessment ||
+          site.camp_decision.state == camp_decision_state::preparing_follow_on ) ) {
+        strength = std::max( strength, target_lead_reference_strength( lead,
+                             site.camp_decision.target_lead_id,
+                             site.camp_decision.target_lead_revision,
+                             site.camp_decision.target_id, site.camp_decision.target_omt ) );
+    }
+    return strength;
+}
+
+static bool camp_lead_is_better_retention( const site_record &site, const camp_map_lead &lhs,
+        const camp_map_lead &rhs )
+{
+    const int lhs_reference = camp_lead_reference_strength( site, lhs );
+    const int rhs_reference = camp_lead_reference_strength( site, rhs );
+    if( lhs_reference != rhs_reference ) {
+        return lhs_reference > rhs_reference;
+    }
+    const int lhs_status = camp_lead_status_retention_rank( lhs.status );
+    const int rhs_status = camp_lead_status_retention_rank( rhs.status );
+    if( lhs_status != rhs_status ) {
+        return lhs_status > rhs_status;
+    }
+    const int lhs_recency = camp_lead_recency( lhs );
+    const int rhs_recency = camp_lead_recency( rhs );
+    if( lhs_recency != rhs_recency ) {
+        return lhs_recency > rhs_recency;
+    }
+    if( lhs.revision != rhs.revision ) {
+        return lhs.revision > rhs.revision;
+    }
+    if( lhs.confidence != rhs.confidence ) {
+        return lhs.confidence > rhs.confidence;
+    }
+    if( lhs.bounty != rhs.bounty ) {
+        return lhs.bounty > rhs.bounty;
+    }
+    return camp_lead_tie_breaker( lhs ) > camp_lead_tie_breaker( rhs );
+}
+
+template<typename Reference>
+static void bound_target_lead_reference( Reference &reference )
+{
+    reference.target_lead_id.resize( std::min( reference.target_lead_id.size(),
+                                     max_camp_lead_id_length ) );
+    reference.target_id.resize( std::min( reference.target_id.size(),
+                                         max_camp_lead_target_id_length ) );
+}
+
+template<typename Reference>
+static int compatible_reference_revision( const camp_map_lead &lead,
+        const Reference &reference )
+{
+    if( reference.target_lead_revision <= 0 ) {
+        return 1;
+    }
+    if( !reference.target_lead_id.empty() ) {
+        return reference.target_lead_id == lead.lead_id ? reference.target_lead_revision : 1;
+    }
+    if( lead.lead_id == reference.target_id ||
+        ( lead.target_id == reference.target_id && lead.omt == reference.target_omt ) ) {
+        return reference.target_lead_revision;
+    }
+    return 1;
+}
+
+static int camp_lead_reference_revision_floor( const site_record &site,
+        const camp_map_lead &lead )
+{
+    int revision = 1;
+    if( site.active_outing.is_active() ) {
+        revision = std::max( revision, compatible_reference_revision( lead,
+                             site.active_outing ) );
+    }
+    if( site.active_hostile_operation.is_active() ) {
+        revision = std::max( revision, compatible_reference_revision( lead,
+                             site.active_hostile_operation.reservation ) );
+    }
+    if( site.current_scout_report.is_present() ) {
+        revision = std::max( revision, compatible_reference_revision( lead,
+                             site.current_scout_report ) );
+    }
+    if( site.camp_decision.has_pinned_report() ) {
+        revision = std::max( revision, compatible_reference_revision( lead,
+                             site.camp_decision ) );
+    }
+    return revision;
+}
+
+template<typename Reference>
+static void resolve_camp_lead_reference( Reference &reference,
+        const std::vector<camp_map_lead> &leads )
+{
+    const camp_map_lead *resolved = nullptr;
+    if( !reference.target_lead_id.empty() ) {
+        const auto exact = std::find_if( leads.begin(), leads.end(), [&reference](
+        const camp_map_lead & lead ) {
+            return lead.lead_id == reference.target_lead_id;
+        } );
+        if( exact != leads.end() ) {
+            resolved = &*exact;
+        }
+    }
+    if( resolved == nullptr && !reference.target_id.empty() ) {
+        const auto exact_legacy = std::find_if( leads.begin(), leads.end(), [&reference](
+        const camp_map_lead & lead ) {
+            return lead.lead_id == reference.target_id;
+        } );
+        if( exact_legacy != leads.end() ) {
+            resolved = &*exact_legacy;
+        } else {
+            for( const camp_map_lead &lead : leads ) {
+                if( lead.target_id != reference.target_id || lead.omt != reference.target_omt ) {
+                    continue;
+                }
+                if( resolved != nullptr ) {
+                    return;
+                }
+                resolved = &lead;
+            }
+        }
+    }
+    if( resolved != nullptr ) {
+        reference.target_lead_id = resolved->lead_id;
+        reference.target_lead_revision = resolved->revision;
+    }
+}
+
+void normalize_camp_intelligence( site_record &site )
+{
+    bound_target_lead_reference( site.active_outing );
+    bound_target_lead_reference( site.active_hostile_operation.reservation );
+    bound_target_lead_reference( site.current_scout_report );
+    bound_target_lead_reference( site.camp_decision );
+    site.remembered_target_or_mark.resize( std::min( site.remembered_target_or_mark.size(),
+                                           max_camp_lead_target_id_length ) );
+
+    std::vector<camp_map_lead> candidates = std::move( site.intelligence_map.leads );
+    for( camp_map_lead &lead : candidates ) {
+        bound_camp_map_lead_strings( lead );
+        if( lead.lead_id.empty() ) {
+            lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
+            bound_camp_map_lead_strings( lead );
+        }
+        lead.revision = std::max( { 1, lead.revision,
+                                   camp_lead_reference_revision_floor( site, lead ) } );
+    }
+    std::sort( candidates.begin(), candidates.end(), [&site]( const camp_map_lead &lhs,
+    const camp_map_lead &rhs ) {
+        if( lhs.lead_id != rhs.lead_id ) {
+            return lhs.lead_id < rhs.lead_id;
+        }
+        return camp_lead_is_better_retention( site, lhs, rhs );
+    } );
+
+    std::vector<camp_map_lead> normalized;
+    normalized.reserve( std::min( candidates.size(), max_camp_intelligence_leads ) );
+    for( camp_map_lead &lead : candidates ) {
+        if( !normalized.empty() && normalized.back().lead_id == lead.lead_id ) {
+            continue;
+        }
+        normalized.push_back( std::move( lead ) );
+    }
+    site.intelligence_map.leads = std::move( normalized );
+
+    resolve_camp_lead_reference( site.active_outing, site.intelligence_map.leads );
+    resolve_camp_lead_reference( site.active_hostile_operation.reservation,
+                                 site.intelligence_map.leads );
+    resolve_camp_lead_reference( site.current_scout_report, site.intelligence_map.leads );
+    resolve_camp_lead_reference( site.camp_decision, site.intelligence_map.leads );
+
+    std::sort( site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
+    [&site]( const camp_map_lead &lhs, const camp_map_lead &rhs ) {
+        return camp_lead_is_better_retention( site, lhs, rhs );
+    } );
+    if( site.intelligence_map.leads.size() > max_camp_intelligence_leads ) {
+        site.intelligence_map.leads.resize( max_camp_intelligence_leads );
+    }
+    std::sort( site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
+    []( const camp_map_lead &lhs, const camp_map_lead &rhs ) {
+        return lhs.lead_id < rhs.lead_id;
+    } );
+    site.intelligence_map.schema_version = 2;
+
+    for( std::string &mark : site.known_recent_marks ) {
+        mark.resize( std::min( mark.size(), max_live_signal_mark_length ) );
+    }
+    if( site.known_recent_marks.size() > max_live_signal_marks ) {
+        site.known_recent_marks.erase( site.known_recent_marks.begin(),
+                                      site.known_recent_marks.end() - max_live_signal_marks );
+    }
 }
 
 void sortie_observation::serialize( JsonOut &json ) const
@@ -2119,6 +2574,7 @@ void scout_report_record::serialize( JsonOut &json ) const
     json.member( "source_job_type", source_job_type );
     json.member( "target_id", target_id );
     json.member( "target_omt", target_omt );
+    json.member( "target_lead_id", target_lead_id );
     json.member( "target_lead_revision", std::max( 0, target_lead_revision ) );
     json.member( "application_key", application_key );
     json.member( "observations", make_bounded_sortie_observations( observations ) );
@@ -2144,6 +2600,7 @@ void scout_report_record::deserialize( const JsonObject &jo )
     jo.read( "source_job_type", candidate.source_job_type );
     jo.read( "target_id", candidate.target_id );
     jo.read( "target_omt", candidate.target_omt );
+    jo.read( "target_lead_id", candidate.target_lead_id );
     jo.read( "target_lead_revision", candidate.target_lead_revision );
     jo.read( "application_key", candidate.application_key );
     jo.read( "observations", candidate.observations );
@@ -2200,6 +2657,7 @@ void camp_decision_record::serialize( JsonOut &json ) const
     json.member( "source_report_application_key", source_report_application_key );
     json.member( "target_id", target_id );
     json.member( "target_omt", target_omt );
+    json.member( "target_lead_id", target_lead_id );
     json.member( "target_lead_revision", std::max( 0, target_lead_revision ) );
     json.member( "last_transition_minutes", std::max( -1, last_transition_minutes ) );
     json.member( "next_eligible_minutes", std::max( -1, next_eligible_minutes ) );
@@ -2224,6 +2682,7 @@ void camp_decision_record::deserialize( const JsonObject &jo )
     jo.read( "source_report_application_key", candidate.source_report_application_key );
     jo.read( "target_id", candidate.target_id );
     jo.read( "target_omt", candidate.target_omt );
+    jo.read( "target_lead_id", candidate.target_lead_id );
     jo.read( "target_lead_revision", candidate.target_lead_revision );
     jo.read( "last_transition_minutes", candidate.last_transition_minutes );
     jo.read( "next_eligible_minutes", candidate.next_eligible_minutes );
@@ -2280,6 +2739,7 @@ void active_outing_state::serialize( JsonOut &json ) const
     json.member( "target_id", target_id );
     json.member( "target_omt", target_omt );
     json.member( "job_type", job_type );
+    json.member( "target_lead_id", target_lead_id );
     json.member( "target_lead_revision", std::max( 0, target_lead_revision ) );
     json.member( "phase", to_string( phase ) );
     json.member( "observations", make_bounded_sortie_observations( observations ) );
@@ -2342,6 +2802,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
     jo.read( "target_id", candidate.target_id );
     jo.read( "target_omt", candidate.target_omt );
     jo.read( "job_type", candidate.job_type );
+    jo.read( "target_lead_id", candidate.target_lead_id );
     jo.read( "target_lead_revision", candidate.target_lead_revision );
     candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
     const bool phase_was_present = jo.has_member( "phase" );
@@ -2496,8 +2957,10 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
 
 void site_record::serialize( JsonOut &json ) const
 {
+    site_record bounded = *this;
+    normalize_camp_intelligence( bounded );
     json.start_object();
-    json.member( "schema_version", schema_version );
+    json.member( "schema_version", 7 );
     json.member( "site_id", site_id );
     json.member( "source_kind", to_string( source_kind ) );
     json.member( "site_kind", to_string( site_kind ) );
@@ -2517,19 +2980,19 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "applied_report_generation", applied_report_generation );
     json.member( "applied_cargo_generation", applied_cargo_generation );
     json.member( "last_cargo_application_key", last_cargo_application_key );
-    json.member( "current_scout_report", current_scout_report );
-    json.member( "camp_decision", camp_decision );
+    json.member( "current_scout_report", bounded.current_scout_report );
+    json.member( "camp_decision", bounded.camp_decision );
     json.member( "returned_cargo_stock", returned_cargo_stock );
-    json.member( "active_outing", active_outing );
-    json.member( "active_hostile_operation", active_hostile_operation );
+    json.member( "active_outing", bounded.active_outing );
+    json.member( "active_hostile_operation", bounded.active_hostile_operation );
     json.member( "remembered_target_or_mark", remembered_target_or_mark );
     json.member( "remembered_threat_estimate", remembered_threat_estimate );
     json.member( "remembered_bounty_estimate", remembered_bounty_estimate );
     json.member( "remembered_retreat_bias", remembered_retreat_bias );
     json.member( "remembered_return_clock", remembered_return_clock );
     json.member( "remembered_pressure", bandit_pursuit_handoff::to_string( remembered_pressure ) );
-    json.member( "known_recent_marks", known_recent_marks );
-    json.member( "intelligence_map", intelligence_map );
+    json.member( "known_recent_marks", bounded.known_recent_marks );
+    json.member( "intelligence_map", bounded.intelligence_map );
     json.member( "last_shakedown_outcome", last_shakedown_outcome );
     json.member( "shakedown_last_demanded_value", shakedown_last_demanded_value );
     json.member( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
@@ -3036,6 +3499,9 @@ void site_record::deserialize( const JsonObject &jo )
             current_scout_report.source_job_type == active_outing.job_type &&
             current_scout_report.target_id == active_outing.target_id &&
             current_scout_report.target_omt == active_outing.target_omt &&
+            ( current_scout_report.target_lead_id.empty() ||
+              active_outing.target_lead_id.empty() ||
+              current_scout_report.target_lead_id == active_outing.target_lead_id ) &&
             current_scout_report.target_lead_revision == active_outing.target_lead_revision &&
             current_scout_report.application_key == provisional_report_application_key( *this ) &&
             returned_member_count > 0;
@@ -3056,6 +3522,7 @@ void site_record::deserialize( const JsonObject &jo )
         camp_decision.source_report_application_key = current_scout_report.application_key;
         camp_decision.target_id = current_scout_report.target_id;
         camp_decision.target_omt = current_scout_report.target_omt;
+        camp_decision.target_lead_id = current_scout_report.target_lead_id;
         camp_decision.target_lead_revision = current_scout_report.target_lead_revision;
         camp_decision.last_transition_minutes = std::max(
                     camp_decision.last_transition_minutes,
@@ -3093,7 +3560,8 @@ void site_record::deserialize( const JsonObject &jo )
             supply_member_minute_remainder = 0;
         }
     }
-    schema_version = 6;
+    normalize_camp_intelligence( *this );
+    schema_version = 7;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -4114,7 +4582,9 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         const int score = std::max( 0, lead.confidence ) + std::max( 0, lead.bounty ) -
                           std::max( 0, lead.threat );
         if( best_lead == nullptr || distance < best_distance ||
-            ( distance == best_distance && score > best_score ) ) {
+            ( distance == best_distance && score > best_score ) ||
+            ( distance == best_distance && score == best_score &&
+              lead.lead_id < best_lead->lead_id ) ) {
             best_lead = &lead;
             best_distance = distance;
             best_score = score;
@@ -4259,11 +4729,8 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
         lead.first_seen_minutes = existing->first_seen_minutes;
         lead.times_checked_empty = existing->times_checked_empty;
         lead.times_harvested = existing->times_harvested;
-        *existing = lead;
-        return true;
     }
-    site.intelligence_map.leads.push_back( lead );
-    return true;
+    return upsert_camp_map_lead( site, std::move( lead ) );
 }
 
 bool record_camp_resource_estimate( site_record &site, const std::string &lead_id,
@@ -4276,6 +4743,7 @@ bool record_camp_resource_estimate( site_record &site, const std::string &lead_i
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
     if( lead == nullptr || lead->kind != camp_lead_kind::structural_bounty ||
+        lead->revision >= std::numeric_limits<int>::max() ||
         observed_minutes <= lead->last_checked_minutes ||
         ( lead->status == camp_lead_status::harvested && estimated_units > 0 ) ) {
         return false;
@@ -4292,7 +4760,7 @@ bool record_camp_resource_estimate( site_record &site, const std::string &lead_i
     } else {
         lead->last_outcome = "physical_resource_estimate_updated";
     }
-    return true;
+    return advance_camp_map_lead_revision( site, *lead );
 }
 
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
@@ -4459,6 +4927,7 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     structural_outing_plan plan;
     plan.site_id = site.site_id;
     plan.lead_id = lead.lead_id;
+    plan.lead_revision = lead.revision;
     plan.target_omt = lead.omt;
     plan.known_threat = structural_known_threat_for_interest( lead );
     plan.effective_interest = structural_effective_interest( lead, plan.known_threat );
@@ -4552,7 +5021,8 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         const int now_minutes )
 {
-    if( !plan.valid || plan.site_id != site.site_id || plan.lead_id.empty() || plan.member_ids.empty() ||
+    if( !plan.valid || plan.site_id != site.site_id || plan.lead_id.empty() ||
+        plan.lead_revision <= 0 || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ) {
         return false;
     }
@@ -4560,7 +5030,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         return false;
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
-    if( lead == nullptr || lead->kind != camp_lead_kind::structural_bounty || lead->bounty <= 0 ||
+    if( lead == nullptr || lead->revision != plan.lead_revision ||
+        lead->revision >= std::numeric_limits<int>::max() ||
+        lead->kind != camp_lead_kind::structural_bounty || lead->bounty <= 0 ||
         lead->status == camp_lead_status::active || lead->status == camp_lead_status::harvested ||
         lead->status == camp_lead_status::dangerous ||
         lead->status == camp_lead_status::invalidated ||
@@ -4608,6 +5080,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     site.active_outing.last_advanced_minutes = now_minutes;
     site.active_outing.target_id = plan.lead_id;
     site.active_outing.target_omt = plan.target_omt;
+    site.active_outing.target_lead_id = plan.lead_id;
+    site.active_outing.target_lead_revision = plan.lead_revision;
     site.active_outing.job_type = bandit_dry_run::to_string( plan.job );
     site.active_outing.started_minutes = now_minutes;
     site.active_outing.local_contact_minutes = -1;
@@ -4620,6 +5094,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             std::to_string( site.active_outing.generation );
     lead->status = camp_lead_status::active;
     lead->last_outcome = "structural_outing_active";
+    advance_camp_map_lead_revision( site, *lead );
     return true;
 }
 
@@ -4654,6 +5129,13 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             result.notes.push_back( "structural outing cleared: active target lead was missing" );
             continue;
         }
+        if( lead->revision >= std::numeric_limits<int>::max() ) {
+            clear_structural_active_group( site,
+                                           "structural outing cleared immutable terminal lead revision" );
+            result.notes.push_back(
+                "structural outing cleared: target lead revision cannot advance safely" );
+            continue;
+        }
         if( site.active_outing.started_minutes < 0 ) {
             site.active_outing.started_minutes = now_minutes;
             site.active_outing.last_progress_minutes = now_minutes;
@@ -4683,6 +5165,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 const int returned = static_cast<int>( site.active_outing.member_ids.size() );
                 lead->status = lead->threat > 0 ? camp_lead_status::dangerous : camp_lead_status::stale;
                 lead->last_outcome = "threat_revealed_lost_interest";
+                advance_camp_map_lead_revision( site, *lead );
                 clear_structural_active_group( site,
                                                "structural outing turned back before arrival after threat reveal" );
                 result.lost_interest_returns++;
@@ -4695,6 +5178,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
 
             lead->status = camp_lead_status::scout_confirmed;
             lead->last_outcome = "threat_revealed_interest_survives";
+            advance_camp_map_lead_revision( site, *lead );
             result.notes.push_back( "structural outing stalking check kept arrival open lead=" +
                                     lead->lead_id + " effective_interest=" +
                                     std::to_string( effective_interest ) );
@@ -4709,6 +5193,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             lead->times_harvested++;
             lead->last_checked_minutes = now_minutes;
             lead->last_outcome = "harvested_structural_bounty";
+            advance_camp_map_lead_revision( site, *lead );
             clear_structural_active_group( site,
                                            "structural outing arrived and harvested structural bounty" );
             result.arrivals_processed++;
@@ -4837,6 +5322,8 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
     plan.site_id = site.site_id;
     plan.profile = rules.profile;
     plan.target_id = lead.target_id.empty() ? lead.lead_id : lead.target_id;
+    plan.target_lead_id = lead.lead_id;
+    plan.target_lead_revision = lead.revision;
     const tripoint_abs_omt original_target_omt = lead.omt;
     plan.target_omt = reachable_ground_dispatch_target( site, original_target_omt );
 
@@ -4921,6 +5408,11 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     plan.target_id = target_id;
     const tripoint_abs_omt original_target_omt = target_omt;
     plan.target_omt = reachable_ground_dispatch_target( site, original_target_omt );
+    if( const camp_map_lead *remembered_lead = find_camp_map_dispatch_lead_for_target(
+            site, target_omt, target_id ) ) {
+        plan.target_lead_id = remembered_lead->lead_id;
+        plan.target_lead_revision = remembered_lead->revision;
+    }
 
     if( target_id.empty() ) {
         plan.notes.push_back( "dispatch blocked: missing target id" );
@@ -5069,6 +5561,7 @@ hostile_operation_plan plan_hostile_operation( const site_record &site,
     reservation.target_id = site.camp_decision.target_id;
     reservation.target_omt = site.camp_decision.target_omt;
     reservation.job_type = operation_kind == hostile_operation_kind::raid ? "raid" : "toll";
+    reservation.target_lead_id = site.camp_decision.target_lead_id;
     reservation.target_lead_revision = site.camp_decision.target_lead_revision;
     reservation.phase = scout_phase::assembling;
     reservation.started_minutes = current_minutes;
@@ -5118,6 +5611,7 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
         reservation.shared_route.back() != site.camp_decision.target_omt ||
         !rally_is_on_route || reservation.target_id != site.camp_decision.target_id ||
         reservation.target_omt != site.camp_decision.target_omt ||
+        reservation.target_lead_id != site.camp_decision.target_lead_id ||
         reservation.target_lead_revision != site.camp_decision.target_lead_revision ||
         !hostile_operation_job_matches( operation.operation_kind, reservation.job_type ) ||
         reservation.started_minutes < site.camp_decision.last_transition_minutes ||
@@ -5171,7 +5665,14 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
         bandit_live_world_probe::section::live_dispatch_apply );
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::live_dispatch_applies );
-    if( !plan.valid || plan.entry.job_type != bandit_dry_run::job_template::scout ||
+    const camp_map_lead *referenced_lead = plan.target_lead_id.empty() ? nullptr :
+            site.intelligence_map.find_lead( plan.target_lead_id );
+    const bool referenced_lead_is_current = plan.target_lead_id.empty() ?
+                                            plan.target_lead_revision == 0 :
+                                            referenced_lead != nullptr &&
+                                            referenced_lead->revision == plan.target_lead_revision;
+    if( !plan.valid || !referenced_lead_is_current ||
+        plan.entry.job_type != bandit_dry_run::job_template::scout ||
         plan.site_id != site.site_id || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
         !camp_decision_allows_dispatch( site.camp_decision, plan.entry.job_type ) ||
@@ -5222,6 +5723,8 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     site.next_outing_generation++;
     site.active_outing.target_id = plan.target_id;
     site.active_outing.target_omt = plan.target_omt;
+    site.active_outing.target_lead_id = plan.target_lead_id;
+    site.active_outing.target_lead_revision = plan.target_lead_revision;
     site.active_outing.job_type = bandit_dry_run::to_string( plan.entry.job_type );
     site.active_outing.started_minutes = -1;
     site.active_outing.local_contact_minutes = -1;
@@ -5981,9 +6484,10 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     if( site.retired_empty_site || mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
         return false;
     }
+    const std::string mark_id = mark.mark_id.substr( 0, max_live_signal_mark_length );
 
-    bool changed = site.remembered_target_or_mark != mark.mark_id;
-    site.remembered_target_or_mark = mark.mark_id;
+    bool changed = site.remembered_target_or_mark != mark_id;
+    site.remembered_target_or_mark = mark_id;
     const int old_bounty = site.remembered_bounty_estimate;
     const int old_threat = site.remembered_threat_estimate;
     site.remembered_bounty_estimate = std::max( site.remembered_bounty_estimate, mark.bounty_add );
@@ -5991,23 +6495,22 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     changed |= site.remembered_bounty_estimate != old_bounty;
     changed |= site.remembered_threat_estimate != old_threat;
 
-    if( std::find( site.known_recent_marks.begin(), site.known_recent_marks.end(), mark.mark_id ) ==
+    if( std::find( site.known_recent_marks.begin(), site.known_recent_marks.end(), mark_id ) ==
         site.known_recent_marks.end() ) {
-        static constexpr size_t max_live_signal_marks = 8;
         if( site.known_recent_marks.size() >= max_live_signal_marks ) {
             site.known_recent_marks.erase( site.known_recent_marks.begin() );
         }
-        site.known_recent_marks.push_back( mark.mark_id );
+        site.known_recent_marks.push_back( mark_id );
         changed = true;
     }
 
     camp_map_lead lead;
     lead.kind = signal_kind_to_camp_lead_kind( mark.kind );
     lead.status = camp_lead_status::suspected;
-    lead.target_id = mark.mark_id;
+    lead.target_id = mark_id;
     lead.omt = mark.source_omt;
     lead.radius_omt = mark.range_cap_omt;
-    lead.source_key = mark.mark_id;
+    lead.source_key = mark_id;
     lead.source_summary = "live " + mark.kind + " signal mark";
     if( mark.kind == "smoke" ) {
         lead.source_summary += " (obscured/uncertain lead)";
@@ -6025,7 +6528,7 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
                old_lead->threat != lead.threat || old_lead->confidence != lead.confidence ||
                old_lead->radius_omt != lead.radius_omt ||
                old_lead->source_summary != lead.source_summary;
-    upsert_camp_map_lead( site.intelligence_map, lead );
+    upsert_camp_map_lead( site, std::move( lead ) );
 
     return changed;
 }
@@ -6234,6 +6737,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         report.source_job_type = site.active_outing.job_type;
         report.target_id = site.active_outing.target_id;
         report.target_omt = site.active_outing.target_omt;
+        report.target_lead_id = site.active_outing.target_lead_id;
         report.target_lead_revision = site.active_outing.target_lead_revision;
         report.application_key = site.active_outing.report_application_key;
         report.observations = make_bounded_sortie_observations( site.active_outing.observations );
@@ -6459,6 +6963,7 @@ scout_resolution_effect apply_active_scout_observations( site_record &site,
         report.source_job_type = candidate.active_outing.job_type;
         report.target_id = candidate.active_outing.target_id;
         report.target_omt = candidate.active_outing.target_omt;
+        report.target_lead_id = candidate.active_outing.target_lead_id;
         report.target_lead_revision = candidate.active_outing.target_lead_revision;
         report.application_key = provisional_report_application_key( candidate );
         report.observations = make_bounded_sortie_observations(

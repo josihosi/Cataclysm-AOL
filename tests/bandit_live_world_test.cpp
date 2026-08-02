@@ -1,6 +1,7 @@
 #include "bandit_live_world.h"
 
 #include <algorithm>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -96,6 +97,23 @@ std::string serialize_world( const bandit_live_world::world_state &world )
     JsonOut jsout( out, true );
     world.serialize( jsout );
     return out.str();
+}
+
+bandit_live_world::camp_map_lead make_retention_test_lead( const int index )
+{
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "retention-lead-" + std::to_string( index );
+    lead.revision = 1;
+    lead.kind = bandit_live_world::camp_lead_kind::structural_bounty;
+    lead.status = bandit_live_world::camp_lead_status::suspected;
+    lead.target_id = "retention-target-" + std::to_string( index );
+    lead.omt = tripoint_abs_omt( 100 + index, 200 + index, 0 );
+    lead.first_seen_minutes = index;
+    lead.last_seen_minutes = index;
+    lead.bounty = 1;
+    lead.confidence = 1;
+    lead.source_summary = "retention fixture " + std::to_string( index );
+    return lead;
 }
 
 void set_test_active_outing( bandit_live_world::site_record &site, const std::string &activity_id,
@@ -391,7 +409,9 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
     CHECK( site.intelligence_map.leads.front().source_summary.find( "obscured/uncertain" ) !=
            std::string::npos );
 
+    const std::string before_duplicate_signal = serialize_world( world );
     CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    CHECK( serialize_world( world ) == before_duplicate_signal );
     CHECK( site.known_recent_marks.size() == 1 );
 
     for( int i = 0; i < 9; ++i ) {
@@ -684,7 +704,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
                                 R"({"schema_version":5,"site_id":"legacy-supply","headcount":6})" );
     bandit_live_world::site_record legacy;
     legacy.deserialize( legacy_json.get_object() );
-    CHECK( legacy.schema_version == 6 );
+    CHECK( legacy.schema_version == 7 );
     CHECK( legacy.supply_units == 42 );
     CHECK( legacy.supply_accounted_living_total == 6 );
     CHECK( legacy.supply_member_minute_remainder == 0 );
@@ -694,7 +714,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
     migrated_world.sites.push_back( legacy );
     const bandit_live_world::world_state migrated_round_trip = round_trip_world( migrated_world );
     REQUIRE( migrated_round_trip.sites.size() == 1 );
-    CHECK( migrated_round_trip.sites.front().schema_version == 6 );
+    CHECK( migrated_round_trip.sites.front().schema_version == 7 );
     CHECK( migrated_round_trip.sites.front().supply_units == 42 );
 
     JsonValue incomplete_current_json = json_loader::from_string(
@@ -858,6 +878,202 @@ TEST_CASE( "bandit_live_world_resource_estimates_remain_private_camp_knowledge",
     CHECK( loaded.sites[1].intelligence_map.find_lead( camp_b_lead_id )->bounty == 3 );
 }
 
+TEST_CASE( "bandit_live_world_normalizes_intelligence_deterministically_and_pins_active_leads",
+           "[bandit][live_world][intelligence][capacity]" )
+{
+    bandit_live_world::site_record forward;
+    forward.site_id = "retention-camp";
+    bandit_live_world::site_record reverse = forward;
+    for( int index = 0; index < 70; ++index ) {
+        forward.intelligence_map.leads.push_back( make_retention_test_lead( index ) );
+    }
+    for( int index = 69; index >= 0; --index ) {
+        reverse.intelligence_map.leads.push_back( make_retention_test_lead( index ) );
+    }
+
+    bandit_live_world::normalize_camp_intelligence( forward );
+    bandit_live_world::normalize_camp_intelligence( reverse );
+    REQUIRE( forward.intelligence_map.leads.size() == 64 );
+    REQUIRE( reverse.intelligence_map.leads.size() == 64 );
+    bandit_live_world::world_state forward_world;
+    forward_world.sites.push_back( forward );
+    bandit_live_world::world_state reverse_world;
+    reverse_world.sites.push_back( reverse );
+    CHECK( serialize_world( forward_world ) == serialize_world( reverse_world ) );
+    CHECK( forward.intelligence_map.find_lead( "retention-lead-0" ) == nullptr );
+    CHECK( forward.intelligence_map.find_lead( "retention-lead-69" ) != nullptr );
+
+    bandit_live_world::site_record duplicate_site;
+    duplicate_site.site_id = "duplicate-camp";
+    bandit_live_world::camp_map_lead older = make_retention_test_lead( 80 );
+    older.lead_id = "duplicate-lead";
+    older.revision = 2;
+    older.last_seen_minutes = 10;
+    older.source_summary = "older duplicate";
+    bandit_live_world::camp_map_lead newer = older;
+    newer.revision = 3;
+    newer.last_seen_minutes = 20;
+    newer.source_summary = "newer duplicate";
+    duplicate_site.intelligence_map.leads = { older, newer };
+    bandit_live_world::normalize_camp_intelligence( duplicate_site );
+    REQUIRE( duplicate_site.intelligence_map.leads.size() == 1 );
+    CHECK( duplicate_site.intelligence_map.leads.front().revision == 3 );
+    CHECK( duplicate_site.intelligence_map.leads.front().source_summary == "newer duplicate" );
+
+    bandit_live_world::site_record delimiter_forward;
+    delimiter_forward.site_id = "delimiter-camp";
+    bandit_live_world::camp_map_lead delimiter_a = make_retention_test_lead( 81 );
+    delimiter_a.lead_id = "delimiter-duplicate";
+    delimiter_a.source_key = "a|b";
+    delimiter_a.source_summary = "c";
+    bandit_live_world::camp_map_lead delimiter_b = delimiter_a;
+    delimiter_b.source_key = "a";
+    delimiter_b.source_summary = "b|c";
+    delimiter_forward.intelligence_map.leads = { delimiter_a, delimiter_b };
+    bandit_live_world::site_record delimiter_reverse = delimiter_forward;
+    std::reverse( delimiter_reverse.intelligence_map.leads.begin(),
+                  delimiter_reverse.intelligence_map.leads.end() );
+    bandit_live_world::normalize_camp_intelligence( delimiter_forward );
+    bandit_live_world::normalize_camp_intelligence( delimiter_reverse );
+    bandit_live_world::world_state delimiter_forward_world;
+    delimiter_forward_world.sites.push_back( delimiter_forward );
+    bandit_live_world::world_state delimiter_reverse_world;
+    delimiter_reverse_world.sites.push_back( delimiter_reverse );
+    CHECK( serialize_world( delimiter_forward_world ) ==
+           serialize_world( delimiter_reverse_world ) );
+
+    bandit_live_world::site_record pinned_site;
+    pinned_site.site_id = "pinned-camp";
+    for( int index = 0; index < 65; ++index ) {
+        pinned_site.intelligence_map.leads.push_back( make_retention_test_lead( index ) );
+    }
+    const bandit_live_world::camp_map_lead pinned = pinned_site.intelligence_map.leads.front();
+    set_test_active_outing( pinned_site, "pinned-camp#scout:1" );
+    pinned_site.active_outing.target_id = pinned.target_id;
+    pinned_site.active_outing.target_omt = pinned.omt;
+    pinned_site.active_outing.target_lead_id = pinned.lead_id;
+    pinned_site.active_outing.target_lead_revision = pinned.revision;
+    bandit_live_world::normalize_camp_intelligence( pinned_site );
+    REQUIRE( pinned_site.intelligence_map.leads.size() == 64 );
+    CHECK( pinned_site.intelligence_map.find_lead( pinned.lead_id ) != nullptr );
+    CHECK( pinned_site.intelligence_map.find_lead( "retention-lead-1" ) == nullptr );
+
+    bandit_live_world::site_record legacy_revision_site;
+    legacy_revision_site.site_id = "legacy-revision-camp";
+    legacy_revision_site.intelligence_map.leads.push_back( make_retention_test_lead( 90 ) );
+    const bandit_live_world::camp_map_lead legacy_lead =
+        legacy_revision_site.intelligence_map.leads.front();
+    set_test_active_outing( legacy_revision_site, "legacy-revision-camp#scout:7" );
+    legacy_revision_site.active_outing.target_id = legacy_lead.target_id;
+    legacy_revision_site.active_outing.target_omt = legacy_lead.omt;
+    legacy_revision_site.active_outing.target_lead_revision = 7;
+    bandit_live_world::normalize_camp_intelligence( legacy_revision_site );
+    REQUIRE( legacy_revision_site.intelligence_map.find_lead( legacy_lead.lead_id ) != nullptr );
+    CHECK( legacy_revision_site.intelligence_map.find_lead( legacy_lead.lead_id )->revision == 7 );
+    CHECK( legacy_revision_site.active_outing.target_lead_id == legacy_lead.lead_id );
+    CHECK( legacy_revision_site.active_outing.target_lead_revision == 7 );
+
+    bandit_live_world::site_record bounded_strings_site;
+    bounded_strings_site.site_id = "bounded-strings-camp";
+    bandit_live_world::camp_map_lead oversized = make_retention_test_lead( 91 );
+    oversized.lead_id = std::string( 4096, 'i' );
+    oversized.target_id = std::string( 4096, 't' );
+    oversized.source_key = std::string( 4096, 'k' );
+    oversized.source_summary = std::string( 4096, 's' );
+    oversized.last_outcome = std::string( 4096, 'o' );
+    bounded_strings_site.intelligence_map.leads.push_back( oversized );
+    bounded_strings_site.known_recent_marks.push_back( std::string( 4096, 'm' ) );
+    bandit_live_world::normalize_camp_intelligence( bounded_strings_site );
+    REQUIRE( bounded_strings_site.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead &bounded =
+        bounded_strings_site.intelligence_map.leads.front();
+    CHECK( bounded.lead_id.size() == 192 );
+    CHECK( bounded.target_id.size() == 192 );
+    CHECK( bounded.source_key.size() == 192 );
+    CHECK( bounded.source_summary.size() == 256 );
+    CHECK( bounded.last_outcome.size() == 128 );
+    REQUIRE( bounded_strings_site.known_recent_marks.size() == 1 );
+    CHECK( bounded_strings_site.known_recent_marks.front().size() == 192 );
+}
+
+TEST_CASE( "bandit_live_world_rejects_a_structural_plan_after_its_lead_revision_changes",
+           "[bandit][live_world][intelligence][revision]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 48100 );
+    add_bandit_camp_member( world, 1, 48100 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::structural_bounty_read read;
+    read.terrain_class = "town";
+    read.bounty = 3;
+    read.confidence = 1;
+    read.eligible = true;
+    read.summary = "revision fixture";
+    const tripoint_abs_omt omt( 15, 20, 0 );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, omt, read, 100 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                    site.site_id, omt, read.terrain_class );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    const bandit_live_world::structural_outing_plan stale_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 1000 );
+    REQUIRE( stale_plan.valid );
+    CHECK( stale_plan.lead_revision == lead->revision );
+    REQUIRE( bandit_live_world::record_camp_resource_estimate( site, lead_id, 2, 2, 500 ) );
+    REQUIRE( site.intelligence_map.find_lead( lead_id ) != nullptr );
+    CHECK( site.intelligence_map.find_lead( lead_id )->revision > stale_plan.lead_revision );
+    const std::string before = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::apply_structural_bounty_outing_plan( site, stale_plan, 1000 ) );
+    CHECK( serialize_world( world ) == before );
+
+    bandit_live_world::camp_map_lead *terminal = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( terminal != nullptr );
+    terminal->revision = std::numeric_limits<int>::max();
+    const std::string before_terminal_update = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_camp_resource_estimate( site, lead_id, 1, 3, 600 ) );
+    CHECK( serialize_world( world ) == before_terminal_update );
+}
+
+TEST_CASE( "bandit_live_world_load_caps_intelligence_and_preserves_current_references",
+           "[bandit][live_world][intelligence][capacity][save]" )
+{
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record site;
+    site.site_id = "oversized-intelligence-camp";
+    for( int index = 0; index < 70; ++index ) {
+        site.intelligence_map.leads.push_back( make_retention_test_lead( index ) );
+    }
+    for( int index = 0; index < 10; ++index ) {
+        site.known_recent_marks.push_back( "recent-mark-" + std::to_string( index ) );
+    }
+    const bandit_live_world::camp_map_lead &pinned = site.intelligence_map.leads.front();
+    site.current_scout_report.revision = 1;
+    site.current_scout_report.source_activity_id = site.site_id + "#scout:1";
+    site.current_scout_report.source_generation = 1;
+    site.current_scout_report.source_job_type = "scout";
+    site.current_scout_report.target_id = pinned.target_id;
+    site.current_scout_report.target_omt = pinned.omt;
+    site.current_scout_report.target_lead_id = pinned.lead_id;
+    site.current_scout_report.target_lead_revision = pinned.revision;
+    site.current_scout_report.application_key = site.current_scout_report.source_activity_id +
+            ":report:1";
+    site.current_scout_report.delivered_minutes = 100;
+    world.sites.push_back( site );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 1 );
+    const bandit_live_world::site_record &loaded_site = loaded.sites.front();
+    REQUIRE( loaded_site.intelligence_map.leads.size() == 64 );
+    CHECK( loaded_site.intelligence_map.schema_version == 2 );
+    CHECK( loaded_site.intelligence_map.find_lead( pinned.lead_id ) != nullptr );
+    REQUIRE( loaded_site.current_scout_report.is_present() );
+    CHECK( loaded_site.current_scout_report.target_lead_id == pinned.lead_id );
+    CHECK( loaded_site.current_scout_report.target_lead_revision == pinned.revision );
+    REQUIRE( loaded_site.known_recent_marks.size() == 8 );
+    CHECK( loaded_site.known_recent_marks.front() == "recent-mark-2" );
+    CHECK( loaded_site.known_recent_marks.back() == "recent-mark-9" );
+}
+
 TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_identity",
            "[bandit][live_world][migration]" )
 {
@@ -874,7 +1090,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 6 );
+        CHECK( site.schema_version == 7 );
         CHECK( site.active_outing.is_active() );
         CHECK( site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie );
         CHECK( site.active_outing.activity_id == "legacy_camp#dispatch" );
@@ -968,7 +1184,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         site.deserialize( transitional.get_object() );
 
         REQUIRE( site.active_outing.is_active() );
-        CHECK( site.schema_version == 6 );
+        CHECK( site.schema_version == 7 );
         CHECK( site.active_outing.schema_version == 4 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
@@ -1180,7 +1396,7 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 6 );
+        CHECK( site.schema_version == 7 );
         CHECK_FALSE( site.active_outing.is_active() );
         REQUIRE( site.active_hostile_operation.is_active() );
         CHECK( site.active_hostile_operation.operation_kind ==
@@ -2005,7 +2221,7 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     const bandit_live_world::world_state loaded = round_trip_world( world );
     REQUIRE( loaded.sites.size() == 1 );
     const bandit_live_world::site_record &loaded_site = loaded.sites.front();
-    CHECK( loaded_site.schema_version == 6 );
+    CHECK( loaded_site.schema_version == 7 );
     CHECK( loaded_site.active_hostile_operation.is_active() );
     CHECK( loaded_site.active_hostile_operation.operation_kind ==
            hostile_operation_kind::shakedown );
@@ -2766,7 +2982,8 @@ TEST_CASE( "bandit_live_world_atomically_rehomes_scout_report_and_cargo_before_c
     CHECK( site.current_scout_report.source_generation == 1 );
     CHECK( site.current_scout_report.target_id == "target-for-return-receipt" );
     CHECK( site.current_scout_report.target_omt == tripoint_abs_omt( 18, 20, 0 ) );
-    CHECK( site.current_scout_report.target_lead_revision == 0 );
+    CHECK_FALSE( site.current_scout_report.target_lead_id.empty() );
+    CHECK( site.current_scout_report.target_lead_revision == 1 );
     REQUIRE( site.current_scout_report.observations.size() == 1 );
     CHECK( site.current_scout_report.observations.front().fact_key == "visual-window-1" );
     CHECK( site.current_scout_report.delivered_minutes == 510 );
@@ -6088,6 +6305,9 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     }
     saturated_site.active_outing.cargo = { 999999, 999999 };
     saturated_site.returned_cargo_stock = { 999999, 999999 };
+    for( int index = 0; index < 64; ++index ) {
+        saturated_site.intelligence_map.leads.push_back( make_retention_test_lead( index ) );
+    }
     const std::size_t saturated_bytes = serialize_world( saturated_world ).size();
 
     CAPTURE( empty_bytes, normal_bytes, saturated_bytes );

@@ -202,6 +202,7 @@ struct spawn_tile_record {
 
 struct camp_map_lead {
     std::string lead_id;
+    int revision = 1;
     camp_lead_kind kind = camp_lead_kind::human_activity;
     camp_lead_status status = camp_lead_status::suspected;
     std::string target_id;
@@ -231,7 +232,7 @@ struct camp_map_lead {
 };
 
 struct camp_intelligence_map {
-    int schema_version = 1;
+    int schema_version = 2;
     int last_daily_cleanup_minutes = -1;
     int next_near_tick_minutes = -1;
     int next_mid_tick_minutes = -1;
@@ -275,6 +276,7 @@ struct scout_report_record {
     std::string source_job_type;
     std::string target_id;
     tripoint_abs_omt target_omt;
+    std::string target_lead_id;
     int target_lead_revision = 0;
     std::string application_key;
     std::vector<sortie_observation> observations;
@@ -297,6 +299,7 @@ struct camp_decision_record {
     std::string source_report_application_key;
     std::string target_id;
     tripoint_abs_omt target_omt;
+    std::string target_lead_id;
     int target_lead_revision = 0;
     int last_transition_minutes = -1;
     int next_eligible_minutes = -1;
@@ -321,6 +324,7 @@ struct active_outing_state {
     std::string target_id;
     tripoint_abs_omt target_omt;
     std::string job_type;
+    std::string target_lead_id;
     int target_lead_revision = 0;
     scout_phase phase = scout_phase::assembling;
     std::vector<sortie_observation> observations;
@@ -402,7 +406,7 @@ struct finite_resource_claim_result {
 };
 
 struct site_record {
-    int schema_version = 6;
+    int schema_version = 7;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -497,6 +501,8 @@ struct dispatch_plan {
     hostile_site_profile profile = hostile_site_profile::none;
     std::string target_id;
     tripoint_abs_omt target_omt;
+    std::string target_lead_id;
+    int target_lead_revision = 0;
     std::vector<character_id> member_ids;
     bandit_dry_run::evaluation_result evaluation;
     bandit_pursuit_handoff::abstract_group_state group;
@@ -556,6 +562,7 @@ struct structural_outing_plan {
     bool valid = false;
     std::string site_id;
     std::string lead_id;
+    int lead_revision = 0;
     tripoint_abs_omt target_omt;
     bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
     std::vector<character_id> member_ids;
@@ -741,6 +748,7 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
 const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &site,
         const tripoint_abs_omt &target_omt,
         const std::string &target_id );
+void normalize_camp_intelligence( site_record &site );
 structural_bounty_read classify_structural_bounty_terrain( const std::string &overmap_terrain_id );
 std::string make_structural_bounty_lead_id( const std::string &site_id,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
