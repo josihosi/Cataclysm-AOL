@@ -375,8 +375,17 @@ still changes no belief, and only a later physical zero estimate marks that camp
 round trip. The test binary is 79,806,184 bytes with SHA-256
 `bd754c017c410066c0ded6b8dc0e3886faaa031afffd648c0af0876e02b9b3c9`.
 
+Reference-aware pruning is green at `ddd1afe480`. Final redirected build
+`build_logs/macos-tests-build-phase1-reference-pruning-final.log` exits `0`; intelligence passes
+3 cases / 48 assertions, full live-world 95 / 4,931, handoff 9 / 203, and overmap-global save
+compatibility 2 / 24. Forward/reverse saturation, duplicate tie-breaks, active/legacy reference
+retention, stale/terminal revisions, identical-signal byte stability, bounded strings/marks, and
+writer/load normalization are covered. Empty/normal/full saturated JSON is 87/5,842/48,070 bytes
+and byte-stable below 64 KiB. Final binary is 79,898,584 bytes at SHA-256
+`f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`.
+
 The active missing evidence is Phase 1:
-- reference-aware pruning, observation compaction, dossier/report policy, and bounded transition owners;
+- observation compaction, dossier/report policy, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 

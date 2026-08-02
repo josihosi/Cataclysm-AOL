@@ -6,17 +6,18 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Enforce ratified caps with deterministic reference-aware pruning.**
+First deterministic execution row: **Compact observations by fact value and define real progress.**
 
-Latest resume packet (behavior checkpoint `1aa9851902`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `ddd1afe480`, 2026-08-02): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at reference-aware pruning. Structural resource knowledge remains in
-each camp's existing persisted bounty/confidence/timestamp fields; a strict physical-estimate update
-changes only that camp, while global claims and other camps remain independent. Its redirected Mac
-build exited `0`; private-knowledge evidence is 1/33, all resource tests are 4/2,090, and full
-live-world is 92/4,881. Test binary SHA-256 is
-`bd754c017c410066c0ded6b8dc0e3886faaa031afffd648c0af0876e02b9b3c9`
-(79,806,184 bytes). No current blocker; next permitted action is deterministic bounded pruning.
+untouched. Phase 1 is active at observation compaction. The completed cap slice preserves exact
+stable lead ID/revision references across scout/report/decision/hostile owners, canonicalizes at
+64 dossiers and eight recent marks, rejects stale plans before mutation, preserves positive legacy
+revisions, and bounds strings/default JSON. Its final redirected Mac build exited `0`; intelligence
+tests pass 3/48, full live-world 95/4,931, handoff 9/203, and save compatibility 2/24. The saturated
+camp is byte-stable at 48,070 bytes. Test binary SHA-256 is
+`f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`
+(79,898,584 bytes). No current blocker; next permitted action is deterministic observation value.
 
 Production target: `port/cdda-master`
 
@@ -439,7 +440,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Define a world-global finite resource record keyed by OMT.
 - [x] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
 - [x] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
-- [ ] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
+- [x] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
 - [ ] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
 - [ ] Version reports and record the last report revision acted upon per target/faction policy.
 - [ ] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
@@ -482,7 +483,9 @@ Evidence:
   `37498066ba` adds schema-v6 bounded member-day supply, O(1) catch-up, roster-cap enforcement,
   exact casualty-time reconciliation, and seven-member-day legacy/new-camp seeding;
   `1aa9851902` makes physical resource-estimate updates camp-private, timestamp/confidence-bearing,
-  stale-safe, and independent from world truth or another camp's belief.
+  stale-safe, and independent from world truth or another camp's belief; `ddd1afe480` adds stable
+  dossier ID/revision ownership, schema-v7 migration, deterministic 64-lead pruning, stale-plan
+  rejection, terminal/no-op revision safety, bounded strings/marks, and compact default-omitting JSON.
 - Tests: latest strict redirected Mac build exit `0`; `[hostile_operation]` 3 cases/243
   assertions, `[bandit][live_world]` 86/2,714, `[bandit][handoff]` 9/202, and 2 overmap-global
   save compatibility cases/16 assertions pass. Exact-source autoreview is clean at 0.99. Binary
@@ -498,6 +501,18 @@ Evidence:
   and 730-day bounded catch-up. Saturated camp/scout JSON remains 29,730 bytes below 64 KiB.
 - Private-estimate tests cover global-claim isolation, cross-camp isolation, stale/invalid byte-level
   no-op, later physical depletion, and round-trip persistence using the existing bounded lead fields.
+- Intelligence tests cover forward/reverse canonical 64-lead saturation, deterministic duplicate
+  resolution including delimiter-shaped strings, oldest active-reference retention, positive legacy
+  revision migration, stale and terminal plan/update rejection, duplicate-signal byte identity,
+  bounded strings/marks, and writer/load normalization. The final redirected build
+  `build_logs/macos-tests-build-phase1-reference-pruning-final.log` exits `0`; focused intelligence
+  passes 3/48, full live-world 95/4,931, handoff 9/203, and overmap save compatibility 2/24.
+  Empty/normal/full saturated JSON is 87/5,842/48,070 bytes and the full form is byte-stable below
+  64 KiB. Test binary is 79,898,584 bytes with SHA-256
+  `f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`.
+  One xhigh AutoReview accepted five concrete defects (legacy revision downgrade, no-op revision
+  churn, terminal revision reuse, delimiter collision, and unbounded strings); all were fixed in the
+  single permitted review/fix pass. Artifacts are under the external Phase-1 reference-pruning root.
 - Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
   malformed reservation release, all scout-phase round trips, partial casualty persistence,
   exact casualty/job agreement, report/cargo receipt before slot close, universal watermark

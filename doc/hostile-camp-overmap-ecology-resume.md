@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: enforce ratified numerical caps with deterministic,
-  reference-aware pruning.
+- First unchecked deterministic execution row: compact/replace observations by fact value and
+  define real progress without polling or duplicate-strength clock refresh.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -155,12 +155,21 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   byte-identically. The redirected build exits `0`; private knowledge passes 1/33, all resource
   tests 4/2,090, and live-world 92/4,881. Binary SHA-256 is
   `bd754c017c410066c0ded6b8dc0e3886faaa031afffd648c0af0876e02b9b3c9`.
+- Reference-pruning checkpoint `ddd1afe480` adds stable dossier IDs/revisions to scout, report,
+  decision, hostile-operation, and structural-plan owners; canonicalizes duplicate/oversized saves
+  to 64 dossiers and eight recent marks; preserves positive legacy revisions; keeps identical
+  evidence byte-stable; and rejects stale or terminal-revision mutations before state changes.
+  Final build `build_logs/macos-tests-build-phase1-reference-pruning-final.log` exits `0`.
+  Intelligence is 3/48, live-world 95/4,931, handoff 9/203, save compatibility 2/24, and the
+  64-dossier/256-route/16-observation saturated state is byte-stable at 48,070 bytes. Binary is
+  79,898,584 bytes, SHA-256
+  `f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume deterministic reference-aware pruning on top of `1aa9851902`. Do not reopen Phase-0
+3. Resume deterministic observation compaction on top of `ddd1afe480`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
 5. Reuse the current `1aa9851902`-source test binary where valid; run one redirected build at a

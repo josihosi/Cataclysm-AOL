@@ -117,8 +117,13 @@ Scout and hostile state changes now require the same serialized activity/generat
 last-advanced cursor. Ambiguous dual owners, stale epochs, duplicate advances, and inconsistent
 save parity fail closed; exact compare-and-swap owner transfers are atomic.
 
-Current execution row: enforce the ratified numerical caps with deterministic, reference-aware
-pruning. Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
+Reference-aware intelligence pruning is checkpointed at `ddd1afe480`: every retained dossier has
+a stable ID/revision, active scout/report/decision/hostile owners carry that exact reference,
+legacy positive revisions migrate without downgrade, identical evidence is revision-stable, stale
+plans reject atomically, and deterministic 64-lead/8-mark/string caps keep the full saturated camp
+at 48,070 bytes. Current execution row: compact/replace observations by fact value and define real
+progress without letting polling or duplicate strength reset `last_progress_at`.
+Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
 Post-close
