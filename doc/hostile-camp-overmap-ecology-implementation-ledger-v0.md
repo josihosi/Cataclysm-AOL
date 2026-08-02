@@ -6,9 +6,8 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Keep the durable scout slot reserved until every member
-resolves while a first survivor may apply only a provisional report/cargo receipt; prove later and
-late return plus replay across save/load.**
+First deterministic execution row: **Enforce the declared scout phase-transition constraints,
+especially one-way burned/exposed withdrawal and no re-entry into observation.**
 
 Production target: `port/cdda-master`
 
@@ -422,7 +421,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 
 - [x] Independently audit the existing serialized schema and migration behavior.
 - [x] Define a durable `scout_sortie` with stable ID, generation, camp ID, selected member IDs, leader, shared route, waypoint, target/resource lead revision, observations, cargo, casualties, timestamps, and idempotency keys.
-- [ ] End a scout sortie only after every member is returned, confirmed dead, or declared missing after its fixed grace. A first-survivor report may update a provisional dossier, but no follow-on operation can reserve the slot until the sortie closes. Do not carry scout member reservations into a later response.
+- [x] End a scout sortie only after every member is returned, confirmed dead, or declared missing after its fixed grace. A first-survivor report may update a provisional dossier, but no follow-on operation can reserve the slot until the sortie closes. Do not carry scout member reservations into a later response.
 - [ ] Define scout phases: assembling, outbound, searching, observing, harvesting, burned-withdrawal, returning-exposed, returning-report, returning-home, and lost. `returning-exposed` is the bounded fallback after coherent burn-origin evacuation when no concealed rally exists; it can only advance toward home and cannot re-enter observation.
 - [ ] Define separate bounded camp decision state: idle, report-awaiting-assessment, preparing-follow-on, and cooldown/abandoned.
 - [ ] Define a new `hostile_operation` for a shakedown or raid with a new operation ID/generation, fresh member reservations, `source_report_revision`, route/rally state, and phases assembling, outbound, rallying, waiting-night, approaching, committed-contact, returning-home, and lost.
@@ -457,18 +456,22 @@ Evidence:
   `4995a3c64e` adds schema-v2 typed outing identity, generation/key/watermark persistence,
   legacy migration/repair, and routes runtime consumers off the old group-id scalar;
   `e4b75e15a3` adds the complete bounded scout envelope, independent report/cargo receipts,
-  casualty/clock/phase persistence, strict component watermarks, and transactional return checks.
-- Tests: strict redirected Mac build exit `0`; 78 `[bandit][live_world]` cases/1,965 assertions,
+  casualty/clock/phase persistence, strict component watermarks, and transactional return checks;
+  `42e5bad3cd` persists per-member resolution and applies provisional first-survivor receipts while
+  retaining the active reservation through final return or fixed-grace loss; `31354b71c3` rejects
+  a missing declaration before the persisted grace deadline and accepts it at the boundary.
+- Tests: strict redirected Mac build exit `0`; 80 `[bandit][live_world]` cases/2,085 assertions,
   8 `[bandit][handoff]` cases/145 assertions, the active shakedown patrol consumer (12 assertions),
   and 2 overmap-global save compatibility cases/16 assertions pass. Binary SHA-256 is
-  `12970845d758c7b4d19cc62c8dfdd90b71f68ab45387e4962cb4ba14acb2f49c`.
-- Serialized sizes: empty world 87 bytes; normal four-member camp with active scout 4,139 bytes;
-  cap-saturated route plus active/current observations 28,115 bytes. Saturated output is
+  `8fb6e4e6c70492451f1d13b59e278d047c00a9301df95c3afbe2f041f4dc431d`.
+- Serialized sizes: empty world 87 bytes; normal four-member camp with active scout 4,190 bytes;
+  cap-saturated route plus active/current observations 28,166 bytes. Saturated output is
   byte-stable across round trip and below the 64 KiB per-full-camp provisional gate.
 - Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
   malformed reservation release, all scout-phase round trips, partial casualty persistence,
   exact casualty/job agreement, report/cargo receipt before slot close, universal watermark
-  ordering, and byte-for-byte stale replay no-op.
+  ordering, provisional split arrival, fixed-grace terminal loss, and byte-for-byte stale replay
+  no-op. This checkpoint does not claim a physical post-close return after a missing declaration.
 
 ## Phase 2 - roster authority, paired dispatch, and reservations
 

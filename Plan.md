@@ -87,20 +87,26 @@ ratified provisional budgets and caveats are recorded in the canonical ledger an
 manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 updates; that is an
 explicit Phase-3 repair target, not hidden or normalized away.
 
-The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`, and
-`e4b75e15a3`. The latest checkpoint makes the typed active outing the only runtime owner of a
+The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`,
+`e4b75e15a3`, `42e5bad3cd`, and `31354b71c3`. The typed active outing is the only runtime owner of a
 bounded scout's members, leader, route, target revision, observations, cargo, casualties, phases,
 clocks, simulation owner, and independent return/report/cargo receipts. It migrates legacy scalar
 saves, releases malformed reservations, preserves split casualties, and rejects contradictory,
-stale, or replayed returns before mutation. Empty/normal/cap-saturated JSON is
-87/4,139/28,115 bytes; the saturated state is byte-stable after reload and remains below 64 KiB.
+stale, or replayed returns before mutation. The latest checkpoint also lets the first returned
+survivor deliver one provisional dossier/cargo receipt while the typed reservation remains active;
+later on-time return or fixed-grace loss finalizes exactly once, and a new dispatch stays blocked.
+The deadline guard rejects an early missing declaration atomically and accepts it only at or after
+the persisted boundary.
+Empty/normal/cap-saturated JSON is 87/4,190/28,166 bytes; the saturated state is byte-stable after
+reload and remains below 64 KiB.
 
-Current execution row: keep the scout slot active until every member resolves, while allowing the
-first survivor to apply only a provisional report/cargo receipt. A later survivor must finalize a
-newer revision without duplicate credit, and no follow-on operation may reserve the slot early.
-Then define the separate follow-on operation, resource, supply, and dossier owners. The repaired
-Mac Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic
-work for `OSStatus -25308`.
+Current execution row: enforce the declared scout phase-transition constraints, especially that a
+burned withdrawal cannot re-enter observation and an exposed return can advance only toward home.
+Then define separate camp-decision and follow-on-operation owners before resource, supply, and
+dossier completion. Post-close physical arrival by a member already declared missing is not yet
+claimed; that later bounded receipt belongs with detailed outcome semantics. The repaired Mac
+Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work
+for `OSStatus -25308`.
 
 The prior five-family Windows free-play handoff remains useful held observation footing. It is not
 the active implementation target and does not authorize work on the three excluded creature

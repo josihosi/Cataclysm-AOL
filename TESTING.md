@@ -202,8 +202,22 @@ Current Phase-1 evidence target:
   phase ordering, malformed nested reservation cleanup, contact-anchored migrated deadlines,
   universal component watermark ordering, exact casualty agreement, and authoritative job
   matching. No further review loop was run.
-- Still required: first-survivor provisional receipt/slot lifetime, then complete
-  operation/resource/supply/dossier owners, transition constraints, pruning, and idempotency.
+- `42e5bad3cd` adds persisted per-member resolution bits and a transactional split-return owner.
+  A first survivor can deliver a provisional report and cargo once while the active slot remains
+  reserved; an on-time second return or fixed-grace death/missing resolution finalizes once.
+  Duplicate, unknown, contradictory, stale, and post-load replay packets are atomic no-ops.
+- `31354b71c3` closes the one root-review defect: a missing declaration is rejected before the
+  persisted fixed-grace deadline and accepted exactly at the boundary.
+- Redirected strict build
+  `build_logs/macos-tests-build-phase1-split-return-deadline-fix-42e5bad3cd.log` exited
+  `0`. The 79,443,816-byte binary is SHA-256
+  `8fb6e4e6c70492451f1d13b59e278d047c00a9301df95c3afbe2f041f4dc431d`.
+  The two new cases pass 1/66 and 1/52; `[bandit][live_world]` passes 80/2,085;
+  `[bandit][handoff]` passes 8/145; patrol passes 1/12; save compatibility passes 2/16.
+  Empty/normal/saturated state is 87/4,190/28,166 bytes and remains byte-stable below 64 KiB.
+- Still required: phase-transition constraints, then operation/resource/supply/dossier owners,
+  pruning, and component idempotency. Post-close physical return by a member already declared
+  missing is not part of this checkpoint's claim.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:
 - non-interactive Mac Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
@@ -305,9 +319,10 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 1:
-- first-survivor provisional report/cargo receipt while the typed scout reservation remains active,
-  including later/late member resolution and replay across save/load;
-- hostile-operation, resource, supply, dossier/report policy, and bounded transition owners;
+- scout phase-transition constraints, including one-way burned/exposed withdrawal and forbidden
+  re-entry into observation;
+- camp-decision, hostile-operation, resource, supply, dossier/report policy, and bounded
+  transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 

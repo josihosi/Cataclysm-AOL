@@ -20,9 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: allow a first survivor to apply a provisional
-  report/cargo receipt while retaining the scout slot until every member resolves; prove later and
-  late return plus replay across save/load.
+- First unchecked deterministic execution row: enforce scout phase-transition constraints,
+  especially one-way burned/exposed withdrawal and no re-entry into observation.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -110,17 +109,25 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   1/12, save compatibility 2/16. Empty/normal/saturated JSON is 87/4,139/28,115 bytes and the
   saturated form is byte-stable after reload below 64 KiB. Final AutoReview's six concrete
   persistence findings were accepted and repaired in the checkpoint.
+- Phase-1 split-return checkpoint `42e5bad3cd` persists per-member resolutions, accepts a
+  first-survivor provisional report/cargo receipt without freeing the mission slot, and finalizes
+  on later on-time return or fixed-grace terminal loss without duplicate credit. Its strict Mac
+  build exits `0`; live-world passes 80/2,085, handoff 8/145, patrol 1/12, save compatibility 2/16,
+  and empty/normal/saturated JSON is 87/4,190/28,166 bytes. Physical return after a member was
+  already declared missing remains a later outcome-receipt concern and is not claimed here.
+- Deadline checkpoint `31354b71c3` atomically rejects premature missing declarations and accepts
+  them only at or after the persisted fixed-grace deadline.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume split-arrival/slot-lifetime semantics on top of `e4b75e15a3`. Do not reopen Phase-0
+3. Resume phase-transition constraints on top of `31354b71c3`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `e4b75e15a3`-source test binary where valid; run one redirected build at a
+5. Reuse the current `31354b71c3`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Complete split-arrival, operation, resource, and dossier owners with legacy/missing-field,
+6. Complete phase constraints, operation, resource, and dossier owners with legacy/missing-field,
    phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
