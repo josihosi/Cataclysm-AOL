@@ -66,9 +66,9 @@ Current Phase-0 evidence (2026-08-02):
 - The production checkout and `origin/port/cdda-master` independently resolve to exact `660057ff728bdf77531f607b1bd42a175f027a5f`; no relevant transfer, build, or orchestrator process was active at kickoff.
 - `dev` was a strict ancestor of the candidate. Backup refs preserve the prior `dev` and `master` tips; `dev` was advanced non-destructively to the candidate before the isolated worktree was created.
 - The launch envelope reports GPT-5.6-sol, xhigh reasoning, `approval_policy = "never"`, and `sandbox_mode = "danger-full-access"`; the persistent service tier is now normal/default.
-- `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract` reproduces 57 tests with one failure and one error: mocked Windows resolution constructs `WindowsPath` on macOS, and mocked Linux accepts the existing Mac API venv. These are active defects, not waived evidence.
+- `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract` first reproduced 57 tests with one failure and one error: mocked Windows resolution constructed `WindowsPath` on macOS, and mocked Linux accepted the existing Mac API venv. The reviewed repair now passes 60 tests, including native Keychain add/update seams and tilde-expanded foreign-root rejection.
 - A clean-environment release-scenario dry run succeeds and selects the Mac API venv, but the Keychain does not yet supply `CATA_API_KEY`. The existing shell value is retained only until a real secure-store API call succeeds.
-- The current Keychain writer passes the secret to `/usr/bin/security ... -w` over stdin, which still invokes an interactive confirmation route. Phase 0 must replace that path without putting the secret in argv or logs.
+- The repaired Keychain writer uses Security.framework without a secret-bearing subprocess. Its one guarded real write returned secret-free `OSStatus -25308` (`interaction not allowed`) and wrote no item; retries are paused pending Josef's native Mac login-Keychain approval/unlock.
 
 Required Phase-0 evidence:
 - exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;

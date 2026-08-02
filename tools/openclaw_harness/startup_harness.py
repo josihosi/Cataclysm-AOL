@@ -625,22 +625,43 @@ def resolve_configured_python_command(
     ):
         return [], ""
 
-    expanded = Path(raw).expanduser()
-    candidates: List[Path] = []
-    if expanded.is_dir():
+    expanded = os.path.expanduser(raw)
+    macos_only_roots = (
+        "/Applications",
+        "/Library",
+        "/System",
+        "/Users",
+        "/Volumes",
+    )
+    linux_only_roots = (
+        "/home",
+        "/snap",
+    )
+    if sys.platform.startswith("linux") and any(
+        expanded == root or expanded.startswith(root + "/") for root in macos_only_roots
+    ):
+        return [], ""
+    if sys.platform == "darwin" and any(
+        expanded == root or expanded.startswith(root + "/") for root in linux_only_roots
+    ):
+        return [], ""
+
+    candidates: List[str] = []
+    if os.path.isdir(expanded):
         if os.name == "nt":
-            candidates = [expanded / "Scripts" / "python.exe"]
+            candidates = [os.path.join(expanded, "Scripts", "python.exe")]
         else:
             candidates = [
-                expanded / "bin" / "python3",
-                expanded / "bin" / "python",
+                os.path.join(expanded, "bin", "python3"),
+                os.path.join(expanded, "bin", "python"),
             ]
-    elif expanded.is_file():
+    elif os.path.isfile(expanded):
         candidates = [expanded]
 
     for candidate in candidates:
-        if candidate.is_file() and (os.name == "nt" or os.access(candidate, os.X_OK)):
-            return [str(candidate)], str(candidate)
+        is_executable = os.name == "nt" or os.access(candidate, os.X_OK)
+        if os.path.isfile(candidate) and is_executable:
+            return [candidate], candidate
 
     is_path_like = is_windows_absolute or is_posix_absolute or "/" in raw or "\\" in raw
     if is_path_like:
@@ -745,6 +766,98 @@ def write_windows_llm_credential(env_name: str, secret: str) -> None:
         raise OSError(ctypes.get_last_error(), "CredWriteW failed")
 
 
+def write_macos_llm_credential(env_name: str, secret: str) -> None:
+    """Persist one API key through Security.framework without a secret-bearing argv."""
+
+    import ctypes
+
+    err_sec_success = 0
+    err_sec_item_not_found = -25300
+    security = ctypes.CDLL(
+        "/System/Library/Frameworks/Security.framework/Security"
+    )
+    core_foundation = ctypes.CDLL(
+        "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+    )
+
+    security.SecKeychainFindGenericPassword.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.c_uint32),
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    security.SecKeychainFindGenericPassword.restype = ctypes.c_int32
+    security.SecKeychainAddGenericPassword.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    security.SecKeychainAddGenericPassword.restype = ctypes.c_int32
+    security.SecKeychainItemModifyAttributesAndData.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+    ]
+    security.SecKeychainItemModifyAttributesAndData.restype = ctypes.c_int32
+    core_foundation.CFRelease.argtypes = [ctypes.c_void_p]
+    core_foundation.CFRelease.restype = None
+
+    service = LLM_API_KEYCHAIN_SERVICE.encode("utf-8")
+    account = env_name.encode("utf-8")
+    secret_bytes = secret.encode("utf-8")
+    secret_buffer = ctypes.create_string_buffer(secret_bytes)
+    secret_pointer = ctypes.cast(secret_buffer, ctypes.c_void_p)
+    item_ref = ctypes.c_void_p()
+
+    find_status = security.SecKeychainFindGenericPassword(
+        None,
+        len(service),
+        service,
+        len(account),
+        account,
+        None,
+        None,
+        ctypes.byref(item_ref),
+    )
+    if find_status == err_sec_success:
+        try:
+            write_status = security.SecKeychainItemModifyAttributesAndData(
+                item_ref,
+                None,
+                len(secret_bytes),
+                secret_pointer,
+            )
+        finally:
+            if item_ref:
+                core_foundation.CFRelease(item_ref)
+    elif find_status == err_sec_item_not_found:
+        write_status = security.SecKeychainAddGenericPassword(
+            None,
+            len(service),
+            service,
+            len(account),
+            account,
+            len(secret_bytes),
+            secret_pointer,
+            None,
+        )
+    else:
+        raise OSError(find_status, "SecKeychainFindGenericPassword failed")
+
+    if write_status != err_sec_success:
+        raise OSError(write_status, "macOS Keychain write failed")
+
+
 def read_secure_llm_credential(env_name: str) -> Tuple[str, str]:
     if os.name == "nt":
         try:
@@ -786,30 +899,11 @@ def store_secure_llm_credential(env_name: str, secret: str) -> str:
         return "windows_credential_manager"
     if sys.platform == "darwin":
         try:
-            result = subprocess.run(
-                [
-                    "/usr/bin/security",
-                    "add-generic-password",
-                    "-U",
-                    "-a",
-                    env_name,
-                    "-s",
-                    LLM_API_KEYCHAIN_SERVICE,
-                    "-w",
-                ],
-                input=secret + "\n",
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=LLM_KEYCHAIN_TIMEOUT_SECONDS,
-            )
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(
-                "macOS Keychain interaction timed out; unlock or approve Keychain access and retry."
-            ) from None
-        if result.returncode != 0:
-            detail = result.stderr.strip()
-            raise RuntimeError(detail or "macOS Keychain write failed")
+            write_macos_llm_credential(env_name, secret)
+        except (OSError, UnicodeError) as error:
+            status = error.errno if isinstance(error, OSError) else None
+            suffix = f" (OSStatus {status})" if status is not None else ""
+            raise RuntimeError(f"macOS Keychain write failed{suffix}") from None
         return "macos_keychain"
     raise RuntimeError("No supported secure credential store is available on this platform.")
 

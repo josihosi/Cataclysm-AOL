@@ -64,6 +64,7 @@ from startup_harness import (  # noqa: E402
     scenarios_root,
     store_secure_llm_credential,
     validate_enabled_api_runtime,
+    write_macos_llm_credential,
 )
 from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E402
 
@@ -128,11 +129,24 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
             ([], "/Users/josefhorvath/ollama/api_env311", "configured_option_invalid"),
         )
 
+    def test_linux_runtime_rejects_macos_home_after_tilde_expansion(self) -> None:
+        with (
+            mock.patch("startup_harness.os.name", "posix"),
+            mock.patch("startup_harness.sys.platform", "linux"),
+            mock.patch(
+                "startup_harness.os.path.expanduser",
+                return_value="/Users/josefhorvath/ollama/api_env311",
+            ),
+        ):
+            result = resolve_configured_python_command("~/ollama/api_env311")
+
+        self.assertEqual(result, ([], ""))
+
     def test_linux_empty_runner_option_uses_same_default_as_game(self) -> None:
         with (
             mock.patch("startup_harness.os.name", "posix"),
             mock.patch("startup_harness.sys.platform", "linux"),
-            mock.patch("startup_harness.Path.is_file", return_value=True),
+            mock.patch("startup_harness.os.path.isfile", return_value=True),
             mock.patch("startup_harness.os.access", return_value=True),
         ):
             result = resolve_game_runtime_python({
@@ -262,20 +276,64 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(child_overlay, {"CATA_API_KEY": "stored"})
 
     def test_macos_keychain_writer_keeps_secret_out_of_process_arguments(self) -> None:
-        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
         with (
             mock.patch("startup_harness.os.name", "posix"),
             mock.patch("startup_harness.sys.platform", "darwin"),
-            mock.patch("startup_harness.subprocess.run", return_value=completed) as run,
+            mock.patch("startup_harness.write_macos_llm_credential") as write_native,
+            mock.patch("startup_harness.subprocess.run") as run,
         ):
-            store = store_secure_llm_credential("CATA_API_KEY", "secret-value")
+            store = store_secure_llm_credential("CATA_API_KEY", "test-secret")
 
-        command = run.call_args.args[0]
         self.assertEqual(store, "macos_keychain")
-        self.assertEqual(command[-1], "-w")
-        self.assertNotIn("secret-value", command)
-        self.assertEqual(run.call_args.kwargs["input"], "secret-value\n")
-        self.assertEqual(run.call_args.kwargs["timeout"], 15.0)
+        write_native.assert_called_once_with("CATA_API_KEY", "test-secret")
+        run.assert_not_called()
+
+    def test_macos_keychain_native_writer_adds_missing_item(self) -> None:
+        security = SimpleNamespace(
+            SecKeychainFindGenericPassword=mock.MagicMock(return_value=-25300),
+            SecKeychainAddGenericPassword=mock.MagicMock(return_value=0),
+            SecKeychainItemModifyAttributesAndData=mock.MagicMock(return_value=0),
+        )
+        core_foundation = SimpleNamespace(CFRelease=mock.MagicMock())
+        with (
+            mock.patch(
+                "ctypes.CDLL",
+                side_effect=[security, core_foundation],
+            ),
+            mock.patch("startup_harness.subprocess.run") as run,
+        ):
+            write_macos_llm_credential("CATA_API_KEY", "test-secret")
+
+        security.SecKeychainFindGenericPassword.assert_called_once()
+        security.SecKeychainAddGenericPassword.assert_called_once()
+        security.SecKeychainItemModifyAttributesAndData.assert_not_called()
+        core_foundation.CFRelease.assert_not_called()
+        run.assert_not_called()
+
+    def test_macos_keychain_native_writer_updates_and_releases_existing_item(self) -> None:
+        def find_existing(*args: Any) -> int:
+            item_ref_pointer = ctypes.cast(
+                args[-1], ctypes.POINTER(ctypes.c_void_p)
+            )
+            item_ref_pointer[0] = ctypes.c_void_p(123)
+            return 0
+
+        security = SimpleNamespace(
+            SecKeychainFindGenericPassword=mock.MagicMock(side_effect=find_existing),
+            SecKeychainAddGenericPassword=mock.MagicMock(return_value=0),
+            SecKeychainItemModifyAttributesAndData=mock.MagicMock(return_value=0),
+        )
+        core_foundation = SimpleNamespace(CFRelease=mock.MagicMock())
+        with mock.patch(
+            "ctypes.CDLL",
+            side_effect=[security, core_foundation],
+        ):
+            write_macos_llm_credential("CATA_API_KEY", "test-secret")
+
+        security.SecKeychainFindGenericPassword.assert_called_once()
+        security.SecKeychainAddGenericPassword.assert_not_called()
+        security.SecKeychainItemModifyAttributesAndData.assert_called_once()
+        core_foundation.CFRelease.assert_called_once()
 
     def test_macos_keychain_read_timeout_is_secret_free(self) -> None:
         timeout = subprocess.TimeoutExpired(
@@ -293,22 +351,20 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(result, ("", "macos_keychain_timeout"))
         self.assertNotIn("partial-secret", repr(result))
 
-    def test_macos_keychain_write_timeout_is_secret_free(self) -> None:
-        timeout = subprocess.TimeoutExpired(
-            cmd=["/usr/bin/security"],
-            timeout=15.0,
-            output="partial-secret",
-        )
+    def test_macos_keychain_write_failure_is_secret_free(self) -> None:
         with (
             mock.patch("startup_harness.os.name", "posix"),
             mock.patch("startup_harness.sys.platform", "darwin"),
-            mock.patch("startup_harness.subprocess.run", side_effect=timeout),
-            self.assertRaisesRegex(RuntimeError, "Keychain interaction timed out") as caught,
+            mock.patch(
+                "startup_harness.write_macos_llm_credential",
+                side_effect=OSError(-25308, "interaction unavailable"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "OSStatus -25308") as caught,
         ):
-            store_secure_llm_credential("CATA_API_KEY", "secret-value")
+            store_secure_llm_credential("CATA_API_KEY", "test-secret")
 
-        self.assertNotIn("partial-secret", str(caught.exception))
-        self.assertNotIn("secret-value", str(caught.exception))
+        self.assertNotIn("interaction unavailable", str(caught.exception))
+        self.assertNotIn("test-secret", str(caught.exception))
 
     def test_disabled_api_backend_does_not_require_credential(self) -> None:
         with (

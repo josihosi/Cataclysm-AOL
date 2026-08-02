@@ -276,13 +276,23 @@ Evidence:
   tools.openclaw_harness.test_fixture_contract` on `660057ff` ran 57 tests with the expected one
   failure and one error: foreign Windows path instantiation and Linux acceptance of the real Mac
   venv. This is a recorded Phase-0 baseline defect, not a green result.
+- Harness repair command/result: the reviewed native-store/path-classification patch at the next
+  checkpoint passes `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract`
+  with 60 tests and passes `py_compile` plus `git diff --check`. It rejects a Mac absolute or
+  tilde-expanded venv on mocked Linux, avoids host-incompatible `pathlib` construction, and writes
+  through Security.framework without putting the secret in a subprocess or error text.
+- Secure-store blocker: one guarded real write from the existing interactive-shell
+  `CATA_API_KEY` reached Security.framework and failed secret-free with `OSStatus -25308`
+  (`interaction not allowed`). No item was written. Keychain retries stopped; Josef must approve or
+  unlock the Mac login Keychain from a native local session before the one permitted retry.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority
   service; that already-started request could not be retroactively changed. All later local
-  launches inherit `default`. The Keychain item is absent and the current writer is known broken;
-  no repeated write was attempted. The API venv has `any_llm` but lacks `flatbuffers`, so fixture
-  contracts currently use `/usr/bin/python3` while API self-tests use the native venv.
+  launches inherit `default`. The repaired writer is unit-tested but the Keychain item remains
+  absent because macOS denied non-interactive access; no repeated write was attempted. The API venv
+  has `any_llm` but lacks `flatbuffers`, so fixture contracts currently use `/usr/bin/python3`
+  while API self-tests use the native venv.
 
 ## Phase 1 - one authoritative persistent model
 
