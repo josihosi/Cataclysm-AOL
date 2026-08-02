@@ -6,8 +6,8 @@ Status: **ACTIVE - Phase 0 reproducible baselines**
 
 Active phase: **Phase 0**
 
-First unchecked execution row: **Record compiler, build flags, Mac model/OS, commit ID,
-season length, world seed, and test binary identity.**
+First deterministic execution row: **Run the existing narrow `bandit_live_world`,
+pursuit-handoff, playback, and relevant harness tests before changing gameplay code.**
 
 Production target: `port/cdda-master`
 
@@ -182,7 +182,7 @@ Preparation receipts are not Phase 0 credit; re-verify every preflight condition
 - [x] Confirm the active roadmap still authorizes this mechanic. If `Plan.md` names another active target, pause before each implementation phase; do not let this dormant ledger overrule it without Josef's explicit promotion.
 - [x] Keep the Windows source checkout and its `.userdata` read-only during Mac implementation unless Josef explicitly authorizes a reviewed sync/validation step; never bulk-copy a Mac tree or save over the Windows playtest tree.
 - [x] Create/use an isolated Mac `dev` worktree for implementation. If `dev` is too far behind the current candidate to support the mechanic safely, stop and present the exact commits/API delta and a non-destructive reconciliation proposal; do not solve it by editing `port/cdda-master` directly or resetting branches.
-- [ ] Record compiler, build flags, Mac model/OS, commit ID, season length, world seed, and test binary identity.
+- [x] Record compiler, build flags, Mac model/OS, commit ID, season length, world seed, and test binary identity.
 - [x] Keep upstream CDDA unmerged unless Josef separately authorizes an upstream refresh.
 - [x] Verify the limited preparation push/sync authorization against the exact commits being moved; release publication and future feature-branch pushes remain outside that authorization.
 
@@ -286,6 +286,21 @@ Evidence:
   (`interaction not allowed`). The existing shell export remains intact. This does not block the
   deterministic ecology phases; make no further Keychain attempt or blocker relay while Josef is
   unavailable, and leave final clean-environment retrieval/API proof for the Phase-10 gate.
+- Environment/fixture/binary identity: Mac mini `Mac16,10`, Apple M4 (10 cores), 16 GiB,
+  arm64 macOS 26.3.1 build `25D771280a`; Apple clang 17.0.0, GNU Make 3.81, Command Line
+  Tools SDK 26.2. The successful command was
+  `PATH=/opt/homebrew/opt/gettext/bin:/opt/homebrew/bin:/usr/bin:/bin /usr/bin/make -j4 tests
+  LINTJSON=0 ASTYLE=0` at `54d2c76c0b`; it exited `0` in 57.78 seconds after the installed
+  Homebrew gettext path was made explicit. `tests/cata_test` is arm64 Mach-O, 79,036,488 bytes,
+  SHA-256 `4491718735452fa868644d9609f4fcfeffb13fb300b118378f2742c587699525`.
+  Legacy functional fixture `release_candidate_roaming_v0_2026-08-01` resolves through the
+  McWilliams source chain to seed `830204929`, 91-day seasons, non-eternal seasons, and transformed
+  turn `5220000`. Full machine-readable receipt:
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/environment-fixture-manifest-54d2c76c0b.json`.
+- Build audit: `macos-tests-build-c66364dbd1.log` is preserved as incomplete (no error, link,
+  marker, or binary). `macos-tests-build-54d2c76c0b.log` records the immediate missing-`msgfmt`
+  environment failure with exit `2`. `macos-tests-build-54d2c76c0b-gettext-path.log` records the
+  only completed replacement build and explicit `CAOL_BUILD_EXIT=0` marker.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority
