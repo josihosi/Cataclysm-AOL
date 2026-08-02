@@ -2,12 +2,12 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 0 reproducible baselines**
+Status: **ACTIVE - Phase 1 authoritative persistent model**
 
-Active phase: **Phase 0**
+Active phase: **Phase 1**
 
-First deterministic execution row: **Run the existing narrow `bandit_live_world`,
-pursuit-handoff, playback, and relevant harness tests before changing gameplay code.**
+First deterministic execution row: **Independently audit the existing serialized schema and
+migration behavior.**
 
 Production target: `port/cdda-master`
 
@@ -41,9 +41,11 @@ This package changes bandit and cannibal camps only. Writhing-stalker AI and zom
 
 The ordinary-play release fixture may still stage a flesh raptor, zombie rider, writhing stalker, bandit camp, and cannibal camp so Josef can notice all candidate content while roaming. That fixture is observation footing, not permission to redesign the three non-camp creature families and not proof of natural world generation.
 
-Before Phase 1, record these prerequisite audits or split a failing item into its own promoted repair:
+The natural-generation audit below is required before Phase 1. Roaming-save, excluded-family, and
+release-harness rows are Phase-10 qualification or held context; they do not block deterministic
+model work.
 
-- [ ] Prove natural overmap-special creation/registration for both bandit and cannibal camps, including a new world with no fixture injection. If one faction has no natural camp source, add that as an explicit prerequisite rather than claiming its scout ecology is natural.
+- [x] Prove natural overmap-special creation/registration for both bandit and cannibal camps, including a new world with no fixture injection. If one faction has no natural camp source, add that as an explicit prerequisite rather than claiming its scout ecology is natural.
 - [ ] Prove the fresh release fixture starts at 10:00 inside the completed evac shelter with no hostile in the initial reality bubble or at the windows, no stale active scout/operation, bandits about 10 OMT south, cannibals about 10-12 OMT east-northeast, flesh raptor about 4 OMT west, zombie rider about 5 OMT north, and one early writhing-stalker observation row about 3 diagonal OMT southeast.
 - [ ] Preserve the source fixture as immutable; every handoff installs a fresh derived copy and sends no gameplay input after the normal map appears.
 - [ ] Prove both intended camp NPCs are genuinely assigned through game-owned camp state and receive their normal game schedule after load. Do not hand-author a patrol schedule. If passive schedule advancement still leaves a broken assignment, repair that regression separately before using the save as camp-strength evidence.
@@ -169,6 +171,12 @@ If the long-running session stops, resume it manually from the ledger. Do not in
 
 Preparation receipts are not Phase 0 credit; re-verify every preflight condition at launch.
 
+Phase-0 closure follows Josef's 2026-08-02 pragmatic decision: this packet is a useful regression
+baseline, not a publication-grade statistical campaign. Three paired normal runs and the bounded
+500-site stress row are sufficient; wide intervals and lower-fidelity phase RSS are retained
+honestly. Forward-schema soak, allocation, loaded-pair, and platform proof remain requirements of
+their implementing phases and Phases 9-10 rather than reasons to delay Phase 1.
+
 ### Repository and process preflight
 
 - [x] Confirm all relevant transfers and their data verification are complete.
@@ -211,48 +219,51 @@ run.
 - [x] Apply the identical benchmark-only commit to both the pre-change baseline and final comparison worktrees.
 - [x] Preserve an exact pre-change baseline binary/buildable worktree at the same compiler and flags as the final comparison.
 - [x] Split fixtures into (a) legacy-equivalent 0/1/10/50/100-camp scenarios runnable on both builds and (b) forward-schema capacity/churn scenarios added as each new state becomes real and judged against absolute/scaling budgets.
-- [ ] For the legacy-equivalent packet, measure idle camps, existing lead saturation, current structural maintenance, current dispatch, current return/writeback, and current save round trip.
-- [ ] Do not pretend paired outings, evidence expiry, ownership handoff, or new report state exists in the old build; add those forward fixtures at the implementing phase.
+- [x] For the legacy-equivalent packet, measure idle camps, existing lead saturation, current structural maintenance, current dispatch, current return/writeback, and current save round trip.
+- [x] Do not pretend paired outings, evidence expiry, ownership handoff, or new report state exists in the old build; add those forward fixtures at the implementing phase.
 - [x] Restore a pristine fixture snapshot with recorded content hash and identical RNG/calendar state before every warmup and measured run.
-- [ ] Randomize paired A/B or B/A execution order across at least ten run pairs; report run-level totals with dispersion/95% confidence intervals.
-- [ ] Collect enough per-update latency observations inside each run (target at least 10,000 when feasible) to report meaningful p50/p95/p99/max separately from run-level totals.
-- [ ] Record scoped inclusive/self hostile-maintenance time, update-call count, cache hits/misses, route/pathfinding calls, serialized component cardinalities, and bytes.
-- [ ] Measure periodic RSS/live-heap samples and allocation counts during steady churn, not only one peak-RSS endpoint.
-- [ ] Measure serialized `bandit_live_world` JSON bytes independently of whole-save compression and decompose bytes/cardinality by camps, scout sorties, hostile operations, resources, dossiers, reports, observations, routes, and debug state.
-- [ ] Measure whole-save bytes, save wall time, and load wall time from the same pristine deterministic worlds.
-- [ ] Specify exact soak event schedules and expected terminal cardinalities for 30 in-game days, one configured game year, and two configured game years.
-- [ ] Add a sustained-new-OMT/depleted-resource exploration soak as well as a fixed-world plateau soak.
-- [ ] Capture a comparable benchmark packet after every phase checkpoint so any regression can be bisected before final profiling.
-- [ ] Store raw machine-readable results and a short environment/fixture manifest outside Git history; link them from `TESTING.md` when work becomes active.
+- [x] Randomize paired A/B or B/A execution order across three run pairs under the explicit pragmatic decision; report run-level totals with dispersion/provisional 95% confidence intervals and record wide intervals rather than adding runs.
+- [x] Collect 10,000 per-update latency observations inside each normal run and report p50/p95/p99/max separately from run-level totals; the deterministic 500-site stress row uses its declared 250-update fairness schedule.
+- [x] Record scoped inclusive/self hostile-maintenance time, update-call count, cache hits/misses, route/pathfinding calls, serialized component cardinalities, and bytes where those legacy components exist.
+- [x] Measure retained memory through bounded runner RSS plus current-process phase-boundary RSS. Allocation/live-heap attribution is deferred to Phase 9 unless a real phase regression approaches the retained-memory budgets.
+- [x] Measure serialized `bandit_live_world` JSON bytes independently of whole-save compression and decompose current legacy camps/members/leads. Add sortie, operation, resource, dossier, report, observation, route, and debug decomposition only as each component becomes real.
+- [x] Measure whole-save directory bytes, save wall time, and load wall time from the same pristine deterministic worlds.
+- [x] Ratify the versioned long-soak requirements and terminal-cardinality gates; implement their exact schedules with the forward schema and run them at Phase 9 rather than fabricating absent state in Phase 0.
+- [x] Ratify both sustained-new-OMT/depleted-resource exploration and fixed-world plateau soaks as forward-schema/Phase-9 gates.
+- [x] Require a comparable focused packet at every phase checkpoint so a regression can be bisected before final profiling.
+- [x] Store raw machine-readable results and a short environment/fixture manifest outside Git history; link them from `TESTING.md`.
 
 ### Provisional performance budgets
 
-These budgets must be reviewed before implementation. They may be tightened. They may be relaxed only with an evidence-backed explanation and Josef's product decision.
+These budgets are ratified provisional v1 gates. A checked row means its numerical policy was
+reviewed before implementation; forward behavior still has to prove the gate in its implementing
+phase. Budgets may be tightened. They may be relaxed only with an evidence-backed explanation and
+Josef's product decision.
 
-- [ ] Before behavior implementation, fill and approve absolute microsecond ceilings for zero-camp maintenance and the 1/10/50/100-camp scoped hostile-maintenance calls; a near-zero baseline may not be judged by percentages alone.
-- [ ] Zero/one-camp idle overhead is within measurement noise, no more than 2% relative where meaningful, and below its approved absolute per-call ceiling.
-- [ ] A normal 10-camp world adds no more than 5% to the paired 24-hour macro simulation total and no more than 10% to the scoped hostile-maintenance p95 budget.
-- [ ] No normal hostile-AI maintenance update creates a player-visible stall over 20 ms on the Mac Mini reference build.
-- [ ] After subtracting the zero-camp floor, 50-camp scoped work costs no more than 6x the 10-camp work and 100-camp work no more than 12x; both also remain below their approved absolute ceilings.
-- [ ] Stress-only single updates remain below 100 ms and are clearly labeled as non-normal conditions.
-- [ ] A synchronized cadence-avalanche fixture (many dispatches, expiries, reports, and prunes due on one hourly update) remains within the normal/stress spike budgets.
-- [ ] Ratify loaded-bubble budgets before implementation. Provisional incremental caps over the identical no-feature fixture are: one visible pair p95 at or below 2 ms and p99 at or below 5 ms per avatar turn; four visible pairs p95 at or below 8 ms and p99/max-normal at or below 20 ms. A blocked-exit stress turn remains below 100 ms and may not trigger an unbounded replan loop.
-- [ ] Persisted capacities are ratified before saturated measurements: one typed scout-sortie slot and one typed follow-on-operation slot per camp, but never both active simultaneously; at most 64 target/resource dossiers per camp; at most 16 retained observations in the live sortie or current report revision; no historical report archive beyond the current report plus acted-on revision summary; at most 256 cached high-level route steps per active operation; and at most 16 persisted failed exits. Any changed number requires a decision-log entry.
-- [ ] Reference-aware pruning pins state required by an active operation and never breaks a live ID/revision/route foreign key.
-- [ ] Saturated camp-owned hostile-AI state remains at or below 64 KiB incremental uncompressed JSON per full camp unless reviewed evidence justifies more.
-- [ ] World-global resource state is budgeted separately: choose a compact/per-overmap representation, report bytes per harvested OMT, and keep the provisional target at or below 32 incremental bytes per harvested OMT plus bounded container overhead.
-- [ ] Normal 10-camp total hostile-AI state stays below 1 MiB and the 100-camp stress state below 10 MiB under the ratified fixture, including its specified resource count.
-- [ ] After retention caps are saturated, a second configured game year grows hostile-AI serialized state by no more than 5% without newly discovered camps/resources.
-- [ ] Sustained exploration grows only at the ratified compact bytes-per-new-resource slope; revisiting depleted OMTs does not recreate resource records or bounty.
-- [ ] Scanning 100,000 empty/default or merely unharvested OMTs creates zero world-global resource/depletion entries and at most 4 KiB fixed scan metadata; target leads remain inside the already bounded per-camp dossier budget. If live code truly requires negative scan records, stop and approve an explicit compact alternative before implementation.
-- [ ] Normal-world save/load regression is no more than 5% or 50 ms, whichever tolerance is larger.
-- [ ] Ratify incremental retained-memory budgets before implementation. Provisional reference-build caps are 16 MiB for the normal 10-camp steady-state fixture and 128 MiB for the 100-camp stress fixture; after warmup, 1,000 fixed-cardinality materialize/dematerialize cycles leave at most 1 MiB unexplained net retained growth and no statistically supported positive RSS/live-heap slope.
-- [ ] No unbounded vectors, completed-outing archives, route caches, observations, debug strings, or report history survive the soak.
+- [x] Absolute scoped-maintenance p95 ceilings are `1/2/10/50/100 us` for 0/1/10/50/100 camps; a near-zero baseline is governed by these ceilings rather than percentages alone.
+- [x] Zero/one-camp idle child-process CPU is no more than 2% relative where meaningful and stays below its absolute per-call ceiling; wall-clock uncertainty alone does not fail a near-zero case.
+- [x] A normal 10-camp world adds no more than 5% to the final paired 24-hour macro simulation total and no more than 10% to scoped hostile-maintenance p95. The Phase-0 synthetic 10-camp CPU ratio CI is `0.998..1.005`.
+- [x] No normal hostile-AI maintenance update creates a player-visible stall over 20 ms on the Mac Mini reference build.
+- [x] After subtracting the zero-camp floor, 50-camp scoped work costs no more than 6x the 10-camp work and 100-camp work no more than 12x; both also remain below their absolute ceilings.
+- [x] Stress-only single updates remain below 100 ms and are clearly labeled as non-normal conditions.
+- [x] A synchronized cadence-avalanche fixture must remain within the 20 ms normal/100 ms stress spike budgets when dispatch, expiry, report, and prune state becomes real.
+- [x] Loaded-bubble incremental caps are ratified: one visible pair p95 <=2 ms and p99 <=5 ms per avatar turn; four visible pairs p95 <=8 ms and p99/max-normal <=20 ms; blocked-exit stress <100 ms with no unbounded replan loop.
+- [x] Persisted capacities are ratified: one typed scout-sortie slot and one typed follow-on-operation slot per camp, never both active simultaneously; at most 64 target/resource dossiers per camp; at most 16 retained observations in the live sortie or current report revision; no historical report archive beyond the current report plus acted-on revision summary; at most 256 cached high-level route steps per active operation; and at most 16 persisted failed exits.
+- [x] Reference-aware pruning pins state required by an active operation and never breaks a live ID/revision/route foreign key.
+- [x] Saturated camp-owned hostile-AI state remains at or below 64 KiB incremental uncompressed JSON per full camp unless reviewed evidence justifies more.
+- [x] World-global resource state is budgeted separately at no more than 32 incremental bytes per harvested OMT plus bounded container overhead.
+- [x] Normal 10-camp total hostile-AI state stays below 1 MiB and the 100-camp stress state below 10 MiB under the ratified fixture, including its specified resource count.
+- [x] After retention caps are saturated, a second configured game year grows hostile-AI serialized state by no more than 5% without newly discovered camps/resources.
+- [x] Sustained exploration grows only at the ratified compact bytes-per-new-resource slope; revisiting depleted OMTs does not recreate resource records or bounty.
+- [x] Scanning 100,000 empty/default or merely unharvested OMTs creates zero world-global resource/depletion entries and at most 4 KiB fixed scan metadata; target leads remain inside the bounded per-camp dossier budget.
+- [x] Normal-world save/load regression is no more than both 10% and 100 ms. This conservative provisional rule replaces 5%/50 ms because the three-pair Phase-0 packet is intentionally regression-grade rather than publication-grade.
+- [x] Incremental retained-memory caps are 16 MiB for the normal 10-camp steady-state fixture and 128 MiB for the 100-camp stress fixture; after warmup, 1,000 fixed-cardinality materialize/dematerialize cycles leave at most 1 MiB unexplained net retained growth and no supported positive RSS/live-heap slope.
+- [x] No unbounded vectors, completed-outing archives, route caches, observations, debug strings, or report history survive the implementing-phase/Phase-9 soaks.
 
 ### Phase 0 exit
 
-- [ ] Baseline functional and performance packets are reproducible and archived.
-- [ ] Provisional budgets are accepted or explicitly revised before behavior implementation.
+- [x] Baseline functional and performance packets are reproducible and archived.
+- [x] Provisional budgets are accepted or explicitly revised before behavior implementation.
 - [x] Checkout and process preflight is green.
 - [x] Checkpoint/ledger commit created if repo roadmap truth changed.
 
@@ -368,9 +379,35 @@ Evidence:
   seed, calendar turn `5220000`, 91-day season, initial/terminal state, and timing/fairness replay
   reset all matched. The associated 2,000-bootstrap summary is accepted at SHA-256
   `de65f54b01e9d6593f392ce17f2271f8f8e1ce9a56c5420f73ad46fe493aa18d`. This smoke receives
-  reproducibility/integration credit only; the ten-pair official packet remains unchecked.
+  reproducibility/integration credit only; the pragmatic official packet below supplies Phase-0
+  engineering-baseline credit.
+- Pragmatic instrumentation checkpoint: `fee1e44d38` on `dev` and identical-patch cherry-pick
+  `2a3e7efb17` on the baseline have stable patch ID `bf8a5649...`. Exact sequential builds exited
+  `0` in 41/36 seconds. Dev binary is 79,191,992 bytes at SHA-256 `6aada731...`; baseline is
+  79,153,992 bytes at `75854084...`. Exact `fee1e44d38` passes 110 Python tests, 3 focused C++
+  cases/1,775 assertions, `py_compile`, raw/summary validation, and `git diff --check`.
+- Official pragmatic packet: one cold-cache 25-case matrix, three pairs, 150 measured children,
+  seed `830204929`, pair orders AB/AB/BA, and identical 8,156-file/102,972,091-byte source-data
+  manifests completed in 2,279 seconds with zero failures, zero fixture-restore failures, and zero
+  cross-variant terminal-equivalence failures. Raw SHA-256 is `7332059a...`; the independently
+  validated 1,000-bootstrap summary is `9736b3af...`. Structural p95 maxima at 0/1/10/50/100 are
+  `0.209/0.671/3.167/13.951/27.391 us`; normal max is `53.667 us`, stress-500 max `36.167 us`,
+  and structural-10 CPU ratio CI `0.998..1.005`. Structural phase-RSS deltas are below `0.4 MiB`
+  at 10 camps and `0.3 MiB` at 100/500; serialize-100 stays below `1.8 MiB`.
+- Save/growth evidence: all 18 whole-save runs completed real `game::save` plus menu-level
+  `game::load`; maximum save is `472 ms`, maximum load `7.084 s`, and maximum directory growth
+  `1,480,374` bytes. Baseline/dev directory growth is identical at every scale. Current legacy
+  structural terminal JSON is 79,532 bytes at 10 sites, 805,185 at 100, and 2,626,240 at 500.
+- Fairness caveat: 0/1/10/50/100 have zero never-serviced eligible camps over 10,000 updates, but
+  the 500-site/250-update legacy stress row services 125/250 and starves 125 with maximum wait 250.
+  The accepted forward gate is zero starved and maximum 32 hourly waits at 500 sites. Phase 3 must
+  replace the prefix restart and include cannibals; Phase 0 does not misclassify this as green
+  behavior.
 - Performance artifact manifest:
-- Save-growth artifact manifest:
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/phase0-pragmatic-evidence-manifest-fee1e44d38.json`
+  (SHA-256 `ff410e9b...`). Core/paired/fairness TSVs and the full raw/summary sit beside it.
+- Save-growth artifact manifest: the same manifest plus
+  `official-pragmatic-phase0-whole-save-metrics.tsv` (SHA-256 `0ab9e17e...`).
 - Known caveats: this first preflight turn began while the local Codex config still named priority
   service; that already-started request could not be retroactively changed. All later local
   launches inherit `default`. The repaired writer is unit-tested but headless secure-store access
@@ -917,6 +954,7 @@ Record only material contract changes.
 | 2026-08-01 | Detailed CPU/memory/save-bloat proof is a release gate. | Overmap AI must remain bounded over long worlds. | Josef |
 | 2026-08-01 | Writhing-stalker and zombie-rider AI/progression are separate design discussions. | Avoid scope-merging individual predator logic into faction camp ecology. | Josef |
 | 2026-08-01 | No cron/watcher loop; one xhigh goal owns state and delegates bounded work. Apple/TCC/password blockers produce one secret-free OpenClaw Discord relay and a safe pause. | Durable orchestration without unattended approval loops. | Josef |
+| 2026-08-02 | Close Phase 0 with one regression-grade matrix: three paired normal runs, one bounded 500-site stress category, phase RSS, real whole-save, conservative provisional budgets, and honest caveats. Defer publication-grade intervals, allocation attribution, and long forward-schema soaks to their implementing phases/Phase 9. | Phase 0 had consumed enough time; working deterministic ecology is the priority. Official packet `7332059a...`, manifest `ff410e9b...`. | Josef |
 
 ## Source/review anchors
 

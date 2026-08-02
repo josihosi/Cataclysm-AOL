@@ -62,7 +62,7 @@ Source reference:
 - included upstream base: `8d4959bee4`
 - reviewed-but-unmerged upstream tip: `7cf1d08ae8`; no upstream merge is authorized in this lane
 
-Current Phase-0 evidence (2026-08-02):
+Phase-0 evidence (complete 2026-08-02):
 - The production checkout and `origin/port/cdda-master` independently resolve to exact `660057ff728bdf77531f607b1bd42a175f027a5f`; no relevant transfer, build, or orchestrator process was active at kickoff.
 - `dev` was a strict ancestor of the candidate. Backup refs preserve the prior `dev` and `master` tips; `dev` was advanced non-destructively to the candidate before the isolated worktree was created.
 - The launch envelope reports GPT-5.6-sol, xhigh reasoning, `approval_policy = "never"`, and `sandbox_mode = "danger-full-access"`; the persistent service tier is now normal/default.
@@ -134,16 +134,45 @@ Current Phase-0 evidence (2026-08-02):
   Both variants began at the identical 8,156-file/102,972,091-byte non-cache manifest, then each
   recorded an accepted warmup and a stable 11,574-file warmed tree. Initial/terminal fixture SHA
   remained `80f5a9c...`, fixed calendar/RNG state matched, and terminal replay equivalence passed.
-  The 2,000-bootstrap summary is accepted at SHA-256 `de65f54b...`. This is integration proof,
-  not the still-pending ten-pair official performance baseline.
+  The 2,000-bootstrap summary is accepted at SHA-256 `de65f54b...`. This is integration proof;
+  the following pragmatic official packet supplies Phase-0 engineering-baseline credit.
+- Final benchmark instrumentation is checkpointed at `fee1e44d38` on `dev` and identical-patch
+  cherry-pick `2a3e7efb17` on the preserved baseline; stable patch ID is `bf8a5649...`. Exact
+  sequential builds exited `0` in 41/36 seconds. Dev binary SHA-256 is `6aada731...`; baseline is
+  `75854084...`. The exact commit passes 110 Python tests, 3 focused C++ cases/1,775 assertions,
+  `py_compile`, packet validation, and `git diff --check`.
+- The bounded official matrix completed in 2,279 seconds: 25 cases, three paired repetitions,
+  150 valid measured runs, zero failures, identical 8,156-file source-data manifests, zero fixture
+  restore failures, and zero cross-variant terminal-equivalence failures. Raw SHA-256 is
+  `7332059ac8f3d0578c2a4907b8be2e17d7941524bcd17f434fcb03951e109d32`; the independently
+  validated 1,000-bootstrap summary is `9736b3afcb714474962e19e4dfc7fa4e3ba7deff131007584e626156e113257b`.
+  Full manifest: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/phase0-pragmatic-evidence-manifest-fee1e44d38.json`
+  (SHA-256 `ff410e9b...`).
+- Observed structural p95 maxima at 0/1/10/50/100 sites are
+  `0.209/0.671/3.167/13.951/27.391 us`; normal structural max is `53.667 us` and 500-site
+  stress max is `36.167 us`. The 10-site paired wall ratio CI is `0.978..1.057`; exact child CPU
+  is much tighter at `0.998..1.005`. Structural phase-RSS deltas stay below `0.4 MiB` at 10 camps
+  and `0.3 MiB` at 100/500; serialize-100 is below `1.8 MiB`.
+- All 18 whole-save children completed real `game::save` + menu-level `game::load`: maximum save
+  `472 ms`, maximum load `7.084 s`, maximum directory growth `1,480,374 bytes`; baseline/dev
+  directory growth is identical for each scale. Current legacy serialized terminals are
+  `79,532` bytes at structural-10, `805,185` at structural-100, and `2,626,240` at stress-500.
+- Fairness caveat is explicit: normal structural scales have zero never-serviced eligible camps,
+  but the deterministic 500-site legacy packet services only 125/250 and leaves 125 unserved
+  after 250 updates. The accepted future gate is zero starved and at most 32 hourly waits at
+  500 sites; Phase 3 owns the round-robin repair.
+- Ratified provisional gates: maintenance p95 ceilings `1/2/10/50/100 us` at 0/1/10/50/100;
+  20 ms normal and 100 ms stress single-update maxima; post-floor scaling `6x/12x`; 16/128 MiB
+  normal/stress retained memory; 64 KiB per full camp, 1 MiB per 10 camps, 10 MiB per 100 camps;
+  and save/load regression no more than both 10% and 100 ms. Forward-schema caps, long soaks,
+  allocation attribution, loaded pairs, and platform packets remain their implementing-phase or
+  Phase-9/10 gates rather than reasons to extend Phase 0.
 
-Required Phase-0 evidence:
-- exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;
-- all fixture-contract tests green on macOS, including mocked Windows/Linux foreign-path controls;
-- current functional behavior and natural camp registration recorded before gameplay edits;
-- behavior-neutral deterministic counters/driver run against preserved pre-change and final implementations;
-- zero/10/100/500-site CPU, memory, scheduler-fairness, and save-growth evidence with reviewed, ratified budgets and raw artifacts retained outside Git;
-- checkpoint commits and resume packets that name exact commands, artifacts, dirty state, blockers, and next row.
+Current Phase-1 evidence target:
+- map every serialized field and competing authority before editing the model;
+- prove missing/new-field and legacy migration behavior with focused round trips;
+- keep malformed packet application atomic and replay idempotent;
+- measure empty/normal/saturated bytes for each newly real bounded component.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:
 - non-interactive Mac Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
@@ -244,10 +273,10 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-The active missing evidence is Phase 0 only:
-- land behavior-neutral benchmark/counter instrumentation on `dev` and the preserved pre-change comparison worktree;
-- record the zero/1/10/50/100-site normal matrix plus the ledger's 500-site fairness stress packet;
-- collect CPU, memory, fairness, serialization, whole-save, and save-growth evidence and ratify budgets.
+The active missing evidence is Phase 1:
+- independent current-schema/migration/authority audit;
+- the smallest one-authority persistent-state slice with focused legacy, missing-field,
+  round-trip, malformed-input, replay, and serialized-size proof.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

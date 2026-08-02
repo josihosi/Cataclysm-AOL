@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** GREEN / PHASE 0 REPRODUCIBLE BASELINES
+**Status:** ACTIVE / GREEN / PHASE 1 AUTHORITATIVE PERSISTENT MODEL
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -79,18 +79,19 @@ flesh-raptor behavior remain closed. Honest perception, paired scouting, physica
 coherent withdrawal, faction outcomes, persistence, performance, save-bloat, and cross-platform
 requirements may not be weakened for convenience.
 
-Current execution row: complete the legacy-equivalent performance/save packet. The reproducible
-fixture/input boundary is checkpointed: both comparison worktrees carry the identical patch,
-start without runtime cache, record one sacrificial warmup, preserve identical non-cache source
-manifests, bind RNG/calendar/fixture identity, and separate genuine existing-lead saturation from
-zero-lead structural work. Exact committed builds and the first paired cold-cache smoke are green.
-Close paired run-level confidence/process-CPU, phase-scoped retained-memory, wait-based fairness,
-and whole-save measurement before the official baseline matrices and budget ratification. The
-compiler/build/Mac/fixture/test-binary identity, pre-change functional packet, and natural
-bandit/cannibal creation/registration are recorded. The repaired Mac
-Keychain/API path is a later release-harness qualification gate, not a prerequisite for
-deterministic bandit/cannibal engineering. While Josef is unavailable, retain the existing shell
-export and do not retry or pause this goal again for `OSStatus -25308`.
+Phase 0 is complete under Josef's pragmatic engineering-baseline decision. Instrumentation commit
+`fee1e44d38` and identical baseline patch `2a3e7efb17` produced one accepted 25-case, three-pair,
+150-run Mac packet with CPU, phase RSS, scheduler wait/fairness, serialization, whole-save, and
+save-growth evidence. Raw and summary SHA-256 values are `7332059a...` and `9736b3af...`; the
+ratified provisional budgets and caveats are recorded in the canonical ledger and external
+manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 updates; that is an
+explicit Phase-3 repair target, not hidden or normalized away.
+
+Current execution row: independently audit the existing serialized `bandit_live_world` schema and
+migration behavior, then implement the smallest reviewable Phase-1 slice toward one authoritative
+persistent owner for each camp, outing, resource, and dossier. The repaired Mac Keychain/API path
+remains a Phase-10 release-harness gate. Retain the existing shell export and do not retry or pause
+deterministic work for `OSStatus -25308`.
 
 The prior five-family Windows free-play handoff remains useful held observation footing. It is not
 the active implementation target and does not authorize work on the three excluded creature

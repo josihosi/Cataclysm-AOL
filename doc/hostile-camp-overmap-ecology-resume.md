@@ -6,6 +6,8 @@ Updated: 2026-08-02
 
 - Active worktree: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL-hostile-ecology-dev`
 - Active branch: `dev`
+- Phase-0 instrumentation commit: `fee1e44d38b6fc69846b3931a947c00ba72ec3a8`
+- Preserved baseline instrumentation commit: `2a3e7efb17919a26347aae238083fcf23d6be6e1`
 - Launch base: `660057ff728bdf77531f607b1bd42a175f027a5f`
 - Untouched release/playtest worktree: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL`
 - Untouched release/playtest branch: `port/cdda-master` at exact launch base
@@ -17,10 +19,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 ## Active execution state
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
-- Active phase: Phase 0 - reproducible baselines and benchmark infrastructure.
-- First unchecked deterministic execution row: complete the legacy-equivalent performance/save
-  packet. Paired confidence/process CPU, phase-scoped retained memory, wait-based scheduler
-  fairness, and whole-save save/load support remain prerequisites to the official matrices.
+- Active phase: Phase 1 - one authoritative persistent model.
+- First unchecked deterministic execution row: independently audit the existing serialized
+  `bandit_live_world` schema, migration behavior, and competing authorities.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -83,25 +84,37 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   manifest and recorded their 11,574-file warmed trees before measurement. Fixed seed/calendar,
   fixture hash, replay reset, and equivalent terminal state all validate. The accepted summary
   SHA-256 is `de65f54b01e9d6593f392ce17f2271f8f8e1ce9a56c5420f73ad46fe493aa18d`.
+- Phase 0 is complete under Josef's pragmatic engineering-baseline decision. Final instrumentation
+  is `fee1e44d38` on `dev` and identical-patch `2a3e7efb17` on the baseline, stable patch ID
+  `bf8a5649...`. Exact builds exited `0` in 41/36 seconds; binaries are SHA-256 `6aada731...` and
+  `75854084...`. Exact `dev` passes 110 Python tests, 3 C++ cases/1,775 assertions, `py_compile`,
+  validation, and `git diff --check`.
+- The official cold-cache matrix completed in 2,279 seconds with 25 cases, three pairs, 150 valid
+  runs, and zero failures. Raw SHA-256 is `7332059a...`; independently validated summary SHA-256
+  is `9736b3af...`; external manifest SHA-256 is `ff410e9b...` at
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/phase0-pragmatic-evidence-manifest-fee1e44d38.json`.
+  Provisional CPU/memory/size/save budgets are ratified in the canonical ledger. The known legacy
+  500-site result starves 125/250 eligible camps after 250 updates; Phase 3 must reach zero starved
+  and <=32 hourly waits.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume paired-confidence/process-CPU, phase-scoped memory, wait-based fairness, and whole-save
-   instrumentation; functional, natural-world, and fixture/input baselines are complete, while the
-   official performance packet is not.
+3. Resume the Phase-1 schema/migration/authority audit. Do not reopen Phase-0 statistics unless a
+   later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current source-built `cata_test` where valid; run only one redirected build when the
-   benchmark instrumentation invalidates it.
-6. Continue the remaining Phase-0 benchmark, memory, fairness, and save-growth rows; do not begin
-   gameplay changes before their required budgets are ratified.
+5. Reuse the exact `fee1e44d38` source-built `cata_test` where valid; run one redirected build at a
+   time after implementation invalidates it.
+6. Implement the smallest authoritative Phase-1 state slice with legacy/missing-field,
+   round-trip, malformed-packet atomicity, replay, and serialized-size evidence.
 
-Build state at this checkpoint: no build, test, review, or profile is running. The abandoned log
-remains classified incomplete. The committed `dev` and baseline instrumentation builds completed
-successfully, one at a time, with explicit exit markers. The rejected smoke is complete and has no
-live child. Do not start another build unless the next instrumentation patch invalidates the
-current test binary.
+Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
+abandoned early log remains classified incomplete. The committed exact `dev` and baseline builds,
+focused tests, whole-save qualification, official matrix, independent validation, and summary are
+complete. Both comparison worktrees are clean apart from ignored regenerated runtime caches; the
+production candidate remains clean and untouched. Do not start another build until Phase-1 source
+changes invalidate the current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
 future Apple prompt may pause only the later release-harness action that requires it; ordinary

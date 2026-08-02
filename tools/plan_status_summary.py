@@ -68,7 +68,7 @@ def extract_first_paragraph( body: str ) -> str:
 
 def classification_from_status( status: str ) -> str | None:
     upper = status.upper()
-    if "ACTIVE / GREENLIT" in upper:
+    if upper.startswith( "ACTIVE /" ):
         return "active"
     if upper.startswith( "GREENLIT /" ):
         return "greenlit"
@@ -265,18 +265,18 @@ def run_self_test() -> None:
     current_waiting_titles = [section.title for section in parsed_current.sections if section.classification == "waiting"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == []
-    assert current_greenlit_titles == ["Greenlit queued lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0"]
-    assert current_waiting_titles == []
+    assert current_active_titles == ["Current execution posture"]
+    assert current_greenlit_titles == []
+    assert current_waiting_titles == ["Handoff boundary — CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0"]
     assert any( "Held / parked lanes" in title for title in current_parked_titles )
     assert parsed_current.warnings == []
 
     active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
     waiting_render = render_view( parsed_current, "waiting" )
-    assert active_render == "active\n(none)"
-    assert "CAOL-WRITHING-STALKER-PATTERN-TESTS-v0" in greenlit_render
-    assert waiting_render == "waiting\n(none)"
+    assert "Current execution posture" in active_render
+    assert "Current execution posture" in greenlit_render
+    assert "CAOL-JOSEF-PLAYTEST-SAVE-PACK-v0" in waiting_render
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]

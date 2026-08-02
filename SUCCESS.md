@@ -19,13 +19,13 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
 
-Status: GREEN / PHASE 0 REPRODUCIBLE BASELINES
+Status: GREEN / PHASE 1 AUTHORITATIVE PERSISTENT MODEL
 
 Canonical contract and detailed cross-off evidence:
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 
 Success state:
-- [ ] Phase 0 has reproducible functional, performance, memory, and save-growth baselines; the provisional budgets are reviewed and ratified before behavior work.
+- [x] Phase 0 has reproducible functional, performance, memory, and save-growth baselines; the provisional budgets are reviewed and ratified before behavior work. _Pragmatic Mac packet: `fee1e44d38` / baseline `2a3e7efb17`, 25 cases, three pairs, 150 accepted runs; external manifest `phase0-pragmatic-evidence-manifest-fee1e44d38.json` (SHA-256 `ff410e9b...`)._
 - [ ] Stable site, member, sortie, intelligence, resource, report, and faction-outcome state persists with explicit migrations and bounded collections.
 - [ ] Routine hostile-camp activity uses exact two-person scouts, honest perception, physical report return, coherent burn/withdrawal, and no avatar-coordinate radar.
 - [ ] A naturally generated bandit camp completes the full ecology loop through a real bandit shakedown outcome.
