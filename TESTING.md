@@ -71,6 +71,23 @@ Current Phase-0 evidence (2026-08-02):
 - The repaired Keychain writer uses Security.framework without a secret-bearing subprocess. Its one guarded real write returned secret-free `OSStatus -25308` (`interaction not allowed`). This is now a deferred release-harness gap, not a deterministic Phase-0 blocker; retain the existing shell export and make no more Keychain retries while Josef is unavailable.
 - Exact identity is archived at `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/environment-fixture-manifest-54d2c76c0b.json`: Mac mini `Mac16,10`, Apple M4/10 cores/16 GiB, arm64 macOS 26.3.1 (`25D771280a`), Apple clang 17.0.0, GNU Make 3.81, SDK 26.2, McWilliams seed `830204929`, and 91-day seasons.
 - The abandoned build log ends after compilation with no error, linker, completion marker, or binary and remains classified incomplete. The first replacement attempt failed immediately because installed Homebrew gettext was not on `PATH`. With `/opt/homebrew/opt/gettext/bin` explicit, top-level `make -j4 tests LINTJSON=0 ASTYLE=0` exited `0` in 57.78 seconds. The resulting 79,036,488-byte arm64 `tests/cata_test` has SHA-256 `4491718735452fa868644d9609f4fcfeffb13fb300b118378f2742c587699525`.
+- The archived pre-change functional packet is
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/functional-baseline-manifest-ffbf32166c.json`.
+  `bandit_live_world*` passed 43 cases/1,002 assertions, `[bandit][handoff]` passed 3/41,
+  `[bandit][playback]` passed 37/1,028, and the repaired harness contract passed 60 tests. The
+  manifest records exact commands, exit codes, timings, logs, and caveats.
+- The source baseline proves exact-avatar radar (`direct_player_range` and `player@x,y,z`) and
+  per-member independent overmap route solves. Visible dancing and covert-hostility failure were
+  not reproduced and were not fabricated; covert disposition remains unqualified until its later
+  operation-scoped integration row. Current structural scanning also has a source-proven
+  prefix-starvation risk and skips cannibal profiles.
+- Behavior-neutral checkpoint `dc094e8bf1` extracts the unchanged existing-only bootstrap scan into
+  a shared callable seam. The fixed internal seed `830204914` test uses ordinary
+  `overmap_buffer.get` default generation, not a custom batch or forced placement: both real
+  2x2+roof specials register once with 8-tile footprints and abstract headcounts 6/5, real mapgen
+  reconciles both to 14 members, and JSON round-trip remains duplicate-free. The test passed under
+  a deliberately different CLI seed; the full `[bandit][live_world]` tag passed 68 cases/1,459
+  assertions. Final autoreview reported no accepted/actionable findings.
 
 Required Phase-0 evidence:
 - exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;
@@ -180,9 +197,9 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 0 only:
-- run the narrow existing C++ hostile-camp tests and record current behavior;
-- prove naturally generated camp registration without confusing a fixture for world generation;
-- land behavior-neutral benchmark/counter instrumentation and record the zero/10/100/500-site CPU, memory, fairness, and save-growth baselines.
+- land behavior-neutral benchmark/counter instrumentation on `dev` and the preserved pre-change comparison worktree;
+- record the zero/1/10/50/100-site normal matrix plus the ledger's 500-site fairness stress packet;
+- collect CPU, memory, fairness, serialization, whole-save, and save-growth evidence and ratify budgets.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -196,9 +196,9 @@ Preparation receipts are not Phase 0 credit; re-verify every preflight condition
 
 ### Baseline functional evidence
 
-- [ ] Run the existing narrow `bandit_live_world`, pursuit-handoff, playback, and relevant harness tests before changing code.
-- [ ] Record existing expected failures/caveats rather than normalizing them away.
-- [ ] Attempt to capture the known radar/dancing/covert-hostility failure. If current HEAD does not reproduce it, record a code-path/fixture baseline as `not reproduced`; do not resurrect or fake the bug.
+- [x] Run the existing narrow `bandit_live_world`, pursuit-handoff, playback, and relevant harness tests before changing code.
+- [x] Record existing expected failures/caveats rather than normalizing them away.
+- [x] Attempt to capture the known radar/dancing/covert-hostility failure. If current HEAD does not reproduce it, record a code-path/fixture baseline as `not reproduced`; do not resurrect or fake the bug.
 
 ### Baseline performance and save evidence
 
@@ -301,6 +301,31 @@ Evidence:
   marker, or binary). `macos-tests-build-54d2c76c0b.log` records the immediate missing-`msgfmt`
   environment failure with exit `2`. `macos-tests-build-54d2c76c0b-gettext-path.log` records the
   only completed replacement build and explicit `CAOL_BUILD_EXIT=0` marker.
+- Pre-change functional packet:
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/functional-baseline-manifest-ffbf32166c.json`.
+  Against the behavior-identical binary recorded above, `bandit_live_world*` passed 43 cases/1,002
+  assertions, `[bandit][handoff]` passed 3/41, `[bandit][playback]` passed 37/1,028, and
+  `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract` passed 60 tests. Raw
+  logs, exact commands, exit codes, and timings are named in the manifest.
+- Known baseline failures/caveats: source at `ffbf32166c` admits `direct_player_range`, constructs
+  exact `player@x,y,z` identity from the avatar OMT, and passes the avatar OMT directly into
+  `plan_site_dispatch`. It solves one separate overmap route per selected member. This is source
+  proof of radar and independent-party routing risk; visible dancing was not reproduced.
+  Covert-hostility failure was also not reproduced; the current local gate only explicitly sets
+  `NPCATT_KILL` for `combat_forward`, but no operation-scoped loaded-NPC disposition assertion
+  exists, so it remains unqualified rather than credited green. Structural scan fairness is a
+  source-proven prefix-starvation risk and currently excludes cannibal profiles. Playback timing is
+  semantic-only and receives no performance credit.
+- Natural creation/registration checkpoint: `dc094e8bf1b3d50a603ba1fdcdcb5ccfb997f66c`
+  extracts the existing scan behavior without policy change. The slow integration test freezes
+  internal worldgen seed `830204914`, generates a fresh adjacent overmap through ordinary
+  `overmap_buffer.get`, and proves both natural default specials, canonical 8-tile footprints,
+  abstract headcounts 6/5, idempotent registration, real 14-member mapgen reconciliation, and
+  duplicate-free JSON round trip. It passed 34 assertions even with CLI seed `12345`; the full
+  `[bandit][live_world]` tag passed 68 cases/1,459 assertions. The final structured autoreview
+  returned clean with no accepted/actionable findings. Raw logs are
+  `natural-worldgen-registration-internal-seed.log` and
+  `live-world-regression-natural-cleanup.log` under the Phase-0 artifact root.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority

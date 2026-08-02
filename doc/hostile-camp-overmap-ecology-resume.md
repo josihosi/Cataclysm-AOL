@@ -18,7 +18,7 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 0 - reproducible baselines and benchmark infrastructure.
-- First deterministic execution row: run the existing narrow `bandit_live_world`, pursuit-handoff, playback, and relevant harness tests before changing gameplay code.
+- First deterministic execution row: land the deterministic benchmark driver and scoped hostile-maintenance timers/counters as an isolated behavior-neutral instrumentation commit.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -40,20 +40,33 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   The completed top-level test build log is `macos-tests-build-54d2c76c0b-gettext-path.log` in the
   same artifact root and contains `CAOL_BUILD_EXIT=0`. The arm64 test binary SHA-256 is
   `4491718735452fa868644d9609f4fcfeffb13fb300b118378f2742c587699525`.
+- The pre-change functional packet is archived at
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/functional-baseline-manifest-ffbf32166c.json`.
+  Existing live-world, handoff, playback, and harness suites are green; exact-player radar and
+  independent per-member routing are source-proven caveats, while visible dancing and covert
+  hostility were not reproduced.
+- Natural camp qualification is checkpointed at `dc094e8bf1b3d50a603ba1fdcdcb5ccfb997f66c`.
+  Fixed internal seed `830204914` proves fresh default-world bandit/cannibal placement, canonical
+  registration, real 14-member mapgen reconciliation, idempotence, and JSON round trip. Final
+  autoreview is clean. The current source-built test binary is 79,081,592 bytes with SHA-256
+  `c424ea8e251f4319123f90fe1264cfdfdfd268ac058f914bf01f6487944f70c8`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Run and archive the active narrow functional baseline before gameplay edits.
+3. Start the isolated behavior-neutral benchmark instrumentation row; functional and natural-world
+   baselines are complete.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the recorded `cata_test` identity; do not rebuild unless a later source change invalidates its hash.
-6. Continue the remaining Phase-0 functional and benchmark baseline rows; do not begin gameplay changes before their required budgets are ratified.
+5. Reuse the current source-built `cata_test` where valid; run only one redirected build when the
+   benchmark instrumentation invalidates it.
+6. Continue the remaining Phase-0 benchmark, memory, fairness, and save-growth rows; do not begin
+   gameplay changes before their required budgets are ratified.
 
-Build state at this checkpoint: no build is running. The abandoned log remains classified
-incomplete; the controlled replacement completed successfully after the already-installed
-Homebrew gettext path was made explicit. Do not start another build unless a later row genuinely
-invalidates the current test binary.
+Build state at this checkpoint: no build, test, review, or profile is running. The abandoned log
+remains classified incomplete; the controlled replacement and later focused incremental builds
+completed successfully. Do not start another build unless the instrumentation row invalidates the
+current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
 future Apple prompt may pause only the later release-harness action that requires it; ordinary

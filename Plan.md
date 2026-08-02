@@ -79,9 +79,11 @@ flesh-raptor behavior remain closed. Honest perception, paired scouting, physica
 coherent withdrawal, faction outcomes, persistence, performance, save-bloat, and cross-platform
 requirements may not be weakened for convenience.
 
-Current execution row: run and archive the existing narrow hostile-camp functional baseline, then
-establish behavior-neutral performance/memory/fairness/save baselines and ratify budgets before
-Phase 1. Compiler/build/Mac/fixture/test-binary identity is recorded. The repaired Mac
+Current execution row: land the behavior-neutral benchmark driver and scoped maintenance
+timers/counters, apply that identical instrumentation to a preserved pre-change comparison
+worktree, then establish performance/memory/fairness/save baselines and ratify budgets before
+Phase 1. Compiler/build/Mac/fixture/test-binary identity, the pre-change functional packet, and
+natural bandit/cannibal creation/registration are recorded. The repaired Mac
 Keychain/API path is a later release-harness qualification gate, not a prerequisite for
 deterministic bandit/cannibal engineering. While Josef is unavailable, retain the existing shell
 export and do not retry or pause this goal again for `OSStatus -25308`.
