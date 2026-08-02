@@ -79,9 +79,11 @@ flesh-raptor behavior remain closed. Honest perception, paired scouting, physica
 coherent withdrawal, faction outcomes, persistence, performance, save-bloat, and cross-platform
 requirements may not be weakened for convenience.
 
-Current execution row: record compiler/build/fixture identity, then repair the Phase-0 secure
-Keychain writer and foreign-platform runner-path tests before gameplay edits. Establish the
-behavior-neutral functional/performance/save baselines and ratify budgets before Phase 1.
+Current execution row: record compiler/build/fixture identity, then establish the behavior-neutral
+functional/performance/save baselines and ratify budgets before Phase 1. The repaired Mac
+Keychain/API path is a later release-harness qualification gate, not a prerequisite for
+deterministic bandit/cannibal engineering. While Josef is unavailable, retain the existing shell
+export and do not retry or pause this goal again for `OSStatus -25308`.
 
 The prior five-family Windows free-play handoff remains useful held observation footing. It is not
 the active implementation target and does not authorize work on the three excluded creature

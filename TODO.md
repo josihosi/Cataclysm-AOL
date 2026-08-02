@@ -7,8 +7,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Checkpoint the promoted roadmap, tracked hostile-camp ledger, and exact resume packet on isolated `dev`.
-2. Record the Phase-0 compiler, flags, Mac identity, commit, season/world fixture, test binary, and raw-artifact root.
-3. Resume after Josef's one native Mac login-Keychain approval/unlock: the repaired path/writer tests pass 60/60, but the guarded real write returned `OSStatus -25308`; retry once, then prove the real clean-environment API self-test before removing the old shell export.
-4. Reproduce the current functional baseline, audit natural camp registration, and preserve exact pre-change evidence.
-5. Add behavior-neutral deterministic benchmark/counter instrumentation, create the preserved baseline comparison worktree, run the performance/memory/save matrix, and ratify the provisional budgets.
+1. Record the Phase-0 compiler, flags, Mac identity, commit, season/world fixture, test binary, and raw-artifact root.
+2. Audit the incomplete redirected tests build, then restart one build only if the missing baseline evidence requires it.
+3. Reproduce the current functional baseline, audit natural camp registration, and preserve exact pre-change evidence.
+4. Add behavior-neutral deterministic benchmark/counter instrumentation, create the preserved baseline comparison worktree, run the performance/memory/save matrix, and ratify the provisional budgets.
+
+Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
+Keychain retries or blocker messages while Josef is unavailable, and leave final clean-environment
+secure-store/API qualification for the later release gate.

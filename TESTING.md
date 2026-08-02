@@ -68,16 +68,19 @@ Current Phase-0 evidence (2026-08-02):
 - The launch envelope reports GPT-5.6-sol, xhigh reasoning, `approval_policy = "never"`, and `sandbox_mode = "danger-full-access"`; the persistent service tier is now normal/default.
 - `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract` first reproduced 57 tests with one failure and one error: mocked Windows resolution constructed `WindowsPath` on macOS, and mocked Linux accepted the existing Mac API venv. The reviewed repair now passes 60 tests, including native Keychain add/update seams and tilde-expanded foreign-root rejection.
 - A clean-environment release-scenario dry run succeeds and selects the Mac API venv, but the Keychain does not yet supply `CATA_API_KEY`. The existing shell value is retained only until a real secure-store API call succeeds.
-- The repaired Keychain writer uses Security.framework without a secret-bearing subprocess. Its one guarded real write returned secret-free `OSStatus -25308` (`interaction not allowed`) and wrote no item; retries are paused pending Josef's native Mac login-Keychain approval/unlock.
+- The repaired Keychain writer uses Security.framework without a secret-bearing subprocess. Its one guarded real write returned secret-free `OSStatus -25308` (`interaction not allowed`). This is now a deferred release-harness gap, not a deterministic Phase-0 blocker; retain the existing shell export and make no more Keychain retries while Josef is unavailable.
 
 Required Phase-0 evidence:
 - exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;
 - all fixture-contract tests green on macOS, including mocked Windows/Linux foreign-path controls;
-- non-interactive Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
 - current functional behavior and natural camp registration recorded before gameplay edits;
 - behavior-neutral deterministic counters/driver run against preserved pre-change and final implementations;
 - zero/10/100/500-site CPU, memory, scheduler-fairness, and save-growth evidence with reviewed, ratified budgets and raw artifacts retained outside Git;
 - checkpoint commits and resume packets that name exact commands, artifacts, dirty state, blockers, and next row.
+
+Deferred release-harness evidence, not a Phase-0 engineering blocker:
+- non-interactive Mac Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
+- removal of the old shell export only after that secure route is proven.
 
 Claim boundary: Phase 0 establishes trustworthy infrastructure and a comparison baseline. It does
 not prove the new ecology. Fixture staging is not natural world-generation proof, semantic turn
@@ -175,11 +178,13 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 0 only:
-- repair and test the foreign-platform runner-path classifier;
-- replace and test the interactive Keychain writer, then prove clean-environment secure retrieval and a real API call;
 - run the narrow existing C++ hostile-camp tests and record current behavior;
 - prove naturally generated camp registration without confusing a fixture for world generation;
 - land behavior-neutral benchmark/counter instrumentation and record the zero/10/100/500-site CPU, memory, fairness, and save-growth baselines.
+
+The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
+tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
+not trigger another pause, retry, or Discord blocker during deterministic ecology work.
 
 Origin, release, and production-candidate mutation remain held. Closed zombie-rider,
 flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, and older bandit/camp proof trains

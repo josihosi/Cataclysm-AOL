@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 - Active phase: Phase 0 - reproducible baselines and benchmark infrastructure.
 - First execution row: record compiler, build flags, Mac model/OS, commit ID, season length, world seed, and test-binary identity.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
-- Human blocker: waiting for one native Mac login-Keychain approval/unlock after the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`).
-- Known technical defects: the path classifier and writer defects are repaired and pass 60 contract tests; real secure-store write/retrieval remains blocked at the Apple interaction boundary.
+- Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
+- Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
 
 ## Launch evidence
 
@@ -41,15 +41,14 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
 3. Complete the active Phase-0 identity row and retain raw artifacts outside Git.
-4. After Josef resolves the native Apple interaction, re-inspect state and retry the Keychain write exactly once.
-5. Prove a real API self-test from a clean starting environment and remove the old shell export only after that secure-route proof succeeds.
-6. Continue the remaining Phase-0 functional and benchmark baseline rows; do not begin gameplay changes early.
+4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
+5. Audit the incomplete redirected tests-build log; no build process or test binary survived, so restart one redirected build only when required by the current baseline row.
+6. Continue the remaining Phase-0 functional and benchmark baseline rows; do not begin gameplay changes before their required budgets are ratified.
 
-Waiting process state at checkpoint: the behavior-unchanged Mac `tests` build launched before the
-Apple blocker may still be running, with output redirected to
-`/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase0-20260802/macos-tests-build-c66364dbd1.log`.
-It is safe to let that compile finish; do not start another build while it runs.
+Build state at resume: the behavior-unchanged Mac `tests` build is no longer running. Its redirected
+log ends during compilation without a hard-error marker, and no test binary exists; treat it as
+incomplete and restart only the one build required by the active baseline row.
 
-If macOS presents a genuine Keychain/TCC/password interaction, stop retries, checkpoint this packet,
-send exactly one secret-free blocker through the ledger's tested local OpenClaw Discord route, and
-wait safely. Ordinary technical failures are not whole-goal blockers.
+Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
+future Apple prompt may pause only the later release-harness action that requires it; ordinary
+technical failures and deferred API qualification must not stop the active ecology roadmap.

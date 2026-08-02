@@ -139,12 +139,12 @@ Use direct tool calls for semantic code judgment, approval-sensitive actions, in
 
 ### Apple/TCC/password blocker protocol
 
-If macOS requires Josef to approve TCC, unlock Keychain, enter a password, or interact with another Apple-owned prompt:
+If macOS requires Josef to approve TCC, unlock Keychain, enter a password, or interact with another Apple-owned prompt, pause only the Apple-dependent action. Continue unrelated deterministic work whenever an unblocked roadmap row exists. Mac secure-store/API qualification is a release-harness/Phase-10 gate and may not pause bandit/cannibal engineering.
 
-1. Stop before repeated retries; preserve all work and record the exact prompt/window, required human action, current command, phase/row, and whether any process is safely left running.
-2. Send one concise message through the already tested local OpenClaw Discord relay to channel `1481294598646272045`. Use the tested one-shot form `PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/openclaw message send --channel discord --target channel:1481294598646272045 --message "<secret-free blocker, exact prompt, and resume checkpoint>" --json`. Never include API keys, passwords, tokens, save contents, or other secrets. Do not send another test message.
-3. Mark the long-running goal as waiting in its resume packet without declaring the engineering task blocked/complete. Do not use cron, a watcher, or repeated Discord messages.
-4. Josef may be at work. Leave the checkout/process in a safe resumable state and wait for explicit resolution; then re-inspect state before retrying once.
+1. Stop repeated retries for the affected action; preserve work and record the exact prompt/window, command, phase/row, and safe running processes.
+2. Send one concise secret-free OpenClaw Discord message only when the Apple action blocks the next active roadmap row. Do not send another message for the already-recorded Keychain denial.
+3. If another deterministic row is available, record the Apple-dependent gap and continue the same long-running goal. Do not use cron, a watcher, or repeated Discord messages.
+4. The guarded Keychain attempt at `d12edba150` consumes the current retry budget. While Josef is unavailable, retain the existing shell export and make no further write/read/API attempts. Final secure-store qualification remains unchecked until Josef explicitly reopens that later release gate.
 
 The relay test was successfully delivered during preparation. Future messages are blocker-only, not progress spam.
 
@@ -190,7 +190,7 @@ Preparation receipts are not Phase 0 credit; re-verify every preflight condition
 
 - [x] Run `python -m unittest tools.openclaw_harness.test_fixture_contract` on the synchronized exact HEAD and record the count.
 - [ ] Dry-resolve `manual.release_candidate_roaming_mcw` on Windows and Mac; prove the Windows and macOS `LLM_INTENT_PYTHON` values resolve to existing native environments and Linux is not assigned either foreign absolute path.
-- [ ] From a process with `CATA_API_KEY` and `OPENAI_API_KEY` removed, prove harness provisioning reports only `ready` plus secure-store source, then run the real API runner self-test without printing the secret.
+- [x] Record the bounded Mac secure-store attempt without exposing the credential: writer tests pass, one guarded native write returned `OSStatus -25308`, the existing shell export remains intact, and final clean-environment retrieval/API proof is deferred to the Phase-10 release-harness gate without pausing deterministic work.
 - [ ] Prove the derived save's evacuation-shelter footprint/time, two repaired camp assignments, zero old active scouts, five staged observation families, exact distance bands, and no initial-bubble hostile.
 - [ ] Advance the save through an ordinary game-owned camp schedule window and inspect whether the two assigned NPCs leave idle bench state when their schedule requires it. If not, split a camp-assignment/patrol repair before relying on them as defenders.
 
@@ -281,18 +281,19 @@ Evidence:
   with 60 tests and passes `py_compile` plus `git diff --check`. It rejects a Mac absolute or
   tilde-expanded venv on mocked Linux, avoids host-incompatible `pathlib` construction, and writes
   through Security.framework without putting the secret in a subprocess or error text.
-- Secure-store blocker: one guarded real write from the existing interactive-shell
+- Deferred secure-store gap: one guarded real write from the existing interactive-shell
   `CATA_API_KEY` reached Security.framework and failed secret-free with `OSStatus -25308`
-  (`interaction not allowed`). No item was written. Keychain retries stopped; Josef must approve or
-  unlock the Mac login Keychain from a native local session before the one permitted retry.
+  (`interaction not allowed`). The existing shell export remains intact. This does not block the
+  deterministic ecology phases; make no further Keychain attempt or blocker relay while Josef is
+  unavailable, and leave final clean-environment retrieval/API proof for the Phase-10 gate.
 - Performance artifact manifest:
 - Save-growth artifact manifest:
 - Known caveats: this first preflight turn began while the local Codex config still named priority
   service; that already-started request could not be retroactively changed. All later local
-  launches inherit `default`. The repaired writer is unit-tested but the Keychain item remains
-  absent because macOS denied non-interactive access; no repeated write was attempted. The API venv
-  has `any_llm` but lacks `flatbuffers`, so fixture contracts currently use `/usr/bin/python3`
-  while API self-tests use the native venv.
+  launches inherit `default`. The repaired writer is unit-tested but headless secure-store access
+  remains unqualified because macOS denied non-interactive access; no repeated write is permitted
+  during this deterministic lane. The API venv has `any_llm` but lacks `flatbuffers`, so fixture
+  contracts currently use `/usr/bin/python3` while later API self-tests use the native venv.
 
 ## Phase 1 - one authoritative persistent model
 
