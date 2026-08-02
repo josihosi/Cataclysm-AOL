@@ -103,6 +103,20 @@ enum class simulation_owner {
     local,
 };
 
+enum class simulation_owner_transition_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
+struct simulation_advance_cursor {
+    std::string activity_id;
+    int generation = 0;
+    simulation_owner owner = simulation_owner::abstract;
+    int handoff_epoch = -1;
+    int last_advanced_minutes = -1;
+};
+
 enum class scout_phase {
     assembling,
     outbound,
@@ -294,7 +308,7 @@ struct camp_decision_record {
 };
 
 struct active_outing_state {
-    int schema_version = 3;
+    int schema_version = 4;
     outing_kind kind = outing_kind::none;
     std::string activity_id;
     std::string camp_id;
@@ -729,13 +743,29 @@ int ordinary_scout_sortie_limit_minutes();
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         bool current_exposure, bool recent_exposure,
         const std::vector<sight_avoid_candidate> &candidates, bool current_smoke_obscured = false );
-bool note_active_sortie_started( site_record &site, int current_minutes );
-bool note_active_sortie_local_contact( site_record &site, int current_minutes );
+std::optional<simulation_advance_cursor> current_external_simulation_cursor(
+    const site_record &site );
+bool note_active_sortie_started( site_record &site,
+                                 const simulation_advance_cursor &expected_cursor,
+                                 int current_minutes );
+bool note_active_sortie_local_contact( site_record &site,
+                                       const simulation_advance_cursor &expected_cursor,
+                                       character_id contact_member_id, int current_minutes );
+simulation_owner_transition_result transition_external_simulation_owner( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        simulation_owner expected_owner, simulation_owner next_owner,
+        int expected_handoff_epoch, int expected_last_advanced_minutes,
+        int current_minutes );
+simulation_owner_transition_result advance_external_simulation( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        simulation_owner expected_owner, int expected_handoff_epoch,
+        int expected_last_advanced_minutes, int current_minutes );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
 scout_phase_transition_result transition_active_scout_phase( site_record &site,
-        scout_phase expected_phase, scout_phase next_phase, int current_minutes );
+        const simulation_advance_cursor &expected_cursor, scout_phase expected_phase,
+        scout_phase next_phase, int current_minutes );
 bool is_valid_camp_decision_transition( camp_decision_state previous_state,
                                         camp_decision_state next_state );
 camp_decision_transition_result accept_current_scout_report_for_assessment( site_record &site );
@@ -746,7 +776,7 @@ camp_decision_transition_result transition_camp_decision_state( site_record &sit
 bool is_valid_hostile_operation_phase_transition( hostile_operation_phase previous_phase,
         hostile_operation_phase next_phase );
 hostile_operation_transition_result transition_hostile_operation_phase( site_record &site,
-        const std::string &expected_activity_id, int expected_generation,
+        const simulation_advance_cursor &expected_cursor,
         hostile_operation_phase expected_phase, hostile_operation_phase next_phase,
         int current_minutes, const std::string &reason );
 hostile_operation_plan plan_hostile_operation( const site_record &site,
@@ -770,12 +800,15 @@ std::string render_empty_site_retirement_report( const site_record &site );
 int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 scout_resolution_effect apply_active_scout_observations( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
         const std::vector<active_member_observation> &observations, int current_minutes );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
                           const std::string &summary );
-bool record_active_outing_casualty( site_record &site, character_id npc_id,
+bool record_active_outing_casualty( site_record &site,
+                                    const simulation_advance_cursor &expected_cursor,
+                                    character_id npc_id,
                                     member_state casualty_state, int current_minutes,
                                     const std::string &summary );
 

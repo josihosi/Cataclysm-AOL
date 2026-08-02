@@ -93,6 +93,7 @@ struct abstract_group_state {
     std::string group_id;
     std::string source_camp_id;
     int activity_generation = 0;
+    int handoff_epoch = 0;
     std::string return_application_key;
     int group_strength = 0;
     int confidence = 0;
@@ -126,6 +127,7 @@ struct entry_payload {
     std::string group_id;
     std::string source_camp_id;
     int activity_generation = 0;
+    int handoff_epoch = 0;
     std::string return_application_key;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     bandit_dry_run::lead_family lead_carrier = bandit_dry_run::lead_family::none;
@@ -176,6 +178,7 @@ struct return_packet {
     std::string group_id;
     std::string source_camp_id;
     int activity_generation = 0;
+    int handoff_epoch = 0;
     std::string return_application_key;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     entry_mode mode = entry_mode::withdrawal;

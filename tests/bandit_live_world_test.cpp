@@ -117,6 +117,15 @@ void set_test_active_outing( bandit_live_world::site_record &site, const std::st
                                                std::to_string( site.active_outing.generation );
 }
 
+bandit_live_world::simulation_advance_cursor require_current_simulation_cursor(
+    const bandit_live_world::site_record &site )
+{
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor.has_value() );
+    return *cursor;
+}
+
 void prepare_hostile_follow_on( bandit_live_world::site_record &site, const int report_revision,
                                 const int scout_generation, const std::string &target_id,
                                 const tripoint_abs_omt &target_omt, const int delivered_minutes )
@@ -160,8 +169,7 @@ void apply_test_hostile_dispatch( bandit_live_world::site_record &site,
     REQUIRE( operation.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, operation ) );
     REQUIRE( bandit_live_world::transition_hostile_operation_phase(
-                 site, operation.operation.reservation.activity_id,
-                 operation.operation.reservation.generation,
+                 site, require_current_simulation_cursor( site ),
                  bandit_live_world::hostile_operation_phase::assembling,
                  bandit_live_world::hostile_operation_phase::outbound,
                  current_minutes + 1, "test hostile party departed" ) ==
@@ -174,10 +182,8 @@ bandit_live_world::hostile_operation_transition_result transition_test_hostile_o
     const bandit_live_world::hostile_operation_phase next_phase,
     const int current_minutes, const std::string &reason )
 {
-    const bandit_live_world::active_outing_state &reservation =
-        site.active_hostile_operation.reservation;
     return bandit_live_world::transition_hostile_operation_phase(
-               site, reservation.activity_id, reservation.generation, expected_phase, next_phase,
+               site, require_current_simulation_cursor( site ), expected_phase, next_phase,
                current_minutes, reason );
 }
 } // namespace
@@ -412,6 +418,18 @@ TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch( original_site, tripoint_abs_omt( 48, 50, 0 ), "player_basecamp_nearby" );
     REQUIRE( plan.valid );
+    CHECK( plan.group.handoff_epoch == 0 );
+    CHECK( plan.entry.handoff_epoch == 0 );
+    const std::string before_epoch_rejection = serialize_world( original );
+    bandit_live_world::dispatch_plan mismatched_epoch = plan;
+    mismatched_epoch.entry.handoff_epoch = 1;
+    CHECK_FALSE( bandit_live_world::apply_dispatch_plan( original_site, mismatched_epoch ) );
+    CHECK( serialize_world( original ) == before_epoch_rejection );
+    bandit_live_world::dispatch_plan noninitial_epoch = plan;
+    noninitial_epoch.group.handoff_epoch = 2;
+    noninitial_epoch.entry.handoff_epoch = 2;
+    CHECK_FALSE( bandit_live_world::apply_dispatch_plan( original_site, noninitial_epoch ) );
+    CHECK( serialize_world( original ) == before_epoch_rejection );
     REQUIRE( bandit_live_world::apply_dispatch_plan( original_site, plan ) );
 
     std::ostringstream out;
@@ -526,6 +544,27 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         CHECK( site.next_outing_generation == 2 );
     }
 
+    SECTION( "legacy scalar local contact migrates to local ownership" ) {
+        JsonValue legacy = json_loader::from_string( R"({
+            "site_id": "legacy_contact_camp",
+            "members": [ { "npc_id": 47, "state": "local_contact" } ],
+            "active_group_id": "legacy_contact_camp#dispatch",
+            "active_target_id": "legacy_contact_target",
+            "active_job_type": "scout",
+            "active_member_ids": [ 47 ],
+            "active_sortie_started_minutes": 120,
+            "active_sortie_local_contact_minutes": 150
+        })" );
+        bandit_live_world::site_record site;
+        site.deserialize( legacy.get_object() );
+
+        REQUIRE( site.active_outing.is_active() );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( site.active_outing.handoff_epoch == 1 );
+        CHECK( site.active_outing.last_advanced_minutes == 150 );
+        CHECK( bandit_live_world::current_external_simulation_cursor( site ).has_value() );
+    }
+
     SECTION( "transitional nested identity imports its former site payload" ) {
         JsonValue transitional = json_loader::from_string( R"({
             "schema_version": 2,
@@ -553,7 +592,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
 
         REQUIRE( site.active_outing.is_active() );
         CHECK( site.schema_version == 5 );
-        CHECK( site.active_outing.schema_version == 3 );
+        CHECK( site.active_outing.schema_version == 4 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
         CHECK( site.active_outing.target_id == "legacy_nested_target" );
@@ -563,6 +602,9 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         CHECK( site.active_outing.started_minutes == 200 );
         CHECK( site.active_outing.local_contact_minutes == 240 );
         CHECK( site.active_outing.last_progress_minutes == 240 );
+        CHECK( site.active_outing.last_advanced_minutes == 240 );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( site.active_outing.handoff_epoch == 1 );
         CHECK( site.active_outing.expected_return_minutes == 1080 );
         CHECK( site.active_outing.missing_deadline_minutes == 2520 );
         CHECK( site.active_outing.report_application_key ==
@@ -570,6 +612,112 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         CHECK( site.active_outing.cargo_application_key ==
                "transitional_camp#dispatch:cargo:4" );
         CHECK( site.next_outing_generation == 5 );
+    }
+
+    SECTION( "schema-three local owner repairs its legacy even handoff epoch" ) {
+        JsonValue transitional = json_loader::from_string( R"({
+            "schema_version": 4,
+            "site_id": "owner_epoch_camp",
+            "members": [ { "npc_id": 46, "state": "local_contact" } ],
+            "active_outing": {
+                "schema_version": 3,
+                "kind": "scout_sortie",
+                "activity_id": "owner_epoch_camp#dispatch",
+                "camp_id": "owner_epoch_camp",
+                "generation": 2,
+                "member_ids": [ 46 ],
+                "leader_id": 46,
+                "target_id": "legacy_contact",
+                "job_type": "scout",
+                "phase": "observing",
+                "simulation_owner": "local",
+                "handoff_epoch": 2,
+                "started_minutes": 100,
+                "local_contact_minutes": 150,
+                "last_progress_minutes": 150,
+                "last_advanced_minutes": 150,
+                "return_application_key": "owner_epoch_camp#dispatch:return:2",
+                "report_application_key": "owner_epoch_camp#dispatch:report:2",
+                "cargo_application_key": "owner_epoch_camp#dispatch:cargo:2"
+            }
+        })" );
+        bandit_live_world::site_record site;
+        site.deserialize( transitional.get_object() );
+
+        REQUIRE( site.active_outing.is_active() );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( site.active_outing.handoff_epoch == 3 );
+        CHECK( site.active_outing.last_advanced_minutes == 150 );
+        CHECK( bandit_live_world::current_external_simulation_cursor( site ).has_value() );
+    }
+
+    SECTION( "schema-four torn advancement cursor fails closed" ) {
+        JsonValue malformed = json_loader::from_string( R"({
+            "schema_version": 5,
+            "site_id": "torn_cursor_camp",
+            "members": [ { "npc_id": 48, "state": "outbound" } ],
+            "active_outing": {
+                "schema_version": 4,
+                "kind": "scout_sortie",
+                "activity_id": "torn_cursor_camp#dispatch",
+                "camp_id": "torn_cursor_camp",
+                "generation": 1,
+                "member_ids": [ 48 ],
+                "leader_id": 48,
+                "target_id": "torn_target",
+                "job_type": "scout",
+                "phase": "searching",
+                "simulation_owner": "abstract",
+                "handoff_epoch": 0,
+                "started_minutes": 100,
+                "last_progress_minutes": 150,
+                "last_advanced_minutes": 140,
+                "return_application_key": "torn_cursor_camp#dispatch:return:1",
+                "report_application_key": "torn_cursor_camp#dispatch:report:1",
+                "cargo_application_key": "torn_cursor_camp#dispatch:cargo:1"
+            }
+        })" );
+        bandit_live_world::site_record site;
+        site.deserialize( malformed.get_object() );
+
+        CHECK_FALSE( site.active_outing.is_active() );
+        CHECK( site.active_outing.member_ids.empty() );
+        REQUIRE( site.find_member( character_id( 48 ) ) != nullptr );
+        CHECK( site.find_member( character_id( 48 ) )->state ==
+               bandit_live_world::member_state::at_home );
+    }
+
+    SECTION( "incomplete schema-four cursor never falls back to legacy scalars" ) {
+        JsonValue malformed = json_loader::from_string( R"({
+            "schema_version": 5,
+            "site_id": "incomplete_cursor_camp",
+            "members": [ { "npc_id": 49, "state": "local_contact" } ],
+            "active_outing": {
+                "schema_version": 4,
+                "kind": "scout_sortie",
+                "activity_id": "incomplete_cursor_camp#dispatch",
+                "camp_id": "incomplete_cursor_camp",
+                "generation": 1,
+                "simulation_owner": "local",
+                "handoff_epoch": 0,
+                "last_advanced_minutes": 140
+            },
+            "active_hostile_operation": {},
+            "active_target_id": "legacy_fallback_target",
+            "active_job_type": "scout",
+            "active_member_ids": [ 49 ],
+            "active_sortie_started_minutes": 100,
+            "active_sortie_local_contact_minutes": 150
+        })" );
+        bandit_live_world::site_record site;
+        site.deserialize( malformed.get_object() );
+
+        CHECK_FALSE( site.active_outing.is_active() );
+        CHECK( site.active_outing.member_ids.empty() );
+        REQUIRE( site.find_member( character_id( 49 ) ) != nullptr );
+        CHECK( site.find_member( character_id( 49 ) )->state ==
+               bandit_live_world::member_state::at_home );
+        CHECK_FALSE( bandit_live_world::current_external_simulation_cursor( site ).has_value() );
     }
 
     SECTION( "invalid modern identity still releases its embedded reservations" ) {
@@ -810,7 +958,7 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
     site.active_outing.expected_return_minutes = 940;
     site.active_outing.missing_deadline_minutes = 2380;
     site.active_outing.owner = bandit_live_world::simulation_owner::local;
-    site.active_outing.handoff_epoch = 2;
+    site.active_outing.handoff_epoch = 1;
     site.active_outing.last_advanced_minutes = 331;
 
     const std::vector<bandit_live_world::scout_phase> phases = {
@@ -831,7 +979,7 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
         REQUIRE( loaded.schema_version == 3 );
         REQUIRE( loaded.sites.size() == 1 );
         const bandit_live_world::active_outing_state &outing = loaded.sites.front().active_outing;
-        CHECK( outing.schema_version == 3 );
+        CHECK( outing.schema_version == 4 );
         CHECK( outing.phase == phase );
         CHECK( outing.member_ids == original.sites.front().active_outing.member_ids );
         CHECK( outing.leader_id == character_id( 45000 ) );
@@ -853,12 +1001,132 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
         CHECK( outing.expected_return_minutes == 940 );
         CHECK( outing.missing_deadline_minutes == 2380 );
         CHECK( outing.owner == bandit_live_world::simulation_owner::local );
-        CHECK( outing.handoff_epoch == 2 );
+        CHECK( outing.handoff_epoch == 1 );
         CHECK( outing.last_advanced_minutes == 331 );
         CHECK_FALSE( outing.return_application_key.empty() );
         CHECK_FALSE( outing.report_application_key.empty() );
         CHECK_FALSE( outing.cargo_application_key.empty() );
     }
+}
+
+TEST_CASE( "bandit_live_world_simulation_owner_handoff_is_shared_and_token_checked",
+           "[bandit][live_world][handoff][owner]" )
+{
+    using bandit_live_world::simulation_owner;
+    using bandit_live_world::simulation_owner_transition_result;
+
+    bandit_live_world::world_state scout_world;
+    add_bandit_camp_member( scout_world, 0, 45500 );
+    add_bandit_camp_member( scout_world, 1, 45500 );
+    bandit_live_world::site_record &scout_site = scout_world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state(
+                 scout_site, character_id( 45500 ), bandit_live_world::member_state::outbound,
+                 "test scout departed" ) );
+    set_test_active_outing( scout_site, scout_site.site_id + "#scout:owner" );
+    scout_site.active_outing.member_ids = { character_id( 45500 ) };
+    scout_site.active_outing.leader_id = character_id( 45500 );
+    scout_site.active_outing.phase = bandit_live_world::scout_phase::outbound;
+    scout_site.active_outing.started_minutes = 10;
+    scout_site.active_outing.last_progress_minutes = 10;
+    scout_site.active_outing.last_advanced_minutes = 10;
+    const std::string scout_id = scout_site.active_outing.activity_id;
+    const int scout_generation = scout_site.active_outing.generation;
+    const std::string initial_scout = serialize_world( scout_world );
+
+    CHECK( bandit_live_world::advance_external_simulation(
+               scout_site, scout_id, scout_generation, simulation_owner::abstract, 0, 9, 11 ) ==
+           simulation_owner_transition_result::rejected );
+    CHECK( bandit_live_world::transition_external_simulation_owner(
+               scout_site, scout_id + ":stale", scout_generation,
+               simulation_owner::abstract, simulation_owner::local, 0, 10, 11 ) ==
+           simulation_owner_transition_result::rejected );
+    CHECK( serialize_world( scout_world ) == initial_scout );
+
+    REQUIRE( bandit_live_world::advance_external_simulation(
+                 scout_site, scout_id, scout_generation, simulation_owner::abstract, 0, 10, 11 ) ==
+             simulation_owner_transition_result::applied );
+    CHECK( bandit_live_world::advance_external_simulation(
+               scout_site, scout_id, scout_generation, simulation_owner::abstract, 0, 10, 12 ) ==
+           simulation_owner_transition_result::rejected );
+    const std::string after_advance = serialize_world( scout_world );
+    CHECK( bandit_live_world::advance_external_simulation(
+               scout_site, scout_id, scout_generation, simulation_owner::abstract, 0, 11, 11 ) ==
+           simulation_owner_transition_result::rejected );
+    CHECK( serialize_world( scout_world ) == after_advance );
+
+    REQUIRE( bandit_live_world::transition_external_simulation_owner(
+                 scout_site, scout_id, scout_generation, simulation_owner::abstract,
+                 simulation_owner::local, 0, 11, 12 ) ==
+             simulation_owner_transition_result::applied );
+    CHECK( scout_site.active_outing.owner == simulation_owner::local );
+    CHECK( scout_site.active_outing.handoff_epoch == 1 );
+    CHECK( scout_site.active_outing.last_advanced_minutes == 12 );
+    const std::string local_scout = serialize_world( scout_world );
+    CHECK( bandit_live_world::transition_external_simulation_owner(
+               scout_site, scout_id, scout_generation, simulation_owner::abstract,
+               simulation_owner::local, 0, 11, 12 ) ==
+           simulation_owner_transition_result::rejected );
+    CHECK( bandit_live_world::advance_external_simulation(
+               scout_site, scout_id, scout_generation, simulation_owner::abstract, 0, 11, 13 ) ==
+           simulation_owner_transition_result::rejected );
+    CHECK( serialize_world( scout_world ) == local_scout );
+
+    REQUIRE( bandit_live_world::advance_external_simulation(
+                 scout_site, scout_id, scout_generation, simulation_owner::local, 1, 12, 13 ) ==
+             simulation_owner_transition_result::applied );
+    REQUIRE( bandit_live_world::transition_external_simulation_owner(
+                 scout_site, scout_id, scout_generation, simulation_owner::local,
+                 simulation_owner::abstract, 1, 13, 14 ) ==
+             simulation_owner_transition_result::applied );
+    const bandit_live_world::world_state loaded_scout = round_trip_world( scout_world );
+    REQUIRE( loaded_scout.sites.size() == 1 );
+    CHECK( loaded_scout.sites.front().active_outing.owner == simulation_owner::abstract );
+    CHECK( loaded_scout.sites.front().active_outing.handoff_epoch == 2 );
+    CHECK( loaded_scout.sites.front().active_outing.last_advanced_minutes == 14 );
+
+    bandit_live_world::world_state hostile_world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( hostile_world, index, 45600 );
+    }
+    bandit_live_world::site_record &hostile_site = hostile_world.sites.front();
+    const tripoint_abs_omt rally( 14, 20, 0 );
+    const tripoint_abs_omt target( 18, 20, 0 );
+    prepare_hostile_follow_on( hostile_site, 5, 4, "owner-target", target, 700 );
+    const bandit_live_world::hostile_operation_plan hostile_plan =
+        bandit_live_world::plan_hostile_operation(
+            hostile_site, bandit_live_world::hostile_operation_kind::shakedown,
+            { character_id( 45600 ), character_id( 45601 ) },
+            { hostile_site.anchor, rally, target }, rally, 702 );
+    REQUIRE( hostile_plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( hostile_site, hostile_plan ) );
+    REQUIRE( transition_test_hostile_operation(
+                 hostile_site, bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound, 703,
+                 "test hostile departed" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    bandit_live_world::active_outing_state &hostile_reservation =
+        hostile_site.active_hostile_operation.reservation;
+    REQUIRE( bandit_live_world::transition_external_simulation_owner(
+                 hostile_site, hostile_reservation.activity_id,
+                 hostile_reservation.generation, simulation_owner::abstract,
+                 simulation_owner::local, 0, 703, 704 ) ==
+             simulation_owner_transition_result::applied );
+    const bandit_live_world::world_state loaded_hostile = round_trip_world( hostile_world );
+    REQUIRE( loaded_hostile.sites.size() == 1 );
+    REQUIRE( loaded_hostile.sites.front().active_hostile_operation.is_active() );
+    CHECK( loaded_hostile.sites.front().active_hostile_operation.reservation.owner ==
+           simulation_owner::local );
+    CHECK( loaded_hostile.sites.front().active_hostile_operation.reservation.handoff_epoch == 1 );
+    CHECK( loaded_hostile.sites.front().active_hostile_operation.reservation.last_advanced_minutes == 704 );
+
+    bandit_live_world::world_state repaired_hostile = hostile_world;
+    repaired_hostile.sites.front().active_hostile_operation.reservation.owner =
+        simulation_owner::local;
+    repaired_hostile.sites.front().active_hostile_operation.reservation.handoff_epoch = 0;
+    repaired_hostile.sites.front().active_hostile_operation.reservation.last_advanced_minutes = -1;
+    repaired_hostile = round_trip_world( repaired_hostile );
+    CHECK_FALSE( repaired_hostile.sites.front().active_hostile_operation.is_active() );
+    CHECK( repaired_hostile.sites.front().active_hostile_operation.reservation.member_ids.empty() );
 }
 
 TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
@@ -937,24 +1205,26 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
     site.active_outing.last_progress_minutes = 100;
     site.active_outing.last_advanced_minutes = 100;
 
+    const bandit_live_world::simulation_advance_cursor initial_cursor =
+        require_current_simulation_cursor( site );
     const std::string before_stale = serialize_world( world );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::assembling, scout_phase::searching, 110 ) ==
+               site, initial_cursor, scout_phase::assembling, scout_phase::searching, 110 ) ==
            scout_phase_transition_result::rejected );
     CHECK( serialize_world( world ) == before_stale );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::outbound, scout_phase::searching, 99 ) ==
+               site, initial_cursor, scout_phase::outbound, scout_phase::searching, 99 ) ==
            scout_phase_transition_result::rejected );
     CHECK( serialize_world( world ) == before_stale );
 
     site.active_outing.kind = bandit_live_world::outing_kind::hostile_operation;
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+               site, initial_cursor, scout_phase::outbound, scout_phase::searching, 110 ) ==
            scout_phase_transition_result::rejected );
     site.active_outing.kind = bandit_live_world::outing_kind::scout_sortie;
     site.active_outing.job_type = "raid";
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+               site, initial_cursor, scout_phase::outbound, scout_phase::searching, 110 ) ==
            scout_phase_transition_result::rejected );
     site.active_outing.job_type = "scout";
     CHECK( serialize_world( world ) == before_stale );
@@ -962,53 +1232,69 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
     bandit_live_world::site_record legacy_scavenge = site;
     legacy_scavenge.active_outing.job_type = "scavenge";
     CHECK( bandit_live_world::transition_active_scout_phase(
-               legacy_scavenge, scout_phase::outbound, scout_phase::searching, 110 ) ==
+               legacy_scavenge, require_current_simulation_cursor( legacy_scavenge ),
+               scout_phase::outbound, scout_phase::searching, 110 ) ==
            scout_phase_transition_result::applied );
 
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::outbound, scout_phase::searching, 110 ) ==
+               site, initial_cursor, scout_phase::outbound, scout_phase::searching, 110 ) ==
            scout_phase_transition_result::applied );
     CHECK( site.active_outing.phase == scout_phase::searching );
     CHECK( site.active_outing.last_progress_minutes == 110 );
     CHECK( site.active_outing.last_advanced_minutes == 110 );
+    const std::string after_first_advance = serialize_world( world );
+    CHECK( bandit_live_world::transition_active_scout_phase(
+               site, initial_cursor, scout_phase::searching, scout_phase::observing, 120 ) ==
+           scout_phase_transition_result::rejected );
+    CHECK( serialize_world( world ) == after_first_advance );
     const std::string before_same = serialize_world( world );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::searching, scout_phase::searching, 120 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::searching,
+               scout_phase::searching, 120 ) ==
            scout_phase_transition_result::unchanged );
     CHECK( serialize_world( world ) == before_same );
 
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::searching, scout_phase::observing, 120 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::searching,
+               scout_phase::observing, 120 ) ==
            scout_phase_transition_result::applied );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::observing, scout_phase::burned_withdrawal, 130 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::observing,
+               scout_phase::burned_withdrawal, 130 ) ==
            scout_phase_transition_result::applied );
     const std::string burned_state = serialize_world( world );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::burned_withdrawal, scout_phase::observing, 140 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::burned_withdrawal,
+               scout_phase::observing, 140 ) ==
            scout_phase_transition_result::rejected );
     CHECK( serialize_world( world ) == burned_state );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::burned_withdrawal, scout_phase::returning_exposed, 140 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::burned_withdrawal,
+               scout_phase::returning_exposed, 140 ) ==
            scout_phase_transition_result::applied );
     const std::string exposed_state = serialize_world( world );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::returning_exposed, scout_phase::harvesting, 150 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::returning_exposed,
+               scout_phase::harvesting, 150 ) ==
            scout_phase_transition_result::rejected );
     CHECK( serialize_world( world ) == exposed_state );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::returning_exposed, scout_phase::returning_report, 150 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::returning_exposed,
+               scout_phase::returning_report, 150 ) ==
            scout_phase_transition_result::applied );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::returning_report, scout_phase::returning_home, 160 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::returning_report,
+               scout_phase::returning_home, 160 ) ==
            scout_phase_transition_result::applied );
     const std::string home_state = serialize_world( world );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::returning_home, scout_phase::outbound, 170 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::returning_home,
+               scout_phase::outbound, 170 ) ==
            scout_phase_transition_result::rejected );
     CHECK( serialize_world( world ) == home_state );
     CHECK( bandit_live_world::transition_active_scout_phase(
-               site, scout_phase::returning_home, scout_phase::lost, 170 ) ==
+               site, require_current_simulation_cursor( site ), scout_phase::returning_home,
+               scout_phase::lost, 170 ) ==
            scout_phase_transition_result::applied );
 
     bandit_live_world::world_state returning_world;
@@ -1023,13 +1309,16 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
     returning_site.active_outing.last_progress_minutes = 200;
     returning_site.active_outing.last_advanced_minutes = 200;
     const std::string before_contact = serialize_world( returning_world );
-    CHECK_FALSE( bandit_live_world::note_active_sortie_local_contact( returning_site, 210 ) );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_local_contact(
+                     returning_site, require_current_simulation_cursor( returning_site ),
+                     character_id( 45110 ), 210 ) );
     CHECK( serialize_world( returning_world ) == before_contact );
 
     returning_site.active_outing.started_minutes = -1;
     returning_site.active_outing.phase = scout_phase::burned_withdrawal;
     const std::string before_restart = serialize_world( returning_world );
-    CHECK_FALSE( bandit_live_world::note_active_sortie_started( returning_site, 220 ) );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_started(
+                     returning_site, require_current_simulation_cursor( returning_site ), 220 ) );
     CHECK( serialize_world( returning_world ) == before_restart );
 
     JsonValue future_phase_json = json_loader::from_string(
@@ -1474,14 +1763,18 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
 
     const std::string assembled = serialize_world( world );
-    const std::string operation_id = site.active_hostile_operation.reservation.activity_id;
-    const int operation_generation = site.active_hostile_operation.reservation.generation;
+    const bandit_live_world::simulation_advance_cursor assembled_cursor =
+        require_current_simulation_cursor( site );
+    bandit_live_world::simulation_advance_cursor wrong_identity = assembled_cursor;
+    wrong_identity.activity_id += ":stale";
     CHECK( bandit_live_world::transition_hostile_operation_phase(
-               site, operation_id + ":stale", operation_generation,
+               site, wrong_identity,
                hostile_operation_phase::assembling, hostile_operation_phase::outbound,
                803, "wrong identity" ) == hostile_operation_transition_result::rejected );
+    bandit_live_world::simulation_advance_cursor wrong_generation = assembled_cursor;
+    wrong_generation.generation++;
     CHECK( bandit_live_world::transition_hostile_operation_phase(
-               site, operation_id, operation_generation + 1,
+               site, wrong_generation,
                hostile_operation_phase::assembling, hostile_operation_phase::outbound,
                803, "wrong generation" ) == hostile_operation_transition_result::rejected );
     for( int member_id = 45402; member_id <= 45404; ++member_id ) {
@@ -1534,6 +1827,12 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     CHECK( site.active_hostile_operation.reservation.last_progress_minutes == 803 );
     CHECK( site.active_hostile_operation.reservation.last_advanced_minutes == 803 );
     CHECK( site.active_hostile_operation.last_transition_reason == "party departed" );
+    const std::string departed = serialize_world( world );
+    CHECK( bandit_live_world::transition_hostile_operation_phase(
+               site, assembled_cursor, hostile_operation_phase::outbound,
+               hostile_operation_phase::rallying, 810, "stale pre-departure cursor" ) ==
+           hostile_operation_transition_result::rejected );
+    CHECK( serialize_world( world ) == departed );
     REQUIRE( transition_test_hostile_operation(
                  site, hostile_operation_phase::outbound, hostile_operation_phase::rallying,
                  810, "rally reached" ) == hostile_operation_transition_result::applied );
@@ -1549,18 +1848,32 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     REQUIRE( transition_test_hostile_operation(
                  site, hostile_operation_phase::waiting_night, hostile_operation_phase::approaching,
                  830, "night approach" ) == hostile_operation_transition_result::applied );
+    const bandit_live_world::simulation_advance_cursor pre_contact_cursor =
+        require_current_simulation_cursor( site );
     REQUIRE( transition_test_hostile_operation(
                  site, hostile_operation_phase::approaching,
                  hostile_operation_phase::committed_contact, 840, "contact committed" ) ==
              hostile_operation_transition_result::applied );
+    CHECK( site.active_hostile_operation.reservation.owner ==
+           bandit_live_world::simulation_owner::local );
+    CHECK( site.active_hostile_operation.reservation.handoff_epoch == 1 );
     for( const character_id &member_id : members ) {
         CHECK( site.find_member( member_id )->state ==
                bandit_live_world::member_state::local_contact );
     }
+    const std::string committed = serialize_world( world );
+    CHECK( bandit_live_world::transition_hostile_operation_phase(
+               site, pre_contact_cursor, hostile_operation_phase::committed_contact,
+               hostile_operation_phase::returning_home, 850, "stale pre-contact owner" ) ==
+           hostile_operation_transition_result::rejected );
+    CHECK( serialize_world( world ) == committed );
     REQUIRE( transition_test_hostile_operation(
                  site, hostile_operation_phase::committed_contact,
                  hostile_operation_phase::returning_home, 850, "withdraw" ) ==
              hostile_operation_transition_result::applied );
+    CHECK( site.active_hostile_operation.reservation.owner ==
+           bandit_live_world::simulation_owner::abstract );
+    CHECK( site.active_hostile_operation.reservation.handoff_epoch == 2 );
     for( const character_id &member_id : members ) {
         CHECK( site.find_member( member_id )->state ==
                bandit_live_world::member_state::outbound );
@@ -1665,13 +1978,16 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     site.active_outing.member_ids = { character_id( 45300 ), character_id( 45301 ) };
     site.active_outing.leader_id = character_id( 45300 );
     site.active_outing.job_type = "scout";
-    REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
-    REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 100 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_started(
+                 site, require_current_simulation_cursor( site ), 100 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_local_contact(
+                 site, require_current_simulation_cursor( site ), character_id( 45300 ), 100 ) );
     CHECK( site.active_outing.expected_return_minutes == 940 );
     CHECK( site.active_outing.missing_deadline_minutes == 2380 );
 
-    REQUIRE( bandit_live_world::record_active_outing_casualty( site, character_id( 45301 ),
-             bandit_live_world::member_state::dead, 400, "observer killed" ) );
+    REQUIRE( bandit_live_world::record_active_outing_casualty(
+                 site, require_current_simulation_cursor( site ), character_id( 45301 ),
+                 bandit_live_world::member_state::dead, 400, "observer killed" ) );
     CHECK( site.active_outing.is_active() );
     CHECK( site.active_outing.casualty_ids ==
            std::vector<character_id> { character_id( 45301 ) } );
@@ -1682,6 +1998,7 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     stale_pre_casualty_packet.group_id = site.active_outing.activity_id;
     stale_pre_casualty_packet.source_camp_id = site.site_id;
     stale_pre_casualty_packet.activity_generation = site.active_outing.generation;
+    stale_pre_casualty_packet.handoff_epoch = site.active_outing.handoff_epoch;
     stale_pre_casualty_packet.return_application_key = site.active_outing.return_application_key;
     stale_pre_casualty_packet.job_type = bandit_dry_run::job_template::scout;
     stale_pre_casualty_packet.survivors_remaining = 2;
@@ -1754,6 +2071,9 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     };
     site.active_outing.cargo = { 3, 60 };
     site.active_outing.started_minutes = 100;
+    site.active_outing.owner = bandit_live_world::simulation_owner::local;
+    site.active_outing.handoff_epoch = 1;
+    site.active_outing.last_advanced_minutes = 100;
 
     const std::vector<bandit_live_world::active_member_observation> first_arrival = {
         { character_id( 45500 ), bandit_live_world::active_member_observation_state::home,
@@ -1762,7 +2082,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
           "partner still returning" }
     };
     const bandit_live_world::scout_resolution_effect first_effect =
-        bandit_live_world::apply_active_scout_observations( site, first_arrival, 500 );
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), first_arrival, 500 );
     CHECK( first_effect.valid );
     CHECK( first_effect.changed );
     CHECK_FALSE( first_effect.completed );
@@ -1801,7 +2122,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
 
     const std::string before_replay = serialize_world( world );
     const bandit_live_world::scout_resolution_effect replay_effect =
-        bandit_live_world::apply_active_scout_observations( site, first_arrival, 510 );
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), first_arrival, 510 );
     CHECK( replay_effect.valid );
     CHECK_FALSE( replay_effect.changed );
     CHECK( serialize_world( world ) == before_replay );
@@ -1813,7 +2135,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
           "partner still returning" }
     };
     CHECK_FALSE( bandit_live_world::apply_active_scout_observations(
-                     site, contradictory_replay, 520 ).valid );
+                     site, require_current_simulation_cursor( site ),
+                     contradictory_replay, 520 ).valid );
     CHECK( serialize_world( world ) == before_replay );
 
     const std::vector<bandit_live_world::active_member_observation> duplicate_member = {
@@ -1823,7 +2146,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
           "second duplicate observation" }
     };
     const bandit_live_world::scout_resolution_effect duplicate_effect =
-        bandit_live_world::apply_active_scout_observations( site, duplicate_member, 520 );
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), duplicate_member, 520 );
     CHECK_FALSE( duplicate_effect.valid );
     CHECK( duplicate_effect.newly_resolved == 0 );
     CHECK( serialize_world( world ) == before_replay );
@@ -1835,7 +2159,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
           "unknown member" }
     };
     const bandit_live_world::scout_resolution_effect unknown_effect =
-        bandit_live_world::apply_active_scout_observations( site, unknown_member, 520 );
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), unknown_member, 520 );
     CHECK_FALSE( unknown_effect.valid );
     CHECK( unknown_effect.newly_resolved == 0 );
     CHECK( serialize_world( world ) == before_replay );
@@ -1854,7 +2179,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     CHECK( loaded_site.camp_decision.state == bandit_live_world::camp_decision_state::idle );
     const std::string loaded_before_replay = serialize_world( loaded );
     CHECK_FALSE( bandit_live_world::apply_active_scout_observations(
-                     loaded_site, first_arrival, 530 ).changed );
+                     loaded_site, require_current_simulation_cursor( loaded_site ),
+                     first_arrival, 530 ).changed );
     CHECK( serialize_world( loaded ) == loaded_before_replay );
 
     loaded_site.active_outing.cargo = { 1, 20 };
@@ -1865,7 +2191,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
           "second survivor returned" }
     };
     const bandit_live_world::scout_resolution_effect final_effect =
-        bandit_live_world::apply_active_scout_observations( loaded_site, final_arrival, 600 );
+        bandit_live_world::apply_active_scout_observations(
+            loaded_site, require_current_simulation_cursor( loaded_site ), final_arrival, 600 );
     CHECK( final_effect.valid );
     CHECK( final_effect.changed );
     CHECK( final_effect.completed );
@@ -1915,6 +2242,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
     partial_site.active_outing.cargo = { 2, 40 };
     partial_site.active_outing.expected_return_minutes = 960;
     partial_site.active_outing.missing_deadline_minutes = 2400;
+    partial_site.active_outing.owner = bandit_live_world::simulation_owner::local;
+    partial_site.active_outing.handoff_epoch = 1;
 
     const std::vector<bandit_live_world::active_member_observation> first_arrival = {
         { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
@@ -1923,7 +2252,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
           "partner not loaded before deadline" }
     };
     REQUIRE( bandit_live_world::apply_active_scout_observations(
-                 partial_site, first_arrival, 500 ).provisional_report_applied );
+                 partial_site, require_current_simulation_cursor( partial_site ),
+                 first_arrival, 500 ).provisional_report_applied );
 
     const std::vector<bandit_live_world::active_member_observation> premature_missing = {
         { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
@@ -1933,7 +2263,9 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
     };
     const std::string before_premature_missing = serialize_world( partial_world );
     const bandit_live_world::scout_resolution_effect premature_effect =
-        bandit_live_world::apply_active_scout_observations( partial_site, premature_missing, 2399 );
+        bandit_live_world::apply_active_scout_observations(
+            partial_site, require_current_simulation_cursor( partial_site ),
+            premature_missing, 2399 );
     CHECK_FALSE( premature_effect.valid );
     CHECK_FALSE( premature_effect.changed );
     CHECK( serialize_world( partial_world ) == before_premature_missing );
@@ -1961,7 +2293,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
               "partner unresolved beyond fixed grace" }
         };
         const bandit_live_world::scout_resolution_effect effect =
-            bandit_live_world::apply_active_scout_observations( partial_site, deadline, 2400 );
+            bandit_live_world::apply_active_scout_observations(
+                partial_site, require_current_simulation_cursor( partial_site ), deadline, 2400 );
         CHECK( effect.valid );
         CHECK( effect.completed );
         CHECK_FALSE( partial_site.active_outing.is_active() );
@@ -1993,6 +2326,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
         lost_site.active_outing.cargo = { 5, 100 };
         lost_site.active_outing.expected_return_minutes = 960;
         lost_site.active_outing.missing_deadline_minutes = 2400;
+        lost_site.active_outing.owner = bandit_live_world::simulation_owner::local;
+        lost_site.active_outing.handoff_epoch = 1;
         const std::vector<bandit_live_world::active_member_observation> lost = {
             { character_id( 45610 ), bandit_live_world::active_member_observation_state::dead,
               "lead scout killed" },
@@ -2000,7 +2335,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
               "escort never returned" }
         };
         const bandit_live_world::scout_resolution_effect effect =
-            bandit_live_world::apply_active_scout_observations( lost_site, lost, 2400 );
+            bandit_live_world::apply_active_scout_observations(
+                lost_site, require_current_simulation_cursor( lost_site ), lost, 2400 );
         CHECK( effect.valid );
         CHECK( effect.completed );
         CHECK_FALSE( lost_site.active_outing.is_active() );
@@ -4606,14 +4942,18 @@ TEST_CASE( "bandit_live_world_scout_sortie_has_finite_return_home_clock",
     CHECK( site.active_outing.job_type == "scout" );
     CHECK( site.active_outing.member_ids.size() == 1 );
 
-    REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
-    CHECK_FALSE( bandit_live_world::note_active_sortie_started( site, 105 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_started(
+                 site, require_current_simulation_cursor( site ), 100 ) );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_started(
+                     site, require_current_simulation_cursor( site ), 105 ) );
     CHECK( bandit_live_world::ordinary_scout_sortie_limit_minutes() == 720 );
     CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 819,
                  bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
     CHECK( bandit_live_world::scout_sortie_should_return_home( site, 820,
             bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
-    REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 130 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_local_contact(
+                 site, require_current_simulation_cursor( site ),
+                 site.active_outing.member_ids.front(), 130 ) );
     CHECK( site.active_outing.expected_return_minutes == 970 );
     CHECK( site.active_outing.missing_deadline_minutes == 2410 );
     CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 849,
@@ -5192,6 +5532,14 @@ TEST_CASE( "bandit_live_world_rejects_malformed_return_packets_atomically",
         CHECK( serialize_world( world ) == before );
     }
 
+    SECTION( "stale handoff epoch" ) {
+        bandit_pursuit_handoff::return_packet malformed = valid_packet;
+        ++malformed.handoff_epoch;
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::apply_return_packet( site, malformed ) );
+        CHECK( serialize_world( world ) == before );
+    }
+
     SECTION( "wrong application key" ) {
         bandit_pursuit_handoff::return_packet malformed = valid_packet;
         malformed.return_application_key += ":wrong";
@@ -5325,6 +5673,7 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     };
     normal_site.active_outing.cargo = { 2, 60 };
     normal_site.active_outing.started_minutes = 100;
+    normal_site.active_outing.last_advanced_minutes = 100;
     normal_site.active_outing.expected_return_minutes = 940;
     normal_site.active_outing.missing_deadline_minutes = 2380;
     const std::size_t normal_bytes = serialize_world( normal_world ).size();
@@ -5347,6 +5696,7 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     saturated_site.current_scout_report.revision = 1;
     saturated_site.current_scout_report.source_activity_id = saturated_site.site_id + "#scout:1";
     saturated_site.current_scout_report.source_generation = 1;
+    saturated_site.applied_report_generation = 1;
     saturated_site.current_scout_report.target_id = saturated_site.active_outing.target_id;
     saturated_site.current_scout_report.target_omt = saturated_site.active_outing.target_omt;
     saturated_site.current_scout_report.application_key =

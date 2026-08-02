@@ -1559,6 +1559,8 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
   site.active_outing.activity_id = "test_active_toll_group";
   site.active_outing.camp_id = site.site_id;
   site.active_outing.generation = 1;
+  site.active_outing.owner = bandit_live_world::simulation_owner::local;
+  site.active_outing.handoff_epoch = 1;
   site.active_outing.return_application_key = "test_active_toll_group:return:1";
   site.next_outing_generation = 2;
   site.active_outing.job_type = "toll";

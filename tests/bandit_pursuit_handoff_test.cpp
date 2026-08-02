@@ -16,6 +16,7 @@ bandit_pursuit_handoff::abstract_group_state make_group()
     group.group_id = "ridge_pack";
     group.source_camp_id = "oak_camp";
     group.activity_generation = 7;
+    group.handoff_epoch = 3;
     group.return_application_key = "ridge_pack:7:return";
     group.group_strength = 2;
     group.confidence = 2;
@@ -39,6 +40,7 @@ bool same_group_state( const bandit_pursuit_handoff::abstract_group_state &lhs,
 {
     if( lhs.group_id != rhs.group_id || lhs.source_camp_id != rhs.source_camp_id ||
         lhs.activity_generation != rhs.activity_generation ||
+        lhs.handoff_epoch != rhs.handoff_epoch ||
         lhs.return_application_key != rhs.return_application_key ||
         lhs.group_strength != rhs.group_strength || lhs.confidence != rhs.confidence ||
         lhs.panic_threshold != rhs.panic_threshold || lhs.cargo_capacity != rhs.cargo_capacity ||
@@ -105,6 +107,7 @@ TEST_CASE( "bandit_pursuit_handoff_builds_a_bounded_scout_entry_packet", "[bandi
     CHECK( entry.job_type == bandit_dry_run::job_template::scout );
     CHECK( entry.lead_carrier == bandit_dry_run::lead_family::site );
     CHECK( entry.activity_generation == 7 );
+    CHECK( entry.handoff_epoch == 3 );
     CHECK( entry.return_application_key == "ridge_pack:7:return" );
     CHECK( entry.current_target_or_mark == "ridge_smoke" );
     CHECK( entry.group_strength == 2 );
@@ -155,6 +158,7 @@ TEST_CASE( "bandit_pursuit_handoff_guards_return_application_by_generation_and_k
         bandit_pursuit_handoff::build_return_packet( entry, outcome );
     REQUIRE( packet.valid );
     CHECK( packet.activity_generation == source_group.activity_generation );
+    CHECK( packet.handoff_epoch == source_group.handoff_epoch );
     CHECK( packet.return_application_key == source_group.return_application_key );
 
     bandit_pursuit_handoff::return_packet stale_generation = packet;
@@ -162,6 +166,12 @@ TEST_CASE( "bandit_pursuit_handoff_guards_return_application_by_generation_and_k
     bandit_pursuit_handoff::abstract_group_state generation_target = source_group;
     bandit_pursuit_handoff::apply_return_packet( generation_target, stale_generation );
     CHECK( same_group_state( generation_target, source_group ) );
+
+    bandit_pursuit_handoff::return_packet stale_handoff = packet;
+    --stale_handoff.handoff_epoch;
+    bandit_pursuit_handoff::abstract_group_state handoff_target = source_group;
+    bandit_pursuit_handoff::apply_return_packet( handoff_target, stale_handoff );
+    CHECK( same_group_state( handoff_target, source_group ) );
 
     bandit_pursuit_handoff::return_packet wrong_key = packet;
     wrong_key.return_application_key = "ridge_pack:7:different-return";
