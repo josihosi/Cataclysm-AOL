@@ -300,15 +300,15 @@ bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
 
     const character_id who_id = who.getID();
     for( const bandit_live_world::site_record &site : world.sites ) {
-        if( !site.active_outing.is_active() || site.active_member_ids.empty() ) {
+        if( !site.active_outing.is_active() || site.active_outing.member_ids.empty() ) {
             continue;
         }
         const bandit_live_world::member_record *member = site.find_member( who_id );
         if( member == nullptr ) {
             continue;
         }
-        if( std::find( site.active_member_ids.begin(), site.active_member_ids.end(), who_id ) ==
-            site.active_member_ids.end() ) {
+        if( std::find( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end(), who_id ) ==
+            site.active_outing.member_ids.end() ) {
             continue;
         }
 

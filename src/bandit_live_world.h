@@ -103,6 +103,19 @@ enum class simulation_owner {
     local,
 };
 
+enum class scout_phase {
+    assembling,
+    outbound,
+    searching,
+    observing,
+    harvesting,
+    burned_withdrawal,
+    returning_exposed,
+    returning_report,
+    returning_home,
+    lost,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -177,16 +190,73 @@ struct camp_intelligence_map {
     const camp_map_lead *find_lead( const std::string &lead_id ) const;
 };
 
-struct active_outing_identity {
+struct sortie_observation {
+    std::string fact_key;
+    std::string summary;
+    int confidence = 0;
+    int observed_minutes = -1;
+    bool critical = false;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct sortie_cargo {
+    int supply_units = 0;
+    int trade_value = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct scout_report_record {
     int schema_version = 1;
+    int revision = 0;
+    std::string source_activity_id;
+    int source_generation = 0;
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    int target_lead_revision = 0;
+    std::string application_key;
+    std::vector<sortie_observation> observations;
+    std::vector<character_id> casualty_ids;
+    int delivered_minutes = -1;
+
+    void clear();
+    bool is_present() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct active_outing_state {
+    int schema_version = 2;
     outing_kind kind = outing_kind::none;
     std::string activity_id;
     std::string camp_id;
     int generation = 0;
+    std::vector<character_id> member_ids;
+    character_id leader_id;
+    std::vector<tripoint_abs_omt> shared_route;
+    int waypoint_index = 0;
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    std::string job_type;
+    int target_lead_revision = 0;
+    scout_phase phase = scout_phase::assembling;
+    std::vector<sortie_observation> observations;
+    sortie_cargo cargo;
+    std::vector<character_id> casualty_ids;
+    int started_minutes = -1;
+    int local_contact_minutes = -1;
+    int last_progress_minutes = -1;
+    int expected_return_minutes = -1;
+    int missing_deadline_minutes = -1;
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = 0;
     int last_advanced_minutes = -1;
     std::string return_application_key;
+    std::string report_application_key;
+    std::string cargo_application_key;
 
     void clear();
     bool is_active() const;
@@ -195,7 +265,7 @@ struct active_outing_identity {
 };
 
 struct site_record {
-    int schema_version = 2;
+    int schema_version = 3;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -208,13 +278,12 @@ struct site_record {
     std::vector<spawn_tile_record> spawn_tiles;
     int next_outing_generation = 1;
     int applied_return_generation = 0;
-    active_outing_identity active_outing;
-    std::string active_target_id;
-    tripoint_abs_omt active_target_omt;
-    std::string active_job_type;
-    std::vector<character_id> active_member_ids;
-    int active_sortie_started_minutes = -1;
-    int active_sortie_local_contact_minutes = -1;
+    int applied_report_generation = 0;
+    int applied_cargo_generation = 0;
+    std::string last_cargo_application_key;
+    scout_report_record current_scout_report;
+    sortie_cargo returned_cargo_stock;
+    active_outing_state active_outing;
     std::string remembered_target_or_mark;
     int remembered_threat_estimate = 0;
     int remembered_bounty_estimate = 0;
@@ -250,6 +319,7 @@ struct site_record {
     const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
     int count_members_in_state( member_state state ) const;
     int count_live_members() const;
+    int active_outing_survivor_count() const;
     int count_home_side_signals() const;
     int dispatchable_member_capacity() const;
     bool has_active_outside_pressure() const;
@@ -257,7 +327,7 @@ struct site_record {
 };
 
 struct world_state {
-    int schema_version = 2;
+    int schema_version = 3;
     std::string owner_id = "hells_raiders_live_owner_v0";
     std::vector<site_record> sites;
 
@@ -573,6 +643,9 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     const site_record &site, const std::vector<active_member_observation> &observations );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
                           const std::string &summary );
+bool record_active_outing_casualty( site_record &site, character_id npc_id,
+                                    member_state casualty_state, int current_minutes,
+                                    const std::string &summary );
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
@@ -584,6 +657,7 @@ std::string to_string( camp_lead_kind kind );
 std::string to_string( camp_lead_status status );
 std::string to_string( outing_kind kind );
 std::string to_string( simulation_owner owner );
+std::string to_string( scout_phase phase );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,

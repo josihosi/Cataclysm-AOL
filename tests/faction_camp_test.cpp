@@ -1561,9 +1561,9 @@ TEST_CASE("camp_patrol_alarm_watches_active_shakedown_contact_without_combat_esc
   site.active_outing.generation = 1;
   site.active_outing.return_application_key = "test_active_toll_group:return:1";
   site.next_outing_generation = 2;
-  site.active_job_type = "toll";
-  site.active_target_id = "player_basecamp_nearby";
-  site.active_member_ids.push_back( raider.getID() );
+  site.active_outing.job_type = "toll";
+  site.active_outing.target_id = "player_basecamp_nearby";
+  site.active_outing.member_ids.push_back( raider.getID() );
   bandit_live_world::member_record member;
   member.npc_id = raider.getID();
   member.state = bandit_live_world::member_state::local_contact;
