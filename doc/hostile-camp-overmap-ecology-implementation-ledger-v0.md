@@ -6,16 +6,17 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Keep per-camp resource knowledge as an estimate with timestamp/confidence.**
+First deterministic execution row: **Enforce ratified caps with deterministic reference-aware pruning.**
 
-Latest resume packet (behavior checkpoint `37498066ba`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `1aa9851902`, 2026-08-02): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at per-camp resource estimates. Supply schema v6 provides one bounded
-member-day stock, O(1) minute catch-up, roster-cap enforcement, and seven-member-day legacy seed.
-Its final redirected Mac build exited `0`; supply-focused evidence is 2/77, full live-world is
-91/4,848, and save compatibility is 2/24. Saturated JSON is 29,730 bytes below 64 KiB. Test binary
-SHA-256 is `6ee20c0fd4c8472e91323713d8a3b640e1742d9fd553435d654ba7808768831b`
-(79,788,840 bytes). No current blocker; next permitted action is the private resource-estimate slice.
+untouched. Phase 1 is active at reference-aware pruning. Structural resource knowledge remains in
+each camp's existing persisted bounty/confidence/timestamp fields; a strict physical-estimate update
+changes only that camp, while global claims and other camps remain independent. Its redirected Mac
+build exited `0`; private-knowledge evidence is 1/33, all resource tests are 4/2,090, and full
+live-world is 92/4,881. Test binary SHA-256 is
+`bd754c017c410066c0ded6b8dc0e3886faaa031afffd648c0af0876e02b9b3c9`
+(79,806,184 bytes). No current blocker; next permitted action is deterministic bounded pruning.
 
 Production target: `port/cdda-master`
 
@@ -437,7 +438,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Remove or migrate competing scalar state rather than maintaining two authorities indefinitely.
 - [x] Define a world-global finite resource record keyed by OMT.
 - [x] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
-- [ ] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
+- [x] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
 - [ ] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
 - [ ] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
 - [ ] Version reports and record the last report revision acted upon per target/faction policy.
@@ -479,7 +480,9 @@ Evidence:
   `432c0f9da7` adds the schema-v4 OMT-keyed finite-resource authority, exact revision claims,
   persistent depletion, transactional malformed-load rejection, and harvested-only pre-v4 migration;
   `37498066ba` adds schema-v6 bounded member-day supply, O(1) catch-up, roster-cap enforcement,
-  exact casualty-time reconciliation, and seven-member-day legacy/new-camp seeding.
+  exact casualty-time reconciliation, and seven-member-day legacy/new-camp seeding;
+  `1aa9851902` makes physical resource-estimate updates camp-private, timestamp/confidence-bearing,
+  stale-safe, and independent from world truth or another camp's belief.
 - Tests: latest strict redirected Mac build exit `0`; `[hostile_operation]` 3 cases/243
   assertions, `[bandit][live_world]` 86/2,714, `[bandit][handoff]` 9/202, and 2 overmap-global
   save compatibility cases/16 assertions pass. Exact-source autoreview is clean at 0.99. Binary
@@ -493,6 +496,8 @@ Evidence:
 - Supply tests cover cap edges, schema-v5 migration, incomplete-v6 fail-closed behavior, fractional
   round trip, daily/large-jump equivalence, backward-time no-op, zero-living stability, roster shrink,
   and 730-day bounded catch-up. Saturated camp/scout JSON remains 29,730 bytes below 64 KiB.
+- Private-estimate tests cover global-claim isolation, cross-camp isolation, stale/invalid byte-level
+  no-op, later physical depletion, and round-trip persistence using the existing bounded lead fields.
 - Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
   malformed reservation release, all scout-phase round trips, partial casualty persistence,
   exact casualty/job agreement, report/cargo receipt before slot close, universal watermark

@@ -366,8 +366,17 @@ roster reconciliation, and a 730-day O(1) jump. Saturated scout/camp JSON is 29,
 64 KiB. The test binary is 79,788,840 bytes with SHA-256
 `6ee20c0fd4c8472e91323713d8a3b640e1742d9fd553435d654ba7808768831b`.
 
+The private resource-estimate checkpoint `1aa9851902` is green on the Mac. Redirected build
+`build_logs/macos-tests-build-phase1-resource-estimate.log` exits `0`; private-knowledge coverage
+passes 1 case / 33 assertions, all resource tests pass 4 / 2,090, and full live-world passes
+92 / 4,881. The test proves a world claim changes no camp belief, one camp's timestamped physical
+estimate changes no other camp, stale/invalid updates are byte-identical no-ops, global depletion
+still changes no belief, and only a later physical zero estimate marks that camp depleted across
+round trip. The test binary is 79,806,184 bytes with SHA-256
+`bd754c017c410066c0ded6b8dc0e3886faaa031afffd648c0af0876e02b9b3c9`.
+
 The active missing evidence is Phase 1:
-- per-camp resource estimates, dossier/report policy, and bounded transition owners;
+- reference-aware pruning, observation compaction, dossier/report policy, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 
