@@ -164,6 +164,12 @@ enum class camp_decision_transition_result {
     applied,
 };
 
+enum class camp_report_policy {
+    none,
+    bandit_shakedown,
+    cannibal_night_raid,
+};
+
 enum class hostile_operation_kind {
     none,
     shakedown,
@@ -293,8 +299,9 @@ struct sortie_cargo {
 };
 
 struct scout_report_record {
-    int schema_version = 3;
+    int schema_version = 4;
     int revision = 0;
+    camp_report_policy action_policy = camp_report_policy::none;
     std::string source_activity_id;
     int source_generation = 0;
     std::string source_job_type;
@@ -314,9 +321,22 @@ struct scout_report_record {
     void deserialize( const JsonObject &jo );
 };
 
+struct acted_report_summary {
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    camp_report_policy policy = camp_report_policy::none;
+    int source_generation = 0;
+    int report_revision = 0;
+    int acted_minutes = -1;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct camp_decision_record {
-    int schema_version = 1;
+    int schema_version = 2;
     camp_decision_state state = camp_decision_state::idle;
+    camp_report_policy report_policy = camp_report_policy::none;
     int source_report_revision = 0;
     int source_report_generation = 0;
     std::string source_report_activity_id;
@@ -430,7 +450,7 @@ struct finite_resource_claim_result {
 };
 
 struct site_record {
-    int schema_version = 7;
+    int schema_version = 8;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -452,6 +472,7 @@ struct site_record {
     std::string last_cargo_application_key;
     scout_report_record current_scout_report;
     camp_decision_record camp_decision;
+    std::vector<acted_report_summary> acted_reports;
     sortie_cargo returned_cargo_stock;
     active_outing_state active_outing;
     hostile_operation_state active_hostile_operation;
@@ -897,6 +918,7 @@ std::string to_string( simulation_owner owner );
 std::string to_string( scout_phase phase );
 std::string to_string( sortie_observation_kind kind );
 std::string to_string( camp_decision_state state );
+std::string to_string( camp_report_policy policy );
 std::string to_string( hostile_operation_kind kind );
 std::string to_string( hostile_operation_phase phase );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
