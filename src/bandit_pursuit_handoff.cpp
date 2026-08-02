@@ -134,6 +134,8 @@ entry_payload build_entry_payload( const abstract_group_state &group,
     entry_payload payload;
     payload.group_id = group.group_id;
     payload.source_camp_id = group.source_camp_id;
+    payload.activity_generation = group.activity_generation;
+    payload.return_application_key = group.return_application_key;
     payload.job_type = winner.job;
     payload.lead_carrier = winner.family;
     payload.mode = choose_entry_mode( winner, context.contact, context.return_pressure );
@@ -174,6 +176,8 @@ return_packet build_return_packet( const entry_payload &entry, const local_outco
     packet.valid = entry.valid;
     packet.group_id = entry.group_id;
     packet.source_camp_id = entry.source_camp_id;
+    packet.activity_generation = entry.activity_generation;
+    packet.return_application_key = entry.return_application_key;
     packet.job_type = entry.job_type;
     packet.mode = entry.mode;
     packet.current_target_or_mark = entry.current_target_or_mark;
@@ -214,7 +218,10 @@ return_packet build_return_packet( const entry_payload &entry, const local_outco
 
 void apply_return_packet( abstract_group_state &group, const return_packet &packet )
 {
-    if( !packet.valid ) {
+    if( !packet.valid || packet.group_id != group.group_id ||
+        packet.source_camp_id != group.source_camp_id ||
+        packet.activity_generation != group.activity_generation ||
+        packet.return_application_key != group.return_application_key ) {
         return;
     }
 

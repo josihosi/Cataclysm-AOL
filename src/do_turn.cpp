@@ -596,9 +596,15 @@ void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &
             }
         }
     }
-    site.active_group_id.clear();
+    site.applied_return_generation = std::max( site.applied_return_generation,
+                                     site.active_outing.generation );
+    site.active_outing.clear();
     site.active_target_id.clear();
+    site.active_target_omt = tripoint_abs_omt();
+    site.active_job_type.clear();
     site.active_member_ids.clear();
+    site.active_sortie_started_minutes = -1;
+    site.active_sortie_local_contact_minutes = -1;
 }
 
 void live_bandit_choose_fight( bandit_live_world::site_record &site,
@@ -855,7 +861,7 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: "
                                    << ( blocked_reposition ? "blocked" : "still stalking" )
                                    << " site=" << site.site_id
-                                   << " active_group=" << site.active_group_id
+                                   << " active_group=" << site.active_outing.activity_id
                                    << " active_job=" << site.active_job_type
                                    << " profile=" << bandit_live_world::to_string( site.profile )
                                    << " posture=" << bandit_live_world::to_string( gate_decision.posture )
@@ -885,7 +891,7 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
                                << ( gate_input.smoke_obscured_lead ? "smoke-obscured" : "exposed" )
                                << " -> repositioned"
                                << " site=" << site.site_id
-                               << " active_group=" << site.active_group_id
+                               << " active_group=" << site.active_outing.activity_id
                                << " active_job=" << site.active_job_type
                                << " profile=" << bandit_live_world::to_string( site.profile )
                                << " posture=" << bandit_live_world::to_string( gate_decision.posture )
@@ -936,7 +942,7 @@ bool live_bandit_try_fight_advance( npc &member_npc,
 
     DebugLog( D_INFO, DC_ALL ) << "bandit_live_world shakedown_fight_advance"
                                << " site=" << site.site_id
-                               << " active_group=" << site.active_group_id
+                               << " active_group=" << site.active_outing.activity_id
                                << " profile=" << bandit_live_world::to_string( site.profile )
                                << " posture=" << bandit_live_world::to_string( gate_decision.posture )
                                << " npc=" << member_npc.getID().get_value()
@@ -959,7 +965,7 @@ bool note_live_bandit_local_turn_sight_avoid()
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
-        if( site.retired_empty_site || site.active_group_id.empty() || site.active_member_ids.empty() ) {
+        if( site.retired_empty_site || !site.active_outing.is_active() || site.active_member_ids.empty() ) {
             continue;
         }
 
@@ -1031,7 +1037,7 @@ bool note_live_bandit_aftermath()
     bool changed = false;
 
     for( bandit_live_world::site_record &site : state.sites ) {
-        if( site.retired_empty_site || site.active_group_id.empty() || site.active_member_ids.empty() ) {
+        if( site.retired_empty_site || !site.active_outing.is_active() || site.active_member_ids.empty() ) {
             continue;
         }
 
@@ -1090,7 +1096,7 @@ bool note_live_bandit_aftermath()
                     DebugLog( D_INFO, DC_ALL )
                             << "bandit_live_world scout_sortie: home footprint observed"
                             << " site=" << site.site_id
-                            << " active_group=" << site.active_group_id
+                            << " active_group=" << site.active_outing.activity_id
                             << " member=" << member_id.get_value()
                             << " pos=" << member_npc->pos_abs_omt().to_string()
                             << " elapsed_minutes=" << ( current_minutes -
@@ -1107,7 +1113,7 @@ bool note_live_bandit_aftermath()
                 DebugLog( D_INFO, DC_ALL )
                         << "bandit_live_world scout_sortie: linger limit reached -> return_home"
                         << " site=" << site.site_id
-                        << " active_group=" << site.active_group_id
+                        << " active_group=" << site.active_outing.activity_id
                         << " member=" << member_id.get_value()
                         << " elapsed_minutes=" << ( current_minutes -
                                 ( site.active_sortie_local_contact_minutes >= 0 ?
@@ -1193,7 +1199,7 @@ bool note_live_bandit_aftermath()
             DebugLog( D_INFO, DC_ALL )
                     << "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
                     << " site=" << site.site_id
-                    << " active_group=" << site.active_group_id << '\n';
+                    << " active_group=" << site.active_outing.activity_id << '\n';
             continue;
         }
 
@@ -1234,7 +1240,7 @@ bool note_live_bandit_aftermath()
         }
         if( gate_decision.opens_shakedown_surface ) {
             changed |= open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
-            if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            if( !site.active_outing.is_active() || site.active_member_ids.empty() ) {
                 continue;
             }
         }
@@ -1242,7 +1248,7 @@ bool note_live_bandit_aftermath()
         if( const std::optional<bandit_pursuit_handoff::return_packet> packet =
                 bandit_live_world::resolve_active_group_aftermath( site, observations ) ) {
             const std::string site_id = site.site_id;
-            const std::string group_id = site.active_group_id;
+            const std::string group_id = site.active_outing.activity_id;
             const bool applied_return = bandit_live_world::apply_return_packet( site, *packet );
             changed |= applied_return;
             if( applied_return && packet->job_type == bandit_dry_run::job_template::scout ) {
@@ -1261,7 +1267,7 @@ bool note_live_bandit_aftermath()
 
 bool has_active_player_pressure( const bandit_live_world::site_record &site )
 {
-    return !site.active_group_id.empty() && !site.active_member_ids.empty() &&
+    return site.active_outing.is_active() && !site.active_member_ids.empty() &&
            string_starts_with( site.active_target_id, "player@" );
 }
 
@@ -2901,7 +2907,7 @@ void overmap_npc_move()
         int active_sites = 0;
         std::map<std::string, int> active_job_mix;
         for( const bandit_live_world::site_record &site : bandit_state.sites ) {
-            if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            if( !site.active_outing.is_active() || site.active_member_ids.empty() ) {
                 continue;
             }
             active_sites++;

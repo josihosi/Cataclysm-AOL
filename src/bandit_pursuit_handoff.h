@@ -92,6 +92,8 @@ struct anchored_identity_state {
 struct abstract_group_state {
     std::string group_id;
     std::string source_camp_id;
+    int activity_generation = 0;
+    std::string return_application_key;
     int group_strength = 0;
     int confidence = 0;
     int panic_threshold = 0;
@@ -123,6 +125,8 @@ struct entry_payload {
     std::vector<std::string> notes;
     std::string group_id;
     std::string source_camp_id;
+    int activity_generation = 0;
+    std::string return_application_key;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     bandit_dry_run::lead_family lead_carrier = bandit_dry_run::lead_family::none;
     entry_mode mode = entry_mode::withdrawal;
@@ -171,6 +175,8 @@ struct return_packet {
     std::vector<std::string> notes;
     std::string group_id;
     std::string source_camp_id;
+    int activity_generation = 0;
+    std::string return_application_key;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     entry_mode mode = entry_mode::withdrawal;
     std::string current_target_or_mark;

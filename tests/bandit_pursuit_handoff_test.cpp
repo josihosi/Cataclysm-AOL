@@ -15,6 +15,8 @@ bandit_pursuit_handoff::abstract_group_state make_group()
     bandit_pursuit_handoff::abstract_group_state group;
     group.group_id = "ridge_pack";
     group.source_camp_id = "oak_camp";
+    group.activity_generation = 7;
+    group.return_application_key = "ridge_pack:7:return";
     group.group_strength = 2;
     group.confidence = 2;
     group.panic_threshold = 2;
@@ -30,6 +32,43 @@ bandit_pursuit_handoff::abstract_group_state make_group()
     group.anchored_identities.push_back( { "leader_marta", "alive" } );
     group.known_recent_marks.push_back( "ridge_smoke" );
     return group;
+}
+
+bool same_group_state( const bandit_pursuit_handoff::abstract_group_state &lhs,
+                       const bandit_pursuit_handoff::abstract_group_state &rhs )
+{
+    if( lhs.group_id != rhs.group_id || lhs.source_camp_id != rhs.source_camp_id ||
+        lhs.activity_generation != rhs.activity_generation ||
+        lhs.return_application_key != rhs.return_application_key ||
+        lhs.group_strength != rhs.group_strength || lhs.confidence != rhs.confidence ||
+        lhs.panic_threshold != rhs.panic_threshold || lhs.cargo_capacity != rhs.cargo_capacity ||
+        lhs.current_target_or_mark != rhs.current_target_or_mark ||
+        lhs.current_threat_estimate != rhs.current_threat_estimate ||
+        lhs.current_bounty_estimate != rhs.current_bounty_estimate ||
+        lhs.mission_urgency != rhs.mission_urgency || lhs.retreat_bias != rhs.retreat_bias ||
+        lhs.goal_stickiness != rhs.goal_stickiness ||
+        lhs.goal_preemption_posture != rhs.goal_preemption_posture ||
+        lhs.return_clock != rhs.return_clock || lhs.wound_burden != rhs.wound_burden ||
+        lhs.morale != rhs.morale || lhs.last_return_posture != rhs.last_return_posture ||
+        lhs.remaining_pressure != rhs.remaining_pressure ||
+        lhs.known_recent_marks != rhs.known_recent_marks ||
+        lhs.anchored_identities.size() != rhs.anchored_identities.size() ) {
+        return false;
+    }
+
+    for( std::size_t i = 0; i < lhs.anchored_identities.size(); ++i ) {
+        if( lhs.anchored_identities[i].id != rhs.anchored_identities[i].id ||
+            lhs.anchored_identities[i].status != rhs.anchored_identities[i].status ) {
+            return false;
+        }
+    }
+
+    const bandit_pursuit_handoff::cargo_profile &lhs_cargo = lhs.carried_cargo;
+    const bandit_pursuit_handoff::cargo_profile &rhs_cargo = rhs.carried_cargo;
+    return lhs_cargo.food == rhs_cargo.food && lhs_cargo.meds == rhs_cargo.meds &&
+           lhs_cargo.ammo == rhs_cargo.ammo && lhs_cargo.gear == rhs_cargo.gear &&
+           lhs_cargo.fuel == rhs_cargo.fuel &&
+           lhs_cargo.trade_goods == rhs_cargo.trade_goods;
 }
 } // namespace
 
@@ -65,12 +104,70 @@ TEST_CASE( "bandit_pursuit_handoff_builds_a_bounded_scout_entry_packet", "[bandi
     CHECK( entry.mode == bandit_pursuit_handoff::entry_mode::scout );
     CHECK( entry.job_type == bandit_dry_run::job_template::scout );
     CHECK( entry.lead_carrier == bandit_dry_run::lead_family::site );
+    CHECK( entry.activity_generation == 7 );
+    CHECK( entry.return_application_key == "ridge_pack:7:return" );
     CHECK( entry.current_target_or_mark == "ridge_smoke" );
     CHECK( entry.group_strength == 2 );
     CHECK( entry.confidence == 2 );
     CHECK( entry.return_clock == 3 );
     CHECK( entry.current_threat_estimate == 1 );
     CHECK( entry.current_bounty_estimate == 3 );
+}
+
+TEST_CASE( "bandit_pursuit_handoff_guards_return_application_by_generation_and_key",
+           "[bandit][handoff]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+
+    bandit_dry_run::lead_input lead;
+    lead.id = "ridge_smoke";
+    lead.envelope_id = "ridge_smoke";
+    lead.family = bandit_dry_run::lead_family::site;
+    lead.lead_bounty_value = 3;
+    lead.lead_confidence_bonus = 2;
+    lead.distance_multiplier = 0.55;
+    lead.threat_penalty = 1;
+    lead.hard_blocked_jobs = { bandit_dry_run::job_template::scavenge,
+                               bandit_dry_run::job_template::steal,
+                               bandit_dry_run::job_template::raid };
+
+    const bandit_dry_run::evaluation_result evaluation = bandit_dry_run::evaluate( camp, { lead } );
+    const bandit_pursuit_handoff::abstract_group_state source_group = make_group();
+    const bandit_pursuit_handoff::entry_payload entry =
+        bandit_pursuit_handoff::build_entry_payload( source_group, winner( evaluation ), {} );
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 1;
+    outcome.anchored_identity_updates = { { "leader_marta", "wounded" } };
+    outcome.wound_burden = bandit_pursuit_handoff::wound_burden_state::heavy;
+    outcome.morale = bandit_pursuit_handoff::morale_state::breaking;
+    outcome.cargo_profile_carried.ammo = 4;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::narrowed;
+    outcome.threat_writeback = { { "ridge_smoke", "raise", 5 } };
+    outcome.bounty_writeback = { { "ridge_smoke", "confirm", 6 } };
+    outcome.new_marks_learned = { "ridge_smoke_cabin_edge" };
+    outcome.posture = bandit_pursuit_handoff::return_posture::broken_flee;
+    outcome.remaining_pressure =
+        bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+
+    const bandit_pursuit_handoff::return_packet packet =
+        bandit_pursuit_handoff::build_return_packet( entry, outcome );
+    REQUIRE( packet.valid );
+    CHECK( packet.activity_generation == source_group.activity_generation );
+    CHECK( packet.return_application_key == source_group.return_application_key );
+
+    bandit_pursuit_handoff::return_packet stale_generation = packet;
+    ++stale_generation.activity_generation;
+    bandit_pursuit_handoff::abstract_group_state generation_target = source_group;
+    bandit_pursuit_handoff::apply_return_packet( generation_target, stale_generation );
+    CHECK( same_group_state( generation_target, source_group ) );
+
+    bandit_pursuit_handoff::return_packet wrong_key = packet;
+    wrong_key.return_application_key = "ridge_pack:7:different-return";
+    bandit_pursuit_handoff::abstract_group_state key_target = source_group;
+    bandit_pursuit_handoff::apply_return_packet( key_target, wrong_key );
+    CHECK( same_group_state( key_target, source_group ) );
 }
 
 TEST_CASE( "bandit_pursuit_handoff_keeps_return_consequences_explicit_and_applied", "[bandit][handoff]" )

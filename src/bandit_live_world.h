@@ -91,6 +91,18 @@ enum class camp_lead_status {
     dangerous,
 };
 
+enum class outing_kind {
+    none,
+    scout_sortie,
+    hostile_operation,
+    structural_sortie,
+};
+
+enum class simulation_owner {
+    abstract,
+    local,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -165,7 +177,25 @@ struct camp_intelligence_map {
     const camp_map_lead *find_lead( const std::string &lead_id ) const;
 };
 
+struct active_outing_identity {
+    int schema_version = 1;
+    outing_kind kind = outing_kind::none;
+    std::string activity_id;
+    std::string camp_id;
+    int generation = 0;
+    simulation_owner owner = simulation_owner::abstract;
+    int handoff_epoch = 0;
+    int last_advanced_minutes = -1;
+    std::string return_application_key;
+
+    void clear();
+    bool is_active() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct site_record {
+    int schema_version = 2;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -176,7 +206,9 @@ struct site_record {
     std::vector<tripoint_abs_omt> footprint;
     std::vector<member_record> members;
     std::vector<spawn_tile_record> spawn_tiles;
-    std::string active_group_id;
+    int next_outing_generation = 1;
+    int applied_return_generation = 0;
+    active_outing_identity active_outing;
     std::string active_target_id;
     tripoint_abs_omt active_target_omt;
     std::string active_job_type;
@@ -225,6 +257,7 @@ struct site_record {
 };
 
 struct world_state {
+    int schema_version = 2;
     std::string owner_id = "hells_raiders_live_owner_v0";
     std::vector<site_record> sites;
 
@@ -549,6 +582,8 @@ std::string to_string( active_member_observation_state state );
 std::string to_string( local_gate_posture posture );
 std::string to_string( camp_lead_kind kind );
 std::string to_string( camp_lead_status status );
+std::string to_string( outing_kind kind );
+std::string to_string( simulation_owner owner );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,

@@ -524,6 +524,7 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
 - Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
 - The first cadence hook is intentionally narrow: `overmap_npc_move()` may select one nearby owned site, mark selected members outbound, and hand those actual NPCs normal `NPC_MISSION_TRAVELLING` overmap routes toward the current nearby player target; broader restage, messy local writeback, and richer cadence still belong to later slices.
+- Persistent outside activity now has one typed identity envelope instead of a separately serialized group-id scalar. Its camp ID, kind, monotonic generation, abstract/local owner, handoff epoch, last-advanced time, and return-application key survive save/load. Legacy active groups migrate into generation 1 only when their member reservations are internally consistent; malformed reservations close safely. Return packets must match both generation and key, and a persisted watermark prevents an old packet from mutating a later outing that reuses the camp's group label.
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
