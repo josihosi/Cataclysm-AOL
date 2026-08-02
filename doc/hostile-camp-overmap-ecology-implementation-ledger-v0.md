@@ -6,8 +6,9 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Expand the checkpointed active-outing identity into the
-durable bounded `scout_sortie` record and phases without creating a second authority.**
+First deterministic execution row: **Keep the durable scout slot reserved until every member
+resolves while a first survivor may apply only a provisional report/cargo receipt; prove later and
+late return plus replay across save/load.**
 
 Production target: `port/cdda-master`
 
@@ -420,13 +421,13 @@ Evidence:
 Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, existing active-group fields, `bandit_pursuit_handoff`, savegame member `bandit_live_world`.
 
 - [x] Independently audit the existing serialized schema and migration behavior.
-- [ ] Define a durable `scout_sortie` with stable ID, generation, camp ID, selected member IDs, leader, shared route, waypoint, target/resource lead revision, observations, cargo, casualties, timestamps, and idempotency keys.
+- [x] Define a durable `scout_sortie` with stable ID, generation, camp ID, selected member IDs, leader, shared route, waypoint, target/resource lead revision, observations, cargo, casualties, timestamps, and idempotency keys.
 - [ ] End a scout sortie only after every member is returned, confirmed dead, or declared missing after its fixed grace. A first-survivor report may update a provisional dossier, but no follow-on operation can reserve the slot until the sortie closes. Do not carry scout member reservations into a later response.
 - [ ] Define scout phases: assembling, outbound, searching, observing, harvesting, burned-withdrawal, returning-exposed, returning-report, returning-home, and lost. `returning-exposed` is the bounded fallback after coherent burn-origin evacuation when no concealed rally exists; it can only advance toward home and cannot re-enter observation.
 - [ ] Define separate bounded camp decision state: idle, report-awaiting-assessment, preparing-follow-on, and cooldown/abandoned.
 - [ ] Define a new `hostile_operation` for a shakedown or raid with a new operation ID/generation, fresh member reservations, `source_report_revision`, route/rally state, and phases assembling, outbound, rallying, waiting-night, approaching, committed-contact, returning-home, and lost.
 - [ ] Give both scout sorties and hostile operations a serialized `simulation_owner` (`abstract` or `local`), handoff generation/epoch, and `last_advanced_turn`; any transient handoff state must commit or roll back before a save is accepted.
-- [ ] Remove or migrate competing scalar state rather than maintaining two authorities indefinitely.
+- [x] Remove or migrate competing scalar state rather than maintaining two authorities indefinitely.
 - [ ] Define a world-global finite resource record keyed by OMT.
 - [ ] Add one bounded generic camp supply stock: integer `supply_units`, where one unit is one member-day. Cap at `min(256, 14 * max(1, living_total))`; consume `living_total` units per real 24 game hours with deterministic bounded catch-up; clamp roster-change overflow. Legacy sites seed at seven member-days per living member so migration does not create an instant starvation dispatch.
 - [ ] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
@@ -437,10 +438,10 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [ ] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.
 - [ ] Validate a complete packet before mutating any member, roster count, cargo, resource, or dossier state; replay after save/load is a no-op rather than a duplicate credit.
 - [ ] Add minimal structured transition events now: operation ID/generation, simulation owner, previous/new phase, reason, and turn. Keep them bounded/on-demand rather than a persisted prose log.
-- [ ] Add old-save migration and round-trip tests, including missing/new fields and legacy active groups.
+- [x] Add old-save migration and round-trip tests, including missing/new fields and legacy active groups.
 - [ ] Save/load every active phase without duplicate members, operations, transitions, reports, depletion, or cargo.
-- [ ] Add a brief durable mechanic description to `TechnicalTome.md` once the model is real.
-- [ ] Run serialization byte benchmarks at empty, normal, and saturated state.
+- [x] Add a brief durable mechanic description to `TechnicalTome.md` once the model is real.
+- [x] Run serialization byte benchmarks at empty, normal, and saturated state.
 
 ### Phase 1 exit
 
@@ -448,21 +449,26 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [ ] Round trips and legacy migration pass.
 - [ ] Malformed packets are atomic/no-op.
 - [ ] Saturated serialized size remains within the agreed Phase 0 budget.
-- [ ] Behavior + tests form a reviewable checkpoint commit.
+- [x] Behavior + tests form a reviewable checkpoint commit.
 
 Evidence:
 
 - Commits: `673a900067` makes malformed return application and world deserialization atomic;
   `4995a3c64e` adds schema-v2 typed outing identity, generation/key/watermark persistence,
-  legacy migration/repair, and routes runtime consumers off the old group-id scalar.
-- Tests: redirected Mac build exit `0`; 72 `[bandit][live_world]` cases/1,536 assertions,
-  6 `[bandit][handoff]` cases/99 assertions, the active shakedown patrol consumer (12 assertions),
-  and 2 overmap-global save compatibility cases/16 assertions pass. Binary SHA-256
-  `503542ceccc53dc9697a643303c0f2cddcf5b1cefb52cf62cebd6b999f8ab3f9`.
-- Serialized sizes:
-- Migration fixtures: valid legacy active group -> generation-1 typed identity; duplicate legacy
-  reservation -> safely closed slot/member release; completed return -> save/load -> redispatch ->
-  stale replay is byte-for-byte no-op.
+  legacy migration/repair, and routes runtime consumers off the old group-id scalar;
+  `e4b75e15a3` adds the complete bounded scout envelope, independent report/cargo receipts,
+  casualty/clock/phase persistence, strict component watermarks, and transactional return checks.
+- Tests: strict redirected Mac build exit `0`; 78 `[bandit][live_world]` cases/1,965 assertions,
+  8 `[bandit][handoff]` cases/145 assertions, the active shakedown patrol consumer (12 assertions),
+  and 2 overmap-global save compatibility cases/16 assertions pass. Binary SHA-256 is
+  `12970845d758c7b4d19cc62c8dfdd90b71f68ab45387e4962cb4ba14acb2f49c`.
+- Serialized sizes: empty world 87 bytes; normal four-member camp with active scout 4,139 bytes;
+  cap-saturated route plus active/current observations 28,115 bytes. Saturated output is
+  byte-stable across round trip and below the 64 KiB per-full-camp provisional gate.
+- Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
+  malformed reservation release, all scout-phase round trips, partial casualty persistence,
+  exact casualty/job agreement, report/cargo receipt before slot close, universal watermark
+  ordering, and byte-for-byte stale replay no-op.
 
 ## Phase 2 - roster authority, paired dispatch, and reservations
 

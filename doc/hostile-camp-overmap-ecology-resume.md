@@ -20,8 +20,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: expand the checkpointed active-outing identity
-  into the durable bounded `scout_sortie` record and phases without a mirror authority.
+- First unchecked deterministic execution row: allow a first survivor to apply a provisional
+  report/cargo receipt while retaining the scout slot until every member resolves; prove later and
+  late return plus replay across save/load.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -102,18 +103,25 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   owner/epoch/last-advance/key persistence, legacy active-group migration/repair, and stale replay
   rejection. Its redirected Mac build exits `0`; focused evidence passes 72 live-world cases,
   6 handoff cases, the patrol/shakedown consumer, and both overmap-global save cases.
+- Phase-1 scout checkpoint `e4b75e15a3` makes the nested outing the sole runtime scout owner and
+  persists bounded members/leader, route, target revision, phases, observations, cargo,
+  casualties, clocks, owner/handoff state, and independent return/report/cargo receipts. Strict
+  Mac build and focused tests pass: live-world 78 cases/1,965 assertions, handoff 8/145, patrol
+  1/12, save compatibility 2/16. Empty/normal/saturated JSON is 87/4,139/28,115 bytes and the
+  saturated form is byte-stable after reload below 64 KiB. Final AutoReview's six concrete
+  persistence findings were accepted and repaired in the checkpoint.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume the durable `scout_sortie` model on top of `4995a3c64e`. Do not reopen Phase-0
+3. Resume split-arrival/slot-lifetime semantics on top of `e4b75e15a3`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `4995a3c64e`-source test binary where valid; run one redirected build at a
+5. Reuse the current `e4b75e15a3`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Complete scout/operation/resource/dossier owners with legacy/missing-field, all-phase
-   round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
+6. Complete split-arrival, operation, resource, and dossier owners with legacy/missing-field,
+   phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
 Phase-1 identity build and focused tests completed with explicit exit `0`; the abandoned early log

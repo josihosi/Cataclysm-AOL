@@ -182,9 +182,28 @@ Current Phase-1 evidence target:
   SHA-256 is `503542ce...`. Focused gates pass 72 live-world cases/1,536 assertions, 6 handoff
   cases/99 assertions, 1 patrol/shakedown case/12 assertions, and 2 overmap-global save cases/16
   assertions.
-- Still required: expand the identity into complete scout/operation/resource/dossier owners and
-  prove all of their phase round trips, pruning, and idempotency;
-- measure empty/normal/saturated bytes for each newly real bounded component.
+- `e4b75e15a3` expands that identity into the bounded schema-v3 scout owner: members/leader,
+  route/waypoint, target revision, all declared phases, observations, cargo, casualties, clocks,
+  owner/handoff state, and independent return/report/cargo keys and watermarks. Legacy scalar and
+  transitional nested saves migrate through one validated path; malformed reservations release;
+  return validation is pre-mutation and exact for generation, job, member/casualty status, and
+  component watermarks.
+- Exact strict build command was
+  `PATH=/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin make -j8 TESTS=1 RELEASE=0 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0`;
+  `build_logs/macos-tests-build-phase1-scout-autoreview-fixes-233f7662d4.log` exited `0`.
+  The 79,376,488-byte test binary is SHA-256
+  `12970845d758c7b4d19cc62c8dfdd90b71f68ab45387e4962cb4ba14acb2f49c`.
+- Final focused evidence with seed `830204929`: `[bandit][live_world]` passes 78 cases/1,965
+  assertions; `[bandit][handoff]` passes 8/145; the exact patrol/shakedown consumer passes 1/12;
+  `[savegame][overmap][regression]` passes 2/16. The size case passes 1/10 and records 87 bytes
+  empty, 4,139 normal, and 28,115 saturated; saturated round-trip output is byte-stable and below
+  the provisional 64 KiB full-camp cap.
+- The final xhigh AutoReview fix pass accepted six concrete defects and repaired all six: return
+  phase ordering, malformed nested reservation cleanup, contact-anchored migrated deadlines,
+  universal component watermark ordering, exact casualty agreement, and authoritative job
+  matching. No further review loop was run.
+- Still required: first-survivor provisional receipt/slot lifetime, then complete
+  operation/resource/supply/dossier owners, transition constraints, pruning, and idempotency.
 
 Deferred release-harness evidence, not a Phase-0 engineering blocker:
 - non-interactive Mac Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
@@ -286,9 +305,11 @@ Detailed closed validation history has been trimmed out of this active testing f
 ## Pending probes
 
 The active missing evidence is Phase 1:
-- complete typed scout, hostile-operation, resource, supply, dossier/report, phase, and bounded
-  transition state on top of the checkpointed atomic identity/generation seam;
-- empty/normal/saturated serialized-size proof plus all-active-phase round trips.
+- first-survivor provisional report/cargo receipt while the typed scout reservation remains active,
+  including later/late member resolution and replay across save/load;
+- hostile-operation, resource, supply, dossier/report policy, and bounded transition owners;
+- extend component byte decomposition as those owners become real. The current scout empty/normal/
+  saturated packet and all-phase serialization are already green.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

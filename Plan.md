@@ -87,16 +87,20 @@ ratified provisional budgets and caveats are recorded in the canonical ledger an
 manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 updates; that is an
 explicit Phase-3 repair target, not hidden or normalized away.
 
-The independent schema/authority audit is complete. Checkpoints `673a900067` and `4995a3c64e`
-make world deserialization and return application atomic, replace the persisted group-id scalar
-with one typed active-outing identity, migrate valid legacy groups, safely close inconsistent
-reservations, and reject stale generation/key replay after save/load.
+The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`, and
+`e4b75e15a3`. The latest checkpoint makes the typed active outing the only runtime owner of a
+bounded scout's members, leader, route, target revision, observations, cargo, casualties, phases,
+clocks, simulation owner, and independent return/report/cargo receipts. It migrates legacy scalar
+saves, releases malformed reservations, preserves split casualties, and rejects contradictory,
+stale, or replayed returns before mutation. Empty/normal/cap-saturated JSON is
+87/4,139/28,115 bytes; the saturated state is byte-stable after reload and remains below 64 KiB.
 
-Current execution row: expand that identity envelope into the durable bounded `scout_sortie`
-record and phases without creating a second authority, then define the separate follow-on
-operation, resource, supply, and dossier owners. The repaired Mac Keychain/API path remains a
-Phase-10 release-harness gate. Retain the existing shell export and do not retry or pause
-deterministic work for `OSStatus -25308`.
+Current execution row: keep the scout slot active until every member resolves, while allowing the
+first survivor to apply only a provisional report/cargo receipt. A later survivor must finalize a
+newer revision without duplicate credit, and no follow-on operation may reserve the slot early.
+Then define the separate follow-on operation, resource, supply, and dossier owners. The repaired
+Mac Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic
+work for `OSStatus -25308`.
 
 The prior five-family Windows free-play handoff remains useful held observation footing. It is not
 the active implementation target and does not authorize work on the three excluded creature
