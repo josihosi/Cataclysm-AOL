@@ -117,8 +117,10 @@ Scout and hostile state changes now require the same serialized activity/generat
 last-advanced cursor. Ambiguous dual owners, stale epochs, duplicate advances, and inconsistent
 save parity fail closed; exact compare-and-swap owner transfers are atomic.
 
-Current execution row: define one world-global finite resource record keyed by OMT. Then add the
-bounded camp supply stock and per-camp resource estimate. Post-close
+Current execution row: add the bounded camp supply stock, then the per-camp resource estimate.
+World-global finite resources are checkpointed at `432c0f9da7`: one compact OMT-keyed authority,
+exact revision claims, persistent depleted tombstones, and harvested-only legacy migration.
+Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac
 Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work

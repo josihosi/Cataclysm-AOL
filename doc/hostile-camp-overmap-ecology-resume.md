@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: define the world-global finite resource record
-  keyed by OMT with monotonic revision and idempotent depletion.
+- First unchecked deterministic execution row: add the bounded generic camp supply stock with
+  deterministic catch-up, cap enforcement, and legacy seeding.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -136,15 +136,22 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   ambiguous current-schema ownership. The redirected build exits `0`; live-world is 86/2,714,
   handoff 9/202, hostile-operation 3/243, save compatibility 2/16, and final exact-source
   autoreview is clean at 0.99. Binary SHA-256 is `d6e8a9f0fe1570437cfbabda375aa10cdb0b6452bf45416fe387dca8db0bef26`.
+- Finite-resource checkpoint `432c0f9da7` makes touched OMTs the sole compact depletion authority,
+  applies claims by exact monotonic revision, keeps depleted tombstones, and migrates only truly
+  harvested legacy leads. Its redirected build exits `0`; resource-focused tests pass 3/2,057,
+  live-world passes 89/4,771, and save compatibility passes 2/20. The measured resource save slope
+  is 29 bytes per harvested OMT. AutoReview found one schema-3 hybrid resurrection defect; the
+  accepted fix rejects that malformed packet transactionally and the one permitted rerun is clean
+  at 0.97. Binary SHA-256 is `8129cf98478e32fe0fc82477f5dae07b882033f812bebbd6031be36de7df99ff`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume the world-global finite resource owner on top of `833599e5e4`. Do not reopen Phase-0
+3. Resume bounded camp supply on top of `432c0f9da7`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `833599e5e4`-source test binary where valid; run one redirected build at a
+5. Reuse the current `432c0f9da7`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
 6. Complete operation, resource, and dossier owners with legacy/missing-field,
    phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.

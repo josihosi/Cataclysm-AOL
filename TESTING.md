@@ -347,9 +347,17 @@ logs pass `[bandit][live_world]` 86 cases / 2,714 assertions, `[bandit][handoff]
 autoreview is clean at 0.99. The test binary is 79,698,664 bytes with SHA-256
 `d6e8a9f0fe1570437cfbabda375aa10cdb0b6452bf45416fe387dca8db0bef26`.
 
+The world-global finite-resource checkpoint `432c0f9da7` is green on the Mac. Redirected build
+`build_logs/macos-tests-build-phase1-finite-resource-hybrid-fix.log` exits `0`; exact focused
+logs pass resource claims/migration/size 3 cases / 2,057 assertions, the full
+`[bandit][live_world]` tag 89 / 4,771, and overmap-global save compatibility 2 / 20. The compact
+harvested-OMT save slope is 29 bytes per record at 500-to-1,000 records, below the 32-byte gate.
+AutoReview found and the patch fixed one real malformed schema-3 hybrid that could resurrect a
+harvested bounty; the single post-fix rerun is clean at 0.97. The test binary is 79,754,792 bytes
+with SHA-256 `8129cf98478e32fe0fc82477f5dae07b882033f812bebbd6031be36de7df99ff`.
+
 The active missing evidence is Phase 1:
-- world-global finite resource ownership, then bounded supply, per-camp resource estimates,
-  dossier/report policy, and bounded transition owners;
+- bounded supply, per-camp resource estimates, dossier/report policy, and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 
