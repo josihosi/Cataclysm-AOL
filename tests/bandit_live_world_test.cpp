@@ -930,6 +930,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
     partial_site.active_outing.target_id = "deadline-target";
     partial_site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
     partial_site.active_outing.cargo = { 2, 40 };
+    partial_site.active_outing.expected_return_minutes = 960;
+    partial_site.active_outing.missing_deadline_minutes = 2400;
 
     const std::vector<bandit_live_world::active_member_observation> first_arrival = {
         { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
@@ -939,6 +941,19 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
     };
     REQUIRE( bandit_live_world::apply_active_scout_observations(
                  partial_site, first_arrival, 500 ).provisional_report_applied );
+
+    const std::vector<bandit_live_world::active_member_observation> premature_missing = {
+        { character_id( 45600 ), bandit_live_world::active_member_observation_state::home,
+          "first survivor already home" },
+        { character_id( 45601 ), bandit_live_world::active_member_observation_state::missing,
+          "premature missing declaration" }
+    };
+    const std::string before_premature_missing = serialize_world( partial_world );
+    const bandit_live_world::scout_resolution_effect premature_effect =
+        bandit_live_world::apply_active_scout_observations( partial_site, premature_missing, 2399 );
+    CHECK_FALSE( premature_effect.valid );
+    CHECK_FALSE( premature_effect.changed );
+    CHECK( serialize_world( partial_world ) == before_premature_missing );
 
     SECTION( "malformed provisional report is cleared without losing the active reservation" ) {
         bandit_live_world::world_state malformed = partial_world;
@@ -993,6 +1008,8 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
         lost_site.active_outing.job_type = "scout";
         lost_site.active_outing.target_id = "lost-target";
         lost_site.active_outing.cargo = { 5, 100 };
+        lost_site.active_outing.expected_return_minutes = 960;
+        lost_site.active_outing.missing_deadline_minutes = 2400;
         const std::vector<bandit_live_world::active_member_observation> lost = {
             { character_id( 45610 ), bandit_live_world::active_member_observation_state::dead,
               "lead scout killed" },

@@ -4745,6 +4745,11 @@ bool record_active_outing_casualty( site_record &site, const character_id npc_id
         site.active_outing.member_ids.end() ) {
         return false;
     }
+    if( casualty_state == member_state::missing &&
+        ( site.active_outing.missing_deadline_minutes < 0 ||
+          current_minutes < site.active_outing.missing_deadline_minutes ) ) {
+        return false;
+    }
 
     site_record candidate = site;
     member_record *member = candidate.find_member( npc_id );
