@@ -16,6 +16,7 @@
 namespace
 {
 using bandit_live_world::anchor_source_kind;
+using bandit_live_world::camp_decision_state;
 using bandit_live_world::camp_lead_kind;
 using bandit_live_world::camp_lead_status;
 using bandit_live_world::camp_map_lead;
@@ -32,6 +33,7 @@ constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_sortie_fact_key_length = 128;
 constexpr std::size_t max_sortie_summary_length = 512;
+constexpr std::size_t max_camp_decision_reason_length = 256;
 constexpr int scout_return_cohesion_minutes = 2 * 60;
 constexpr int scout_missing_grace_minutes = 24 * 60;
 
@@ -317,6 +319,26 @@ std::optional<scout_phase> scout_phase_from_string( const std::string &value )
     }
     if( value == "lost" ) {
         return scout_phase::lost;
+    }
+    return std::nullopt;
+}
+
+std::optional<camp_decision_state> camp_decision_state_from_string( const std::string &value )
+{
+    if( value == "idle" ) {
+        return camp_decision_state::idle;
+    }
+    if( value == "report_awaiting_assessment" ) {
+        return camp_decision_state::report_awaiting_assessment;
+    }
+    if( value == "preparing_follow_on" ) {
+        return camp_decision_state::preparing_follow_on;
+    }
+    if( value == "cooldown" ) {
+        return camp_decision_state::cooldown;
+    }
+    if( value == "abandoned" ) {
+        return camp_decision_state::abandoned;
     }
     return std::nullopt;
 }
@@ -941,6 +963,27 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
     push_unique_mark( group.known_recent_marks, target_id );
     return group;
 }
+
+bool report_matches_camp_decision( const bandit_live_world::scout_report_record &report,
+                                   const bandit_live_world::camp_decision_record &decision )
+{
+    return report.is_present() && !report.provisional && report.source_job_type == "scout" &&
+           decision.has_pinned_report() &&
+           decision.source_report_revision == report.revision &&
+           decision.source_report_generation == report.source_generation &&
+           decision.source_report_activity_id == report.source_activity_id &&
+           decision.source_report_application_key == report.application_key &&
+           decision.target_id == report.target_id && decision.target_omt == report.target_omt &&
+           decision.target_lead_revision == report.target_lead_revision;
+}
+
+bool camp_decision_allows_dispatch( const bandit_live_world::camp_decision_record &decision,
+                                    const bandit_dry_run::job_template job )
+{
+    return decision.state == camp_decision_state::idle ||
+           ( decision.state == camp_decision_state::abandoned &&
+             job == bandit_dry_run::job_template::scout );
+}
 } // namespace
 
 namespace bandit_live_world
@@ -1167,6 +1210,24 @@ std::string to_string( scout_phase phase )
     return "assembling";
 }
 
+std::string to_string( camp_decision_state state )
+{
+    switch( state ) {
+        case camp_decision_state::idle:
+            return "idle";
+        case camp_decision_state::report_awaiting_assessment:
+            return "report_awaiting_assessment";
+        case camp_decision_state::preparing_follow_on:
+            return "preparing_follow_on";
+        case camp_decision_state::cooldown:
+            return "cooldown";
+        case camp_decision_state::abandoned:
+            return "abandoned";
+    }
+
+    return "abandoned";
+}
+
 bool is_valid_scout_phase_transition( const scout_phase previous_phase,
                                       const scout_phase next_phase )
 {
@@ -1250,6 +1311,131 @@ scout_phase_transition_result transition_active_scout_phase( site_record &site,
     site.active_outing.last_progress_minutes = current_minutes;
     site.active_outing.last_advanced_minutes = current_minutes;
     return scout_phase_transition_result::applied;
+}
+
+bool is_valid_camp_decision_transition( const camp_decision_state previous_state,
+                                        const camp_decision_state next_state )
+{
+    if( previous_state == next_state ) {
+        return true;
+    }
+    if( next_state == camp_decision_state::abandoned ) {
+        return previous_state != camp_decision_state::abandoned;
+    }
+
+    switch( previous_state ) {
+        case camp_decision_state::idle:
+            return next_state == camp_decision_state::report_awaiting_assessment;
+        case camp_decision_state::report_awaiting_assessment:
+            return next_state == camp_decision_state::preparing_follow_on ||
+                   next_state == camp_decision_state::cooldown;
+        case camp_decision_state::preparing_follow_on:
+            return next_state == camp_decision_state::cooldown;
+        case camp_decision_state::cooldown:
+            return next_state == camp_decision_state::idle ||
+                   next_state == camp_decision_state::report_awaiting_assessment;
+        case camp_decision_state::abandoned:
+            return next_state == camp_decision_state::report_awaiting_assessment;
+    }
+
+    return false;
+}
+
+camp_decision_transition_result accept_current_scout_report_for_assessment( site_record &site )
+{
+    const scout_report_record &report = site.current_scout_report;
+    camp_decision_record &decision = site.camp_decision;
+    if( site.active_outing.is_active() || !report.is_present() || report.provisional ||
+        report.source_job_type != "scout" ||
+        decision.state == camp_decision_state::preparing_follow_on ||
+        !is_valid_camp_decision_transition( decision.state,
+                                            camp_decision_state::report_awaiting_assessment ) ) {
+        return camp_decision_transition_result::rejected;
+    }
+    const bool same_report = report_matches_camp_decision( report, decision );
+    if( same_report ) {
+        return decision.state == camp_decision_state::report_awaiting_assessment ?
+               camp_decision_transition_result::unchanged :
+               camp_decision_transition_result::rejected;
+    }
+    const bool newer_report = report.source_generation > decision.source_report_generation ||
+                              ( report.source_generation == decision.source_report_generation &&
+                                report.revision > decision.source_report_revision );
+    if( decision.has_pinned_report() && ( !newer_report ||
+                                         report.delivered_minutes <
+                                         decision.last_transition_minutes ) ) {
+        return camp_decision_transition_result::rejected;
+    }
+
+    decision.state = camp_decision_state::report_awaiting_assessment;
+    decision.source_report_revision = report.revision;
+    decision.source_report_generation = report.source_generation;
+    decision.source_report_activity_id = report.source_activity_id;
+    decision.source_report_application_key = report.application_key;
+    decision.target_id = report.target_id;
+    decision.target_omt = report.target_omt;
+    decision.target_lead_revision = report.target_lead_revision;
+    decision.last_transition_minutes = report.delivered_minutes;
+    decision.next_eligible_minutes = -1;
+    decision.transition_reason = "final scout report delivered for assessment";
+    return camp_decision_transition_result::applied;
+}
+
+camp_decision_transition_result transition_camp_decision_state( site_record &site,
+        const camp_decision_state expected_state, const camp_decision_state next_state,
+        const int expected_report_revision, const int expected_report_generation,
+        const int current_minutes, const int next_eligible_minutes, const std::string &reason )
+{
+    camp_decision_record &decision = site.camp_decision;
+    if( decision.state != expected_state || current_minutes < 0 ||
+        current_minutes < decision.last_transition_minutes ||
+        !is_valid_camp_decision_transition( expected_state, next_state ) ) {
+        return camp_decision_transition_result::rejected;
+    }
+    if( expected_state == next_state ) {
+        if( decision.has_pinned_report() &&
+            ( decision.source_report_revision != expected_report_revision ||
+              decision.source_report_generation != expected_report_generation ) ) {
+            return camp_decision_transition_result::rejected;
+        }
+        return camp_decision_transition_result::unchanged;
+    }
+    if( reason.empty() || !decision.has_pinned_report() ||
+        decision.source_report_revision != expected_report_revision ||
+        decision.source_report_generation != expected_report_generation ||
+        next_state == camp_decision_state::report_awaiting_assessment ) {
+        return camp_decision_transition_result::rejected;
+    }
+    if( next_state == camp_decision_state::preparing_follow_on ) {
+        const scout_report_record &report = site.current_scout_report;
+        if( site.active_outing.is_active() ||
+            !report_matches_camp_decision( report, decision ) ) {
+            return camp_decision_transition_result::rejected;
+        }
+    }
+    if( next_state == camp_decision_state::cooldown &&
+        next_eligible_minutes < current_minutes ) {
+        return camp_decision_transition_result::rejected;
+    }
+    if( next_state == camp_decision_state::idle ) {
+        if( expected_state != camp_decision_state::cooldown ||
+            decision.next_eligible_minutes < 0 ||
+            current_minutes < decision.next_eligible_minutes ) {
+            return camp_decision_transition_result::rejected;
+        }
+        decision.state = camp_decision_state::idle;
+        decision.last_transition_minutes = current_minutes;
+        decision.next_eligible_minutes = -1;
+        decision.transition_reason = reason.substr( 0, max_camp_decision_reason_length );
+        return camp_decision_transition_result::applied;
+    }
+
+    decision.state = next_state;
+    decision.last_transition_minutes = current_minutes;
+    decision.next_eligible_minutes = next_state == camp_decision_state::cooldown ?
+                                     next_eligible_minutes : -1;
+    decision.transition_reason = reason.substr( 0, max_camp_decision_reason_length );
+    return camp_decision_transition_result::applied;
 }
 
 void member_record::serialize( JsonOut &json ) const
@@ -1460,6 +1646,7 @@ void scout_report_record::serialize( JsonOut &json ) const
     json.member( "revision", std::max( 0, revision ) );
     json.member( "source_activity_id", source_activity_id );
     json.member( "source_generation", std::max( 0, source_generation ) );
+    json.member( "source_job_type", source_job_type );
     json.member( "target_id", target_id );
     json.member( "target_omt", target_omt );
     json.member( "target_lead_revision", std::max( 0, target_lead_revision ) );
@@ -1484,6 +1671,7 @@ void scout_report_record::deserialize( const JsonObject &jo )
     jo.read( "revision", candidate.revision );
     jo.read( "source_activity_id", candidate.source_activity_id );
     jo.read( "source_generation", candidate.source_generation );
+    jo.read( "source_job_type", candidate.source_job_type );
     jo.read( "target_id", candidate.target_id );
     jo.read( "target_omt", candidate.target_omt );
     jo.read( "target_lead_revision", candidate.target_lead_revision );
@@ -1509,9 +1697,78 @@ void scout_report_record::deserialize( const JsonObject &jo )
     candidate.source_generation = std::max( 0, candidate.source_generation );
     candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
     candidate.delivered_minutes = std::max( -1, candidate.delivered_minutes );
-    candidate.schema_version = 2;
+    if( candidate.schema_version < 3 && candidate.source_job_type.empty() &&
+        candidate.source_activity_id.find( "#scout" ) != std::string::npos ) {
+        candidate.source_job_type = "scout";
+    }
+    candidate.schema_version = 3;
     if( !candidate.is_present() ) {
         candidate.clear();
+    }
+    *this = std::move( candidate );
+}
+
+void camp_decision_record::clear()
+{
+    *this = camp_decision_record();
+}
+
+bool camp_decision_record::has_pinned_report() const
+{
+    return source_report_revision > 0 && source_report_generation > 0 &&
+           !source_report_activity_id.empty() && !source_report_application_key.empty();
+}
+
+void camp_decision_record::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "schema_version", schema_version );
+    json.member( "state", to_string( state ) );
+    json.member( "source_report_revision", std::max( 0, source_report_revision ) );
+    json.member( "source_report_generation", std::max( 0, source_report_generation ) );
+    json.member( "source_report_activity_id", source_report_activity_id );
+    json.member( "source_report_application_key", source_report_application_key );
+    json.member( "target_id", target_id );
+    json.member( "target_omt", target_omt );
+    json.member( "target_lead_revision", std::max( 0, target_lead_revision ) );
+    json.member( "last_transition_minutes", std::max( -1, last_transition_minutes ) );
+    json.member( "next_eligible_minutes", std::max( -1, next_eligible_minutes ) );
+    json.member( "transition_reason",
+                 transition_reason.substr( 0, max_camp_decision_reason_length ) );
+    json.end_object();
+}
+
+void camp_decision_record::deserialize( const JsonObject &jo )
+{
+    camp_decision_record candidate;
+    jo.read( "schema_version", candidate.schema_version );
+    const bool state_was_present = jo.has_member( "state" );
+    std::string state_string = "idle";
+    jo.read( "state", state_string );
+    candidate.state = camp_decision_state_from_string( state_string ).value_or(
+                          state_was_present ? camp_decision_state::abandoned :
+                          camp_decision_state::idle );
+    jo.read( "source_report_revision", candidate.source_report_revision );
+    jo.read( "source_report_generation", candidate.source_report_generation );
+    jo.read( "source_report_activity_id", candidate.source_report_activity_id );
+    jo.read( "source_report_application_key", candidate.source_report_application_key );
+    jo.read( "target_id", candidate.target_id );
+    jo.read( "target_omt", candidate.target_omt );
+    jo.read( "target_lead_revision", candidate.target_lead_revision );
+    jo.read( "last_transition_minutes", candidate.last_transition_minutes );
+    jo.read( "next_eligible_minutes", candidate.next_eligible_minutes );
+    jo.read( "transition_reason", candidate.transition_reason );
+    candidate.schema_version = 1;
+    candidate.source_report_revision = std::max( 0, candidate.source_report_revision );
+    candidate.source_report_generation = std::max( 0, candidate.source_report_generation );
+    candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
+    candidate.last_transition_minutes = std::max( -1, candidate.last_transition_minutes );
+    candidate.next_eligible_minutes = std::max( -1, candidate.next_eligible_minutes );
+    candidate.transition_reason.resize( std::min( candidate.transition_reason.size(),
+                                        max_camp_decision_reason_length ) );
+    if( !camp_decision_state_from_string( state_string ) &&
+        candidate.transition_reason.empty() ) {
+        candidate.transition_reason = "unknown persisted camp decision state";
     }
     *this = std::move( candidate );
 }
@@ -1722,6 +1979,7 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "applied_cargo_generation", applied_cargo_generation );
     json.member( "last_cargo_application_key", last_cargo_application_key );
     json.member( "current_scout_report", current_scout_report );
+    json.member( "camp_decision", camp_decision );
     json.member( "returned_cargo_stock", returned_cargo_stock );
     json.member( "active_outing", active_outing );
     json.member( "remembered_target_or_mark", remembered_target_or_mark );
@@ -1753,13 +2011,14 @@ void site_record::serialize( JsonOut &json ) const
 
 void site_record::deserialize( const JsonObject &jo )
 {
-    schema_version = 3;
+    schema_version = 4;
     next_outing_generation = 1;
     applied_return_generation = 0;
     applied_report_generation = 0;
     applied_cargo_generation = 0;
     last_cargo_application_key.clear();
     current_scout_report.clear();
+    camp_decision.clear();
     returned_cargo_stock = sortie_cargo();
     active_outing.clear();
     jo.read( "schema_version", schema_version );
@@ -1788,6 +2047,10 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "applied_cargo_generation", applied_cargo_generation );
     jo.read( "last_cargo_application_key", last_cargo_application_key );
     jo.read( "current_scout_report", current_scout_report );
+    const bool camp_decision_was_present = jo.has_member( "camp_decision" );
+    if( camp_decision_was_present ) {
+        jo.read( "camp_decision", camp_decision );
+    }
     jo.read( "returned_cargo_stock", returned_cargo_stock );
     const bool active_outing_was_present = jo.has_member( "active_outing" );
     bool active_outing_has_embedded_payload = false;
@@ -1973,6 +2236,7 @@ void site_record::deserialize( const JsonObject &jo )
             active_outing.is_active() && active_outing.kind == outing_kind::scout_sortie &&
             current_scout_report.source_activity_id == active_outing.activity_id &&
             current_scout_report.source_generation == active_outing.generation &&
+            current_scout_report.source_job_type == active_outing.job_type &&
             current_scout_report.target_id == active_outing.target_id &&
             current_scout_report.target_omt == active_outing.target_omt &&
             current_scout_report.target_lead_revision == active_outing.target_lead_revision &&
@@ -1982,7 +2246,39 @@ void site_record::deserialize( const JsonObject &jo )
             current_scout_report.clear();
         }
     }
-    schema_version = 3;
+    if( !camp_decision_was_present && !active_outing.is_active() &&
+        current_scout_report.is_present() && !current_scout_report.provisional ) {
+        accept_current_scout_report_for_assessment( *this );
+    }
+    if( camp_decision.state == camp_decision_state::abandoned &&
+        !camp_decision.has_pinned_report() && current_scout_report.is_present() &&
+        !current_scout_report.provisional ) {
+        camp_decision.source_report_revision = current_scout_report.revision;
+        camp_decision.source_report_generation = current_scout_report.source_generation;
+        camp_decision.source_report_activity_id = current_scout_report.source_activity_id;
+        camp_decision.source_report_application_key = current_scout_report.application_key;
+        camp_decision.target_id = current_scout_report.target_id;
+        camp_decision.target_omt = current_scout_report.target_omt;
+        camp_decision.target_lead_revision = current_scout_report.target_lead_revision;
+        camp_decision.last_transition_minutes = std::max(
+                    camp_decision.last_transition_minutes,
+                    current_scout_report.delivered_minutes );
+    }
+    const bool decision_requires_current_report =
+        camp_decision.state == camp_decision_state::report_awaiting_assessment ||
+        camp_decision.state == camp_decision_state::preparing_follow_on;
+    const bool decision_matches_current_report = report_matches_camp_decision(
+                current_scout_report, camp_decision );
+    const bool malformed_cooldown = camp_decision.state == camp_decision_state::cooldown &&
+                                    ( !camp_decision.has_pinned_report() ||
+                                      camp_decision.next_eligible_minutes < 0 );
+    if( ( decision_requires_current_report && !decision_matches_current_report ) ||
+        malformed_cooldown ) {
+        camp_decision.state = camp_decision_state::abandoned;
+        camp_decision.next_eligible_minutes = -1;
+        camp_decision.transition_reason = "repaired inconsistent persisted camp decision";
+    }
+    schema_version = 4;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -3459,6 +3755,11 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         plan.notes.push_back( "camp-map dispatch blocked: remembered risk/reward decision held pressure" );
         return plan;
     }
+    if( !camp_decision_allows_dispatch( site.camp_decision, decision.intent ) ) {
+        plan.notes.push_back( "camp-map dispatch blocked: camp decision state " +
+                              to_string( site.camp_decision.state ) );
+        return plan;
+    }
 
     plan.member_ids = select_dispatch_members( site, decision.selected_member_count );
     if( static_cast<int>( plan.member_ids.size() ) != decision.selected_member_count ) {
@@ -3542,6 +3843,11 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     const bandit_dry_run::lead_input lead = make_nearby_target_lead( site, plan.target_omt, target_id );
     plan.evaluation = bandit_dry_run::evaluate( camp, { lead } );
     const bandit_dry_run::candidate_debug &winner = plan.evaluation.candidates[plan.evaluation.winner_index];
+    if( !camp_decision_allows_dispatch( site.camp_decision, winner.job ) ) {
+        plan.notes.push_back( "dispatch blocked: camp decision state " +
+                              to_string( site.camp_decision.state ) );
+        return plan;
+    }
     if( !bandit_pursuit_handoff::supports_pursuit_handoff( winner ) ) {
         plan.notes.push_back( "dispatch blocked: " + plan.evaluation.winner_reason );
         return plan;
@@ -3602,6 +3908,7 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
         bandit_live_world_probe::counter::live_dispatch_applies );
     if( !plan.valid || plan.site_id != site.site_id || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
+        !camp_decision_allows_dispatch( site.camp_decision, plan.entry.job_type ) ||
         site.has_active_outside_pressure() || plan.group.activity_generation != site.next_outing_generation ||
         plan.entry.activity_generation != plan.group.activity_generation ||
         plan.group.activity_generation <= site.applied_return_generation ||
@@ -4427,6 +4734,8 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     bandit_live_world_probe::record_site_service( site.site_id,
             bandit_live_world_probe::site_service::live_return_apply );
     const bool scout_return = site.active_outing.kind == outing_kind::scout_sortie;
+    const bool assessment_scout_return = scout_return &&
+                                         site.active_outing.job_type == "scout";
     if( !packet.valid || packet.source_camp_id != site.site_id ||
         !site.active_outing.is_active() ||
         site.active_outing.kind == outing_kind::structural_sortie ||
@@ -4577,6 +4886,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         report.revision = std::max( 0, site.current_scout_report.revision ) + 1;
         report.source_activity_id = site.active_outing.activity_id;
         report.source_generation = site.active_outing.generation;
+        report.source_job_type = site.active_outing.job_type;
         report.target_id = site.active_outing.target_id;
         report.target_omt = site.active_outing.target_omt;
         report.target_lead_revision = site.active_outing.target_lead_revision;
@@ -4624,6 +4934,9 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     site.last_cargo_application_key = site.active_outing.cargo_application_key;
     site.applied_return_generation = packet.activity_generation;
     site.active_outing.clear();
+    if( assessment_scout_return && packet.survivors_remaining > 0 ) {
+        accept_current_scout_report_for_assessment( site );
+    }
     return true;
 }
 
@@ -4742,6 +5055,7 @@ scout_resolution_effect apply_active_scout_observations( site_record &site,
                           static_cast<int>( newly_returned_ids.size() );
         report.source_activity_id = candidate.active_outing.activity_id;
         report.source_generation = candidate.active_outing.generation;
+        report.source_job_type = candidate.active_outing.job_type;
         report.target_id = candidate.active_outing.target_id;
         report.target_omt = candidate.active_outing.target_omt;
         report.target_lead_revision = candidate.active_outing.target_lead_revision;

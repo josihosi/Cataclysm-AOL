@@ -415,7 +415,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 3 );
+        CHECK( site.schema_version == 4 );
         CHECK( site.active_outing.is_active() );
         CHECK( site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie );
         CHECK( site.active_outing.activity_id == "legacy_camp#dispatch" );
@@ -488,7 +488,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         site.deserialize( transitional.get_object() );
 
         REQUIRE( site.active_outing.is_active() );
-        CHECK( site.schema_version == 3 );
+        CHECK( site.schema_version == 4 );
         CHECK( site.active_outing.schema_version == 3 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
@@ -817,6 +817,211 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
            bandit_live_world::member_state::at_home );
 }
 
+TEST_CASE( "bandit_live_world_camp_decision_pins_only_final_scout_reports_and_transitions_once",
+           "[bandit][live_world][camp_decision][save][replay]" )
+{
+    using bandit_live_world::camp_decision_state;
+    using bandit_live_world::camp_decision_transition_result;
+
+    const std::vector<camp_decision_state> states = {
+        camp_decision_state::idle,
+        camp_decision_state::report_awaiting_assessment,
+        camp_decision_state::preparing_follow_on,
+        camp_decision_state::cooldown,
+        camp_decision_state::abandoned,
+    };
+    const std::vector<std::pair<camp_decision_state, camp_decision_state>> forward_edges = {
+        { camp_decision_state::idle, camp_decision_state::report_awaiting_assessment },
+        { camp_decision_state::report_awaiting_assessment,
+          camp_decision_state::preparing_follow_on },
+        { camp_decision_state::report_awaiting_assessment, camp_decision_state::cooldown },
+        { camp_decision_state::preparing_follow_on, camp_decision_state::cooldown },
+        { camp_decision_state::cooldown, camp_decision_state::idle },
+        { camp_decision_state::cooldown,
+          camp_decision_state::report_awaiting_assessment },
+        { camp_decision_state::abandoned,
+          camp_decision_state::report_awaiting_assessment },
+    };
+    for( const camp_decision_state previous : states ) {
+        for( const camp_decision_state next : states ) {
+            const bool same_state = previous == next;
+            const bool fail_closed = next == camp_decision_state::abandoned &&
+                                     previous != camp_decision_state::abandoned;
+            const bool forward = std::find( forward_edges.begin(), forward_edges.end(),
+                                            std::make_pair( previous, next ) ) !=
+                                 forward_edges.end();
+            CHECK( bandit_live_world::is_valid_camp_decision_transition( previous, next ) ==
+                   ( same_state || fail_closed || forward ) );
+        }
+    }
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 3; ++index ) {
+        add_bandit_camp_member( world, index, 45130 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan stale_idle_plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                "decision-target" );
+    REQUIRE( stale_idle_plan.valid );
+    site.current_scout_report.revision = 7;
+    site.current_scout_report.source_activity_id = site.site_id + "#scout:decision";
+    site.current_scout_report.source_generation = 4;
+    site.current_scout_report.source_job_type = "scout";
+    site.current_scout_report.target_id = "decision-target";
+    site.current_scout_report.target_omt = tripoint_abs_omt( 18, 20, 0 );
+    site.current_scout_report.target_lead_revision = 3;
+    site.current_scout_report.application_key =
+        site.current_scout_report.source_activity_id + ":report:4";
+    site.current_scout_report.delivered_minutes = 600;
+    site.current_scout_report.provisional = true;
+
+    const std::string before_provisional = serialize_world( world );
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( serialize_world( world ) == before_provisional );
+    site.current_scout_report.provisional = false;
+    site.current_scout_report.source_job_type = "scavenge";
+    const std::string before_scavenge = serialize_world( world );
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( serialize_world( world ) == before_scavenge );
+    site.current_scout_report.source_job_type = "scout";
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+           camp_decision_transition_result::applied );
+    CHECK( site.camp_decision.state == camp_decision_state::report_awaiting_assessment );
+    CHECK( site.camp_decision.source_report_revision == 7 );
+    CHECK( site.camp_decision.source_report_generation == 4 );
+    CHECK( site.camp_decision.source_report_activity_id ==
+           site.current_scout_report.source_activity_id );
+    CHECK( site.camp_decision.source_report_application_key ==
+           site.current_scout_report.application_key );
+    CHECK_FALSE( bandit_live_world::plan_site_dispatch(
+                     site, tripoint_abs_omt( 18, 20, 0 ), "decision-target" ).valid );
+    CHECK_FALSE( bandit_live_world::apply_dispatch_plan( site, stale_idle_plan ) );
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+           camp_decision_transition_result::unchanged );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 1 );
+    CHECK( loaded.sites.front().camp_decision.state ==
+           camp_decision_state::report_awaiting_assessment );
+    CHECK( loaded.sites.front().camp_decision.source_report_generation == 4 );
+    CHECK( loaded.sites.front().camp_decision.target_id == "decision-target" );
+
+    const std::string before_stale = serialize_world( world );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::preparing_follow_on, 6, 4, 700, -1, "wrong report" ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::preparing_follow_on, 7, 3, 700, -1, "wrong generation" ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::preparing_follow_on, 7, 4, 599, -1, "stale time" ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( serialize_world( world ) == before_stale );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::report_awaiting_assessment, 7, 4, 700, -1, "same" ) ==
+           camp_decision_transition_result::unchanged );
+    CHECK( serialize_world( world ) == before_stale );
+
+    site.active_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    site.active_outing.activity_id = site.site_id + "#structural";
+    site.active_outing.generation = 8;
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::preparing_follow_on, 7, 4, 700, -1, "slot busy" ) ==
+           camp_decision_transition_result::rejected );
+    site.active_outing.clear();
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::preparing_follow_on, 7, 4, 700, -1, "assessment passed" ) ==
+           camp_decision_transition_result::applied );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::preparing_follow_on,
+               camp_decision_state::cooldown, 7, 4, 800, 799, "invalid cooldown" ) ==
+           camp_decision_transition_result::rejected );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::preparing_follow_on,
+               camp_decision_state::cooldown, 7, 4, 800, 900, "bounded cooldown" ) ==
+           camp_decision_transition_result::applied );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::cooldown, camp_decision_state::idle,
+               7, 4, 899, -1, "too early" ) == camp_decision_transition_result::rejected );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, camp_decision_state::cooldown, camp_decision_state::idle,
+               7, 4, 900, -1, "cooldown elapsed" ) == camp_decision_transition_result::applied );
+    CHECK( site.camp_decision.state == camp_decision_state::idle );
+    CHECK( site.camp_decision.source_report_revision == 7 );
+    CHECK( site.camp_decision.source_report_generation == 4 );
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+           camp_decision_transition_result::rejected );
+
+    bandit_live_world::world_state abandoned_world = loaded;
+    bandit_live_world::site_record &abandoned_site = abandoned_world.sites.front();
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               abandoned_site, camp_decision_state::report_awaiting_assessment,
+               camp_decision_state::abandoned, 7, 4, 700, -1, "assessment rejected" ) ==
+           camp_decision_transition_result::applied );
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( abandoned_site ) ==
+           camp_decision_transition_result::rejected );
+    abandoned_site.current_scout_report.revision = 8;
+    abandoned_site.current_scout_report.source_generation = 5;
+    abandoned_site.current_scout_report.source_activity_id = abandoned_site.site_id +
+            "#scout:new-decision";
+    abandoned_site.current_scout_report.application_key =
+        abandoned_site.current_scout_report.source_activity_id + ":report:5";
+    abandoned_site.current_scout_report.delivered_minutes = 800;
+    CHECK( bandit_live_world::accept_current_scout_report_for_assessment( abandoned_site ) ==
+           camp_decision_transition_result::applied );
+
+    JsonValue unknown_state_json = json_loader::from_string(
+                                       R"({"state":"future_state"})" );
+    bandit_live_world::camp_decision_record unknown_state;
+    unknown_state.deserialize( unknown_state_json.get_object() );
+    CHECK( unknown_state.state == camp_decision_state::abandoned );
+    CHECK( unknown_state.transition_reason == "unknown persisted camp decision state" );
+
+    JsonValue missing_state_json = json_loader::from_string( R"({"schema_version":0})" );
+    bandit_live_world::camp_decision_record missing_state;
+    missing_state.deserialize( missing_state_json.get_object() );
+    CHECK( missing_state.state == camp_decision_state::idle );
+
+    JsonValue legacy_final_report_json = json_loader::from_string( R"({
+        "site_id":"legacy-final-report",
+        "current_scout_report":{
+            "revision":2,
+            "source_activity_id":"legacy-final-report#scout:2",
+            "source_generation":2,
+            "source_job_type":"scout",
+            "target_id":"legacy-target",
+            "target_omt":[4,5,0],
+            "target_lead_revision":1,
+            "application_key":"legacy-final-report#scout:2:report:2",
+            "delivered_minutes":500,
+            "provisional":false
+        }
+    })" );
+    bandit_live_world::site_record migrated_final_report;
+    migrated_final_report.deserialize( legacy_final_report_json.get_object() );
+    CHECK( migrated_final_report.camp_decision.state ==
+           camp_decision_state::report_awaiting_assessment );
+    CHECK( migrated_final_report.camp_decision.source_report_generation == 2 );
+    CHECK( migrated_final_report.camp_decision.target_id == "legacy-target" );
+
+    bandit_live_world::world_state malformed_world = loaded;
+    malformed_world.sites.front().camp_decision.source_report_application_key = "forged-key";
+    const bandit_live_world::world_state repaired = round_trip_world( malformed_world );
+    REQUIRE( repaired.sites.size() == 1 );
+    CHECK( repaired.sites.front().camp_decision.state == camp_decision_state::abandoned );
+    CHECK( repaired.sites.front().camp_decision.transition_reason ==
+           "repaired inconsistent persisted camp decision" );
+}
+
 TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on_load",
            "[bandit][live_world][scout_state][save]" )
 {
@@ -1022,6 +1227,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     CHECK( site.applied_return_generation == 0 );
     CHECK( site.applied_report_generation == 0 );
     CHECK( site.applied_cargo_generation == 0 );
+    CHECK( site.camp_decision.state == bandit_live_world::camp_decision_state::idle );
+    CHECK_FALSE( site.camp_decision.has_pinned_report() );
 
     const bandit_live_world::dispatch_plan blocked_dispatch =
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 19, 20, 0 ),
@@ -1076,10 +1283,11 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     CHECK( loaded_site.active_outing.resolved_member_ids ==
            std::vector<character_id> { character_id( 45500 ) } );
     REQUIRE( loaded_site.current_scout_report.is_present() );
-    CHECK( loaded_site.current_scout_report.schema_version == 2 );
+    CHECK( loaded_site.current_scout_report.schema_version == 3 );
     CHECK( loaded_site.current_scout_report.provisional );
     CHECK( loaded_site.applied_report_generation == 0 );
     CHECK( loaded_site.returned_cargo_stock.supply_units == 3 );
+    CHECK( loaded_site.camp_decision.state == bandit_live_world::camp_decision_state::idle );
     const std::string loaded_before_replay = serialize_world( loaded );
     CHECK_FALSE( bandit_live_world::apply_active_scout_observations(
                      loaded_site, first_arrival, 530 ).changed );
@@ -1109,6 +1317,14 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     CHECK( loaded_site.applied_return_generation == 1 );
     CHECK( loaded_site.applied_report_generation == 1 );
     CHECK( loaded_site.applied_cargo_generation == 1 );
+    CHECK( loaded_site.camp_decision.state ==
+           bandit_live_world::camp_decision_state::report_awaiting_assessment );
+    CHECK( loaded_site.camp_decision.source_report_revision == 2 );
+    CHECK( loaded_site.camp_decision.source_report_application_key ==
+           loaded_site.current_scout_report.application_key );
+    CHECK( loaded_site.camp_decision.target_id == "split-target" );
+    CHECK( loaded_site.camp_decision.target_lead_revision == 4 );
+    CHECK( loaded_site.camp_decision.last_transition_minutes == 600 );
     CHECK( loaded_site.find_member( character_id( 45500 ) )->state ==
            bandit_live_world::member_state::at_home );
     CHECK( loaded_site.find_member( character_id( 45501 ) )->state ==
@@ -1230,6 +1446,9 @@ TEST_CASE( "bandit_live_world_split_scout_repairs_and_terminal_loss_paths_are_bo
         CHECK( lost_site.applied_return_generation == 1 );
         CHECK( lost_site.applied_report_generation == 1 );
         CHECK( lost_site.applied_cargo_generation == 1 );
+        CHECK( lost_site.camp_decision.state ==
+               bandit_live_world::camp_decision_state::idle );
+        CHECK_FALSE( lost_site.camp_decision.has_pinned_report() );
     }
 }
 
@@ -4471,6 +4690,23 @@ TEST_CASE( "bandit_live_world_rejects_a_completed_return_after_reload_and_redisp
         bandit_pursuit_handoff::build_return_packet( first_plan.entry, first_outcome );
     REQUIRE( bandit_live_world::apply_return_packet( first_site, first_packet ) );
     REQUIRE( first_site.applied_return_generation == 1 );
+    REQUIRE( first_site.camp_decision.state ==
+             bandit_live_world::camp_decision_state::report_awaiting_assessment );
+    const int first_report_revision = first_site.camp_decision.source_report_revision;
+    const int first_report_generation = first_site.camp_decision.source_report_generation;
+    REQUIRE( bandit_live_world::transition_camp_decision_state(
+                 first_site,
+                 bandit_live_world::camp_decision_state::report_awaiting_assessment,
+                 bandit_live_world::camp_decision_state::cooldown,
+                 first_report_revision, first_report_generation, 0, 0,
+                 "first report assessed without follow-on" ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    REQUIRE( bandit_live_world::transition_camp_decision_state(
+                 first_site, bandit_live_world::camp_decision_state::cooldown,
+                 bandit_live_world::camp_decision_state::idle,
+                 first_report_revision, first_report_generation, 0, -1,
+                 "zero-duration test cooldown elapsed" ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
 
     const bandit_live_world::dispatch_plan second_plan =
         bandit_live_world::plan_site_dispatch( first_site, tripoint_abs_omt( 19, 20, 0 ),

@@ -122,6 +122,20 @@ enum class scout_phase_transition_result {
     applied,
 };
 
+enum class camp_decision_state {
+    idle,
+    report_awaiting_assessment,
+    preparing_follow_on,
+    cooldown,
+    abandoned,
+};
+
+enum class camp_decision_transition_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -216,10 +230,11 @@ struct sortie_cargo {
 };
 
 struct scout_report_record {
-    int schema_version = 2;
+    int schema_version = 3;
     int revision = 0;
     std::string source_activity_id;
     int source_generation = 0;
+    std::string source_job_type;
     std::string target_id;
     tripoint_abs_omt target_omt;
     int target_lead_revision = 0;
@@ -231,6 +246,26 @@ struct scout_report_record {
 
     void clear();
     bool is_present() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct camp_decision_record {
+    int schema_version = 1;
+    camp_decision_state state = camp_decision_state::idle;
+    int source_report_revision = 0;
+    int source_report_generation = 0;
+    std::string source_report_activity_id;
+    std::string source_report_application_key;
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    int target_lead_revision = 0;
+    int last_transition_minutes = -1;
+    int next_eligible_minutes = -1;
+    std::string transition_reason;
+
+    void clear();
+    bool has_pinned_report() const;
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 };
@@ -284,7 +319,7 @@ struct scout_resolution_effect {
 };
 
 struct site_record {
-    int schema_version = 3;
+    int schema_version = 4;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -301,6 +336,7 @@ struct site_record {
     int applied_cargo_generation = 0;
     std::string last_cargo_application_key;
     scout_report_record current_scout_report;
+    camp_decision_record camp_decision;
     sortie_cargo returned_cargo_stock;
     active_outing_state active_outing;
     std::string remembered_target_or_mark;
@@ -648,6 +684,13 @@ scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
 scout_phase_transition_result transition_active_scout_phase( site_record &site,
         scout_phase expected_phase, scout_phase next_phase, int current_minutes );
+bool is_valid_camp_decision_transition( camp_decision_state previous_state,
+                                        camp_decision_state next_state );
+camp_decision_transition_result accept_current_scout_report_for_assessment( site_record &site );
+camp_decision_transition_result transition_camp_decision_state( site_record &site,
+        camp_decision_state expected_state, camp_decision_state next_state,
+        int expected_report_revision, int expected_report_generation, int current_minutes,
+        int next_eligible_minutes, const std::string &reason );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
                                       int sortie_limit_minutes );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
@@ -684,6 +727,7 @@ std::string to_string( camp_lead_status status );
 std::string to_string( outing_kind kind );
 std::string to_string( simulation_owner owner );
 std::string to_string( scout_phase phase );
+std::string to_string( camp_decision_state state );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,
