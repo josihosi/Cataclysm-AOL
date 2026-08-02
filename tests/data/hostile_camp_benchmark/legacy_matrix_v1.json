@@ -1,0 +1,145 @@
+{
+  "schema": "caol-hostile-camp-benchmark-matrix-v1",
+  "description": "Behavior-neutral legacy hostile-camp Phase-0 matrix: mixed loaded bandit/cannibal camps, current structural lead saturation, save round trips, and one representative dispatch/return-writeback case.",
+  "fixture_hash_kind": "serialized_state_sha256",
+  "require_equivalent_terminal_state": true,
+  "isolated_user_dir_argument": "--user-dir",
+  "cases": [
+    {
+      "id": "legacy-idle-sites-0",
+      "fixture": "legacy_idle_sites_0_v1",
+      "fixture_sha256": "80f5a9c6a407799bcade4d03c1fc894b239ccfc3b418fdd625617f7cf1dd89fa",
+      "workload": "idle",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "0", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-idle-sites-1",
+      "fixture": "legacy_idle_sites_1_v1",
+      "fixture_sha256": "061141dfcf9cf2f2b227c454429da9237802ee02a9bd8832af1cf3d0f07890f2",
+      "workload": "idle",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "1", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-idle-sites-10",
+      "fixture": "legacy_idle_sites_10_v1",
+      "fixture_sha256": "88d4723293b7bc070b01ece89d01d460815a4a03adde0f0687cf9627432fc4a0",
+      "workload": "idle",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-idle-sites-50",
+      "fixture": "legacy_idle_sites_50_v1",
+      "fixture_sha256": "e04905aa2c272648e7f12b419b488e79812db9c0458662326a6a5df10a7d28e1",
+      "workload": "idle",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "50", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-idle-sites-100",
+      "fixture": "legacy_idle_sites_100_v1",
+      "fixture_sha256": "f3ac4e0ea63a5d74337e9036da5884a12c3fb4af64b3cbd11016b49a5f8c770a",
+      "workload": "idle",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-0",
+      "fixture": "legacy_structural_sites_0_v1",
+      "fixture_sha256": "80f5a9c6a407799bcade4d03c1fc894b239ccfc3b418fdd625617f7cf1dd89fa",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "0", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-1",
+      "fixture": "legacy_structural_sites_1_v1",
+      "fixture_sha256": "061141dfcf9cf2f2b227c454429da9237802ee02a9bd8832af1cf3d0f07890f2",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "1", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-10",
+      "fixture": "legacy_structural_sites_10_v1",
+      "fixture_sha256": "88d4723293b7bc070b01ece89d01d460815a4a03adde0f0687cf9627432fc4a0",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-50",
+      "fixture": "legacy_structural_sites_50_v1",
+      "fixture_sha256": "e04905aa2c272648e7f12b419b488e79812db9c0458662326a6a5df10a7d28e1",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "50", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-100",
+      "fixture": "legacy_structural_sites_100_v1",
+      "fixture_sha256": "f3ac4e0ea63a5d74337e9036da5884a12c3fb4af64b3cbd11016b49a5f8c770a",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-serialize-sites-0",
+      "fixture": "legacy_serialize_sites_0_v1",
+      "fixture_sha256": "80f5a9c6a407799bcade4d03c1fc894b239ccfc3b418fdd625617f7cf1dd89fa",
+      "workload": "serialize",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "0", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-serialize-sites-1",
+      "fixture": "legacy_serialize_sites_1_v1",
+      "fixture_sha256": "061141dfcf9cf2f2b227c454429da9237802ee02a9bd8832af1cf3d0f07890f2",
+      "workload": "serialize",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "1", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-serialize-sites-10",
+      "fixture": "legacy_serialize_sites_10_v1",
+      "fixture_sha256": "88d4723293b7bc070b01ece89d01d460815a4a03adde0f0687cf9627432fc4a0",
+      "workload": "serialize",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-serialize-sites-50",
+      "fixture": "legacy_serialize_sites_50_v1",
+      "fixture_sha256": "e04905aa2c272648e7f12b419b488e79812db9c0458662326a6a5df10a7d28e1",
+      "workload": "serialize",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "50", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-serialize-sites-100",
+      "fixture": "legacy_serialize_sites_100_v1",
+      "fixture_sha256": "f3ac4e0ea63a5d74337e9036da5884a12c3fb4af64b3cbd11016b49a5f8c770a",
+      "workload": "serialize",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-dispatch-return-sites-10-representative",
+      "fixture": "legacy_dispatch_return_sites_10_v1",
+      "fixture_sha256": "88d4723293b7bc070b01ece89d01d460815a4a03adde0f0687cf9627432fc4a0",
+      "workload": "dispatch_return",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000" }
+    },
+    {
+      "id": "legacy-structural-sites-500-fairness-stress",
+      "fixture": "legacy_structural_sites_500_v1",
+      "fixture_sha256": "ea89507ffd2563a3cbac2f04def89d1857c7d8942387c05851bb4c77f4e0e5d8",
+      "workload": "structural",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "500", "CAOL_HOSTILE_BENCHMARK_UPDATES": "10000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "10000", "CAOL_HOSTILE_BENCHMARK_STRESS_PACKET": "500-site-fairness-only" }
+    }
+  ]
+}

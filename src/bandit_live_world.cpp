@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "bandit_live_world_probe.h"
 #include "json.h"
 
 namespace
@@ -1293,6 +1294,10 @@ void world_state::clear()
 
 void world_state::serialize( JsonOut &json ) const
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::world_serialize );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::world_serialize_calls );
     json.start_object();
     json.member( "owner_id", owner_id );
     json.member( "sites", sites );
@@ -1301,6 +1306,10 @@ void world_state::serialize( JsonOut &json ) const
 
 void world_state::deserialize( const JsonObject &jo )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::world_deserialize );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::world_deserialize_calls );
     clear();
     jo.read( "owner_id", owner_id );
     jo.read( "sites", sites );
@@ -2084,6 +2093,8 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
         const int now_minutes, const int scan_budget,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::structural_scan );
     structural_bounty_scan_result result;
     result.scan_budget = std::max( 0, scan_budget );
     if( result.scan_budget == 0 ) {
@@ -2112,8 +2123,14 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
         }
 
         result.sites_considered++;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::structural_scan_sites_considered );
+        bandit_live_world_probe::record_site_service( site.site_id,
+                bandit_live_world_probe::site_service::scan_considered );
         if( effective_profile( site ) != hostile_site_profile::camp_style ) {
             result.sites_skipped_not_camp++;
+            bandit_live_world_probe::increment(
+                bandit_live_world_probe::counter::structural_scan_sites_skipped_not_camp );
             continue;
         }
         if( site.retired_empty_site ) {
@@ -2150,6 +2167,10 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
             result.candidates_sampled++;
             result.budget_used++;
             samples_for_site++;
+            bandit_live_world_probe::increment(
+                bandit_live_world_probe::counter::structural_scan_candidates_sampled );
+            bandit_live_world_probe::record_site_service( site.site_id,
+                    bandit_live_world_probe::site_service::scan_samples );
 
             const std::optional<std::string> terrain_id = terrain_lookup( candidate );
             if( !terrain_id ) {
@@ -2389,9 +2410,15 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
 structural_outing_result advance_structural_bounty_outings( world_state &state, const int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::structural_outings );
     structural_outing_result result;
     for( site_record &site : state.sites ) {
         result.sites_considered++;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::structural_outing_sites_considered );
+        bandit_live_world_probe::record_site_service( site.site_id,
+                bandit_live_world_probe::site_service::outing_considered );
         if( site.active_group_id != site.site_id + "#structural" || site.active_target_id.empty() ) {
             continue;
         }
@@ -2469,10 +2496,17 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::structural_maintenance );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::structural_maintenance_updates );
     structural_bounty_maintenance_result result;
     result.dispatch_cap = std::max( 0, dispatch_cap );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
     result.scan = advance_structural_bounty_scan( state, now_minutes, scan_budget, terrain_lookup );
+
+    bandit_live_world_probe::scoped_section dispatch_probe_section(
+        bandit_live_world_probe::section::structural_dispatch );
 
     if( result.dispatch_cap == 0 ) {
         result.notes.push_back( "structural maintenance dispatch skipped: zero cap" );
@@ -2481,6 +2515,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
 
     for( site_record &site : state.sites ) {
         result.sites_considered_for_dispatch++;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::structural_dispatch_sites_considered );
+        bandit_live_world_probe::record_site_service( site.site_id,
+                bandit_live_world_probe::site_service::dispatch_considered );
         if( result.dispatches_applied >= result.dispatch_cap ) {
             result.dispatch_cap_reached = true;
             break;
@@ -2636,6 +2674,12 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::live_dispatch_plan );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::live_dispatch_plans );
+    bandit_live_world_probe::record_site_service( site.site_id,
+            bandit_live_world_probe::site_service::live_dispatch_plan );
     const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
     dispatch_plan plan;
     plan.site_id = site.site_id;
@@ -2722,6 +2766,10 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::live_dispatch_apply );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::live_dispatch_applies );
     if( !plan.valid || plan.site_id != site.site_id || plan.member_ids.empty() ) {
         return false;
     }
@@ -3452,6 +3500,12 @@ int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *re
 
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )
 {
+    bandit_live_world_probe::scoped_section probe_section(
+        bandit_live_world_probe::section::live_return_apply );
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::live_return_applies );
+    bandit_live_world_probe::record_site_service( site.site_id,
+            bandit_live_world_probe::site_service::live_return_apply );
     if( !packet.valid || packet.source_camp_id != site.site_id ||
         site.active_group_id.empty() || packet.group_id != site.active_group_id ||
         site.active_member_ids.empty() ) {
