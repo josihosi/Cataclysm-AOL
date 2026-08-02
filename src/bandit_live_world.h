@@ -137,6 +137,19 @@ enum class scout_phase_transition_result {
     applied,
 };
 
+enum class sortie_observation_kind {
+    routine,
+    certainty,
+    bounds,
+    route_state,
+    alert,
+    target_revision,
+    hard_danger,
+    contradiction,
+    casualty,
+    burn,
+};
+
 enum class camp_decision_state {
     idle,
     report_awaiting_assessment,
@@ -255,9 +268,20 @@ struct sortie_observation {
     int confidence = 0;
     int observed_minutes = -1;
     bool critical = false;
+    sortie_observation_kind kind = sortie_observation_kind::routine;
+    std::string state_key;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
+};
+
+struct sortie_observation_effect {
+    bool valid = false;
+    bool changed = false;
+    bool progress = false;
+    int inserted = 0;
+    int replaced = 0;
+    int evicted = 0;
 };
 
 struct sortie_cargo {
@@ -796,6 +820,9 @@ bool note_active_sortie_started( site_record &site,
 bool note_active_sortie_local_contact( site_record &site,
                                        const simulation_advance_cursor &expected_cursor,
                                        character_id contact_member_id, int current_minutes );
+sortie_observation_effect record_active_sortie_observations( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const std::vector<sortie_observation> &observations, int current_minutes );
 simulation_owner_transition_result transition_external_simulation_owner( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, simulation_owner next_owner,
@@ -868,6 +895,7 @@ std::string to_string( camp_lead_status status );
 std::string to_string( outing_kind kind );
 std::string to_string( simulation_owner owner );
 std::string to_string( scout_phase phase );
+std::string to_string( sortie_observation_kind kind );
 std::string to_string( camp_decision_state state );
 std::string to_string( hostile_operation_kind kind );
 std::string to_string( hostile_operation_phase phase );

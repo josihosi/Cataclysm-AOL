@@ -29,11 +29,13 @@ using bandit_live_world::owned_site_kind;
 using bandit_live_world::outing_kind;
 using bandit_live_world::scout_phase;
 using bandit_live_world::simulation_owner;
+using bandit_live_world::sortie_observation_kind;
 
 constexpr std::size_t max_active_outing_members = 16;
 constexpr std::size_t max_active_outing_route_steps = 256;
 constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
+constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_camp_intelligence_leads = 64;
 constexpr std::size_t max_live_signal_marks = 8;
@@ -44,6 +46,7 @@ constexpr std::size_t max_camp_lead_summary_length = 256;
 constexpr std::size_t max_camp_lead_outcome_length = 128;
 constexpr std::size_t max_live_signal_mark_length = 192;
 constexpr std::size_t max_sortie_fact_key_length = 128;
+constexpr std::size_t max_sortie_state_key_length = 128;
 constexpr std::size_t max_sortie_summary_length = 512;
 constexpr std::size_t max_camp_decision_reason_length = 256;
 constexpr int max_finite_resource_units = 3;
@@ -147,35 +150,125 @@ bounded_route_state make_bounded_route_state( const std::vector<tripoint_abs_omt
     return result;
 }
 
+int sortie_observation_retention_rank( const bandit_live_world::sortie_observation &observation )
+{
+    switch( observation.kind ) {
+        case sortie_observation_kind::routine:
+            return observation.critical ? 2 : 0;
+        case sortie_observation_kind::certainty:
+        case sortie_observation_kind::bounds:
+        case sortie_observation_kind::route_state:
+        case sortie_observation_kind::alert:
+            return observation.critical ? 2 : 1;
+        case sortie_observation_kind::target_revision:
+        case sortie_observation_kind::hard_danger:
+        case sortie_observation_kind::contradiction:
+        case sortie_observation_kind::casualty:
+        case sortie_observation_kind::burn:
+            return 2;
+    }
+    return 0;
+}
+
+bool sortie_observation_counts_as_progress( const sortie_observation_kind kind )
+{
+    return kind != sortie_observation_kind::routine;
+}
+
+bool sortie_observation_is_better_retention(
+    const bandit_live_world::sortie_observation &lhs,
+    const bandit_live_world::sortie_observation &rhs )
+{
+    const int lhs_rank = sortie_observation_retention_rank( lhs );
+    const int rhs_rank = sortie_observation_retention_rank( rhs );
+    return std::tie( lhs_rank, lhs.observed_minutes, lhs.confidence, lhs.state_key,
+                     lhs.kind, lhs.critical, lhs.summary ) >
+           std::tie( rhs_rank, rhs.observed_minutes, rhs.confidence, rhs.state_key,
+                     rhs.kind, rhs.critical, rhs.summary );
+}
+
+bool sortie_observation_is_better_for_cap(
+    const bandit_live_world::sortie_observation &lhs,
+    const bandit_live_world::sortie_observation &rhs )
+{
+    const int lhs_rank = sortie_observation_retention_rank( lhs );
+    const int rhs_rank = sortie_observation_retention_rank( rhs );
+    return std::tie( lhs_rank, lhs.observed_minutes, lhs.confidence,
+                     lhs.fact_key, lhs.state_key, lhs.kind, lhs.critical, lhs.summary ) >
+           std::tie( rhs_rank, rhs.observed_minutes, rhs.confidence,
+                     rhs.fact_key, rhs.state_key, rhs.kind, rhs.critical, rhs.summary );
+}
+
+void normalize_sortie_observation( bandit_live_world::sortie_observation &observation )
+{
+    observation.fact_key.resize( std::min( observation.fact_key.size(),
+                                           max_sortie_fact_key_length ) );
+    observation.state_key.resize( std::min( observation.state_key.size(),
+                                            max_sortie_state_key_length ) );
+    observation.summary.resize( std::min( observation.summary.size(), max_sortie_summary_length ) );
+    observation.confidence = std::clamp( observation.confidence, 0, 100 );
+    observation.observed_minutes = std::max( -1, observation.observed_minutes );
+}
+
+bool sortie_observations_equal( const bandit_live_world::sortie_observation &lhs,
+                                const bandit_live_world::sortie_observation &rhs )
+{
+    return lhs.fact_key == rhs.fact_key && lhs.summary == rhs.summary &&
+           lhs.confidence == rhs.confidence && lhs.observed_minutes == rhs.observed_minutes &&
+           lhs.critical == rhs.critical && lhs.kind == rhs.kind &&
+           lhs.state_key == rhs.state_key;
+}
+
 std::vector<bandit_live_world::sortie_observation> make_bounded_sortie_observations(
             const std::vector<bandit_live_world::sortie_observation> &observations )
 {
-    if( observations.size() <= max_active_outing_observations ) {
-        return observations;
-    }
-
-    std::vector<std::size_t> retained_indices;
-    retained_indices.reserve( max_active_outing_observations );
-    for( std::size_t index = observations.size(); index > 0 &&
-         retained_indices.size() < max_active_outing_observations; --index ) {
-        if( observations[index - 1].critical ) {
-            retained_indices.push_back( index - 1 );
+    std::vector<bandit_live_world::sortie_observation> deduplicated;
+    deduplicated.reserve( std::min( observations.size(), max_active_outing_observations ) );
+    for( bandit_live_world::sortie_observation observation : observations ) {
+        normalize_sortie_observation( observation );
+        if( observation.fact_key.empty() ) {
+            continue;
+        }
+        const auto existing = std::find_if( deduplicated.begin(), deduplicated.end(),
+        [&observation]( const bandit_live_world::sortie_observation & retained ) {
+            return retained.fact_key == observation.fact_key;
+        } );
+        if( existing == deduplicated.end() ) {
+            deduplicated.push_back( std::move( observation ) );
+        } else if( existing->kind == observation.kind &&
+                   existing->state_key == observation.state_key ) {
+            const int existing_minutes = existing->observed_minutes;
+            const int observation_minutes = observation.observed_minutes;
+            if( observation.confidence > existing->confidence ||
+                ( observation.confidence == existing->confidence &&
+                  observation.summary > existing->summary ) ) {
+                existing->confidence = observation.confidence;
+                existing->summary = observation.summary;
+            }
+            existing->critical = existing->critical || observation.critical;
+            if( existing_minutes < 0 ) {
+                existing->observed_minutes = observation_minutes;
+            } else if( observation_minutes >= 0 ) {
+                existing->observed_minutes = std::min( existing_minutes, observation_minutes );
+            }
+        } else if( sortie_observation_is_better_retention( observation, *existing ) ) {
+            *existing = std::move( observation );
         }
     }
-    for( std::size_t index = observations.size(); index > 0 &&
-         retained_indices.size() < max_active_outing_observations; --index ) {
-        if( !observations[index - 1].critical ) {
-            retained_indices.push_back( index - 1 );
-        }
-    }
-    std::sort( retained_indices.begin(), retained_indices.end() );
 
-    std::vector<bandit_live_world::sortie_observation> result;
-    result.reserve( retained_indices.size() );
-    for( const std::size_t index : retained_indices ) {
-        result.push_back( observations[index] );
+    std::sort( deduplicated.begin(), deduplicated.end(), sortie_observation_is_better_for_cap );
+    if( deduplicated.size() > max_active_outing_observations ) {
+        deduplicated.resize( max_active_outing_observations );
     }
-    return result;
+    std::sort( deduplicated.begin(), deduplicated.end(),
+    []( const bandit_live_world::sortie_observation & lhs,
+    const bandit_live_world::sortie_observation & rhs ) {
+        return std::tie( lhs.observed_minutes, lhs.fact_key, lhs.state_key, lhs.kind, lhs.summary,
+                         lhs.confidence, lhs.critical ) <
+               std::tie( rhs.observed_minutes, rhs.fact_key, rhs.state_key, rhs.kind, rhs.summary,
+                         rhs.confidence, rhs.critical );
+    } );
+    return deduplicated;
 }
 
 std::optional<anchor_source_kind> anchor_source_kind_from_string( const std::string &value )
@@ -338,6 +431,42 @@ std::optional<outing_kind> outing_kind_from_string( const std::string &value )
     }
     if( value == "none" ) {
         return outing_kind::none;
+    }
+    return std::nullopt;
+}
+
+std::optional<sortie_observation_kind> sortie_observation_kind_from_string(
+    const std::string &value )
+{
+    if( value == "routine" ) {
+        return sortie_observation_kind::routine;
+    }
+    if( value == "certainty" ) {
+        return sortie_observation_kind::certainty;
+    }
+    if( value == "bounds" ) {
+        return sortie_observation_kind::bounds;
+    }
+    if( value == "route_state" ) {
+        return sortie_observation_kind::route_state;
+    }
+    if( value == "alert" ) {
+        return sortie_observation_kind::alert;
+    }
+    if( value == "target_revision" ) {
+        return sortie_observation_kind::target_revision;
+    }
+    if( value == "hard_danger" ) {
+        return sortie_observation_kind::hard_danger;
+    }
+    if( value == "contradiction" ) {
+        return sortie_observation_kind::contradiction;
+    }
+    if( value == "casualty" ) {
+        return sortie_observation_kind::casualty;
+    }
+    if( value == "burn" ) {
+        return sortie_observation_kind::burn;
     }
     return std::nullopt;
 }
@@ -1554,6 +1683,33 @@ std::string to_string( scout_phase phase )
     return "assembling";
 }
 
+std::string to_string( sortie_observation_kind kind )
+{
+    switch( kind ) {
+        case sortie_observation_kind::routine:
+            return "routine";
+        case sortie_observation_kind::certainty:
+            return "certainty";
+        case sortie_observation_kind::bounds:
+            return "bounds";
+        case sortie_observation_kind::route_state:
+            return "route_state";
+        case sortie_observation_kind::alert:
+            return "alert";
+        case sortie_observation_kind::target_revision:
+            return "target_revision";
+        case sortie_observation_kind::hard_danger:
+            return "hard_danger";
+        case sortie_observation_kind::contradiction:
+            return "contradiction";
+        case sortie_observation_kind::casualty:
+            return "casualty";
+        case sortie_observation_kind::burn:
+            return "burn";
+    }
+    return "routine";
+}
+
 std::string to_string( camp_decision_state state )
 {
     switch( state ) {
@@ -2517,6 +2673,12 @@ void sortie_observation::serialize( JsonOut &json ) const
     json.member( "confidence", std::clamp( confidence, 0, 100 ) );
     json.member( "observed_minutes", std::max( -1, observed_minutes ) );
     json.member( "critical", critical );
+    if( kind != sortie_observation_kind::routine ) {
+        json.member( "kind", to_string( kind ) );
+    }
+    if( !state_key.empty() ) {
+        json.member( "state_key", state_key.substr( 0, max_sortie_state_key_length ) );
+    }
     json.end_object();
 }
 
@@ -2528,10 +2690,17 @@ void sortie_observation::deserialize( const JsonObject &jo )
     jo.read( "confidence", candidate.confidence );
     jo.read( "observed_minutes", candidate.observed_minutes );
     jo.read( "critical", candidate.critical );
-    candidate.fact_key.resize( std::min( candidate.fact_key.size(), max_sortie_fact_key_length ) );
-    candidate.summary.resize( std::min( candidate.summary.size(), max_sortie_summary_length ) );
-    candidate.confidence = std::clamp( candidate.confidence, 0, 100 );
-    candidate.observed_minutes = std::max( -1, candidate.observed_minutes );
+    const bool kind_was_present = jo.has_member( "kind" );
+    std::string kind_string = "routine";
+    jo.read( "kind", kind_string );
+    const std::optional<sortie_observation_kind> parsed_kind =
+        sortie_observation_kind_from_string( kind_string );
+    candidate.kind = parsed_kind.value_or( sortie_observation_kind::routine );
+    if( kind_was_present && !parsed_kind ) {
+        candidate.critical = true;
+    }
+    jo.read( "state_key", candidate.state_key );
+    normalize_sortie_observation( candidate );
     *this = std::move( candidate );
 }
 
@@ -6240,6 +6409,87 @@ bool note_active_sortie_local_contact( site_record &site,
     }
     site = std::move( candidate );
     return true;
+}
+
+sortie_observation_effect record_active_sortie_observations( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const std::vector<sortie_observation> &observations,
+        const int current_minutes )
+{
+    sortie_observation_effect effect;
+    if( !site.active_outing.is_active() ||
+        !simulation_cursor_matches( site.active_outing, expected_cursor ) ||
+        site.active_outing.kind != outing_kind::scout_sortie ||
+        ( site.active_outing.job_type != "scout" &&
+          site.active_outing.job_type != "scavenge" ) ||
+        site.active_outing.member_ids.empty() || observations.empty() ||
+        observations.size() > max_sortie_observation_batch || current_minutes < 0 ||
+        current_minutes <= site.active_outing.last_advanced_minutes ||
+        current_minutes < site.active_outing.last_progress_minutes ) {
+        return effect;
+    }
+
+    std::vector<sortie_observation> normalized_inputs;
+    normalized_inputs.reserve( observations.size() );
+    for( sortie_observation observation : observations ) {
+        normalize_sortie_observation( observation );
+        if( observation.fact_key.empty() || observation.observed_minutes > current_minutes ) {
+            return effect;
+        }
+        if( observation.observed_minutes < 0 ) {
+            observation.observed_minutes = current_minutes;
+        }
+        normalized_inputs.push_back( std::move( observation ) );
+    }
+
+    const std::vector<sortie_observation> previous =
+        make_bounded_sortie_observations( site.active_outing.observations );
+    std::vector<sortie_observation> combined = previous;
+    combined.insert( combined.end(), normalized_inputs.begin(), normalized_inputs.end() );
+    const std::vector<sortie_observation> retained = make_bounded_sortie_observations( combined );
+
+    for( const sortie_observation &observation : retained ) {
+        const auto previous_iter = std::find_if( previous.begin(), previous.end(),
+        [&observation]( const sortie_observation & prior ) {
+            return prior.fact_key == observation.fact_key;
+        } );
+        if( previous_iter == previous.end() ) {
+            effect.inserted++;
+        } else if( !sortie_observations_equal( *previous_iter, observation ) ) {
+            effect.replaced++;
+        }
+
+        const auto input_iter = std::find_if( normalized_inputs.begin(), normalized_inputs.end(),
+        [&observation]( const sortie_observation & input ) {
+            return input.fact_key == observation.fact_key && input.kind == observation.kind &&
+                   input.state_key == observation.state_key;
+        } );
+        if( input_iter != normalized_inputs.end() &&
+            sortie_observation_counts_as_progress( observation.kind ) &&
+            ( previous_iter == previous.end() || previous_iter->kind != observation.kind ||
+              previous_iter->state_key != observation.state_key ) ) {
+            effect.progress = true;
+        }
+    }
+    for( const sortie_observation &observation : previous ) {
+        if( std::none_of( retained.begin(), retained.end(),
+        [&observation]( const sortie_observation & current ) {
+            return current.fact_key == observation.fact_key;
+        } ) ) {
+            effect.evicted++;
+        }
+    }
+
+    site_record candidate = site;
+    candidate.active_outing.observations = retained;
+    candidate.active_outing.last_advanced_minutes = current_minutes;
+    if( effect.progress ) {
+        candidate.active_outing.last_progress_minutes = current_minutes;
+    }
+    site = std::move( candidate );
+    effect.valid = true;
+    effect.changed = true;
+    return effect;
 }
 
 int ordinary_scout_sortie_limit_minutes()

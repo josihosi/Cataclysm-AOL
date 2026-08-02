@@ -1541,7 +1541,8 @@ TEST_CASE( "bandit_live_world_round_trips_bounded_authoritative_scout_state",
     site.active_outing.target_lead_revision = 7;
     site.active_outing.phase = bandit_live_world::scout_phase::burned_withdrawal;
     site.active_outing.observations.push_back( { "burn@14,20,0", "two observers exposed", 83,
-                                                 330, true } );
+                                                 330, true,
+                                                 bandit_live_world::sortie_observation_kind::routine, "" } );
     site.active_outing.cargo.supply_units = 3;
     site.active_outing.cargo.trade_value = 90;
     site.active_outing.casualty_ids = { character_id( 45001 ) };
@@ -2509,10 +2510,15 @@ TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on
     }
     for( int index = 0; index < 20; ++index ) {
         site.active_outing.observations.push_back( { "fact-" + std::to_string( index ),
-                                                     "bounded observation", 50, index, false } );
+                                                     "bounded observation", 50, index, false,
+                                                     bandit_live_world::sortie_observation_kind::routine, "" } );
     }
     site.active_outing.observations.push_back( { "critical-after-cap", "burned withdrawal",
-                                                 90, 21, true } );
+                                                 90, 21, true,
+                                                 bandit_live_world::sortie_observation_kind::routine, "" } );
+    site.active_outing.observations.back().kind =
+        bandit_live_world::sortie_observation_kind::burn;
+    site.active_outing.observations.back().state_key = "burned";
 
     const bandit_live_world::world_state loaded = round_trip_world( world );
     REQUIRE( loaded.sites.size() == 1 );
@@ -2526,6 +2532,14 @@ TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on
     []( const bandit_live_world::sortie_observation & observation ) {
         return observation.fact_key == "critical-after-cap" && observation.critical;
     } ) );
+    const auto burned = std::find_if( loaded.sites.front().active_outing.observations.begin(),
+                                      loaded.sites.front().active_outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "critical-after-cap";
+    } );
+    REQUIRE( burned != loaded.sites.front().active_outing.observations.end() );
+    CHECK( burned->kind == bandit_live_world::sortie_observation_kind::burn );
+    CHECK( burned->state_key == "burned" );
 
     world.sites.front().active_outing.waypoint_index = 0;
     const bandit_live_world::world_state capped_from_start = round_trip_world( world );
@@ -2554,6 +2568,158 @@ TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on
     CHECK_FALSE( closed.sites.front().active_outing.is_active() );
     CHECK( closed.sites.front().active_outing.member_ids.empty() );
     CHECK( closed.sites.front().count_members_in_state( bandit_live_world::member_state::outbound ) == 0 );
+}
+
+TEST_CASE( "bandit_live_world_compacts_scout_facts_and_only_semantic_change_progresses",
+           "[bandit][live_world][scout_state][observation]" )
+{
+    using bandit_live_world::sortie_observation;
+    using bandit_live_world::sortie_observation_kind;
+
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45200 );
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 45200 ),
+             bandit_live_world::member_state::outbound, "test scout active" ) );
+    set_test_active_outing( site, site.site_id + "#scout:observation" );
+    site.active_outing.member_ids = { character_id( 45200 ) };
+    site.active_outing.leader_id = character_id( 45200 );
+    site.active_outing.phase = bandit_live_world::scout_phase::observing;
+    site.active_outing.started_minutes = 10;
+    site.active_outing.last_progress_minutes = 100;
+    site.active_outing.last_advanced_minutes = 100;
+    for( int index = 0; index < 16; ++index ) {
+        sortie_observation routine;
+        routine.fact_key = "routine-" + std::to_string( index );
+        routine.state_key = "unchanged";
+        routine.summary = "routine poll";
+        routine.confidence = 10;
+        routine.observed_minutes = 20 + index;
+        site.active_outing.observations.push_back( routine );
+    }
+
+    const std::vector<std::pair<sortie_observation_kind, std::string>> protected_facts = {
+        { sortie_observation_kind::burn, "burn" },
+        { sortie_observation_kind::casualty, "casualty" },
+        { sortie_observation_kind::contradiction, "contradiction" },
+        { sortie_observation_kind::hard_danger, "hard-danger" },
+        { sortie_observation_kind::target_revision, "target-revision" },
+    };
+    std::vector<sortie_observation> protected_inputs;
+    for( const auto &entry : protected_facts ) {
+        sortie_observation observation;
+        observation.fact_key = entry.second;
+        observation.state_key = "observed";
+        observation.summary = entry.second + " fact";
+        observation.confidence = 80;
+        observation.observed_minutes = 110;
+        observation.kind = entry.first;
+        protected_inputs.push_back( observation );
+    }
+
+    const bandit_live_world::simulation_advance_cursor stale_cursor =
+        require_current_simulation_cursor( site );
+    const bandit_live_world::sortie_observation_effect protected_effect =
+        bandit_live_world::record_active_sortie_observations( site, stale_cursor,
+                protected_inputs, 110 );
+    REQUIRE( protected_effect.valid );
+    CHECK( protected_effect.changed );
+    CHECK( protected_effect.progress );
+    CHECK( protected_effect.inserted == 5 );
+    CHECK( protected_effect.evicted == 5 );
+    CHECK( site.active_outing.observations.size() == 16 );
+    CHECK( site.active_outing.last_progress_minutes == 110 );
+    CHECK( site.active_outing.last_advanced_minutes == 110 );
+    for( const auto &entry : protected_facts ) {
+        CHECK( std::any_of( site.active_outing.observations.begin(),
+                            site.active_outing.observations.end(),
+        [&entry]( const sortie_observation & observation ) {
+            return observation.fact_key == entry.second && observation.kind == entry.first;
+        } ) );
+    }
+
+    const std::string after_protected = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_active_sortie_observations(
+                     site, stale_cursor, protected_inputs, 120 ).valid );
+    CHECK( serialize_world( world ) == after_protected );
+
+    sortie_observation stronger_duplicate = protected_inputs.front();
+    stronger_duplicate.confidence = 95;
+    stronger_duplicate.summary = "stronger duplicate burn";
+    stronger_duplicate.observed_minutes = 120;
+    const bandit_live_world::sortie_observation_effect duplicate_effect =
+        bandit_live_world::record_active_sortie_observations(
+            site, require_current_simulation_cursor( site ), { stronger_duplicate }, 120 );
+    REQUIRE( duplicate_effect.valid );
+    CHECK( duplicate_effect.replaced == 1 );
+    CHECK_FALSE( duplicate_effect.progress );
+    CHECK( site.active_outing.last_progress_minutes == 110 );
+    const auto retained_burn = std::find_if( site.active_outing.observations.begin(),
+                                             site.active_outing.observations.end(),
+    []( const sortie_observation & observation ) {
+        return observation.fact_key == "burn";
+    } );
+    REQUIRE( retained_burn != site.active_outing.observations.end() );
+    CHECK( retained_burn->observed_minutes == 110 );
+    CHECK( retained_burn->confidence == 95 );
+
+    sortie_observation poll;
+    poll.fact_key = "routine-new";
+    poll.state_key = "unchanged";
+    poll.summary = "new polling sample";
+    poll.confidence = 20;
+    poll.observed_minutes = 130;
+    const bandit_live_world::sortie_observation_effect poll_effect =
+        bandit_live_world::record_active_sortie_observations(
+            site, require_current_simulation_cursor( site ), { poll }, 130 );
+    REQUIRE( poll_effect.valid );
+    CHECK_FALSE( poll_effect.progress );
+    CHECK( site.active_outing.last_progress_minutes == 110 );
+    CHECK( site.active_outing.last_advanced_minutes == 130 );
+
+    sortie_observation certainty;
+    certainty.fact_key = "defender-certainty";
+    certainty.state_key = "confirmed";
+    certainty.summary = "presence confirmed";
+    certainty.confidence = 60;
+    certainty.observed_minutes = 140;
+    certainty.kind = sortie_observation_kind::certainty;
+    REQUIRE( bandit_live_world::record_active_sortie_observations(
+                 site, require_current_simulation_cursor( site ), { certainty }, 140 ).progress );
+    CHECK( site.active_outing.last_progress_minutes == 140 );
+
+    certainty.confidence = 80;
+    certainty.summary = "stronger confirmation";
+    certainty.observed_minutes = 150;
+    const bandit_live_world::sortie_observation_effect strength_effect =
+        bandit_live_world::record_active_sortie_observations(
+            site, require_current_simulation_cursor( site ), { certainty }, 150 );
+    REQUIRE( strength_effect.valid );
+    CHECK_FALSE( strength_effect.progress );
+    CHECK( site.active_outing.last_progress_minutes == 140 );
+
+    certainty.state_key = "uncertain";
+    certainty.summary = "legitimate contradictory visibility changed certainty";
+    certainty.observed_minutes = 160;
+    const bandit_live_world::sortie_observation_effect state_change_effect =
+        bandit_live_world::record_active_sortie_observations(
+            site, require_current_simulation_cursor( site ), { certainty }, 160 );
+    REQUIRE( state_change_effect.valid );
+    CHECK( state_change_effect.progress );
+    CHECK( state_change_effect.replaced == 1 );
+    CHECK( site.active_outing.last_progress_minutes == 160 );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    CHECK( serialize_world( loaded ) == serialize_world( world ) );
+    const auto loaded_certainty = std::find_if(
+                                      loaded.sites.front().active_outing.observations.begin(),
+                                      loaded.sites.front().active_outing.observations.end(),
+    []( const sortie_observation & observation ) {
+        return observation.fact_key == "defender-certainty";
+    } );
+    REQUIRE( loaded_certainty != loaded.sites.front().active_outing.observations.end() );
+    CHECK( loaded_certainty->kind == sortie_observation_kind::certainty );
+    CHECK( loaded_certainty->state_key == "uncertain" );
 }
 
 TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_the_partner",
@@ -2660,7 +2826,8 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
     site.active_outing.target_lead_revision = 4;
     site.active_outing.observations = {
-        { "shared-visual", "one visible defender", 75, 490, false }
+        { "shared-visual", "one visible defender", 75, 490, false,
+          bandit_live_world::sortie_observation_kind::routine, "" }
     };
     site.active_outing.cargo = { 3, 60 };
     site.active_outing.started_minutes = 100;
@@ -2959,7 +3126,8 @@ TEST_CASE( "bandit_live_world_atomically_rehomes_scout_report_and_cargo_before_c
     REQUIRE( site.active_outing.member_ids.size() == 1 );
     const character_id scout_id = site.active_outing.member_ids.front();
     site.active_outing.observations.push_back( { "visual-window-1", "one visible defender",
-                                                 70, 500, false } );
+                                                 70, 500, false,
+                                                 bandit_live_world::sortie_observation_kind::routine, "" } );
     site.active_outing.cargo.supply_units = 4;
     site.active_outing.cargo.trade_value = 120;
     site.active_outing.started_minutes = 450;
@@ -6262,8 +6430,10 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
         tripoint_abs_omt( 15, 20, 0 ), tripoint_abs_omt( 18, 20, 0 )
     };
     normal_site.active_outing.observations = {
-        { "smoke@18,20,0", "thin smoke over the target", 45, 120, false },
-        { "defenders@18,20,0", "two visible defenders", 70, 125, true }
+        { "smoke@18,20,0", "thin smoke over the target", 45, 120, false,
+          bandit_live_world::sortie_observation_kind::routine, "" },
+        { "defenders@18,20,0", "two visible defenders", 70, 125, true,
+          bandit_live_world::sortie_observation_kind::routine, "" }
     };
     normal_site.active_outing.cargo = { 2, 60 };
     normal_site.active_outing.started_minutes = 100;
@@ -6298,7 +6468,8 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     for( int index = 0; index < 16; ++index ) {
         const bandit_live_world::sortie_observation observation = {
             "bounded-fact-" + std::to_string( index ), std::string( 512, 'x' ),
-            100, 1000 + index, index % 2 == 0
+            100, 1000 + index, index % 2 == 0,
+            bandit_live_world::sortie_observation_kind::routine, ""
         };
         saturated_site.active_outing.observations.push_back( observation );
         saturated_site.current_scout_report.observations.push_back( observation );
