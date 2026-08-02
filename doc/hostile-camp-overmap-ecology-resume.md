@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: define the fresh hostile-operation owner, pinned
-  report, route/rally state, and one-way operation phases.
+- First unchecked deterministic execution row: define the world-global finite resource record
+  keyed by OMT with monotonic revision and idempotent depletion.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
@@ -127,21 +127,30 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   watermark states. Provisional, scavenge, all-loss, stale-plan, replay, and malformed-save controls
   pass. Live-world is 82/2,318, handoff 8/148, and save compatibility 2/16; binary SHA-256 is
   `7bbd3f0a24a5cdc0f012bdf27b6dd9660d25bc3ae560fa06c3f79e501645c38c`.
+- Hostile-operation checkpoint `67cd68e416` persists fresh shakedown/raid identity, report and
+  route/rally pins, reservations, canonical receipt keys, one-way phases, safe migration, and
+  consistency repair.
+- Shared simulation-cursor checkpoint `833599e5e4` requires one serialized activity/generation/
+  owner/epoch/time cursor for scout and hostile mutations, transfers ownership by exact atomic
+  compare-and-swap, rejects duplicate/stale advances, repairs legacy parity, and fails closed on
+  ambiguous current-schema ownership. The redirected build exits `0`; live-world is 86/2,714,
+  handoff 9/202, hostile-operation 3/243, save compatibility 2/16, and final exact-source
+  autoreview is clean at 0.99. Binary SHA-256 is `d6e8a9f0fe1570437cfbabda375aa10cdb0b6452bf45416fe387dca8db0bef26`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume the hostile-operation owner on top of `687d7bcecb`. Do not reopen Phase-0
+3. Resume the world-global finite resource owner on top of `833599e5e4`. Do not reopen Phase-0
    statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `687d7bcecb`-source test binary where valid; run one redirected build at a
+5. Reuse the current `833599e5e4`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
 6. Complete operation, resource, and dossier owners with legacy/missing-field,
    phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
-Phase-1 identity build and focused tests completed with explicit exit `0`; the abandoned early log
+Phase-1 simulation-cursor build and focused tests completed with explicit exit `0`; the abandoned early log
 remains classified incomplete. The baseline and production candidate remain untouched. Do not
 start another build until the next Phase-1 source change invalidates the current test binary.
 

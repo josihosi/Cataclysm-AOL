@@ -88,8 +88,8 @@ manifest. The legacy 500-site scan starves 125 of 250 eligible camps in 250 upda
 explicit Phase-3 repair target, not hidden or normalized away.
 
 The Phase-1 authority stack now includes checkpoints `673a900067`, `4995a3c64e`,
-`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, `7acc011951`, `687d7bcecb`, and
-`67cd68e416`. The typed active outing is the only runtime owner of a
+`e4b75e15a3`, `42e5bad3cd`, `31354b71c3`, `7acc011951`, `687d7bcecb`,
+`67cd68e416`, and `833599e5e4`. The typed active outing is the only runtime owner of a
 bounded scout's members, leader, route, target revision, observations, cargo, casualties, phases,
 clocks, simulation owner, and independent return/report/cargo receipts. It migrates legacy scalar
 saves, releases malformed reservations, preserves split casualties, and rejects contradictory,
@@ -113,9 +113,12 @@ home-reserve state; legacy hostile outings remain withdrawal-only.
 Empty/normal/cap-saturated JSON is 87/4,558/28,534 bytes; the saturated state is byte-stable after
 reload and remains below 64 KiB.
 
-Current execution row: give scout sorties and hostile operations one validated serialized
-simulation-owner/handoff contract, including epoch and last-advanced ownership. Then complete
-resource, supply, and dossier state. Post-close
+Scout and hostile state changes now require the same serialized activity/generation/owner/epoch/
+last-advanced cursor. Ambiguous dual owners, stale epochs, duplicate advances, and inconsistent
+save parity fail closed; exact compare-and-swap owner transfers are atomic.
+
+Current execution row: define one world-global finite resource record keyed by OMT. Then add the
+bounded camp supply stock and per-camp resource estimate. Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac
 Keychain/API path remains a Phase-10 release-harness gate; do not retry or pause deterministic work
