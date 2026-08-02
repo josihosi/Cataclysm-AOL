@@ -19,6 +19,10 @@ overmap_global_state populated_global_state()
     bandit_live_world::site_record site;
     site.site_id = "save_compatibility_site";
     site.headcount = 2;
+    site.supply_units = 13;
+    site.supply_last_update_minutes = 100;
+    site.supply_accounted_living_total = 2;
+    site.supply_member_minute_remainder = 720;
     state.bandit_live_world.sites.push_back( site );
     const tripoint_abs_omt resource_omt( 8, 9, 0 );
     const bandit_live_world::finite_resource_record resource_snapshot =
@@ -168,6 +172,10 @@ TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
     REQUIRE( loaded.bandit_live_world.sites.size() == 1 );
     CHECK( loaded.bandit_live_world.sites.front().site_id == "save_compatibility_site" );
     CHECK( loaded.bandit_live_world.sites.front().headcount == 2 );
+    CHECK( loaded.bandit_live_world.sites.front().supply_units == 13 );
+    CHECK( loaded.bandit_live_world.sites.front().supply_last_update_minutes == 100 );
+    CHECK( loaded.bandit_live_world.sites.front().supply_accounted_living_total == 2 );
+    CHECK( loaded.bandit_live_world.sites.front().supply_member_minute_remainder == 720 );
     const bandit_live_world::finite_resource_record *resource =
         loaded.bandit_live_world.find_finite_resource( tripoint_abs_omt( 8, 9, 0 ) );
     REQUIRE( resource != nullptr );

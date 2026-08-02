@@ -39,6 +39,10 @@ constexpr std::size_t max_sortie_summary_length = 512;
 constexpr std::size_t max_camp_decision_reason_length = 256;
 constexpr int max_finite_resource_units = 3;
 constexpr int max_finite_resource_claim_units = 2;
+constexpr int camp_supply_days_at_capacity = 14;
+constexpr int legacy_camp_supply_seed_days = 7;
+constexpr int max_camp_supply_units = 256;
+constexpr int minutes_per_member_day = 24 * 60;
 constexpr int scout_return_cohesion_minutes = 2 * 60;
 constexpr int scout_missing_grace_minutes = 24 * 60;
 
@@ -56,6 +60,36 @@ bool finite_resource_record_is_valid( const bandit_live_world::finite_resource_r
     return record.remaining_units >= 0 && record.remaining_units < max_finite_resource_units &&
            record.revision > 0 && record.revision <= max_finite_resource_units &&
            record.remaining_units + record.revision <= max_finite_resource_units;
+}
+
+void seed_camp_supply( bandit_live_world::site_record &site )
+{
+    const int living_total = bandit_live_world::camp_supply_living_total( site );
+    const long long seeded_units = static_cast<long long>( legacy_camp_supply_seed_days ) *
+                                   living_total;
+    site.supply_units = static_cast<int>( std::min<long long>(
+                            bandit_live_world::camp_supply_cap( site ), seeded_units ) );
+    site.supply_last_update_minutes = -1;
+    site.supply_accounted_living_total = living_total;
+    site.supply_member_minute_remainder = 0;
+}
+
+void seed_uninitialized_camp_supply( bandit_live_world::site_record &site )
+{
+    if( site.supply_last_update_minutes != -1 ||
+        site.supply_member_minute_remainder != 0 ) {
+        return;
+    }
+    const int prior_living_total = std::max( 0, site.supply_accounted_living_total );
+    const int prior_cap = static_cast<int>( std::min<long long>( max_camp_supply_units,
+                          static_cast<long long>( camp_supply_days_at_capacity ) *
+                          std::max( 1, prior_living_total ) ) );
+    const int prior_seed = static_cast<int>( std::min<long long>( prior_cap,
+                           static_cast<long long>( legacy_camp_supply_seed_days ) *
+                           prior_living_total ) );
+    if( site.supply_units == prior_seed ) {
+        seed_camp_supply( site );
+    }
 }
 
 struct bounded_route_state {
@@ -2471,6 +2505,10 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "source_id", source_id );
     json.member( "anchor", anchor );
     json.member( "headcount", headcount );
+    json.member( "supply_units", supply_units );
+    json.member( "supply_last_update_minutes", supply_last_update_minutes );
+    json.member( "supply_accounted_living_total", supply_accounted_living_total );
+    json.member( "supply_member_minute_remainder", supply_member_minute_remainder );
     json.member( "footprint", footprint );
     json.member( "members", members );
     json.member( "spawn_tiles", spawn_tiles );
@@ -2514,6 +2552,10 @@ void site_record::serialize( JsonOut &json ) const
 void site_record::deserialize( const JsonObject &jo )
 {
     schema_version = 5;
+    supply_units = 0;
+    supply_last_update_minutes = -1;
+    supply_accounted_living_total = 0;
+    supply_member_minute_remainder = 0;
     next_outing_generation = 1;
     applied_return_generation = 0;
     applied_report_generation = 0;
@@ -2525,6 +2567,7 @@ void site_record::deserialize( const JsonObject &jo )
     active_outing.clear();
     active_hostile_operation.clear();
     jo.read( "schema_version", schema_version );
+    const int loaded_schema_version = schema_version;
     jo.read( "site_id", site_id );
     std::string source_kind_string = "none";
     jo.read( "source_kind", source_kind_string );
@@ -2541,6 +2584,14 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "source_id", source_id );
     jo.read( "anchor", anchor );
     jo.read( "headcount", headcount );
+    const bool complete_supply_payload = jo.has_member( "supply_units" ) &&
+                                         jo.has_member( "supply_last_update_minutes" ) &&
+                                         jo.has_member( "supply_accounted_living_total" ) &&
+                                         jo.has_member( "supply_member_minute_remainder" );
+    jo.read( "supply_units", supply_units );
+    jo.read( "supply_last_update_minutes", supply_last_update_minutes );
+    jo.read( "supply_accounted_living_total", supply_accounted_living_total );
+    jo.read( "supply_member_minute_remainder", supply_member_minute_remainder );
     jo.read( "footprint", footprint );
     jo.read( "members", members );
     jo.read( "spawn_tiles", spawn_tiles );
@@ -3024,7 +3075,25 @@ void site_record::deserialize( const JsonObject &jo )
         camp_decision.next_eligible_minutes = -1;
         camp_decision.transition_reason = "repaired inconsistent persisted camp decision";
     }
-    schema_version = 5;
+    if( loaded_schema_version < 6 ) {
+        seed_camp_supply( *this );
+    } else if( !complete_supply_payload ) {
+        supply_units = 0;
+        supply_last_update_minutes = -1;
+        supply_accounted_living_total = camp_supply_living_total( *this );
+        supply_member_minute_remainder = 0;
+    } else {
+        supply_units = std::clamp( supply_units, 0, camp_supply_cap( *this ) );
+        supply_last_update_minutes = std::max( -1, supply_last_update_minutes );
+        supply_accounted_living_total = std::max( 0, supply_accounted_living_total );
+        supply_member_minute_remainder = std::clamp( supply_member_minute_remainder, 0,
+                                         minutes_per_member_day - 1 );
+        if( supply_last_update_minutes < 0 ) {
+            supply_accounted_living_total = camp_supply_living_total( *this );
+            supply_member_minute_remainder = 0;
+        }
+    }
+    schema_version = 6;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -3079,6 +3148,71 @@ int site_record::count_live_members() const
     return static_cast<int>( std::count_if( members.begin(), members.end(), []( const member_record & member ) {
         return counts_toward_live_headcount( member.state );
     } ) );
+}
+
+int camp_supply_living_total( const site_record &site )
+{
+    return std::max( std::max( 0, site.headcount ), site.count_live_members() );
+}
+
+int camp_supply_cap( const site_record &site )
+{
+    const long long capacity = static_cast<long long>( camp_supply_days_at_capacity ) *
+                               std::max( 1, camp_supply_living_total( site ) );
+    return static_cast<int>( std::min<long long>( max_camp_supply_units, capacity ) );
+}
+
+bool advance_camp_supply( site_record &site, const int now_minutes )
+{
+    if( now_minutes < 0 || ( site.supply_last_update_minutes >= 0 &&
+                             now_minutes < site.supply_last_update_minutes ) ) {
+        return false;
+    }
+
+    const int previous_units = site.supply_units;
+    const int previous_update = site.supply_last_update_minutes;
+    const int previous_accounted = site.supply_accounted_living_total;
+    const int previous_remainder = site.supply_member_minute_remainder;
+    const int current_living_total = camp_supply_living_total( site );
+    site.supply_units = std::clamp( site.supply_units, 0, camp_supply_cap( site ) );
+    site.supply_accounted_living_total = std::max( 0, site.supply_accounted_living_total );
+    site.supply_member_minute_remainder = std::clamp( site.supply_member_minute_remainder, 0,
+                                         minutes_per_member_day - 1 );
+
+    if( site.supply_last_update_minutes < 0 ) {
+        site.supply_last_update_minutes = now_minutes;
+        site.supply_accounted_living_total = current_living_total;
+        site.supply_member_minute_remainder = 0;
+    } else {
+        const long long elapsed_minutes = static_cast<long long>( now_minutes ) -
+                                          site.supply_last_update_minutes;
+        const long long member_minutes = site.supply_member_minute_remainder +
+                                         elapsed_minutes * site.supply_accounted_living_total;
+        const long long consumed_units = member_minutes / minutes_per_member_day;
+        site.supply_units = static_cast<int>( std::max<long long>( 0,
+                            static_cast<long long>( site.supply_units ) - consumed_units ) );
+        site.supply_member_minute_remainder = static_cast<int>(
+                    member_minutes % minutes_per_member_day );
+        site.supply_last_update_minutes = now_minutes;
+        site.supply_accounted_living_total = current_living_total;
+        site.supply_units = std::min( site.supply_units, camp_supply_cap( site ) );
+    }
+
+    return site.supply_units != previous_units ||
+           site.supply_last_update_minutes != previous_update ||
+           site.supply_accounted_living_total != previous_accounted ||
+           site.supply_member_minute_remainder != previous_remainder;
+}
+
+int advance_world_camp_supplies( world_state &state, const int now_minutes )
+{
+    int sites_changed = 0;
+    for( site_record &site : state.sites ) {
+        if( advance_camp_supply( site, now_minutes ) ) {
+            sites_changed++;
+        }
+    }
+    return sites_changed;
 }
 
 int site_record::active_outing_survivor_count() const
@@ -3532,6 +3666,7 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
         new_site.anchor = footprint.anchor;
         new_site.footprint = footprint.footprint;
         new_site.headcount = std::max( 0, abstract_headcount );
+        seed_uninitialized_camp_supply( new_site );
         state.sites.push_back( new_site );
         return true;
     }
@@ -3557,6 +3692,7 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
         site->source_id = source_id;
     }
     site->headcount = std::max( site->headcount, std::max( 0, abstract_headcount ) );
+    seed_uninitialized_camp_supply( *site );
     return true;
 }
 
@@ -3666,6 +3802,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     }
 
     if( site->has_member( npc_id ) ) {
+        seed_uninitialized_camp_supply( *site );
         return true;
     }
 
@@ -3684,6 +3821,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
         spawn_tile_record_ptr = &site->spawn_tiles.back();
     }
     spawn_tile_record_ptr->headcount++;
+    seed_uninitialized_camp_supply( *site );
     return true;
 }
 
@@ -4562,6 +4700,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::structural_maintenance_updates );
     structural_bounty_maintenance_result result;
+    advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::max( 0, dispatch_cap );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
     result.scan = advance_structural_bounty_scan( state, now_minutes, scan_budget, terrain_lookup );
@@ -6134,6 +6273,7 @@ static bool record_active_outing_casualty_unchecked( site_record &site,
     }
 
     site_record candidate = site;
+    advance_camp_supply( candidate, current_minutes );
     member_record *member = candidate.find_member( npc_id );
     if( member == nullptr ) {
         return false;
@@ -6146,6 +6286,7 @@ static bool record_active_outing_casualty_unchecked( site_record &site,
     if( !update_member_state( candidate, npc_id, casualty_state, summary ) ) {
         return false;
     }
+    advance_camp_supply( candidate, current_minutes );
     if( !casualty_was_recorded ) {
         candidate.active_outing.casualty_ids.push_back( npc_id );
     }
@@ -6394,14 +6535,15 @@ bool update_member_state( site_record &site, character_id npc_id, member_state n
 
     const bool old_live = counts_toward_live_headcount( member->state );
     const bool new_live = counts_toward_live_headcount( new_state );
+    member->state = new_state;
     if( old_live != new_live ) {
         site.headcount = std::max( 0, site.headcount + ( new_live ? 1 : -1 ) );
         if( spawn_tile_record *spawn_record = site.find_spawn_tile( member->home_spawn_tile ) ) {
             spawn_record->headcount = std::max( 0, spawn_record->headcount + ( new_live ? 1 : -1 ) );
         }
+        site.supply_units = std::min( site.supply_units, camp_supply_cap( site ) );
     }
 
-    member->state = new_state;
     member->last_writeback_summary = summary;
     return true;
 }

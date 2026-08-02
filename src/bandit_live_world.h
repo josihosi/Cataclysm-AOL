@@ -402,7 +402,7 @@ struct finite_resource_claim_result {
 };
 
 struct site_record {
-    int schema_version = 5;
+    int schema_version = 6;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -410,6 +410,10 @@ struct site_record {
     std::string source_id;
     tripoint_abs_omt anchor;
     int headcount = 0;
+    int supply_units = 0;
+    int supply_last_update_minutes = -1;
+    int supply_accounted_living_total = 0;
+    int supply_member_minute_remainder = 0;
     std::vector<tripoint_abs_omt> footprint;
     std::vector<member_record> members;
     std::vector<spawn_tile_record> spawn_tiles;
@@ -720,6 +724,10 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
         int requested_units );
 finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, int undiscovered_units );
+int camp_supply_living_total( const site_record &site );
+int camp_supply_cap( const site_record &site );
+bool advance_camp_supply( site_record &site, int now_minutes );
+int advance_world_camp_supplies( world_state &state, int now_minutes );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
