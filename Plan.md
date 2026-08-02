@@ -55,21 +55,44 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ## Current execution posture
 
-### Active target - CAOL-WINDOWS-FREE-PLAY-RC-v0
+### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** PREPARING WINDOWS HANDOFF / RELEASE HELD
+**Status:** GREEN / PHASE 0 REPRODUCIBLE BASELINES
 
-Goal: leave one clean Windows checkout on `port/cdda-master`, build the real Windows candidate, and provide one ordinary-play save where flesh raptors, zombie riders, writhing stalkers, bandits, and cannibals are all discoverable within a reasonable trip from the starting location.
+Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
+canonical contract and cross-off evidence ledger is
+`doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 
-Playtest posture: Josef should roam and play normally rather than execute isolated test scripts. The staged threats must not begin in immediate melee range, and the handoff must state what was staged without turning the session into a checklist. Debug notes collected during play become the next repair queue.
+Goal: naturally generated bandit and cannibal camps send coherent two-person scout parties, learn
+through bounded honest perception, return physical reports, withdraw coherently when burned, and
+produce faction-specific bandit shakedowns or cannibal night raids with durable identity,
+persistence, bounded performance, and bounded save growth.
 
-Boundary: do not merge the newly fetched upstream batch before this feel pass, do not update the other `port/*` branches, and do not release merely because the candidate compiles or loads. Writhing-stalker and zombie-rider AI/progression now belong to a separate read-only design discussion; the dormant hostile-camp implementation package covers bandits/cannibals only and must not start until Josef explicitly promotes it after the Mac transfer.
+Execution posture: all implementation, builds, harness runs, profiling, save-growth work, diffs,
+and orchestration stay on the Mac Mini. Work is checkpointed on the isolated `dev` worktree; the
+clean `port/cdda-master` checkout at `660057ff728bdf77531f607b1bd42a175f027a5f` remains the
+release/playtest target and is not edited directly. Integration remains `dev` -> `master` -> the
+port orchestrator, with no upstream merge, push, publication, tag, or release in this lane.
 
-The large Mac transfer is complete. Recommended next action: checkpoint the five-family roaming/automatic-API harness packet, synchronize that exact commit to the clean Mac Mini checkout, run the narrow Mac harness/API checks, then hand the live Windows session to Josef and collect free-form debug notes.
+Boundary: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and
+flesh-raptor behavior remain closed. Honest perception, paired scouting, physical reports,
+coherent withdrawal, faction outcomes, persistence, performance, save-bloat, and cross-platform
+requirements may not be weakened for convenience.
+
+Current execution row: record compiler/build/fixture identity, then repair the Phase-0 secure
+Keychain writer and foreign-platform runner-path tests before gameplay edits. Establish the
+behavior-neutral functional/performance/save baselines and ratify budgets before Phase 1.
+
+The prior five-family Windows free-play handoff remains useful held observation footing. It is not
+the active implementation target and does not authorize work on the three excluded creature
+families.
 
 ### Next decision - CAOL-CDDA-UPSTREAM-REFRESH-2026-08-v0
 
-After the feel pass, decide whether to merge `7cf1d08ae8` or a newer stable upstream tip. Current estimate: mechanically small-to-moderate (two conflicts), behaviorally moderate because the `src/npcmove.cpp` conflict touches C-AOL's most customized NPC path and therefore needs focused NPC/camp/LLM validation.
+After hostile-camp engineering qualification and Josef's later product pass, decide whether to
+merge `7cf1d08ae8` or a newer stable upstream tip. Current estimate remains
+mechanically small-to-moderate and behaviorally moderate; no upstream merge belongs to the active
+ecology implementation.
 
 ---
 

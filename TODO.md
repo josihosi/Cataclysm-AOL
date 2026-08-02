@@ -7,9 +7,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Commit the five-family free-play/automatic-API harness packet, then push/pull that exact reviewed `port/cdda-master` commit so both checkouts converge cleanly; the large Mac transfer is finished.
-2. Seed the Mac Keychain without printing the key, then run the Mac fixture-contract, dry-resolution, native-runner, and real API self-tests.
-3. Incrementally relink the committed Windows candidate so its visible version names the exact handoff commit.
-4. Start the ordinary-play Windows handoff and leave it open for Josef with the lightweight debug-note format.
-5. Keep the dormant bandit/cannibal implementation package stopped; use the separate read-only task for writhing-stalker/zombie-rider AI discussion.
-6. After the feel pass, decide whether the 104-commit upstream batch is worth merging before release.
+1. Checkpoint the promoted roadmap, tracked hostile-camp ledger, and exact resume packet on isolated `dev`.
+2. Record the Phase-0 compiler, flags, Mac identity, commit, season/world fixture, test binary, and raw-artifact root.
+3. Repair foreign-platform Python-path classification and the native macOS Keychain writer; pass the fixture tests and a real clean-environment API self-test before removing the old shell export.
+4. Reproduce the current functional baseline, audit natural camp registration, and preserve exact pre-change evidence.
+5. Add behavior-neutral deterministic benchmark/counter instrumentation, create the preserved baseline comparison worktree, run the performance/memory/save matrix, and ratify the provisional budgets.

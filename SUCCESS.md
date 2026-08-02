@@ -17,9 +17,32 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
+
+Status: GREEN / PHASE 0 REPRODUCIBLE BASELINES
+
+Canonical contract and detailed cross-off evidence:
+`doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
+
+Success state:
+- [ ] Phase 0 has reproducible functional, performance, memory, and save-growth baselines; the provisional budgets are reviewed and ratified before behavior work.
+- [ ] Stable site, member, sortie, intelligence, resource, report, and faction-outcome state persists with explicit migrations and bounded collections.
+- [ ] Routine hostile-camp activity uses exact two-person scouts, honest perception, physical report return, coherent burn/withdrawal, and no avatar-coordinate radar.
+- [ ] A naturally generated bandit camp completes the full ecology loop through a real bandit shakedown outcome.
+- [ ] A naturally generated cannibal camp completes the full ecology loop through a real cannibal night-raid outcome.
+- [ ] Deterministic performance, memory, scheduler fairness, and save-growth evidence stays within the ratified limits at the required scales.
+- [ ] The final stack passes the required macOS gate plus representative Linux and Windows routes, packaging, and `UltimateCataclysm` runtime validation.
+- [ ] Reviewed checkpoint commits integrate through `dev` -> `master` -> the port orchestrator and leave the production candidate ready for Josef's later product pass.
+
+Claim boundary: this lane covers bandits and cannibals only. Writhing-stalker AI, zombie-rider
+AI/progression, and flesh-raptor behavior are excluded. The first unchecked detailed execution row
+in the canonical contract is authoritative.
+
+---
+
 ## CAOL-WINDOWS-FREE-PLAY-RC-v0 - Windows production-candidate roaming playtest
 
-Status: READY FOR CROSS-MACHINE SYNC / RELEASE HELD
+Status: HELD OBSERVATION FOOTING / NOT THE ACTIVE IMPLEMENTATION LANE
 
 Success state:
 - [x] `port/cdda-master` is recorded as the only current production-candidate branch; `master`, `dev`, and the other `port/*` branches are explicitly behind it.

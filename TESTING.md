@@ -54,7 +54,36 @@ Before promoting, closing, or handing off a lane, confirm that `TESTING.md` pend
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-## Current validation target - CAOL-WINDOWS-FREE-PLAY-RC-v0
+## Current validation target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
+
+Source reference:
+- untouched release/playtest target: `port/cdda-master` at `660057ff728bdf77531f607b1bd42a175f027a5f`
+- isolated editing branch/worktree: `dev` at `Cataclysm-AOL-hostile-ecology-dev`
+- included upstream base: `8d4959bee4`
+- reviewed-but-unmerged upstream tip: `7cf1d08ae8`; no upstream merge is authorized in this lane
+
+Current Phase-0 evidence (2026-08-02):
+- The production checkout and `origin/port/cdda-master` independently resolve to exact `660057ff728bdf77531f607b1bd42a175f027a5f`; no relevant transfer, build, or orchestrator process was active at kickoff.
+- `dev` was a strict ancestor of the candidate. Backup refs preserve the prior `dev` and `master` tips; `dev` was advanced non-destructively to the candidate before the isolated worktree was created.
+- The launch envelope reports GPT-5.6-sol, xhigh reasoning, `approval_policy = "never"`, and `sandbox_mode = "danger-full-access"`; the persistent service tier is now normal/default.
+- `/usr/bin/python3 -m unittest tools.openclaw_harness.test_fixture_contract` reproduces 57 tests with one failure and one error: mocked Windows resolution constructs `WindowsPath` on macOS, and mocked Linux accepts the existing Mac API venv. These are active defects, not waived evidence.
+- A clean-environment release-scenario dry run succeeds and selects the Mac API venv, but the Keychain does not yet supply `CATA_API_KEY`. The existing shell value is retained only until a real secure-store API call succeeds.
+- The current Keychain writer passes the secret to `/usr/bin/security ... -w` over stdin, which still invokes an interactive confirmation route. Phase 0 must replace that path without putting the secret in argv or logs.
+
+Required Phase-0 evidence:
+- exact compiler, build flags, Mac/OS identity, source commit, season length, deterministic world fixture/seed, and test-binary identity;
+- all fixture-contract tests green on macOS, including mocked Windows/Linux foreign-path controls;
+- non-interactive Keychain retrieval and a real API runner self-test from a process with neither API key in its starting environment, without printing the credential;
+- current functional behavior and natural camp registration recorded before gameplay edits;
+- behavior-neutral deterministic counters/driver run against preserved pre-change and final implementations;
+- zero/10/100/500-site CPU, memory, scheduler-fairness, and save-growth evidence with reviewed, ratified budgets and raw artifacts retained outside Git;
+- checkpoint commits and resume packets that name exact commands, artifacts, dirty state, blockers, and next row.
+
+Claim boundary: Phase 0 establishes trustworthy infrastructure and a comparison baseline. It does
+not prove the new ecology. Fixture staging is not natural world-generation proof, semantic turn
+playback is not a CPU benchmark, and startup/load screenshots are not feature-path evidence.
+
+## Held validation receipt - CAOL-WINDOWS-FREE-PLAY-RC-v0
 
 Source reference:
 - production branch: `port/cdda-master`
@@ -145,20 +174,16 @@ Detailed closed validation history has been trimmed out of this active testing f
 
 ## Pending probes
 
-The current candidate still needs the exact-HEAD macOS focused gate, four real feature-path scenarios, live action-event check, and broader Mac Mini stress/playtest series. Origin and release stay held until those pass.
+The active missing evidence is Phase 0 only:
+- repair and test the foreign-platform runner-path classifier;
+- replace and test the interactive Keychain writer, then prove clean-environment secure retrieval and a real API call;
+- run the narrow existing C++ hostile-camp tests and record current behavior;
+- prove naturally generated camp registration without confusing a fixture for world generation;
+- land behavior-neutral benchmark/counter instrumentation and record the zero/10/100/500-site CPU, memory, fairness, and save-growth baselines.
 
-Closed zombie-rider, flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, bandit, and multi-camp proof trains are represented by `SUCCESS.md`, `Plan.md`, `doc/work-ledger.md`, linked aux proof docs, and git history. Do not rerun solved rows as ritual.
-
-Future-only watchlist unless Schani/Josef explicitly promotes it:
-- Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
-- A stricter roof-horde positive `tracking_intensity` proof remains optional/future-only; current green roof proof is retarget/movement-budget metadata after live roof-fire horde signaling.
-- Full Smart Zone process-reload disk persistence can be promoted later if Josef wants that stricter audit; the current green proof covers live create/inspect/close-save/reopen coordinate labels.
-
-If a later live probe is promoted:
-- build the current runtime first when binary freshness matters;
-- use one named scenario/command path;
-- extract only decisive report/log fields into context;
-- after two same-blocker attempts, consult Frau Knackal before attempt 3; after four unresolved attempts, package implemented-but-unproven state for Josef and move to the next greenlit unblocked target.
+Origin, release, and production-candidate mutation remain held. Closed zombie-rider,
+flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, and older bandit/camp proof trains
+remain historical evidence only and must not be rerun as Phase-0 ritual.
 
 ---
 
