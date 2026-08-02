@@ -399,8 +399,19 @@ The one root review found no further correctness defect; `git diff --check` is g
 hashes are archived at
 `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase1-20260802/observation-progress/`.
 
+Faction-scoped acted-report policy is green at `258247d26c`. The post-review redirected Mac build
+exits `0`. At seed `830204929`, `[report_policy]` passes 3 cases / 42 assertions,
+`[bandit][live_world]` 99 / 5,046, `[bandit][handoff]` 9 / 203, and
+`[savegame][overmap][regression]` 2 / 24. `git diff --check` passed before checkpoint. The final
+80,057,064-byte test binary SHA-256 is
+`12030ac296c498bc03b87f27949107039a036c4331e79a261114c9d4646e5e87`. Exact commands, logs,
+caveats, and hashes are archived at
+`/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase1-20260802/report-policy/`.
+The one root review found and fixed explicit unknown nested policies being mistaken for absent
+legacy fields; the final evidence above is post-fix.
+
 The active missing evidence is Phase 1:
-- dossier/report policy, component idempotency/watermarks, and bounded transition owners;
+- stable component idempotency keys/watermarks and bounded transition owners;
 - extend component byte decomposition as those owners become real. The current scout empty/normal/
   saturated packet and all-phase serialization are already green.
 

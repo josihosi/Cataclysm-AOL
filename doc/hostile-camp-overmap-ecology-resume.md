@@ -20,11 +20,13 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: compact/replace observations by fact value and
-  define real progress without polling or duplicate-strength clock refresh.
+- First unchecked deterministic execution row: give return packets, report delivery, resource
+  depletion, cargo credit, and member return stable operation/idempotency keys.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
-- Current engineering state: the path classifier and writer defects are repaired and pass 60 contract tests. Final clean-environment secure-store/API qualification is deferred to the later release gate and may not pause deterministic camp-AI work.
+- Current engineering state: Phase 0 is complete; Phase 1 observation semantics and faction-scoped
+  acted-report policy are checkpointed. Final clean-environment secure-store/API qualification is
+  deferred to the later release gate and may not pause deterministic camp-AI work.
 
 ## Launch evidence
 
@@ -164,23 +166,39 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   64-dossier/256-route/16-observation saturated state is byte-stable at 48,070 bytes. Binary is
   79,898,584 bytes, SHA-256
   `f435a54a682e7bfc061e7973e271cecd47997c15cc690cbfd55ab1df869214d7`.
+- Semantic-observation checkpoint `9be3e8c044` canonicalizes the 16-fact working set, protects
+  safety evidence, and advances progress only for retained semantic changes under the shared
+  simulation cursor. Its final build and observation/scout/live-world/handoff/save gates are green;
+  artifacts are under `phase1-20260802/observation-progress`.
+- Report-policy checkpoint `258247d26c` persists `bandit_shakedown` or
+  `cannibal_night_raid`, keeps at most 64 canonical acted watermarks by target ID/OMT/policy,
+  permits independent target/policy progress, and rejects stale/exact same-key tuples, profile
+  drift, explicit unknown fields, and revision exhaustion without mutation. Final build exits `0`;
+  policy passes 3/42, live-world 99/5,046, handoff 9/203, and save compatibility 2/24 at seed
+  `830204929`. Binary SHA-256 is
+  `12030ac296c498bc03b87f27949107039a036c4331e79a261114c9d4646e5e87`;
+  manifest SHA-256
+  `fe377b62d12766fae0fca3fa07c03278d33f5d5963b9eb83fff4645e2b6304b0` is under
+  `phase1-20260802/report-policy`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume deterministic observation compaction on top of `ddd1afe480`. Do not reopen Phase-0
-   statistics unless a later real implementation measurement approaches or exceeds a ratified budget.
+3. Audit the existing component keys on top of `258247d26c`, then complete only the missing
+   stable-key/watermark/atomicity contract. Do not reopen Phase-0 statistics unless a later real
+   implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `1aa9851902`-source test binary where valid; run one redirected build at a
+5. Reuse the current `258247d26c`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Complete operation, resource, and dossier owners with legacy/missing-field,
-   phase round-trip, malformed-packet atomicity, replay, pruning, and serialized-size evidence.
+6. Complete component watermarks, packet atomicity, bounded transition events, all-phase round
+   trips, and serialized-size evidence before closing Phase 1.
 
-Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The
-Phase-1 simulation-cursor build and focused tests completed with explicit exit `0`; the abandoned early log
-remains classified incomplete. The baseline and production candidate remain untouched. Do not
-start another build until the next Phase-1 source change invalidates the current test binary.
+Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
+report-policy build and focused/full tests completed with explicit exit `0`; earlier failed build
+and fixture attempts are recorded as non-credit in the artifact manifest. The baseline and
+production candidate remain untouched. Do not start another build until the next Phase-1 source
+change invalidates the current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
 future Apple prompt may pause only the later release-harness action that requires it; ordinary

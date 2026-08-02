@@ -124,8 +124,12 @@ plans reject atomically, and deterministic 64-lead/8-mark/string caps keep the f
 at 48,070 bytes. Semantic observation compaction is checkpointed at `9be3e8c044`: the 16-fact
 working set protects burn/casualty/contradiction/hard-danger/target-revision facts, deduplicates by
 stable fact and semantic state, and advances progress only for retained certainty/bounds/route/
-alert change. Current execution row: version reports and enforce the last acted report revision by
-target/faction policy.
+alert change. Report policy is checkpointed at `258247d26c`: final reports pin an explicit
+bandit-shakedown or cannibal-night-raid policy, and each camp retains at most 64 canonical acted
+watermarks by target ID/OMT/policy. Same-key stale/exact tuples, policy drift, explicit unknown
+fields, and revision exhaustion fail closed; distinct target/policy keys advance independently.
+Current execution row: audit and complete stable idempotency keys for return, report, resource,
+cargo, and member-resolution components before advancing their bounded watermarks.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

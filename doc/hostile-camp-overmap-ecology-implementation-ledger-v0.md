@@ -6,19 +6,20 @@ Status: **ACTIVE - Phase 1 authoritative persistent model**
 
 Active phase: **Phase 1**
 
-First deterministic execution row: **Version reports and enforce per-target/faction acted revision.**
+First deterministic execution row: **Give every return/report/resource/cargo/member component a stable idempotency key.**
 
-Latest resume packet (behavior checkpoint `9be3e8c044`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `258247d26c`, 2026-08-02): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at report policy. The completed observation slice canonicalizes at 16
-facts, protects the five safety classes plus legacy-critical evidence, uses stable fact/semantic
-state to distinguish real progress from polling or strength-only duplicates, preserves semantic
-age, and applies a cursor-checked batch atomically. Final redirected Mac build exits `0`; observation
-tests pass 1/47, scout save 4/413, full live-world 96/4,981, handoff 9/203, save compatibility 2/24,
-and save-size 1/10. Test binary SHA-256 is
-`b487d7e72208bcc8ebe0ecd4413da37c3ab079cfc23e92a14b640048bed12445`
-(79,978,136 bytes). Logs are archived under `phase1-20260802/observation-progress`; no current
-blocker, and the next permitted action is per-target/faction report revision policy.
+untouched. Phase 1 is active at component idempotency. Final reports now persist bandit-shakedown
+or cannibal-night-raid policy and a canonical 64-entry acted watermark keyed by target ID, OMT,
+and policy. Same-key stale/exact tuples cannot reopen assessment; different target/policy keys
+advance independently; policy drift, explicit unknown fields, and revision overflow fail closed.
+The final redirected Mac build exits `0`; policy tests pass 3/42, full live-world 99/5,046,
+handoff 9/203, and save compatibility 2/24. Test binary SHA-256 is
+`12030ac296c498bc03b87f27949107039a036c4331e79a261114c9d4646e5e87`
+(80,057,064 bytes). Manifest SHA-256 is
+`fe377b62d12766fae0fca3fa07c03278d33f5d5963b9eb83fff4645e2b6304b0` under
+`phase1-20260802/report-policy`; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -443,7 +444,7 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Keep per-camp resource knowledge as an estimate with timestamp/confidence.
 - [x] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
 - [x] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
-- [ ] Version reports and record the last report revision acted upon per target/faction policy.
+- [x] Version reports and record the last report revision acted upon per target/faction policy.
 - [ ] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
 - [ ] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.
 - [ ] Validate a complete packet before mutating any member, roster count, cargo, resource, or dossier state; replay after save/load is a no-op rather than a duplicate credit.
@@ -486,7 +487,10 @@ Evidence:
   `1aa9851902` makes physical resource-estimate updates camp-private, timestamp/confidence-bearing,
   stale-safe, and independent from world truth or another camp's belief; `ddd1afe480` adds stable
   dossier ID/revision ownership, schema-v7 migration, deterministic 64-lead pruning, stale-plan
-  rejection, terminal/no-op revision safety, bounded strings/marks, and compact default-omitting JSON.
+  rejection, terminal/no-op revision safety, bounded strings/marks, and compact default-omitting JSON;
+  `9be3e8c044` adds semantic 16-fact observation compaction and cursor-atomic batches;
+  `258247d26c` adds schema-v8 faction-scoped report policy, canonical 64-key acted watermarks,
+  overflow-safe report revision allocation, policy-drift rejection, and absent-only legacy migration.
 - Tests: latest strict redirected Mac build exit `0`; `[hostile_operation]` 3 cases/243
   assertions, `[bandit][live_world]` 86/2,714, `[bandit][handoff]` 9/202, and 2 overmap-global
   save compatibility cases/16 assertions pass. Exact-source autoreview is clean at 0.99. Binary
@@ -514,6 +518,14 @@ Evidence:
   One xhigh AutoReview accepted five concrete defects (legacy revision downgrade, no-op revision
   churn, terminal revision reuse, delimiter collision, and unbounded strings); all were fixed in the
   single permitted review/fix pass. Artifacts are under the external Phase-1 reference-pruning root.
+- Report-policy tests cover exact/stale replay, an older-generation report for a different target,
+  a newer revision for the original target, the same target under a different faction policy,
+  canonical 64-entry retention, legacy migration, explicit-unknown fail-closed behavior, profile
+  drift, and atomic `INT_MAX` report exhaustion. The final build exits `0`; `[report_policy]`
+  passes 3/42, `[bandit][live_world]` 99/5,046, handoff 9/203, and overmap save compatibility
+  2/24 at seed `830204929`. Binary SHA-256 is
+  `12030ac296c498bc03b87f27949107039a036c4331e79a261114c9d4646e5e87`.
+  Exact logs and manifest are under the external `phase1-20260802/report-policy` artifact root.
 - Migration/replay fixtures cover legacy and transitional active state, contact-anchored clocks,
   malformed reservation release, all scout-phase round trips, partial casualty persistence,
   exact casualty/job agreement, report/cargo receipt before slot close, universal watermark
