@@ -89,6 +89,14 @@ bandit_live_world::world_state round_trip_world( const bandit_live_world::world_
     loaded.deserialize( jsin.get_object() );
     return loaded;
 }
+
+std::string serialize_world( const bandit_live_world::world_state &world )
+{
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    world.serialize( jsout );
+    return out.str();
+}
 } // namespace
 
 TEST_CASE( "bandit_live_world_claims_one_bounded_special_backed_site_ledger", "[bandit][live_world]" )
@@ -350,6 +358,21 @@ TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_
     CHECK( site.active_target_id == "player_basecamp_nearby" );
     REQUIRE( site.active_member_ids.size() == 1 );
     CHECK( site.active_member_ids.front() == character_id( 301 ) );
+}
+
+TEST_CASE( "bandit_live_world_deserialize_commits_only_after_the_packet_is_valid",
+           "[bandit][live_world][save]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 303 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    const std::string before = serialize_world( world );
+
+    JsonValue malformed = json_loader::from_string(
+                              R"({"owner_id":"replacement","sites":"not-an-array"})" );
+    CHECK_THROWS( world.deserialize( malformed.get_object() ) );
+    CHECK( serialize_world( world ) == before );
 }
 
 TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_save_and_writeback",
@@ -3382,6 +3405,65 @@ TEST_CASE( "bandit_live_world_applies_a_return_packet_onto_the_active_owned_outi
     CHECK( site.active_group_id.empty() );
     CHECK( site.active_target_id.empty() );
     CHECK( site.active_member_ids.empty() );
+}
+
+TEST_CASE( "bandit_live_world_rejects_malformed_return_packets_atomically",
+           "[bandit][live_world][handoff]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 811 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 812 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 0;
+    outcome.anchored_identity_updates = { { "811", "dead" } };
+    outcome.result = bandit_pursuit_handoff::mission_result::repelled;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
+    const bandit_pursuit_handoff::return_packet valid_packet =
+        bandit_pursuit_handoff::build_return_packet( plan.entry, outcome );
+
+    SECTION( "survivor count mismatch" ) {
+        bandit_pursuit_handoff::return_packet malformed = valid_packet;
+        malformed.survivors_remaining = 1;
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::apply_return_packet( site, malformed ) );
+        CHECK( serialize_world( world ) == before );
+    }
+
+    SECTION( "duplicate member resolution" ) {
+        bandit_pursuit_handoff::return_packet malformed = valid_packet;
+        malformed.anchored_identity_updates.push_back( { "811", "missing" } );
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::apply_return_packet( site, malformed ) );
+        CHECK( serialize_world( world ) == before );
+    }
+
+    SECTION( "unknown member resolution" ) {
+        bandit_pursuit_handoff::return_packet malformed = valid_packet;
+        malformed.anchored_identity_updates = { { "999999", "dead" } };
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::apply_return_packet( site, malformed ) );
+        CHECK( serialize_world( world ) == before );
+    }
+
+    SECTION( "unknown resolution state" ) {
+        bandit_pursuit_handoff::return_packet malformed = valid_packet;
+        malformed.anchored_identity_updates = { { "811", "teleported" } };
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::apply_return_packet( site, malformed ) );
+        CHECK( serialize_world( world ) == before );
+    }
 }
 
 TEST_CASE( "bandit_live_world_empty_site_retirement_requires_both_home_and_active_sides_empty",

@@ -1310,9 +1310,10 @@ void world_state::deserialize( const JsonObject &jo )
         bandit_live_world_probe::section::world_deserialize );
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::world_deserialize_calls );
-    clear();
-    jo.read( "owner_id", owner_id );
-    jo.read( "sites", sites );
+    world_state candidate;
+    jo.read( "owner_id", candidate.owner_id );
+    jo.read( "sites", candidate.sites );
+    *this = std::move( candidate );
 }
 
 site_record *world_state::find_site( const std::string &site_id )
@@ -3521,7 +3522,44 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         return iter != packet.anchored_identity_updates.end() ? iter->status : "alive";
     };
 
-    int survivors_accounted = 0;
+    std::vector<std::string> active_member_tokens;
+    active_member_tokens.reserve( site.active_member_ids.size() );
+    for( const character_id &member_id : site.active_member_ids ) {
+        const std::string member_token = std::to_string( member_id.get_value() );
+        if( site.find_member( member_id ) == nullptr ||
+            std::find( active_member_tokens.begin(), active_member_tokens.end(), member_token ) !=
+            active_member_tokens.end() ) {
+            return false;
+        }
+        active_member_tokens.push_back( member_token );
+    }
+
+    std::vector<std::string> update_tokens;
+    update_tokens.reserve( packet.anchored_identity_updates.size() );
+    for( const bandit_pursuit_handoff::anchored_identity_state &update :
+         packet.anchored_identity_updates ) {
+        const bool known_status = update.status == "alive" || update.status == "wounded" ||
+                                  update.status == "dead" || update.status == "missing";
+        if( !known_status ||
+            std::find( active_member_tokens.begin(), active_member_tokens.end(), update.id ) ==
+            active_member_tokens.end() ||
+            std::find( update_tokens.begin(), update_tokens.end(), update.id ) != update_tokens.end() ) {
+            return false;
+        }
+        update_tokens.push_back( update.id );
+    }
+
+    int expected_survivors = static_cast<int>( site.active_member_ids.size() );
+    for( const bandit_pursuit_handoff::anchored_identity_state &update :
+         packet.anchored_identity_updates ) {
+        if( update.status == "dead" || update.status == "missing" ) {
+            expected_survivors--;
+        }
+    }
+    if( packet.survivors_remaining != expected_survivors ) {
+        return false;
+    }
+
     const std::string target_label = packet.current_target_or_mark.empty() ? site.active_target_id :
                                      packet.current_target_or_mark;
     const std::string base_summary = "return " + bandit_pursuit_handoff::to_string( packet.result ) +
@@ -3543,7 +3581,6 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
             new_state = member_state::missing;
             summary += " (missing)";
         } else {
-            survivors_accounted++;
             if( status != "alive" ) {
                 summary += " (" + status + ")";
             }
@@ -3551,10 +3588,6 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         if( !update_member_state( site, member_id, new_state, summary ) ) {
             return false;
         }
-    }
-
-    if( survivors_accounted != packet.survivors_remaining ) {
-        return false;
     }
 
     int bandit_losses = 0;
