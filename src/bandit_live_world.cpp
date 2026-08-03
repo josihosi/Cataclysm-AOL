@@ -5,6 +5,7 @@
 #include <cctype>
 #include <limits>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -5109,6 +5110,14 @@ void world_state::deserialize( const JsonObject &jo )
     jo.read( "schema_version", loaded_schema_version );
     jo.read( "owner_id", candidate.owner_id );
     jo.read( "sites", candidate.sites );
+    std::set<character_id> claimed_member_ids;
+    for( const site_record &site : candidate.sites ) {
+        for( const member_record &member : site.members ) {
+            if( !claimed_member_ids.insert( member.npc_id ).second ) {
+                jo.throw_error( "stable hostile-camp member ID is claimed by more than one site" );
+            }
+        }
+    }
     if( jo.has_member( "finite_resources" ) ) {
         if( loaded_schema_version < 4 ) {
             jo.throw_error( "pre-v4 world cannot contain finite resource state" );
@@ -5556,6 +5565,11 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     }
 
     const std::string site_id = make_site_id( source_kind, source_id, footprint.anchor );
+    for( const site_record &existing_site : state.sites ) {
+        if( existing_site.site_id != site_id && existing_site.has_member( npc_id ) ) {
+            return false;
+        }
+    }
     site_record *site = state.find_site( site_id );
     if( site == nullptr ) {
         site_record new_site;

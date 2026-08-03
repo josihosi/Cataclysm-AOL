@@ -6176,6 +6176,49 @@ TEST_CASE( "bandit_live_world_releases_every_matching_external_owner_without_res
     }
 }
 
+TEST_CASE( "bandit_live_world_rejects_cross_camp_member_identity_aliasing",
+           "[bandit][live_world][reservation][identity]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 world, "bandit", character_id( 14650 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ),
+                 std::nullopt, special_lookup ) );
+    const std::string one_site_bytes = serialize_world( world );
+
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 world, "bandit", character_id( 14650 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ),
+                 std::nullopt, special_lookup ) );
+    CHECK( serialize_world( world ) == one_site_bytes );
+
+    CHECK_FALSE( bandit_live_world::claim_tracked_spawn(
+                     world, "cannibal_hunter", character_id( 14650 ),
+                     tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ),
+                     std::nullopt, special_lookup ) );
+    CHECK( serialize_world( world ) == one_site_bytes );
+    REQUIRE( world.sites.size() == 1 );
+    CHECK( world.sites.front().has_member( character_id( 14650 ) ) );
+
+    bandit_live_world::world_state duplicate_source;
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 duplicate_source, "bandit", character_id( 14650 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ),
+                 std::nullopt, special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 duplicate_source, "cannibal_hunter", character_id( 14651 ),
+                 tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ),
+                 std::nullopt, special_lookup ) );
+    std::string duplicated_identity = serialize_world( duplicate_source );
+    const std::string distinct_id = "\"npc_id\": 14651";
+    REQUIRE( duplicated_identity.find( distinct_id ) != std::string::npos );
+    duplicated_identity.replace( duplicated_identity.find( distinct_id ), distinct_id.size(),
+                                  "\"npc_id\": 14650" );
+    JsonValue duplicated_json = json_loader::from_string( duplicated_identity );
+    CHECK_THROWS( world.deserialize( duplicated_json.get_object() ) );
+    CHECK( serialize_world( world ) == one_site_bytes );
+}
+
 TEST_CASE( "bandit_live_world_origin_loss_recalls_and_releases_the_exact_external_party",
            "[bandit][live_world][reservation][origin_loss]" )
 {
