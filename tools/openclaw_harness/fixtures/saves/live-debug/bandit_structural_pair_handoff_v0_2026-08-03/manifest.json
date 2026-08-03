@@ -1,6 +1,6 @@
 {
   "name": "bandit_structural_pair_handoff_v0_2026-08-03",
-  "description": "Disposable current-schema live pair-handoff footing. The player is parked eleven OMT north of an idle five-member bandit camp and two OMT north of a fixture structural target, so the abstract pair's route-facing approach enters the reality bubble without loading the camp itself.",
+  "description": "Disposable current-schema live pair-handoff footing. The player is parked eleven OMT east of an idle five-member bandit camp and two OMT east of a fixture structural target, so the abstract pair's route-facing approach enters the reality bubble without loading the camp or the source save's stale north-side contact.",
   "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
   "save_transforms": [
     {
@@ -8,7 +8,7 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "special_id": "bandit_camp",
       "site_index": 2,
-      "offset_omt": [0, -11, 0]
+      "offset_omt": [11, 0, 0]
     },
     {
       "kind": "bandit_site_roster_shape",
@@ -23,10 +23,10 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:bandit_camp@140,51,0",
       "lead_kind": "structural_bounty",
-      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@140,42,0",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0",
       "status": "scout_confirmed",
       "target_id": "forest",
-      "target_omt": [140, 42, 0],
+      "target_omt": [149, 51, 0],
       "radius_omt": 0,
       "source_key": "fixture_structural_pair_handoff",
       "source_summary": "fixture-backed structural pair handoff target; no player smoke, light, direct-range lure, or camp-map signal is present",

@@ -11,7 +11,7 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-    "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@140,42,0",
+    "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0",
     "bandit_live_world local_handoff committed",
     "members=2",
     "bandit_live_world local_cohesion",
@@ -64,7 +64,7 @@
       "completion_wait_seconds": 45.0,
       "artifact_state_patterns": [
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-        "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@140,42,0",
+        "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0",
         "bandit_live_world local_handoff committed",
         "members=2",
         "bandit_live_world local_cohesion",
@@ -123,7 +123,7 @@
       "required_line_patterns": [
         [
           "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-          "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@140,42,0"
+          "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0"
         ],
         [
           "bandit_live_world local_handoff committed",
