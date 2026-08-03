@@ -701,10 +701,12 @@ struct structural_outing_plan {
     tripoint_abs_omt target_omt;
     bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
     std::vector<character_id> member_ids;
+    std::vector<tripoint_abs_omt> shared_route;
     int effective_interest = 0;
     int known_threat = 0;
     int expected_stalking_minutes = -1;
     int expected_arrival_minutes = -1;
+    int expected_return_minutes = -1;
     std::vector<std::string> notes;
 };
 
