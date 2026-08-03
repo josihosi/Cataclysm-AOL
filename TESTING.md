@@ -425,10 +425,20 @@ diagnostic transition events and preserve canonical loaded state. Exact commands
 and binaries are under external `phase1-20260802/transition-events/` and
 `phase1-20260802/all-phase-roundtrip/`.
 
-The active missing evidence is Phase 2: migrate and validate one living-total authority, derive
-disjoint physical/away/reserved/ready roster sets, and table-test that authority before changing
-routine dispatch to exact pairs. Keep response-party sizing and micro-site singleton compatibility
-separate.
+Phase-2 roster authority is green at `563499e3fe`. The final redirected Mac build exits `0`; roster
+coverage passes 2 cases / 132 assertions, full `[bandit][live_world]` passes 105 / 6,154,
+`[savegame][overmap][regression]` passes 2 / 24, `[save_size]` passes 1 / 10, and
+`[bandit][handoff]` passes 10 / 251. Strict schema-v10 validation, legacy migration/repair,
+two-person-empty ownership, disjoint away/reserved/ready authority, abstract tile assignment, and
+byte-stable materialization round trip are covered. The final 80,281,432-byte test binary is
+SHA-256 `43e235eeb5ce7b3c23e38e796ba7d7dbeb5821ef9a3d19346f478ac8d3761531`;
+the clean final AutoReview and exact logs/hashes are archived in external
+`phase2-20260803/roster-authority/MANIFEST.md`.
+
+The active missing evidence is Phase 2 exact materialization and routine policy: both camp factions
+must materialize only the selected pair plus the policy-required local reserve, never a fixed
+faction count. Then route routine dispatch through exactly two members while keeping response-party
+sizing and micro-site singleton compatibility separate.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

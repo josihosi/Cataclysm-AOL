@@ -138,9 +138,11 @@ reason, and minute without entering saves. A real hostile operation now round-tr
 phase plus `lost` without synthetic transitions or duplicate/mutated operation, report, receipt,
 reservation, or member state.
 
-Current execution row: Phase 2 first establishes one explicit living-total authority and a derived,
-validated roster view for physical presence, away, reserved, and ready members. The following slice
-uses that view for exact-pair routine scouting while keeping response-party sizing separate.
+Phase-2 roster authority is checkpointed at `563499e3fe`: one persisted living total now feeds a
+derived, validated view of physical presence, away, reserved, and ready members, including strict
+current-schema validation and bounded legacy repair. Current execution row: materialize exactly the
+selected routine pair plus its policy-required local reserve, while keeping response-party sizing
+and micro-site singleton compatibility separate.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

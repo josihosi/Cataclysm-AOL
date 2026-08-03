@@ -563,7 +563,7 @@ Evidence:
 
 Primary anchors: `count_live_members`, abstract `headcount`, lazy materialization, `plan_site_dispatch`, `choose_camp_map_dispatch`, `plan_structural_bounty_outing`, `scout_sortie_should_return_home`.
 
-- [ ] Persist and validate distinct roster counts/sets for living total, physically present at site, away, reserved, and ready; never overload one `headcount` with all meanings.
+- [x] Persist and validate distinct roster counts/sets for living total, physically present at site, away, reserved, and ready; never overload one `headcount` with all meanings.
 - [ ] Materialize exactly the selected party plus required local reserve, never fixed faction counts unrelated to the plan.
 - [ ] Implement shared policy plumbing but separate v1 `routine_scout_policy` (exact pair or no outing) from threat-derived `response_party_policy` for shakedowns and raids.
 - [ ] V1 `routine_scout_policy` always returns exactly two or no outing. Keep any future trio hook disabled and separately test that high danger/reward cannot activate it.
@@ -590,7 +590,12 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 
 Evidence:
 
-- Commit:
+- Commit: `563499e3fe` persists `living_total`, derives and validates the canonical roster view, rejects
+  malformed current schema transactionally, repairs bounded legacy state, preserves empty-camp
+  ownership while members are away, and reconciles abstract spawn-tile authority on materialization.
+- Roster authority: 2 cases / 132 assertions; full live-world: 105 / 6,154; overmap save regression:
+  2 / 24; save-size: 1 / 10; handoff: 10 / 251. Final Mac build and every filter exit `0`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/roster-authority/MANIFEST.md`.
 - Matrix test result:
 - Reservation tests:
 - Dispatch benchmark:

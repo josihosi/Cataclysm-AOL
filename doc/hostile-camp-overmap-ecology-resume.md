@@ -1,6 +1,6 @@
 # Hostile-camp overmap ecology resume packet
 
-Updated: 2026-08-02
+Updated: 2026-08-03
 
 ## Repository state
 
@@ -20,13 +20,13 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 2 - roster authority, paired dispatch, and reservations.
-- First unchecked deterministic execution row: persist and validate distinct living-total,
-  physically-present, away, reserved, and ready roster authorities without overloading headcount.
+- First unchecked deterministic execution row: materialize exactly the selected routine party plus
+  its required local reserve, never a fixed faction count unrelated to the plan.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
-- Current engineering state: Phase 0 is complete; Phase 1 component idempotency is checkpointed at
-  `f12180de5f`. Final clean-environment secure-store/API qualification is
-  deferred to the later release gate and may not pause deterministic camp-AI work.
+- Current engineering state: Phase 0 and Phase 1 are complete. Phase-2 roster authority is
+  checkpointed at `563499e3fe`; final clean-environment secure-store/API qualification is deferred
+  to the later release gate and may not pause deterministic camp-AI work.
 
 ## Launch evidence
 
@@ -186,23 +186,30 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 - All-active-phase checkpoint `e408c9c450` round-trips a real hostile operation through every phase
   plus `lost` without duplicate state or synthetic events. The exact case passes 1/833 and full
   live-world 103/6,011; exact evidence is under `phase1-20260802/all-phase-roundtrip`.
+- Phase-2 roster-authority checkpoint `563499e3fe` replaces overloaded headcount with strict
+  `living_total` plus a derived physical/away/reserved/ready view, validates current schema
+  transactionally, repairs bounded legacy state, preserves ownership when a two-person camp is
+  empty because both members are away, and keeps abstract spawn-tile authority byte-stable through
+  materialization and reload. The final build and roster/live-world/save/save-size/handoff filters
+  exit `0`; exact evidence is under `phase2-20260803/roster-authority/MANIFEST.md`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume Phase 2 at the living-total/derived-roster row, then use that validated view for the exact
-   routine-pair policy. Do not reopen Phase-0 statistics unless a later real implementation
-   measurement approaches or exceeds a ratified budget.
+3. Resume Phase 2 by materializing exactly the selected routine pair plus its policy-required local
+   reserve, then route routine camp dispatch through the exact-pair policy. Keep response sizing and
+   micro-site singleton compatibility separate. Do not reopen Phase-0 statistics unless a later real
+   implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `f12180de5f`-source test binary where valid; run one redirected build at a
-   time after implementation invalidates it.
+5. Reuse the current `563499e3fe`-source test binary where valid; run one redirected build at a time
+   after implementation invalidates it.
 6. Phase 1 is closed; keep its transition and all-phase manifests as the persistence baseline.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
-component-idempotency build and focused/full tests completed with explicit exit `0`; earlier failed build
+roster-authority build and focused/full tests completed with explicit exit `0`; earlier failed build
 and fixture attempts are recorded as non-credit in the artifact manifest. The baseline and
-production candidate remain untouched. Do not start another build until the next Phase-1 source
+production candidate remain untouched. Do not start another build until the next Phase-2 source
 change invalidates the current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
