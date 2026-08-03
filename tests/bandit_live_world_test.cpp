@@ -187,7 +187,7 @@ void issue_test_resource_operation( bandit_live_world::world_state &world,
         claimant.find_member( member_id )->state = bandit_live_world::member_state::outbound;
     }
     claimant.active_outing.clear();
-    claimant.active_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    claimant.active_outing.kind = bandit_live_world::outing_kind::scout_sortie;
     claimant.active_outing.activity_id = operation_id;
     claimant.active_outing.camp_id = claimant_site_id;
     claimant.active_outing.generation = operation_generation;
@@ -5899,8 +5899,24 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
            fresh_structural_plan.activity_id );
     CHECK( loaded.sites.front().active_outing.generation ==
            fresh_structural_plan.generation );
+    CHECK( loaded.sites.front().active_outing.member_ids ==
+           fresh_structural_plan.member_ids );
     CHECK( loaded.sites.front().roster().reserved_unresolved_ids ==
            fresh_structural_plan.member_ids );
+
+    bandit_live_world::world_state forged = loaded;
+    bandit_live_world::site_record &forged_site = forged.sites.front();
+    const character_id forged_home_member = forged_site.active_outing.member_ids.back();
+    forged_site.active_outing.member_ids.pop_back();
+    REQUIRE( forged_site.find_member( forged_home_member ) != nullptr );
+    forged_site.find_member( forged_home_member )->state = bandit_live_world::member_state::at_home;
+    REQUIRE( forged_site.roster().valid );
+    const std::string forged_bytes = serialize_world( forged );
+    JsonValue forged_json = json_loader::from_string( forged_bytes );
+    bandit_live_world::world_state protected_world = loaded;
+    const std::string protected_bytes = serialize_world( protected_world );
+    CHECK_THROWS( protected_world.deserialize( forged_json.get_object() ) );
+    CHECK( serialize_world( protected_world ) == protected_bytes );
 
     const std::string before_stale_identity_release = serialize_world( world );
     CHECK_FALSE( bandit_live_world::release_structural_outing_reservation(
@@ -6583,6 +6599,23 @@ TEST_CASE( "bandit_structural_outing_arrival_is_once_only_after_reload",
     CHECK( before_site.intelligence_map.find_lead( lead_id )->bounty == 1 );
     CHECK( before_site.intelligence_map.find_lead( lead_id )->times_harvested == 0 );
     CHECK( before_site.active_outing.local_contact_minutes == 160 );
+
+    const std::string before_same_minute_replay = serialize_world( before_stalk );
+    int replay_threat_reads = 0;
+    const auto replay_threat_lookup = [&replay_threat_reads](
+                                          const bandit_live_world::site_record &,
+                                          const bandit_live_world::camp_map_lead & ) {
+        replay_threat_reads++;
+        return bandit_live_world::structural_threat_read{ 9, true, "replayed same-minute threat" };
+    };
+    const bandit_live_world::structural_outing_result same_minute_replay =
+        bandit_live_world::advance_structural_bounty_outings( before_stalk, 160,
+                replay_threat_lookup );
+    CHECK( same_minute_replay.active_outings_considered == 1 );
+    CHECK( same_minute_replay.stalking_checks_processed == 0 );
+    CHECK( same_minute_replay.arrivals_processed == 0 );
+    CHECK( replay_threat_reads == 0 );
+    CHECK( serialize_world( before_stalk ) == before_same_minute_replay );
 
     bandit_live_world::world_state after_stalk = round_trip_world( before_stalk );
     bandit_live_world::site_record &after_site = after_stalk.sites.front();

@@ -4267,9 +4267,15 @@ void site_record::deserialize( const JsonObject &jo )
     const bool scout_job_is_consistent = active_outing.kind != outing_kind::scout_sortie ||
                                          active_outing.job_type == "scout" ||
                                          active_outing.job_type == "scavenge";
+    const bool structural_identity_is_consistent =
+        active_outing.kind != outing_kind::structural_sortie ||
+        ( active_outing.activity_id == site_id + "#structural" &&
+          ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
+          active_outing.member_ids.size() == 2 );
     bool active_outing_is_consistent = active_outing.is_active() &&
                                        active_outing.kind != outing_kind::hostile_operation &&
                                        scout_job_is_consistent &&
+                                       structural_identity_is_consistent &&
                                        active_outing.camp_id == site_id &&
                                        active_outing.schema_version == 5 &&
                                        active_outing.return_application_key ==
