@@ -356,7 +356,7 @@ struct camp_decision_record {
 };
 
 struct active_outing_state {
-    int schema_version = 4;
+    int schema_version = 5;
     outing_kind kind = outing_kind::none;
     std::string activity_id;
     std::string camp_id;
@@ -438,6 +438,7 @@ struct finite_resource_record {
 enum class finite_resource_claim_status {
     rejected,
     stale,
+    already_applied,
     depleted,
     applied,
 };
@@ -447,10 +448,11 @@ struct finite_resource_claim_result {
     int claimed_units = 0;
     int remaining_units = 0;
     int revision = 0;
+    std::string application_key;
 };
 
 struct site_record {
-    int schema_version = 8;
+    int schema_version = 9;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -470,6 +472,9 @@ struct site_record {
     int applied_report_generation = 0;
     int applied_cargo_generation = 0;
     std::string last_cargo_application_key;
+    int applied_resource_generation = 0;
+    std::string last_resource_application_key;
+    int last_resource_claimed_units = 0;
     scout_report_record current_scout_report;
     camp_decision_record camp_decision;
     std::vector<acted_report_summary> acted_reports;
@@ -772,10 +777,14 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::optional<std::string> &map_extra_id,
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
 finite_resource_claim_result claim_finite_resource_units( world_state &state,
-        const tripoint_abs_omt &omt, const finite_resource_record &expected,
-        int requested_units );
+        const std::string &claimant_site_id, const tripoint_abs_omt &omt,
+        const finite_resource_record &expected,
+        int requested_units, const std::string &operation_id, int operation_generation,
+        const std::string &application_key );
 finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, int undiscovered_units );
+std::string finite_resource_claim_application_key( const std::string &operation_id,
+        int operation_generation, const tripoint_abs_omt &omt );
 int camp_supply_living_total( const site_record &site );
 int camp_supply_cap( const site_record &site );
 bool advance_camp_supply( site_record &site, int now_minutes );

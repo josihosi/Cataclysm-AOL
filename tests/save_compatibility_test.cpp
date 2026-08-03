@@ -24,11 +24,35 @@ overmap_global_state populated_global_state()
     site.supply_accounted_living_total = 2;
     site.supply_member_minute_remainder = 720;
     state.bandit_live_world.sites.push_back( site );
+    bandit_live_world::site_record &stored_site = state.bandit_live_world.sites.back();
     const tripoint_abs_omt resource_omt( 8, 9, 0 );
     const bandit_live_world::finite_resource_record resource_snapshot =
         bandit_live_world::finite_resource_snapshot( state.bandit_live_world, resource_omt, 3 );
-    bandit_live_world::claim_finite_resource_units( state.bandit_live_world, resource_omt,
-            resource_snapshot, 1 );
+    const std::string resource_application_key =
+        bandit_live_world::finite_resource_claim_application_key(
+            stored_site.site_id + "#resource", 1, resource_omt );
+    stored_site.active_outing.clear();
+    stored_site.active_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    stored_site.active_outing.activity_id = stored_site.site_id + "#resource";
+    stored_site.active_outing.camp_id = stored_site.site_id;
+    stored_site.active_outing.generation = 1;
+    stored_site.active_outing.target_omt = resource_omt;
+    stored_site.active_outing.job_type = "scavenge";
+    stored_site.active_outing.owner = bandit_live_world::simulation_owner::abstract;
+    stored_site.active_outing.return_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            stored_site.active_outing.activity_id, 1, "return" );
+    stored_site.active_outing.report_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            stored_site.active_outing.activity_id, 1, "report" );
+    stored_site.active_outing.cargo_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            stored_site.active_outing.activity_id, 1, "cargo" );
+    stored_site.next_outing_generation = 2;
+    bandit_live_world::claim_finite_resource_units( state.bandit_live_world, stored_site.site_id,
+            resource_omt, resource_snapshot, 1, stored_site.site_id + "#resource", 1,
+            resource_application_key );
+    stored_site.active_outing.clear();
 
     zombie_rider_overmap_ai::rider_light_memory rider_memory;
     rider_memory.interest_score = 8;

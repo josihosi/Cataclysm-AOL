@@ -120,6 +120,13 @@ bandit_pursuit_handoff::abstract_group_state make_handoff_group( const std::stri
     bandit_pursuit_handoff::abstract_group_state group;
     group.group_id = group_id;
     group.source_camp_id = source_camp_id;
+    group.activity_generation = 1;
+    group.return_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                       group_id, group.activity_generation, "return" );
+    group.report_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                       group_id, group.activity_generation, "report" );
+    group.cargo_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                      group_id, group.activity_generation, "cargo" );
     group.group_strength = strength;
     group.confidence = confidence;
     group.panic_threshold = 2;

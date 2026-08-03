@@ -1,6 +1,7 @@
 #include "bandit_pursuit_handoff.h"
 
 #include <algorithm>
+#include <set>
 #include <sstream>
 
 namespace bandit_pursuit_handoff
@@ -99,7 +100,70 @@ void push_unique_mark( std::vector<std::string> &marks, const std::string &mark 
         marks.push_back( mark );
     }
 }
+
+bool has_canonical_component_keys( const abstract_group_state &group,
+                                   const return_packet &packet )
+{
+    const std::string expected_return_key = make_operation_component_key(
+                group.group_id, group.activity_generation, "return" );
+    const std::string expected_report_key = make_operation_component_key(
+                group.group_id, group.activity_generation, "report" );
+    const std::string expected_cargo_key = make_operation_component_key(
+                group.group_id, group.activity_generation, "cargo" );
+    return !group.group_id.empty() &&
+           group.return_application_key == expected_return_key &&
+           group.report_application_key == expected_report_key &&
+           group.cargo_application_key == expected_cargo_key &&
+           packet.return_application_key == expected_return_key &&
+           packet.report_application_key == expected_report_key &&
+           packet.cargo_application_key == expected_cargo_key;
+}
+
+bool has_complete_member_return_receipts( const abstract_group_state &group,
+        const return_packet &packet )
+{
+    if( packet.member_return_receipts.size() != group.anchored_identities.size() ) {
+        return false;
+    }
+
+    std::set<std::string> member_ids;
+    std::set<std::string> receipt_keys;
+    for( const anchored_identity_state &identity : group.anchored_identities ) {
+        if( identity.id.empty() || !member_ids.insert( identity.id ).second ) {
+            return false;
+        }
+    }
+
+    std::set<std::string> received_member_ids;
+    for( const member_return_receipt &receipt : packet.member_return_receipts ) {
+        const std::string expected_key = make_operation_component_key(
+                                             group.group_id, group.activity_generation, "return", receipt.member_id );
+        if( member_ids.count( receipt.member_id ) != 1 || receipt.application_key != expected_key ||
+            !received_member_ids.insert( receipt.member_id ).second ||
+            !receipt_keys.insert( receipt.application_key ).second ) {
+            return false;
+        }
+    }
+
+    std::set<std::string> updated_member_ids;
+    for( const anchored_identity_state &update : packet.anchored_identity_updates ) {
+        if( member_ids.count( update.id ) != 1 || !updated_member_ids.insert( update.id ).second ) {
+            return false;
+        }
+    }
+    return received_member_ids == member_ids;
+}
 } // namespace
+
+std::string make_operation_component_key( const std::string &activity_id, const int generation,
+        const std::string &component, const std::string &subject_id )
+{
+    std::string key = activity_id + ':' + component + ':' + std::to_string( generation );
+    if( !subject_id.empty() ) {
+        key += ":member:" + subject_id;
+    }
+    return key;
+}
 
 bool supports_pursuit_handoff( const bandit_dry_run::candidate_debug &candidate )
 {
@@ -137,6 +201,8 @@ entry_payload build_entry_payload( const abstract_group_state &group,
     payload.activity_generation = group.activity_generation;
     payload.handoff_epoch = group.handoff_epoch;
     payload.return_application_key = group.return_application_key;
+    payload.report_application_key = group.report_application_key;
+    payload.cargo_application_key = group.cargo_application_key;
     payload.job_type = winner.job;
     payload.lead_carrier = winner.family;
     payload.mode = choose_entry_mode( winner, context.contact, context.return_pressure );
@@ -180,6 +246,15 @@ return_packet build_return_packet( const entry_payload &entry, const local_outco
     packet.activity_generation = entry.activity_generation;
     packet.handoff_epoch = entry.handoff_epoch;
     packet.return_application_key = entry.return_application_key;
+    packet.report_application_key = entry.report_application_key;
+    packet.cargo_application_key = entry.cargo_application_key;
+    packet.member_return_receipts.reserve( entry.anchored_identities.size() );
+    for( const anchored_identity_state &identity : entry.anchored_identities ) {
+        packet.member_return_receipts.push_back( {
+            identity.id,
+            make_operation_component_key( entry.group_id, entry.activity_generation, "return", identity.id )
+        } );
+    }
     packet.job_type = entry.job_type;
     packet.mode = entry.mode;
     packet.current_target_or_mark = entry.current_target_or_mark;
@@ -218,13 +293,22 @@ return_packet build_return_packet( const entry_payload &entry, const local_outco
     return packet;
 }
 
+bool return_packet_matches_group( const abstract_group_state &group, const return_packet &packet )
+{
+    return packet.valid && packet.group_id == group.group_id &&
+           packet.source_camp_id == group.source_camp_id &&
+           packet.activity_generation == group.activity_generation &&
+           packet.handoff_epoch == group.handoff_epoch &&
+           packet.return_application_key == group.return_application_key &&
+           packet.report_application_key == group.report_application_key &&
+           packet.cargo_application_key == group.cargo_application_key &&
+           has_canonical_component_keys( group, packet ) &&
+           has_complete_member_return_receipts( group, packet );
+}
+
 void apply_return_packet( abstract_group_state &group, const return_packet &packet )
 {
-    if( !packet.valid || packet.group_id != group.group_id ||
-        packet.source_camp_id != group.source_camp_id ||
-        packet.activity_generation != group.activity_generation ||
-        packet.handoff_epoch != group.handoff_epoch ||
-        packet.return_application_key != group.return_application_key ) {
+    if( !return_packet_matches_group( group, packet ) ) {
         return;
     }
 

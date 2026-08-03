@@ -51,6 +51,7 @@ constexpr std::size_t max_sortie_fact_key_length = 128;
 constexpr std::size_t max_sortie_state_key_length = 128;
 constexpr std::size_t max_sortie_summary_length = 512;
 constexpr std::size_t max_camp_decision_reason_length = 256;
+constexpr std::size_t max_operation_application_key_length = 256;
 constexpr int max_finite_resource_units = 3;
 constexpr int max_finite_resource_claim_units = 2;
 constexpr int camp_supply_days_at_capacity = 14;
@@ -84,6 +85,22 @@ bool finite_resource_record_is_valid( const bandit_live_world::finite_resource_r
     return record.remaining_units >= 0 && record.remaining_units < max_finite_resource_units &&
            record.revision > 0 && record.revision <= max_finite_resource_units &&
            record.remaining_units + record.revision <= max_finite_resource_units;
+}
+
+bool resource_receipt_key_matches( const std::string &site_id, const int generation,
+                                   const std::string &application_key )
+{
+    const std::string site_prefix = site_id + "#";
+    const std::string component_marker = ":resource:";
+    const std::string generation_suffix = ":" + std::to_string( generation );
+    const std::size_t component_at = application_key.find( component_marker );
+    return !site_id.empty() && application_key.rfind( site_prefix, 0 ) == 0 &&
+           application_key.size() >= generation_suffix.size() &&
+           component_at != std::string::npos && component_at >= site_prefix.size() &&
+           component_at + component_marker.size() <
+           application_key.size() - generation_suffix.size() &&
+           application_key.compare( application_key.size() - generation_suffix.size(),
+                                    generation_suffix.size(), generation_suffix ) == 0;
 }
 
 void seed_camp_supply( bandit_live_world::site_record &site )
@@ -954,9 +971,17 @@ bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
                                 outing->generation;
     group.handoff_epoch = outing == nullptr ? 0 : outing->handoff_epoch;
     group.return_application_key = outing == nullptr ?
-                                   group.group_id + ":return:" +
-                                   std::to_string( group.activity_generation ) :
+                                   bandit_pursuit_handoff::make_operation_component_key(
+                                       group.group_id, group.activity_generation, "return" ) :
                                    outing->return_application_key;
+    group.report_application_key = outing == nullptr ?
+                                   bandit_pursuit_handoff::make_operation_component_key(
+                                       group.group_id, group.activity_generation, "report" ) :
+                                   outing->report_application_key;
+    group.cargo_application_key = outing == nullptr ?
+                                  bandit_pursuit_handoff::make_operation_component_key(
+                                      group.group_id, group.activity_generation, "cargo" ) :
+                                  outing->cargo_application_key;
     group.group_strength = site.count_live_members();
     group.current_target_or_mark = site.remembered_target_or_mark.empty() && outing != nullptr ?
                                    outing->target_id : site.remembered_target_or_mark;
@@ -3210,7 +3235,9 @@ void active_outing_state::serialize( JsonOut &json ) const
 void active_outing_state::deserialize( const JsonObject &jo )
 {
     active_outing_state candidate;
+    candidate.schema_version = 0;
     jo.read( "schema_version", candidate.schema_version );
+    const int loaded_schema_version = candidate.schema_version;
     std::string kind_string = "none";
     jo.read( "kind", kind_string );
     candidate.kind = outing_kind_from_string( kind_string ).value_or( outing_kind::none );
@@ -3319,6 +3346,27 @@ void active_outing_state::deserialize( const JsonObject &jo )
                              candidate.leader_id ) == candidate.member_ids.end() ) {
             candidate.leader_id = candidate.member_ids.front();
         }
+        normalize_legacy_simulation_owner_state( candidate );
+        const std::string expected_return_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                candidate.activity_id, candidate.generation, "return" );
+        const std::string expected_report_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                candidate.activity_id, candidate.generation, "report" );
+        const std::string expected_cargo_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                candidate.activity_id, candidate.generation, "cargo" );
+        if( loaded_schema_version < 5 ) {
+            candidate.return_application_key = expected_return_key;
+            candidate.report_application_key = expected_report_key;
+            candidate.cargo_application_key = expected_cargo_key;
+        } else if( loaded_schema_version != 5 ||
+                   candidate.return_application_key != expected_return_key ||
+                   candidate.report_application_key != expected_report_key ||
+                   candidate.cargo_application_key != expected_cargo_key ) {
+            jo.throw_error( "active outing has non-canonical component application keys" );
+        }
+        candidate.schema_version = 5;
     }
     *this = std::move( candidate );
 }
@@ -3395,7 +3443,7 @@ void site_record::serialize( JsonOut &json ) const
     normalize_camp_intelligence( bounded );
     normalize_acted_reports( bounded );
     json.start_object();
-    json.member( "schema_version", 8 );
+    json.member( "schema_version", 9 );
     json.member( "site_id", site_id );
     json.member( "source_kind", to_string( source_kind ) );
     json.member( "site_kind", to_string( site_kind ) );
@@ -3415,6 +3463,9 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "applied_report_generation", applied_report_generation );
     json.member( "applied_cargo_generation", applied_cargo_generation );
     json.member( "last_cargo_application_key", last_cargo_application_key );
+    json.member( "applied_resource_generation", applied_resource_generation );
+    json.member( "last_resource_application_key", last_resource_application_key );
+    json.member( "last_resource_claimed_units", last_resource_claimed_units );
     json.member( "current_scout_report", bounded.current_scout_report );
     json.member( "camp_decision", bounded.camp_decision );
     json.member( "acted_reports", bounded.acted_reports );
@@ -3460,6 +3511,9 @@ void site_record::deserialize( const JsonObject &jo )
     applied_report_generation = 0;
     applied_cargo_generation = 0;
     last_cargo_application_key.clear();
+    applied_resource_generation = 0;
+    last_resource_application_key.clear();
+    last_resource_claimed_units = 0;
     current_scout_report.clear();
     camp_decision.clear();
     acted_reports.clear();
@@ -3500,6 +3554,43 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "applied_report_generation", applied_report_generation );
     jo.read( "applied_cargo_generation", applied_cargo_generation );
     jo.read( "last_cargo_application_key", last_cargo_application_key );
+    const bool any_resource_receipt_field =
+        jo.has_member( "applied_resource_generation" ) ||
+        jo.has_member( "last_resource_application_key" ) ||
+        jo.has_member( "last_resource_claimed_units" );
+    const bool complete_resource_receipt =
+        jo.has_member( "applied_resource_generation" ) &&
+        jo.has_member( "last_resource_application_key" ) &&
+        jo.has_member( "last_resource_claimed_units" );
+    if( loaded_schema_version < 9 && any_resource_receipt_field ) {
+        jo.throw_error( "pre-v9 site cannot contain a resource application receipt" );
+    }
+    if( loaded_schema_version >= 9 && !complete_resource_receipt ) {
+        jo.throw_error( "v9 site must contain a complete resource application receipt" );
+    }
+    if( complete_resource_receipt ) {
+        jo.read( "applied_resource_generation", applied_resource_generation );
+        jo.read( "last_resource_application_key", last_resource_application_key );
+        jo.read( "last_resource_claimed_units", last_resource_claimed_units );
+        const bool empty_receipt = applied_resource_generation == 0 &&
+                                   last_resource_application_key.empty() &&
+                                   last_resource_claimed_units == 0;
+        const bool applied_receipt = applied_resource_generation > 0 &&
+                                     applied_resource_generation <
+                                     std::numeric_limits<int>::max() - 1 &&
+                                     !last_resource_application_key.empty() &&
+                                     last_resource_application_key.size() <=
+                                     max_operation_application_key_length &&
+                                     resource_receipt_key_matches( site_id,
+                                             applied_resource_generation,
+                                             last_resource_application_key ) &&
+                                     next_outing_generation > applied_resource_generation &&
+                                     last_resource_claimed_units > 0 &&
+                                     last_resource_claimed_units <= max_finite_resource_claim_units;
+        if( !empty_receipt && !applied_receipt ) {
+            jo.throw_error( "site has an invalid resource application receipt" );
+        }
+    }
     bool scout_report_policy_was_present = false;
     if( jo.has_member( "current_scout_report" ) ) {
         JsonObject report_json = jo.get_object( "current_scout_report" );
@@ -3550,10 +3641,12 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "returned_cargo_stock", returned_cargo_stock );
     const bool active_outing_was_present = jo.has_member( "active_outing" );
     bool active_outing_has_embedded_payload = false;
+    int active_outing_loaded_schema_version = 0;
     std::string legacy_active_group_id;
     if( active_outing_was_present ) {
         JsonObject active_outing_json = jo.get_object( "active_outing" );
         active_outing_has_embedded_payload = active_outing_json.has_member( "member_ids" );
+        active_outing_json.read( "schema_version", active_outing_loaded_schema_version );
         active_outing.deserialize( active_outing_json );
     } else {
         jo.read( "active_group_id", legacy_active_group_id );
@@ -3583,10 +3676,10 @@ void site_record::deserialize( const JsonObject &jo )
         legacy_active_member_ids.push_back( member_id );
     }
     const bool import_transitional_active_payload = !active_outing_was_present ||
-            active_outing.schema_version < 2 ||
-            ( active_outing.schema_version < 4 && !active_outing_has_embedded_payload );
+            ( active_outing_loaded_schema_version < 4 &&
+              !active_outing_has_embedded_payload );
     const bool malformed_current_active_payload = active_outing_was_present &&
-            active_outing.schema_version >= 4 && !active_outing_has_embedded_payload;
+            active_outing_loaded_schema_version >= 4 && !active_outing_has_embedded_payload;
     if( import_transitional_active_payload ) {
         active_outing.member_ids = legacy_active_member_ids;
         active_outing.leader_id = active_outing.member_ids.empty() ? character_id() :
@@ -3675,26 +3768,23 @@ void site_record::deserialize( const JsonObject &jo )
                               simulation_owner::local : simulation_owner::abstract;
         active_outing.last_advanced_minutes = std::max( active_outing.started_minutes,
                                                active_outing.local_contact_minutes );
-        active_outing.return_application_key = legacy_active_group_id + ":return:" +
-                                                std::to_string( active_outing.generation );
     }
     if( active_outing.is_active() ) {
         normalize_legacy_simulation_owner_state( active_outing );
-        active_outing.schema_version = 4;
         if( active_outing.camp_id.empty() ) {
             active_outing.camp_id = site_id;
         }
-        if( active_outing.return_application_key.empty() ) {
-            active_outing.return_application_key = active_outing.activity_id + ":return:" +
-                                                    std::to_string( active_outing.generation );
-        }
-        if( active_outing.report_application_key.empty() ) {
-            active_outing.report_application_key = active_outing.activity_id + ":report:" +
-                                                    std::to_string( active_outing.generation );
-        }
-        if( active_outing.cargo_application_key.empty() ) {
-            active_outing.cargo_application_key = active_outing.activity_id + ":cargo:" +
-                                                   std::to_string( active_outing.generation );
+        if( active_outing.schema_version < 5 ) {
+            active_outing.return_application_key =
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_outing.activity_id, active_outing.generation, "return" );
+            active_outing.report_application_key =
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_outing.activity_id, active_outing.generation, "report" );
+            active_outing.cargo_application_key =
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_outing.activity_id, active_outing.generation, "cargo" );
+            active_outing.schema_version = 5;
         }
         next_outing_generation = std::max( next_outing_generation, active_outing.generation + 1 );
     }
@@ -3759,20 +3849,24 @@ void site_record::deserialize( const JsonObject &jo )
         active_hostile_operation.schema_version = 1;
         normalize_legacy_simulation_owner_state(
             active_hostile_operation.reservation );
-        active_hostile_operation.reservation.schema_version = 4;
         active_hostile_operation.reservation.kind = outing_kind::hostile_operation;
         if( active_hostile_operation.reservation.camp_id.empty() ) {
             active_hostile_operation.reservation.camp_id = site_id;
         }
-        if( active_hostile_operation.reservation.return_application_key.empty() ) {
+        if( active_hostile_operation.reservation.schema_version < 5 ) {
             active_hostile_operation.reservation.return_application_key =
-                active_hostile_operation.reservation.activity_id + ":return:" +
-                std::to_string( active_hostile_operation.reservation.generation );
-        }
-        if( active_hostile_operation.reservation.cargo_application_key.empty() ) {
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_hostile_operation.reservation.activity_id,
+                    active_hostile_operation.reservation.generation, "return" );
+            active_hostile_operation.reservation.report_application_key =
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_hostile_operation.reservation.activity_id,
+                    active_hostile_operation.reservation.generation, "report" );
             active_hostile_operation.reservation.cargo_application_key =
-                active_hostile_operation.reservation.activity_id + ":cargo:" +
-                std::to_string( active_hostile_operation.reservation.generation );
+                bandit_pursuit_handoff::make_operation_component_key(
+                    active_hostile_operation.reservation.activity_id,
+                    active_hostile_operation.reservation.generation, "cargo" );
+            active_hostile_operation.reservation.schema_version = 5;
         }
         next_outing_generation = std::max( next_outing_generation,
                                            active_hostile_operation.reservation.generation + 1 );
@@ -3784,9 +3878,11 @@ void site_record::deserialize( const JsonObject &jo )
     }
     applied_report_generation = std::max( 0, applied_report_generation );
     applied_cargo_generation = std::max( 0, applied_cargo_generation );
+    applied_resource_generation = std::max( 0, applied_resource_generation );
     next_outing_generation = std::max( next_outing_generation, applied_return_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_report_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_cargo_generation + 1 );
+    next_outing_generation = std::max( next_outing_generation, applied_resource_generation + 1 );
 
     const bool both_external_owners_present =
         ( active_outing.is_active() || !active_outing.member_ids.empty() ) &&
@@ -3821,6 +3917,19 @@ void site_record::deserialize( const JsonObject &jo )
                                          active_outing.job_type == "scavenge";
     bool active_outing_is_consistent = active_outing.is_active() && scout_job_is_consistent &&
                                        active_outing.camp_id == site_id &&
+                                       active_outing.schema_version == 5 &&
+                                       active_outing.return_application_key ==
+                                       bandit_pursuit_handoff::make_operation_component_key(
+                                           active_outing.activity_id, active_outing.generation,
+                                           "return" ) &&
+                                       active_outing.report_application_key ==
+                                       bandit_pursuit_handoff::make_operation_component_key(
+                                           active_outing.activity_id, active_outing.generation,
+                                           "report" ) &&
+                                       active_outing.cargo_application_key ==
+                                       bandit_pursuit_handoff::make_operation_component_key(
+                                           active_outing.activity_id, active_outing.generation,
+                                           "cargo" ) &&
                                        active_outing.generation > applied_return_generation &&
                                        active_outing.generation > applied_cargo_generation &&
                                        active_outing.generation > applied_report_generation &&
@@ -3895,12 +4004,15 @@ void site_record::deserialize( const JsonObject &jo )
             ( hostile_reservation.activity_id == expected_hostile_activity_id &&
               hostile_reservation.generation >
               active_hostile_operation.source_report_generation &&
-              hostile_reservation.return_application_key == expected_hostile_activity_id +
-              ":return:" + std::to_string( hostile_reservation.generation ) &&
-              hostile_reservation.report_application_key == expected_hostile_activity_id +
-              ":report:" + std::to_string( hostile_reservation.generation ) &&
-              hostile_reservation.cargo_application_key == expected_hostile_activity_id +
-              ":cargo:" + std::to_string( hostile_reservation.generation ) );
+              hostile_reservation.return_application_key ==
+              bandit_pursuit_handoff::make_operation_component_key(
+                  expected_hostile_activity_id, hostile_reservation.generation, "return" ) &&
+              hostile_reservation.report_application_key ==
+              bandit_pursuit_handoff::make_operation_component_key(
+                  expected_hostile_activity_id, hostile_reservation.generation, "report" ) &&
+              hostile_reservation.cargo_application_key ==
+              bandit_pursuit_handoff::make_operation_component_key(
+                  expected_hostile_activity_id, hostile_reservation.generation, "cargo" ) );
     const bool hostile_reserve_is_consistent = legacy_withdrawal_only ||
             active_hostile_operation.phase != hostile_operation_phase::assembling ||
             hostile_operation_party_preserves_home( *this,
@@ -4048,7 +4160,7 @@ void site_record::deserialize( const JsonObject &jo )
     }
     normalize_camp_intelligence( *this );
     normalize_acted_reports( *this );
-    schema_version = 8;
+    schema_version = 9;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -4402,16 +4514,38 @@ finite_resource_record finite_resource_snapshot( const world_state &state,
                                     max_finite_resource_units ), 0 };
 }
 
+std::string finite_resource_claim_application_key( const std::string &operation_id,
+        const int operation_generation, const tripoint_abs_omt &omt )
+{
+    const std::string component = "resource:" + std::to_string( omt.x() ) + "," +
+                                  std::to_string( omt.y() ) + "," +
+                                  std::to_string( omt.z() );
+    return bandit_pursuit_handoff::make_operation_component_key(
+               operation_id, operation_generation, component );
+}
+
 finite_resource_claim_result claim_finite_resource_units( world_state &state,
-        const tripoint_abs_omt &omt, const finite_resource_record &expected,
-        const int requested_units )
+        const std::string &claimant_site_id, const tripoint_abs_omt &omt,
+        const finite_resource_record &expected,
+        const int requested_units, const std::string &operation_id,
+        const int operation_generation, const std::string &application_key )
 {
     finite_resource_claim_result result;
+    site_record *claimant = state.find_site( claimant_site_id );
+    const active_outing_state *issued_operation = claimant == nullptr ? nullptr :
+            claimant->active_external_outing();
     if( requested_units <= 0 || requested_units > max_finite_resource_claim_units ||
         expected.remaining_units < 0 || expected.remaining_units > max_finite_resource_units ||
-        expected.revision < 0 || expected.revision > max_finite_resource_units ) {
+        expected.revision < 0 || expected.revision > max_finite_resource_units ||
+        claimant == nullptr || claimant_site_id.empty() || operation_generation <= 0 ||
+        operation_generation >= std::numeric_limits<int>::max() - 1 ||
+        operation_id.rfind( claimant_site_id + "#", 0 ) != 0 ||
+        application_key.size() > max_operation_application_key_length ||
+        application_key != finite_resource_claim_application_key(
+            operation_id, operation_generation, omt ) ) {
         return result;
     }
+    result.application_key = application_key;
 
     const auto current = state.finite_resources.find( omt );
     if( current != state.finite_resources.end() ) {
@@ -4420,6 +4554,29 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
         if( !finite_resource_record_is_valid( current->second ) ) {
             return result;
         }
+    }
+
+    if( operation_generation < claimant->applied_resource_generation ) {
+        result.status = finite_resource_claim_status::stale;
+        return result;
+    }
+    if( operation_generation == claimant->applied_resource_generation ) {
+        if( application_key == claimant->last_resource_application_key ) {
+            result.status = finite_resource_claim_status::already_applied;
+            result.claimed_units = claimant->last_resource_claimed_units;
+        }
+        return result;
+    }
+    if( issued_operation == nullptr || !issued_operation->is_active() ||
+        issued_operation->activity_id != operation_id ||
+        issued_operation->generation != operation_generation ||
+        issued_operation->target_omt != omt || issued_operation->job_type != "scavenge" ||
+        ( issued_operation->kind != outing_kind::structural_sortie &&
+          issued_operation->kind != outing_kind::scout_sortie ) ) {
+        return result;
+    }
+
+    if( current != state.finite_resources.end() ) {
         if( current->second.remaining_units != expected.remaining_units ||
             current->second.revision != expected.revision ) {
             result.status = finite_resource_claim_status::stale;
@@ -4448,6 +4605,9 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
     } else {
         current->second = updated;
     }
+    claimant->applied_resource_generation = operation_generation;
+    claimant->last_resource_application_key = application_key;
+    claimant->last_resource_claimed_units = claimed_units;
     state.schema_version = 4;
     result.status = finite_resource_claim_status::applied;
     result.claimed_units = claimed_units;
@@ -5573,12 +5733,15 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     site.active_outing.started_minutes = now_minutes;
     site.active_outing.local_contact_minutes = -1;
     site.active_outing.last_progress_minutes = now_minutes;
-    site.active_outing.return_application_key = site.active_outing.activity_id + ":return:" +
-            std::to_string( site.active_outing.generation );
-    site.active_outing.report_application_key = site.active_outing.activity_id + ":report:" +
-            std::to_string( site.active_outing.generation );
-    site.active_outing.cargo_application_key = site.active_outing.activity_id + ":cargo:" +
-            std::to_string( site.active_outing.generation );
+    site.active_outing.return_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            site.active_outing.activity_id, site.active_outing.generation, "return" );
+    site.active_outing.report_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            site.active_outing.activity_id, site.active_outing.generation, "report" );
+    site.active_outing.cargo_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            site.active_outing.activity_id, site.active_outing.generation, "cargo" );
     lead->status = camp_lead_status::active;
     lead->last_outcome = "structural_outing_active";
     advance_camp_map_lead_revision( site, *lead );
@@ -6058,12 +6221,15 @@ hostile_operation_plan plan_hostile_operation( const site_record &site,
     reservation.last_progress_minutes = current_minutes;
     reservation.last_advanced_minutes = current_minutes;
     reservation.owner = simulation_owner::abstract;
-    reservation.return_application_key = reservation.activity_id + ":return:" +
-                                         std::to_string( reservation.generation );
-    reservation.report_application_key = reservation.activity_id + ":report:" +
-                                         std::to_string( reservation.generation );
-    reservation.cargo_application_key = reservation.activity_id + ":cargo:" +
-                                        std::to_string( reservation.generation );
+    reservation.return_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "return" );
+    reservation.report_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "report" );
+    reservation.cargo_application_key =
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "cargo" );
     plan.valid = true;
     plan.notes.push_back( "hostile operation ready: fresh report-pinned party at rally " +
                           rally_omt.to_string() );
@@ -6111,12 +6277,15 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
         reservation.started_minutes != reservation.last_progress_minutes ||
         reservation.started_minutes != reservation.last_advanced_minutes ||
         reservation.owner != simulation_owner::abstract || reservation.handoff_epoch != 0 ||
-        reservation.return_application_key != reservation.activity_id + ":return:" +
-        std::to_string( reservation.generation ) ||
-        reservation.report_application_key != reservation.activity_id + ":report:" +
-        std::to_string( reservation.generation ) ||
-        reservation.cargo_application_key != reservation.activity_id + ":cargo:" +
-        std::to_string( reservation.generation ) ||
+        reservation.return_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "return" ) ||
+        reservation.report_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "report" ) ||
+        reservation.cargo_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            reservation.activity_id, reservation.generation, "cargo" ) ||
         !reservation.observations.empty() || !reservation.casualty_ids.empty() ||
         !reservation.resolved_member_ids.empty() || reservation.cargo.supply_units != 0 ||
         reservation.cargo.trade_value != 0 ) {
@@ -6174,8 +6343,18 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
         plan.group.handoff_epoch != 0 ||
         plan.entry.handoff_epoch != plan.group.handoff_epoch ||
         plan.group.activity_generation <= site.applied_return_generation ||
-        plan.entry.return_application_key.empty() ||
-        plan.entry.return_application_key != plan.group.return_application_key ) {
+        plan.entry.return_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            plan.entry.group_id, plan.entry.activity_generation, "return" ) ||
+        plan.entry.report_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            plan.entry.group_id, plan.entry.activity_generation, "report" ) ||
+        plan.entry.cargo_application_key !=
+        bandit_pursuit_handoff::make_operation_component_key(
+            plan.entry.group_id, plan.entry.activity_generation, "cargo" ) ||
+        plan.entry.return_application_key != plan.group.return_application_key ||
+        plan.entry.report_application_key != plan.group.report_application_key ||
+        plan.entry.cargo_application_key != plan.group.cargo_application_key ) {
         return false;
     }
 
@@ -6209,10 +6388,8 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     site.active_outing.owner = simulation_owner::abstract;
     site.active_outing.handoff_epoch = plan.entry.handoff_epoch;
     site.active_outing.return_application_key = plan.entry.return_application_key;
-    site.active_outing.report_application_key = plan.entry.group_id + ":report:" +
-            std::to_string( plan.entry.activity_generation );
-    site.active_outing.cargo_application_key = plan.entry.group_id + ":cargo:" +
-            std::to_string( plan.entry.activity_generation );
+    site.active_outing.report_application_key = plan.entry.report_application_key;
+    site.active_outing.cargo_application_key = plan.entry.cargo_application_key;
     site.next_outing_generation++;
     site.active_outing.target_id = plan.target_id;
     site.active_outing.target_omt = plan.target_omt;
@@ -7157,6 +7334,8 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     const bool scout_return = site.active_outing.kind == outing_kind::scout_sortie;
     const bool assessment_scout_return = scout_return &&
                                          site.active_outing.job_type == "scout";
+    const bandit_pursuit_handoff::abstract_group_state packet_group =
+        make_site_memory_group( site );
     if( !packet.valid || packet.source_camp_id != site.site_id ||
         !site.active_outing.is_active() ||
         site.active_outing.kind == outing_kind::structural_sortie ||
@@ -7167,6 +7346,9 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         packet.activity_generation != site.active_outing.generation ||
         packet.handoff_epoch != site.active_outing.handoff_epoch ||
         packet.return_application_key != site.active_outing.return_application_key ||
+        packet.report_application_key != site.active_outing.report_application_key ||
+        packet.cargo_application_key != site.active_outing.cargo_application_key ||
+        !bandit_pursuit_handoff::return_packet_matches_group( packet_group, packet ) ||
         packet.activity_generation <= site.applied_return_generation ||
         packet.activity_generation <= site.applied_cargo_generation ||
         packet.activity_generation <= site.applied_report_generation ||
@@ -7306,7 +7488,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
 
     record_scout_return_lead( site, packet, bandit_losses );
 
-    bandit_pursuit_handoff::abstract_group_state remembered_group = make_site_memory_group( site );
+    bandit_pursuit_handoff::abstract_group_state remembered_group = packet_group;
     bandit_pursuit_handoff::apply_return_packet( remembered_group, packet );
     apply_group_memory( site, remembered_group );
 
@@ -7594,6 +7776,8 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     packet.activity_generation = site.active_outing.generation;
     packet.handoff_epoch = site.active_outing.handoff_epoch;
     packet.return_application_key = site.active_outing.return_application_key;
+    packet.report_application_key = site.active_outing.report_application_key;
+    packet.cargo_application_key = site.active_outing.cargo_application_key;
     packet.job_type = job_template_from_string( site.active_outing.job_type ).value_or(
                           bandit_dry_run::job_template::hold_chill );
     packet.current_target_or_mark = site.active_outing.target_id;
@@ -7604,6 +7788,13 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
 
     bool saw_loss = false;
     for( const character_id &member_id : site.active_outing.member_ids ) {
+        const std::string member_token = std::to_string( member_id.get_value() );
+        packet.member_return_receipts.push_back( {
+            member_token,
+            bandit_pursuit_handoff::make_operation_component_key(
+                site.active_outing.activity_id, site.active_outing.generation,
+                "return", member_token )
+        } );
         const auto iter = std::find_if( observations.begin(), observations.end(),
         [&member_id]( const active_member_observation &observation ) {
             return observation.npc_id == member_id;
@@ -7611,7 +7802,6 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
         if( iter == observations.end() ) {
             return std::nullopt;
         }
-
         switch( iter->state ) {
             case active_member_observation_state::unresolved:
             case active_member_observation_state::local_contact:

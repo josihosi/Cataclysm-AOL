@@ -89,12 +89,19 @@ struct anchored_identity_state {
     std::string status = "alive";
 };
 
+struct member_return_receipt {
+    std::string member_id;
+    std::string application_key;
+};
+
 struct abstract_group_state {
     std::string group_id;
     std::string source_camp_id;
     int activity_generation = 0;
     int handoff_epoch = 0;
     std::string return_application_key;
+    std::string report_application_key;
+    std::string cargo_application_key;
     int group_strength = 0;
     int confidence = 0;
     int panic_threshold = 0;
@@ -129,6 +136,8 @@ struct entry_payload {
     int activity_generation = 0;
     int handoff_epoch = 0;
     std::string return_application_key;
+    std::string report_application_key;
+    std::string cargo_application_key;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     bandit_dry_run::lead_family lead_carrier = bandit_dry_run::lead_family::none;
     entry_mode mode = entry_mode::withdrawal;
@@ -180,6 +189,9 @@ struct return_packet {
     int activity_generation = 0;
     int handoff_epoch = 0;
     std::string return_application_key;
+    std::string report_application_key;
+    std::string cargo_application_key;
+    std::vector<member_return_receipt> member_return_receipts;
     bandit_dry_run::job_template job_type = bandit_dry_run::job_template::hold_chill;
     entry_mode mode = entry_mode::withdrawal;
     std::string current_target_or_mark;
@@ -200,6 +212,8 @@ struct return_packet {
 };
 
 bool supports_pursuit_handoff( const bandit_dry_run::candidate_debug &candidate );
+std::string make_operation_component_key( const std::string &activity_id, int generation,
+        const std::string &component, const std::string &subject_id = {} );
 entry_mode choose_entry_mode( const bandit_dry_run::candidate_debug &candidate,
                               contact_certainty contact,
                               return_pressure_state return_pressure );
@@ -207,6 +221,8 @@ entry_payload build_entry_payload( const abstract_group_state &group,
                                    const bandit_dry_run::candidate_debug &winner,
                                    const entry_context &context );
 return_packet build_return_packet( const entry_payload &entry, const local_outcome &outcome );
+bool return_packet_matches_group( const abstract_group_state &group,
+                                  const return_packet &packet );
 void apply_return_packet( abstract_group_state &group, const return_packet &packet );
 
 std::string to_string( contact_certainty certainty );
