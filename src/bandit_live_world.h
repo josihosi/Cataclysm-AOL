@@ -475,6 +475,25 @@ struct routine_scout_policy_result {
     std::string rejection_reason;
 };
 
+struct routine_member_readiness_snapshot {
+    bool present = true;
+    bool dead = false;
+    int hp_percent = 100;
+    bool sleeping = false;
+    bool incapacitated = false;
+};
+
+struct routine_scout_pair_selection_result {
+    bool eligible = false;
+    character_id observer_id;
+    character_id escort_id;
+    int observer_capability = 0;
+    int escort_capability = 0;
+    bool return_safe_escort = false;
+    std::vector<character_id> member_ids;
+    std::string rejection_reason;
+};
+
 struct response_party_policy_result {
     bool applies = false;
     bool eligible = false;
@@ -834,6 +853,8 @@ bool advance_camp_supply( site_record &site, int now_minutes );
 int advance_world_camp_supplies( world_state &state, int now_minutes );
 routine_scout_policy_result routine_scout_policy( const site_record &site );
 int routine_scout_materialization_count( const site_record &site );
+bool routine_member_is_unready( const routine_member_readiness_snapshot &snapshot );
+routine_scout_pair_selection_result select_routine_scout_pair( const site_record &site );
 response_party_policy_result response_party_policy( const site_record &site,
         bandit_dry_run::job_template job, int requested_party_size = 0 );
 response_party_selection_result select_fresh_response_party( const site_record &site,

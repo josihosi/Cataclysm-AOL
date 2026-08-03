@@ -1371,6 +1371,32 @@ std::vector<character_id> select_dispatch_members( const bandit_live_world::site
     return member_ids;
 }
 
+struct routine_member_capability {
+    int observer = 0;
+    int escort = 0;
+    int defender = 0;
+};
+
+routine_member_capability routine_capability_for_template( const std::string &template_id )
+{
+    if( template_id == "bandit" || template_id == "cannibal_hunter" ) {
+        return { 3, 2, 2 };
+    }
+    if( template_id == "bandit_mechanic" ) {
+        return { 2, 2, 2 };
+    }
+    if( template_id == "hells_raiders_boss" || template_id == "cannibal_camp_leader" ) {
+        return { 2, 3, 4 };
+    }
+    if( template_id == "thug" || template_id == "cannibal_butcher" ) {
+        return { 1, 3, 3 };
+    }
+    if( template_id == "bandit_trader" || template_id == "bandit_quartermaster" ) {
+        return { 1, 1, 1 };
+    }
+    return {};
+}
+
 bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_live_world::site_record &site,
         const std::vector<character_id> &member_ids, const std::string &target_id )
 {
@@ -3648,6 +3674,14 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "supply_member_minute_remainder", supply_member_minute_remainder );
     jo.read( "footprint", footprint );
     jo.read( "members", members );
+    const std::string migrated_member_template =
+        effective_profile( *this ) == hostile_site_profile::cannibal_camp ?
+        "cannibal_hunter" : "bandit";
+    for( member_record &member : members ) {
+        if( member.npc_template_id.empty() ) {
+            member.npc_template_id = migrated_member_template;
+        }
+    }
     if( loaded_schema_version < 10 ) {
         living_total = std::max( std::max( 0, legacy_headcount ), count_live_members() );
     } else if( living_total < count_live_members() ) {
@@ -4706,6 +4740,83 @@ int routine_scout_materialization_count( const site_record &site )
     }
     return std::min( roster.unmaterialized_home_total,
                      std::max( 0, policy.concrete_ready_goal - roster.ready_concrete_total ) );
+}
+
+bool routine_member_is_unready( const routine_member_readiness_snapshot &snapshot )
+{
+    return !snapshot.present || snapshot.dead || snapshot.hp_percent <= 50 ||
+           snapshot.sleeping || snapshot.incapacitated;
+}
+
+routine_scout_pair_selection_result select_routine_scout_pair( const site_record &site )
+{
+    routine_scout_pair_selection_result selection;
+    const routine_scout_policy_result policy = routine_scout_policy( site );
+    if( !policy.eligible ) {
+        selection.rejection_reason = policy.rejection_reason;
+        return selection;
+    }
+
+    const member_record *observer = nullptr;
+    routine_member_capability observer_capability;
+    for( const member_record &member : site.members ) {
+        if( member.state != member_state::at_home || member.wounded_or_unready ) {
+            continue;
+        }
+        const routine_member_capability capability = routine_capability_for_template(
+                    member.npc_template_id );
+        if( capability.observer <= 0 ) {
+            continue;
+        }
+        if( observer == nullptr || capability.observer > observer_capability.observer ||
+            ( capability.observer == observer_capability.observer &&
+              capability.defender < observer_capability.defender ) ||
+            ( capability.observer == observer_capability.observer &&
+              capability.defender == observer_capability.defender &&
+              member.npc_id < observer->npc_id ) ) {
+            observer = &member;
+            observer_capability = capability;
+        }
+    }
+    if( observer == nullptr ) {
+        selection.rejection_reason = "no ready member has routine observer capability";
+        return selection;
+    }
+
+    const member_record *escort = nullptr;
+    routine_member_capability escort_capability;
+    for( const member_record &member : site.members ) {
+        if( member.npc_id == observer->npc_id || member.state != member_state::at_home ||
+            member.wounded_or_unready ) {
+            continue;
+        }
+        const routine_member_capability capability = routine_capability_for_template(
+                    member.npc_template_id );
+        if( capability.escort < 2 ) {
+            continue;
+        }
+        if( escort == nullptr || capability.defender < escort_capability.defender ||
+            ( capability.defender == escort_capability.defender &&
+              capability.escort > escort_capability.escort ) ||
+            ( capability.defender == escort_capability.defender &&
+              capability.escort == escort_capability.escort && member.npc_id < escort->npc_id ) ) {
+            escort = &member;
+            escort_capability = capability;
+        }
+    }
+    if( escort == nullptr ) {
+        selection.rejection_reason = "no second ready member has return-safe escort capability";
+        return selection;
+    }
+
+    selection.eligible = true;
+    selection.observer_id = observer->npc_id;
+    selection.escort_id = escort->npc_id;
+    selection.observer_capability = observer_capability.observer;
+    selection.escort_capability = escort_capability.escort;
+    selection.return_safe_escort = true;
+    selection.member_ids = { selection.observer_id, selection.escort_id };
+    return selection;
 }
 
 response_party_policy_result response_party_policy( const site_record &site,
@@ -6177,11 +6288,12 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
 
     plan.job = lead.target_id == "forest" ? bandit_dry_run::job_template::scavenge :
                bandit_dry_run::job_template::scout;
-    plan.member_ids = select_dispatch_members( site, routine_policy.party_size );
-    if( static_cast<int>( plan.member_ids.size() ) != routine_policy.party_size ) {
-        plan.notes.push_back( "structural outing blocked: no selectable ready pair" );
+    const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
+    if( !pair_selection.eligible ) {
+        plan.notes.push_back( "structural outing blocked: " + pair_selection.rejection_reason );
         return plan;
     }
+    plan.member_ids = pair_selection.member_ids;
     plan.expected_stalking_minutes = now_minutes >= 0 ?
                                      now_minutes + structural_outing_stalking_delay_minutes( site, lead ) : -1;
     plan.expected_arrival_minutes = now_minutes >= 0 ?
@@ -6196,6 +6308,9 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     plan.notes.push_back( "structural outing is non-player camp routine traffic, not pursuit handoff" );
     plan.notes.push_back( "routine pair keeps local reserve=" +
                           std::to_string( routine_policy.required_local_reserve ) );
+    plan.notes.push_back( "routine roles observer=" +
+                          std::to_string( pair_selection.observer_id.get_value() ) +
+                          " escort=" + std::to_string( pair_selection.escort_id.get_value() ) );
     return plan;
 }
 
@@ -6246,8 +6361,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         return false;
     }
     const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
     if( !routine_policy.eligible ||
-        static_cast<int>( plan.member_ids.size() ) != routine_policy.party_size ) {
+        !pair_selection.eligible || plan.member_ids != pair_selection.member_ids ) {
         return false;
     }
     std::vector<character_id> checked_member_ids;
@@ -6589,7 +6705,21 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         selected_member_count = response_policy.party_size;
     }
 
-    plan.member_ids = select_dispatch_members( site, selected_member_count );
+    if( is_routine_scout_job( decision.intent ) ) {
+        const routine_scout_pair_selection_result pair_selection =
+            select_routine_scout_pair( site );
+        if( !pair_selection.eligible ) {
+            plan.notes.push_back( "camp-map dispatch blocked: " +
+                                  pair_selection.rejection_reason );
+            return plan;
+        }
+        plan.member_ids = pair_selection.member_ids;
+        plan.notes.push_back( "routine roles observer=" +
+                              std::to_string( pair_selection.observer_id.get_value() ) +
+                              " escort=" + std::to_string( pair_selection.escort_id.get_value() ) );
+    } else {
+        plan.member_ids = select_dispatch_members( site, selected_member_count );
+    }
     if( static_cast<int>( plan.member_ids.size() ) != selected_member_count ) {
         plan.notes.push_back( "camp-map dispatch blocked: not enough at-home members survived selection" );
         return plan;
@@ -6716,7 +6846,21 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         selected_reserve = response_policy.required_local_reserve;
     }
 
-    plan.member_ids = select_dispatch_members( site, required_members );
+    if( is_routine_scout_job( winner.job ) && rules.profile !=
+        hostile_site_profile::small_hostile_site ) {
+        const routine_scout_pair_selection_result pair_selection =
+            select_routine_scout_pair( site );
+        if( !pair_selection.eligible ) {
+            plan.notes.push_back( "dispatch blocked: " + pair_selection.rejection_reason );
+            return plan;
+        }
+        plan.member_ids = pair_selection.member_ids;
+        plan.notes.push_back( "routine roles observer=" +
+                              std::to_string( pair_selection.observer_id.get_value() ) +
+                              " escort=" + std::to_string( pair_selection.escort_id.get_value() ) );
+    } else {
+        plan.member_ids = select_dispatch_members( site, required_members );
+    }
     if( static_cast<int>( plan.member_ids.size() ) != required_members ) {
         plan.notes.push_back( "dispatch blocked: not enough at-home members survived selection" );
         return plan;
@@ -6931,9 +7075,10 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
                                             referenced_lead != nullptr &&
                                             referenced_lead->revision == plan.target_lead_revision;
     const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
     const bool routine_party_size_is_valid = routine_policy.applies ?
-            routine_policy.eligible &&
-            static_cast<int>( plan.member_ids.size() ) == routine_policy.party_size :
+            routine_policy.eligible && pair_selection.eligible &&
+            plan.member_ids == pair_selection.member_ids :
             effective_profile( site ) == hostile_site_profile::small_hostile_site &&
             plan.member_ids.size() == 1;
     if( !plan.valid || !referenced_lead_is_current || !routine_party_size_is_valid ||

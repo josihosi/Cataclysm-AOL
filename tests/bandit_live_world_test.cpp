@@ -692,6 +692,125 @@ TEST_CASE( "bandit_live_world_routine_policy_sizes_exact_pairs_and_materializati
     CHECK( micro_response.party_size == 1 );
 }
 
+TEST_CASE( "bandit_live_world_selects_ready_capable_observer_and_lightest_safe_escort",
+           "[bandit][live_world][routine_policy][capability]" )
+{
+    bandit_live_world::routine_member_readiness_snapshot readiness;
+    CHECK_FALSE( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness.hp_percent = 51;
+    CHECK_FALSE( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness.hp_percent = 50;
+    CHECK( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness = {};
+    readiness.present = false;
+    CHECK( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness = {};
+    readiness.dead = true;
+    CHECK( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness = {};
+    readiness.sleeping = true;
+    CHECK( bandit_live_world::routine_member_is_unready( readiness ) );
+    readiness = {};
+    readiness.incapacitated = true;
+    CHECK( bandit_live_world::routine_member_is_unready( readiness ) );
+
+    bandit_live_world::world_state bandit_world;
+    const std::vector<std::string> bandit_templates = {
+        "hells_raiders_boss", "bandit_trader", "thug", "bandit", "bandit_mechanic"
+    };
+    for( int index = 0; index < static_cast<int>( bandit_templates.size() ); ++index ) {
+        REQUIRE( bandit_live_world::claim_tracked_spawn(
+                     bandit_world, bandit_templates[index], character_id( 47700 + index ),
+                     tripoint_abs_ms( 240 + index, 480, 0 ), std::string( "bandit_camp" ),
+                     std::nullopt, special_lookup ) );
+    }
+    bandit_live_world::site_record &bandit_site = bandit_world.sites.front();
+    const bandit_live_world::routine_scout_pair_selection_result bandit_pair =
+        bandit_live_world::select_routine_scout_pair( bandit_site );
+    REQUIRE( bandit_pair.eligible );
+    CHECK( bandit_pair.observer_id == character_id( 47703 ) );
+    CHECK( bandit_pair.escort_id == character_id( 47704 ) );
+    CHECK( bandit_pair.observer_capability == 3 );
+    CHECK( bandit_pair.escort_capability == 2 );
+    CHECK( bandit_pair.return_safe_escort );
+    const std::vector<character_id> expected_bandit_pair = {
+        character_id( 47703 ), character_id( 47704 )
+    };
+    CHECK( bandit_pair.member_ids == expected_bandit_pair );
+
+    bandit_live_world::site_record reordered_bandit_site = bandit_site;
+    std::reverse( reordered_bandit_site.members.begin(), reordered_bandit_site.members.end() );
+    CHECK( bandit_live_world::select_routine_scout_pair(
+               reordered_bandit_site ).member_ids == expected_bandit_pair );
+
+    bandit_site.find_member( character_id( 47704 ) )->wounded_or_unready = true;
+    const bandit_live_world::routine_scout_pair_selection_result fallback_escort =
+        bandit_live_world::select_routine_scout_pair( bandit_site );
+    REQUIRE( fallback_escort.eligible );
+    CHECK( fallback_escort.observer_id == character_id( 47703 ) );
+    CHECK( fallback_escort.escort_id == character_id( 47702 ) );
+    bandit_site.find_member( character_id( 47704 ) )->wounded_or_unready = false;
+
+    bandit_live_world::site_record unsafe_escort_site = bandit_site;
+    for( bandit_live_world::member_record &member : unsafe_escort_site.members ) {
+        if( member.npc_id != character_id( 47703 ) ) {
+            member.npc_template_id = "bandit_trader";
+        }
+    }
+    const bandit_live_world::routine_scout_pair_selection_result unsafe_pair =
+        bandit_live_world::select_routine_scout_pair( unsafe_escort_site );
+    CHECK_FALSE( unsafe_pair.eligible );
+    CHECK( unsafe_pair.rejection_reason ==
+           "no second ready member has return-safe escort capability" );
+
+    bandit_live_world::camp_map_lead stale_lead;
+    stale_lead.lead_id = "capability-scout-lead";
+    stale_lead.status = bandit_live_world::camp_lead_status::stale;
+    stale_lead.target_id = "capability-target";
+    stale_lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    stale_lead.bounty = 8;
+    stale_lead.confidence = 1;
+    bandit_site.intelligence_map.leads.push_back( stale_lead );
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( bandit_site, stale_lead );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::scout );
+    CHECK( plan.member_ids == expected_bandit_pair );
+
+    bandit_site.find_member( bandit_pair.observer_id )->wounded_or_unready = true;
+    const std::string before_stale_apply = serialize_world( bandit_world );
+    CHECK_FALSE( bandit_live_world::apply_dispatch_plan( bandit_site, plan ) );
+    CHECK( serialize_world( bandit_world ) == before_stale_apply );
+    bandit_site.find_member( bandit_pair.observer_id )->wounded_or_unready = false;
+    REQUIRE( bandit_live_world::apply_dispatch_plan( bandit_site, plan ) );
+    CHECK( bandit_site.active_outing.member_ids == expected_bandit_pair );
+    CHECK( bandit_site.active_outing.leader_id == bandit_pair.observer_id );
+
+    bandit_live_world::world_state cannibal_world;
+    const std::vector<std::string> cannibal_templates = {
+        "cannibal_camp_leader", "cannibal_butcher", "cannibal_hunter", "cannibal_hunter"
+    };
+    for( int index = 0; index < static_cast<int>( cannibal_templates.size() ); ++index ) {
+        REQUIRE( bandit_live_world::claim_tracked_spawn(
+                     cannibal_world, cannibal_templates[index], character_id( 47800 + index ),
+                     tripoint_abs_ms( 1680 + index, 1920, 0 ), std::string( "cannibal_camp" ),
+                     std::nullopt, special_lookup ) );
+    }
+    bandit_live_world::site_record &cannibal_site = cannibal_world.sites.front();
+    const bandit_live_world::routine_scout_pair_selection_result cannibal_pair =
+        bandit_live_world::select_routine_scout_pair( cannibal_site );
+    REQUIRE( cannibal_pair.eligible );
+    CHECK( cannibal_pair.observer_id == character_id( 47802 ) );
+    CHECK( cannibal_pair.escort_id == character_id( 47803 ) );
+    CHECK( cannibal_pair.return_safe_escort );
+    cannibal_site.find_member( character_id( 47803 ) )->wounded_or_unready = true;
+    const bandit_live_world::routine_scout_pair_selection_result cannibal_fallback =
+        bandit_live_world::select_routine_scout_pair( cannibal_site );
+    REQUIRE( cannibal_fallback.eligible );
+    CHECK( cannibal_fallback.observer_id == character_id( 47802 ) );
+    CHECK( cannibal_fallback.escort_id == character_id( 47801 ) );
+}
+
 TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
            "[bandit][live_world][roster][migration]" )
 {
@@ -705,6 +824,8 @@ TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
     CHECK( migrated.roster().physically_present_total == 2 );
     REQUIRE( migrated.spawn_tiles.size() == 1 );
     CHECK( migrated.spawn_tiles.front().assigned_living_total == 2 );
+    CHECK( migrated.members.front().npc_template_id == "bandit" );
+    CHECK( migrated.members.back().npc_template_id == "bandit" );
 
     bandit_live_world::world_state migrated_world;
     migrated_world.sites.push_back( migrated );
@@ -1026,7 +1147,7 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
 TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_world]" )
 {
     bandit_live_world::world_state original;
-    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_quartermaster", character_id( 301 ),
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_mechanic", character_id( 301 ),
              tripoint_abs_ms( 960, 1200, 0 ), std::string( "bandit_work_camp" ), std::nullopt,
              special_lookup ) );
     REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit", character_id( 302 ),
@@ -1069,7 +1190,7 @@ TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_
     REQUIRE( site.footprint.size() == 9 );
     REQUIRE( site.members.size() == 2 );
     CHECK( site.members.front().npc_id == character_id( 301 ) );
-    CHECK( site.members.front().npc_template_id == "bandit_quartermaster" );
+    CHECK( site.members.front().npc_template_id == "bandit_mechanic" );
     CHECK( site.members.back().npc_id == character_id( 302 ) );
     REQUIRE( site.spawn_tiles.size() == 2 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 960, 1200, 0 ) )->assigned_living_total == 1 );
@@ -1082,7 +1203,8 @@ TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_
            "overmap_special:bandit_work_camp@40,50,0#dispatch:return:1" );
     CHECK( site.active_outing.target_id == "player_basecamp_nearby" );
     REQUIRE( site.active_outing.member_ids ==
-             std::vector<character_id>( { character_id( 301 ), character_id( 302 ) } ) );
+             std::vector<character_id>( { character_id( 302 ), character_id( 301 ) } ) );
+    CHECK( site.active_outing.leader_id == character_id( 302 ) );
 }
 
 TEST_CASE( "bandit_live_world_deserialize_commits_only_after_the_packet_is_valid",
@@ -4627,7 +4749,7 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     REQUIRE( bandit_live_world::claim_tracked_spawn( original, "thug", character_id( 1002 ),
              tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
              special_lookup ) );
-    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_quartermaster", character_id( 2001 ),
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_mechanic", character_id( 2001 ),
              tripoint_abs_ms( 960, 1200, 0 ), std::string( "bandit_work_camp" ), std::nullopt,
              special_lookup ) );
     REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit", character_id( 2002 ),
@@ -4714,7 +4836,8 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     CHECK( loaded_work_camp.active_outing.activity_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
     CHECK( loaded_work_camp.active_outing.target_id == "player@48,50,0" );
     REQUIRE( loaded_work_camp.active_outing.member_ids ==
-             std::vector<character_id>( { character_id( 2001 ), character_id( 2002 ) } ) );
+             std::vector<character_id>( { character_id( 2002 ), character_id( 2001 ) } ) );
+    CHECK( loaded_work_camp.active_outing.leader_id == character_id( 2002 ) );
     CHECK( loaded_work_camp.find_member( character_id( 2001 ) )->state ==
            bandit_live_world::member_state::outbound );
     CHECK( loaded_work_camp.find_member( character_id( 2002 ) )->state ==
@@ -4761,7 +4884,8 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     CHECK( loaded_work_camp.living_total == 2 );
     CHECK( loaded_work_camp.active_outing.activity_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
     REQUIRE( loaded_work_camp.active_outing.member_ids ==
-             std::vector<character_id>( { character_id( 2001 ), character_id( 2002 ) } ) );
+             std::vector<character_id>( { character_id( 2002 ), character_id( 2001 ) } ) );
+    CHECK( loaded_work_camp.active_outing.leader_id == character_id( 2002 ) );
     CHECK( loaded_work_camp.find_member( character_id( 2001 ) )->state ==
            bandit_live_world::member_state::outbound );
     CHECK( loaded_work_camp.find_member( character_id( 2002 ) )->state ==

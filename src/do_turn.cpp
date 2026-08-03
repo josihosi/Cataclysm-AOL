@@ -107,10 +107,14 @@ static const activity_id ACT_OPERATION( "ACT_OPERATION" );
 static const bionic_id bio_alarm( "bio_alarm" );
 
 static const efftype_id effect_controlled( "controlled" );
+static const efftype_id effect_downed( "downed" );
+static const efftype_id effect_narcosis( "narcosis" );
 static const efftype_id effect_npc_suspend( "npc_suspend" );
 static const efftype_id effect_run( "run" );
 static const efftype_id effect_ridden( "ridden" );
 static const efftype_id effect_sleep( "sleep" );
+static const efftype_id effect_stunned( "stunned" );
+static const efftype_id effect_psi_stunned( "psi_stunned" );
 
 static const event_statistic_id event_statistic_last_words( "last_words" );
 
@@ -1462,6 +1466,36 @@ npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kin
             break;
     }
     return npc_template_id::NULL_ID();
+}
+
+void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state )
+{
+    std::unordered_map<int, npc *> loaded_npcs;
+    overmap_buffer.foreach_npc( [&loaded_npcs]( npc &guy ) {
+        loaded_npcs.emplace( guy.getID().get_value(), &guy );
+    } );
+
+    for( bandit_live_world::site_record &site : state.sites ) {
+        for( bandit_live_world::member_record &member : site.members ) {
+            if( member.state != bandit_live_world::member_state::at_home ) {
+                continue;
+            }
+            const auto found = loaded_npcs.find( member.npc_id.get_value() );
+            const npc *guy = found == loaded_npcs.end() ? nullptr : found->second;
+            bandit_live_world::routine_member_readiness_snapshot snapshot;
+            snapshot.present = guy != nullptr;
+            if( guy != nullptr ) {
+                snapshot.dead = guy->is_dead();
+                snapshot.hp_percent = guy->hp_percentage();
+                snapshot.sleeping = guy->in_sleep_state();
+                snapshot.incapacitated = guy->has_effect( effect_downed ) ||
+                                         guy->has_effect( effect_stunned ) ||
+                                         guy->has_effect( effect_psi_stunned ) ||
+                                         guy->has_effect( effect_narcosis );
+            }
+            member.wounded_or_unready = bandit_live_world::routine_member_is_unready( snapshot );
+        }
+    }
 }
 
 int live_bandit_materialize_abstract_members_for_dispatch(
@@ -2973,6 +3007,9 @@ void overmap_npc_move()
         signal_live_zombie_riders_from_light_observations( live_signals );
     }
     const auto signal_done = std::chrono::steady_clock::now();
+    if( dispatch_cadence_due || structural_cadence_due ) {
+        refresh_live_bandit_member_readiness( bandit_state );
+    }
     if( dispatch_cadence_due ) {
         steer_live_bandit_dispatch_toward_player( live_signals );
     } else if( signal_cadence_due ) {
