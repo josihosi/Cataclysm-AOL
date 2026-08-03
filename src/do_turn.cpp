@@ -3218,6 +3218,9 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
         result.threat_omt = omt;
         result.danger_low = threat.danger_low;
         result.danger_high = threat.danger_high;
+        result.visual_quality = std::clamp( sight_points, 1, 3 );
+        result.uncertainty_radius_omt = overlap ? 0 : 1;
+        result.equipment_detail = sight_points >= 3 ? 1 : 0;
         result.stable_threat_ids = threat.stable_ids;
         result.summary = "ordinary OMT observer read live threat at " + omt.to_string();
         const bool hard_danger = std::min( 1000, 5 * result.danger_high ) >= 750 ||

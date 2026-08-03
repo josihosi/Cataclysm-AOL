@@ -954,6 +954,9 @@ struct abstract_threat_read {
     tripoint_abs_omt threat_omt;
     int danger_low = 0;
     int danger_high = 0;
+    int visual_quality = 1;
+    int uncertainty_radius_omt = 1;
+    int equipment_detail = 0;
     std::vector<std::string> stable_threat_ids;
     std::vector<abstract_threat_detour_read> detours;
     std::string summary;

@@ -9282,8 +9282,8 @@ TEST_CASE( "hostile_camp_abstract_threat_observer_is_corridor_bounded_and_detour
         const bandit_live_world::camp_map_lead *lead =
             site.intelligence_map.find_lead( site.active_outing.target_id );
         REQUIRE( lead != nullptr );
-        CHECK( lead->status == bandit_live_world::camp_lead_status::dangerous );
-        CHECK( lead->last_outcome == "visible_route_threat_withdrawal" );
+        CHECK( lead->status == bandit_live_world::camp_lead_status::active );
+        CHECK_FALSE( lead->threat_confirmed );
     }
 
     SECTION( "forward danger defers while the party is inside local reality" ) {
@@ -9352,6 +9352,169 @@ TEST_CASE( "hostile_camp_abstract_threat_observer_is_corridor_bounded_and_detour
         CHECK( lead->times_harvested == 0 );
         CHECK( lead->bounty == 1 );
     }
+}
+
+TEST_CASE( "hostile_camp_structural_observer_records_owned_evidence_before_returning_report",
+           "[bandit][live_world][structural_bounty][abstract_threat][phase4_observation]" )
+{
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        bandit_live_world::world_state world = make_abstract_threat_test_world(
+                    cannibal, cannibal ? 15655 : 15650 );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.routine_no_candidate_streak = 2;
+        const character_id observer_id = site.active_outing.leader_id;
+        const int target_revision = site.active_outing.target_lead_revision;
+        const std::string lead_id = site.active_outing.target_lead_id;
+        const std::vector<tripoint_abs_omt> route = site.active_outing.shared_route;
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        const std::string lead_before_observation = serialize_camp_map_lead( *lead );
+
+        int observer_calls = 0;
+        bandit_live_world::advance_structural_bounty_outings(
+            world, abstract_threat_test_stalking_minutes, {},
+        [&observer_calls]( const bandit_live_world::site_record &,
+                          const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            observer_calls++;
+            REQUIRE_FALSE( request.visible_forward_omts.empty() );
+            bandit_live_world::abstract_threat_read read = make_abstract_threat_read(
+                        request.visible_forward_omts.front(), 150, false );
+            read.visual_quality = 2;
+            read.uncertainty_radius_omt = 1;
+            read.equipment_detail = 1;
+            return read;
+        } );
+        REQUIRE( observer_calls == 1 );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        const bandit_live_world::sortie_observation &observation =
+            site.active_outing.observations.front();
+        CHECK( observation.record_schema_version == 1 );
+        CHECK( observation.observer_id == observer_id );
+        CHECK( observation.source_omt == route[2] );
+        CHECK( observation.receiver_omt == route[1] );
+        CHECK( observation.target_revision == target_revision );
+        CHECK( observation.sense == bandit_live_world::sortie_observation_sense::visual );
+        CHECK( observation.defender_ids == std::vector<std::string> { "horde:test" } );
+        CHECK( observation.observed_power_low == 150 );
+        CHECK( observation.observed_power_high == 150 );
+        CHECK( observation.bucket_start_minutes == 150 );
+        CHECK( observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::shared );
+        lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before_observation );
+
+        const std::string before_same_minute_replay = serialize_world( world );
+        bandit_live_world::advance_structural_bounty_outings(
+            world, abstract_threat_test_stalking_minutes, {},
+        []( const bandit_live_world::site_record &,
+           const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            return make_abstract_threat_read( request.current_omt, 200 );
+        } );
+        CHECK( serialize_world( world ) == before_same_minute_replay );
+
+        world = round_trip_world( world );
+        bandit_live_world::advance_structural_bounty_outings(
+            world, abstract_threat_test_stalking_minutes + 1, {} );
+        CHECK( world.sites.front().active_outing.observations.size() == 1 );
+        lead = world.sites.front().intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before_observation );
+
+        const int return_minutes = world.sites.front().active_outing.expected_return_minutes;
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes, {} );
+        lead = world.sites.front().intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->status == bandit_live_world::camp_lead_status::dangerous );
+        CHECK( lead->threat_confirmed );
+        CHECK( lead->threat == 150 );
+        CHECK( lead->last_outcome == "returned_shared_structural_threat_report" );
+        CHECK( world.sites.front().routine_no_candidate_streak == 2 );
+    }
+
+    SECTION( "an overlap that loses the observer cannot teach the camp" ) {
+        bandit_live_world::world_state world = make_abstract_threat_test_world( false, 15670 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const character_id observer_id = site.active_outing.leader_id;
+        REQUIRE( site.find_member( observer_id ) != nullptr );
+        site.find_member( observer_id )->npc_template_id = "bandit_trader";
+        for( const character_id member_id : site.active_outing.member_ids ) {
+            if( member_id != observer_id ) {
+                REQUIRE( site.find_member( member_id ) != nullptr );
+                site.find_member( member_id )->npc_template_id = "hells_raiders_boss";
+            }
+        }
+        const std::string lead_id = site.active_outing.target_lead_id;
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        const std::string lead_before_observation = serialize_camp_map_lead( *lead );
+        const int party_power = bandit_live_world::structural_outing_party_power( site );
+        bandit_live_world::advance_structural_bounty_outings(
+            world, abstract_threat_test_stalking_minutes, {},
+        [party_power]( const bandit_live_world::site_record &,
+                       const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            return make_abstract_threat_read( request.current_omt, party_power );
+        } );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        CHECK( site.active_outing.observations.front().share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        REQUIRE( site.find_member( observer_id ) != nullptr );
+        CHECK( site.find_member( observer_id )->state == bandit_live_world::member_state::missing );
+        lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before_observation );
+
+        const int return_minutes = site.active_outing.expected_return_minutes;
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes, {} );
+        lead = world.sites.front().intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before_observation );
+    }
+
+    SECTION( "local simulation ownership excludes the abstract writer" ) {
+        bandit_live_world::world_state world = make_abstract_threat_test_world( true, 15690 );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.active_outing.owner = bandit_live_world::simulation_owner::local;
+        int observer_calls = 0;
+        const std::string before = serialize_world( world );
+        bandit_live_world::advance_structural_bounty_outings(
+            world, abstract_threat_test_stalking_minutes, {},
+        [&observer_calls]( const bandit_live_world::site_record &,
+                          const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            observer_calls++;
+            return make_abstract_threat_read( request.current_omt, 200 );
+        } );
+        CHECK( observer_calls == 0 );
+        CHECK( serialize_world( world ) == before );
+    }
+}
+
+TEST_CASE( "hostile_camp_below_gate_observation_does_not_stall_route_progress",
+           "[bandit][live_world][structural_bounty][abstract_threat][phase4_observation]" )
+{
+    bandit_live_world::world_state world = make_abstract_threat_test_world( false, 15700 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::advance_structural_bounty_outings(
+        world, abstract_threat_test_stalking_minutes, {},
+    []( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        REQUIRE_FALSE( request.visible_forward_omts.empty() );
+        return make_abstract_threat_read( request.visible_forward_omts.front(), 1, false );
+    } );
+
+    REQUIRE( site.active_outing.observations.size() == 1 );
+    CHECK_FALSE( site.active_outing.observations.front().critical );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+    CHECK( site.active_outing.local_contact_minutes == abstract_threat_test_stalking_minutes );
+    CHECK( site.active_outing.last_advanced_minutes == abstract_threat_test_stalking_minutes );
 }
 
 TEST_CASE( "hostile_camp_abstract_overlap_uses_exact_party_power_boundaries_and_stable_casualties",
