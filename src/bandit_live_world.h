@@ -326,6 +326,7 @@ struct local_handoff_member_snapshot {
     character_id npc_id;
     tripoint_abs_ms prior_position;
     tripoint_abs_ms entry_position;
+    tripoint_abs_ms staging_position;
     tripoint_abs_ms exit_position;
     int hp_percent = 0;
     bool dead = false;
@@ -335,7 +336,7 @@ struct local_handoff_member_snapshot {
 };
 
 struct local_handoff_snapshot {
-    int schema_version = 2;
+    int schema_version = 3;
     std::string activity_id;
     int activity_generation = 0;
     int handoff_epoch = -1;
@@ -347,6 +348,11 @@ struct local_handoff_snapshot {
     sortie_cargo cargo;
     std::vector<character_id> casualty_ids;
     std::vector<local_handoff_member_snapshot> members;
+    character_id cohesion_leader_id;
+    int cohesion_deadline_minutes = -1;
+    int cohesion_reroutes_used = 0;
+    bool cohesion_assembled = false;
+    bool cohesion_abort_return = false;
     int committed_minutes = -1;
 
     void clear();
@@ -363,6 +369,7 @@ struct local_handoff_member_read {
     int hp_percent = 0;
     tripoint_abs_ms current_position;
     tripoint_abs_ms entry_position;
+    tripoint_abs_ms staging_position;
 };
 
 struct local_handoff_plan {
@@ -384,6 +391,25 @@ struct local_dematerialization_plan {
     bool valid = false;
     simulation_advance_cursor expected_cursor;
     local_handoff_snapshot resume_snapshot;
+    std::vector<std::string> notes;
+};
+
+struct local_cohesion_member_read {
+    character_id npc_id;
+    bool present = false;
+    bool dead = false;
+    tripoint_abs_ms current_position;
+};
+
+struct local_cohesion_plan {
+    bool valid = false;
+    simulation_advance_cursor expected_cursor;
+    local_handoff_snapshot snapshot;
+    character_id leader_id;
+    character_id follower_id;
+    std::vector<std::pair<character_id, tripoint_abs_ms>> movement_orders;
+    bool reroute_needed = false;
+    bool abort_return = false;
     std::vector<std::string> notes;
 };
 
@@ -1133,6 +1159,11 @@ bool record_local_pair_member_death( site_record &site,
                                      character_id member_id,
                                      const tripoint_abs_ms &death_position,
                                      int current_minutes );
+local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_cohesion_member_read> &member_reads );
+bool commit_local_pair_cohesion( site_record &site, const local_cohesion_plan &plan,
+                                 bool route_attempted, bool route_failed );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
