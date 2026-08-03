@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 1 AUTHORITATIVE PERSISTENT MODEL
+**Status:** ACTIVE / GREEN / PHASE 2 ROSTER AUTHORITY AND PAIRED DISPATCH
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -132,8 +132,15 @@ Component idempotency is checkpointed at `f12180de5f`: canonical return/report/c
 per-member receipts validate before mutation, persist through schema migration, and remain bounded
 after operation closure. New resource claims require the exact issued camp operation; forged or
 terminal receipts fail atomically. Empty/normal/saturated state is 87/6,020/48,265 bytes.
-Current execution row: add bounded on-demand structured transition events, then complete all-phase
-save/load proof before closing Phase 1.
+Phase 1 is complete through transition checkpoint `16649b77b0` and all-phase persistence checkpoint
+`e408c9c450`. Bounded opt-in events retain exact operation/generation, final owner, phase change,
+reason, and minute without entering saves. A real hostile operation now round-trips at every active
+phase plus `lost` without synthetic transitions or duplicate/mutated operation, report, receipt,
+reservation, or member state.
+
+Current execution row: Phase 2 first establishes one explicit living-total authority and a derived,
+validated roster view for physical presence, away, reserved, and ready members. The following slice
+uses that view for exact-pair routine scouting while keeping response-party sizing separate.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

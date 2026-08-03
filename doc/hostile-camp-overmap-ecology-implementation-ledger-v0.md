@@ -448,9 +448,9 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
 - [x] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.
 - [x] Validate a complete packet before mutating any member, roster count, cargo, resource, or dossier state; replay after save/load is a no-op rather than a duplicate credit.
-- [ ] Add minimal structured transition events now: operation ID/generation, simulation owner, previous/new phase, reason, and turn. Keep them bounded/on-demand rather than a persisted prose log.
+- [x] Add minimal structured transition events now: operation ID/generation, simulation owner, previous/new phase, reason, and turn. Keep them bounded/on-demand rather than a persisted prose log.
 - [x] Add old-save migration and round-trip tests, including missing/new fields and legacy active groups.
-- [ ] Save/load every active phase without duplicate members, operations, transitions, reports, depletion, or cargo.
+- [x] Save/load every active phase without duplicate members, operations, transitions, reports, depletion, or cargo.
 - [x] Add a brief durable mechanic description to `TechnicalTome.md` once the model is real.
 - [x] Run serialization byte benchmarks at empty, normal, and saturated state.
 
@@ -545,6 +545,19 @@ Evidence:
   37/1,028, and overmap save 2/24. Empty/normal/saturated state is 87/6,020/48,265 bytes,
   byte-stable below 64 KiB. Final xhigh AutoReview is clean at 0.98. Exact logs and hashes are in
   the external `phase1-20260802/component-keys/MANIFEST.md` packet.
+- Transition checkpoint `16649b77b0` adds opt-in, non-persisted events with exact activity and
+  generation, committed final owner, prior/new phase, reason, and minute. The probe retains at most
+  64 events, rejects any copied string above 256 bytes, and accounts every rejected/full-buffer
+  event in one aggregate drop count. Final Mac build exits `0`; transition events pass 3/79, full
+  live-world 102/5,178, and overmap save 2/24 at seed `830204929`. The external
+  `phase1-20260802/transition-events/MANIFEST.md` records commands, hashes, the accepted review
+  fixes, and why a request for categorized counters was outside the bounded contract.
+- All-phase checkpoint `e408c9c450` drives one real hostile operation through every active phase
+  plus `lost` and round-trips the full world twice at each point. Loads synthesize zero transition
+  events and preserve the sole operation/generation/owner, report and component pins, unique member
+  reservations/resolutions, and member states. The exact case passes 1/833 and full live-world
+  passes 103/6,011 at seed `830204929`; logs and hashes are in the external
+  `phase1-20260802/all-phase-roundtrip/MANIFEST.md` packet.
 
 ## Phase 2 - roster authority, paired dispatch, and reservations
 

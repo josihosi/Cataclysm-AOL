@@ -19,9 +19,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 ## Active execution state
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
-- Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: add bounded, on-demand structured transition
-  events with operation identity/generation, final simulation owner, phase change, reason, and turn.
+- Active phase: Phase 2 - roster authority, paired dispatch, and reservations.
+- First unchecked deterministic execution row: persist and validate distinct living-total,
+  physically-present, away, reserved, and ready roster authorities without overloading headcount.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phase 0 is complete; Phase 1 component idempotency is checkpointed at
@@ -180,18 +180,24 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   manifest SHA-256
   `fe377b62d12766fae0fca3fa07c03278d33f5d5963b9eb83fff4645e2b6304b0` is under
   `phase1-20260802/report-policy`.
+- Transition checkpoint `16649b77b0` adds bounded, opt-in, non-persisted committed phase events.
+  Its final build and transition/live-world/save filters exit `0`; exact evidence is under
+  `phase1-20260802/transition-events`.
+- All-active-phase checkpoint `e408c9c450` round-trips a real hostile operation through every phase
+  plus `lost` without duplicate state or synthetic events. The exact case passes 1/833 and full
+  live-world 103/6,011; exact evidence is under `phase1-20260802/all-phase-roundtrip`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Add only the bounded on-demand transition-event seam on top of `f12180de5f`, then prove every
-   active phase survives save/load without duplicate state. Do not reopen Phase-0 statistics unless
-   a later real implementation measurement approaches or exceeds a ratified budget.
+3. Resume Phase 2 at the living-total/derived-roster row, then use that validated view for the exact
+   routine-pair policy. Do not reopen Phase-0 statistics unless a later real implementation
+   measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
 5. Reuse the current `f12180de5f`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Complete bounded transition events and all-phase round trips before closing Phase 1.
+6. Phase 1 is closed; keep its transition and all-phase manifests as the persistence baseline.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
 component-idempotency build and focused/full tests completed with explicit exit `0`; earlier failed build

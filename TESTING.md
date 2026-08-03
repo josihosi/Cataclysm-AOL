@@ -418,9 +418,17 @@ authorization, terminal generation guards, and atomic malformed current-schema l
 Final xhigh AutoReview is clean at 0.98; exact commands and hashes are in the external
 `phase1-20260802/component-keys/MANIFEST.md` packet.
 
-The active missing evidence is Phase 1:
-- bounded on-demand transition events with committed final owner and no save persistence;
-- world-level save/load proof for every active scout and hostile phase without duplicate effects.
+Phase 1 is green. Transition checkpoint `16649b77b0` passes 3 cases / 79 assertions, full
+live-world 102 / 5,178, and overmap save 2 / 24. All-phase checkpoint `e408c9c450` passes its exact
+world-level hostile phase case at 1 / 833 and full live-world at 103 / 6,011. Loads emit no
+diagnostic transition events and preserve canonical loaded state. Exact commands, caveats, hashes,
+and binaries are under external `phase1-20260802/transition-events/` and
+`phase1-20260802/all-phase-roundtrip/`.
+
+The active missing evidence is Phase 2: migrate and validate one living-total authority, derive
+disjoint physical/away/reserved/ready roster sets, and table-test that authority before changing
+routine dispatch to exact pairs. Keep response-party sizing and micro-site singleton compatibility
+separate.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
