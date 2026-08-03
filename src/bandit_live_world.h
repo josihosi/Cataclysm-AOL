@@ -673,6 +673,8 @@ struct structural_bounty_scan_result {
 struct structural_outing_plan {
     bool valid = false;
     std::string site_id;
+    std::string activity_id;
+    int generation = 0;
     std::string lead_id;
     int lead_revision = 0;
     tripoint_abs_omt target_omt;

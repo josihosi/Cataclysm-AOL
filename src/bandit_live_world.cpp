@@ -6239,6 +6239,8 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
 {
     structural_outing_plan plan;
     plan.site_id = site.site_id;
+    plan.activity_id = site.site_id + "#structural";
+    plan.generation = site.next_outing_generation;
     plan.lead_id = lead.lead_id;
     plan.lead_revision = lead.revision;
     plan.target_omt = lead.omt;
@@ -6255,6 +6257,11 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     }
     if( site.has_active_outside_pressure() ) {
         plan.notes.push_back( "structural outing blocked: active outside group/contact blocks dogpile" );
+        return plan;
+    }
+    if( !camp_decision_allows_dispatch( site.camp_decision,
+                                        bandit_dry_run::job_template::scout ) ) {
+        plan.notes.push_back( "structural outing blocked: camp mission slot is not idle" );
         return plan;
     }
     if( lead.kind != camp_lead_kind::structural_bounty ) {
@@ -6339,12 +6346,19 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         const int now_minutes )
 {
-    if( !plan.valid || plan.site_id != site.site_id || plan.lead_id.empty() ||
+    if( !plan.valid || plan.site_id != site.site_id ||
+        plan.activity_id != site.site_id + "#structural" ||
+        plan.generation <= 0 || plan.generation != site.next_outing_generation ||
+        plan.lead_id.empty() ||
         plan.lead_revision <= 0 || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ) {
         return false;
     }
     if( site.has_active_outside_pressure() ) {
+        return false;
+    }
+    if( !camp_decision_allows_dispatch( site.camp_decision,
+                                        bandit_dry_run::job_template::scout ) ) {
         return false;
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
@@ -6394,9 +6408,10 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     }
     candidate.active_outing.clear();
     candidate.active_outing.kind = outing_kind::structural_sortie;
-    candidate.active_outing.activity_id = candidate.site_id + "#structural";
+    candidate.active_outing.activity_id = plan.activity_id;
     candidate.active_outing.camp_id = candidate.site_id;
-    candidate.active_outing.generation = candidate.next_outing_generation++;
+    candidate.active_outing.generation = plan.generation;
+    candidate.next_outing_generation++;
     candidate.active_outing.member_ids = plan.member_ids;
     candidate.active_outing.leader_id = plan.member_ids.front();
     candidate.active_outing.phase = scout_phase::outbound;

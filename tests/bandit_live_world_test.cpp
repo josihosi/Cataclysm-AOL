@@ -5662,6 +5662,115 @@ TEST_CASE( "bandit_structural_outing_planner_blocks_active_outside_pressure",
     CHECK_FALSE( bandit_live_world::apply_structural_bounty_outing_plan( site, open_plan, 100 ) );
 }
 
+TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_generation",
+           "[bandit][live_world][reservation][generation][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 3; ++index ) {
+        add_bandit_camp_member( world, index, 14450 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt structural_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read structural_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                 site, structural_omt, structural_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                    site.site_id, structural_omt, "forest" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+
+    const bandit_live_world::structural_outing_plan stale_structural_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( stale_structural_plan.valid );
+    CHECK( stale_structural_plan.activity_id == site.site_id + "#structural" );
+    CHECK( stale_structural_plan.generation == 1 );
+
+    const bandit_live_world::dispatch_plan first_dispatch =
+        bandit_live_world::plan_site_dispatch(
+            site, tripoint_abs_omt( 18, 20, 0 ), "reservation-first-target" );
+    REQUIRE( first_dispatch.valid );
+    CHECK( first_dispatch.entry.activity_generation == stale_structural_plan.generation );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, first_dispatch ) );
+    const std::string first_reservation = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::apply_structural_bounty_outing_plan(
+                     site, stale_structural_plan, 100 ) );
+    CHECK( serialize_world( world ) == first_reservation );
+    REQUIRE( site.roster().valid );
+    CHECK( site.roster().reserved_unresolved_ids == first_dispatch.member_ids );
+    CHECK( site.active_outing.activity_id == first_dispatch.entry.group_id );
+    CHECK( site.active_outing.generation == first_dispatch.entry.activity_generation );
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 2;
+    outcome.result = bandit_pursuit_handoff::mission_result::scouted;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::still_valid;
+    const bandit_pursuit_handoff::return_packet packet =
+        bandit_pursuit_handoff::build_return_packet( first_dispatch.entry, outcome );
+    REQUIRE( bandit_live_world::apply_return_packet( site, packet ) );
+    REQUIRE( site.camp_decision.state ==
+             bandit_live_world::camp_decision_state::report_awaiting_assessment );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK_FALSE( bandit_live_world::plan_structural_bounty_outing(
+                     site, *lead, 100 ).valid );
+
+    const int report_revision = site.camp_decision.source_report_revision;
+    const int report_generation = site.camp_decision.source_report_generation;
+    REQUIRE( bandit_live_world::transition_camp_decision_state(
+                 site, bandit_live_world::camp_decision_state::report_awaiting_assessment,
+                 bandit_live_world::camp_decision_state::cooldown,
+                 report_revision, report_generation, 0, 0,
+                 "reservation test report assessed" ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    REQUIRE( bandit_live_world::transition_camp_decision_state(
+                 site, bandit_live_world::camp_decision_state::cooldown,
+                 bandit_live_world::camp_decision_state::idle,
+                 report_revision, report_generation, 0, -1,
+                 "reservation test cooldown elapsed" ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    REQUIRE( site.next_outing_generation == 2 );
+    const std::string after_first_resolution = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::apply_structural_bounty_outing_plan(
+                     site, stale_structural_plan, 100 ) );
+    CHECK( serialize_world( world ) == after_first_resolution );
+
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    const bandit_live_world::structural_outing_plan fresh_structural_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( fresh_structural_plan.valid );
+    CHECK( fresh_structural_plan.generation == 2 );
+    const bandit_live_world::dispatch_plan competing_dispatch =
+        bandit_live_world::plan_site_dispatch(
+            site, tripoint_abs_omt( 19, 20, 0 ), "reservation-competing-target" );
+    REQUIRE( competing_dispatch.valid );
+    CHECK( competing_dispatch.entry.activity_generation == fresh_structural_plan.generation );
+
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan(
+                 site, fresh_structural_plan, 100 ) );
+    REQUIRE( site.roster().valid );
+    CHECK( site.active_outing.activity_id == fresh_structural_plan.activity_id );
+    CHECK( site.active_outing.generation == fresh_structural_plan.generation );
+    CHECK( site.active_outing.member_ids == fresh_structural_plan.member_ids );
+    CHECK( site.roster().reserved_unresolved_ids == fresh_structural_plan.member_ids );
+    CHECK( site.next_outing_generation == 3 );
+    const std::string structural_reservation = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::apply_dispatch_plan( site, competing_dispatch ) );
+    CHECK( serialize_world( world ) == structural_reservation );
+
+    const bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 1 );
+    REQUIRE( loaded.sites.front().roster().valid );
+    CHECK( loaded.sites.front().active_outing.activity_id ==
+           fresh_structural_plan.activity_id );
+    CHECK( loaded.sites.front().active_outing.generation ==
+           fresh_structural_plan.generation );
+    CHECK( loaded.sites.front().roster().reserved_unresolved_ids ==
+           fresh_structural_plan.member_ids );
+}
+
 TEST_CASE( "bandit_structural_dispatch_holds_high_known_threat_low_reward",
            "[bandit][live_world][structural_bounty]" )
 {
