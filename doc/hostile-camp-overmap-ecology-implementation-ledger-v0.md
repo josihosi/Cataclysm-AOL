@@ -715,10 +715,10 @@ Evidence defaults: significant sound 3h; smoke/light 6h; mobile threat 24h; huma
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
 - [ ] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory.
 - [ ] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety.
-- [ ] Give the party one shared high-level route and one movement owner.
+- [x] Give the party one shared high-level route and one movement owner.
 - [ ] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner.
 - [ ] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement.
-- [ ] Record `last_advanced_turn` and reject a second advance in the same owner generation.
+- [x] Record `last_advanced_turn` and reject a second advance in the same owner generation.
 - [ ] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent.
 - [ ] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return.
 - [ ] Define group arrival as the required surviving members assembled at staging, not first-member arrival.
@@ -767,7 +767,16 @@ Evidence:
   threat read. Final build exits `0`; resource passes 4/2,117, structural bounty 24/524, and full
   live-world 112/7,556 at seed `830204929`. Exact logs and hashes are in external
   `phase3-20260803/persistent-pair/MANIFEST.md`.
-- Commits: `3424fd5c24` (shared routine parity); `0247de602e` (exact persistent pair).
+- Shared route: `e537ea7b49` persists one canonical route and movement cursor for the exact pair,
+  advances through approach/target/home at fixed clocks, migrates only the exact prior route-less
+  structural shape, and rejects malformed routes, clocks, identity, or same-minute replay before
+  mutation. Final structural/live-world/handoff/save/save-size gates pass 24/594, 112/7,626,
+  10/275, 2/24, and 1/10. A bounded 100-site/1,000-update smoke passes 1/31 with maintenance p95
+  182,271 ns, max 207,916 ns, 245,760-byte replay RSS delta, 525,009-byte serialized growth, and
+  all 50 eligible sites serviced; its 234-update wait remains the next scheduler repair, not a
+  claimed fairness pass. Exact evidence is in external `phase3-20260803/shared-route/MANIFEST.md`.
+- Commits: `3424fd5c24` (shared routine parity); `0247de602e` (exact persistent pair);
+  `e537ea7b49` (shared route and movement cursor).
 - Natural outing harness:
 - Resource concurrency test:
 - Reality-boundary test:

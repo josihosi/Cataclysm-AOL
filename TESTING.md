@@ -495,8 +495,16 @@ weakening production validation. The redirected build exits `0`; at seed `830204
 passes 4/2,117, structural bounty 24/524, and full live-world 112/7,556. The 80,530,056-byte
 binary SHA-256 is `be785a035be1d41d35e66c638975d949685f7120bb6e76fb8a4f02b8b6c028c5`;
 exact commands, logs, and hashes are in external `phase3-20260803/persistent-pair/MANIFEST.md`.
-Current validation target is a persisted bounded shared route, followed by the eight-sector
-least-recent frontier cursor.
+The persisted bounded shared route is green at `e537ea7b49`. Final structural/live-world/handoff/
+overmap-save/save-size gates pass 24/594, 112/7,626, 10/275, 2/24, and 1/10 at seed `830204929`.
+The 80,603,832-byte test binary is SHA-256
+`6cc628872f13f3665f8df837b5abecdae5fb1a072682615dd4d491ddce14a724`. A bounded
+100-site/1,000-update structural smoke passes 1/31 with 0.182 ms maintenance p95, 0.208 ms max,
+245,760-byte replay RSS delta, 525,009-byte serialized growth, and all 50 eligible camps serviced.
+Its 234-update legacy wait is retained as evidence for the scheduler row, not claimed as a
+fairness pass. Exact logs and JSON are archived in external
+`phase3-20260803/shared-route/MANIFEST.md`. Current validation target is the persisted eight-sector
+least-recent frontier cursor and bounded two-radius route coverage.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
