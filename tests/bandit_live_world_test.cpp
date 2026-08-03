@@ -5781,10 +5781,9 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
     CHECK( serialize_world( world ) == before_stale_identity_release );
 
     const character_id resolved_casualty = fresh_structural_plan.member_ids.front();
-    site.active_outing.resolved_member_ids.push_back( resolved_casualty );
-    site.active_outing.casualty_ids.push_back( resolved_casualty );
-    REQUIRE( bandit_live_world::update_member_state(
-                 site, resolved_casualty, bandit_live_world::member_state::dead,
+    REQUIRE( bandit_live_world::record_matching_external_outing_casualty(
+                 site, fresh_structural_plan.activity_id, fresh_structural_plan.generation,
+                 resolved_casualty, bandit_live_world::member_state::dead, 101,
                  "resolved structural casualty" ) );
     REQUIRE( site.roster().valid );
     const std::optional<int> returned =
@@ -5823,6 +5822,227 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
     CHECK( site.active_outing.activity_id == newer_plan.activity_id );
     CHECK( site.active_outing.generation == newer_plan.generation );
     CHECK( site.roster().reserved_unresolved_ids == newer_plan.member_ids );
+}
+
+TEST_CASE( "bandit_live_world_releases_every_matching_external_owner_without_resurrecting_losses",
+           "[bandit][live_world][reservation][release_paths]" )
+{
+    SECTION( "ordinary abort and death release only the captured generation" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 3; ++index ) {
+            add_bandit_camp_member( world, index, 14500 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 18, 20, 0 ), "release-path-target" );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+        const std::string activity_id = site.active_outing.activity_id;
+        const int generation = site.active_outing.generation;
+        const std::string before_stale_release = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::release_matching_external_reservation(
+                         site, activity_id + ":stale", generation, "stale ordinary abort" ) );
+        CHECK_FALSE( bandit_live_world::release_matching_external_reservation(
+                         site, activity_id, generation + 1, "future ordinary abort" ) );
+        CHECK( serialize_world( world ) == before_stale_release );
+
+        const character_id casualty_id = plan.member_ids.front();
+        CHECK_FALSE( bandit_live_world::record_matching_external_outing_casualty(
+                         site, activity_id, generation + 1, casualty_id,
+                         bandit_live_world::member_state::dead, 1,
+                         "stale ordinary casualty" ) );
+        CHECK_FALSE( bandit_live_world::record_matching_external_outing_casualty(
+                         site, activity_id, generation, casualty_id,
+                         bandit_live_world::member_state::missing, 1,
+                         "premature ordinary missing resolution" ) );
+        CHECK( serialize_world( world ) == before_stale_release );
+        REQUIRE( bandit_live_world::record_matching_external_outing_casualty(
+                     site, activity_id, generation, casualty_id,
+                     bandit_live_world::member_state::dead, 1,
+                     "matching ordinary casualty" ) );
+        const std::optional<int> released =
+            bandit_live_world::release_matching_external_reservation(
+                site, activity_id, generation, "matching ordinary abort" );
+        REQUIRE( released );
+        CHECK( *released == 1 );
+        CHECK_FALSE( site.active_outing.is_active() );
+        CHECK( site.find_member( casualty_id )->state ==
+               bandit_live_world::member_state::dead );
+        CHECK( site.applied_return_generation == generation );
+        REQUIRE( site.roster().valid );
+        CHECK( site.roster().reserved_unresolved_ids.empty() );
+
+        const bandit_live_world::dispatch_plan newer_plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 19, 20, 0 ), "newer-release-path-target" );
+        REQUIRE( newer_plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, newer_plan ) );
+        const std::string newer_bytes = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::release_matching_external_reservation(
+                         site, activity_id, generation, "stale cleanup after ordinary redispatch" ) );
+        CHECK( serialize_world( world ) == newer_bytes );
+    }
+
+    SECTION( "hostile return closes its operation and camp mission slot" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 7; ++index ) {
+            add_bandit_camp_member( world, index, 14550 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt target( 18, 20, 0 );
+        prepare_hostile_follow_on( site, 7, 4, "hostile-release-target", target, 600 );
+        const bandit_live_world::hostile_operation_plan plan =
+            bandit_live_world::plan_hostile_operation(
+                site, bandit_live_world::hostile_operation_kind::shakedown,
+                { site.anchor, tripoint_abs_omt( 14, 20, 0 ), target },
+                tripoint_abs_omt( 14, 20, 0 ), 602 );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+        REQUIRE( transition_test_hostile_operation(
+                     site, bandit_live_world::hostile_operation_phase::assembling,
+                     bandit_live_world::hostile_operation_phase::outbound, 603,
+                     "release-path hostile departure" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation(
+                     site, bandit_live_world::hostile_operation_phase::outbound,
+                     bandit_live_world::hostile_operation_phase::returning_home, 604,
+                     "release-path hostile return" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        const std::string activity_id =
+            site.active_hostile_operation.reservation.activity_id;
+        const int generation = site.active_hostile_operation.reservation.generation;
+        const int party_size = static_cast<int>(
+                                   site.active_hostile_operation.reservation.member_ids.size() );
+        const std::string before_stale_release = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::release_matching_external_reservation(
+                         site, activity_id, generation - 1, "stale hostile return" ) );
+        CHECK( serialize_world( world ) == before_stale_release );
+
+        const std::optional<int> released =
+            bandit_live_world::release_matching_external_reservation(
+                site, activity_id, generation, "matching hostile return" );
+        REQUIRE( released );
+        CHECK( *released == party_size );
+        CHECK_FALSE( site.active_hostile_operation.is_active() );
+        CHECK( site.active_external_outing() == nullptr );
+        CHECK( site.camp_decision.state ==
+               bandit_live_world::camp_decision_state::abandoned );
+        CHECK( site.applied_return_generation == generation );
+        REQUIRE( site.roster().valid );
+        CHECK( site.roster().reserved_unresolved_ids.empty() );
+    }
+
+    SECTION( "one returned scout and one later casualty is not an all-lost party" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 3; ++index ) {
+            add_bandit_camp_member( world, index, 14525 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 18, 20, 0 ), "split-release-target" );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+        REQUIRE( bandit_live_world::transition_external_simulation_owner(
+                     site, site.active_outing.activity_id, site.active_outing.generation,
+                     bandit_live_world::simulation_owner::abstract,
+                     bandit_live_world::simulation_owner::local,
+                     site.active_outing.handoff_epoch,
+                     site.active_outing.last_advanced_minutes, 0 ) ==
+                 bandit_live_world::simulation_owner_transition_result::applied );
+        const std::vector<bandit_live_world::active_member_observation> split = {
+            { plan.member_ids.front(),
+              bandit_live_world::active_member_observation_state::home,
+              "first scout returned" },
+            { plan.member_ids.back(),
+              bandit_live_world::active_member_observation_state::unresolved,
+              "second scout still away" }
+        };
+        const bandit_live_world::scout_resolution_effect partial =
+            bandit_live_world::apply_active_scout_observations(
+                site, require_current_simulation_cursor( site ), split, 1 );
+        REQUIRE( partial.valid );
+        REQUIRE( partial.changed );
+        REQUIRE( partial.provisional_report_applied );
+        REQUIRE( site.current_scout_report.provisional );
+        const bandit_live_world::scout_phase phase_before_casualty =
+            site.active_outing.phase;
+        REQUIRE( bandit_live_world::record_active_outing_casualty(
+                     site, require_current_simulation_cursor( site ), plan.member_ids.back(),
+                     bandit_live_world::member_state::dead, 2,
+                     "second scout died after split return" ) );
+        CHECK( site.active_outing.phase == phase_before_casualty );
+        CHECK( site.active_outing.casualty_ids.size() == 1 );
+        CHECK( site.active_outing.resolved_member_ids.size() == 2 );
+
+        const std::vector<bandit_live_world::active_member_observation> resolved = {
+            { plan.member_ids.front(),
+              bandit_live_world::active_member_observation_state::home,
+              "first scout remains home" },
+            { plan.member_ids.back(),
+              bandit_live_world::active_member_observation_state::dead,
+              "second scout casualty confirmed" }
+        };
+        const bandit_live_world::scout_resolution_effect completed =
+            bandit_live_world::apply_active_scout_observations(
+                site, require_current_simulation_cursor( site ), resolved, 3 );
+        REQUIRE( completed.valid );
+        CHECK( completed.completed );
+        CHECK_FALSE( site.active_outing.is_active() );
+        CHECK( site.find_member( plan.member_ids.front() )->state ==
+               bandit_live_world::member_state::at_home );
+        CHECK( site.find_member( plan.member_ids.back() )->state ==
+               bandit_live_world::member_state::dead );
+    }
+
+    SECTION( "hostile all-dead resolution clears without returning casualties" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 7; ++index ) {
+            add_bandit_camp_member( world, index, 14600 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt target( 18, 20, 0 );
+        prepare_hostile_follow_on( site, 8, 4, "hostile-loss-target", target, 700 );
+        const bandit_live_world::hostile_operation_plan plan =
+            bandit_live_world::plan_hostile_operation(
+                site, bandit_live_world::hostile_operation_kind::shakedown,
+                { site.anchor, tripoint_abs_omt( 14, 20, 0 ), target },
+                tripoint_abs_omt( 14, 20, 0 ), 702 );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+        REQUIRE( transition_test_hostile_operation(
+                     site, bandit_live_world::hostile_operation_phase::assembling,
+                     bandit_live_world::hostile_operation_phase::outbound, 703,
+                     "release-path hostile loss departure" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        const std::string activity_id =
+            site.active_hostile_operation.reservation.activity_id;
+        const int generation = site.active_hostile_operation.reservation.generation;
+        const std::vector<character_id> member_ids =
+            site.active_hostile_operation.reservation.member_ids;
+        int casualty_minutes = 704;
+        for( const character_id &member_id : member_ids ) {
+            REQUIRE( bandit_live_world::record_matching_external_outing_casualty(
+                         site, activity_id, generation, member_id,
+                         bandit_live_world::member_state::dead, casualty_minutes++,
+                         "matching hostile casualty" ) );
+        }
+        CHECK( site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::lost );
+        const std::optional<int> released =
+            bandit_live_world::release_matching_external_reservation(
+                site, activity_id, generation, "matching hostile all-dead cleanup" );
+        REQUIRE( released );
+        CHECK( *released == 0 );
+        CHECK_FALSE( site.active_hostile_operation.is_active() );
+        for( const character_id &member_id : member_ids ) {
+            CHECK( site.find_member( member_id )->state ==
+                   bandit_live_world::member_state::dead );
+        }
+        REQUIRE( site.roster().valid );
+        CHECK( site.roster().reserved_unresolved_ids.empty() );
+    }
 }
 
 TEST_CASE( "bandit_structural_dispatch_holds_high_known_threat_low_reward",

@@ -6227,38 +6227,77 @@ bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_
 
 } // namespace
 
-std::optional<int> release_structural_outing_reservation( site_record &site,
+std::optional<int> release_matching_external_reservation( site_record &site,
         const std::string &expected_activity_id, const int expected_generation,
         const std::string &summary )
 {
-    const active_outing_state &outing = site.active_outing;
-    if( outing.kind != outing_kind::structural_sortie ||
-        outing.activity_id != expected_activity_id ||
-        outing.generation != expected_generation || !site.roster().valid ) {
+    const active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr || outing->activity_id != expected_activity_id ||
+        outing->generation != expected_generation || !site.roster().valid ) {
         return std::nullopt;
     }
+    const bool hostile_operation = outing->kind == outing_kind::hostile_operation;
 
     site_record candidate = site;
-    int returned_members = 0;
-    for( const character_id &member_id : candidate.active_outing.member_ids ) {
-        if( candidate.active_outing.member_is_resolved( member_id ) ) {
+    active_outing_state *candidate_outing = candidate.active_external_outing();
+    if( candidate_outing == nullptr ||
+        candidate_outing->activity_id != expected_activity_id ||
+        candidate_outing->generation != expected_generation ) {
+        return std::nullopt;
+    }
+    int released_members = 0;
+    for( const character_id &member_id : candidate_outing->member_ids ) {
+        if( candidate_outing->member_is_resolved( member_id ) ) {
             continue;
         }
         const member_record *member = candidate.find_member( member_id );
         if( member == nullptr ||
-            ( member->state != member_state::outbound &&
-              member->state != member_state::local_contact ) ||
+            ( member->state != member_state::at_home &&
+              member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ) {
+            return std::nullopt;
+        }
+        if( member->state != member_state::at_home &&
             !update_member_state( candidate, member_id, member_state::at_home, summary ) ) {
             return std::nullopt;
         }
-        returned_members++;
+        released_members++;
     }
-    candidate.active_outing.clear();
+    candidate.applied_return_generation = std::max(
+            candidate.applied_return_generation, expected_generation );
+    if( hostile_operation ) {
+        candidate.active_hostile_operation.clear();
+        if( candidate.camp_decision.state == camp_decision_state::preparing_follow_on ) {
+            candidate.camp_decision.state = camp_decision_state::abandoned;
+            candidate.camp_decision.next_eligible_minutes = -1;
+            candidate.camp_decision.transition_reason = summary.substr(
+                    0, max_camp_decision_reason_length );
+        }
+    } else {
+        const bool matching_provisional_report = candidate.current_scout_report.provisional &&
+                candidate.current_scout_report.source_activity_id == expected_activity_id &&
+                candidate.current_scout_report.source_generation == expected_generation;
+        candidate.active_outing.clear();
+        if( matching_provisional_report ) {
+            candidate.current_scout_report.clear();
+        }
+    }
     if( !candidate.roster().valid ) {
         return std::nullopt;
     }
     site = std::move( candidate );
-    return returned_members;
+    return released_members;
+}
+
+std::optional<int> release_structural_outing_reservation( site_record &site,
+        const std::string &expected_activity_id, const int expected_generation,
+        const std::string &summary )
+{
+    if( site.active_outing.kind != outing_kind::structural_sortie ) {
+        return std::nullopt;
+    }
+    return release_matching_external_reservation(
+               site, expected_activity_id, expected_generation, summary );
 }
 
 structural_outing_plan plan_structural_bounty_outing( const site_record &site,
@@ -8681,6 +8720,54 @@ bool update_member_state( site_record &site, character_id npc_id, member_state n
     return true;
 }
 
+bool record_matching_external_outing_casualty( site_record &site,
+        const std::string &expected_activity_id, const int expected_generation,
+        const character_id npc_id, const member_state casualty_state,
+        const int current_minutes, const std::string &summary )
+{
+    const active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr || outing->activity_id != expected_activity_id ||
+        outing->generation != expected_generation ||
+        ( casualty_state != member_state::dead && casualty_state != member_state::missing ) ||
+        current_minutes < 0 || current_minutes <= outing->last_advanced_minutes ||
+        std::find( outing->member_ids.begin(), outing->member_ids.end(), npc_id ) ==
+        outing->member_ids.end() || outing->member_is_resolved( npc_id ) ||
+        ( casualty_state == member_state::missing &&
+          ( outing->missing_deadline_minutes < 0 ||
+            current_minutes < outing->missing_deadline_minutes ) ) || !site.roster().valid ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    advance_camp_supply( candidate, current_minutes );
+    active_outing_state *candidate_outing = candidate.active_external_outing();
+    if( candidate_outing == nullptr ||
+        candidate_outing->activity_id != expected_activity_id ||
+        candidate_outing->generation != expected_generation ||
+        !update_member_state( candidate, npc_id, casualty_state, summary ) ) {
+        return false;
+    }
+    candidate_outing->casualty_ids.push_back( npc_id );
+    candidate_outing->resolved_member_ids.push_back( npc_id );
+    candidate_outing->last_progress_minutes = std::max(
+            candidate_outing->last_progress_minutes, current_minutes );
+    candidate_outing->last_advanced_minutes = current_minutes;
+    advance_camp_supply( candidate, current_minutes );
+    if( candidate_outing->casualty_ids.size() == candidate_outing->member_ids.size() ) {
+        candidate_outing->phase = scout_phase::lost;
+        if( candidate_outing->kind == outing_kind::hostile_operation ) {
+            candidate.active_hostile_operation.phase = hostile_operation_phase::lost;
+            candidate.active_hostile_operation.last_transition_reason = summary.substr(
+                    0, max_camp_decision_reason_length );
+        }
+    }
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
 bool record_active_outing_casualty( site_record &site,
                                     const simulation_advance_cursor &expected_cursor,
                                     const character_id npc_id,
@@ -8693,13 +8780,12 @@ bool record_active_outing_casualty( site_record &site,
         current_minutes <= site.active_outing.last_advanced_minutes ) {
         return false;
     }
-    site_record candidate = site;
-    if( !record_active_outing_casualty_unchecked(
-            candidate, npc_id, casualty_state, current_minutes, summary ) ) {
+    const scout_phase previous_phase = site.active_outing.phase;
+    if( !record_matching_external_outing_casualty(
+            site, expected_cursor.activity_id, expected_cursor.generation,
+            npc_id, casualty_state, current_minutes, summary ) ) {
         return false;
     }
-    const scout_phase previous_phase = site.active_outing.phase;
-    site = std::move( candidate );
     if( site.active_outing.phase != previous_phase ) {
         record_scout_phase_transition_event(
             site.active_outing, previous_phase, site.active_outing.phase,

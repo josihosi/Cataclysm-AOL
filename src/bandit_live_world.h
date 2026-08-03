@@ -892,6 +892,9 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         int now_minutes );
+std::optional<int> release_matching_external_reservation( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        const std::string &summary );
 std::optional<int> release_structural_outing_reservation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::string &summary );
@@ -983,6 +986,10 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     const site_record &site, const std::vector<active_member_observation> &observations );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
                           const std::string &summary );
+bool record_matching_external_outing_casualty( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        character_id npc_id, member_state casualty_state, int current_minutes,
+        const std::string &summary );
 bool record_active_outing_casualty( site_record &site,
                                     const simulation_advance_cursor &expected_cursor,
                                     character_id npc_id,

@@ -573,8 +573,35 @@ bool live_bandit_shakedown_was_paid( const bandit_live_world::site_record &site 
     return false;
 }
 
-void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &site,
-        const bandit_live_world::shakedown_surface &surface, const int surrendered_value )
+struct live_bandit_paid_release_plan {
+    bandit_live_world::site_record candidate;
+    std::vector<character_id> member_ids;
+};
+
+std::optional<live_bandit_paid_release_plan> live_bandit_prepare_paid_release(
+    const bandit_live_world::site_record &site )
+{
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return std::nullopt;
+    }
+    const std::string activity_id = outing->activity_id;
+    const int generation = outing->generation;
+    live_bandit_paid_release_plan plan;
+    plan.member_ids = outing->member_ids;
+    plan.candidate = site;
+    if( !bandit_live_world::release_matching_external_reservation(
+            plan.candidate, activity_id, generation,
+            "shakedown payment release preflight" ) ) {
+        return std::nullopt;
+    }
+    return plan;
+}
+
+void live_bandit_commit_paid_release( bandit_live_world::site_record &site,
+                                      live_bandit_paid_release_plan plan,
+                                      const bandit_live_world::shakedown_surface &surface,
+                                      const int surrendered_value )
 {
     bandit_live_world::shakedown_outcome outcome;
     outcome.paid = true;
@@ -582,16 +609,25 @@ void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &
     outcome.demanded_value = surface.demanded_value;
     outcome.surrendered_value = surrendered_value;
     outcome.reachable_goods_value = surface.reachable_goods_value;
-    bandit_live_world::apply_shakedown_outcome( site, outcome );
+    bandit_live_world::apply_shakedown_outcome( plan.candidate, outcome );
 
-    const std::vector<character_id> member_ids = site.active_outing.member_ids;
     const std::string summary = string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
                                 surrendered_value, surface.demanded_value,
                                 surface.reachable_goods_value );
     DebugLog( D_INFO, DC_ALL ) << summary << '\n';
-    for( const character_id &member_id : member_ids ) {
-        bandit_live_world::update_member_state( site, member_id,
-                                                bandit_live_world::member_state::at_home, summary );
+    for( const character_id &member_id : plan.member_ids ) {
+        const bandit_live_world::member_record *member = plan.candidate.find_member( member_id );
+        if( member != nullptr && member->state == bandit_live_world::member_state::at_home ) {
+            bandit_live_world::update_member_state(
+                plan.candidate, member_id, bandit_live_world::member_state::at_home, summary );
+        }
+    }
+    site = std::move( plan.candidate );
+    for( const character_id &member_id : plan.member_ids ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state != bandit_live_world::member_state::at_home ) {
+            continue;
+        }
         if( npc *member_npc = g->find_npc( member_id ) ) {
             member_npc->set_attitude( NPCATT_NULL );
             std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( member_npc->pos_abs_omt(),
@@ -603,9 +639,6 @@ void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &
             }
         }
     }
-    site.applied_return_generation = std::max( site.applied_return_generation,
-                                     site.active_outing.generation );
-    site.active_outing.clear();
 }
 
 void live_bandit_choose_fight( bandit_live_world::site_record &site,
@@ -744,14 +777,24 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
 
     bool payment_failed = false;
     if( response == live_bandit_shakedown_response::pay ) {
-        const int surrendered_value = live_bandit_select_shakedown_payment( site, input, surface, u );
-        if( surrendered_value >= surface.demanded_value ) {
-            add_msg( m_bad, _( "You complete the shakedown payment through trade." ) );
-            live_bandit_send_group_home_after_payment( site, surface, surrendered_value );
-            return true;
+        std::optional<live_bandit_paid_release_plan> release_plan =
+            live_bandit_prepare_paid_release( site );
+        if( !release_plan ) {
+            payment_failed = true;
+            add_msg( m_warning,
+                     _( "The bandits cannot safely settle the demand.  The standoff turns into a fight." ) );
+        } else {
+            const int surrendered_value = live_bandit_select_shakedown_payment( site, input, surface, u );
+            if( surrendered_value >= surface.demanded_value ) {
+                add_msg( m_bad, _( "You complete the shakedown payment through trade." ) );
+                live_bandit_commit_paid_release(
+                    site, std::move( *release_plan ), surface, surrendered_value );
+                return true;
+            }
+            payment_failed = true;
+            add_msg( m_warning,
+                     _( "You do not complete the shakedown payment.  The demand turns into a fight." ) );
         }
-        payment_failed = true;
-        add_msg( m_warning, _( "You do not complete the shakedown payment.  The demand turns into a fight." ) );
     }
 
     if( response == live_bandit_shakedown_response::fight ) {
