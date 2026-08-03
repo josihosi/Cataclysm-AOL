@@ -145,8 +145,9 @@ exactly two or wait, materialize only that pair plus one required concrete reser
 two-person empty-camp case. Hostile response callers cannot supply member IDs: a pinned current
 dossier recomputes threat/reward sizing from the current ready roster, and apply rejects roster or
 dossier drift atomically. Routine selection uses live readiness and stable observer/return-safe
-escort capability without draining the strongest defenders. Current execution row: reserve every
-selected member and the camp mission slot atomically under the owning operation ID and generation.
+escort capability without draining the strongest defenders. Structural reservations are pinned at
+`f65e6bd28a`; competing/stale plans cannot steal a newer generation or occupied mission slot.
+Current execution row: release reservations only when operation ID and generation still match.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
 
-Status: GREEN / PHASE 2 CAPABILITY PAIR / RESERVATION OWNERSHIP NEXT
+Status: GREEN / PHASE 2 RESERVATION OWNERSHIP / MATCHING RELEASE NEXT
 
 Canonical contract and detailed cross-off evidence:
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.

@@ -570,7 +570,7 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] Use fresh response-party selection after a scout report; two-standard scouting must not leak into combat-force sizing.
 - [x] Implement the exact routine size matrix in the behavior contract.
 - [x] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
-- [ ] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
+- [x] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
 - [ ] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
 - [ ] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
 - [x] Generalize singleton-only timeout/return logic to groups.
@@ -621,7 +621,15 @@ Evidence:
   `02b3e3c4bd398a0a7287578a7b49da57adcd8d3f7e7cd33b048e8ba007e89471`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/capability-pair/MANIFEST.md`
   (SHA-256 `a2784be680ceb76e0b08c044ced8d753fcdad4212b24466800ee83a74d938808`).
-- Reservation tests:
+- Commit: `f65e6bd28a` pins structural plan activity ID/generation, shares the camp mission-slot gate,
+  and atomically commits the exact selected IDs, owner envelope, and generation advance. Competing
+  and stale plans reject byte-identically before and after another operation resolves; the active
+  reservation round-trips unchanged.
+- Reservation result: focused 1 / 45, structural bounty 24 / 458, and full live-world 109 / 6,453.
+  Final build and every filter exit `0`; structured xhigh review is clean at 0.96. Binary SHA-256
+  is `626844eafaa6f20a02ac754e3884ffc2c4c75e70d8386c8cc35683de0deff2b5`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/reservation-ownership/MANIFEST.md`
+  (SHA-256 `37cc3ba65e385534a0bb31e0c22214203f030b1573ae5d068cbf67ea75cbd595`).
 - Dispatch benchmark:
 
 ## Phase 3 - shared real scouting ecology and finite bounty
