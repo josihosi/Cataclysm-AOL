@@ -2003,6 +2003,96 @@ bool hostile_operation_phase_matches_reservation(
     }
 }
 
+bool local_handoff_snapshot_is_empty(
+    const bandit_live_world::local_handoff_snapshot &snapshot )
+{
+    return snapshot.activity_id.empty() && snapshot.activity_generation == 0 &&
+           snapshot.handoff_epoch == -1 && snapshot.members.empty() &&
+           snapshot.casualty_ids.empty() && snapshot.committed_minutes == -1 &&
+           snapshot.cargo.supply_units == 0 && snapshot.cargo.trade_value == 0;
+}
+
+bool local_handoff_snapshot_matches_outing(
+    const bandit_live_world::active_outing_state &outing )
+{
+    const bandit_live_world::local_handoff_snapshot &snapshot = outing.local_handoff;
+    if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 7 ) {
+        return local_handoff_snapshot_is_empty( snapshot );
+    }
+    if( outing.owner == simulation_owner::abstract ) {
+        return local_handoff_snapshot_is_empty( snapshot );
+    }
+    if( !snapshot.is_active() || snapshot.activity_id != outing.activity_id ||
+        snapshot.activity_generation != outing.generation ||
+        snapshot.handoff_epoch != outing.handoff_epoch ||
+        snapshot.committed_minutes > outing.last_advanced_minutes ||
+        snapshot.waypoint_index < 0 ||
+        snapshot.waypoint_index >= static_cast<int>( outing.shared_route.size() ) ||
+        snapshot.route_position != outing.shared_route[static_cast<std::size_t>(
+                                       snapshot.waypoint_index )] ) {
+        return false;
+    }
+    const tripoint_abs_omt expected_approach = snapshot.waypoint_index == 0 ?
+            snapshot.route_position :
+            outing.shared_route[static_cast<std::size_t>( snapshot.waypoint_index - 1 )];
+    const tripoint_abs_omt expected_egress =
+        snapshot.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
+        outing.shared_route[static_cast<std::size_t>( snapshot.waypoint_index + 1 )] :
+        snapshot.route_position;
+    if( snapshot.approach_from != expected_approach || snapshot.egress_omt != expected_egress ) {
+        return false;
+    }
+
+    std::vector<character_id> snapshot_member_ids;
+    std::vector<tripoint_abs_ms> entry_positions;
+    snapshot_member_ids.reserve( snapshot.members.size() );
+    entry_positions.reserve( snapshot.members.size() );
+    for( const bandit_live_world::local_handoff_member_snapshot &member : snapshot.members ) {
+        if( member.dead || member.hp_percent <= 0 || member.hp_percent > 100 ||
+            std::find( outing.member_ids.begin(), outing.member_ids.end(), member.npc_id ) ==
+            outing.member_ids.end() ||
+            std::find( snapshot_member_ids.begin(), snapshot_member_ids.end(), member.npc_id ) !=
+            snapshot_member_ids.end() ||
+            project_to<coords::omt>( member.entry_position ) != snapshot.route_position ||
+            std::find( entry_positions.begin(), entry_positions.end(), member.entry_position ) !=
+            entry_positions.end() ) {
+            return false;
+        }
+        snapshot_member_ids.push_back( member.npc_id );
+        entry_positions.push_back( member.entry_position );
+    }
+    return !snapshot_member_ids.empty();
+}
+
+bool local_handoff_snapshots_equal(
+    const bandit_live_world::local_handoff_snapshot &lhs,
+    const bandit_live_world::local_handoff_snapshot &rhs )
+{
+    if( lhs.schema_version != rhs.schema_version || lhs.activity_id != rhs.activity_id ||
+        lhs.activity_generation != rhs.activity_generation ||
+        lhs.handoff_epoch != rhs.handoff_epoch || lhs.waypoint_index != rhs.waypoint_index ||
+        lhs.phase != rhs.phase || lhs.route_position != rhs.route_position ||
+        lhs.approach_from != rhs.approach_from || lhs.egress_omt != rhs.egress_omt ||
+        lhs.cargo.supply_units != rhs.cargo.supply_units ||
+        lhs.cargo.trade_value != rhs.cargo.trade_value ||
+        lhs.casualty_ids != rhs.casualty_ids || lhs.committed_minutes != rhs.committed_minutes ||
+        lhs.members.size() != rhs.members.size() ) {
+        return false;
+    }
+    for( std::size_t index = 0; index < lhs.members.size(); ++index ) {
+        const bandit_live_world::local_handoff_member_snapshot &lhs_member = lhs.members[index];
+        const bandit_live_world::local_handoff_member_snapshot &rhs_member = rhs.members[index];
+        if( lhs_member.npc_id != rhs_member.npc_id ||
+            lhs_member.prior_position != rhs_member.prior_position ||
+            lhs_member.entry_position != rhs_member.entry_position ||
+            lhs_member.hp_percent != rhs_member.hp_percent ||
+            lhs_member.dead != rhs_member.dead ) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool simulation_owner_state_is_consistent(
     const bandit_live_world::active_outing_state &outing )
 {
@@ -2012,7 +2102,8 @@ bool simulation_owner_state_is_consistent(
     const int minimum_advanced_minutes = std::max( { outing.started_minutes,
             outing.local_contact_minutes, outing.last_progress_minutes } );
     return outing.handoff_epoch >= 0 && owner_matches_epoch &&
-           outing.last_advanced_minutes >= minimum_advanced_minutes;
+           outing.last_advanced_minutes >= minimum_advanced_minutes &&
+           local_handoff_snapshot_matches_outing( outing );
 }
 
 bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
@@ -2048,13 +2139,16 @@ bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
         ( owner == "abstract" && handoff_epoch % 2 == 0 ) ||
         ( owner == "local" && handoff_epoch % 2 == 1 );
     const bool supported_schema = schema_version == 5 ||
-                                  ( schema_version == 6 && kind == "structural_sortie" );
-    const bool complete_structural_route = schema_version != 6 ||
+                                  ( ( schema_version == 6 || schema_version == 7 ) &&
+                                    kind == "structural_sortie" );
+    const bool complete_structural_route = schema_version < 6 ||
             ( owner_json.has_member( "shared_route" ) &&
               owner_json.has_member( "waypoint_index" ) &&
               owner_json.has_member( "expected_return_minutes" ) &&
               owner_json.has_member( "missing_deadline_minutes" ) );
-    return supported_schema && complete_structural_route &&
+    const bool complete_local_handoff = schema_version != 7 ||
+                                        owner_json.has_member( "local_handoff" );
+    return supported_schema && complete_structural_route && complete_local_handoff &&
            handoff_epoch >= 0 && owner_matches_epoch &&
            last_advanced_minutes >= std::max( { started_minutes, local_contact_minutes,
                    last_progress_minutes } );
@@ -2511,6 +2605,10 @@ simulation_owner_transition_result transition_external_simulation_owner(
     if( expected_owner == next_owner ) {
         return simulation_owner_transition_result::unchanged;
     }
+    if( current->kind == outing_kind::structural_sortie && current->schema_version >= 7 &&
+        next_owner == simulation_owner::local ) {
+        return simulation_owner_transition_result::rejected;
+    }
     if( current->handoff_epoch == std::numeric_limits<int>::max() ) {
         return simulation_owner_transition_result::rejected;
     }
@@ -2523,6 +2621,9 @@ simulation_owner_transition_result transition_external_simulation_owner(
     next->owner = next_owner;
     next->handoff_epoch++;
     next->last_advanced_minutes = current_minutes;
+    if( next_owner == simulation_owner::abstract ) {
+        next->local_handoff.clear();
+    }
     site = std::move( candidate );
     return simulation_owner_transition_result::applied;
 }
@@ -2555,6 +2656,155 @@ simulation_owner_transition_result advance_external_simulation(
     next->last_advanced_minutes = current_minutes;
     site = std::move( candidate );
     return simulation_owner_transition_result::applied;
+}
+
+local_handoff_plan plan_local_pair_handoff( const site_record &site,
+        const simulation_advance_cursor &expected_cursor, const int current_minutes,
+        const std::vector<local_handoff_member_read> &member_reads )
+{
+    local_handoff_plan plan;
+    plan.expected_cursor = expected_cursor;
+    const active_outing_state &outing = site.active_outing;
+    if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
+        outing.schema_version < 6 || outing.owner != simulation_owner::abstract ||
+        !simulation_cursor_matches( outing, expected_cursor ) ||
+        current_minutes < 0 || current_minutes < outing.last_advanced_minutes ||
+        outing.handoff_epoch == std::numeric_limits<int>::max() ||
+        outing.phase == scout_phase::assembling || outing.phase == scout_phase::lost ||
+        outing.shared_route.empty() || outing.waypoint_index < 0 ||
+        outing.waypoint_index >= static_cast<int>( outing.shared_route.size() ) ) {
+        plan.notes.push_back( "local handoff blocked: stale or unsupported abstract owner" );
+        return plan;
+    }
+
+    std::vector<character_id> surviving_member_ids;
+    for( const character_id &member_id : outing.member_ids ) {
+        if( outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() ) {
+            continue;
+        }
+        const member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state != member_state::outbound ) {
+            plan.notes.push_back( "local handoff blocked: surviving reservation is not outbound" );
+            return plan;
+        }
+        surviving_member_ids.push_back( member_id );
+    }
+    if( surviving_member_ids.empty() || surviving_member_ids.size() > 2 ||
+        member_reads.size() != surviving_member_ids.size() ) {
+        plan.notes.push_back( "local handoff blocked: complete surviving pair is unavailable" );
+        return plan;
+    }
+
+    local_handoff_snapshot snapshot;
+    snapshot.activity_id = outing.activity_id;
+    snapshot.activity_generation = outing.generation;
+    snapshot.handoff_epoch = outing.handoff_epoch + 1;
+    snapshot.waypoint_index = outing.waypoint_index;
+    snapshot.phase = outing.phase;
+    snapshot.route_position = outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
+    snapshot.approach_from = outing.waypoint_index == 0 ? snapshot.route_position :
+                             outing.shared_route[static_cast<std::size_t>( outing.waypoint_index - 1 )];
+    snapshot.egress_omt = outing.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
+                          outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )] :
+                          snapshot.route_position;
+    snapshot.cargo = outing.cargo;
+    snapshot.casualty_ids = outing.casualty_ids;
+    snapshot.committed_minutes = current_minutes;
+
+    std::vector<tripoint_abs_ms> entry_positions;
+    for( const character_id &member_id : surviving_member_ids ) {
+        const auto read_iter = std::find_if( member_reads.begin(), member_reads.end(),
+        [&member_id]( const local_handoff_member_read & read ) {
+            return read.npc_id == member_id;
+        } );
+        if( read_iter == member_reads.end() || !read_iter->bindable || read_iter->dead ||
+            read_iter->hp_percent <= 0 || read_iter->hp_percent > 100 ||
+            project_to<coords::omt>( read_iter->entry_position ) != snapshot.route_position ||
+            std::find( entry_positions.begin(), entry_positions.end(),
+                       read_iter->entry_position ) != entry_positions.end() ) {
+            plan.notes.push_back( "local handoff blocked: member preflight or entry edge is invalid" );
+            return plan;
+        }
+        local_handoff_member_snapshot member_snapshot;
+        member_snapshot.npc_id = member_id;
+        member_snapshot.prior_position = read_iter->current_position;
+        member_snapshot.entry_position = read_iter->entry_position;
+        member_snapshot.hp_percent = read_iter->hp_percent;
+        snapshot.members.push_back( member_snapshot );
+        entry_positions.push_back( read_iter->entry_position );
+    }
+
+    plan.snapshot = std::move( snapshot );
+    plan.valid = true;
+    plan.notes.push_back( "local handoff preflight captured the complete surviving pair" );
+    return plan;
+}
+
+local_handoff_commit_result commit_local_pair_handoff( site_record &site,
+        const local_handoff_plan &plan,
+        const std::function<bool( const local_handoff_member_snapshot & )> &bind_member,
+        const std::function<void( const local_handoff_member_snapshot & )> &rollback_member )
+{
+    if( !plan.valid || !plan.snapshot.is_active() || !bind_member || !rollback_member ) {
+        return local_handoff_commit_result::rejected;
+    }
+    const active_outing_state *current = site.active_external_outing();
+    if( current == nullptr || !current->is_active() ) {
+        return local_handoff_commit_result::rejected;
+    }
+    if( current->owner == simulation_owner::local ) {
+        return local_handoff_snapshots_equal( current->local_handoff, plan.snapshot ) ?
+               local_handoff_commit_result::unchanged :
+               local_handoff_commit_result::rejected;
+    }
+    if( current->kind != outing_kind::structural_sortie ||
+        !simulation_cursor_matches( *current, plan.expected_cursor ) ||
+        current->handoff_epoch == std::numeric_limits<int>::max() ||
+        plan.snapshot.handoff_epoch != current->handoff_epoch + 1 ||
+        plan.snapshot.committed_minutes < current->last_advanced_minutes ) {
+        return local_handoff_commit_result::rejected;
+    }
+
+    site_record candidate = site;
+    active_outing_state &next = candidate.active_outing;
+    next.schema_version = 7;
+    next.owner = simulation_owner::local;
+    next.handoff_epoch = plan.snapshot.handoff_epoch;
+    next.last_advanced_minutes = plan.snapshot.committed_minutes;
+    next.last_progress_minutes = std::max( next.last_progress_minutes,
+                                          plan.snapshot.committed_minutes );
+    next.local_handoff = plan.snapshot;
+    if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+        return local_handoff_commit_result::rejected;
+    }
+
+    std::vector<const local_handoff_member_snapshot *> bound_members;
+    const auto rollback_bound_members = [&bound_members, &rollback_member]() {
+        for( auto iter = bound_members.rbegin(); iter != bound_members.rend(); ++iter ) {
+            try {
+                rollback_member( **iter );
+            } catch( ... ) {
+                // Keep rolling back the rest of the complete pair.
+            }
+        }
+    };
+    try {
+        for( const local_handoff_member_snapshot &member : plan.snapshot.members ) {
+            bound_members.push_back( &member );
+            if( !bind_member( member ) ) {
+                rollback_bound_members();
+                return local_handoff_commit_result::rolled_back;
+            }
+        }
+    } catch( ... ) {
+        rollback_bound_members();
+        return local_handoff_commit_result::rolled_back;
+    }
+
+    site = std::move( candidate );
+    return local_handoff_commit_result::applied;
 }
 
 scout_phase scout_phase_after_burned_evacuation( const bool concealed_rally_reached )
@@ -3525,6 +3775,116 @@ void sortie_cargo::deserialize( const JsonObject &jo )
     *this = candidate;
 }
 
+void local_handoff_member_snapshot::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "npc_id", npc_id.get_value() );
+    json.member( "prior_position", prior_position );
+    json.member( "entry_position", entry_position );
+    json.member( "hp_percent", std::clamp( hp_percent, 0, 100 ) );
+    json.member( "dead", dead );
+    json.end_object();
+}
+
+void local_handoff_member_snapshot::deserialize( const JsonObject &jo )
+{
+    local_handoff_member_snapshot candidate;
+    int raw_npc_id = -1;
+    jo.read( "npc_id", raw_npc_id );
+    candidate.npc_id.deserialize( raw_npc_id );
+    jo.read( "prior_position", candidate.prior_position );
+    jo.read( "entry_position", candidate.entry_position );
+    jo.read( "hp_percent", candidate.hp_percent );
+    jo.read( "dead", candidate.dead );
+    if( candidate.hp_percent < 0 || candidate.hp_percent > 100 ||
+        ( candidate.dead && candidate.hp_percent != 0 ) ) {
+        jo.throw_error( "local handoff member has invalid health state" );
+    }
+    *this = candidate;
+}
+
+void local_handoff_snapshot::clear()
+{
+    *this = local_handoff_snapshot();
+}
+
+bool local_handoff_snapshot::is_active() const
+{
+    return schema_version == 1 && !activity_id.empty() && activity_generation > 0 &&
+           handoff_epoch > 0 && handoff_epoch % 2 == 1 && committed_minutes >= 0 &&
+           !members.empty() && members.size() <= 2;
+}
+
+void local_handoff_snapshot::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "schema_version", 1 );
+    json.member( "activity_id", activity_id );
+    json.member( "activity_generation", std::max( 0, activity_generation ) );
+    json.member( "handoff_epoch", handoff_epoch );
+    json.member( "waypoint_index", std::max( 0, waypoint_index ) );
+    json.member( "phase", to_string( phase ) );
+    json.member( "route_position", route_position );
+    json.member( "approach_from", approach_from );
+    json.member( "egress_omt", egress_omt );
+    json.member( "cargo", cargo );
+    std::vector<int> raw_casualty_ids;
+    raw_casualty_ids.reserve( std::min<std::size_t>( casualty_ids.size(), 2 ) );
+    for( std::size_t index = 0; index < casualty_ids.size() && index < 2; ++index ) {
+        raw_casualty_ids.push_back( casualty_ids[index].get_value() );
+    }
+    json.member( "casualty_ids", raw_casualty_ids );
+    json.member( "members", members );
+    json.member( "committed_minutes", std::max( -1, committed_minutes ) );
+    json.end_object();
+}
+
+void local_handoff_snapshot::deserialize( const JsonObject &jo )
+{
+    local_handoff_snapshot candidate;
+    jo.read( "schema_version", candidate.schema_version );
+    jo.read( "activity_id", candidate.activity_id );
+    jo.read( "activity_generation", candidate.activity_generation );
+    jo.read( "handoff_epoch", candidate.handoff_epoch );
+    jo.read( "waypoint_index", candidate.waypoint_index );
+    std::string phase_string = "assembling";
+    jo.read( "phase", phase_string );
+    candidate.phase = scout_phase_from_string( phase_string ).value_or( scout_phase::lost );
+    jo.read( "route_position", candidate.route_position );
+    jo.read( "approach_from", candidate.approach_from );
+    jo.read( "egress_omt", candidate.egress_omt );
+    jo.read( "cargo", candidate.cargo );
+    std::vector<int> raw_casualty_ids;
+    jo.read( "casualty_ids", raw_casualty_ids );
+    for( const int raw_casualty_id : raw_casualty_ids ) {
+        character_id casualty_id;
+        casualty_id.deserialize( raw_casualty_id );
+        if( std::find( candidate.casualty_ids.begin(), candidate.casualty_ids.end(), casualty_id ) !=
+            candidate.casualty_ids.end() ) {
+            jo.throw_error( "local handoff snapshot has duplicate casualty identity" );
+        }
+        candidate.casualty_ids.push_back( casualty_id );
+        if( candidate.casualty_ids.size() > 2 ) {
+            jo.throw_error( "local handoff snapshot exceeds its casualty bound" );
+        }
+    }
+    jo.read( "members", candidate.members );
+    if( candidate.members.size() > 2 ) {
+        jo.throw_error( "local handoff snapshot exceeds its member bound" );
+    }
+    jo.read( "committed_minutes", candidate.committed_minutes );
+    candidate.activity_id.resize( std::min( candidate.activity_id.size(),
+                                           max_operation_application_key_length ) );
+    candidate.activity_generation = std::max( 0, candidate.activity_generation );
+    candidate.committed_minutes = std::max( -1, candidate.committed_minutes );
+    if( candidate.activity_id.empty() ) {
+        candidate.clear();
+    } else if( !candidate.is_active() ) {
+        jo.throw_error( "local handoff snapshot is malformed" );
+    }
+    *this = std::move( candidate );
+}
+
 void scout_report_record::clear()
 {
     *this = scout_report_record();
@@ -3791,6 +4151,9 @@ void active_outing_state::serialize( JsonOut &json ) const
     json.member( "return_application_key", return_application_key );
     json.member( "report_application_key", report_application_key );
     json.member( "cargo_application_key", cargo_application_key );
+    if( schema_version >= 7 ) {
+        json.member( "local_handoff", local_handoff );
+    }
     json.end_object();
 }
 
@@ -3818,12 +4181,12 @@ void active_outing_state::deserialize( const JsonObject &jo )
     candidate.leader_id.deserialize( raw_leader_id );
     jo.read( "shared_route", candidate.shared_route );
     jo.read( "waypoint_index", candidate.waypoint_index );
-    if( loaded_schema_version == 6 &&
+    if( loaded_schema_version >= 6 && loaded_schema_version <= 7 &&
         ( candidate.kind != outing_kind::structural_sortie ||
           candidate.shared_route.size() < 3 || candidate.shared_route.size() > 5 ||
           candidate.waypoint_index < 0 ||
           candidate.waypoint_index >= static_cast<int>( candidate.shared_route.size() ) ) ) {
-        jo.throw_error( "schema-v6 structural outing has malformed route state" );
+        jo.throw_error( "current structural outing has malformed route state" );
     }
     const bounded_route_state bounded_route = make_bounded_route_state( candidate.shared_route,
                                               candidate.waypoint_index );
@@ -3903,6 +4266,11 @@ void active_outing_state::deserialize( const JsonObject &jo )
     jo.read( "return_application_key", candidate.return_application_key );
     jo.read( "report_application_key", candidate.report_application_key );
     jo.read( "cargo_application_key", candidate.cargo_application_key );
+    if( jo.has_member( "local_handoff" ) ) {
+        jo.read( "local_handoff", candidate.local_handoff );
+    } else if( loaded_schema_version >= 7 ) {
+        jo.throw_error( "schema-v7 structural outing is missing local handoff state" );
+    }
     if( candidate.activity_id.empty() || candidate.kind == outing_kind::none ||
         candidate.generation <= 0 ) {
         std::vector<character_id> reserved_member_ids = std::move( candidate.member_ids );
@@ -3929,15 +4297,16 @@ void active_outing_state::deserialize( const JsonObject &jo )
             candidate.return_application_key = expected_return_key;
             candidate.report_application_key = expected_report_key;
             candidate.cargo_application_key = expected_cargo_key;
-        } else if( ( loaded_schema_version != 5 && loaded_schema_version != 6 ) ||
-                   ( loaded_schema_version == 6 &&
+        } else if( ( loaded_schema_version != 5 && loaded_schema_version != 6 &&
+                     loaded_schema_version != 7 ) ||
+                   ( loaded_schema_version >= 6 &&
                      candidate.kind != outing_kind::structural_sortie ) ||
                    candidate.return_application_key != expected_return_key ||
                    candidate.report_application_key != expected_report_key ||
                    candidate.cargo_application_key != expected_cargo_key ) {
             jo.throw_error( "active outing has non-canonical component application keys" );
         }
-        candidate.schema_version = loaded_schema_version == 6 ? 6 : 5;
+        candidate.schema_version = loaded_schema_version >= 6 ? loaded_schema_version : 5;
     }
     *this = std::move( candidate );
 }
@@ -4774,7 +5143,7 @@ void site_record::deserialize( const JsonObject &jo )
         ( active_outing.activity_id == site_id + "#structural" &&
           ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
           active_outing.member_ids.size() == 2 &&
-          active_outing.schema_version == 6 &&
+          ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ) &&
           active_outing.started_minutes >= 0 &&
           active_outing.target_id == active_outing.target_lead_id &&
           active_outing.target_lead_revision > 0 && structural_lead != nullptr &&
@@ -4794,7 +5163,8 @@ void site_record::deserialize( const JsonObject &jo )
           structural_phase_is_consistent );
     const bool active_outing_schema_is_consistent =
         active_outing.kind == outing_kind::structural_sortie ?
-        active_outing.schema_version == 6 : active_outing.schema_version == 5;
+        ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ) :
+        active_outing.schema_version == 5;
     bool active_outing_is_consistent = active_outing.is_active() &&
                                        active_outing.kind != outing_kind::hostile_operation &&
                                        scout_job_is_consistent &&
@@ -8139,7 +8509,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         }
     }
     candidate.active_outing.clear();
-    candidate.active_outing.schema_version = 6;
+    candidate.active_outing.schema_version = 7;
     candidate.active_outing.kind = outing_kind::structural_sortie;
     candidate.active_outing.activity_id = plan.activity_id;
     candidate.active_outing.camp_id = candidate.site_id;
@@ -8203,7 +8573,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         bandit_live_world_probe::record_site_service( site.site_id,
                 bandit_live_world_probe::site_service::outing_considered );
         if( site.active_outing.kind != outing_kind::structural_sortie ||
-            site.active_outing.schema_version != 6 ||
+            ( site.active_outing.schema_version != 6 &&
+              site.active_outing.schema_version != 7 ) ||
             site.active_outing.activity_id != site.site_id + "#structural" ||
             site.active_outing.target_id.empty() ||
             site.active_outing.target_id != site.active_outing.target_lead_id ||

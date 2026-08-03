@@ -322,6 +322,61 @@ struct sortie_cargo {
     void deserialize( const JsonObject &jo );
 };
 
+struct local_handoff_member_snapshot {
+    character_id npc_id;
+    tripoint_abs_ms prior_position;
+    tripoint_abs_ms entry_position;
+    int hp_percent = 0;
+    bool dead = false;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct local_handoff_snapshot {
+    int schema_version = 1;
+    std::string activity_id;
+    int activity_generation = 0;
+    int handoff_epoch = -1;
+    int waypoint_index = 0;
+    scout_phase phase = scout_phase::assembling;
+    tripoint_abs_omt route_position;
+    tripoint_abs_omt approach_from;
+    tripoint_abs_omt egress_omt;
+    sortie_cargo cargo;
+    std::vector<character_id> casualty_ids;
+    std::vector<local_handoff_member_snapshot> members;
+    int committed_minutes = -1;
+
+    void clear();
+    bool is_active() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct local_handoff_member_read {
+    character_id npc_id;
+    bool bindable = false;
+    bool dead = false;
+    int hp_percent = 0;
+    tripoint_abs_ms current_position;
+    tripoint_abs_ms entry_position;
+};
+
+struct local_handoff_plan {
+    bool valid = false;
+    simulation_advance_cursor expected_cursor;
+    local_handoff_snapshot snapshot;
+    std::vector<std::string> notes;
+};
+
+enum class local_handoff_commit_result {
+    rejected,
+    unchanged,
+    applied,
+    rolled_back,
+};
+
 struct scout_report_record {
     int schema_version = 4;
     int revision = 0;
@@ -410,6 +465,7 @@ struct active_outing_state {
     std::string return_application_key;
     std::string report_application_key;
     std::string cargo_application_key;
+    local_handoff_snapshot local_handoff;
 
     void clear();
     bool is_active() const;
@@ -1040,6 +1096,13 @@ simulation_owner_transition_result advance_external_simulation( site_record &sit
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, int expected_handoff_epoch,
         int expected_last_advanced_minutes, int current_minutes );
+local_handoff_plan plan_local_pair_handoff( const site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_handoff_member_read> &member_reads );
+local_handoff_commit_result commit_local_pair_handoff( site_record &site,
+        const local_handoff_plan &plan,
+        const std::function<bool( const local_handoff_member_snapshot & )> &bind_member,
+        const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );

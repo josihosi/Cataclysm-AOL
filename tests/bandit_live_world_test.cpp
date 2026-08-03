@@ -6491,7 +6491,7 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
     REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan(
                  site, fresh_structural_plan, 100 ) );
     REQUIRE( site.roster().valid );
-    CHECK( site.active_outing.schema_version == 6 );
+    CHECK( site.active_outing.schema_version == 7 );
     CHECK( site.active_outing.activity_id == fresh_structural_plan.activity_id );
     CHECK( site.active_outing.generation == fresh_structural_plan.generation );
     CHECK( site.active_outing.member_ids == fresh_structural_plan.member_ids );
@@ -6619,6 +6619,169 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
     CHECK( site.active_outing.activity_id == newer_plan.activity_id );
     CHECK( site.active_outing.generation == newer_plan.generation );
     CHECK( site.roster().reserved_unresolved_ids == newer_plan.member_ids );
+}
+
+TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
+           "[bandit][live_world][structural_bounty][local_handoff][save]" )
+{
+    const auto make_world = []( const bool cannibal ) {
+        bandit_live_world::world_state world;
+        const int id_base = cannibal ? 14580 : 14560;
+        for( int index = 0; index < 3; ++index ) {
+            if( cannibal ) {
+                add_cannibal_camp_member( world, index, id_base );
+            } else {
+                add_bandit_camp_member( world, index, id_base );
+            }
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt target( site.anchor.x() + 4, site.anchor.y(), site.anchor.z() );
+        const bandit_live_world::structural_bounty_read read =
+            bandit_live_world::classify_structural_bounty_terrain( "forest" );
+        REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, 0 ) );
+        const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                        site.site_id, target, "forest" );
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        const bandit_live_world::structural_outing_plan plan =
+            bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
+        REQUIRE( site.active_outing.schema_version == 7 );
+        return world;
+    };
+    const auto make_reads = []( const bandit_live_world::site_record &site ) {
+        std::vector<bandit_live_world::local_handoff_member_read> reads;
+        const tripoint_abs_omt route_position = site.active_outing.shared_route[
+                    static_cast<std::size_t>( site.active_outing.waypoint_index )];
+        const tripoint_abs_ms origin = project_to<coords::ms>( route_position );
+        for( std::size_t index = 0; index < site.active_outing.member_ids.size(); ++index ) {
+            const character_id member_id = site.active_outing.member_ids[index];
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            REQUIRE( member != nullptr );
+            bandit_live_world::local_handoff_member_read read;
+            read.npc_id = member_id;
+            read.bindable = true;
+            read.hp_percent = index == 0 ? 92 : 73;
+            read.current_position = member->home_spawn_tile;
+            read.entry_position = tripoint_abs_ms( origin.x() + static_cast<int>( index ),
+                                                   origin.y(), origin.z() );
+            reads.push_back( read );
+        }
+        return reads;
+    };
+
+    SECTION( "bandit and cannibal pairs commit once and round trip" ) {
+        for( const bool cannibal : { false, true } ) {
+            bandit_live_world::world_state world = make_world( cannibal );
+            bandit_live_world::site_record &site = world.sites.front();
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const std::vector<bandit_live_world::local_handoff_member_read> reads =
+                make_reads( site );
+            const bandit_live_world::local_handoff_plan plan =
+                bandit_live_world::plan_local_pair_handoff( site, *cursor, 100, reads );
+            REQUIRE( plan.valid );
+            REQUIRE( plan.snapshot.members.size() == 2 );
+            CHECK( plan.snapshot.activity_id == site.active_outing.activity_id );
+            CHECK( plan.snapshot.activity_generation == site.active_outing.generation );
+            CHECK( plan.snapshot.handoff_epoch == 1 );
+            CHECK( plan.snapshot.phase == site.active_outing.phase );
+            CHECK( plan.snapshot.route_position == site.active_outing.shared_route.front() );
+            CHECK( plan.snapshot.approach_from == plan.snapshot.route_position );
+            CHECK( plan.snapshot.egress_omt == site.active_outing.shared_route[1] );
+            CHECK( plan.snapshot.members[0].hp_percent == 92 );
+            CHECK( plan.snapshot.members[1].hp_percent == 73 );
+
+            int bind_calls = 0;
+            int rollback_calls = 0;
+            const bandit_live_world::local_handoff_commit_result committed =
+                bandit_live_world::commit_local_pair_handoff(
+                    site, plan,
+            [&bind_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+                bind_calls++;
+                return true;
+            }, [&rollback_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+                rollback_calls++;
+            } );
+            REQUIRE( committed == bandit_live_world::local_handoff_commit_result::applied );
+            CHECK( bind_calls == 2 );
+            CHECK( rollback_calls == 0 );
+            CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+            CHECK( site.active_outing.handoff_epoch == 1 );
+            CHECK( site.active_outing.local_handoff.is_active() );
+            CHECK( bandit_live_world::advance_external_simulation(
+                       site, cursor->activity_id, cursor->generation,
+                       bandit_live_world::simulation_owner::abstract,
+                       cursor->handoff_epoch, cursor->last_advanced_minutes, 101 ) ==
+                   bandit_live_world::simulation_owner_transition_result::rejected );
+
+            const std::string committed_bytes = serialize_world( world );
+            bandit_live_world::world_state loaded = round_trip_world( world );
+            CHECK( serialize_world( loaded ) == committed_bytes );
+            bandit_live_world::site_record &loaded_site = loaded.sites.front();
+            CHECK( bandit_live_world::commit_local_pair_handoff(
+                       loaded_site, plan,
+            [&bind_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+                bind_calls++;
+                return true;
+            }, [&rollback_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+                rollback_calls++;
+            } ) == bandit_live_world::local_handoff_commit_result::unchanged );
+            CHECK( bind_calls == 2 );
+            CHECK( rollback_calls == 0 );
+        }
+    }
+
+    SECTION( "a second-member bind failure rolls back every touched member" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_handoff_plan plan =
+            bandit_live_world::plan_local_pair_handoff( site, *cursor, 100,
+                    make_reads( site ) );
+        REQUIRE( plan.valid );
+        const std::string before = serialize_world( world );
+        int bind_calls = 0;
+        std::vector<character_id> rollback_ids;
+        CHECK( bandit_live_world::commit_local_pair_handoff(
+                   site, plan,
+        [&bind_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+            bind_calls++;
+            return bind_calls == 1;
+        }, [&rollback_ids]( const bandit_live_world::local_handoff_member_snapshot & member ) {
+            rollback_ids.push_back( member.npc_id );
+        } ) == bandit_live_world::local_handoff_commit_result::rolled_back );
+        CHECK( bind_calls == 2 );
+        REQUIRE( rollback_ids.size() == 2 );
+        CHECK( rollback_ids[0] == plan.snapshot.members[1].npc_id );
+        CHECK( rollback_ids[1] == plan.snapshot.members[0].npc_id );
+        CHECK( serialize_world( world ) == before );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::abstract );
+        CHECK( site.active_outing.handoff_epoch == 0 );
+    }
+
+    SECTION( "duplicate entry tiles and stale cursors reject without mutation" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::local_handoff_member_read> duplicate = make_reads( site );
+        REQUIRE( duplicate.size() == 2 );
+        duplicate[1].entry_position = duplicate[0].entry_position;
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         site, *cursor, 100, duplicate ).valid );
+
+        bandit_live_world::simulation_advance_cursor stale = *cursor;
+        stale.last_advanced_minutes--;
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         site, stale, 100, make_reads( site ) ).valid );
+    }
 }
 
 TEST_CASE( "bandit_live_world_releases_every_matching_external_owner_without_resurrecting_losses",
