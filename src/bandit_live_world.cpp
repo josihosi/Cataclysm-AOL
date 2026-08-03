@@ -1139,6 +1139,12 @@ int required_dispatch_members( bandit_dry_run::job_template job )
     return 0;
 }
 
+bool is_routine_scout_job( const bandit_dry_run::job_template job )
+{
+    return job == bandit_dry_run::job_template::scout ||
+           job == bandit_dry_run::job_template::scavenge;
+}
+
 bool counts_toward_live_headcount( member_state state )
 {
     return state == member_state::at_home || state == member_state::outbound ||
@@ -1224,7 +1230,8 @@ int required_home_reserve( const bandit_live_world::site_record &site )
         return rules_for_profile( profile ).home_reserve;
     }
 
-    const int living_roster = site.count_live_members();
+    const bandit_live_world::roster_view roster = site.roster();
+    const int living_roster = roster.valid ? roster.living_total : 0;
     if( living_roster <= 1 ) {
         return living_roster;
     }
@@ -4649,6 +4656,99 @@ int advance_world_camp_supplies( world_state &state, const int now_minutes )
     return sites_changed;
 }
 
+routine_scout_policy_result routine_scout_policy( const site_record &site )
+{
+    routine_scout_policy_result policy;
+    const hostile_site_profile profile = effective_profile( site );
+    policy.applies = profile == hostile_site_profile::camp_style ||
+                     profile == hostile_site_profile::cannibal_camp;
+    if( !policy.applies ) {
+        policy.rejection_reason = "routine pair policy does not apply to this site profile";
+        return policy;
+    }
+
+    const roster_view roster = site.roster();
+    if( !roster.valid ) {
+        policy.rejection_reason = "invalid roster authority";
+        return policy;
+    }
+    if( site.retired_empty_site ) {
+        policy.rejection_reason = "retired empty site";
+        return policy;
+    }
+    if( site.has_active_outside_pressure() ) {
+        policy.rejection_reason = "active external operation or unresolved reservation";
+        return policy;
+    }
+    if( roster.living_total < 2 ) {
+        policy.rejection_reason = "fewer than two living members";
+        return policy;
+    }
+
+    policy.party_size = 2;
+    policy.required_local_reserve = roster.living_total == 2 ? 0 : 1;
+    policy.concrete_ready_goal = policy.party_size + policy.required_local_reserve;
+    if( roster.ready_total < policy.concrete_ready_goal ) {
+        policy.rejection_reason = "fewer than the paired party plus required ready reserve";
+        return policy;
+    }
+
+    policy.eligible = true;
+    return policy;
+}
+
+int routine_scout_materialization_count( const site_record &site )
+{
+    const routine_scout_policy_result policy = routine_scout_policy( site );
+    const roster_view roster = site.roster();
+    if( !policy.eligible || !roster.valid ) {
+        return 0;
+    }
+    return std::min( roster.unmaterialized_home_total,
+                     std::max( 0, policy.concrete_ready_goal - roster.ready_concrete_total ) );
+}
+
+response_party_policy_result response_party_policy( const site_record &site,
+        const bandit_dry_run::job_template job, const int requested_party_size )
+{
+    response_party_policy_result policy;
+    policy.applies = !is_routine_scout_job( job ) &&
+                     job != bandit_dry_run::job_template::hold_chill;
+    if( !policy.applies ) {
+        policy.rejection_reason = "response policy does not size routine or idle jobs";
+        return policy;
+    }
+
+    const roster_view roster = site.roster();
+    if( !roster.valid ) {
+        policy.rejection_reason = "invalid roster authority";
+        return policy;
+    }
+    if( site.retired_empty_site || site.has_active_outside_pressure() ) {
+        policy.rejection_reason = "site cannot start a fresh response operation";
+        return policy;
+    }
+
+    policy.required_local_reserve = required_home_reserve( site );
+    const int minimum_party_size = required_dispatch_members_for_profile( site, job );
+    policy.party_size = requested_party_size > 0 ? requested_party_size : minimum_party_size;
+    if( policy.party_size <= 0 ) {
+        policy.rejection_reason = "response job has no valid party size";
+        return policy;
+    }
+    if( policy.party_size < minimum_party_size ) {
+        policy.rejection_reason = "requested response party is below the job/profile minimum";
+        return policy;
+    }
+    if( roster.ready_concrete_total - policy.required_local_reserve < policy.party_size ) {
+        policy.rejection_reason = "response party would consume its required home reserve";
+        return policy;
+    }
+
+    policy.eligible = true;
+    return policy;
+}
+
 int site_record::active_outing_survivor_count() const
 {
     const active_outing_state *outing = active_external_outing();
@@ -5384,18 +5484,14 @@ static int camp_map_home_reserve_for_lead( const bandit_live_world::site_record 
                                     const int stockpile_pressure )
 {
     int reserve = required_home_reserve( site );
-    const int living_roster = site.count_live_members();
-    const bool scout_confirmed_buddy_camp = effective_profile( site ) == hostile_site_profile::camp_style &&
-            living_roster == 2 && lead.status == bandit_live_world::camp_lead_status::scout_confirmed;
-    if( scout_confirmed_buddy_camp ) {
-        reserve = 0;
-    }
-    if( effective_profile( site ) == hostile_site_profile::camp_style && !scout_confirmed_buddy_camp &&
+    const bandit_live_world::roster_view roster = site.roster();
+    const int living_roster = roster.valid ? roster.living_total : 0;
+    if( effective_profile( site ) == hostile_site_profile::camp_style &&
         ( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) ) {
         reserve += 1;
     }
     if( stockpile_pressure >= 3 ) {
-        const int minimum_reserve = scout_confirmed_buddy_camp ? 0 : living_roster >= 5 ? 2 : 1;
+        const int minimum_reserve = living_roster >= 5 ? 2 : 1;
         reserve = std::max( minimum_reserve, reserve - 1 );
     }
     return std::clamp( reserve, 0, living_roster );
@@ -5449,8 +5545,10 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         const camp_map_lead &lead, const camp_map_dispatch_pressure &pressure )
 {
     camp_map_dispatch_decision decision;
+    const roster_view roster = site.roster();
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
     decision.valid = true;
-    decision.living_roster = site.count_live_members();
+    decision.living_roster = roster.valid ? roster.living_total : 0;
     decision.ready_at_home = ready_at_home_member_count( site );
     decision.wounded_or_unready = wounded_or_unready_member_count( site );
     decision.active_outside = active_outside_member_count( site );
@@ -5488,11 +5586,6 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     if( pressure.stockpile_pressure >= 3 ) {
         decision.notes.push_back( "stockpile pressure may loosen reserve by one but cannot cross hard minimum" );
     }
-    if( effective_profile( site ) == hostile_site_profile::camp_style && decision.living_roster == 2 &&
-        lead.status == camp_lead_status::scout_confirmed && decision.hard_home_reserve == 0 ) {
-        decision.notes.push_back(
-            "two-bandit camp: scout-confirmed pressure commits the buddy pair instead of preserving reserve" );
-    }
     decision.notes.push_back( "camp-map opening_state=" + pressure.opening_state +
                               " opening_available=" + std::string( pressure.opening_available ? "yes" : "no" ) );
     if( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) {
@@ -5509,11 +5602,30 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         decision.notes.push_back( "hold: unresolved active outside group/contact blocks dogpile" );
         return decision;
     }
-    if( decision.dispatchable <= 0 ) {
+    if( decision.dispatchable <= 0 && !routine_policy.eligible ) {
         decision.intent = bandit_dry_run::job_template::hold_chill;
-        decision.notes.push_back( "hold: no ready members remain after reserve" );
+        decision.notes.push_back( "hold: no response capacity and routine pair is ineligible: " +
+                                  routine_policy.rejection_reason );
         return decision;
     }
+
+    const auto select_routine_party = [&decision, &routine_policy, &site]( const std::string &reason ) {
+        const bool micro_site = effective_profile( site ) ==
+                                hostile_site_profile::small_hostile_site;
+        if( !routine_policy.eligible && !micro_site ) {
+            decision.intent = bandit_dry_run::job_template::hold_chill;
+            decision.selected_member_count = 0;
+            decision.notes.push_back( "hold: routine pair is ineligible: " +
+                                      routine_policy.rejection_reason );
+            return;
+        }
+        decision.intent = bandit_dry_run::job_template::scout;
+        decision.selected_member_count = micro_site ? 1 : routine_policy.party_size;
+        decision.hard_home_reserve = micro_site ? 0 : routine_policy.required_local_reserve;
+        decision.dispatchable = std::max( 0, decision.ready_at_home -
+                                          decision.hard_home_reserve );
+        decision.notes.push_back( reason );
+    };
 
     if( !pressure.opening_available && lead.status == camp_lead_status::active ) {
         decision.intent = bandit_dry_run::job_template::hold_chill;
@@ -5521,16 +5633,14 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         return decision;
     }
 
-    if( lead.confidence <= 1 || lead.status == camp_lead_status::stale ) {
-        decision.intent = bandit_dry_run::job_template::scout;
-        decision.selected_member_count = 1;
-        decision.notes.push_back( "scout: low-confidence or stale memory needs eyes before pressure" );
-        return decision;
-    }
-
     if( decision.margin <= -2 || ( lead.threat >= lead.bounty + 2 && decision.margin <= 1 ) ) {
         decision.intent = bandit_dry_run::job_template::hold_chill;
         decision.notes.push_back( "hold: high threat or poor reward does not escalate by itself" );
+        return decision;
+    }
+
+    if( lead.confidence <= 1 || lead.status == camp_lead_status::stale ) {
+        select_routine_party( "scout party: low-confidence or stale memory needs eyes before pressure" );
         return decision;
     }
 
@@ -5548,10 +5658,8 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
                     "raid: scout-confirmed basecamp lead lets cannibal camp commit an attack pack instead of another scout" );
                 return decision;
             }
-            decision.intent = bandit_dry_run::job_template::scout;
-            decision.selected_member_count = 1;
-            decision.notes.push_back(
-                "scout: cannibal camp lacks an at-home attack pack after reserve, so it does not dogpile" );
+            select_routine_party(
+                "scout pair: cannibal camp lacks an at-home attack pack after reserve, so it does not dogpile" );
             return decision;
         }
 
@@ -5574,9 +5682,7 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
             decision.notes.push_back( "stalk: remembered high-value lead permits larger-than-scout pressure" );
             return decision;
         }
-        decision.intent = bandit_dry_run::job_template::scout;
-        decision.selected_member_count = 1;
-        decision.notes.push_back( "scout: pressure margin is good but reserve leaves no stalk pair" );
+        select_routine_party( "scout party: pressure margin is good but reserve leaves no stalk response" );
         return decision;
     }
 
@@ -6004,19 +6110,18 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         return plan;
     }
 
-    const int reserve = camp_map_home_reserve_for_lead( site, lead, 0 );
-    const int ready = ready_at_home_member_count( site );
-    const int dispatchable = std::max( 0, ready - reserve );
-    if( dispatchable <= 0 ) {
-        plan.notes.push_back( "structural outing blocked: no ready member remains after home reserve" );
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    if( !routine_policy.eligible ) {
+        plan.notes.push_back( "structural outing blocked: routine pair is ineligible: " +
+                              routine_policy.rejection_reason );
         return plan;
     }
 
     plan.job = lead.target_id == "forest" ? bandit_dry_run::job_template::scavenge :
                bandit_dry_run::job_template::scout;
-    plan.member_ids = select_dispatch_members( site, 1 );
-    if( plan.member_ids.empty() ) {
-        plan.notes.push_back( "structural outing blocked: no selectable at-home member" );
+    plan.member_ids = select_dispatch_members( site, routine_policy.party_size );
+    if( static_cast<int>( plan.member_ids.size() ) != routine_policy.party_size ) {
+        plan.notes.push_back( "structural outing blocked: no selectable ready pair" );
         return plan;
     }
     plan.expected_stalking_minutes = now_minutes >= 0 ?
@@ -6031,6 +6136,8 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
                           " effective_interest=" + std::to_string( plan.effective_interest ) +
                           " decision=" + bandit_dry_run::to_string( plan.job ) );
     plan.notes.push_back( "structural outing is non-player camp routine traffic, not pursuit handoff" );
+    plan.notes.push_back( "routine pair keeps local reserve=" +
+                          std::to_string( routine_policy.required_local_reserve ) );
     return plan;
 }
 
@@ -6080,9 +6187,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     if( structural_effective_interest( *lead, structural_known_threat_for_interest( *lead ) ) <= 0 ) {
         return false;
     }
-    const int reserve = camp_map_home_reserve_for_lead( site, *lead, 0 );
-    const int ready = ready_at_home_member_count( site );
-    if( static_cast<int>( plan.member_ids.size() ) > std::max( 0, ready - reserve ) ) {
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    if( !routine_policy.eligible ||
+        static_cast<int>( plan.member_ids.size() ) != routine_policy.party_size ) {
         return false;
     }
     std::vector<character_id> checked_member_ids;
@@ -6099,43 +6206,52 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         checked_member_ids.push_back( member_id );
     }
 
+    site_record candidate = site;
+    camp_map_lead *candidate_lead = candidate.intelligence_map.find_lead( plan.lead_id );
+    if( candidate_lead == nullptr ) {
+        return false;
+    }
     const std::string summary = "structural " + bandit_dry_run::to_string( plan.job ) +
                                 " outing toward " + plan.lead_id;
     for( const character_id &member_id : plan.member_ids ) {
-        if( !update_member_state( site, member_id, member_state::outbound, summary ) ) {
+        if( !update_member_state( candidate, member_id, member_state::outbound, summary ) ) {
             return false;
         }
     }
-    site.active_outing.clear();
-    site.active_outing.kind = outing_kind::structural_sortie;
-    site.active_outing.activity_id = site.site_id + "#structural";
-    site.active_outing.camp_id = site.site_id;
-    site.active_outing.generation = site.next_outing_generation++;
-    site.active_outing.member_ids = plan.member_ids;
-    site.active_outing.leader_id = plan.member_ids.front();
-    site.active_outing.phase = scout_phase::outbound;
-    site.active_outing.owner = simulation_owner::abstract;
-    site.active_outing.last_advanced_minutes = now_minutes;
-    site.active_outing.target_id = plan.lead_id;
-    site.active_outing.target_omt = plan.target_omt;
-    site.active_outing.target_lead_id = plan.lead_id;
-    site.active_outing.target_lead_revision = plan.lead_revision;
-    site.active_outing.job_type = bandit_dry_run::to_string( plan.job );
-    site.active_outing.started_minutes = now_minutes;
-    site.active_outing.local_contact_minutes = -1;
-    site.active_outing.last_progress_minutes = now_minutes;
-    site.active_outing.return_application_key =
+    candidate.active_outing.clear();
+    candidate.active_outing.kind = outing_kind::structural_sortie;
+    candidate.active_outing.activity_id = candidate.site_id + "#structural";
+    candidate.active_outing.camp_id = candidate.site_id;
+    candidate.active_outing.generation = candidate.next_outing_generation++;
+    candidate.active_outing.member_ids = plan.member_ids;
+    candidate.active_outing.leader_id = plan.member_ids.front();
+    candidate.active_outing.phase = scout_phase::outbound;
+    candidate.active_outing.owner = simulation_owner::abstract;
+    candidate.active_outing.last_advanced_minutes = now_minutes;
+    candidate.active_outing.target_id = plan.lead_id;
+    candidate.active_outing.target_omt = plan.target_omt;
+    candidate.active_outing.target_lead_id = plan.lead_id;
+    candidate.active_outing.target_lead_revision = plan.lead_revision;
+    candidate.active_outing.job_type = bandit_dry_run::to_string( plan.job );
+    candidate.active_outing.started_minutes = now_minutes;
+    candidate.active_outing.local_contact_minutes = -1;
+    candidate.active_outing.last_progress_minutes = now_minutes;
+    candidate.active_outing.return_application_key =
         bandit_pursuit_handoff::make_operation_component_key(
-            site.active_outing.activity_id, site.active_outing.generation, "return" );
-    site.active_outing.report_application_key =
+            candidate.active_outing.activity_id, candidate.active_outing.generation, "return" );
+    candidate.active_outing.report_application_key =
         bandit_pursuit_handoff::make_operation_component_key(
-            site.active_outing.activity_id, site.active_outing.generation, "report" );
-    site.active_outing.cargo_application_key =
+            candidate.active_outing.activity_id, candidate.active_outing.generation, "report" );
+    candidate.active_outing.cargo_application_key =
         bandit_pursuit_handoff::make_operation_component_key(
-            site.active_outing.activity_id, site.active_outing.generation, "cargo" );
-    lead->status = camp_lead_status::active;
-    lead->last_outcome = "structural_outing_active";
-    advance_camp_map_lead_revision( site, *lead );
+            candidate.active_outing.activity_id, candidate.active_outing.generation, "cargo" );
+    candidate_lead->status = camp_lead_status::active;
+    candidate_lead->last_outcome = "structural_outing_active";
+    advance_camp_map_lead_revision( candidate, *candidate_lead );
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
     return true;
 }
 
@@ -6392,8 +6508,31 @@ dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         return plan;
     }
 
-    plan.member_ids = select_dispatch_members( site, decision.selected_member_count );
-    if( static_cast<int>( plan.member_ids.size() ) != decision.selected_member_count ) {
+    int selected_member_count = decision.selected_member_count;
+    if( is_routine_scout_job( decision.intent ) ) {
+        const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+        const bool micro_site = effective_profile( site ) ==
+                                hostile_site_profile::small_hostile_site;
+        const int required_routine_members = micro_site ? 1 : routine_policy.party_size;
+        if( ( !routine_policy.eligible && !micro_site ) ||
+            selected_member_count != required_routine_members ) {
+            plan.notes.push_back( "camp-map dispatch blocked: routine pair policy is not eligible" );
+            return plan;
+        }
+        selected_member_count = required_routine_members;
+    } else {
+        const response_party_policy_result response_policy = response_party_policy(
+                    site, decision.intent, selected_member_count );
+        if( !response_policy.eligible ) {
+            plan.notes.push_back( "camp-map dispatch blocked: response party policy: " +
+                                  response_policy.rejection_reason );
+            return plan;
+        }
+        selected_member_count = response_policy.party_size;
+    }
+
+    plan.member_ids = select_dispatch_members( site, selected_member_count );
+    if( static_cast<int>( plan.member_ids.size() ) != selected_member_count ) {
         plan.notes.push_back( "camp-map dispatch blocked: not enough at-home members survived selection" );
         return plan;
     }
@@ -6470,7 +6609,15 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         return plan;
     }
 
-    const bandit_dry_run::camp_input camp = make_dispatch_camp_input( site );
+    bandit_dry_run::camp_input camp = make_dispatch_camp_input( site );
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    if( routine_policy.eligible ) {
+        camp.available_manpower = std::max( camp.available_manpower,
+                                            routine_policy.party_size );
+        if( camp.available_manpower == routine_policy.party_size ) {
+            camp.shortage = bandit_dry_run::shortage_band::low;
+        }
+    }
     if( camp.available_manpower <= 0 ) {
         plan.notes.push_back( "dispatch blocked: no dispatchable at-home members remain after home reserve" );
         return plan;
@@ -6489,14 +6636,26 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         return plan;
     }
 
-    const int required_members = required_dispatch_members_for_profile( site, winner.job );
-    if( required_members <= 0 ) {
-        plan.notes.push_back( "dispatch blocked: winning job needs no live member handoff" );
-        return plan;
-    }
-    if( rules.profile == hostile_site_profile::cannibal_camp && required_members > camp.available_manpower ) {
-        plan.notes.push_back( "dispatch blocked: cannibal_camp pack pressure requires at least 2 at-home members after reserve" );
-        return plan;
+    int required_members = 0;
+    int selected_reserve = 0;
+    if( is_routine_scout_job( winner.job ) ) {
+        const bool micro_site = rules.profile == hostile_site_profile::small_hostile_site;
+        if( !routine_policy.eligible && !micro_site ) {
+            plan.notes.push_back( "dispatch blocked: routine pair policy: " +
+                                  routine_policy.rejection_reason );
+            return plan;
+        }
+        required_members = micro_site ? 1 : routine_policy.party_size;
+        selected_reserve = micro_site ? 0 : routine_policy.required_local_reserve;
+    } else {
+        const response_party_policy_result response_policy = response_party_policy( site, winner.job );
+        if( !response_policy.eligible ) {
+            plan.notes.push_back( "dispatch blocked: response party policy: " +
+                                  response_policy.rejection_reason );
+            return plan;
+        }
+        required_members = response_policy.party_size;
+        selected_reserve = response_policy.required_local_reserve;
     }
 
     plan.member_ids = select_dispatch_members( site, required_members );
@@ -6523,7 +6682,7 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
     plan.valid = true;
     plan.notes.push_back( "profile " + rules.id + ": reserve " +
-                          std::to_string( required_home_reserve( site ) ) +
+                          std::to_string( selected_reserve ) +
                           ", retreat_floor " + std::to_string( rules.retreat_bias_floor ) +
                           ", return_clock_floor " + std::to_string( rules.return_clock_floor ) );
     plan.notes.push_back( "profile writeback: " + rules.writeback_expectation );
@@ -6724,7 +6883,13 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
                                             plan.target_lead_revision == 0 :
                                             referenced_lead != nullptr &&
                                             referenced_lead->revision == plan.target_lead_revision;
-    if( !plan.valid || !referenced_lead_is_current ||
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    const bool routine_party_size_is_valid = routine_policy.applies ?
+            routine_policy.eligible &&
+            static_cast<int>( plan.member_ids.size() ) == routine_policy.party_size :
+            effective_profile( site ) == hostile_site_profile::small_hostile_site &&
+            plan.member_ids.size() == 1;
+    if( !plan.valid || !referenced_lead_is_current || !routine_party_size_is_valid ||
         plan.entry.job_type != bandit_dry_run::job_template::scout ||
         plan.site_id != site.site_id || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
@@ -6761,42 +6926,47 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
         checked_member_ids.push_back( member_id );
     }
 
+    site_record candidate = site;
     const std::string summary = "dispatch " + bandit_dry_run::to_string( plan.entry.job_type ) +
                                 " toward " + plan.target_id;
     for( const character_id &member_id : plan.member_ids ) {
-        if( !update_member_state( site, member_id, member_state::outbound, summary ) ) {
+        if( !update_member_state( candidate, member_id, member_state::outbound, summary ) ) {
             return false;
         }
     }
-    site.active_outing.clear();
-    site.active_outing.kind = outing_kind::scout_sortie;
-    site.active_outing.activity_id = plan.entry.group_id;
-    site.active_outing.camp_id = site.site_id;
-    site.active_outing.generation = plan.entry.activity_generation;
-    site.active_outing.member_ids = plan.member_ids;
-    site.active_outing.leader_id = plan.member_ids.front();
-    site.active_outing.phase = scout_phase::outbound;
-    site.active_outing.owner = simulation_owner::abstract;
-    site.active_outing.handoff_epoch = plan.entry.handoff_epoch;
-    site.active_outing.return_application_key = plan.entry.return_application_key;
-    site.active_outing.report_application_key = plan.entry.report_application_key;
-    site.active_outing.cargo_application_key = plan.entry.cargo_application_key;
-    site.next_outing_generation++;
-    site.active_outing.target_id = plan.target_id;
-    site.active_outing.target_omt = plan.target_omt;
-    site.active_outing.target_lead_id = plan.target_lead_id;
-    site.active_outing.target_lead_revision = plan.target_lead_revision;
-    site.active_outing.job_type = bandit_dry_run::to_string( plan.entry.job_type );
-    site.active_outing.started_minutes = -1;
-    site.active_outing.local_contact_minutes = -1;
-    site.active_outing.last_progress_minutes = -1;
-    site.remembered_target_or_mark = plan.entry.current_target_or_mark;
-    site.remembered_threat_estimate = plan.group.current_threat_estimate;
-    site.remembered_bounty_estimate = plan.group.current_bounty_estimate;
-    site.remembered_retreat_bias = plan.group.retreat_bias;
-    site.remembered_return_clock = plan.group.return_clock;
-    site.remembered_pressure = plan.group.remaining_pressure;
-    site.known_recent_marks = plan.group.known_recent_marks;
+    candidate.active_outing.clear();
+    candidate.active_outing.kind = outing_kind::scout_sortie;
+    candidate.active_outing.activity_id = plan.entry.group_id;
+    candidate.active_outing.camp_id = candidate.site_id;
+    candidate.active_outing.generation = plan.entry.activity_generation;
+    candidate.active_outing.member_ids = plan.member_ids;
+    candidate.active_outing.leader_id = plan.member_ids.front();
+    candidate.active_outing.phase = scout_phase::outbound;
+    candidate.active_outing.owner = simulation_owner::abstract;
+    candidate.active_outing.handoff_epoch = plan.entry.handoff_epoch;
+    candidate.active_outing.return_application_key = plan.entry.return_application_key;
+    candidate.active_outing.report_application_key = plan.entry.report_application_key;
+    candidate.active_outing.cargo_application_key = plan.entry.cargo_application_key;
+    candidate.next_outing_generation++;
+    candidate.active_outing.target_id = plan.target_id;
+    candidate.active_outing.target_omt = plan.target_omt;
+    candidate.active_outing.target_lead_id = plan.target_lead_id;
+    candidate.active_outing.target_lead_revision = plan.target_lead_revision;
+    candidate.active_outing.job_type = bandit_dry_run::to_string( plan.entry.job_type );
+    candidate.active_outing.started_minutes = -1;
+    candidate.active_outing.local_contact_minutes = -1;
+    candidate.active_outing.last_progress_minutes = -1;
+    candidate.remembered_target_or_mark = plan.entry.current_target_or_mark;
+    candidate.remembered_threat_estimate = plan.group.current_threat_estimate;
+    candidate.remembered_bounty_estimate = plan.group.current_bounty_estimate;
+    candidate.remembered_retreat_bias = plan.group.retreat_bias;
+    candidate.remembered_return_clock = plan.group.return_clock;
+    candidate.remembered_pressure = plan.group.remaining_pressure;
+    candidate.known_recent_marks = plan.group.known_recent_marks;
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
     return true;
 }
 
@@ -6824,6 +6994,8 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     const std::optional<bandit_dry_run::job_template> active_job =
         job_template_from_string( outing->job_type );
     const bool cannibal_attack_intent = profile == hostile_site_profile::cannibal_camp &&
+                                        site.active_hostile_operation.is_active() &&
+                                        outing == &site.active_hostile_operation.reservation &&
                                         active_job.has_value() &&
                                         cannibal_job_requires_attack_pack( *active_job );
     decision.shakedown_capable = profile != hostile_site_profile::cannibal_camp &&
@@ -7404,7 +7576,7 @@ int ordinary_scout_sortie_limit_minutes()
 bool scout_sortie_should_return_home( const site_record &site, const int current_minutes,
                                       const int sortie_limit_minutes )
 {
-    if( !site.active_outing.is_active() || site.active_outing.member_ids.size() != 1 ||
+    if( !site.active_outing.is_active() || site.active_outing.member_ids.empty() ||
         sortie_limit_minutes <= 0 || current_minutes < 0 ||
         site.last_shakedown_outcome == "fight_unresolved" ) {
         return false;

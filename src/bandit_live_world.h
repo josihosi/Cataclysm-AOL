@@ -466,6 +466,23 @@ struct roster_view {
     int ready_total = 0;
 };
 
+struct routine_scout_policy_result {
+    bool applies = false;
+    bool eligible = false;
+    int party_size = 0;
+    int required_local_reserve = 0;
+    int concrete_ready_goal = 0;
+    std::string rejection_reason;
+};
+
+struct response_party_policy_result {
+    bool applies = false;
+    bool eligible = false;
+    int party_size = 0;
+    int required_local_reserve = 0;
+    std::string rejection_reason;
+};
+
 struct site_record {
     int schema_version = 10;
     std::string site_id;
@@ -805,6 +822,10 @@ int camp_supply_living_total( const site_record &site );
 int camp_supply_cap( const site_record &site );
 bool advance_camp_supply( site_record &site, int now_minutes );
 int advance_world_camp_supplies( world_state &state, int now_minutes );
+routine_scout_policy_result routine_scout_policy( const site_record &site );
+int routine_scout_materialization_count( const site_record &site );
+response_party_policy_result response_party_policy( const site_record &site,
+        bandit_dry_run::job_template job, int requested_party_size = 0 );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,

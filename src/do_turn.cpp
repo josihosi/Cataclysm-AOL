@@ -1464,25 +1464,6 @@ npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kin
     return npc_template_id::NULL_ID();
 }
 
-int live_bandit_minimum_concrete_roster_for_scout_dispatch(
-    const bandit_live_world::site_record &site )
-{
-    const bandit_live_world::hostile_site_profile profile = site.profile ==
-            bandit_live_world::hostile_site_profile::none ?
-            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
-    switch( profile ) {
-        case bandit_live_world::hostile_site_profile::camp_style:
-            return 2;
-        case bandit_live_world::hostile_site_profile::cannibal_camp:
-            return 4;
-        case bandit_live_world::hostile_site_profile::small_hostile_site:
-            return 1;
-        case bandit_live_world::hostile_site_profile::none:
-            break;
-    }
-    return 1;
-}
-
 int live_bandit_materialize_abstract_members_for_dispatch(
     bandit_live_world::world_state &state, bandit_live_world::site_record &site )
 {
@@ -1491,13 +1472,18 @@ int live_bandit_materialize_abstract_members_for_dispatch(
         return 0;
     }
 
-    const int materialized_live_members = site.count_live_members();
-    const int abstract_members_remaining = site.living_total - materialized_live_members;
-    const int at_home_goal = live_bandit_minimum_concrete_roster_for_scout_dispatch( site );
-    const int missing_at_home_members = at_home_goal - site.count_members_in_state(
-                                            bandit_live_world::member_state::at_home );
-    const int members_to_create = std::min( abstract_members_remaining,
-                                            std::max( 0, missing_at_home_members ) );
+    int members_to_create = bandit_live_world::routine_scout_materialization_count( site );
+    const bandit_live_world::hostile_site_profile profile = site.profile ==
+            bandit_live_world::hostile_site_profile::none ?
+            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
+    if( profile == bandit_live_world::hostile_site_profile::small_hostile_site &&
+        !site.retired_empty_site && !site.has_active_outside_pressure() ) {
+        const bandit_live_world::roster_view roster = site.roster();
+        if( roster.valid ) {
+            members_to_create = std::min( roster.unmaterialized_home_total,
+                                          std::max( 0, 1 - roster.ready_concrete_total ) );
+        }
+    }
     if( members_to_create <= 0 ) {
         return 0;
     }
