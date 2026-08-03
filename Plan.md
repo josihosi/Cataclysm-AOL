@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 ACQUIRE-RETAIN HYSTERESIS
+**Status:** ACTIVE / GREEN / PHASE 4 BOUNDED SIGNAL EVIDENCE
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -211,8 +211,8 @@ provenance, strict batches reject atomically, `(fact,bucket)` retention stays 16
 shared evidence crosses final/provisional physical report return. Bandit/cannibal roundtrip,
 malformed/replay/cap/migration, structural-positive/hostile-negative, and dead-before-share proof
 are green; saturated state is 51,244 bytes. Exact artifacts live under external
-`phase4-20260803/typed-observation/MANIFEST.md`. The first unchecked row is now the legitimate OMT
-visibility envelope. Production observer/report wiring is checkpointed at `e7c3da73e7`: the bounded
+`phase4-20260803/typed-observation/MANIFEST.md`. Production observer/report wiring is checkpointed at
+`e7c3da73e7`: the bounded
 structural threat read writes strict typed evidence without changing camp intelligence, forward
 pair evidence is shared only by the unresolved pair, and hard mobile danger reaches the camp only
 when an eligible living observer physically returns. Dead-before-share, local-owner exclusion,
@@ -222,8 +222,13 @@ save/replay, below-gate route progress, and both factions are green; exact evide
 intermediate 2, and unlit-night 1 before actual weather, elevation, optics, and terrain cost;
 candidate inspection remains current plus three committed route OMTs. The real forest-cost control,
 full live-world regression, and clean structured review are archived under external
-`phase4-20260803/visibility-envelope/MANIFEST.md`. Next, add the smallest acquire/retain and
-last-known-age behavior at this same typed observation seam. The compound human-camp opportunity-recovery
+`phase4-20260803/visibility-envelope/MANIFEST.md`. Acquire/retain hysteresis is checkpointed at
+`b7a2333f7f`: normal acquisition keeps the ordinary terrain-cost budget, while the exact same
+persisted route OMT and stable threat-ID set may retain through one extra see-cost point for at most
+60 minutes. Target-revision drift, moved/replaced threats, expiry, and age 61 all fail closed; the
+request-only derivation adds no save bytes. Both-faction save boundaries and full live-world
+regression are green under external `phase4-20260803/acquire-retain/MANIFEST.md`. Next, convert
+smoke/light and significant sound into uncertain, expiring typed evidence. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

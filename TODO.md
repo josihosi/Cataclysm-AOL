@@ -7,10 +7,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Add separate acquire/retain thresholds and a bounded last-known-location age at the existing
-   production structural observation seam so one marginal update cannot flicker a tracked threat.
-2. Convert smoke/light and significant sound into uncertain, expiring typed evidence without exact
+1. Convert smoke/light and significant sound into uncertain, expiring typed evidence without exact
    avatar coordinates or magical correction.
+2. Record legitimately visible local zombie/horde observations through the same typed evidence
+   owner without population-only hostility inference.
 3. Finish quiet former-radar, avatar-movement, both-faction no-dual-writer, and autonomous discovery
    controls before removing direct-player radar.
 

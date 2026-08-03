@@ -2,21 +2,21 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 4 acquire/retain hysteresis**
+Status: **ACTIVE - Phase 4 bounded signal evidence**
 
 Active phase: **Phase 4**
 
-Current deterministic execution row: **Use separate acquire/retain thresholds and bounded
-last-known-location age so visibility does not flicker every update.**
+Current deterministic execution row: **Convert smoke and light into bounded evidence rather than
+exact avatar coordinates.**
 
-Latest resume packet (behavior checkpoint `1738cf5ca2`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `b7a2333f7f`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. The production structural reader retains real regional light/weather, NPC sight,
-elevation, optics, and route-terrain costs while exposing a useful clear/intermediate/unlit 3/2/1
-OMT baseline. Real PER-8 NPC, weather-type, field/forest, physical observation, abstract-threat,
-and full-live-world gates pass 1/31, 2/183, 7/467, and 148/34,959. Structured review reports no
-finding at 0.94 confidence. Exact evidence and resume state are under external
-`phase4-20260803/visibility-envelope/{MANIFEST,RESUME}.md`; no current blocker.
+untouched. The structural observer derives a 60-minute last-known track from the existing persisted
+typed visual fact; ordinary LOS acquires, while one extra terrain-cost point retains only the same
+route OMT and exact stable threat IDs. Age 61, moved/replaced identities, target-revision drift,
+malformed IDs, and expiry fail closed. Focused/save, visibility, observation, abstract-threat, and
+full-live-world gates pass 2/78, 1/31, 2/183, 7/467, and 150/35,038. Exact evidence and resume state
+are under external `phase4-20260803/acquire-retain/{MANIFEST,RESUME}.md`; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -863,7 +863,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 - [x] Define a compact observation record: stable evidence/source ID, sense, observer ID, source/receiver OMT, time and 30-minute bucket, strength, visual quality, distinct defender IDs plus simultaneity window, normalized observed power/equipment detail, target revision, uncertainty radius, expiry, and shared status. _Checkpoint `600685c1c2` adds strict schema-1 records to the existing bounded outing/report path, exact `(fact,bucket)` dedup, 64-input/16-retained caps, full-batch atomic rejection, legacy schema-0 compatibility, and both-faction save proof._
 - [x] Use legitimate OMT visibility with clear-day baseline around 3 OMT, intermediate visibility around 2, and unlit night around 1; let weather, light, terrain, elevation, and optics modify the real calculation. _Checkpoint `1738cf5ca2` maps real NPC raw sight through existing CDDA thresholds, applies actual regional weather, elevation, optics, and terrain see cost, and retains the current-plus-three committed-route candidate bound. Real PER-8/weather/field/forest controls and full live-world regression are green._
-- [ ] Use separate acquire/retain thresholds and last-known-location age so visibility does not flicker every update.
+- [x] Use separate acquire/retain thresholds and last-known-location age so visibility does not flicker every update. _Checkpoint `b7a2333f7f` derives the last-known track from the persisted typed visual fact, keeps ordinary LOS for acquisition, and permits exactly one extra terrain-cost point for the same route OMT and exact stable threat IDs through age 60. Age 61, target-revision drift, replacement/movement, malformed IDs, and expiry fail closed; both-faction save/fork proof is green and no saved field is added._
 - [ ] Convert smoke and light into bounded evidence rather than exact avatar coordinates.
 - [ ] Add only significant sounds (gunfire, alarms, explosions) initially; preserve uncertainty and age.
 - [ ] Record actual local zombie/horde observations only when legitimately visible.

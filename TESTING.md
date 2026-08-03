@@ -619,8 +619,16 @@ NPC, real `sunny`/`rainstorm`/`fog` definitions, and real field/forest see costs
 cannot cross the forest screen until elevation or optics supplies enough occlusion budget. The
 81,746,904-byte binary SHA-256 is `e41ee72c...`. Structured review is clean with no finding at 0.94
 confidence. External `phase4-20260803/visibility-envelope/MANIFEST.md` records both build attempts,
-exact commands/hashes, and the physical-contact/blindness non-claim. Acquire/retain and bounded
-last-known age are next; no persistence test was rerun because this slice changed no saved shape.
+exact commands/hashes, and the physical-contact/blindness non-claim. Acquire/retain hysteresis is
+green at `b7a2333f7f`: exact-source focused proof passes 2/78; visibility 1/31, observation 2/183,
+abstract threat 7/467, and full live-world 150/35,038 passed before removal of one redundant negative
+test assertion with identical product objects. The final 81,792,776-byte binary SHA-256 is
+`5a8066f4...`. Both factions retain an exact persisted visual track through one extra terrain-cost
+point at ages 0..60, while age 61, changed OMT/IDs/revision, malformed IDs, and expiry fail closed.
+No save field was added; the request derives from the existing bounded 16-fact outing record.
+External `phase4-20260803/acquire-retain/MANIFEST.md` preserves corrected/non-credit attempts and
+the exact command/hash boundary. A natural live horde crossing the one-point edge remains Phase-4
+live-exit proof; bounded smoke/light/significant-sound evidence is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
