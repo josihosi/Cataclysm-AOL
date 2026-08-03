@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 3 LIVE PAIR PROOF
+**Status:** ACTIVE / GREEN / PHASE 4 LEAD-ORIGIN CUTOVER
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -190,11 +190,21 @@ withdrawal cap, exact `<P`/`[P,2P)`/`>=2P` attrition, local-owner exclusion, 72-
 recovery, and replay-safe clearing/re-entry without ever damaging the abstract threat. Final
 focused/live-world/save gates pass 5/284, 137/34,527, and 3/34; the 100-site artifact remains under
 the provisional Phase-0 CPU/memory/save gates and services 100/100 within six passes.
-The next executable row is live pair-materialization proof through the production handoff/cohesion
-path. The compound human-camp opportunity-recovery row is explicitly sequenced after Phase-4 typed
-observations and later physical-report/outcome semantics; lead-origin cutover instrumentation opens
-Phase 4. Neither is silently waived or prematurely implemented. Terrain labels remain static priors,
-not perception of loot, residents, or mobile danger.
+The current-schema live pair packet is archived as an honest non-credit attempt under external
+`phase3-20260803/pair-handoff/MANIFEST.md`. Two meaningfully different direct fixtures were tried:
+the north route exposed stale-contact interference, while the corrected east route completed a
+real six-hour wait without emitting a structural handoff. The full log identified the concrete
+cause: the legacy player-pressure dispatcher matched the structural lead by avatar proximity,
+created its own `#dispatch` pair, and blocked structural maintenance as unresolved outside pressure;
+inherited spawn-tile headcount also reconciled the intended five-member fixture back to fourteen.
+The strict startup classifier was not weakened and no third fixture loop is permitted by Josef's
+pragmatic attempt budget. Phase 3's exact-pair ownership, shared route, dematerialization, cohesion,
+finite bounty, abstract threat, fairness, and gross CPU/RSS/save gates are deterministically green;
+its missing live credit is an explicit limitation carried into the later natural-lifecycle packet.
+Phase 4 now opens with lead-origin/single-writer instrumentation and removal of the concrete legacy
+radar collision before expanding typed perception. The compound human-camp opportunity-recovery
+row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
+labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

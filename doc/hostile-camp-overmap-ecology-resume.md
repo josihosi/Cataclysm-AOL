@@ -19,9 +19,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 ## Active execution state
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
-- Active phase: Phase 3 - shared real scouting ecology and finite bounty.
-- Current deterministic execution row: implement the atomic abstract/local ownership transaction
-  for the complete surviving pair, including partial-failure rollback and save/load idempotency.
+- Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
+- Current deterministic execution row: persist explicit target-lead origin and prevent the legacy
+  player-pressure dispatcher from consuming structural/frontier/terrain-owned leads.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -32,6 +32,13 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   checks, and bounded score diagnostics are checkpointed at `cb53cbafdb`. Exact dispatch drive,
   force-due, acquire/retain/risk gates, camp ordering, and the top-two/global-eight route consumer
   are checkpointed at `cab98bc55c`.
+- Exact-pair handoff, dematerialization, cohesion, finite bounty, and bounded abstract threat are
+  checkpointed through `d5e76a447f`; the nested current-schema harness audit is checkpointed at
+  `beafbbbd86`, and the fixture correction at `7f4cac4ae0`. The two-attempt live packet is honest
+  non-credit evidence under external `phase3-20260803/pair-handoff/MANIFEST.md`; its full log proves
+  a legacy player-pressure dispatcher/structural mission-slot collision plus spawn-tile fixture
+  bootstrap drift. Do not start a third fixture loop or weaken the startup classifier. Phase 4
+  opens with the concrete lead-origin/single-writer repair.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

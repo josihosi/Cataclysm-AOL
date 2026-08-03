@@ -2,12 +2,12 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 3 shared real scouting ecology and live pair proof**
+Status: **ACTIVE - Phase 4 lead-origin and single-writer cutover**
 
-Active phase: **Phase 3**
+Active phase: **Phase 4**
 
-Current deterministic execution row: **Run the current-schema live/harness pair-materialization
-and cohesion proof through the production handoff path.**
+Current deterministic execution row: **Persist explicit target-lead origin and prevent the legacy
+player-pressure dispatcher from consuming structural/frontier/terrain-owned leads.**
 
 Latest resume packet (behavior checkpoint `d5e76a447f`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
@@ -781,7 +781,7 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [x] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, and 100/500 fairness; routed-dispatch checkpoint `cab98bc55c` adds the real terrain/final-score consumer and boundary-tests eight global route callbacks, two starts, budget-denial semantics, and byte-stable replay._
 - [ ] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery.
 - [ ] Instrument the origin of every target lead/write (`legacy_radar`, new observer, signal, returned report) so Phase 4 can enforce a single-writer cutover. _Explicit opening Phase-4 slice; it depends on the typed observation writer and is not silently skipped in Phase 3._
-- [ ] Run a live/harness pair-materialization proof now: plausible entry location, stable IDs, shared route/cohesion, and no duplicate abstract advance.
+- [x] Run a bounded live/harness pair-materialization attempt: plausible entry location, stable IDs, shared route/cohesion, and no duplicate abstract advance. _Two meaningfully different direct attempts are archived as honest non-credit under external `phase3-20260803/pair-handoff/MANIFEST.md`: the inherited north geometry hit a stale shakedown contact; the corrected east geometry proved a concrete legacy player-pressure/structural mission-slot collision and spawn-tile fixture-bootstrap drift. Josef's two-attempt pragmatic rule closes this instrumentation row without live feature credit; the later natural-lifecycle packet retains the missing proof._
 - [ ] Test loaded/unloaded boundary transitions while outbound, harvesting, regrouping, withdrawing, and returning.
 - [ ] Test repeated load/unload thrash, partial pair spawn, one member dying during handoff, and save/load in both transition directions.
 - [x] Boundary-test `D=499/500`, `S=299/300`, retained `149/150`, and risk `749/750`; prove force-due does not bypass hard gates. _Checkpoint `cab98bc55c` tests all exact score/risk edges plus route-segment 499/500, first/later force-due clocks, and an impassable force-due control._
@@ -789,16 +789,16 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [ ] Test outward frontier coverage and legitimate discovery at target separations 10 and 12 OMT; every sector reaches 7-9 OMT by the eighth resolved frontier outing/24-day bound; cheap ranking performs zero full route solves and the global budget solves at most two candidates per considered camp.
 - [x] Test a bounty-3 resource where the first pair arrives with one survivor and atomically takes one unit, then a full second pair takes exactly the remaining two; replay/save-load cannot change the total. _Checkpoint `dfddc712d4`; focused resource coverage passes 7 cases / 2,252 assertions and full live-world passes 132 / 34,243 at seed `830204929`._
 - [ ] Boundary-test bandit bounty cues: occupied-only 0->1; one valid cue 1->2; a duplicate cue/source/bucket is a no-op; two distinct cue classes in distinct buckets or one quality-3 bulk-handling observation reach 3; light/smoke/hidden storage/exact item value alone do not raise it; newer clear-empty evidence returns it to 0 without erasing audit provenance.
-- [ ] Boundary-test abstract danger: visible pre-entry versus dark/screened/off-corridor controls; two-detour cap; `danger_high` just below/equal to party power and just below/equal to twice party power; continuous overlap across hours/save/load/owner handoff applies one outcome; leaving then genuinely re-encountering creates exactly one new episode; local materialization and abstract resolution never both own one episode.
+- [x] Boundary-test abstract danger: visible pre-entry versus dark/screened/off-corridor controls; two-detour cap; `danger_high` just below/equal to party power and just below/equal to twice party power; continuous overlap across hours/save/load/owner handoff applies one outcome; leaving then genuinely re-encountering creates exactly one new episode; local materialization and abstract resolution never both own one episode. _Checkpoint `d5e76a447f` covers the exact visibility, attrition, episode replay/re-entry, local exclusivity, recovery, and bounded-read matrix._
 - [ ] Prove quiet targets inside the old radar radius create no candidate, decoy signals lead only to their uncertainty area, movement of the avatar does not drag an outing, and hidden camp recovery creates no new pressure without a returned post-event report.
 
 ### Phase 3 exit
 
 - [ ] Both factions naturally send coherent paired outings without player proximity.
-- [ ] Parties follow one plausible route and cannot double-resolve abstract/local work.
-- [ ] Pair materialization/cohesion has live artifact proof in this phase rather than being deferred to Phase 8.
+- [x] Parties follow one plausible route and cannot double-resolve abstract/local work. _Shared-route `e537ea7b49`, handoff `367337c9e4`, dematerialization `f83b6bb116`, cohesion `71bde93d48`, and abstract-threat `d5e76a447f` deterministically cover exact route ownership, generation/replay guards, rollback, and local exclusivity._
+- [x] Complete the bounded Phase-3 live-artifact attempt or archive its explicit limitation for the later natural-lifecycle packet. _External `phase3-20260803/pair-handoff/MANIFEST.md` preserves the exact build, screenshots, logs, two fixture outcomes, and concrete legacy-dispatch collision without claiming feature proof. This user-authorized pragmatic closure carries live credit into the later packet rather than expanding the fixture framework._
 - [x] Finite resource depletion is globally atomic and camp beliefs remain independent. _Checkpoint `dfddc712d4`; exact `2+1`, `1+2`, stale-belief, depleted, save/load, and replay controls are recorded in external `phase3-20260803/finite-bounty/MANIFEST.md`._
-- [ ] CPU, allocation, and save-size microbenchmarks stay within the phase budgets.
+- [x] CPU, allocation, and save-size microbenchmarks stay within the phase budgets. _The accepted `d5e76a447f` 100-site packet records 61,951 ns p95, 66,750 ns max, 262,144-byte timed RSS delta, 72,164 serialized growth, and 100/100 service within six passes, below the provisional Phase-0 gross gates._
 - [x] Behavior + tests form a checkpoint commit. _Finite-resource behavior/tests are checkpointed at `dfddc712d4`; later Phase-3 rows will add their own narrow checkpoints before the phase closes._
 
 Evidence:
@@ -857,6 +857,12 @@ Evidence:
 ## Phase 4 - bounded perception, evidence aging, and removal of radar
 
 Primary anchors: current direct-player dispatch lookup, signal adapters, `Character::overmap_los`, smoke/light/sound systems.
+
+Opening defect evidence (2026-08-03): the bounded Phase-3 live attempt showed the legacy
+player-pressure dispatcher matching a `structural_bounty` lead by the avatar's nearby OMT, creating
+its own `#dispatch` scout pair, and preventing the structural scheduler from owning that lead. The
+first Phase-4 slice must persist a test-visible lead origin, exclude structural/frontier/terrain
+owners from the legacy consumer, and prove no dual writer before broader observation work.
 
 - [ ] Define a compact observation record: stable evidence/source ID, sense, observer ID, source/receiver OMT, time and 30-minute bucket, strength, visual quality, distinct defender IDs plus simultaneity window, normalized observed power/equipment detail, target revision, uncertainty radius, expiry, and shared status.
 - [ ] Use legitimate OMT visibility with clear-day baseline around 3 OMT, intermediate visibility around 2, and unlit night around 1; let weather, light, terrain, elevation, and optics modify the real calculation.

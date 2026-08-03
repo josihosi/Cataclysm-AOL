@@ -583,11 +583,20 @@ user's one-review-loop boundary, the root performed final review and reran the c
 without another polish review. Exact commands, hashes, caveats, and review outputs are under
 external `phase3-20260803/abstract-threat/MANIFEST.md`.
 
-Current validation target is one live production pair handoff/cohesion artifact. The current
-harness audit must read nested current-schema `active_outing`/`local_handoff` state rather than
-legacy singleton fields, and same-run evidence must show two stable IDs, distinct plausible
-staging, unchanged route, cohesion, and no duplicate abstract advance. Human-camp recovery remains
-sequenced after typed observations and physical reports; it is not a current harness blocker.
+The current-schema harness audit is green for nested `active_outing`/`local_handoff` state, and the
+fixture correction is checkpointed at `7f4cac4ae0`. The live packet under external
+`phase3-20260803/pair-handoff/MANIFEST.md` is deliberately non-credit: two harness startups were
+safe but strict-OCR yellow, the first direct fixture hit an inherited north-side shakedown contact,
+and the corrected east fixture completed a visually verified six-hour wait without a structural
+dispatch/handoff trace. No third fixture attempt or classifier weakening is permitted in this
+slice. The full direct log identifies a concrete integration defect: the legacy player-pressure
+dispatcher matched the structural lead by avatar proximity, created `#dispatch` with two members,
+and made structural maintenance report `active_outings=0` plus unresolved outside pressure; runtime
+spawn-tile reconciliation also restored fourteen living members instead of the fixture's intended
+five. Phase-3 deterministic ownership and the accepted `d5e76a447f` 100-site CPU/RSS/save packet
+remain the honest gross gate, while Phase 4 now validates an explicit lead-origin/single-writer
+cutover, a quiet former-radar target, and no avatar-drag before any new live attempt. Human-camp
+recovery remains sequenced after typed observations and physical reports.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

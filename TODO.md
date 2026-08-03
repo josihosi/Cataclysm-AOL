@@ -7,11 +7,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Extend the current structural harness saved-state audit from legacy singleton fields to the
-   nested `active_outing` / `local_handoff` pair owner; do not claim startup/load as feature proof.
-2. Run one live bandit pair-materialization/cohesion proof through the production path: two stable
-   IDs, distinct route-facing stage tiles, unchanged shared route, six-tile cohesion, and no
-   duplicate abstract advance. Shared deterministic tests continue to cover both factions.
+1. Add explicit, persisted lead-origin classification and make the legacy player-pressure dispatcher
+   reject structural/frontier/terrain-owned leads instead of stealing their mission slot.
+2. Prove single-writer behavior, a quiet former-radar target, avatar movement without lead dragging,
+   migration/save bounds, and both-faction observer/signal footing before removing the remaining
+   exact direct-player dispatch path.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
 Keychain retries or blocker messages while Josef is unavailable, and leave final clean-environment
