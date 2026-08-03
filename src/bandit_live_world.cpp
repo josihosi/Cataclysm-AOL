@@ -9571,6 +9571,92 @@ sortie_observation make_structural_threat_observation( const site_record &site,
     return observation;
 }
 
+bool structural_local_zombie_read_is_valid( const site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const structural_local_zombie_read &read, const int now_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    const member_record *observer = site.find_member( read.observer_id );
+    const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    return now_minutes >= 0 && now_minutes > expected_cursor.last_advanced_minutes &&
+           outing.kind == outing_kind::structural_sortie && outing.schema_version == 8 &&
+           outing.owner == simulation_owner::local &&
+           simulation_owner_state_is_consistent( outing ) &&
+           simulation_cursor_matches( outing, expected_cursor ) &&
+           expected_cursor.owner == simulation_owner::local &&
+           outing.local_handoff.is_active() && outing.local_handoff.members.size() == 2 &&
+           outing.member_ids.size() == 2 && read.source_omt == outing.local_handoff.route_position &&
+           lead != nullptr && lead->revision == outing.target_lead_revision &&
+           lead->omt == outing.target_omt &&
+           std::find( outing.shared_route.begin(), outing.shared_route.end(), read.source_omt ) !=
+           outing.shared_route.end() && observer != nullptr &&
+           ( observer->state == member_state::outbound ||
+             observer->state == member_state::local_contact ) &&
+           std::find( outing.member_ids.begin(), outing.member_ids.end(), read.observer_id ) !=
+           outing.member_ids.end() && !outing.member_is_resolved( read.observer_id ) &&
+           std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), read.observer_id ) ==
+           outing.casualty_ids.end() && read.inspected_monsters >= 1 &&
+           read.inspected_monsters <= 64 && read.visible_count >= 1 && read.visible_count <= 64 &&
+           read.visible_count <= read.inspected_monsters &&
+           read.danger_low > 0 && read.danger_high >= read.danger_low && read.danger_high <= 200 &&
+           read.visual_quality >= 1 && read.visual_quality <= 3 &&
+           !read.stable_threat_ids.empty() &&
+           read.stable_threat_ids.size() <= max_abstract_threat_ids &&
+           read.visible_count >= static_cast<int>( read.stable_threat_ids.size() ) &&
+           std::is_sorted( read.stable_threat_ids.begin(), read.stable_threat_ids.end() ) &&
+           std::adjacent_find( read.stable_threat_ids.begin(),
+                               read.stable_threat_ids.end() ) == read.stable_threat_ids.end() &&
+           std::all_of( read.stable_threat_ids.begin(), read.stable_threat_ids.end(),
+    []( const std::string & id ) {
+        return id.rfind( "local-zombie:", 0 ) == 0 &&
+               id.size() > std::string_view( "local-zombie:" ).size() &&
+               id.size() <= max_sortie_defender_id_length;
+    } );
+}
+
+sortie_observation make_structural_local_zombie_observation( const site_record &site,
+        const structural_local_zombie_read &read, const int now_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    abstract_threat_read hash_read;
+    hash_read.threat_omt = read.source_omt;
+    hash_read.stable_threat_ids = read.stable_threat_ids;
+    const int party_power = structural_outing_party_power( site );
+    const bool hard_danger = std::min( 1000, 5 * read.danger_high ) >= routine_hard_risk ||
+                             read.danger_low >= std::min( 200, 2 * party_power );
+    sortie_observation observation;
+    observation.fact_key = "structural-local-zombie:" +
+                           std::to_string( structural_threat_fact_hash( hash_read ) );
+    observation.summary = read.visible_count >= 3 ?
+                          "legitimately visible local zombie group" :
+                          "legitimately visible local zombie danger";
+    observation.confidence = std::clamp( 50 + 10 * read.visual_quality, 0, 100 );
+    observation.observed_minutes = now_minutes;
+    observation.critical = hard_danger;
+    observation.kind = hard_danger ? sortie_observation_kind::hard_danger :
+                       sortie_observation_kind::certainty;
+    observation.state_key = "structural-local-zombie-threat";
+    observation.record_schema_version = 1;
+    observation.source_id = read.stable_threat_ids.front();
+    observation.sense = sortie_observation_sense::visual;
+    observation.observer_id = read.observer_id;
+    observation.source_omt = read.source_omt;
+    observation.receiver_omt = outing.local_handoff.route_position;
+    observation.bucket_start_minutes = now_minutes - now_minutes % 30;
+    observation.strength = std::clamp( ( read.danger_high + 33 ) / 34, 1, 6 );
+    observation.visual_quality = read.visual_quality;
+    observation.defender_ids = read.stable_threat_ids;
+    observation.simultaneity_start_minutes = now_minutes;
+    observation.simultaneity_end_minutes = now_minutes;
+    observation.observed_power_low = read.danger_low;
+    observation.observed_power_high = read.danger_high;
+    observation.target_revision = outing.target_lead_revision;
+    observation.expiry_minutes = minutes_after_saturated(
+                                     std::max( now_minutes, outing.expected_return_minutes ), 24 * 60 );
+    observation.share_state = sortie_observation_share_state::observer_private;
+    return observation;
+}
+
 bool apply_returned_structural_threat_observation( site_record &site,
         camp_map_lead &lead, const int now_minutes )
 {
@@ -10640,6 +10726,27 @@ bool make_static_structural_observer_request( const site_record &site,
     return request.party_power > 0;
 }
 } // namespace
+
+bool structural_local_zombie_candidate_is_eligible( const bool alive,
+        const bool hallucination, const bool zombie_species, const bool zombie_rider,
+        const bool hostile, const bool visible, const bool source_on_route )
+{
+    return alive && !hallucination && zombie_species && !zombie_rider && hostile && visible &&
+           source_on_route;
+}
+
+sortie_observation_effect record_structural_local_zombie_observation(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const structural_local_zombie_read &read, const int now_minutes )
+{
+    if( !structural_local_zombie_read_is_valid( site, expected_cursor, read, now_minutes ) ) {
+        return {};
+    }
+    const sortie_observation observation = make_structural_local_zombie_observation(
+                site, read, now_minutes );
+    return record_active_typed_observations( site, expected_cursor, read.observer_id,
+            site.active_outing.target_lead_revision, { observation }, now_minutes );
+}
 
 structural_signal_record_result record_structural_signal_observations( world_state &state,
         const int now_minutes,

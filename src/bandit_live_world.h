@@ -983,6 +983,26 @@ struct abstract_threat_read {
     std::string summary;
 };
 
+struct structural_local_zombie_read {
+    character_id observer_id;
+    tripoint_abs_omt source_omt;
+    int inspected_monsters = 0;
+    int visible_count = 0;
+    int danger_low = 0;
+    int danger_high = 0;
+    int visual_quality = 1;
+    std::vector<std::string> stable_threat_ids;
+};
+
+std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
+    const site_record &site );
+bool structural_local_zombie_candidate_is_eligible( bool alive, bool hallucination,
+        bool zombie_species, bool zombie_rider, bool hostile, bool visible,
+        bool source_on_route );
+sortie_observation_effect record_structural_local_zombie_observation(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const structural_local_zombie_read &read, int now_minutes );
+
 enum class structural_sound_kind {
     none,
     gunfire,

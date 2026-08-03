@@ -133,6 +133,7 @@ static const json_character_flag json_flag_CANNOT_ATTACK( "CANNOT_ATTACK" );
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
 
 static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
+static const species_id species_ZOMBIE( "ZOMBIE" );
 
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
@@ -1650,6 +1651,159 @@ struct live_bandit_local_handoff_member_backup {
     std::optional<tripoint_abs_ms> ai_guard_position;
     std::vector<tripoint_bub_ms> local_path;
 };
+
+std::vector<std::string> live_bandit_local_zombie_ids( std::vector<std::string> type_ids )
+{
+    static constexpr std::size_t id_cap = 16;
+    std::sort( type_ids.begin(), type_ids.end() );
+    unsigned long long hash = 1469598103934665603ULL;
+    for( const std::string &type_id : type_ids ) {
+        for( const unsigned char byte : type_id ) {
+            hash ^= byte;
+            hash *= 1099511628211ULL;
+        }
+        hash ^= 0xffU;
+        hash *= 1099511628211ULL;
+    }
+
+    std::unordered_map<std::string, int> ordinal_by_type;
+    std::vector<std::string> ids;
+    const std::size_t concrete_cap = type_ids.size() > id_cap ? id_cap - 1 : id_cap;
+    for( const std::string &type_id : type_ids ) {
+        if( ids.size() >= concrete_cap ) {
+            break;
+        }
+        ids.push_back( "local-zombie:" + type_id + ':' +
+                       std::to_string( ++ordinal_by_type[type_id] ) );
+    }
+    if( type_ids.size() > id_cap ) {
+        ids.push_back( "local-zombie:overflow:" + std::to_string( hash ) );
+    }
+    std::sort( ids.begin(), ids.end() );
+    return ids;
+}
+
+std::optional<bandit_live_world::structural_local_zombie_read>
+live_bandit_local_zombie_read_impl( const bandit_live_world::site_record &site )
+{
+    static constexpr std::size_t monster_scan_cap = 64;
+    const bandit_live_world::active_outing_state &outing = site.active_outing;
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        outing.schema_version != 8 ||
+        outing.owner != bandit_live_world::simulation_owner::local ||
+        !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
+        outing.member_ids.size() != 2 ) {
+        return std::nullopt;
+    }
+
+    std::vector<character_id> observer_ids = outing.member_ids;
+    std::stable_sort( observer_ids.begin(), observer_ids.end(), [&outing](
+    const character_id lhs, const character_id rhs ) {
+        return std::make_tuple( lhs != outing.leader_id, lhs.get_value() ) <
+               std::make_tuple( rhs != outing.leader_id, rhs.get_value() );
+    } );
+    map &here = get_map();
+    std::vector<const monster *> inspected_monsters;
+    inspected_monsters.reserve( monster_scan_cap );
+    for( const monster &critter : g->all_monsters() ) {
+        if( inspected_monsters.size() >= monster_scan_cap ) {
+            break;
+        }
+        inspected_monsters.push_back( &critter );
+    }
+    if( inspected_monsters.empty() ) {
+        return std::nullopt;
+    }
+
+    std::optional<bandit_live_world::structural_local_zombie_read> best;
+    for( const character_id observer_id : observer_ids ) {
+        npc *observer = g->find_npc( observer_id );
+        if( observer == nullptr || !observer->is_active() || observer->is_dead() ||
+            !here.inbounds( observer->pos_abs() ) ||
+            observer->pos_abs_omt() != outing.local_handoff.route_position ) {
+            continue;
+        }
+
+        int danger = 0;
+        int farthest_distance = 0;
+        std::vector<std::string> type_ids;
+        for( const monster *candidate : inspected_monsters ) {
+            const monster &critter = *candidate;
+            const tripoint_abs_omt source_omt = critter.pos_abs_omt();
+            const bool source_on_route = source_omt == outing.local_handoff.route_position;
+            const bool alive = !critter.is_dead();
+            const bool hallucination = critter.is_hallucination();
+            const bool zombie_species = critter.type != nullptr &&
+                                        critter.type->in_species( species_ZOMBIE );
+            const bool zombie_rider = critter.type != nullptr &&
+                                      critter.type->id == mon_zombie_rider;
+            const bool hostile = alive &&
+                                 critter.attitude_to( *observer ) == Creature::Attitude::HOSTILE;
+            const bool visible = alive && here.inbounds( critter.pos_abs() ) &&
+                                 observer->sees( here, critter );
+            if( !bandit_live_world::structural_local_zombie_candidate_is_eligible(
+                    alive, hallucination, zombie_species, zombie_rider, hostile, visible,
+                    source_on_route ) ) {
+                continue;
+            }
+
+            const int distance = rl_dist( observer->pos_abs(), critter.pos_abs() );
+            const int monster_danger = static_cast<int>( std::ceil(
+                                           observer->evaluate_monster( critter,
+                                                   std::max( 1, distance ) ) ) );
+            danger = std::min( 200, danger + std::clamp( monster_danger, 1, 200 ) );
+            farthest_distance = std::max( farthest_distance, distance );
+            type_ids.push_back( critter.type->id.str() );
+        }
+        if( type_ids.empty() || danger <= 0 ) {
+            continue;
+        }
+
+        bandit_live_world::structural_local_zombie_read read;
+        read.observer_id = observer_id;
+        read.source_omt = outing.local_handoff.route_position;
+        read.inspected_monsters = static_cast<int>( inspected_monsters.size() );
+        read.visible_count = static_cast<int>( type_ids.size() );
+        read.danger_low = danger;
+        read.danger_high = danger;
+        read.visual_quality = farthest_distance <= 12 ? 3 : farthest_distance <= 24 ? 2 : 1;
+        read.stable_threat_ids = live_bandit_local_zombie_ids( std::move( type_ids ) );
+        if( !best || std::make_tuple( read.visible_count, read.danger_high,
+                                     read.observer_id == outing.leader_id ) >
+            std::make_tuple( best->visible_count, best->danger_high,
+                             best->observer_id == outing.leader_id ) ) {
+            best = std::move( read );
+        }
+    }
+    return best;
+}
+
+int record_live_bandit_local_zombie_observations()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int now_minutes = live_bandit_current_minutes();
+    int recorded = 0;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor || cursor->owner != bandit_live_world::simulation_owner::local ||
+            now_minutes <= cursor->last_advanced_minutes ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::structural_local_zombie_read> read =
+            bandit_live_world::read_live_structural_local_zombie_observation( site );
+        if( !read ) {
+            continue;
+        }
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_structural_local_zombie_observation(
+                site, *cursor, *read, now_minutes );
+        if( effect.valid ) {
+            recorded++;
+        }
+    }
+    return recorded;
+}
 
 bool note_live_bandit_structural_deaths_before_cleanup()
 {
@@ -3768,6 +3922,15 @@ bool steer_live_bandit_dispatch_toward_player(
 }
 } // namespace
 
+namespace bandit_live_world
+{
+std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
+    const site_record &site )
+{
+    return live_bandit_local_zombie_read_impl( site );
+}
+} // namespace bandit_live_world
+
 namespace turn_handler
 {
 bool cleanup_at_end()
@@ -4026,8 +4189,16 @@ void monmove()
     // monster::die function is not called.
     g->despawn_nonlocal_monsters();
 
-    // Now, do active NPCs.
+    // Now, do active NPCs.  Cohesion owns the first local cursor advance so
+    // evidence recording can never delay an incomplete pair's safety update.
     maintain_live_bandit_local_pair_cohesion();
+    if( calendar::once_every( 1_minutes ) ) {
+        const int local_zombie_observations = record_live_bandit_local_zombie_observations();
+        if( local_zombie_observations > 0 ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
+                                       << local_zombie_observations << '\n';
+        }
+    }
     for( npc &guy : g->all_npcs() ) {
         int turns = 0;
         int real_count = 0;

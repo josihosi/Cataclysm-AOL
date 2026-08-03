@@ -11,18 +11,34 @@
 #include <vector>
 
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "calendar.h"
+#include "avatar.h"
+#include "faction.h"
+#include "game.h"
 #include "game_constants.h"
 #include "json.h"
 #include "json_loader.h"
 #include "lightmap.h"
+#include "map.h"
+#include "map_helpers.h"
+#include "map_helpers_tests.h"
+#include "monster.h"
 #include "npc.h"
 #include "omdata.h"
+#include "player_helpers.h"
+#include "point.h"
 #include "sounds.h"
+#include "type_id.h"
 #include "weather_type.h"
 
 namespace
 {
+static const faction_id faction_your_followers( "your_followers" );
+static const mtype_id mon_zombie( "mon_zombie" );
+static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
+static const string_id<npc_template> npc_template_test_talker( "test_talker" );
+
 std::optional<std::string> special_lookup( const tripoint_abs_omt &omt )
 {
     if( omt.z() != 0 ) {
@@ -285,12 +301,79 @@ bandit_live_world::world_state make_structural_signal_test_world( const bool can
     return world;
 }
 
+bandit_live_world::world_state make_structural_local_zombie_test_world( const bool cannibal,
+        const int id_base )
+{
+    bandit_live_world::world_state world = make_abstract_threat_test_world(
+                cannibal, id_base, 4 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    const tripoint_abs_omt route_position = site.active_outing.shared_route[
+                static_cast<std::size_t>( site.active_outing.waypoint_index )];
+    const tripoint_abs_ms route_origin = project_to<coords::ms>( route_position );
+    std::vector<bandit_live_world::local_handoff_member_read> reads;
+    for( std::size_t index = 0; index < site.active_outing.member_ids.size(); ++index ) {
+        const character_id member_id = site.active_outing.member_ids[index];
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        REQUIRE( member != nullptr );
+        bandit_live_world::local_handoff_member_read read;
+        read.npc_id = member_id;
+        read.bindable = true;
+        read.hp_percent = 90 - static_cast<int>( index ) * 10;
+        read.current_position = member->home_spawn_tile;
+        read.entry_position = tripoint_abs_ms( route_origin.x() + static_cast<int>( index ),
+                                               route_origin.y(), route_origin.z() );
+        read.staging_position = tripoint_abs_ms( route_origin.x() + static_cast<int>( index ),
+                                                 route_origin.y() + 4, route_origin.z() );
+        reads.push_back( read );
+    }
+    const bandit_live_world::local_handoff_plan handoff =
+        bandit_live_world::plan_local_pair_handoff( site, *cursor, 100, reads );
+    REQUIRE( handoff.valid );
+    REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                 site, handoff,
+    []( const bandit_live_world::local_handoff_member_snapshot & ) {
+        return true;
+    }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    REQUIRE( site.active_outing.schema_version == 8 );
+    REQUIRE( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+    REQUIRE( site.active_outing.local_handoff.is_active() );
+    return world;
+}
+
+bandit_live_world::structural_local_zombie_read make_structural_local_zombie_read(
+    const bandit_live_world::site_record &site )
+{
+    bandit_live_world::structural_local_zombie_read read;
+    read.observer_id = site.active_outing.member_ids.front();
+    read.source_omt = site.active_outing.local_handoff.route_position;
+    read.inspected_monsters = 2;
+    read.visible_count = 2;
+    read.danger_low = 12;
+    read.danger_high = 24;
+    read.visual_quality = 3;
+    read.stable_threat_ids = { "local-zombie:alpha", "local-zombie:beta" };
+    return read;
+}
+
 std::string serialize_abstract_encounter(
     const bandit_live_world::abstract_encounter_state &encounter )
 {
     std::ostringstream out;
     JsonOut jsout( out, true );
     encounter.serialize( jsout );
+    return out.str();
+}
+
+std::string serialize_local_handoff(
+    const bandit_live_world::local_handoff_snapshot &handoff )
+{
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    handoff.serialize( jsout );
     return out.str();
 }
 
@@ -10133,6 +10216,304 @@ TEST_CASE( "hostile_camp_structural_sound_recorder_rejects_bad_batches_atomicall
         CHECK( recorded.sites_recorded == 0 );
         CHECK( recorded.facts_recorded == 0 );
         CHECK( world.sites.front().active_outing.observations.empty() );
+        CHECK( serialize_world( world ) == before );
+    }
+}
+
+TEST_CASE( "hostile_camp_local_zombie_candidate_requires_real_ordinary_zombie_visibility",
+           "[bandit][live_world][phase4_local_zombie_observation]" )
+{
+    CHECK( bandit_live_world::structural_local_zombie_candidate_is_eligible(
+               true, false, true, false, true, true, true ) );
+    for( int rejected_axis = 0; rejected_axis < 7; ++rejected_axis ) {
+        bool alive = true;
+        bool hallucination = false;
+        bool zombie_species = true;
+        bool zombie_rider = false;
+        bool hostile = true;
+        bool visible = true;
+        bool source_on_route = true;
+        switch( rejected_axis ) {
+            case 0:
+                alive = false;
+                break;
+            case 1:
+                hallucination = true;
+                break;
+            case 2:
+                zombie_species = false;
+                break;
+            case 3:
+                zombie_rider = true;
+                break;
+            case 4:
+                hostile = false;
+                break;
+            case 5:
+                visible = false;
+                break;
+            case 6:
+                source_on_route = false;
+                break;
+        }
+        CAPTURE( rejected_axis );
+        CHECK_FALSE( bandit_live_world::structural_local_zombie_candidate_is_eligible(
+                         alive, hallucination, zombie_species, zombie_rider, hostile, visible,
+                         source_on_route ) );
+    }
+}
+
+TEST_CASE( "hostile_camp_live_local_zombie_adapter_uses_active_scouts_and_one_bounded_scan",
+           "[bandit][live_world][phase4_local_zombie_observation]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map_with_vision();
+    clear_vehicles();
+    set_time_to_day();
+    on_out_of_scope cleanup( []() {
+        clear_creatures();
+        clear_npcs();
+    } );
+
+    map &here = get_map();
+    get_avatar().setpos( here, tripoint_bub_ms( 45, 45, 0 ) );
+    const character_id leader_id = here.place_npc( point_bub_ms( 50, 50 ),
+                                   npc_template_test_talker );
+    const character_id partner_id = here.place_npc( point_bub_ms( 50, 51 ),
+                                    npc_template_test_talker );
+    g->load_npcs();
+    npc *leader = g->find_npc( leader_id );
+    npc *partner = g->find_npc( partner_id );
+    REQUIRE( leader != nullptr );
+    REQUIRE( partner != nullptr );
+    clear_character( *leader );
+    clear_character( *partner );
+    leader->setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    partner->setpos( here, tripoint_bub_ms( 50, 51, 0 ) );
+    leader->set_fac( faction_your_followers );
+    partner->set_fac( faction_your_followers );
+    REQUIRE( leader->is_active() );
+    REQUIRE( partner->is_active() );
+
+    bandit_live_world::world_state world = make_structural_local_zombie_test_world( false, 16180 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.active_outing.member_ids = { leader_id, partner_id };
+    site.active_outing.leader_id = leader_id;
+    site.active_outing.local_handoff.route_position = leader->pos_abs_omt();
+    REQUIRE( site.active_outing.local_handoff.members.size() == 2 );
+    site.active_outing.local_handoff.members[0].npc_id = leader_id;
+    site.active_outing.local_handoff.members[1].npc_id = partner_id;
+
+    REQUIRE( g->place_critter_at( mon_zombie_rider, tripoint_bub_ms( 52, 50, 0 ) ) != nullptr );
+    CHECK_FALSE( bandit_live_world::read_live_structural_local_zombie_observation( site ) );
+
+    clear_creatures();
+    REQUIRE( g->place_critter_at( mon_zombie, tripoint_bub_ms( 52, 50, 0 ) ) != nullptr );
+    std::optional<bandit_live_world::structural_local_zombie_read> read =
+        bandit_live_world::read_live_structural_local_zombie_observation( site );
+    REQUIRE( read );
+    CHECK( read->inspected_monsters == 1 );
+    CHECK( read->visible_count == 1 );
+    CHECK( read->stable_threat_ids == std::vector<std::string>{ "local-zombie:mon_zombie:1" } );
+
+    g->remove_npc( leader_id );
+    g->remove_npc( partner_id );
+    CHECK_FALSE( bandit_live_world::read_live_structural_local_zombie_observation( site ) );
+    g->load_npcs();
+    REQUIRE( g->find_npc( leader_id ) != nullptr );
+    REQUIRE( g->find_npc( partner_id ) != nullptr );
+
+    clear_creatures();
+    int placed = 0;
+    for( int y = 48; y <= 54; ++y ) {
+        for( int x = 52; x <= 61; ++x ) {
+            if( g->place_critter_at( mon_zombie, tripoint_bub_ms( x, y, 0 ) ) != nullptr ) {
+                placed++;
+            }
+        }
+    }
+    REQUIRE( placed == 70 );
+    read = bandit_live_world::read_live_structural_local_zombie_observation( site );
+    REQUIRE( read );
+    CHECK( read->inspected_monsters == 64 );
+    CHECK( read->visible_count == 64 );
+    CHECK( read->stable_threat_ids.size() == 16 );
+    CHECK( read->stable_threat_ids.back().rfind( "local-zombie:overflow:", 0 ) == 0 );
+
+    clear_creatures();
+    clear_npcs();
+}
+
+TEST_CASE( "hostile_camp_local_zombie_observation_is_private_bounded_and_persistent",
+           "[bandit][live_world][phase4_local_zombie_observation]" )
+{
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                    cannibal, cannibal ? 16120 : 16100 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::structural_local_zombie_read read =
+            make_structural_local_zombie_read( site );
+        const bandit_live_world::scout_phase phase_before = site.active_outing.phase;
+        const int waypoint_before = site.active_outing.waypoint_index;
+        const std::string handoff_before = serialize_local_handoff(
+                                               site.active_outing.local_handoff );
+        const std::string encounter_before = serialize_abstract_encounter(
+                                                 site.active_outing.abstract_encounter );
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+        REQUIRE( lead != nullptr );
+        const std::string lead_before = serialize_camp_map_lead( *lead );
+
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_structural_local_zombie_observation(
+                site, *cursor, read, 101 );
+        REQUIRE( effect.valid );
+        CHECK( effect.inserted == 1 );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        const bandit_live_world::sortie_observation &observation =
+            site.active_outing.observations.front();
+        CHECK( observation.fact_key.rfind( "structural-local-zombie:", 0 ) == 0 );
+        CHECK( observation.state_key == "structural-local-zombie-threat" );
+        CHECK( observation.sense == bandit_live_world::sortie_observation_sense::visual );
+        CHECK( observation.observer_id == read.observer_id );
+        CHECK( observation.source_omt == read.source_omt );
+        CHECK( observation.receiver_omt == read.source_omt );
+        CHECK( observation.observed_minutes == 101 );
+        CHECK( observation.bucket_start_minutes == 90 );
+        CHECK( observation.target_revision == site.active_outing.target_lead_revision );
+        CHECK( observation.uncertainty_radius_omt == 0 );
+        CHECK( observation.expiry_minutes ==
+               std::max( 101, site.active_outing.expected_return_minutes ) + 24 * 60 );
+        CHECK( observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        CHECK( observation.defender_ids == read.stable_threat_ids );
+        CHECK( observation.observed_power_low == read.danger_low );
+        CHECK( observation.observed_power_high == read.danger_high );
+        CHECK( site.active_outing.phase == phase_before );
+        CHECK( site.active_outing.waypoint_index == waypoint_before );
+        CHECK( serialize_local_handoff( site.active_outing.local_handoff ) == handoff_before );
+        CHECK( serialize_abstract_encounter( site.active_outing.abstract_encounter ) ==
+               encounter_before );
+        lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before );
+
+        const std::optional<bandit_live_world::simulation_advance_cursor> replacement_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( replacement_cursor );
+        bandit_live_world::structural_local_zombie_read stronger = read;
+        stronger.danger_low = 30;
+        stronger.danger_high = 40;
+        const bandit_live_world::sortie_observation_effect replaced =
+            bandit_live_world::record_structural_local_zombie_observation(
+                site, *replacement_cursor, stronger, 102 );
+        REQUIRE( replaced.valid );
+        CHECK( replaced.replaced == 1 );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        CHECK( site.active_outing.observations.front().observed_power_high == 40 );
+
+        const std::string after_record = serialize_world( world );
+        world = round_trip_world( world );
+        CHECK( serialize_world( world ) == after_record );
+    }
+}
+
+TEST_CASE( "hostile_camp_local_zombie_observation_rejects_stale_or_malformed_reads_atomically",
+           "[bandit][live_world][phase4_local_zombie_observation]" )
+{
+    enum class invalid_case {
+        stale_minute,
+        abstract_owner,
+        resolved_observer,
+        stale_lead,
+        wrong_route,
+        bad_prefix,
+        unsorted_ids,
+        duplicate_ids,
+        bad_inspected_count,
+        impossible_visible_count,
+        bad_count,
+        bad_danger,
+        bad_quality,
+    };
+    const std::vector<invalid_case> cases = {
+        invalid_case::stale_minute, invalid_case::abstract_owner,
+        invalid_case::resolved_observer, invalid_case::stale_lead,
+        invalid_case::wrong_route, invalid_case::bad_prefix,
+        invalid_case::unsorted_ids, invalid_case::duplicate_ids,
+        invalid_case::bad_inspected_count, invalid_case::impossible_visible_count,
+        invalid_case::bad_count,
+        invalid_case::bad_danger, invalid_case::bad_quality,
+    };
+    int fixture = 0;
+    for( const invalid_case rejected : cases ) {
+        CAPTURE( rejected );
+        bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                    fixture % 2 != 0, 16200 + fixture * 10 );
+        fixture++;
+        bandit_live_world::site_record &site = world.sites.front();
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        bandit_live_world::structural_local_zombie_read read =
+            make_structural_local_zombie_read( site );
+        int now_minutes = 101;
+        switch( rejected ) {
+            case invalid_case::stale_minute:
+                now_minutes = cursor->last_advanced_minutes;
+                break;
+            case invalid_case::abstract_owner:
+                cursor->owner = bandit_live_world::simulation_owner::abstract;
+                break;
+            case invalid_case::resolved_observer:
+                site.active_outing.resolved_member_ids.push_back( read.observer_id );
+                break;
+            case invalid_case::stale_lead: {
+                bandit_live_world::camp_map_lead *lead =
+                    site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+                REQUIRE( lead != nullptr );
+                lead->revision++;
+                break;
+            }
+            case invalid_case::wrong_route:
+                read.source_omt = tripoint_abs_omt( read.source_omt.x() + 1,
+                                                    read.source_omt.y(), read.source_omt.z() );
+                break;
+            case invalid_case::bad_prefix:
+                read.stable_threat_ids = { "group:population-only" };
+                break;
+            case invalid_case::unsorted_ids:
+                read.stable_threat_ids = { "local-zombie:z", "local-zombie:a" };
+                break;
+            case invalid_case::duplicate_ids:
+                read.stable_threat_ids = { "local-zombie:same", "local-zombie:same" };
+                break;
+            case invalid_case::bad_inspected_count:
+                read.inspected_monsters = 0;
+                break;
+            case invalid_case::impossible_visible_count:
+                read.visible_count = read.inspected_monsters + 1;
+                break;
+            case invalid_case::bad_count:
+                read.visible_count = 0;
+                break;
+            case invalid_case::bad_danger:
+                read.danger_high = 201;
+                break;
+            case invalid_case::bad_quality:
+                read.visual_quality = 0;
+                break;
+        }
+        const std::string before = serialize_world( world );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_structural_local_zombie_observation(
+                site, *cursor, read, now_minutes );
+        CHECK_FALSE( effect.valid );
         CHECK( serialize_world( world ) == before );
     }
 }
