@@ -892,6 +892,9 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         int now_minutes );
+std::optional<int> release_structural_outing_reservation( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        const std::string &summary );
 structural_outing_result advance_structural_bounty_outings( world_state &state, int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,

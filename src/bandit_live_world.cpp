@@ -6225,14 +6225,41 @@ bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_
            now_minutes - lead.last_checked_minutes < recent_structural_check_cooldown_minutes;
 }
 
-void clear_structural_active_group( site_record &site, const std::string &summary )
-{
-    for( const character_id &member_id : site.active_outing.member_ids ) {
-        update_member_state( site, member_id, member_state::at_home, summary );
-    }
-    site.active_outing.clear();
-}
 } // namespace
+
+std::optional<int> release_structural_outing_reservation( site_record &site,
+        const std::string &expected_activity_id, const int expected_generation,
+        const std::string &summary )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( outing.kind != outing_kind::structural_sortie ||
+        outing.activity_id != expected_activity_id ||
+        outing.generation != expected_generation || !site.roster().valid ) {
+        return std::nullopt;
+    }
+
+    site_record candidate = site;
+    int returned_members = 0;
+    for( const character_id &member_id : candidate.active_outing.member_ids ) {
+        if( candidate.active_outing.member_is_resolved( member_id ) ) {
+            continue;
+        }
+        const member_record *member = candidate.find_member( member_id );
+        if( member == nullptr ||
+            ( member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ||
+            !update_member_state( candidate, member_id, member_state::at_home, summary ) ) {
+            return std::nullopt;
+        }
+        returned_members++;
+    }
+    candidate.active_outing.clear();
+    if( !candidate.roster().valid ) {
+        return std::nullopt;
+    }
+    site = std::move( candidate );
+    return returned_members;
+}
 
 structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         const camp_map_lead &lead, const int now_minutes )
@@ -6461,6 +6488,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             site.active_outing.target_id.empty() ) {
             continue;
         }
+        const std::string expected_activity_id = site.active_outing.activity_id;
+        const int expected_generation = site.active_outing.generation;
         result.active_outings_considered++;
         const simulation_owner_transition_result advance = advance_external_simulation(
                     site, site.active_outing.activity_id, site.active_outing.generation,
@@ -6471,15 +6500,20 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
         camp_map_lead *lead = site.intelligence_map.find_lead( site.active_outing.target_id );
         if( lead == nullptr || lead->kind != camp_lead_kind::structural_bounty ) {
-            clear_structural_active_group( site, "structural outing cleared missing structural lead" );
-            result.notes.push_back( "structural outing cleared: active target lead was missing" );
+            if( release_structural_outing_reservation(
+                    site, expected_activity_id, expected_generation,
+                    "structural outing cleared missing structural lead" ) ) {
+                result.notes.push_back( "structural outing cleared: active target lead was missing" );
+            }
             continue;
         }
         if( lead->revision >= std::numeric_limits<int>::max() ) {
-            clear_structural_active_group( site,
-                                           "structural outing cleared immutable terminal lead revision" );
-            result.notes.push_back(
-                "structural outing cleared: target lead revision cannot advance safely" );
+            if( release_structural_outing_reservation(
+                    site, expected_activity_id, expected_generation,
+                    "structural outing cleared immutable terminal lead revision" ) ) {
+                result.notes.push_back(
+                    "structural outing cleared: target lead revision cannot advance safely" );
+            }
             continue;
         }
         if( site.active_outing.started_minutes < 0 ) {
@@ -6508,17 +6542,20 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
 
             const int effective_interest = structural_effective_interest( *lead, lead->threat );
             if( effective_interest <= 0 ) {
-                const int returned = static_cast<int>( site.active_outing.member_ids.size() );
                 lead->status = lead->threat > 0 ? camp_lead_status::dangerous : camp_lead_status::stale;
                 lead->last_outcome = "threat_revealed_lost_interest";
                 advance_camp_map_lead_revision( site, *lead );
-                clear_structural_active_group( site,
-                                               "structural outing turned back before arrival after threat reveal" );
-                result.lost_interest_returns++;
-                result.members_returned += returned;
-                result.notes.push_back( "structural outing turned back before arrival lead=" +
-                                        lead->lead_id + " effective_interest=" +
-                                        std::to_string( effective_interest ) );
+                const std::string lead_id = lead->lead_id;
+                const std::optional<int> returned = release_structural_outing_reservation(
+                        site, expected_activity_id, expected_generation,
+                        "structural outing turned back before arrival after threat reveal" );
+                if( returned ) {
+                    result.lost_interest_returns++;
+                    result.members_returned += *returned;
+                    result.notes.push_back( "structural outing turned back before arrival lead=" +
+                                            lead_id + " effective_interest=" +
+                                            std::to_string( effective_interest ) );
+                }
                 continue;
             }
 
@@ -6533,18 +6570,21 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
 
         if( site.active_outing.local_contact_minutes >= 0 &&
             elapsed >= structural_outing_arrival_delay_minutes( site, *lead ) ) {
-            const int returned = static_cast<int>( site.active_outing.member_ids.size() );
             lead->status = camp_lead_status::harvested;
             lead->bounty = 0;
             lead->times_harvested++;
             lead->last_checked_minutes = now_minutes;
             lead->last_outcome = "harvested_structural_bounty";
             advance_camp_map_lead_revision( site, *lead );
-            clear_structural_active_group( site,
-                                           "structural outing arrived and harvested structural bounty" );
-            result.arrivals_processed++;
-            result.members_returned += returned;
-            result.notes.push_back( "structural outing harvested lead=" + lead->lead_id );
+            const std::string lead_id = lead->lead_id;
+            const std::optional<int> returned = release_structural_outing_reservation(
+                    site, expected_activity_id, expected_generation,
+                    "structural outing arrived and harvested structural bounty" );
+            if( returned ) {
+                result.arrivals_processed++;
+                result.members_returned += *returned;
+                result.notes.push_back( "structural outing harvested lead=" + lead_id );
+            }
         }
     }
     return result;

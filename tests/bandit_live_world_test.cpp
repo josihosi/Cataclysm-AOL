@@ -5769,6 +5769,60 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
            fresh_structural_plan.generation );
     CHECK( loaded.sites.front().roster().reserved_unresolved_ids ==
            fresh_structural_plan.member_ids );
+
+    const std::string before_stale_identity_release = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::release_structural_outing_reservation(
+                     site, fresh_structural_plan.activity_id + ":stale",
+                     fresh_structural_plan.generation, "stale identity cleanup" ) );
+    CHECK( serialize_world( world ) == before_stale_identity_release );
+    CHECK_FALSE( bandit_live_world::release_structural_outing_reservation(
+                     site, fresh_structural_plan.activity_id,
+                     fresh_structural_plan.generation + 1, "stale generation cleanup" ) );
+    CHECK( serialize_world( world ) == before_stale_identity_release );
+
+    const character_id resolved_casualty = fresh_structural_plan.member_ids.front();
+    site.active_outing.resolved_member_ids.push_back( resolved_casualty );
+    site.active_outing.casualty_ids.push_back( resolved_casualty );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, resolved_casualty, bandit_live_world::member_state::dead,
+                 "resolved structural casualty" ) );
+    REQUIRE( site.roster().valid );
+    const std::optional<int> returned =
+        bandit_live_world::release_structural_outing_reservation(
+            site, fresh_structural_plan.activity_id,
+            fresh_structural_plan.generation, "matching structural cleanup" );
+    REQUIRE( returned );
+    CHECK( *returned == 1 );
+    CHECK_FALSE( site.active_outing.is_active() );
+    CHECK( site.active_outing.member_ids.empty() );
+    REQUIRE( site.roster().valid );
+    CHECK( site.roster().reserved_unresolved_ids.empty() );
+    CHECK( site.roster().ready_concrete_total == 2 );
+    CHECK( site.find_member( resolved_casualty )->state ==
+           bandit_live_world::member_state::dead );
+
+    const tripoint_abs_omt newer_structural_omt( 7, 20, 0 );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                 site, newer_structural_omt, structural_read, 0 ) );
+    const std::string newer_lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                          site.site_id, newer_structural_omt, "forest" );
+    const bandit_live_world::camp_map_lead *newer_lead =
+        site.intelligence_map.find_lead( newer_lead_id );
+    REQUIRE( newer_lead != nullptr );
+    const bandit_live_world::structural_outing_plan newer_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *newer_lead, 100 );
+    REQUIRE( newer_plan.valid );
+    REQUIRE( newer_plan.activity_id == fresh_structural_plan.activity_id );
+    REQUIRE( newer_plan.generation == 3 );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, newer_plan, 100 ) );
+    const std::string newer_reservation = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::release_structural_outing_reservation(
+                     site, fresh_structural_plan.activity_id,
+                     fresh_structural_plan.generation, "stale cleanup after redispatch" ) );
+    CHECK( serialize_world( world ) == newer_reservation );
+    CHECK( site.active_outing.activity_id == newer_plan.activity_id );
+    CHECK( site.active_outing.generation == newer_plan.generation );
+    CHECK( site.roster().reserved_unresolved_ids == newer_plan.member_ids );
 }
 
 TEST_CASE( "bandit_structural_dispatch_holds_high_known_threat_low_reward",
