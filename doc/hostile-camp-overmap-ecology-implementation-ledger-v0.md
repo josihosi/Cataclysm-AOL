@@ -572,12 +572,12 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
 - [x] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
 - [x] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
-- [ ] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
+- [x] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
 - [x] Generalize singleton-only timeout/return logic to groups.
 - [x] Preserve at most one active external operation per camp for the first production version. The scout-sortie slot must close after all member resolutions or timeout and its final/provisional report revision must be accepted before a fresh follow-on operation can become active; no scouting/raid overlap or in-place type mutation.
 - [ ] Table-test populations 0-10 for both factions, wounds, sleep, incapacity, missing members, and active reservations.
 - [x] Test camp size 2 becoming empty without losing site ownership or creating a phantom home defender.
-- [ ] Define origin-loss behavior while a pair is away: camp attacked/captured/deleted/invalidated, recall if legitimately signaled, orphaned return, return failure, mission-slot cleanup, and final site ownership.
+- [x] Define origin-loss behavior while a pair is away: camp attacked/captured/deleted/invalidated, recall if legitimately signaled, orphaned return, return failure, mission-slot cleanup, and final site ownership.
 - [ ] Test concurrent dispatch attempts and stale cleanup after a newer operation generation exists.
 
 ### Phase 2 exit
@@ -639,6 +639,17 @@ Evidence:
   `eeeb6524e134f09b0b000646e4fade314163771eaae30734a4edcf12e8af6b16`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/matching-release/MANIFEST.md`
   (SHA-256 `82c06375b3370175f327377748eaae4bce34377e8b549f76b76ba8f1536dd63f`).
+- Commit `084b7c0747` centralizes exact release for ordinary, structural, and hostile holders,
+  preserves resolved casualties, closes matching mission slots, and preflights paid shakedown
+  cleanup before goods transfer. Commit `f29808d80b` adds schema-11 origin disposition and
+  non-dispatchable orphans, physical-signal-only recall, complete exact return resolution, terminal
+  no-reactivation, v10 migration, and transactional current-load rejection.
+- Complete-release result: origin 1 / 82, prior release paths 1 / 93, migration 5 / 275,
+  current load failure 1 / 3, and full live-world 111 / 6,737. Final build and every filter exit
+  `0`; the single root review's pre-commit event finding was fixed. Binary SHA-256 is
+  `6cb7a8727eef742a9666e2771accc6b71f6b7d64dcfe11557bc5dec07bcd7691`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/origin-loss/MANIFEST.md`
+  (SHA-256 `595881ac38952fd262de1ed0a4fe6f23379996c09c38e18f13f1112878a62212`).
 - Dispatch benchmark:
 
 ## Phase 3 - shared real scouting ecology and finite bounty

@@ -476,14 +476,23 @@ and full live-world 109 / 6,478. The initial structured review accounting findin
 the required final review is clean at 0.96; exact evidence is in external
 `phase2-20260803/matching-release/MANIFEST.md`.
 
-The active missing evidence is complete matching release across success/abort/death/migration/
-origin-loss/load-failure paths, followed by remaining population/origin/concurrency coverage.
+Complete external release and origin loss are green through `084b7c0747` and `f29808d80b`.
+Schema 11 persists explicit terminal origin plus living non-dispatchable orphans; only a physical
+signal changes an away party's course, terminal return is exact activity/generation-bound, and
+later abstract registration/tracked spawn cannot reactivate the site. Final origin/release/
+migration/current-load-failure filters pass 1/82, 1/93, 5/275, and 1/3; full live-world passes
+111/6,737. The 80,492,104-byte binary SHA-256 is
+`6cb7a8727eef742a9666e2771accc6b71f6b7d64dcfe11557bc5dec07bcd7691`; exact logs and the one
+root-review fix are archived in external `phase2-20260803/origin-loss/MANIFEST.md` (SHA-256
+`595881ac38952fd262de1ed0a4fe6f23379996c09c38e18f13f1112878a62212`). The active missing
+evidence is the population/readiness matrix, concurrent/cross-camp duplicate reservation checks,
+and the Phase-2 bounded-selection exit gate.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.
 
-Origin, release, and production-candidate mutation remain held. Closed zombie-rider,
+Production-candidate mutation remains held. Closed zombie-rider,
 flesh-raptor, writhing-stalker, roof-horde, Smart Zone, fire, and older bandit/camp proof trains
 remain historical evidence only and must not be rerun as Phase-0 ritual.
 

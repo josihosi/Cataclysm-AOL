@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 2 CAPABILITY-AWARE PAIRED DISPATCH
+**Status:** ACTIVE / GREEN / PHASE 2 POPULATION AND CONCURRENCY CLOSEOUT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -148,8 +148,13 @@ dossier drift atomically. Routine selection uses live readiness and stable obser
 escort capability without draining the strongest defenders. Structural reservations are pinned at
 `f65e6bd28a`; competing/stale plans cannot steal a newer generation or occupied mission slot.
 Generation-matched structural release is checkpointed at `61017301a4`; it cannot clear a newer
-same-ID generation, resurrect resolved casualties, or overcount returns. Current execution row:
-cover matching release on every success, abort, death, migration, origin-loss, and load-failure path.
+same-ID generation, resurrect resolved casualties, or overcount returns. Shared release paths are
+checkpointed at `084b7c0747`, and terminal origin handling at `f29808d80b`: success/payment,
+abort, death, legacy migration, origin loss, and current load-failure paths preserve exact
+activity/generation ownership. Schema 11 persists terminal origin and non-dispatchable survivors;
+only a real physical signal recalls a party, and a terminal origin cannot reactivate from later
+spawn claims. Current execution row: table-test populations 0-10 for both factions across
+readiness and active-reservation states, then close concurrent dispatch/duplicate-ID coverage.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
