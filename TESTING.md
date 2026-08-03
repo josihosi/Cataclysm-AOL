@@ -484,7 +484,19 @@ structural scan, and structural outing planning for both camp factions; the smal
 remains a negative control. The first focused run exposed only a misclassified work-camp test
 fixture; after correcting it, the authoritative build exits `0`, structural maintenance passes
 24/514, routine policy passes 3/993, and full live-world passes 112/7,546 at seed `830204929`.
-Current validation target is persistent pair ownership/save-load before bounded route work.
+
+Exact persistent structural pairs are green at `0247de602e`. Current-schema structural loads
+require the canonical camp activity ID, scout/scavenge job, and exactly two reserved member IDs;
+the exact pair round-trips, a forged roster-consistent singleton fails transactionally, and a
+same-minute stalking replay performs no threat read and leaves bytes unchanged. Root review found
+one test-only classification defect: generic singleton resource operations had masqueraded as
+structural sorties, so that helper now uses the already-supported scout/scavenge kind without
+weakening production validation. The redirected build exits `0`; at seed `830204929`, resource
+passes 4/2,117, structural bounty 24/524, and full live-world 112/7,556. The 80,530,056-byte
+binary SHA-256 is `be785a035be1d41d35e66c638975d949685f7120bb6e76fb8a4f02b8b6c028c5`;
+exact commands, logs, and hashes are in external `phase3-20260803/persistent-pair/MANIFEST.md`.
+Current validation target is a persisted bounded shared route, followed by the eight-sector
+least-recent frontier cursor.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

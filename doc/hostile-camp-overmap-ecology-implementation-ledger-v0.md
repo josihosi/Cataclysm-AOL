@@ -712,7 +712,7 @@ Camp-wide routine-dispatch cooldown (`next_routine_dispatch_eligible_at`) plus d
 Evidence defaults: significant sound 3h; smoke/light 6h; mobile threat 24h; human defenses/opportunity 3 days; failed route 72h; positive ground estimate 14 days; static terrain permanent; confirmed exhausted ground permanent. These are real durations, not fractions of a presumed 365-day year.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
-- [ ] Replace the bandit-only singleton abstract timer with a persistent paired outing.
+- [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
 - [ ] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory.
 - [ ] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety.
 - [ ] Give the party one shared high-level route and one movement owner.
@@ -761,7 +761,13 @@ Evidence:
   end-to-end maintenance scenario seeds, reserves exactly two, advances, harvests, and returns
   both members for each faction. Final build exits `0`; structural maintenance passes 24/514,
   routine policy passes 3/993, and full live-world passes 112/7,546 at seed `830204929`.
-- Commit: this checkpoint (`Share routine ecology across camp factions`).
+- Exact persistent pair: `0247de602e` requires a canonical current structural operation with two
+  stable reserved IDs, preserves the planned pair through load, transactionally rejects a forged
+  singleton, and makes duplicate-minute stalking advancement a byte-identical no-op with no
+  threat read. Final build exits `0`; resource passes 4/2,117, structural bounty 24/524, and full
+  live-world 112/7,556 at seed `830204929`. Exact logs and hashes are in external
+  `phase3-20260803/persistent-pair/MANIFEST.md`.
+- Commits: `3424fd5c24` (shared routine parity); `0247de602e` (exact persistent pair).
 - Natural outing harness:
 - Resource concurrency test:
 - Reality-boundary test:
