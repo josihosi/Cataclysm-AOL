@@ -20,9 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: connect legitimate bounded OMT visibility to the first
-  production observer writer, recording outing evidence without changing camp intelligence until
-  a shared fact physically returns.
+- Current deterministic execution row: add only significant sounds (gunfire, alarms, explosions)
+  as uncertain, three-hour typed evidence without broad ambient-noise or avatar-identity inference.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -49,6 +48,14 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   dead-before-share negative control, both factions, legacy migration, structural/hostile boundary,
   full live-world, save compatibility, and 51,244-byte saturated save gate are green. Exact evidence
   is under external `phase4-20260803/typed-observation/MANIFEST.md`.
+- Bounded smoke/light evidence is checkpointed at `190fab0de5`: the production source adapter
+  recomputes range and ordinary terrain visibility from the structural scout, admits only current
+  plus three committed route OMTs, and retains at most one uncertain six-hour fact per sense. It
+  cannot carry the player envelope, exact map-square, player-relative distance, bounty/threat,
+  horde/rider, or defender truth. Both factions, atomic malformed rejection, combined signal/visual
+  cursor ownership, save roundtrip, focused 3/159, and full live-world 153/35,196 are green under
+  external `phase4-20260803/smoke-light/MANIFEST.md`. The legacy camp-facing signal/radar writer is
+  still a named later-cutover defect; do not claim single-writer/no-radar yet.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

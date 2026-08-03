@@ -628,7 +628,15 @@ point at ages 0..60, while age 61, changed OMT/IDs/revision, malformed IDs, and 
 No save field was added; the request derives from the existing bounded 16-fact outing record.
 External `phase4-20260803/acquire-retain/MANIFEST.md` preserves corrected/non-credit attempts and
 the exact command/hash boundary. A natural live horde crossing the one-point edge remains Phase-4
-live-exit proof; bounded smoke/light/significant-sound evidence is next.
+live-exit proof. Bounded smoke/light evidence is green at `190fab0de5`: exact-source focused proof
+passes 3/159 and full live-world passes 153/35,196. The final 81,896,504-byte binary SHA-256 is
+`f899a62e...`; the exact-source build exited 0 in 62.84 seconds with max RSS 3,515,613,184 bytes.
+Both factions record at most one uncertain six-hour fact per sense, round-trip it without a new
+save field, reject malformed batches atomically, and batch signal plus visual facts under one
+cursor. External `phase4-20260803/smoke-light/MANIFEST.md` preserves exact commands and hashes,
+including the first non-credit fixture attempt. The production adapter is compile/source-hook
+proof, not yet a natural live smoke/light scout scenario; legacy camp-facing signal/radar writes
+remain open for the later cutover. Significant-sound evidence is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -227,8 +227,14 @@ full live-world regression, and clean structured review are archived under exter
 persisted route OMT and stable threat-ID set may retain through one extra see-cost point for at most
 60 minutes. Target-revision drift, moved/replaced threats, expiry, and age 61 all fail closed; the
 request-only derivation adds no save bytes. Both-faction save boundaries and full live-world
-regression are green under external `phase4-20260803/acquire-retain/MANIFEST.md`. Next, convert
-smoke/light and significant sound into uncertain, expiring typed evidence. The compound human-camp opportunity-recovery
+regression are green under external `phase4-20260803/acquire-retain/MANIFEST.md`. Bounded smoke and
+light evidence is checkpointed at `190fab0de5`: the physical source adapter recomputes range and
+terrain visibility from the scout, records no player/exact-map-square/defender truth, and commits at
+most one uncertain six-hour fact per sense through the typed writer. Both factions, save roundtrip,
+atomic malformed rejection, combined signal/visual cursor ownership, and full live-world regression
+are green under external `phase4-20260803/smoke-light/MANIFEST.md`. The legacy camp-facing signal
+writer remains an explicit later cutover defect. Next, add only significant sounds as uncertain,
+aged evidence. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

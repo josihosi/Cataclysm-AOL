@@ -7,8 +7,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Convert smoke/light and significant sound into uncertain, expiring typed evidence without exact
-   avatar coordinates or magical correction.
+1. Add only significant sounds (gunfire, alarms, explosions) as uncertain, three-hour typed evidence
+   without ordinary ambient noise, exact avatar coordinates, or magical correction.
 2. Record legitimately visible local zombie/horde observations through the same typed evidence
    owner without population-only hostility inference.
 3. Finish quiet former-radar, avatar-movement, both-faction no-dual-writer, and autonomous discovery
