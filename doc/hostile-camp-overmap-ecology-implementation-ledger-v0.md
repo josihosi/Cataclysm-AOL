@@ -571,7 +571,7 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] Implement the exact routine size matrix in the behavior contract.
 - [x] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
 - [x] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
-- [ ] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
+- [x] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
 - [ ] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
 - [x] Generalize singleton-only timeout/return logic to groups.
 - [x] Preserve at most one active external operation per camp for the first production version. The scout-sortie slot must close after all member resolutions or timeout and its final/provisional report revision must be accepted before a fresh follow-on operation can become active; no scouting/raid overlap or in-place type mutation.
@@ -630,6 +630,15 @@ Evidence:
   is `626844eafaa6f20a02ac754e3884ffc2c4c75e70d8386c8cc35683de0deff2b5`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/reservation-ownership/MANIFEST.md`
   (SHA-256 `37cc3ba65e385534a0bb31e0c22214203f030b1573ae5d068cbf67ea75cbd595`).
+- Commit: `61017301a4` makes structural release compare the exact current activity ID/generation,
+  release only unresolved away members on a candidate copy, preserve resolved casualties, clear
+  only the matching slot, validate the roster, and return the exact committed member count.
+- Matching-release result: focused 1 / 70, structural bounty 24 / 483, and full live-world
+  109 / 6,478. Final build and every filter exit `0`. The first structured review's returned-count
+  finding was accepted; the same-engine final review is clean at 0.96. Binary SHA-256 is
+  `eeeb6524e134f09b0b000646e4fade314163771eaae30734a4edcf12e8af6b16`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/matching-release/MANIFEST.md`
+  (SHA-256 `82c06375b3370175f327377748eaae4bce34377e8b549f76b76ba8f1536dd63f`).
 - Dispatch benchmark:
 
 ## Phase 3 - shared real scouting ecology and finite bounty

@@ -20,14 +20,14 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 2 - roster authority, paired dispatch, and reservations.
-- First unchecked deterministic execution row: release a reservation only when operation ID and
-  generation still match; stale cleanup must not release a newer operation's members.
+- First unchecked deterministic execution row: release matching reservations on every success,
+  abort, death, migration, origin-loss, and load-failure path.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phase 0 and Phase 1 are complete. Phase-2 roster authority is
   checkpointed at `563499e3fe`, exact routine pairs at `c846be1632`, fresh response selection
-  at `5fbefa452e`, capability-aware routine pairs at `f049104375`, and atomic reservation ownership
-  at `f65e6bd28a`; final clean-environment
+  at `5fbefa452e`, capability-aware routine pairs at `f049104375`, atomic reservation ownership
+  at `f65e6bd28a`, and generation-matched structural release at `61017301a4`; final clean-environment
   secure-store/API qualification is deferred to the later release gate and may not pause
   deterministic camp-AI work.
 
@@ -212,21 +212,26 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   mission slot, rejects stale/competing plans byte-identically, and round-trips the exact member
   owner envelope. Build and focused/structural/full live-world filters exit `0`; structured review
   is clean; exact evidence is under `phase2-20260803/reservation-ownership/MANIFEST.md`.
+- Phase-2 matching-release checkpoint `61017301a4` rejects stale cleanup byte-identically, including
+  a newer same-ID generation, releases only unresolved members on a candidate copy, preserves
+  casualties, and returns the exact committed count. Build and focused/structural/full live-world
+  filters exit `0`; final review is clean; exact evidence is under
+  `phase2-20260803/matching-release/MANIFEST.md`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume Phase 2 with generation-matched release coverage. Do not reopen
+3. Resume Phase 2 with complete matching release-path coverage. Do not reopen
    Phase-0 statistics unless a later real implementation measurement approaches or exceeds a
    ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `f65e6bd28a`-source test binary where valid; run one redirected build at a time
+5. Reuse the current `61017301a4`-source test binary where valid; run one redirected build at a time
    after implementation invalidates it.
 6. Phase 1 is closed; keep its transition and all-phase manifests as the persistence baseline.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
-reservation-ownership build and focused/full tests completed with exit `0`; earlier failed fixture routes are
+matching-release build and focused/full tests completed with exit `0`; earlier failed fixture routes are
 recorded as non-credit in the artifact manifest. The baseline and production candidate remain
 untouched. Do not start another build until the next Phase-2 source change invalidates the current
 test binary.

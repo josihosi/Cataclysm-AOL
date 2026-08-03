@@ -147,7 +147,9 @@ dossier recomputes threat/reward sizing from the current ready roster, and apply
 dossier drift atomically. Routine selection uses live readiness and stable observer/return-safe
 escort capability without draining the strongest defenders. Structural reservations are pinned at
 `f65e6bd28a`; competing/stale plans cannot steal a newer generation or occupied mission slot.
-Current execution row: release reservations only when operation ID and generation still match.
+Generation-matched structural release is checkpointed at `61017301a4`; it cannot clear a newer
+same-ID generation, resurrect resolved casualties, or overcount returns. Current execution row:
+cover matching release on every success, abort, death, migration, origin-loss, and load-failure path.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

@@ -468,8 +468,16 @@ exits `0`; reservation passes 1 / 45, structural bounty 24 / 458, and full live-
 Structured xhigh review reports no findings at 0.96; exact evidence is in external
 `phase2-20260803/reservation-ownership/MANIFEST.md`.
 
-The active missing evidence is Phase 2 operation/generation-matched release, followed by complete
-release-path and remaining population/origin/concurrency coverage.
+Generation-matched release is green at `61017301a4`. Stale identity/generation cleanup is a
+byte-identical no-op, including against a newer structural outing with the same activity ID;
+matching cleanup releases only unresolved away members, preserves casualties, and reports the
+exact return count. Final build exits `0`; reservation passes 1 / 70, structural bounty 24 / 483,
+and full live-world 109 / 6,478. The initial structured review accounting finding was accepted and
+the required final review is clean at 0.96; exact evidence is in external
+`phase2-20260803/matching-release/MANIFEST.md`.
+
+The active missing evidence is complete matching release across success/abort/death/migration/
+origin-loss/load-failure paths, followed by remaining population/origin/concurrency coverage.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
