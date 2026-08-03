@@ -944,6 +944,9 @@ struct abstract_threat_detour_read {
 struct structural_threat_observer_request {
     tripoint_abs_omt current_omt;
     std::vector<tripoint_abs_omt> visible_forward_omts;
+    std::optional<tripoint_abs_omt> retained_threat_omt;
+    std::vector<std::string> retained_threat_ids;
+    int retained_threat_age_minutes = -1;
     int party_power = 0;
 };
 
@@ -957,6 +960,12 @@ struct structural_observer_visibility_read {
 int structural_observer_omt_sight_range( const structural_observer_visibility_read &read );
 bool structural_observer_route_is_visible( int sight_points,
         const std::vector<int> &terrain_see_costs );
+int structural_observer_last_known_max_age_minutes();
+bool structural_observer_route_is_retained( int sight_points,
+        const std::vector<int> &terrain_see_costs, int last_known_age_minutes );
+bool structural_observer_retained_threat_matches(
+    const structural_threat_observer_request &request, const tripoint_abs_omt &threat_omt,
+    const std::vector<std::string> &stable_threat_ids );
 
 struct abstract_threat_read {
     bool observed = false;

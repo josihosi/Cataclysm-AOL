@@ -2962,12 +2962,16 @@ bandit_live_world::structural_threat_read live_bandit_structural_threat_read(
 }
 
 bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
-                                   const tripoint_abs_omt &target, int sight_points )
+                                   const tripoint_abs_omt &target, const int sight_points,
+                                   const int retained_age_minutes = -1 )
 {
+    const int available_sight_points = retained_age_minutes >= 0 &&
+                                       sight_points < std::numeric_limits<int>::max() ?
+                                       sight_points + 1 : sight_points;
     const point_rel_omt offset = target.xy() - origin.xy();
-    if( target.z() != origin.z() || sight_points < 0 ||
-        offset.x() < -sight_points || offset.x() > sight_points ||
-        offset.y() < -sight_points || offset.y() > sight_points ) {
+    if( target.z() != origin.z() || available_sight_points < 0 ||
+        offset.x() < -available_sight_points || offset.x() > available_sight_points ||
+        offset.y() < -available_sight_points || offset.y() > available_sight_points ) {
         return false;
     }
     std::vector<int> terrain_see_costs;
@@ -2975,7 +2979,10 @@ bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
         terrain_see_costs.push_back(
             static_cast<int>( overmap_buffer.ter( omt )->get_see_cost() ) );
     }
-    return bandit_live_world::structural_observer_route_is_visible(
+    return retained_age_minutes >= 0 ?
+           bandit_live_world::structural_observer_route_is_retained(
+               sight_points, terrain_see_costs, retained_age_minutes ) :
+           bandit_live_world::structural_observer_route_is_visible(
                sight_points, terrain_see_costs );
 }
 
@@ -3202,14 +3209,22 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
     for( std::size_t index = 0; index < permitted_omts.size(); ++index ) {
         const tripoint_abs_omt &omt = permitted_omts[index];
         const bool overlap = index == 0;
-        if( !overlap && !live_bandit_overmap_los_from(
-                request.current_omt, omt, sight_points ) ) {
+        const bool acquired = overlap || live_bandit_overmap_los_from(
+                                  request.current_omt, omt, sight_points );
+        const bool retained = !acquired && request.retained_threat_omt &&
+                              omt == *request.retained_threat_omt &&
+                              live_bandit_overmap_los_from(
+                                  request.current_omt, omt, sight_points,
+                                  request.retained_threat_age_minutes );
+        if( !acquired && !retained ) {
             continue;
         }
         const live_bandit_omt_threat_read threat =
             live_bandit_threats_at_existing_omt( *observer, omt );
         if( threat.stable_ids.empty() || threat.danger_high <= 0 ||
-            ( !overlap && threat.visible_count < HORDE_VISIBILITY_SIZE ) ) {
+            ( !overlap && threat.visible_count < HORDE_VISIBILITY_SIZE ) ||
+            ( retained && !bandit_live_world::structural_observer_retained_threat_matches(
+                  request, omt, threat.stable_ids ) ) ) {
             continue;
         }
         result.observed = true;

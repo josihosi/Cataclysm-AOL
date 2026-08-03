@@ -9216,8 +9216,80 @@ bool structural_observer_route_is_visible( int sight_points,
     return true;
 }
 
+int structural_observer_last_known_max_age_minutes()
+{
+    return 60;
+}
+
+bool structural_observer_route_is_retained( const int sight_points,
+        const std::vector<int> &terrain_see_costs, const int last_known_age_minutes )
+{
+    if( sight_points < 0 || last_known_age_minutes < 0 ||
+        last_known_age_minutes > structural_observer_last_known_max_age_minutes() ) {
+        return false;
+    }
+    const int retain_sight_points = sight_points == std::numeric_limits<int>::max() ?
+                                    sight_points : sight_points + 1;
+    return structural_observer_route_is_visible( retain_sight_points, terrain_see_costs );
+}
+
+bool structural_observer_retained_threat_matches(
+    const structural_threat_observer_request &request, const tripoint_abs_omt &threat_omt,
+    const std::vector<std::string> &stable_threat_ids )
+{
+    return request.retained_threat_omt &&
+           request.retained_threat_age_minutes >= 0 &&
+           request.retained_threat_age_minutes <=
+           structural_observer_last_known_max_age_minutes() &&
+           threat_omt == *request.retained_threat_omt && !stable_threat_ids.empty() &&
+           std::is_sorted( stable_threat_ids.begin(), stable_threat_ids.end() ) &&
+           std::adjacent_find( stable_threat_ids.begin(), stable_threat_ids.end() ) ==
+           stable_threat_ids.end() &&
+           stable_threat_ids == request.retained_threat_ids;
+}
+
 namespace
 {
+void add_structural_observer_retained_track( const site_record &site,
+        structural_threat_observer_request &request, const int now_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    const sortie_observation *latest = nullptr;
+    for( const sortie_observation &observation : outing.observations ) {
+        const int age_minutes = now_minutes - observation.observed_minutes;
+        const bool source_is_permitted = observation.source_omt == request.current_omt ||
+                                         std::find( request.visible_forward_omts.begin(),
+                                                 request.visible_forward_omts.end(),
+                                                 observation.source_omt ) !=
+                                         request.visible_forward_omts.end();
+        const bool observer_can_retain = observation.observer_id == outing.leader_id ||
+                                         observation.share_state ==
+                                         sortie_observation_share_state::shared;
+        if( observation.record_schema_version != 1 ||
+            observation.fact_key.rfind( "structural-visual:", 0 ) != 0 ||
+            observation.sense != sortie_observation_sense::visual ||
+            observation.target_revision != outing.target_lead_revision ||
+            observation.observed_minutes < 0 || observation.observed_minutes > now_minutes ||
+            observation.expiry_minutes < now_minutes || observation.defender_ids.empty() ||
+            age_minutes > structural_observer_last_known_max_age_minutes() ||
+            !source_is_permitted || !observer_can_retain ) {
+            continue;
+        }
+        if( latest == nullptr ||
+            std::tie( observation.observed_minutes, observation.fact_key,
+                      observation.source_omt ) >
+            std::tie( latest->observed_minutes, latest->fact_key, latest->source_omt ) ) {
+            latest = &observation;
+        }
+    }
+    if( latest == nullptr ) {
+        return;
+    }
+    request.retained_threat_omt = latest->source_omt;
+    request.retained_threat_ids = latest->defender_ids;
+    request.retained_threat_age_minutes = now_minutes - latest->observed_minutes;
+}
+
 bool structural_abstract_threat_read_is_valid( const tripoint_abs_omt &current_omt,
         const abstract_threat_read &read )
 {
@@ -10509,6 +10581,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 request.visible_forward_omts.push_back(
                     pre_advance_outing.shared_route[static_cast<std::size_t>( index )] );
             }
+            add_structural_observer_retained_track( candidate, request, now_minutes );
             const abstract_threat_read abstract_read = abstract_threat_lookup(
                         candidate, pre_advance_outing, request );
             bool threat_omt_is_permitted = !abstract_read.observed;

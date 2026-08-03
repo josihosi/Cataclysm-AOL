@@ -185,7 +185,7 @@ bandit_live_world::sortie_observation make_typed_visual_observation(
 }
 
 bandit_live_world::world_state make_abstract_threat_test_world( const bool cannibal,
-        const int id_base )
+        const int id_base, const int target_distance_omt = 4 )
 {
     bandit_live_world::world_state world;
     for( int index = 0; index < 3; ++index ) {
@@ -196,7 +196,8 @@ bandit_live_world::world_state make_abstract_threat_test_world( const bool canni
         }
     }
     bandit_live_world::site_record &site = world.sites.front();
-    const tripoint_abs_omt target( site.anchor.x() + 4, site.anchor.y(), site.anchor.z() );
+    const tripoint_abs_omt target( site.anchor.x() + target_distance_omt,
+                                   site.anchor.y(), site.anchor.z() );
     const bandit_live_world::structural_bounty_read read =
         bandit_live_world::classify_structural_bounty_terrain( "forest" );
     REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, 0 ) );
@@ -9450,6 +9451,137 @@ TEST_CASE( "hostile_camp_structural_observer_visibility_uses_real_sight_inputs",
     CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 2, { 1, 1, 1 } ) );
     CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 3, { 1, 3 } ) );
     CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 3, { -1 } ) );
+}
+
+TEST_CASE( "hostile_camp_structural_observer_retains_only_an_exact_recent_visual_track",
+           "[bandit][live_world][structural_bounty][phase4_hysteresis]" )
+{
+    CHECK( bandit_live_world::structural_observer_last_known_max_age_minutes() == 60 );
+
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 2, { 1, 1, 1 } ) );
+    CHECK( bandit_live_world::structural_observer_route_is_retained( 2, { 1, 1, 1 }, 0 ) );
+    CHECK( bandit_live_world::structural_observer_route_is_retained( 2, { 1, 1, 1 }, 60 ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_retained( 2, { 1, 1, 1 }, -1 ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_retained( 2, { 1, 1, 1 }, 61 ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_retained( 2, { 1, 1, 1, 1 },
+                 60 ) );
+
+    const tripoint_abs_omt known_omt( 18, 20, 0 );
+    const std::vector<std::string> known_ids = { "horde:a", "horde:b" };
+    bandit_live_world::structural_threat_observer_request request;
+    request.retained_threat_omt = known_omt;
+    request.retained_threat_ids = known_ids;
+    request.retained_threat_age_minutes = 60;
+    CHECK( bandit_live_world::structural_observer_retained_threat_matches(
+               request, known_omt, known_ids ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, tripoint_abs_omt( 19, 20, 0 ), known_ids ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, { "horde:a" } ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, {} ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, { "horde:b", "horde:a" } ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, { "horde:a", "horde:a" } ) );
+
+    request.retained_threat_age_minutes = 61;
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, known_ids ) );
+    request.retained_threat_age_minutes = -1;
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, known_ids ) );
+    request.retained_threat_age_minutes = 60;
+    request.retained_threat_ids = { "horde:b", "horde:a" };
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, known_ids ) );
+    request.retained_threat_ids = { "horde:a", "horde:a" };
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, request.retained_threat_ids ) );
+    request.retained_threat_ids = known_ids;
+    request.retained_threat_omt.reset();
+    CHECK_FALSE( bandit_live_world::structural_observer_retained_threat_matches(
+                     request, known_omt, known_ids ) );
+}
+
+TEST_CASE( "hostile_camp_visual_track_retention_survives_save_until_its_exact_age_boundary",
+           "[bandit][live_world][structural_bounty][phase4_hysteresis][save]" )
+{
+    constexpr int target_distance_omt = 8;
+    constexpr int stalking_minutes = 220;
+    constexpr int first_observed_minutes = stalking_minutes + 1;
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        bandit_live_world::world_state world = make_abstract_threat_test_world(
+                    cannibal, cannibal ? 15860 : 15850, target_distance_omt );
+        bandit_live_world::site_record &site = world.sites.front();
+        REQUIRE( site.active_outing.started_minutes == 100 );
+        bandit_live_world::advance_structural_bounty_outings( world, stalking_minutes, {} );
+        REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+        REQUIRE( site.active_outing.observations.empty() );
+
+        int initial_observer_calls = 0;
+        tripoint_abs_omt observed_omt;
+        bandit_live_world::advance_structural_bounty_outings(
+            world, first_observed_minutes, {},
+        [&initial_observer_calls, &observed_omt]( const bandit_live_world::site_record &,
+                const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            initial_observer_calls++;
+            REQUIRE_FALSE( request.visible_forward_omts.empty() );
+            CHECK_FALSE( request.retained_threat_omt.has_value() );
+            CHECK( request.retained_threat_ids.empty() );
+            CHECK( request.retained_threat_age_minutes == -1 );
+            observed_omt = request.visible_forward_omts.front();
+            return make_abstract_threat_read( observed_omt, 1, false );
+        } );
+        REQUIRE( initial_observer_calls == 1 );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        CHECK( site.active_outing.observations.front().record_schema_version == 1 );
+        CHECK( site.active_outing.observations.front().sense ==
+               bandit_live_world::sortie_observation_sense::visual );
+        CHECK( site.active_outing.observations.front().source_omt == observed_omt );
+        CHECK( site.active_outing.observations.front().defender_ids ==
+               std::vector<std::string> { "horde:test" } );
+
+        const bandit_live_world::world_state saved_snapshot = round_trip_world( world );
+        bandit_live_world::world_state at_age_60 = saved_snapshot;
+        bandit_live_world::world_state at_age_61 = saved_snapshot;
+
+        int age_60_calls = 0;
+        bandit_live_world::structural_threat_observer_request retained_at_60;
+        bandit_live_world::advance_structural_bounty_outings(
+            at_age_60, first_observed_minutes + 60, {},
+        [&age_60_calls, &retained_at_60]( const bandit_live_world::site_record &,
+                                         const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            age_60_calls++;
+            retained_at_60 = request;
+            return bandit_live_world::abstract_threat_read();
+        } );
+        REQUIRE( age_60_calls == 1 );
+        REQUIRE( retained_at_60.retained_threat_omt.has_value() );
+        CHECK( *retained_at_60.retained_threat_omt == observed_omt );
+        CHECK( retained_at_60.retained_threat_ids ==
+               std::vector<std::string> { "horde:test" } );
+        CHECK( retained_at_60.retained_threat_age_minutes == 60 );
+
+        int age_61_calls = 0;
+        bandit_live_world::structural_threat_observer_request expired_at_61;
+        bandit_live_world::advance_structural_bounty_outings(
+            at_age_61, first_observed_minutes + 61, {},
+        [&age_61_calls, &expired_at_61]( const bandit_live_world::site_record &,
+                                        const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            age_61_calls++;
+            expired_at_61 = request;
+            return bandit_live_world::abstract_threat_read();
+        } );
+        REQUIRE( age_61_calls == 1 );
+        CHECK_FALSE( expired_at_61.retained_threat_omt.has_value() );
+        CHECK( expired_at_61.retained_threat_ids.empty() );
+        CHECK( expired_at_61.retained_threat_age_minutes == -1 );
+    }
 }
 
 TEST_CASE( "hostile_camp_structural_observer_records_owned_evidence_before_returning_report",
