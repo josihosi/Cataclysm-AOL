@@ -572,11 +572,15 @@ class overmapbuffer
         void remove_nemesis();
         // hordes -- this uses overmap terrain coordinates!
         std::vector<mongroup *> monsters_at( const tripoint_abs_omt &p );
+        std::vector<mongroup *> monsters_at( const tripoint_abs_omt &p,
+                                             std::size_t max_groups );
         /**
          * Monster groups at p - absolute submap coordinates.
          * Groups with no population are not included.
          */
         std::vector<mongroup *> groups_at( const tripoint_abs_sm &p );
+        std::vector<mongroup *> groups_at( const tripoint_abs_sm &p,
+                                           std::size_t max_groups );
 
         /**
          * Spawn monsters from the overmap onto the main map (game::m).

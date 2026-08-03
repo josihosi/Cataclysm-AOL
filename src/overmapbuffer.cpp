@@ -767,6 +767,22 @@ std::vector<mongroup *> overmapbuffer::monsters_at( const tripoint_abs_omt &p )
     return result;
 }
 
+std::vector<mongroup *> overmapbuffer::monsters_at( const tripoint_abs_omt &p,
+        const std::size_t max_groups )
+{
+    tripoint_abs_sm p_sm = project_to<coords::sm>( p );
+    std::vector<mongroup *> result;
+    result.reserve( max_groups );
+    for( const point &offset : std::array<point, 4> { { { point::zero }, { point::south }, { point::east }, { point::south_east } } } ) {
+        if( result.size() >= max_groups ) {
+            break;
+        }
+        std::vector<mongroup *> tmp = groups_at( p_sm + offset, max_groups - result.size() );
+        result.insert( result.end(), tmp.begin(), tmp.end() );
+    }
+    return result;
+}
+
 std::vector<mongroup *> overmapbuffer::groups_at( const tripoint_abs_sm &p )
 {
     std::vector<mongroup *> result;
@@ -784,6 +800,31 @@ std::vector<mongroup *> overmapbuffer::groups_at( const tripoint_abs_sm &p )
             continue;
         }
         result.push_back( &mg );
+    }
+    return result;
+}
+
+std::vector<mongroup *> overmapbuffer::groups_at( const tripoint_abs_sm &p,
+        const std::size_t max_groups )
+{
+    std::vector<mongroup *> result;
+    if( max_groups == 0 ) {
+        return result;
+    }
+    point_om_sm sm_within_om;
+    point_abs_om omp;
+    std::tie( omp, sm_within_om ) = project_remain<coords::om>( p.xy() );
+    if( !has( omp ) ) {
+        return result;
+    }
+    overmap &om = get( omp );
+    const auto groups_range = om.zg.equal_range( tripoint_om_sm( sm_within_om, p.z() ) );
+    for( auto it = groups_range.first;
+         it != groups_range.second && result.size() < max_groups; ++it ) {
+        mongroup &mg = it->second;
+        if( !mg.empty() ) {
+            result.push_back( &mg );
+        }
     }
     return result;
 }

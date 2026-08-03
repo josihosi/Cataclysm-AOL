@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <climits>
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <map>
@@ -45,6 +46,7 @@
 #include "event.h"
 #include "event_bus.h"
 #include "explosion.h"
+#include "faction.h"
 #include "field.h"
 #include "field_type.h"
 #include "flag.h"
@@ -52,6 +54,7 @@
 #include "game_constants.h"
 #include "gamemode.h"
 #include "help.h"
+#include "horde_entity.h"
 #include "input.h"
 #include "input_context.h"
 #include "item_wakeup.h"
@@ -66,14 +69,17 @@
 #include "messages.h"
 #include "llm_intent.h"
 #include "line.h"
+#include "lightmap.h"
 #include "mission.h"
 #include "monster.h"
+#include "mongroup.h"
 #include "mtype.h"
 #include "music.h"
 #include "npc.h"
 #include "npctrade.h"
 #include "options.h"
 #include "output.h"
+#include "overmap.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
 #include "pimpl.h"
@@ -81,6 +87,7 @@
 #include "point.h"
 #include "popup.h"
 #include "rng.h"
+#include "regional_settings.h"
 #include "scent_map.h"
 #include "sdlsound.h"
 #include "simple_pathfinding.h"
@@ -97,6 +104,8 @@
 #include "veh_type.h"
 #include "vpart_position.h"
 #include "weather.h"
+#include "weather_gen.h"
+#include "weather_type.h"
 #include "worldfactory.h"
 #include "zombie_rider_overmap_ai.h"
 
@@ -1514,6 +1523,7 @@ npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kin
 
 void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state )
 {
+    const int now_minutes = live_bandit_current_minutes();
     std::unordered_map<int, npc *> loaded_npcs;
     overmap_buffer.foreach_npc( [&loaded_npcs]( npc &guy ) {
         loaded_npcs.emplace( guy.getID().get_value(), &guy );
@@ -1523,6 +1533,14 @@ void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state
         for( bandit_live_world::member_record &member : site.members ) {
             if( member.state != bandit_live_world::member_state::at_home ) {
                 continue;
+            }
+            if( bandit_live_world::member_has_abstract_wound_recovery(
+                    member, now_minutes ) ) {
+                member.wounded_or_unready = true;
+                continue;
+            }
+            if( member.abstract_wound_until_minutes >= 0 ) {
+                member.abstract_wound_until_minutes = -1;
             }
             const auto found = loaded_npcs.find( member.npc_id.get_value() );
             const npc *guy = found == loaded_npcs.end() ? nullptr : found->second;
@@ -2943,6 +2961,276 @@ bandit_live_world::structural_threat_read live_bandit_structural_threat_read(
     return threat;
 }
 
+bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
+                                   const tripoint_abs_omt &target, int sight_points )
+{
+    const point_rel_omt offset = target.xy() - origin.xy();
+    if( target.z() != origin.z() || sight_points < 0 ||
+        offset.x() < -sight_points || offset.x() > sight_points ||
+        offset.y() < -sight_points || offset.y() > sight_points ) {
+        return false;
+    }
+    for( const tripoint_abs_omt &omt : line_to( origin, target ) ) {
+        sight_points -= static_cast<int>( overmap_buffer.ter( omt )->get_see_cost() );
+        if( sight_points < 0 ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int live_bandit_structural_observer_sight( const npc &observer,
+        const tripoint_abs_omt &origin )
+{
+    const tripoint_abs_ms origin_ms = project_to<coords::ms>( origin );
+    const weather_generator_id &weather_generator = overmap_buffer.get_settings( origin ).weather;
+    const weather_type_id weather = weather_generator->get_weather_conditions(
+                                        origin_ms, calendar::turn, g->get_seed() );
+    const float remote_light = origin.z() < 0 ? LIGHT_AMBIENT_MINIMAL :
+                               std::max<float>( LIGHT_AMBIENT_MINIMAL,
+                                       sun_moon_light_at( calendar::turn ) *
+                                       weather->light_multiplier + weather->light_modifier );
+    int sight = observer.overmap_sight_range( remote_light, remote_light );
+    sight += std::max( 0, origin.z() ) * 2;
+    static const json_character_flag enhanced_vision( "ENHANCED_VISION" );
+    const bool has_optic = observer.cache_has_item_with( flag_ZOOM ) ||
+                           observer.has_flag( enhanced_vision ) ||
+                           observer.cache_has_item_with( "is_gun", &item::is_gun,
+    []( const item & gun ) {
+        return std::any_of( gun.gunmods().begin(), gun.gunmods().end(),
+        []( const item * mod ) {
+            return mod != nullptr && mod->has_flag( flag_ZOOM );
+        } );
+    } );
+    if( has_optic ) {
+        sight *= 2;
+    }
+    const float weather_penalty = std::max( 1.0f, weather->sight_penalty );
+    return std::max( 0, static_cast<int>( std::floor( sight / weather_penalty ) ) );
+}
+
+struct live_bandit_omt_threat_read {
+    int visible_count = 0;
+    int danger_low = 0;
+    int danger_high = 0;
+    std::vector<std::string> stable_ids;
+};
+
+std::vector<std::string> live_bandit_bounded_threat_ids( std::vector<std::string> ids )
+{
+    static constexpr std::size_t id_cap = 16;
+    std::sort( ids.begin(), ids.end() );
+    ids.erase( std::unique( ids.begin(), ids.end() ), ids.end() );
+    if( ids.size() <= id_cap ) {
+        return ids;
+    }
+    unsigned long long hash = 1469598103934665603ULL;
+    for( const std::string &id : ids ) {
+        for( const unsigned char byte : id ) {
+            hash ^= byte;
+            hash *= 1099511628211ULL;
+        }
+        hash ^= 0xffU;
+        hash *= 1099511628211ULL;
+    }
+    ids.resize( id_cap - 1 );
+    ids.push_back( "overflow:" + std::to_string( hash ) );
+    std::sort( ids.begin(), ids.end() );
+    return ids;
+}
+
+live_bandit_omt_threat_read live_bandit_threats_at_existing_omt(
+    const npc &observer, const tripoint_abs_omt &omt )
+{
+    static constexpr std::size_t max_concrete_groups = 16;
+    static constexpr std::size_t max_concrete_monsters = 64;
+    live_bandit_omt_threat_read read;
+    point_abs_om overmap_position;
+    tripoint_om_omt local_omt;
+    std::tie( overmap_position, local_omt ) = project_remain<coords::om>( omt );
+    overmap *existing = overmap_buffer.get_existing( overmap_position );
+    if( existing == nullptr ) {
+        return read;
+    }
+
+    const auto add_danger = [&read]( const int low, const int high ) {
+        read.danger_low = std::min( 200, read.danger_low + std::clamp( low, 0, 200 ) );
+        read.danger_high = std::min( 200, read.danger_high + std::clamp( high, 0, 200 ) );
+    };
+    const tripoint_om_ms omt_origin = project_to<coords::ms>( local_omt );
+    for( int y = 0; y < 2 * SEEY; ++y ) {
+        for( int x = 0; x < 2 * SEEX; ++x ) {
+            const tripoint_om_ms entity_position = omt_origin + point_rel_ms( x, y );
+            const horde_entity *entity_ptr = existing->entity_at( entity_position );
+            if( entity_ptr == nullptr ) {
+                continue;
+            }
+            const horde_entity &entity = *entity_ptr;
+            const mtype *type = entity.get_type();
+            if( type == nullptr ) {
+                continue;
+            }
+            bool hostile = entity.monster_data &&
+                           entity.monster_data->attitude_to( observer ) ==
+                           Creature::Attitude::HOSTILE;
+            if( !entity.monster_data ) {
+                const faction *observer_faction = observer.get_faction();
+                hostile = type->aggro_character && type->agro >= 10 &&
+                          ( observer_faction == nullptr ||
+                            type->default_faction != observer_faction->mon_faction );
+            }
+            if( !hostile ) {
+                continue;
+            }
+            const int danger = entity.monster_data ?
+                               static_cast<int>( std::ceil( observer.evaluate_monster(
+                                       *entity.monster_data, 1 ) ) ) :
+                               static_cast<int>( std::ceil( std::min<float>(
+                                       std::max<float>( type->get_total_difficulty(),
+                                               NPC_DANGER_VERY_LOW ),
+                                       NPC_MONSTER_DANGER_MAX ) ) );
+            add_danger( danger, danger );
+            read.visible_count++;
+            read.stable_ids.push_back( "entity:" +
+                                       project_combine( overmap_position,
+                                               entity_position ).to_string() + ':' +
+                                       type->id.str() );
+        }
+    }
+
+    std::size_t concrete_monsters_inspected = 0;
+    for( const mongroup *group : overmap_buffer.monsters_at( omt, max_concrete_groups ) ) {
+        if( group == nullptr || group->is_safe() ) {
+            continue;
+        }
+        if( group->monsters.empty() && group->population == 0 ) {
+            continue;
+        }
+        const std::string group_id = "group:" + group->abs_pos.to_string() + ':' +
+                                     group->type.str() + ':' +
+                                     std::to_string( group->target.x() ) + ',' +
+                                     std::to_string( group->target.y() ) + ':' +
+                                     ( group->horde ? "horde" : "spawn" );
+        if( !group->monsters.empty() ) {
+            int hostile_monsters = 0;
+            for( const monster &monster : group->monsters ) {
+                if( concrete_monsters_inspected >= max_concrete_monsters ) {
+                    break;
+                }
+                concrete_monsters_inspected++;
+                if( monster.attitude_to( observer ) != Creature::Attitude::HOSTILE ) {
+                    continue;
+                }
+                const int danger = static_cast<int>( std::ceil(
+                                       observer.evaluate_monster( monster, 1 ) ) );
+                add_danger( danger, danger );
+                hostile_monsters++;
+            }
+            if( hostile_monsters == 0 ) {
+                continue;
+            }
+            read.visible_count += hostile_monsters;
+        } else {
+            continue;
+        }
+        read.stable_ids.push_back( group_id );
+        if( concrete_monsters_inspected >= max_concrete_monsters ) {
+            break;
+        }
+    }
+    read.stable_ids = live_bandit_bounded_threat_ids( std::move( read.stable_ids ) );
+    return read;
+}
+
+std::vector<bandit_live_world::abstract_threat_detour_read>
+live_bandit_structural_detour_reads( const bandit_live_world::site_record &site,
+                                    const tripoint_abs_omt &current_omt,
+                                    const tripoint_abs_omt &threat_omt )
+{
+    std::vector<tripoint_abs_omt> candidates;
+    for( int dx = -1; dx <= 1; ++dx ) {
+        for( int dy = -1; dy <= 1; ++dy ) {
+            if( dx == 0 && dy == 0 ) {
+                continue;
+            }
+            candidates.emplace_back( current_omt.x() + dx, current_omt.y() + dy,
+                                     current_omt.z() );
+        }
+    }
+    std::sort( candidates.begin(), candidates.end(), [&site, &threat_omt](
+    const tripoint_abs_omt & lhs, const tripoint_abs_omt & rhs ) {
+        return std::make_tuple( -rl_dist( lhs, threat_omt ), rl_dist( lhs, site.anchor ), lhs ) <
+               std::make_tuple( -rl_dist( rhs, threat_omt ), rl_dist( rhs, site.anchor ), rhs );
+    } );
+    std::vector<bandit_live_world::abstract_threat_detour_read> reads;
+    const overmap_path_params npc_path = overmap_path_params::for_npc();
+    for( const tripoint_abs_omt &candidate : candidates ) {
+        if( candidate == threat_omt || reads.size() >= 2 ) {
+            continue;
+        }
+        bandit_live_world::abstract_threat_detour_read read;
+        read.omt = candidate;
+        const oter_id &terrain = overmap_buffer.ter_existing( candidate );
+        read.passable = terrain.is_valid() &&
+                        npc_path.get_cost( terrain->get_travel_cost_type() ) >= 0 &&
+                        rl_dist( candidate, site.anchor ) < rl_dist( current_omt, site.anchor );
+        reads.push_back( read );
+    }
+    return reads;
+}
+
+bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_read(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request )
+{
+    bandit_live_world::abstract_threat_read result;
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        request.party_power <= 0 || request.visible_forward_omts.size() > 3 ) {
+        return result;
+    }
+    const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( outing.leader_id );
+    if( !observer || observer->is_dead() ) {
+        return result;
+    }
+    result.local_reality = get_map().inbounds( request.current_omt );
+    const int sight_points = live_bandit_structural_observer_sight( *observer,
+                             request.current_omt );
+    std::vector<tripoint_abs_omt> permitted_omts;
+    permitted_omts.push_back( request.current_omt );
+    permitted_omts.insert( permitted_omts.end(), request.visible_forward_omts.begin(),
+                           request.visible_forward_omts.end() );
+    for( std::size_t index = 0; index < permitted_omts.size(); ++index ) {
+        const tripoint_abs_omt &omt = permitted_omts[index];
+        const bool overlap = index == 0;
+        if( !overlap && !live_bandit_overmap_los_from(
+                request.current_omt, omt, sight_points ) ) {
+            continue;
+        }
+        const live_bandit_omt_threat_read threat =
+            live_bandit_threats_at_existing_omt( *observer, omt );
+        if( threat.stable_ids.empty() || threat.danger_high <= 0 ||
+            ( !overlap && threat.visible_count < HORDE_VISIBILITY_SIZE ) ) {
+            continue;
+        }
+        result.observed = true;
+        result.overlap = overlap;
+        result.threat_omt = omt;
+        result.danger_low = threat.danger_low;
+        result.danger_high = threat.danger_high;
+        result.stable_threat_ids = threat.stable_ids;
+        result.summary = "ordinary OMT observer read live threat at " + omt.to_string();
+        const bool hard_danger = std::min( 1000, 5 * result.danger_high ) >= 750 ||
+                                 result.danger_low >= std::min( 200, 2 * request.party_power );
+        if( hard_danger ) {
+            result.detours = live_bandit_structural_detour_reads(
+                                 site, request.current_omt, omt );
+        }
+        return result;
+    }
+    return result;
+}
+
 bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const bandit_live_world::site_record &site,
     const bandit_live_world::structural_outing_plan &plan )
@@ -2985,7 +3273,8 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
     bandit_live_world::structural_bounty_maintenance_result result =
         bandit_live_world::advance_structural_bounty_maintenance( state, live_bandit_current_minutes(),
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
-                live_bandit_structural_threat_read, live_bandit_structural_route_read );
+                live_bandit_structural_threat_read, live_bandit_structural_route_read,
+                live_bandit_structural_abstract_threat_read );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     return result;
 }

@@ -43,6 +43,10 @@ constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
+constexpr std::size_t max_abstract_threat_ids = 16;
+constexpr std::size_t max_abstract_threat_id_length = 128;
+constexpr std::size_t max_abstract_encounter_outcome_length = 128;
+constexpr int abstract_wound_recovery_minutes = 72 * 60;
 constexpr std::size_t max_camp_intelligence_leads = 64;
 constexpr std::size_t max_acted_report_summaries = 64;
 constexpr std::size_t max_live_signal_marks = 8;
@@ -2210,16 +2214,23 @@ bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
         ( owner == "abstract" && handoff_epoch % 2 == 0 ) ||
         ( owner == "local" && handoff_epoch % 2 == 1 );
     const bool supported_schema = schema_version == 5 ||
-                                  ( ( schema_version == 6 || schema_version == 7 ) &&
+                                  ( ( schema_version == 6 || schema_version == 7 ||
+                                      schema_version == 8 ) &&
                                     kind == "structural_sortie" );
     const bool complete_structural_route = schema_version < 6 ||
             ( owner_json.has_member( "shared_route" ) &&
               owner_json.has_member( "waypoint_index" ) &&
               owner_json.has_member( "expected_return_minutes" ) &&
               owner_json.has_member( "missing_deadline_minutes" ) );
-    const bool complete_local_handoff = schema_version != 7 ||
+    const bool complete_local_handoff = schema_version < 7 ||
                                         owner_json.has_member( "local_handoff" );
+    const bool complete_abstract_encounter = schema_version != 8 ||
+            ( owner_json.has_member( "abstract_encounter" ) &&
+              owner_json.has_member( "abstract_detour_attempts" ) &&
+              owner_json.has_member( "has_withdrawal_detour" ) &&
+              owner_json.has_member( "withdrawal_detour_omt" ) );
     return supported_schema && complete_structural_route && complete_local_handoff &&
+           complete_abstract_encounter &&
            handoff_epoch >= 0 && owner_matches_epoch &&
            last_advanced_minutes >= std::max( { started_minutes, local_contact_minutes,
                    last_progress_minutes } );
@@ -2857,13 +2868,20 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
 
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
-    next.schema_version = 7;
+    next.schema_version = 8;
     next.owner = simulation_owner::local;
     next.handoff_epoch = plan.snapshot.handoff_epoch;
     next.last_advanced_minutes = plan.snapshot.committed_minutes;
     next.last_progress_minutes = std::max( next.last_progress_minutes,
                                           plan.snapshot.committed_minutes );
     next.local_handoff = plan.snapshot;
+    if( next.abstract_encounter.active &&
+        next.abstract_encounter.overlap_omt == plan.snapshot.route_position ) {
+        if( next.abstract_encounter.outcome_applied ) {
+            return local_handoff_commit_result::rejected;
+        }
+        next.abstract_encounter.local_claimed = true;
+    }
     if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
         return local_handoff_commit_result::rejected;
     }
@@ -3033,6 +3051,12 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
     next.cargo = plan.resume_snapshot.cargo;
     next.casualty_ids = plan.resume_snapshot.casualty_ids;
     next.local_handoff = plan.resume_snapshot;
+    if( next.abstract_encounter.active && next.abstract_encounter.local_claimed ) {
+        next.abstract_encounter.local_claimed = false;
+        next.abstract_encounter.outcome_applied = true;
+        next.abstract_encounter.last_applied_episode = next.abstract_encounter.episode;
+        next.abstract_encounter.outcome = "resolved_by_local_reality";
+    }
     for( const local_handoff_member_snapshot &member_snapshot : plan.resume_snapshot.members ) {
         member_record *member = candidate.find_member( member_snapshot.npc_id );
         if( member == nullptr ) {
@@ -3777,6 +3801,9 @@ void member_record::serialize( JsonOut &json ) const
     json.member( "home_spawn_tile", home_spawn_tile );
     json.member( "state", to_string( state ) );
     json.member( "wounded_or_unready", wounded_or_unready );
+    if( abstract_wound_until_minutes >= 0 ) {
+        json.member( "abstract_wound_until_minutes", abstract_wound_until_minutes );
+    }
     json.member( "last_writeback_summary", last_writeback_summary );
     json.end_object();
 }
@@ -3792,6 +3819,10 @@ void member_record::deserialize( const JsonObject &jo )
     jo.read( "state", state_string );
     state = member_state_from_string( state_string ).value_or( member_state::at_home );
     jo.read( "wounded_or_unready", wounded_or_unready );
+    jo.read( "abstract_wound_until_minutes", abstract_wound_until_minutes );
+    if( abstract_wound_until_minutes < -1 ) {
+        jo.throw_error( "member has invalid abstract wound recovery time" );
+    }
     jo.read( "last_writeback_summary", last_writeback_summary );
 }
 
@@ -4520,6 +4551,98 @@ void local_handoff_snapshot::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void abstract_encounter_state::clear_active()
+{
+    const int retained_episode = std::max( episode, last_applied_episode );
+    const int retained_last_applied = last_applied_episode;
+    *this = abstract_encounter_state();
+    episode = retained_episode;
+    last_applied_episode = retained_last_applied;
+}
+
+void abstract_encounter_state::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "schema_version", schema_version );
+    json.member( "episode", episode );
+    json.member( "last_applied_episode", last_applied_episode );
+    json.member( "active", active );
+    json.member( "overlap_omt", overlap_omt );
+    json.member( "stable_threat_ids", stable_threat_ids );
+    json.member( "danger_low", danger_low );
+    json.member( "danger_high", danger_high );
+    json.member( "absent_segment_advances", absent_segment_advances );
+    json.member( "detour_attempts", detour_attempts );
+    json.member( "has_selected_detour", has_selected_detour );
+    json.member( "selected_detour_omt", selected_detour_omt );
+    json.member( "local_claimed", local_claimed );
+    json.member( "outcome_applied", outcome_applied );
+    json.member( "outcome", outcome );
+    json.end_object();
+}
+
+void abstract_encounter_state::deserialize( const JsonObject &jo )
+{
+    abstract_encounter_state candidate;
+    jo.read( "schema_version", candidate.schema_version );
+    jo.read( "episode", candidate.episode );
+    jo.read( "last_applied_episode", candidate.last_applied_episode );
+    jo.read( "active", candidate.active );
+    jo.read( "overlap_omt", candidate.overlap_omt );
+    jo.read( "stable_threat_ids", candidate.stable_threat_ids );
+    jo.read( "danger_low", candidate.danger_low );
+    jo.read( "danger_high", candidate.danger_high );
+    jo.read( "absent_segment_advances", candidate.absent_segment_advances );
+    jo.read( "detour_attempts", candidate.detour_attempts );
+    jo.read( "has_selected_detour", candidate.has_selected_detour );
+    jo.read( "selected_detour_omt", candidate.selected_detour_omt );
+    jo.read( "local_claimed", candidate.local_claimed );
+    jo.read( "outcome_applied", candidate.outcome_applied );
+    jo.read( "outcome", candidate.outcome );
+    if( candidate.schema_version != 1 || candidate.episode < 0 ||
+        candidate.last_applied_episode < 0 ||
+        candidate.last_applied_episode > candidate.episode ||
+        candidate.danger_low < 0 || candidate.danger_high < candidate.danger_low ||
+        candidate.danger_high > 200 || candidate.absent_segment_advances < 0 ||
+        candidate.absent_segment_advances > 1 || candidate.detour_attempts < 0 ||
+        candidate.detour_attempts > 2 || candidate.stable_threat_ids.size() >
+        max_abstract_threat_ids ||
+        ( candidate.active && ( candidate.episode <= 0 ||
+                                candidate.stable_threat_ids.empty() ) ) ||
+        ( candidate.local_claimed && ( !candidate.active || candidate.outcome_applied ) ) ||
+        ( candidate.outcome_applied &&
+          ( !candidate.active || candidate.last_applied_episode != candidate.episode ) ) ||
+        ( candidate.outcome_applied != !candidate.outcome.empty() ) ||
+        ( candidate.has_selected_detour &&
+          ( candidate.detour_attempts <= 0 || !candidate.outcome_applied ||
+            candidate.selected_detour_omt.z() != candidate.overlap_omt.z() ||
+            omt_chebyshev_distance( candidate.selected_detour_omt,
+                                    candidate.overlap_omt ) != 1 ) ) ||
+        candidate.outcome.size() > max_abstract_encounter_outcome_length ||
+        ( !candidate.active &&
+          ( !candidate.stable_threat_ids.empty() || candidate.danger_low != 0 ||
+            candidate.danger_high != 0 || candidate.absent_segment_advances != 0 ||
+            candidate.detour_attempts != 0 || candidate.has_selected_detour ||
+            candidate.local_claimed || candidate.outcome_applied ) ) ) {
+        jo.throw_error( "abstract encounter state is malformed" );
+    }
+    if( !std::is_sorted( candidate.stable_threat_ids.begin(),
+                        candidate.stable_threat_ids.end() ) ||
+        std::adjacent_find( candidate.stable_threat_ids.begin(),
+                           candidate.stable_threat_ids.end() ) !=
+        candidate.stable_threat_ids.end() ||
+        std::any_of( candidate.stable_threat_ids.begin(),
+    candidate.stable_threat_ids.end(), []( const std::string & id ) {
+        return id.empty() || id.size() > max_abstract_threat_id_length;
+    } ) ) {
+        jo.throw_error( "abstract encounter state has invalid threat identities" );
+    }
+    if( !candidate.active ) {
+        candidate.clear_active();
+    }
+    *this = std::move( candidate );
+}
+
 void scout_report_record::clear()
 {
     *this = scout_report_record();
@@ -4789,6 +4912,12 @@ void active_outing_state::serialize( JsonOut &json ) const
     if( schema_version >= 7 ) {
         json.member( "local_handoff", local_handoff );
     }
+    if( schema_version >= 8 ) {
+        json.member( "abstract_encounter", abstract_encounter );
+        json.member( "abstract_detour_attempts", abstract_detour_attempts );
+        json.member( "has_withdrawal_detour", has_withdrawal_detour );
+        json.member( "withdrawal_detour_omt", withdrawal_detour_omt );
+    }
     json.end_object();
 }
 
@@ -4816,7 +4945,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
     candidate.leader_id.deserialize( raw_leader_id );
     jo.read( "shared_route", candidate.shared_route );
     jo.read( "waypoint_index", candidate.waypoint_index );
-    if( loaded_schema_version >= 6 && loaded_schema_version <= 7 &&
+    if( loaded_schema_version >= 6 && loaded_schema_version <= 8 &&
         ( candidate.kind != outing_kind::structural_sortie ||
           candidate.shared_route.size() < 3 || candidate.shared_route.size() > 5 ||
           candidate.waypoint_index < 0 ||
@@ -4904,7 +5033,19 @@ void active_outing_state::deserialize( const JsonObject &jo )
     if( jo.has_member( "local_handoff" ) ) {
         jo.read( "local_handoff", candidate.local_handoff );
     } else if( loaded_schema_version >= 7 ) {
-        jo.throw_error( "schema-v7 structural outing is missing local handoff state" );
+        jo.throw_error( "current structural outing is missing local handoff state" );
+    }
+    if( jo.has_member( "abstract_encounter" ) ) {
+        jo.read( "abstract_encounter", candidate.abstract_encounter );
+    } else if( loaded_schema_version >= 8 ) {
+        jo.throw_error( "schema-v8 structural outing is missing abstract encounter state" );
+    }
+    jo.read( "abstract_detour_attempts", candidate.abstract_detour_attempts );
+    jo.read( "has_withdrawal_detour", candidate.has_withdrawal_detour );
+    jo.read( "withdrawal_detour_omt", candidate.withdrawal_detour_omt );
+    if( candidate.abstract_detour_attempts < 0 || candidate.abstract_detour_attempts > 2 ||
+        ( candidate.has_withdrawal_detour && candidate.abstract_detour_attempts <= 0 ) ) {
+        jo.throw_error( "current structural outing has malformed abstract detour state" );
     }
     if( candidate.activity_id.empty() || candidate.kind == outing_kind::none ||
         candidate.generation <= 0 ) {
@@ -4933,7 +5074,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
             candidate.report_application_key = expected_report_key;
             candidate.cargo_application_key = expected_cargo_key;
         } else if( ( loaded_schema_version != 5 && loaded_schema_version != 6 &&
-                     loaded_schema_version != 7 ) ||
+                     loaded_schema_version != 7 && loaded_schema_version != 8 ) ||
                    ( loaded_schema_version >= 6 &&
                      candidate.kind != outing_kind::structural_sortie ) ||
                    candidate.return_application_key != expected_return_key ||
@@ -5766,19 +5907,26 @@ void site_record::deserialize( const JsonObject &jo )
         active_outing.kind != outing_kind::structural_sortie ||
         ( ( active_outing.phase == scout_phase::outbound &&
             active_outing.local_contact_minutes == -1 &&
-            active_outing.waypoint_index == 0 ) ||
+            ( active_outing.waypoint_index == 0 ||
+              ( active_outing.schema_version == 8 && active_outing.waypoint_index == 1 ) ) ) ||
           ( active_outing.phase == scout_phase::observing &&
             active_outing.local_contact_minutes >= active_outing.started_minutes &&
-            active_outing.waypoint_index == 1 ) ||
+            ( active_outing.waypoint_index == 1 ||
+              ( active_outing.schema_version == 8 &&
+                active_outing.waypoint_index == structural_target_waypoint ) ) ) ||
           ( active_outing.phase == scout_phase::returning_home &&
             ( active_outing.waypoint_index == 0 || active_outing.waypoint_index == 1 ||
-              active_outing.waypoint_index == structural_target_waypoint ) ) );
+              active_outing.waypoint_index == structural_target_waypoint ) ) ||
+          ( active_outing.schema_version == 8 && active_outing.phase == scout_phase::lost &&
+            active_outing.casualty_ids.size() == active_outing.member_ids.size() &&
+            active_outing.resolved_member_ids.size() == active_outing.member_ids.size() ) );
     const bool structural_identity_is_consistent =
         active_outing.kind != outing_kind::structural_sortie ||
         ( active_outing.activity_id == site_id + "#structural" &&
           ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
           active_outing.member_ids.size() == 2 &&
-          ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ) &&
+          ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
+            active_outing.schema_version == 8 ) &&
           active_outing.started_minutes >= 0 &&
           active_outing.target_id == active_outing.target_lead_id &&
           active_outing.target_lead_revision > 0 && structural_lead != nullptr &&
@@ -5798,7 +5946,8 @@ void site_record::deserialize( const JsonObject &jo )
           structural_phase_is_consistent );
     const bool active_outing_schema_is_consistent =
         active_outing.kind == outing_kind::structural_sortie ?
-        ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ) :
+        ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
+          active_outing.schema_version == 8 ) :
         active_outing.schema_version == 5;
     bool active_outing_is_consistent = active_outing.is_active() &&
                                        active_outing.kind != outing_kind::hostile_operation &&
@@ -6381,6 +6530,11 @@ bool routine_member_is_unready( const routine_member_readiness_snapshot &snapsho
 {
     return !snapshot.present || snapshot.dead || snapshot.hp_percent <= 50 ||
            snapshot.sleeping || snapshot.incapacitated;
+}
+
+bool member_has_abstract_wound_recovery( const member_record &member, const int now_minutes )
+{
+    return now_minutes >= 0 && member.abstract_wound_until_minutes > now_minutes;
 }
 
 routine_scout_pair_selection_result select_routine_scout_pair( const site_record &site )
@@ -8608,6 +8762,346 @@ std::optional<int> release_structural_outing_reservation( site_record &site,
                site, expected_activity_id, expected_generation, summary );
 }
 
+int structural_outing_party_power( const site_record &site )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( outing.kind != outing_kind::structural_sortie || !outing.is_active() ) {
+        return 0;
+    }
+    int party_power = 0;
+    for( const character_id &member_id : outing.member_ids ) {
+        if( outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() ) {
+            continue;
+        }
+        const member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state == member_state::dead ||
+            member->state == member_state::missing ) {
+            return 0;
+        }
+        const routine_member_capability capability = routine_capability_for_template(
+                    member->npc_template_id );
+        party_power += std::clamp( capability.observer + capability.escort +
+                                   capability.defender, 1, 10 );
+    }
+    return std::clamp( party_power, 0, 200 );
+}
+
+abstract_threat_resolution resolve_structural_abstract_threat( site_record &site,
+        const tripoint_abs_omt &current_omt, const abstract_threat_read &read,
+        const int now_minutes )
+{
+    abstract_threat_resolution result;
+    const active_outing_state &current = site.active_outing;
+    if( current.kind != outing_kind::structural_sortie || current.schema_version != 8 ||
+        current.owner != simulation_owner::abstract || !current.is_active() ||
+        now_minutes < 0 || current.last_advanced_minutes != now_minutes ||
+        current.shared_route.empty() || current.waypoint_index < 0 ||
+        current.waypoint_index >= static_cast<int>( current.shared_route.size() ) ||
+        current.shared_route[static_cast<std::size_t>( current.waypoint_index )] != current_omt ||
+        !site.roster().valid ) {
+        return result;
+    }
+
+    if( read.observed ) {
+        if( read.stable_threat_ids.empty() ||
+            read.stable_threat_ids.size() > max_abstract_threat_ids ||
+            !std::is_sorted( read.stable_threat_ids.begin(), read.stable_threat_ids.end() ) ||
+            std::adjacent_find( read.stable_threat_ids.begin(),
+                               read.stable_threat_ids.end() ) !=
+            read.stable_threat_ids.end() ||
+            std::any_of( read.stable_threat_ids.begin(), read.stable_threat_ids.end(),
+        []( const std::string & id ) {
+            return id.empty() || id.size() > max_abstract_threat_id_length;
+        } ) || read.danger_low < 0 || read.danger_high < read.danger_low ||
+            read.danger_high > 200 || read.detours.size() > 2 ||
+            read.overlap != ( read.threat_omt == current_omt ) ) {
+            return result;
+        }
+        std::vector<tripoint_abs_omt> checked_detours;
+        for( const abstract_threat_detour_read &detour : read.detours ) {
+            if( detour.omt.z() != current_omt.z() ||
+                omt_chebyshev_distance( current_omt, detour.omt ) != 1 ||
+                detour.omt == read.threat_omt ||
+                std::find( checked_detours.begin(), checked_detours.end(), detour.omt ) !=
+                checked_detours.end() ) {
+                return result;
+            }
+            checked_detours.push_back( detour.omt );
+        }
+    } else if( read.overlap || !read.stable_threat_ids.empty() ||
+               !read.detours.empty() || read.danger_low != 0 || read.danger_high != 0 ) {
+        return result;
+    }
+
+    site_record candidate = site;
+    active_outing_state &outing = candidate.active_outing;
+    abstract_encounter_state &encounter = outing.abstract_encounter;
+    result.valid = true;
+
+    if( encounter.active && current_omt != encounter.overlap_omt ) {
+        const bool same_threat_overlaps = read.observed && read.overlap &&
+                                          read.stable_threat_ids == encounter.stable_threat_ids;
+        if( same_threat_overlaps ) {
+            encounter.overlap_omt = current_omt;
+            encounter.absent_segment_advances = 0;
+            result.changed = true;
+            result.notes.push_back( "active abstract threat followed the party into the next OMT" );
+        } else if( encounter.absent_segment_advances == 0 ) {
+            encounter.absent_segment_advances = 1;
+            result.changed = true;
+            result.notes.push_back( "abstract encounter began its one-segment clear interval" );
+            if( candidate.roster().valid ) {
+                site = std::move( candidate );
+            }
+            return result;
+        } else {
+            encounter.clear_active();
+            result.changed = true;
+            result.encounter_cleared = true;
+            result.notes.push_back( "abstract encounter cleared after one complete absent segment" );
+        }
+    } else if( encounter.active && current_omt == encounter.overlap_omt ) {
+        encounter.absent_segment_advances = 0;
+    }
+
+    if( !read.observed ) {
+        if( result.changed && candidate.roster().valid ) {
+            site = std::move( candidate );
+        }
+        return result;
+    }
+
+    if( encounter.active ) {
+        if( encounter.outcome_applied ) {
+            if( result.changed && candidate.roster().valid ) {
+                site = std::move( candidate );
+            }
+            return result;
+        }
+        if( encounter.local_claimed || read.local_reality ) {
+            result.kind = abstract_threat_resolution_kind::deferred_to_local;
+            if( result.changed && candidate.roster().valid ) {
+                site = std::move( candidate );
+            }
+            return result;
+        }
+    }
+
+    const int party_power = structural_outing_party_power( candidate );
+    if( party_power <= 0 ) {
+        return abstract_threat_resolution();
+    }
+    const bool hard_danger = std::min( 1000, 5 * read.danger_high ) >= routine_hard_risk ||
+                             read.danger_low >= std::min( 200, 2 * party_power );
+    const auto mark_dangerous_lead = [&candidate, now_minutes, &read]() {
+        camp_map_lead *lead = candidate.intelligence_map.find_lead(
+                                  candidate.active_outing.target_id );
+        if( lead == nullptr || lead->revision >= std::numeric_limits<int>::max() ) {
+            return false;
+        }
+        lead->threat = std::max( lead->threat, read.danger_high );
+        lead->threat_confirmed = true;
+        lead->last_checked_minutes = now_minutes;
+        lead->last_scouted_minutes = now_minutes;
+        lead->status = camp_lead_status::dangerous;
+        lead->last_outcome = read.overlap ? "abstract_threat_overlap" :
+                             "visible_route_threat_withdrawal";
+        if( !read.summary.empty() ) {
+            lead->source_summary = read.summary.substr( 0, max_camp_lead_summary_length );
+        }
+        advance_camp_map_lead_revision( candidate, *lead );
+        return true;
+    };
+    const auto attempt_detour = [&outing, &read, &result]() {
+        for( const abstract_threat_detour_read &detour : read.detours ) {
+            if( outing.abstract_detour_attempts >= 2 ) {
+                break;
+            }
+            outing.abstract_detour_attempts++;
+            result.detour_attempts++;
+            if( !detour.passable ) {
+                continue;
+            }
+            outing.has_withdrawal_detour = true;
+            outing.withdrawal_detour_omt = detour.omt;
+            return true;
+        }
+        return false;
+    };
+
+    if( !read.overlap ) {
+        if( read.local_reality ) {
+            result.kind = abstract_threat_resolution_kind::deferred_to_local;
+            result.notes.push_back( "reality bubble deferred visible forward danger" );
+            if( result.changed && candidate.roster().valid ) {
+                site = std::move( candidate );
+            }
+            return result;
+        }
+        if( !hard_danger ) {
+            result.kind = abstract_threat_resolution_kind::observed_below_gate;
+            result.notes.push_back( "visible forward threat remained below withdrawal gates" );
+            return result;
+        }
+        attempt_detour();
+        if( !mark_dangerous_lead() ) {
+            return abstract_threat_resolution();
+        }
+        outing.phase = scout_phase::returning_home;
+        outing.last_progress_minutes = now_minutes;
+        result.kind = abstract_threat_resolution_kind::withdrawal;
+        result.changed = true;
+        result.outcome_applied = true;
+        result.notes.push_back( outing.has_withdrawal_detour ?
+                                "visible forward danger selected an adjacent withdrawal detour" :
+                                "visible forward danger blocked the route and forced withdrawal" );
+        if( candidate.roster().valid ) {
+            site = std::move( candidate );
+        }
+        return result;
+    }
+
+    if( !encounter.active ) {
+        if( encounter.episode == std::numeric_limits<int>::max() ) {
+            return abstract_threat_resolution();
+        }
+        encounter.active = true;
+        encounter.episode++;
+        encounter.overlap_omt = current_omt;
+        encounter.stable_threat_ids = read.stable_threat_ids;
+        encounter.danger_low = read.danger_low;
+        encounter.danger_high = read.danger_high;
+        encounter.absent_segment_advances = 0;
+        result.changed = true;
+        result.encounter_started = true;
+    }
+
+    if( read.local_reality ) {
+        result.kind = abstract_threat_resolution_kind::deferred_to_local;
+        result.notes.push_back( "reality bubble deferred the abstract encounter episode" );
+        if( candidate.roster().valid ) {
+            site = std::move( candidate );
+        }
+        return result;
+    }
+    result.changed = true;
+
+    bool selected_detour = false;
+    if( hard_danger ) {
+        selected_detour = attempt_detour();
+        encounter.detour_attempts = result.detour_attempts;
+        if( selected_detour ) {
+            encounter.has_selected_detour = true;
+            encounter.selected_detour_omt = outing.withdrawal_detour_omt;
+        }
+    }
+    if( !mark_dangerous_lead() ) {
+        return abstract_threat_resolution();
+    }
+    if( selected_detour ) {
+        outing.phase = scout_phase::returning_home;
+        encounter.outcome_applied = true;
+        encounter.last_applied_episode = encounter.episode;
+        encounter.outcome = "detoured_withdrawal";
+        outing.last_progress_minutes = now_minutes;
+        result.kind = abstract_threat_resolution_kind::withdrawal;
+        result.outcome_applied = true;
+        result.notes.push_back( "overlapped party escaped through an adjacent withdrawal detour" );
+        if( candidate.roster().valid ) {
+            site = std::move( candidate );
+        }
+        return result;
+    }
+
+    struct member_power_record {
+        character_id npc_id;
+        int power = 0;
+    };
+    std::vector<member_power_record> surviving_members;
+    for( const character_id &member_id : outing.member_ids ) {
+        if( outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() ) {
+            continue;
+        }
+        member_record *member = candidate.find_member( member_id );
+        if( member == nullptr ) {
+            return abstract_threat_resolution();
+        }
+        const routine_member_capability capability = routine_capability_for_template(
+                    member->npc_template_id );
+        surviving_members.push_back( { member_id,
+                std::clamp( capability.observer + capability.escort + capability.defender,
+                            1, 10 ) } );
+    }
+    if( surviving_members.size() != 2 ) {
+        return abstract_threat_resolution();
+    }
+    std::sort( surviving_members.begin(), surviving_members.end(),
+    []( const member_power_record & lhs, const member_power_record & rhs ) {
+        return std::tie( lhs.power, lhs.npc_id ) < std::tie( rhs.power, rhs.npc_id );
+    } );
+    member_record *lower_power_member = candidate.find_member( surviving_members[0].npc_id );
+    member_record *other_member = candidate.find_member( surviving_members[1].npc_id );
+    if( lower_power_member == nullptr || other_member == nullptr ) {
+        return abstract_threat_resolution();
+    }
+    const auto mark_missing = [&candidate, &outing]( const character_id member_id ) {
+        if( !update_member_state( candidate, member_id, member_state::missing,
+                                 "abstract threat encounter marked member missing" ) ) {
+            return false;
+        }
+        outing.casualty_ids.push_back( member_id );
+        outing.resolved_member_ids.push_back( member_id );
+        return true;
+    };
+    if( read.danger_high < party_power ) {
+        lower_power_member->wounded_or_unready = true;
+        lower_power_member->abstract_wound_until_minutes = minutes_after_saturated(
+                    now_minutes, abstract_wound_recovery_minutes );
+        lower_power_member->last_writeback_summary =
+            "abstract threat encounter wounded the lower-power scout";
+        encounter.outcome = "lower_power_member_wounded";
+        result.kind = abstract_threat_resolution_kind::wounded_pair;
+    } else if( read.danger_high < std::min( 200, 2 * party_power ) ) {
+        if( !mark_missing( lower_power_member->npc_id ) ) {
+            return abstract_threat_resolution();
+        }
+        other_member = candidate.find_member( surviving_members[1].npc_id );
+        if( other_member == nullptr ) {
+            return abstract_threat_resolution();
+        }
+        other_member->wounded_or_unready = true;
+        other_member->abstract_wound_until_minutes = minutes_after_saturated(
+                    now_minutes, abstract_wound_recovery_minutes );
+        other_member->last_writeback_summary =
+            "abstract threat encounter survivor returned wounded";
+        encounter.outcome = "one_missing_survivor_wounded";
+        result.kind = abstract_threat_resolution_kind::one_missing;
+    } else {
+        if( !mark_missing( surviving_members[0].npc_id ) ||
+            !mark_missing( surviving_members[1].npc_id ) ) {
+            return abstract_threat_resolution();
+        }
+        encounter.outcome = "all_members_missing";
+        result.kind = abstract_threat_resolution_kind::all_missing;
+    }
+    encounter.outcome_applied = true;
+    encounter.last_applied_episode = encounter.episode;
+    outing.phase = result.kind == abstract_threat_resolution_kind::all_missing ?
+                   scout_phase::lost : scout_phase::returning_home;
+    outing.last_progress_minutes = now_minutes;
+    result.outcome_applied = true;
+    result.notes.push_back( "abstract overlap applied one non-victory member outcome" );
+    if( !simulation_owner_state_is_consistent( outing ) || !candidate.roster().valid ) {
+        return abstract_threat_resolution();
+    }
+    site = std::move( candidate );
+    return result;
+}
+
 namespace
 {
 structural_outing_plan plan_frontier_outing_impl( const site_record &site,
@@ -9162,7 +9656,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         }
     }
     candidate.active_outing.clear();
-    candidate.active_outing.schema_version = 7;
+    candidate.active_outing.schema_version = 8;
     candidate.active_outing.kind = outing_kind::structural_sortie;
     candidate.active_outing.activity_id = plan.activity_id;
     candidate.active_outing.camp_id = candidate.site_id;
@@ -9322,7 +9816,9 @@ bool credit_structural_return_cargo( site_record &candidate, const int now_minut
 } // namespace
 
 structural_outing_result advance_structural_bounty_outings( world_state &state, const int now_minutes,
-        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup )
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
+        const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
+                const structural_threat_observer_request & )> &abstract_threat_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_outings );
@@ -9336,7 +9832,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 bandit_live_world_probe::site_service::outing_considered );
         if( site.active_outing.kind != outing_kind::structural_sortie ||
             ( site.active_outing.schema_version != 6 &&
-              site.active_outing.schema_version != 7 ) ||
+              site.active_outing.schema_version != 7 &&
+              site.active_outing.schema_version != 8 ) ||
             site.active_outing.activity_id != site.site_id + "#structural" ||
             site.active_outing.target_id.empty() ||
             site.active_outing.target_id != site.active_outing.target_lead_id ||
@@ -9411,6 +9908,82 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
 
         active_outing_state &outing = candidate.active_outing;
+        outing.schema_version = 8;
+        if( abstract_threat_lookup &&
+            ( outing.phase == scout_phase::outbound || outing.phase == scout_phase::observing ) ) {
+            if( outing.phase == scout_phase::outbound && outing.waypoint_index == 0 &&
+                now_minutes - outing.started_minutes >=
+                structural_outing_stalking_delay_minutes( candidate, *lead ) &&
+                outing.shared_route.size() >= 3 ) {
+                outing.waypoint_index = 1;
+                outing.last_progress_minutes = now_minutes;
+            }
+            if( outing.phase == scout_phase::observing && outing.local_contact_minutes >= 0 &&
+                now_minutes - outing.started_minutes >=
+                structural_outing_arrival_delay_minutes( candidate, *lead ) ) {
+                outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
+                outing.last_progress_minutes = now_minutes;
+            }
+            structural_threat_observer_request request;
+            request.current_omt = outing.shared_route[static_cast<std::size_t>(
+                                      outing.waypoint_index )];
+            request.party_power = structural_outing_party_power( candidate );
+            const int target_index = static_cast<int>( outing.shared_route.size() ) - 2;
+            for( int index = outing.waypoint_index + 1;
+                 index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
+                request.visible_forward_omts.push_back(
+                    outing.shared_route[static_cast<std::size_t>( index )] );
+            }
+            const abstract_threat_read abstract_read = abstract_threat_lookup(
+                        candidate, outing, request );
+            bool threat_omt_is_permitted = !abstract_read.observed;
+            if( abstract_read.observed ) {
+                threat_omt_is_permitted = abstract_read.threat_omt == request.current_omt ||
+                                          std::find( request.visible_forward_omts.begin(),
+                                                  request.visible_forward_omts.end(),
+                                                  abstract_read.threat_omt ) !=
+                                          request.visible_forward_omts.end();
+            }
+            if( threat_omt_is_permitted ) {
+                const abstract_threat_resolution resolution =
+                    resolve_structural_abstract_threat(
+                        candidate, request.current_omt, abstract_read, now_minutes );
+                if( resolution.valid && resolution.changed ) {
+                    result.notes.insert( result.notes.end(), resolution.notes.begin(),
+                                         resolution.notes.end() );
+                    site = std::move( candidate );
+                    continue;
+                }
+                if( resolution.valid &&
+                    ( resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
+                      resolution.kind == abstract_threat_resolution_kind::withdrawal ||
+                      resolution.kind == abstract_threat_resolution_kind::wounded_pair ||
+                      resolution.kind == abstract_threat_resolution_kind::one_missing ||
+                      resolution.kind == abstract_threat_resolution_kind::all_missing ) ) {
+                    site = std::move( candidate );
+                    continue;
+                }
+            }
+        }
+        if( outing.phase == scout_phase::lost ) {
+            if( now_minutes >= outing.missing_deadline_minutes ) {
+                candidate.last_routine_resolved_minutes = now_minutes;
+                candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                            now_minutes, routine_cooldown_delay_minutes(
+                                candidate.site_id, 72 * 60 ) );
+                const std::optional<int> released = release_structural_outing_reservation(
+                        candidate, expected_activity_id, expected_generation,
+                        "abstract threat encounter closed an all-missing structural outing" );
+                if( released ) {
+                    site = std::move( candidate );
+                    result.notes.push_back(
+                        "all-missing structural outing closed after its missing deadline" );
+                }
+            } else {
+                site = std::move( candidate );
+            }
+            continue;
+        }
         if( outing.phase == scout_phase::returning_home ) {
             if( now_minutes >= outing.expected_return_minutes ) {
                 const std::string lead_id = lead->lead_id;
@@ -9441,10 +10014,13 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                                                ( lead->kind == camp_lead_kind::terrain_opportunity &&
                                                  lead->status == camp_lead_status::stale ) ) );
                 const bool danger_withdrawal = lead->status == camp_lead_status::dangerous;
+                const bool casualty_return =
+                    !candidate.active_outing.casualty_ids.empty();
                 candidate.last_routine_resolved_minutes = now_minutes;
                 candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
                             now_minutes, routine_cooldown_delay_minutes(
                                 candidate.site_id,
+                                casualty_return ? 72 * 60 :
                                 useful_return || danger_withdrawal ? 24 * 60 : 18 * 60 ) );
                 if( useful_return ) {
                     candidate.routine_no_candidate_streak = 0;
@@ -9588,7 +10164,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
         const std::function<structural_route_read( const site_record &,
-                const structural_outing_plan & )> &route_lookup )
+                const structural_outing_plan & )> &route_lookup,
+        const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
+                const structural_threat_observer_request & )> &abstract_threat_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_maintenance );
@@ -9600,7 +10178,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     state.schema_version = 6;
     advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
-    result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
+    result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup,
+                    abstract_threat_lookup );
 
     bandit_live_world_probe::scoped_section dispatch_probe_section(
         bandit_live_world_probe::section::structural_dispatch );

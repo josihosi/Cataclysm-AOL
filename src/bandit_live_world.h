@@ -225,6 +225,7 @@ struct member_record {
     member_state state = member_state::at_home;
     bool wounded_or_unready = false;
     std::string last_writeback_summary;
+    int abstract_wound_until_minutes = -1;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -358,6 +359,28 @@ struct local_handoff_snapshot {
     void clear();
     bool is_active() const;
     bool is_abstract_resume() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct abstract_encounter_state {
+    int schema_version = 1;
+    int episode = 0;
+    int last_applied_episode = 0;
+    bool active = false;
+    tripoint_abs_omt overlap_omt;
+    std::vector<std::string> stable_threat_ids;
+    int danger_low = 0;
+    int danger_high = 0;
+    int absent_segment_advances = 0;
+    int detour_attempts = 0;
+    bool has_selected_detour = false;
+    tripoint_abs_omt selected_detour_omt;
+    bool local_claimed = false;
+    bool outcome_applied = false;
+    std::string outcome;
+
+    void clear_active();
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 };
@@ -509,6 +532,10 @@ struct active_outing_state {
     std::string report_application_key;
     std::string cargo_application_key;
     local_handoff_snapshot local_handoff;
+    abstract_encounter_state abstract_encounter;
+    int abstract_detour_attempts = 0;
+    bool has_withdrawal_detour = false;
+    tripoint_abs_omt withdrawal_detour_omt;
 
     void clear();
     bool is_active() const;
@@ -859,6 +886,50 @@ struct structural_threat_read {
     std::string summary;
 };
 
+struct abstract_threat_detour_read {
+    tripoint_abs_omt omt;
+    bool passable = false;
+};
+
+struct structural_threat_observer_request {
+    tripoint_abs_omt current_omt;
+    std::vector<tripoint_abs_omt> visible_forward_omts;
+    int party_power = 0;
+};
+
+struct abstract_threat_read {
+    bool observed = false;
+    bool overlap = false;
+    bool local_reality = false;
+    tripoint_abs_omt threat_omt;
+    int danger_low = 0;
+    int danger_high = 0;
+    std::vector<std::string> stable_threat_ids;
+    std::vector<abstract_threat_detour_read> detours;
+    std::string summary;
+};
+
+enum class abstract_threat_resolution_kind {
+    none,
+    deferred_to_local,
+    observed_below_gate,
+    withdrawal,
+    wounded_pair,
+    one_missing,
+    all_missing,
+};
+
+struct abstract_threat_resolution {
+    bool valid = false;
+    bool changed = false;
+    bool encounter_started = false;
+    bool encounter_cleared = false;
+    bool outcome_applied = false;
+    abstract_threat_resolution_kind kind = abstract_threat_resolution_kind::none;
+    int detour_attempts = 0;
+    std::vector<std::string> notes;
+};
+
 struct structural_outing_result {
     int sites_considered = 0;
     int active_outings_considered = 0;
@@ -1032,6 +1103,7 @@ int advance_world_camp_supplies( world_state &state, int now_minutes );
 routine_scout_policy_result routine_scout_policy( const site_record &site );
 int routine_scout_materialization_count( const site_record &site );
 bool routine_member_is_unready( const routine_member_readiness_snapshot &snapshot );
+bool member_has_abstract_wound_recovery( const member_record &member, int now_minutes );
 routine_scout_pair_selection_result select_routine_scout_pair( const site_record &site );
 response_party_policy_result response_party_policy( const site_record &site,
         bandit_dry_run::job_template job, int requested_party_size = 0 );
@@ -1096,14 +1168,22 @@ origin_loss_resolution_effect resolve_origin_loss_return( site_record &site,
 std::optional<int> release_structural_outing_reservation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::string &summary );
+int structural_outing_party_power( const site_record &site );
+abstract_threat_resolution resolve_structural_abstract_threat( site_record &site,
+        const tripoint_abs_omt &current_omt, const abstract_threat_read &read,
+        int now_minutes );
 structural_outing_result advance_structural_bounty_outings( world_state &state, int now_minutes,
-        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
+        const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
+                const structural_threat_observer_request & )> &abstract_threat_lookup = {} );
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         int now_minutes, int scan_budget, int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
         const std::function<structural_route_read( const site_record &,
-                const structural_outing_plan & )> &route_lookup = {} );
+                const structural_outing_plan & )> &route_lookup = {},
+        const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
+                const structural_threat_observer_request & )> &abstract_threat_lookup = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );

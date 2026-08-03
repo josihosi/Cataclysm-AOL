@@ -1191,6 +1191,11 @@ float Character::get_cached_organic_size() const
 
 int Character::sight_range( float light_level ) const
 {
+    return sight_range( light_level, get_map().ambient_light_at( pos_bub() ) );
+}
+
+int Character::sight_range( float light_level, float observer_light_level ) const
+{
     if( light_level == 0 ) {
         return 1;
     }
@@ -1206,8 +1211,8 @@ int Character::sight_range( float light_level ) const
      * log(LIGHT_AMBIENT_LOW / light_level) * (1 / LIGHT_TRANSPARENCY_OPEN_AIR) <= distance
      */
 
-    int range = static_cast<int>( -std::log( get_vision_threshold( get_map().ambient_light_at(
-                                      pos_bub() ) ) / light_level ) / LIGHT_TRANSPARENCY_OPEN_AIR );
+    int range = static_cast<int>( -std::log( get_vision_threshold( observer_light_level ) /
+                                      light_level ) / LIGHT_TRANSPARENCY_OPEN_AIR );
 
     // Clamp to [1, sight_max].
     return clamp( range, 1, sight_max );
@@ -1242,8 +1247,13 @@ bool Character::overmap_los( const tripoint_abs_omt &omt, int sight_points ) con
 
 int Character::overmap_sight_range( float light_level ) const
 {
+    return overmap_sight_range( light_level, get_map().ambient_light_at( pos_bub() ) );
+}
+
+int Character::overmap_sight_range( float light_level, float observer_light_level ) const
+{
     // How many map tiles I can see given the light??
-    int sight = sight_range( light_level );
+    int sight = sight_range( light_level, observer_light_level );
     // What are these doing???
     if( sight < SEEX ) {
         sight = 0;
