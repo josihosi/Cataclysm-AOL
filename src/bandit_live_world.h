@@ -101,6 +101,14 @@ enum class camp_lead_kind {
     frontier_probe,
 };
 
+enum class camp_lead_origin {
+    legacy_radar,
+    observer,
+    signal,
+    returned_report,
+    structural_routine,
+};
+
 enum class camp_lead_status {
     suspected,
     scout_confirmed,
@@ -243,6 +251,7 @@ struct camp_map_lead {
     std::string lead_id;
     int revision = 1;
     camp_lead_kind kind = camp_lead_kind::human_activity;
+    camp_lead_origin origin = camp_lead_origin::legacy_radar;
     camp_lead_status status = camp_lead_status::suspected;
     std::string target_id;
     tripoint_abs_omt omt;
@@ -1300,6 +1309,7 @@ bool record_active_outing_casualty( site_record &site,
                                     character_id npc_id,
                                     member_state casualty_state, int current_minutes,
                                     const std::string &summary );
+bool upsert_camp_map_lead( site_record &site, camp_map_lead lead );
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
@@ -1309,6 +1319,7 @@ std::string to_string( origin_disposition disposition );
 std::string to_string( active_member_observation_state state );
 std::string to_string( local_gate_posture posture );
 std::string to_string( camp_lead_kind kind );
+std::string to_string( camp_lead_origin origin );
 std::string to_string( camp_lead_status status );
 std::string to_string( outing_kind kind );
 std::string to_string( simulation_owner owner );

@@ -21,6 +21,7 @@ namespace
 using bandit_live_world::anchor_source_kind;
 using bandit_live_world::camp_decision_state;
 using bandit_live_world::camp_lead_kind;
+using bandit_live_world::camp_lead_origin;
 using bandit_live_world::camp_lead_status;
 using bandit_live_world::camp_intelligence_map;
 using bandit_live_world::camp_map_lead;
@@ -758,6 +759,51 @@ std::optional<camp_lead_kind> camp_lead_kind_from_string( const std::string &val
     return std::nullopt;
 }
 
+std::optional<camp_lead_origin> camp_lead_origin_from_string( const std::string &value )
+{
+    if( value == "legacy_radar" ) {
+        return camp_lead_origin::legacy_radar;
+    }
+    if( value == "observer" ) {
+        return camp_lead_origin::observer;
+    }
+    if( value == "signal" ) {
+        return camp_lead_origin::signal;
+    }
+    if( value == "returned_report" ) {
+        return camp_lead_origin::returned_report;
+    }
+    if( value == "structural_routine" ) {
+        return camp_lead_origin::structural_routine;
+    }
+    return std::nullopt;
+}
+
+camp_lead_origin infer_legacy_camp_lead_origin( const camp_map_lead &lead )
+{
+    switch( lead.kind ) {
+        case camp_lead_kind::structural_bounty:
+        case camp_lead_kind::terrain_opportunity:
+        case camp_lead_kind::frontier_probe:
+            return camp_lead_origin::structural_routine;
+        case camp_lead_kind::smoke_signal:
+        case camp_lead_kind::light_signal:
+        case camp_lead_kind::sound_signal:
+            return camp_lead_origin::signal;
+        case camp_lead_kind::basecamp_activity:
+            return camp_lead_origin::returned_report;
+        case camp_lead_kind::harvested_site:
+        case camp_lead_kind::human_activity:
+        case camp_lead_kind::moving_actor:
+        case camp_lead_kind::route_activity:
+        case camp_lead_kind::threat_memory:
+        case camp_lead_kind::loss_site:
+        case camp_lead_kind::false_lead:
+            return camp_lead_origin::legacy_radar;
+    }
+    return camp_lead_origin::legacy_radar;
+}
+
 std::optional<camp_lead_status> camp_lead_status_from_string( const std::string &value )
 {
     if( value == "suspected" ) {
@@ -1153,7 +1199,8 @@ std::optional<int> next_camp_map_lead_revision( const int revision )
 
 bool camp_map_lead_payload_matches( const camp_map_lead &lhs, const camp_map_lead &rhs )
 {
-    return lhs.lead_id == rhs.lead_id && lhs.kind == rhs.kind && lhs.status == rhs.status &&
+    return lhs.lead_id == rhs.lead_id && lhs.kind == rhs.kind && lhs.origin == rhs.origin &&
+           lhs.status == rhs.status &&
            lhs.target_id == rhs.target_id && lhs.omt == rhs.omt &&
            lhs.radius_omt == rhs.radius_omt && lhs.source_key == rhs.source_key &&
            lhs.source_summary == rhs.source_summary &&
@@ -1225,7 +1272,8 @@ bool advance_camp_map_lead_revision( bandit_live_world::site_record &site,
     return true;
 }
 
-bool upsert_camp_map_lead( bandit_live_world::site_record &site, camp_map_lead lead )
+bool upsert_camp_map_lead_transaction( bandit_live_world::site_record &site,
+                                      camp_map_lead lead )
 {
     bound_camp_map_lead_strings( lead );
     if( lead.lead_id.empty() ) {
@@ -1235,6 +1283,9 @@ bool upsert_camp_map_lead( bandit_live_world::site_record &site, camp_map_lead l
 
     bandit_live_world::site_record candidate = site;
     if( camp_map_lead *existing = candidate.intelligence_map.find_lead( lead.lead_id ) ) {
+        if( existing->origin != lead.origin ) {
+            return false;
+        }
         const int old_revision = std::max( 1, existing->revision );
         lead.revision = old_revision;
         if( camp_map_lead_payload_matches( *existing, lead ) ) {
@@ -1272,6 +1323,7 @@ void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &
 
     camp_map_lead lead;
     lead.kind = camp_lead_kind::human_activity;
+    lead.origin = camp_lead_origin::legacy_radar;
     lead.status = camp_lead_status::suspected;
     lead.target_id = site.remembered_target_or_mark.empty() ? site.active_outing.target_id :
                      site.remembered_target_or_mark;
@@ -1284,7 +1336,7 @@ void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &
     lead.threat_confirmed = lead.threat > 0;
     lead.last_outcome = "legacy_memory";
     lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
-    upsert_camp_map_lead( site, lead );
+    bandit_live_world::upsert_camp_map_lead( site, lead );
 }
 
 void record_scout_return_lead( bandit_live_world::site_record &site,
@@ -1298,6 +1350,7 @@ void record_scout_return_lead( bandit_live_world::site_record &site,
 
     camp_map_lead lead;
     lead.kind = camp_lead_kind::basecamp_activity;
+    lead.origin = camp_lead_origin::returned_report;
     lead.status = camp_lead_status::scout_confirmed;
     lead.target_id = packet.current_target_or_mark;
     lead.omt = site.active_outing.target_omt;
@@ -1316,7 +1369,7 @@ void record_scout_return_lead( bandit_live_world::site_record &site,
     lead.last_outcome = bandit_pursuit_handoff::to_string( packet.result );
     lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
     lead.revision = std::max( 1, site.active_outing.target_lead_revision );
-    upsert_camp_map_lead( site, lead );
+    bandit_live_world::upsert_camp_map_lead( site, lead );
 }
 
 bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
@@ -2283,6 +2336,11 @@ bool camp_decision_allows_dispatch( const bandit_live_world::camp_decision_recor
 
 namespace bandit_live_world
 {
+bool upsert_camp_map_lead( site_record &site, camp_map_lead lead )
+{
+    return upsert_camp_map_lead_transaction( site, std::move( lead ) );
+}
+
 std::string to_string( anchor_source_kind source_kind )
 {
     switch( source_kind ) {
@@ -2445,6 +2503,23 @@ std::string to_string( camp_lead_kind kind )
     }
 
     return "human_activity";
+}
+
+std::string to_string( camp_lead_origin origin )
+{
+    switch( origin ) {
+        case camp_lead_origin::legacy_radar:
+            return "legacy_radar";
+        case camp_lead_origin::observer:
+            return "observer";
+        case camp_lead_origin::signal:
+            return "signal";
+        case camp_lead_origin::returned_report:
+            return "returned_report";
+        case camp_lead_origin::structural_routine:
+            return "structural_routine";
+    }
+    return "legacy_radar";
 }
 
 std::string to_string( camp_lead_status status )
@@ -3851,6 +3926,7 @@ void camp_map_lead::serialize( JsonOut &json ) const
     json.member( "lead_id", lead_id.substr( 0, max_camp_lead_id_length ) );
     json.member( "revision", std::max( 1, revision ) );
     json.member( "kind", to_string( kind ) );
+    json.member( "origin", to_string( origin ) );
     json.member( "status", to_string( status ) );
     if( !target_id.empty() ) {
         json.member( "target_id", target_id.substr( 0, max_camp_lead_target_id_length ) );
@@ -3926,6 +4002,18 @@ void camp_map_lead::deserialize( const JsonObject &jo )
     jo.read( "kind", kind_string );
     candidate.kind = camp_lead_kind_from_string( kind_string ).value_or(
                          camp_lead_kind::human_activity );
+    if( jo.has_member( "origin" ) ) {
+        std::string origin_string;
+        jo.read( "origin", origin_string );
+        const std::optional<camp_lead_origin> parsed_origin =
+            camp_lead_origin_from_string( origin_string );
+        if( !parsed_origin ) {
+            jo.throw_error( "camp lead has invalid origin" );
+        }
+        candidate.origin = *parsed_origin;
+    } else {
+        candidate.origin = infer_legacy_camp_lead_origin( candidate );
+    }
     std::string status_string = "suspected";
     jo.read( "status", status_string );
     candidate.status = camp_lead_status_from_string( status_string ).value_or(
@@ -7731,7 +7819,8 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
     int best_distance = 0;
     int best_score = 0;
     for( const camp_map_lead &lead : site.intelligence_map.leads ) {
-        if( lead.kind == camp_lead_kind::frontier_probe ||
+        if( lead.kind == camp_lead_kind::structural_bounty ||
+            lead.kind == camp_lead_kind::frontier_probe ||
             lead.kind == camp_lead_kind::terrain_opportunity ) {
             continue;
         }
@@ -8152,6 +8241,7 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
     camp_map_lead lead;
     lead.lead_id = make_structural_bounty_lead_id( site.site_id, omt, read.terrain_class );
     lead.kind = camp_lead_kind::structural_bounty;
+    lead.origin = camp_lead_origin::structural_routine;
     lead.status = camp_lead_status::suspected;
     lead.target_id = read.terrain_class;
     lead.omt = omt;
@@ -8189,6 +8279,7 @@ bool upsert_terrain_opportunity_lead( site_record &site, const tripoint_abs_omt 
         return false;
     }
     lead.kind = camp_lead_kind::terrain_opportunity;
+    lead.origin = camp_lead_origin::structural_routine;
     lead.status = camp_lead_status::suspected;
     lead.target_id = read.terrain_fit_class;
     lead.omt = omt;
@@ -9149,6 +9240,7 @@ structural_outing_plan plan_frontier_outing_impl( const site_record &site,
             scoring_lead.lead_id = lead_id;
             scoring_lead.revision = 1;
             scoring_lead.kind = camp_lead_kind::frontier_probe;
+            scoring_lead.origin = camp_lead_origin::structural_routine;
             scoring_lead.status = camp_lead_status::suspected;
             scoring_lead.target_id = frontier_probe_target_id( sector );
             scoring_lead.omt = *target_omt;
@@ -9420,6 +9512,7 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
         scoring_lead.lead_id = plan.lead_id;
         scoring_lead.revision = plan.lead_revision;
         scoring_lead.kind = camp_lead_kind::frontier_probe;
+        scoring_lead.origin = camp_lead_origin::structural_routine;
         scoring_lead.status = camp_lead_status::suspected;
         scoring_lead.target_id = frontier_probe_target_id( plan.frontier_sector );
         scoring_lead.omt = plan.target_omt;
@@ -9634,6 +9727,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         frontier_lead.lead_id = plan.lead_id;
         frontier_lead.revision = plan.lead_revision;
         frontier_lead.kind = camp_lead_kind::frontier_probe;
+        frontier_lead.origin = camp_lead_origin::structural_routine;
         frontier_lead.status = camp_lead_status::suspected;
         frontier_lead.target_id = frontier_probe_target_id( plan.frontier_sector );
         frontier_lead.omt = plan.target_omt;
@@ -11929,6 +12023,7 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
 
     camp_map_lead lead;
     lead.kind = signal_kind_to_camp_lead_kind( mark.kind );
+    lead.origin = camp_lead_origin::signal;
     lead.status = camp_lead_status::suspected;
     lead.target_id = mark_id;
     lead.omt = mark.source_omt;

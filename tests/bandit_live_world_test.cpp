@@ -126,6 +126,14 @@ std::string serialize_world( const bandit_live_world::world_state &world )
     return out.str();
 }
 
+std::string serialize_camp_map_lead( const bandit_live_world::camp_map_lead &lead )
+{
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    lead.serialize( jsout );
+    return out.str();
+}
+
 bandit_live_world::world_state make_abstract_threat_test_world( const bool cannibal,
         const int id_base )
 {
@@ -1380,6 +1388,8 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
     CHECK( site.known_recent_marks.front() == "live_smoke@18,20,0" );
     REQUIRE( site.intelligence_map.leads.size() == 1 );
     CHECK( site.intelligence_map.leads.front().kind == bandit_live_world::camp_lead_kind::smoke_signal );
+    CHECK( site.intelligence_map.leads.front().origin ==
+           bandit_live_world::camp_lead_origin::signal );
     CHECK( site.intelligence_map.leads.front().source_summary.find( "obscured/uncertain" ) !=
            std::string::npos );
 
@@ -5317,6 +5327,171 @@ TEST_CASE( "bandit_live_world_persists_independent_camp_intelligence_maps",
     CHECK_FALSE( loaded_work_lead.scout_seen );
 }
 
+TEST_CASE( "bandit_camp_lead_origins_round_trip_and_legacy_leads_infer_origin",
+           "[bandit][live_world][camp_map][origin]" )
+{
+    struct origin_case {
+        bandit_live_world::camp_lead_origin origin;
+        bandit_live_world::camp_lead_kind kind;
+    };
+    const std::vector<origin_case> explicit_cases = {
+        { bandit_live_world::camp_lead_origin::legacy_radar,
+          bandit_live_world::camp_lead_kind::human_activity },
+        { bandit_live_world::camp_lead_origin::observer,
+          bandit_live_world::camp_lead_kind::moving_actor },
+        { bandit_live_world::camp_lead_origin::signal,
+          bandit_live_world::camp_lead_kind::smoke_signal },
+        { bandit_live_world::camp_lead_origin::returned_report,
+          bandit_live_world::camp_lead_kind::basecamp_activity },
+        { bandit_live_world::camp_lead_origin::structural_routine,
+          bandit_live_world::camp_lead_kind::structural_bounty },
+    };
+
+    for( std::size_t index = 0; index < explicit_cases.size(); ++index ) {
+        const origin_case &origin = explicit_cases[index];
+        INFO( "origin=" << bandit_live_world::to_string( origin.origin ) );
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = "origin-round-trip-" + std::to_string( index );
+        lead.kind = origin.kind;
+        lead.origin = origin.origin;
+        lead.target_id = "origin-target-" + std::to_string( index );
+        lead.omt = tripoint_abs_omt( 20 + static_cast<int>( index ), 30, 0 );
+
+        const std::string bytes = serialize_camp_map_lead( lead );
+        CHECK( bytes.find( "\"origin\": \"" +
+                           bandit_live_world::to_string( origin.origin ) + "\"" ) !=
+               std::string::npos );
+        JsonValue value = json_loader::from_string( bytes );
+        bandit_live_world::camp_map_lead loaded;
+        loaded.deserialize( value.get_object() );
+        CHECK( loaded.origin == origin.origin );
+        CHECK( serialize_camp_map_lead( loaded ) == bytes );
+    }
+
+    const std::vector<origin_case> legacy_cases = {
+        { bandit_live_world::camp_lead_origin::legacy_radar,
+          bandit_live_world::camp_lead_kind::human_activity },
+        { bandit_live_world::camp_lead_origin::signal,
+          bandit_live_world::camp_lead_kind::light_signal },
+        { bandit_live_world::camp_lead_origin::returned_report,
+          bandit_live_world::camp_lead_kind::basecamp_activity },
+        { bandit_live_world::camp_lead_origin::structural_routine,
+          bandit_live_world::camp_lead_kind::terrain_opportunity },
+    };
+    for( std::size_t index = 0; index < legacy_cases.size(); ++index ) {
+        const origin_case &expected = legacy_cases[index];
+        INFO( "legacy kind index=" << index );
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = "legacy-origin-" + std::to_string( index );
+        lead.kind = expected.kind;
+        lead.origin = bandit_live_world::camp_lead_origin::observer;
+        lead.target_id = "legacy-target-" + std::to_string( index );
+        lead.omt = tripoint_abs_omt( 40 + static_cast<int>( index ), 50, 0 );
+        std::string bytes = serialize_camp_map_lead( lead );
+        erase_pretty_json_member_line( bytes, "origin" );
+
+        JsonValue value = json_loader::from_string( bytes );
+        bandit_live_world::camp_map_lead loaded;
+        loaded.deserialize( value.get_object() );
+        CHECK( loaded.origin == expected.origin );
+        CHECK( serialize_camp_map_lead( loaded ).find(
+                   "\"origin\": \"" + bandit_live_world::to_string( expected.origin ) + "\"" ) !=
+               std::string::npos );
+    }
+}
+
+TEST_CASE( "bandit_camp_lead_origin_is_a_single_writer_boundary",
+           "[bandit][live_world][camp_map][origin][single_writer]" )
+{
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record site;
+    site.site_id = "origin-owner";
+    world.sites.push_back( site );
+    bandit_live_world::site_record &owned_site = world.sites.front();
+
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "shared-lead-id";
+    lead.kind = bandit_live_world::camp_lead_kind::smoke_signal;
+    lead.origin = bandit_live_world::camp_lead_origin::signal;
+    lead.target_id = "smoke@18,20,0";
+    lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.bounty = 1;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( owned_site, lead ) );
+    REQUIRE( owned_site.intelligence_map.leads.size() == 1 );
+    const int original_revision = owned_site.intelligence_map.leads.front().revision;
+    const std::string before_cross_origin = serialize_world( world );
+
+    bandit_live_world::camp_map_lead cross_origin = lead;
+    cross_origin.origin = bandit_live_world::camp_lead_origin::observer;
+    cross_origin.bounty = 9;
+    CHECK_FALSE( bandit_live_world::upsert_camp_map_lead( owned_site, cross_origin ) );
+    CHECK( serialize_world( world ) == before_cross_origin );
+    REQUIRE( owned_site.intelligence_map.leads.size() == 1 );
+    CHECK( owned_site.intelligence_map.leads.front().revision == original_revision );
+    CHECK( owned_site.intelligence_map.leads.front().origin ==
+           bandit_live_world::camp_lead_origin::signal );
+    CHECK( owned_site.intelligence_map.leads.front().bounty == 1 );
+
+    lead.bounty = 2;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( owned_site, lead ) );
+    REQUIRE( owned_site.intelligence_map.leads.size() == 1 );
+    CHECK( owned_site.intelligence_map.leads.front().revision == original_revision + 1 );
+    CHECK( owned_site.intelligence_map.leads.front().bounty == 2 );
+}
+
+TEST_CASE( "legacy_player_pressure_lookup_ignores_structural_leads_without_moving_memory",
+           "[bandit][live_world][camp_map][origin][dispatch]" )
+{
+    const std::vector<bandit_live_world::camp_lead_kind> structural_kinds = {
+        bandit_live_world::camp_lead_kind::structural_bounty,
+        bandit_live_world::camp_lead_kind::terrain_opportunity,
+        bandit_live_world::camp_lead_kind::frontier_probe,
+    };
+    for( std::size_t index = 0; index < structural_kinds.size(); ++index ) {
+        bandit_live_world::site_record site;
+        site.anchor = tripoint_abs_omt( 10, 20, 0 );
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = "structural-near-avatar-" + std::to_string( index );
+        lead.kind = structural_kinds[index];
+        lead.origin = bandit_live_world::camp_lead_origin::structural_routine;
+        lead.target_id = "structural-target-" + std::to_string( index );
+        lead.omt = tripoint_abs_omt( 18, 20, 0 );
+        site.intelligence_map.leads.push_back( lead );
+
+        CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                   site, lead.omt, lead.target_id ) == nullptr );
+        CHECK( site.intelligence_map.leads.front().omt == tripoint_abs_omt( 18, 20, 0 ) );
+    }
+
+    bandit_live_world::site_record basecamp_site;
+    basecamp_site.anchor = tripoint_abs_omt( 10, 20, 0 );
+    bandit_live_world::camp_map_lead basecamp;
+    basecamp.lead_id = "returned-basecamp";
+    basecamp.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    basecamp.origin = bandit_live_world::camp_lead_origin::returned_report;
+    basecamp.target_id = "player-basecamp";
+    basecamp.omt = tripoint_abs_omt( 18, 20, 0 );
+    basecamp_site.intelligence_map.leads.push_back( basecamp );
+    REQUIRE( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                 basecamp_site, tripoint_abs_omt( 19, 20, 0 ), "" ) != nullptr );
+    const tripoint_abs_omt remembered_basecamp = basecamp_site.intelligence_map.leads.front().omt;
+    CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+               basecamp_site, tripoint_abs_omt( 90, 90, 0 ), "new-avatar-position" ) == nullptr );
+    CHECK( basecamp_site.intelligence_map.leads.front().omt == remembered_basecamp );
+
+    bandit_live_world::site_record activity_site;
+    activity_site.anchor = tripoint_abs_omt( 10, 20, 0 );
+    bandit_live_world::camp_map_lead activity;
+    activity.lead_id = "legacy-human-activity";
+    activity.kind = bandit_live_world::camp_lead_kind::human_activity;
+    activity.origin = bandit_live_world::camp_lead_origin::legacy_radar;
+    activity.target_id = "player-pressure";
+    activity.omt = tripoint_abs_omt( 21, 20, 0 );
+    activity_site.intelligence_map.leads.push_back( activity );
+    CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+               activity_site, activity.omt, activity.target_id ) != nullptr );
+}
+
 TEST_CASE( "bandit_live_world_scout_return_writes_a_persistent_camp_map_lead",
            "[bandit][live_world][camp_map]" )
 {
@@ -5351,6 +5526,7 @@ TEST_CASE( "bandit_live_world_scout_return_writes_a_persistent_camp_map_lead",
     REQUIRE( site.intelligence_map.leads.size() == 1 );
     const bandit_live_world::camp_map_lead &lead = site.intelligence_map.leads.front();
     CHECK( lead.kind == bandit_live_world::camp_lead_kind::basecamp_activity );
+    CHECK( lead.origin == bandit_live_world::camp_lead_origin::returned_report );
     CHECK( lead.status == bandit_live_world::camp_lead_status::scout_confirmed );
     CHECK( lead.target_id == "player_basecamp_nearby" );
     CHECK( lead.omt == target_omt );
@@ -5385,6 +5561,7 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
         REQUIRE( legacy_site.intelligence_map.leads.size() == 1 );
         const bandit_live_world::camp_map_lead &lead = legacy_site.intelligence_map.leads.front();
         CHECK( lead.kind == bandit_live_world::camp_lead_kind::human_activity );
+        CHECK( lead.origin == bandit_live_world::camp_lead_origin::legacy_radar );
         CHECK( lead.status == bandit_live_world::camp_lead_status::suspected );
         CHECK( lead.target_id == "legacy-mark" );
         CHECK( lead.bounty == 7 );
@@ -5443,6 +5620,7 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
         const bandit_live_world::camp_map_lead &lead = modern_site.intelligence_map.leads.front();
         CHECK( lead.lead_id == "modern_camp#lead:basecamp_activity:confirmed" );
         CHECK( lead.kind == bandit_live_world::camp_lead_kind::basecamp_activity );
+        CHECK( lead.origin == bandit_live_world::camp_lead_origin::returned_report );
         CHECK( lead.status == bandit_live_world::camp_lead_status::scout_confirmed );
         CHECK( lead.target_id == "confirmed-mark" );
         CHECK( lead.bounty == 4 );
@@ -5566,6 +5744,10 @@ TEST_CASE( "hostile_camp_structural_cheap_score_prefers_faction_terrain_without_
                     site.site_id, forest_edge_omt, "forest" ) );
         REQUIRE( building_lead != nullptr );
         REQUIRE( forest_lead != nullptr );
+        CHECK( building_lead->origin ==
+               bandit_live_world::camp_lead_origin::structural_routine );
+        CHECK( forest_lead->origin ==
+               bandit_live_world::camp_lead_origin::structural_routine );
         CHECK_FALSE( building_lead->threat_confirmed );
         CHECK_FALSE( forest_lead->threat_confirmed );
         CHECK( building_lead->last_checked_minutes == -1 );
@@ -5698,6 +5880,7 @@ TEST_CASE( "bandit_road_opportunity_is_physically_scouted_without_fabricating_bo
     REQUIRE( site->intelligence_map.leads.size() == 1 );
     const bandit_live_world::camp_map_lead &road = site->intelligence_map.leads.front();
     REQUIRE( road.kind == bandit_live_world::camp_lead_kind::terrain_opportunity );
+    CHECK( road.origin == bandit_live_world::camp_lead_origin::structural_routine );
     CHECK( road.bounty == 0 );
     CHECK( road.confidence == 0 );
     CHECK_FALSE( road.threat_confirmed );
@@ -6520,6 +6703,7 @@ TEST_CASE( "hostile_camp_frontier_route_resolves_only_after_the_pair_reports_hom
     REQUIRE( frontier != nullptr );
     CHECK( site.intelligence_map.leads.size() == 64 );
     CHECK( frontier->kind == bandit_live_world::camp_lead_kind::frontier_probe );
+    CHECK( frontier->origin == bandit_live_world::camp_lead_origin::structural_routine );
     CHECK( frontier->radius_omt == 0 );
     CHECK( frontier->bounty == 0 );
     bandit_live_world::site_record target_match_site;
