@@ -535,8 +535,7 @@ RSS delta, 67,826 serialized bytes of growth, and 100/100 terrain and scheduler 
 passes. The focused case directly proves both factions, exact stable identities, owner-last commit,
 reverse rollback after an injected second bind failure, save/load, and replay idempotency; the
 generic benchmark does not claim real NPC materialization. Exact evidence and caveats are under
-external `phase3-20260803/local-handoff/MANIFEST.md`. Current validation target is symmetric
-local-to-abstract snapshot/writeback, partial-read rejection, and exact resumption.
+external `phase3-20260803/local-handoff/MANIFEST.md`.
 
 Local-pair dematerialization is green at `f83b6bb116`. Final local-handoff/structural/
 existing-handoff/full-live-world/overmap-save/save-size gates pass 1/189, 38/5,602, 10/307,
@@ -547,8 +546,21 @@ RSS delta, 67,826 serialized bytes of growth, and 100/100 terrain/scheduler serv
 passes. Focused proof covers physical death-before-cleanup, missing-is-not-dead, exact exit/HP/
 cargo/death writeback, partial-read and second-quiesce rollback, save/load/replay, same-minute
 freeze, and one later abstract advance. Exact evidence is under external
-`phase3-20260803/dematerialization/MANIFEST.md`. Current validation target is bounded local pair
-cohesion, deterministic leader continuity, abort-return, and complete-survivor staging arrival.
+`phase3-20260803/dematerialization/MANIFEST.md`.
+
+Local pair cohesion and assembled arrival are green at `71bde93d48`. Final local-handoff/
+structural/existing-handoff/full-live-world/overmap-save/save-size gates pass 1/281, 38/5,694,
+10/307, 129/34,102, 2/24, and 1/10 at seed `830204929`. The 81,290,984-byte binary SHA-256 is
+`441f01261e6c455d24bcd6d773a6d5bf69b231b686a6b603d65baa81e56afc5b`.
+Focused proof covers both factions, distinct staging, first/absent-member non-arrival, replay,
+save/load, incomplete-assembly timeout, reunion and fresh timeout, two failed routes, coherent
+return, physical leader death/re-election, and final dematerialization position checks. One
+accepted P1 review fix closed an unload-time ownership wedge; final AutoReview is clean.
+The current 100-site benchmark made two pre-measurement non-credit attempts (fixture hash drift,
+then wrong fixture name), so no current timing number is claimed. The prior dematerialization
+packet remains the nearest honest gross performance footing. Exact evidence is under external
+`phase3-20260803/local-cohesion/MANIFEST.md`. Current validation target is atomic finite-resource
+depletion, survivor-bounded cargo, competing camps, private belief, and replay.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

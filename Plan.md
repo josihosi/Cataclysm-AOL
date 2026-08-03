@@ -178,13 +178,14 @@ services every dispatch-eligible camp within six passes. Fair terrain discovery,
 physical terrain checks, and bounded cheap/final score diagnostics are checkpointed at
 `cb53cbafdb`: the accepted 100-site packet services terrain and dispatch 100/100. Routed dispatch
 is checkpointed at `cab98bc55c`: exact drive/force-due and acquire/retain/risk boundaries feed a
-cheap-top-two route consumer with eight global solves and two starts. The current first unchecked
-row is local pair cohesion and assembled arrival after dematerialization checkpoint `f83b6bb116`:
-schema 7 snapshots exact exit/HP/cargo/death state, records physical death before cleanup, rolls
-back partial quiesce, commits the even owner last, and resumes abstract work exactly once. The next
-slice must add bounded leader/follower rendezvous and require all surviving members at staging;
-first-member arrival cannot complete the group. Terrain labels remain static priors, not
-perception of loot, residents, or mobile danger.
+cheap-top-two route consumer with eight global solves and two starts. Abstract/local ownership is
+green through dematerialization checkpoint `f83b6bb116` and local cohesion checkpoint
+`71bde93d48`: distinct same-OMT staging tiles, physical-death-only leader re-election, six-tile
+cohesion, ten-minute incomplete-assembly timeout, two failed paths, and final live survivor
+recheck prevent first-member completion or wedged local ownership. The current first unchecked row
+is atomic finite physical bounty: connect structural arrival to the existing world-global resource
+authority with one unit per survivor and at most two per pair, without remote knowledge or replayed
+cargo. Terrain labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

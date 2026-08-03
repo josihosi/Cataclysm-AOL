@@ -6,19 +6,19 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Use bounded leader/follower cohesion and define arrival as
-every surviving member assembled at staging, with deterministic re-election and abort-return.**
+Current deterministic execution row: **Atomically consume finite ground bounty at the existing
+world resource, with survivor-bounded cargo and no duplicated depletion.**
 
-Latest resume packet (behavior checkpoint `f83b6bb116`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `71bde93d48`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Schema 7 now also snapshots the complete pair's exit/HP/cargo/death state, records
-physical death before NPC cleanup, rejects missing-as-dead inference, rolls back partial quiesce,
-and commits even abstract ownership last. Save/load/replay and exactly-once abstract resumption are
-green. Local-handoff/structural/live-world/save gates pass 1/189, 38/5,602, 129/34,010, 2/24,
-and 1/10. Test binary SHA-256 is
-`2776f83565f8c781239a782e88ce5ff02dbb1be61f8dda15685c05c279a8cfbe`
-(81,226,776 bytes). The accepted 100-site packet remains within the provisional budgets; exact
-evidence is under `phase3-20260803/dematerialization/MANIFEST.md`. No current blocker.
+untouched. Local schema 3 persists distinct same-OMT staging tiles, one authoritative leader,
+six-tile cohesion, a fixed ten-minute incomplete-assembly deadline, two failed-path limit, and
+coherent return. Every confirmed survivor must reach staging; absence never implies death, and
+only physical leader death re-elects. Local-handoff/structural/live-world/save gates pass 1/281,
+38/5,694, 129/34,102, 2/24, and 1/10. Test binary SHA-256 is `441f0126...`
+(81,290,984 bytes). The current-head generic benchmark has an explicit two-attempt non-credit
+caveat; the prior 100-site packet remains the nearest performance footing. Exact evidence is under
+`phase3-20260803/local-cohesion/MANIFEST.md` (SHA-256 `21aad181...`). No current blocker.
 
 Production target: `port/cdda-master`
 
@@ -749,6 +749,13 @@ quiesces both NPCs with reverse rollback, and commits even abstract ownership la
 replay are idempotent; same-minute work stays frozen; the first later abstract advance consumes the
 bounded receipt exactly once. Exact evidence is under external
 `phase3-20260803/dematerialization/MANIFEST.md`.
+Cohesion/assembled-arrival checkpoint (2026-08-03): `71bde93d48` persists distinct entry/staging
+tiles, a single death-re-elected leader, six-tile cohesion, a fixed ten-minute incomplete-assembly
+deadline, and at most two failed path attempts. Entry or first-member staging cannot resume
+successful abstract work; every confirmed survivor is rechecked at staging before writeback.
+Timeout/failure atomically enters returning-home, including after unload, so local ownership cannot
+wedge. Exact evidence and the non-credit benchmark caveat are under external
+`phase3-20260803/local-cohesion/MANIFEST.md`.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
@@ -759,8 +766,8 @@ bounded receipt exactly once. Exact evidence is under external
 - [x] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement. _Checkpoint `f83b6bb116`: complete exit/HP/cargo/death state commits under an even epoch only after both stable NPCs quiesce; physical death is captured before cleanup, partial reads/quiesce leave local ownership byte-identical, and the next abstract advance occurs once._
 - [x] Record `last_advanced_turn` and reject a second advance in the same owner generation.
 - [x] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent. _Checkpoint `367337c9e4`: injected second-bind failure rolls back the attempted second and first members in reverse with byte-identical camp state; committed save/load and replay perform no new bind._
-- [ ] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return.
-- [ ] Define group arrival as the required surviving members assembled at staging, not first-member arrival.
+- [x] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return. _Checkpoint `71bde93d48`: six-tile cohesion, ten-minute incomplete-assembly deadline, two failed paths, physical-death-only stable re-election, and coherent returning-home are persisted and replay-safe._
+- [x] Define group arrival as the required surviving members assembled at staging, not first-member arrival. _Checkpoint `71bde93d48`: distinct per-member staging tiles and a final live-position recheck block first-member/stale-latch dematerialization; bandit/cannibal, save/load, unload-timeout, and sole-survivor controls are green._
 - [ ] Ground bounty is finite and atomically depleted at the world resource.
 - [ ] Wire the bounded current/legitimately-visible-forward-corridor abstract-threat adapter and one-shot detour/attrition resolver; the ordinary OMT observer may expose at most three committed route OMTs, an unseen horde cannot reroute scouts, an overlapped horde cannot be ignored, and abstract scouts never damage the horde without local simulation.
 - [ ] Normalize existing ground bounty 1/2/3 to 333/667/1000; a surviving pair atomically takes at most one unit per survivor, so two camps contesting bounty 3 resolve as 2 then 1 rather than duplicating it.
