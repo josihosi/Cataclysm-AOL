@@ -109,6 +109,17 @@ enum class camp_lead_origin {
     structural_routine,
 };
 
+enum class live_discovery_mode {
+    observer_signal_only,
+    legacy_radar_only,
+};
+
+struct live_discovery_permissions {
+    bool typed_observer = false;
+    bool legacy_camp_refresh = false;
+    bool legacy_player_dispatch = false;
+};
+
 enum class camp_lead_status {
     suspected,
     scout_confirmed,
@@ -1416,7 +1427,10 @@ void begin_shakedown_basecamp_defender_observation( site_record &site, int live_
 shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
-bool record_live_signal_mark( site_record &site, const live_signal_mark &mark );
+live_discovery_permissions live_discovery_permissions_for( live_discovery_mode mode );
+bool live_discovery_origin_is_allowed( live_discovery_mode mode, camp_lead_origin origin );
+bool record_live_signal_mark( site_record &site, const live_signal_mark &mark,
+                              live_discovery_mode mode );
 bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
 std::string render_empty_site_retirement_report( const site_record &site );
 int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );

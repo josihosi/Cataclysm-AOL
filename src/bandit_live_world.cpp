@@ -2736,6 +2736,37 @@ std::string to_string( camp_lead_origin origin )
     return "legacy_radar";
 }
 
+live_discovery_permissions live_discovery_permissions_for( const live_discovery_mode mode )
+{
+    live_discovery_permissions permissions;
+    switch( mode ) {
+        case live_discovery_mode::observer_signal_only:
+            permissions.typed_observer = true;
+            break;
+        case live_discovery_mode::legacy_radar_only:
+            permissions.legacy_camp_refresh = true;
+            permissions.legacy_player_dispatch = true;
+            break;
+    }
+    return permissions;
+}
+
+bool live_discovery_origin_is_allowed( const live_discovery_mode mode,
+                                       const camp_lead_origin origin )
+{
+    switch( origin ) {
+        case camp_lead_origin::observer:
+            return mode == live_discovery_mode::observer_signal_only;
+        case camp_lead_origin::legacy_radar:
+        case camp_lead_origin::signal:
+            return mode == live_discovery_mode::legacy_radar_only;
+        case camp_lead_origin::returned_report:
+        case camp_lead_origin::structural_routine:
+            return true;
+    }
+    return false;
+}
+
 std::string to_string( camp_lead_status status )
 {
     switch( status ) {
@@ -13051,28 +13082,35 @@ bool mark_shakedown_reopen_used( site_record &site )
     return true;
 }
 
-bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
+bool record_live_signal_mark( site_record &site, const live_signal_mark &mark,
+                              const live_discovery_mode mode )
 {
-    if( site.retired_empty_site || mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
+    const live_discovery_permissions permissions = live_discovery_permissions_for( mode );
+    if( !permissions.legacy_camp_refresh ||
+        !live_discovery_origin_is_allowed( mode, camp_lead_origin::signal ) ||
+        site.retired_empty_site || mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
         return false;
     }
     const std::string mark_id = mark.mark_id.substr( 0, max_live_signal_mark_length );
+    site_record candidate = site;
 
-    bool changed = site.remembered_target_or_mark != mark_id;
-    site.remembered_target_or_mark = mark_id;
-    const int old_bounty = site.remembered_bounty_estimate;
-    const int old_threat = site.remembered_threat_estimate;
-    site.remembered_bounty_estimate = std::max( site.remembered_bounty_estimate, mark.bounty_add );
-    site.remembered_threat_estimate = std::max( site.remembered_threat_estimate, mark.threat_add );
-    changed |= site.remembered_bounty_estimate != old_bounty;
-    changed |= site.remembered_threat_estimate != old_threat;
+    bool changed = candidate.remembered_target_or_mark != mark_id;
+    candidate.remembered_target_or_mark = mark_id;
+    const int old_bounty = candidate.remembered_bounty_estimate;
+    const int old_threat = candidate.remembered_threat_estimate;
+    candidate.remembered_bounty_estimate = std::max( candidate.remembered_bounty_estimate,
+                                           mark.bounty_add );
+    candidate.remembered_threat_estimate = std::max( candidate.remembered_threat_estimate,
+                                           mark.threat_add );
+    changed |= candidate.remembered_bounty_estimate != old_bounty;
+    changed |= candidate.remembered_threat_estimate != old_threat;
 
-    if( std::find( site.known_recent_marks.begin(), site.known_recent_marks.end(), mark_id ) ==
-        site.known_recent_marks.end() ) {
-        if( site.known_recent_marks.size() >= max_live_signal_marks ) {
-            site.known_recent_marks.erase( site.known_recent_marks.begin() );
+    if( std::find( candidate.known_recent_marks.begin(), candidate.known_recent_marks.end(), mark_id ) ==
+        candidate.known_recent_marks.end() ) {
+        if( candidate.known_recent_marks.size() >= max_live_signal_marks ) {
+            candidate.known_recent_marks.erase( candidate.known_recent_marks.begin() );
         }
-        site.known_recent_marks.push_back( mark_id );
+        candidate.known_recent_marks.push_back( mark_id );
         changed = true;
     }
 
@@ -13095,15 +13133,18 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     lead.threat_confirmed = lead.threat > 0;
     lead.generated_by_this_camp_routine = true;
     lead.last_outcome = "live_signal";
-    lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
-    const camp_map_lead *old_lead = site.intelligence_map.find_lead( lead.lead_id );
+    lead.lead_id = camp_lead_id_for( candidate.site_id, lead.kind, lead.target_id, lead.omt );
+    const camp_map_lead *old_lead = candidate.intelligence_map.find_lead( lead.lead_id );
     changed |= old_lead == nullptr || old_lead->bounty != lead.bounty ||
                old_lead->threat != lead.threat || old_lead->confidence != lead.confidence ||
                old_lead->radius_omt != lead.radius_omt ||
                old_lead->source_summary != lead.source_summary;
-    upsert_camp_map_lead( site, std::move( lead ) );
+    if( !upsert_camp_map_lead( candidate, std::move( lead ) ) || !changed ) {
+        return false;
+    }
 
-    return changed;
+    site = std::move( candidate );
+    return true;
 }
 
 std::string render_empty_site_retirement_report( const site_record &site )

@@ -151,6 +151,9 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 
 namespace
 {
+static constexpr bandit_live_world::live_discovery_mode live_bandit_production_discovery_mode =
+    bandit_live_world::live_discovery_mode::observer_signal_only;
+
 std::string live_bandit_player_target_id( const tripoint_abs_omt &player_omt )
 {
     std::ostringstream out;
@@ -2685,9 +2688,12 @@ int bootstrap_live_bandit_abstract_sites_near_player()
 }
 
 int refresh_live_bandit_signal_marks(
-    const std::vector<live_bandit_signal_observation> &signals )
+    const std::vector<live_bandit_signal_observation> &signals,
+    const bandit_live_world::live_discovery_mode discovery_mode )
 {
-    if( signals.empty() ) {
+    const bandit_live_world::live_discovery_permissions permissions =
+        bandit_live_world::live_discovery_permissions_for( discovery_mode );
+    if( !permissions.legacy_camp_refresh || signals.empty() ) {
         return 0;
     }
 
@@ -2747,7 +2753,8 @@ int refresh_live_bandit_signal_marks(
         }
         bool site_refreshed = false;
         for( const live_bandit_signal_observation *signal : matching_signals ) {
-            site_refreshed |= bandit_live_world::record_live_signal_mark( site, signal->mark );
+            site_refreshed |= bandit_live_world::record_live_signal_mark(
+                                  site, signal->mark, discovery_mode );
         }
         if( site_refreshed ) {
             refreshed_sites++;
@@ -3664,8 +3671,14 @@ void note_live_bandit_no_opening_result( bandit_live_world::camp_map_lead &lead 
 }
 
 bool steer_live_bandit_dispatch_toward_player(
-    const std::vector<live_bandit_signal_observation> &signals )
+    const std::vector<live_bandit_signal_observation> &signals,
+    const bandit_live_world::live_discovery_mode discovery_mode )
 {
+    const bandit_live_world::live_discovery_permissions permissions =
+        bandit_live_world::live_discovery_permissions_for( discovery_mode );
+    if( !permissions.legacy_player_dispatch ) {
+        return false;
+    }
     avatar &u = get_avatar();
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     if( state.sites.empty() ) {
@@ -3774,7 +3787,8 @@ bool steer_live_bandit_dispatch_toward_player(
 
         bandit_live_world::site_record &site = state.sites[candidate_site.site_index];
         if( candidate_site.signal != nullptr ) {
-            bandit_live_world::record_live_signal_mark( site, candidate_site.signal->mark );
+            bandit_live_world::record_live_signal_mark( site, candidate_site.signal->mark,
+                    discovery_mode );
         }
         if( live_bandit_shakedown_was_paid( site ) ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
@@ -4192,7 +4206,9 @@ void monmove()
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
     maintain_live_bandit_local_pair_cohesion();
-    if( calendar::once_every( 1_minutes ) ) {
+    const bandit_live_world::live_discovery_permissions discovery_permissions =
+        bandit_live_world::live_discovery_permissions_for( live_bandit_production_discovery_mode );
+    if( discovery_permissions.typed_observer && calendar::once_every( 1_minutes ) ) {
         const int local_zombie_observations = record_live_bandit_local_zombie_observations();
         if( local_zombie_observations > 0 ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
@@ -4264,6 +4280,8 @@ void overmap_npc_move()
     const bool dispatch_cadence_due = calendar::once_every( 30_minutes );
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
     const bool structural_cadence_due = calendar::once_every( 60_minutes );
+    const bandit_live_world::live_discovery_permissions discovery_permissions =
+        bandit_live_world::live_discovery_permissions_for( live_bandit_production_discovery_mode );
     std::vector<live_bandit_signal_observation> live_signals;
     std::vector<live_bandit_sound_observation> live_sounds;
     sounds::consume_significant_sounds( [&live_sounds]( const tripoint_abs_omt &source_omt,
@@ -4276,7 +4294,9 @@ void overmap_npc_move()
     }
     if( signal_cadence_due ) {
         live_signals = observe_live_bandit_field_signals_near_player();
-        refresh_live_bandit_signal_marks( live_signals );
+        if( discovery_permissions.legacy_camp_refresh ) {
+            refresh_live_bandit_signal_marks( live_signals, live_bandit_production_discovery_mode );
+        }
         signal_live_hordes_from_light_observations( live_signals );
         signal_live_zombie_riders_from_light_observations( live_signals );
     }
@@ -4284,18 +4304,22 @@ void overmap_npc_move()
     if( dispatch_cadence_due || structural_cadence_due ) {
         refresh_live_bandit_member_readiness( bandit_state );
     }
-    if( dispatch_cadence_due ) {
-        steer_live_bandit_dispatch_toward_player( live_signals );
-    } else if( signal_cadence_due ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle"
-                                   << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
-                                   << " sites=" << bandit_state.sites.size()
-                                   << " dispatch_interval=30_minutes"
-                                   << " signal_interval=5_minutes\n";
+    if( discovery_permissions.legacy_player_dispatch ) {
+        if( dispatch_cadence_due ) {
+            steer_live_bandit_dispatch_toward_player( live_signals,
+                    live_bandit_production_discovery_mode );
+        } else if( signal_cadence_due ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: "
+                                       << "reason=30_minute_throttle"
+                                       << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
+                                       << " sites=" << bandit_state.sites.size()
+                                       << " dispatch_interval=30_minutes"
+                                       << " signal_interval=5_minutes\n";
+        }
     }
-    if( structural_cadence_due ) {
+    if( discovery_permissions.typed_observer && structural_cadence_due ) {
         maintain_live_bandit_structural_bounty( live_signals, live_sounds );
-    } else if( !live_sounds.empty() ) {
+    } else if( discovery_permissions.typed_observer && !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =
             record_live_bandit_structural_sounds( bandit_state, live_sounds );
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_observation sites="

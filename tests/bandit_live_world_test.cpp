@@ -1568,7 +1568,9 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
     smoke_mark.threat_add = 0;
     smoke_mark.notes.push_back( "live source hook: fd_fire=2, fd_smoke=1" );
 
-    REQUIRE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    REQUIRE( bandit_live_world::record_live_signal_mark(
+                 site, smoke_mark,
+                 bandit_live_world::live_discovery_mode::legacy_radar_only ) );
     CHECK( site.remembered_target_or_mark == "live_smoke@18,20,0" );
     CHECK( site.remembered_bounty_estimate == 1 );
     CHECK( site.remembered_threat_estimate == 0 );
@@ -1582,18 +1584,100 @@ TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
            std::string::npos );
 
     const std::string before_duplicate_signal = serialize_world( world );
-    CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    CHECK_FALSE( bandit_live_world::record_live_signal_mark(
+                     site, smoke_mark,
+                     bandit_live_world::live_discovery_mode::legacy_radar_only ) );
     CHECK( serialize_world( world ) == before_duplicate_signal );
     CHECK( site.known_recent_marks.size() == 1 );
 
     for( int i = 0; i < 9; ++i ) {
         bandit_live_world::live_signal_mark extra_mark = smoke_mark;
         extra_mark.mark_id = "live_smoke@" + std::to_string( 30 + i ) + ",20,0";
-        CHECK( bandit_live_world::record_live_signal_mark( site, extra_mark ) );
+        CHECK( bandit_live_world::record_live_signal_mark(
+                   site, extra_mark,
+                   bandit_live_world::live_discovery_mode::legacy_radar_only ) );
     }
     CHECK( site.known_recent_marks.size() == 8 );
     CHECK( site.known_recent_marks.front() == "live_smoke@31,20,0" );
     CHECK( site.known_recent_marks.back() == "live_smoke@38,20,0" );
+}
+
+TEST_CASE( "bandit_live_world_live_discovery_mode_enforces_one_signal_writer",
+           "[bandit][live_world][phase4_single_writer]" )
+{
+    using bandit_live_world::camp_lead_origin;
+    using bandit_live_world::live_discovery_mode;
+
+    const live_discovery_mode observer = live_discovery_mode::observer_signal_only;
+    const bandit_live_world::live_discovery_permissions observer_permissions =
+        bandit_live_world::live_discovery_permissions_for( observer );
+    CHECK( observer_permissions.typed_observer );
+    CHECK_FALSE( observer_permissions.legacy_camp_refresh );
+    CHECK_FALSE( observer_permissions.legacy_player_dispatch );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               observer, camp_lead_origin::observer ) );
+    CHECK_FALSE( bandit_live_world::live_discovery_origin_is_allowed(
+                     observer, camp_lead_origin::signal ) );
+    CHECK_FALSE( bandit_live_world::live_discovery_origin_is_allowed(
+                     observer, camp_lead_origin::legacy_radar ) );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               observer, camp_lead_origin::returned_report ) );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               observer, camp_lead_origin::structural_routine ) );
+
+    const live_discovery_mode legacy = live_discovery_mode::legacy_radar_only;
+    const bandit_live_world::live_discovery_permissions legacy_permissions =
+        bandit_live_world::live_discovery_permissions_for( legacy );
+    CHECK_FALSE( legacy_permissions.typed_observer );
+    CHECK( legacy_permissions.legacy_camp_refresh );
+    CHECK( legacy_permissions.legacy_player_dispatch );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               legacy, camp_lead_origin::legacy_radar ) );
+    CHECK_FALSE( bandit_live_world::live_discovery_origin_is_allowed(
+                     legacy, camp_lead_origin::observer ) );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               legacy, camp_lead_origin::signal ) );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               legacy, camp_lead_origin::returned_report ) );
+    CHECK( bandit_live_world::live_discovery_origin_is_allowed(
+               legacy, camp_lead_origin::structural_routine ) );
+
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record site;
+    site.site_id = "single-writer-camp";
+    world.sites.push_back( site );
+
+    bandit_live_world::live_signal_mark mark;
+    mark.mark_id = "live_smoke@18,20,0";
+    mark.kind = "smoke";
+    mark.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    mark.range_cap_omt = 15;
+    mark.bounty_add = 1;
+    mark.confidence = 1;
+
+    const std::string before_observer_write = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_live_signal_mark(
+                     world.sites.front(), mark, observer ) );
+    CHECK( serialize_world( world ) == before_observer_write );
+
+    REQUIRE( bandit_live_world::record_live_signal_mark(
+                 world.sites.front(), mark, legacy ) );
+    CHECK( serialize_world( world ) != before_observer_write );
+    REQUIRE( world.sites.front().intelligence_map.leads.size() == 1 );
+    CHECK( world.sites.front().intelligence_map.leads.front().origin ==
+           camp_lead_origin::signal );
+
+    bandit_live_world::site_record &collision_site = world.sites.front();
+    collision_site.intelligence_map.leads.front().origin = camp_lead_origin::observer;
+    collision_site.remembered_target_or_mark = "sentinel";
+    collision_site.remembered_bounty_estimate = 0;
+    collision_site.remembered_threat_estimate = 0;
+    collision_site.known_recent_marks.clear();
+    mark.bounty_add = 5;
+    mark.threat_add = 4;
+    const std::string before_cross_origin_rejection = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_live_signal_mark( collision_site, mark, legacy ) );
+    CHECK( serialize_world( world ) == before_cross_origin_rejection );
 }
 
 TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_world]" )
@@ -13076,7 +13160,9 @@ TEST_CASE( "bandit_live_world_empty_site_retirement_requires_both_home_and_activ
         smoke_mark.kind = "smoke";
         smoke_mark.source_omt = tripoint_abs_omt( 18, 20, 0 );
         smoke_mark.range_cap_omt = 15;
-        CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+        CHECK_FALSE( bandit_live_world::record_live_signal_mark(
+                         site, smoke_mark,
+                         bandit_live_world::live_discovery_mode::legacy_radar_only ) );
     }
 }
 
@@ -13245,7 +13331,9 @@ TEST_CASE( "bandit_live_world_live_signal_marks_write_camp_map_signal_leads",
     smoke.threat_add = 1;
     smoke.confidence = 2;
 
-    CHECK( bandit_live_world::record_live_signal_mark( site, smoke ) );
+    CHECK( bandit_live_world::record_live_signal_mark(
+               site, smoke,
+               bandit_live_world::live_discovery_mode::legacy_radar_only ) );
     REQUIRE( site.intelligence_map.leads.size() == 1 );
     const bandit_live_world::camp_map_lead &lead = site.intelligence_map.leads.front();
     CHECK( lead.kind == bandit_live_world::camp_lead_kind::smoke_signal );
