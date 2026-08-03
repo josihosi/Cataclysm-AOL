@@ -269,7 +269,7 @@ struct camp_map_lead {
 };
 
 struct camp_intelligence_map {
-    int schema_version = 2;
+    int schema_version = 3;
     int last_daily_cleanup_minutes = -1;
     int next_near_tick_minutes = -1;
     int next_mid_tick_minutes = -1;
@@ -277,6 +277,8 @@ struct camp_intelligence_map {
     int next_frontier_tick_minutes = -1;
     int known_radius_omt = 0;
     int frontier_radius_omt = 0;
+    int frontier_sector_cursor = 0;
+    std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
     std::vector<camp_map_lead> leads;
 
     void serialize( JsonOut &json ) const;
@@ -702,6 +704,9 @@ struct structural_outing_plan {
     bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
     std::vector<character_id> member_ids;
     std::vector<tripoint_abs_omt> shared_route;
+    int frontier_sector = -1;
+    int frontier_prior_resolved_minutes = -1;
+    int frontier_cursor = 0;
     int effective_interest = 0;
     int known_threat = 0;
     int expected_stalking_minutes = -1;
@@ -913,6 +918,7 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
 structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         const camp_map_lead &lead, int now_minutes );
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
+structural_outing_plan plan_frontier_outing( const site_record &site, int now_minutes );
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         int now_minutes );
 std::optional<int> release_matching_external_reservation( site_record &site,

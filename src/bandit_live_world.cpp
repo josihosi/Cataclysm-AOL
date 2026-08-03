@@ -22,6 +22,7 @@ using bandit_live_world::anchor_source_kind;
 using bandit_live_world::camp_decision_state;
 using bandit_live_world::camp_lead_kind;
 using bandit_live_world::camp_lead_status;
+using bandit_live_world::camp_intelligence_map;
 using bandit_live_world::camp_map_lead;
 using bandit_live_world::camp_report_policy;
 using bandit_live_world::hostile_site_profile;
@@ -64,6 +65,9 @@ constexpr int minutes_per_member_day = 24 * 60;
 constexpr int scout_return_cohesion_minutes = 2 * 60;
 constexpr int scout_missing_grace_minutes = 24 * 60;
 constexpr int max_structural_route_cost_omt = 18;
+constexpr int frontier_sector_count = 8;
+constexpr int frontier_inner_radius_omt = 4;
+constexpr int frontier_outer_radius_omt = 9;
 
 void bound_camp_map_lead_strings( camp_map_lead &lead )
 {
@@ -129,6 +133,108 @@ int structural_route_cost( const std::vector<tripoint_abs_omt> &route )
     return cost;
 }
 
+std::string frontier_probe_target_id( const int sector )
+{
+    return "frontier_sector_" + std::to_string( sector );
+}
+
+std::string frontier_probe_lead_id( const int sector )
+{
+    return "frontier_probe:" + std::to_string( sector );
+}
+
+std::optional<int> frontier_sector_from_lead( const camp_map_lead &lead )
+{
+    if( lead.kind != camp_lead_kind::frontier_probe ) {
+        return std::nullopt;
+    }
+    for( int sector = 0; sector < frontier_sector_count; ++sector ) {
+        const std::string expected = frontier_probe_target_id( sector );
+        if( lead.lead_id == frontier_probe_lead_id( sector ) &&
+            lead.target_id == expected && lead.source_key == expected ) {
+            return sector;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<tripoint_abs_omt> make_frontier_radial_route(
+    const tripoint_abs_omt &anchor, const int sector )
+{
+    static constexpr std::array<std::pair<int, int>, frontier_sector_count> directions = { {
+            { 0, -1 }, { 1, -1 }, { 1, 0 }, { 1, 1 },
+            { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 },
+        } };
+    if( sector < 0 || sector >= frontier_sector_count ) {
+        return {};
+    }
+    const std::pair<int, int> direction = directions[static_cast<std::size_t>( sector )];
+    const long long inner_x = static_cast<long long>( anchor.x() ) +
+                              direction.first * frontier_inner_radius_omt;
+    const long long inner_y = static_cast<long long>( anchor.y() ) +
+                              direction.second * frontier_inner_radius_omt;
+    const long long outer_x = static_cast<long long>( anchor.x() ) +
+                              direction.first * frontier_outer_radius_omt;
+    const long long outer_y = static_cast<long long>( anchor.y() ) +
+                              direction.second * frontier_outer_radius_omt;
+    if( inner_x < std::numeric_limits<int>::min() ||
+        inner_x > std::numeric_limits<int>::max() ||
+        inner_y < std::numeric_limits<int>::min() ||
+        inner_y > std::numeric_limits<int>::max() ||
+        outer_x < std::numeric_limits<int>::min() ||
+        outer_x > std::numeric_limits<int>::max() ||
+        outer_y < std::numeric_limits<int>::min() ||
+        outer_y > std::numeric_limits<int>::max() ) {
+        return {};
+    }
+    return {
+        anchor,
+        tripoint_abs_omt( static_cast<int>( inner_x ), static_cast<int>( inner_y ), anchor.z() ),
+        tripoint_abs_omt( static_cast<int>( outer_x ), static_cast<int>( outer_y ), anchor.z() ),
+        anchor,
+    };
+}
+
+bool frontier_route_is_canonical( const std::vector<tripoint_abs_omt> &route,
+                                  const tripoint_abs_omt &anchor, const int sector )
+{
+    return route == make_frontier_radial_route( anchor, sector ) && route.size() == 4 &&
+           omt_chebyshev_distance( anchor, route[1] ) >= 4 &&
+           omt_chebyshev_distance( anchor, route[1] ) <= 6 &&
+           omt_chebyshev_distance( anchor, route[2] ) >= 7 &&
+           omt_chebyshev_distance( anchor, route[2] ) <= 9 &&
+           structural_route_cost( route ) <= max_structural_route_cost_omt;
+}
+
+bool frontier_memory_is_valid( const camp_intelligence_map &intelligence )
+{
+    return intelligence.frontier_sector_cursor >= 0 &&
+           intelligence.frontier_sector_cursor < frontier_sector_count &&
+           intelligence.frontier_last_resolved_minutes.size() == frontier_sector_count &&
+           std::all_of( intelligence.frontier_last_resolved_minutes.begin(),
+                        intelligence.frontier_last_resolved_minutes.end(),
+    []( const int resolved_minutes ) {
+        return resolved_minutes >= -1;
+    } );
+}
+
+std::vector<int> least_recent_frontier_sectors( const camp_intelligence_map &intelligence )
+{
+    if( !frontier_memory_is_valid( intelligence ) ) {
+        return {};
+    }
+    std::vector<int> sectors;
+    sectors.reserve( frontier_sector_count );
+    for( int offset = 0; offset < frontier_sector_count; ++offset ) {
+        sectors.push_back( ( intelligence.frontier_sector_cursor + offset ) % frontier_sector_count );
+    }
+    std::stable_sort( sectors.begin(), sectors.end(), [&intelligence]( const int lhs, const int rhs ) {
+        return intelligence.frontier_last_resolved_minutes[static_cast<std::size_t>( lhs )] <
+               intelligence.frontier_last_resolved_minutes[static_cast<std::size_t>( rhs )];
+    } );
+    return sectors;
+}
+
 bool structural_route_is_canonical( const std::vector<tripoint_abs_omt> &route,
                                     const tripoint_abs_omt &anchor,
                                     const tripoint_abs_omt &target )
@@ -136,6 +242,18 @@ bool structural_route_is_canonical( const std::vector<tripoint_abs_omt> &route,
     return route == make_structural_radial_route( anchor, target ) &&
            route.size() >= 3 && route.size() <= 5 &&
            structural_route_cost( route ) <= max_structural_route_cost_omt;
+}
+
+bool structural_route_is_canonical_for_lead( const std::vector<tripoint_abs_omt> &route,
+        const tripoint_abs_omt &anchor, const camp_map_lead &lead )
+{
+    const std::optional<int> frontier_sector = frontier_sector_from_lead( lead );
+    if( frontier_sector ) {
+        return route.size() >= 2 && lead.omt == route[route.size() - 2] &&
+               frontier_route_is_canonical( route, anchor, *frontier_sector );
+    }
+    return lead.kind == camp_lead_kind::structural_bounty &&
+           structural_route_is_canonical( route, anchor, lead.omt );
 }
 
 int structural_stalking_delay_minutes( const tripoint_abs_omt &anchor,
@@ -2848,7 +2966,7 @@ void camp_map_lead::deserialize( const JsonObject &jo )
 void camp_intelligence_map::serialize( JsonOut &json ) const
 {
     json.start_object();
-    json.member( "schema_version", schema_version );
+    json.member( "schema_version", 3 );
     json.member( "last_daily_cleanup_minutes", last_daily_cleanup_minutes );
     json.member( "next_near_tick_minutes", next_near_tick_minutes );
     json.member( "next_mid_tick_minutes", next_mid_tick_minutes );
@@ -2856,21 +2974,45 @@ void camp_intelligence_map::serialize( JsonOut &json ) const
     json.member( "next_frontier_tick_minutes", next_frontier_tick_minutes );
     json.member( "known_radius_omt", known_radius_omt );
     json.member( "frontier_radius_omt", frontier_radius_omt );
+    json.member( "frontier_sector_cursor", frontier_sector_cursor );
+    json.member( "frontier_last_resolved_minutes", frontier_last_resolved_minutes );
     json.member( "leads", leads );
     json.end_object();
 }
 
 void camp_intelligence_map::deserialize( const JsonObject &jo )
 {
-    jo.read( "schema_version", schema_version );
-    jo.read( "last_daily_cleanup_minutes", last_daily_cleanup_minutes );
-    jo.read( "next_near_tick_minutes", next_near_tick_minutes );
-    jo.read( "next_mid_tick_minutes", next_mid_tick_minutes );
-    jo.read( "next_far_tick_minutes", next_far_tick_minutes );
-    jo.read( "next_frontier_tick_minutes", next_frontier_tick_minutes );
-    jo.read( "known_radius_omt", known_radius_omt );
-    jo.read( "frontier_radius_omt", frontier_radius_omt );
-    jo.read( "leads", leads );
+    camp_intelligence_map candidate;
+    int loaded_schema_version = 1;
+    jo.read( "schema_version", loaded_schema_version );
+    if( loaded_schema_version < 1 || loaded_schema_version > 3 ) {
+        jo.throw_error( "camp intelligence schema version is unsupported" );
+    }
+    jo.read( "last_daily_cleanup_minutes", candidate.last_daily_cleanup_minutes );
+    jo.read( "next_near_tick_minutes", candidate.next_near_tick_minutes );
+    jo.read( "next_mid_tick_minutes", candidate.next_mid_tick_minutes );
+    jo.read( "next_far_tick_minutes", candidate.next_far_tick_minutes );
+    jo.read( "next_frontier_tick_minutes", candidate.next_frontier_tick_minutes );
+    jo.read( "known_radius_omt", candidate.known_radius_omt );
+    jo.read( "frontier_radius_omt", candidate.frontier_radius_omt );
+    if( loaded_schema_version >= 3 ) {
+        if( !jo.has_member( "frontier_sector_cursor" ) ||
+            !jo.has_member( "frontier_last_resolved_minutes" ) ) {
+            jo.throw_error( "schema-v3 camp intelligence is missing frontier memory" );
+        }
+        jo.read( "frontier_sector_cursor", candidate.frontier_sector_cursor );
+        jo.read( "frontier_last_resolved_minutes",
+                 candidate.frontier_last_resolved_minutes );
+        if( !frontier_memory_is_valid( candidate ) ) {
+            jo.throw_error( "schema-v3 camp intelligence has malformed frontier memory" );
+        }
+    } else if( jo.has_member( "frontier_sector_cursor" ) ||
+               jo.has_member( "frontier_last_resolved_minutes" ) ) {
+        jo.throw_error( "legacy camp intelligence cannot contain schema-v3 frontier memory" );
+    }
+    jo.read( "leads", candidate.leads );
+    candidate.schema_version = 3;
+    *this = std::move( candidate );
 }
 
 camp_map_lead *camp_intelligence_map::find_lead( const std::string &lead_id )
@@ -3151,7 +3293,11 @@ void normalize_camp_intelligence( site_record &site )
     []( const camp_map_lead &lhs, const camp_map_lead &rhs ) {
         return lhs.lead_id < rhs.lead_id;
     } );
-    site.intelligence_map.schema_version = 2;
+    if( !frontier_memory_is_valid( site.intelligence_map ) ) {
+        site.intelligence_map.frontier_sector_cursor = 0;
+        site.intelligence_map.frontier_last_resolved_minutes.assign( frontier_sector_count, -1 );
+    }
+    site.intelligence_map.schema_version = 3;
 
     for( std::string &mark : site.known_recent_marks ) {
         mark.resize( std::min( mark.size(), max_live_signal_mark_length ) );
@@ -4399,6 +4545,8 @@ void site_record::deserialize( const JsonObject &jo )
     const camp_map_lead *structural_lead = active_outing.kind == outing_kind::structural_sortie ?
                                            intelligence_map.find_lead(
                                                active_outing.target_lead_id ) : nullptr;
+    const std::optional<int> structural_frontier_sector = structural_lead != nullptr ?
+            frontier_sector_from_lead( *structural_lead ) : std::nullopt;
     const int structural_target_waypoint = active_outing.shared_route.size() >= 2 ?
             static_cast<int>( active_outing.shared_route.size() ) - 2 : -1;
     const bool structural_phase_is_consistent =
@@ -4421,10 +4569,13 @@ void site_record::deserialize( const JsonObject &jo )
           active_outing.started_minutes >= 0 &&
           active_outing.target_id == active_outing.target_lead_id &&
           active_outing.target_lead_revision > 0 && structural_lead != nullptr &&
-          structural_lead->kind == camp_lead_kind::structural_bounty &&
+          ( ( structural_lead->kind == camp_lead_kind::structural_bounty &&
+              active_outing.job_type == ( structural_lead->target_id == "forest" ?
+                                          "scavenge" : "scout" ) ) ||
+            ( structural_frontier_sector && active_outing.job_type == "scout" ) ) &&
           structural_lead->omt == active_outing.target_omt &&
-          structural_route_is_canonical( active_outing.shared_route, anchor,
-                                         active_outing.target_omt ) &&
+          structural_route_is_canonical_for_lead( active_outing.shared_route, anchor,
+                  *structural_lead ) &&
           active_outing.expected_return_minutes == structural_expected_return_minutes(
               active_outing.started_minutes, anchor, active_outing.target_omt ) &&
           active_outing.missing_deadline_minutes == minutes_after_saturated(
@@ -6151,6 +6302,9 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
     int best_distance = 0;
     int best_score = 0;
     for( const camp_map_lead &lead : site.intelligence_map.leads ) {
+        if( lead.kind == camp_lead_kind::frontier_probe ) {
+            continue;
+        }
         if( lead.target_id.empty() && lead.lead_id.empty() ) {
             continue;
         }
@@ -6795,6 +6949,84 @@ std::optional<int> release_structural_outing_reservation( site_record &site,
                site, expected_activity_id, expected_generation, summary );
 }
 
+structural_outing_plan plan_frontier_outing( const site_record &site,
+        const int now_minutes )
+{
+    structural_outing_plan plan;
+    plan.site_id = site.site_id;
+    plan.activity_id = site.site_id + "#structural";
+    plan.generation = site.next_outing_generation;
+    if( now_minutes < 0 || !supports_routine_camp_ecology( effective_profile( site ) ) ||
+        site.retired_empty_site || site.has_active_outside_pressure() ||
+        !camp_decision_allows_dispatch( site.camp_decision,
+                                        bandit_dry_run::job_template::scout ) ||
+        !frontier_memory_is_valid( site.intelligence_map ) ) {
+        plan.notes.push_back( "frontier outing blocked: camp state is not eligible" );
+        return plan;
+    }
+
+    plan.frontier_cursor = site.intelligence_map.frontier_sector_cursor;
+    for( const int sector : least_recent_frontier_sectors( site.intelligence_map ) ) {
+        const std::vector<tripoint_abs_omt> route = make_frontier_radial_route( site.anchor, sector );
+        if( route.empty() ) {
+            continue;
+        }
+        const tripoint_abs_omt target_omt = route[route.size() - 2];
+        const std::string lead_id = frontier_probe_lead_id( sector );
+        const camp_map_lead *existing_lead = site.intelligence_map.find_lead( lead_id );
+        if( existing_lead != nullptr ) {
+            const std::optional<int> existing_sector = frontier_sector_from_lead( *existing_lead );
+            if( !existing_sector || *existing_sector != sector ||
+                existing_lead->omt != target_omt ||
+                existing_lead->revision >= std::numeric_limits<int>::max() ||
+                existing_lead->status == camp_lead_status::active ||
+                existing_lead->status == camp_lead_status::dangerous ||
+                existing_lead->status == camp_lead_status::invalidated ) {
+                continue;
+            }
+            plan.lead_revision = existing_lead->revision;
+            plan.known_threat = structural_known_threat_for_interest( *existing_lead );
+        } else {
+            plan.lead_revision = 1;
+        }
+        plan.frontier_sector = sector;
+        plan.frontier_prior_resolved_minutes =
+            site.intelligence_map.frontier_last_resolved_minutes[static_cast<std::size_t>( sector )];
+        plan.shared_route = route;
+        plan.target_omt = target_omt;
+        plan.lead_id = lead_id;
+        break;
+    }
+    if( plan.frontier_sector < 0 ) {
+        plan.notes.push_back( "frontier outing blocked: no eligible least-recent sector" );
+        return plan;
+    }
+
+    const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+    const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
+    if( !routine_policy.eligible || !pair_selection.eligible ) {
+        plan.notes.push_back( "frontier outing blocked: exact routine pair is ineligible" );
+        return plan;
+    }
+    plan.job = bandit_dry_run::job_template::scout;
+    plan.member_ids = pair_selection.member_ids;
+    plan.effective_interest = 1;
+    plan.expected_stalking_minutes = minutes_after_saturated(
+                                        now_minutes,
+                                        structural_stalking_delay_minutes( site.anchor, plan.target_omt ) );
+    plan.expected_arrival_minutes = minutes_after_saturated(
+                                       now_minutes,
+                                       structural_arrival_delay_minutes( site.anchor, plan.target_omt ) );
+    plan.expected_return_minutes = structural_expected_return_minutes(
+                                       now_minutes, site.anchor, plan.target_omt );
+    plan.valid = true;
+    plan.notes.push_back( "frontier outing sector=" + std::to_string( plan.frontier_sector ) +
+                          " prior_resolved=" +
+                          std::to_string( plan.frontier_prior_resolved_minutes ) +
+                          " route_cost=" + std::to_string( structural_route_cost( plan.shared_route ) ) );
+    return plan;
+}
+
 structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         const camp_map_lead &lead, const int now_minutes )
 {
@@ -6917,13 +7149,20 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         const int now_minutes )
 {
+    const bool frontier_plan = plan.frontier_sector >= 0;
+    const bool route_is_canonical = frontier_plan ?
+                                    frontier_route_is_canonical( plan.shared_route, site.anchor,
+                                            plan.frontier_sector ) :
+                                    structural_route_is_canonical( plan.shared_route, site.anchor,
+                                            plan.target_omt );
     if( now_minutes < 0 || !plan.valid || plan.site_id != site.site_id ||
         plan.activity_id != site.site_id + "#structural" ||
         plan.generation <= 0 || plan.generation != site.next_outing_generation ||
         plan.lead_id.empty() ||
         plan.lead_revision <= 0 || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
-        !structural_route_is_canonical( plan.shared_route, site.anchor, plan.target_omt ) ||
+        !route_is_canonical ||
+        plan.target_omt != plan.shared_route[plan.shared_route.size() - 2] ||
         plan.expected_stalking_minutes != minutes_after_saturated(
             now_minutes, structural_stalking_delay_minutes( site.anchor, plan.target_omt ) ) ||
         plan.expected_arrival_minutes != minutes_after_saturated(
@@ -6940,24 +7179,43 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         return false;
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
-    if( lead == nullptr || lead->revision != plan.lead_revision ||
-        lead->omt != plan.target_omt ||
-        lead->revision >= std::numeric_limits<int>::max() ||
-        lead->kind != camp_lead_kind::structural_bounty || lead->bounty <= 0 ||
-        lead->status == camp_lead_status::active || lead->status == camp_lead_status::harvested ||
-        lead->status == camp_lead_status::dangerous ||
-        lead->status == camp_lead_status::invalidated ||
-        structural_lead_recently_checked( *lead, now_minutes ) ) {
-        return false;
-    }
-    const bandit_dry_run::job_template expected_job =
-        lead->target_id == "forest" ? bandit_dry_run::job_template::scavenge :
-        bandit_dry_run::job_template::scout;
-    if( plan.job != expected_job ) {
-        return false;
-    }
-    if( structural_effective_interest( *lead, structural_known_threat_for_interest( *lead ) ) <= 0 ) {
-        return false;
+    if( frontier_plan ) {
+        const structural_outing_plan expected = plan_frontier_outing( site, now_minutes );
+        const bool lead_matches = lead == nullptr ? plan.lead_revision == 1 :
+                                  ( lead->revision == plan.lead_revision &&
+                                    frontier_sector_from_lead( *lead ) == plan.frontier_sector &&
+                                    lead->omt == plan.target_omt );
+        if( !expected.valid || !lead_matches || plan.job != bandit_dry_run::job_template::scout ||
+            plan.frontier_cursor != expected.frontier_cursor ||
+            plan.frontier_prior_resolved_minutes != expected.frontier_prior_resolved_minutes ||
+            plan.frontier_sector != expected.frontier_sector ||
+            plan.lead_id != expected.lead_id || plan.lead_revision != expected.lead_revision ||
+            plan.member_ids != expected.member_ids || plan.shared_route != expected.shared_route ||
+            plan.expected_stalking_minutes != expected.expected_stalking_minutes ||
+            plan.expected_arrival_minutes != expected.expected_arrival_minutes ||
+            plan.expected_return_minutes != expected.expected_return_minutes ) {
+            return false;
+        }
+    } else {
+        if( lead == nullptr || lead->revision != plan.lead_revision ||
+            lead->omt != plan.target_omt ||
+            lead->revision >= std::numeric_limits<int>::max() ||
+            lead->kind != camp_lead_kind::structural_bounty || lead->bounty <= 0 ||
+            lead->status == camp_lead_status::active ||
+            lead->status == camp_lead_status::harvested ||
+            lead->status == camp_lead_status::dangerous ||
+            lead->status == camp_lead_status::invalidated ||
+            structural_lead_recently_checked( *lead, now_minutes ) ) {
+            return false;
+        }
+        const bandit_dry_run::job_template expected_job =
+            lead->target_id == "forest" ? bandit_dry_run::job_template::scavenge :
+            bandit_dry_run::job_template::scout;
+        if( plan.job != expected_job ||
+            structural_effective_interest( *lead,
+                                            structural_known_threat_for_interest( *lead ) ) <= 0 ) {
+            return false;
+        }
     }
     const routine_scout_policy_result routine_policy = routine_scout_policy( site );
     const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
@@ -6981,6 +7239,22 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
 
     site_record candidate = site;
     camp_map_lead *candidate_lead = candidate.intelligence_map.find_lead( plan.lead_id );
+    if( frontier_plan && candidate_lead == nullptr ) {
+        camp_map_lead frontier_lead;
+        frontier_lead.lead_id = plan.lead_id;
+        frontier_lead.revision = plan.lead_revision;
+        frontier_lead.kind = camp_lead_kind::frontier_probe;
+        frontier_lead.status = camp_lead_status::suspected;
+        frontier_lead.target_id = frontier_probe_target_id( plan.frontier_sector );
+        frontier_lead.omt = plan.target_omt;
+        frontier_lead.radius_omt = 0;
+        frontier_lead.source_key = frontier_probe_target_id( plan.frontier_sector );
+        frontier_lead.source_summary = "camp-local least-recent frontier sector";
+        frontier_lead.first_seen_minutes = now_minutes;
+        frontier_lead.last_seen_minutes = now_minutes;
+        candidate.intelligence_map.leads.push_back( std::move( frontier_lead ) );
+        candidate_lead = candidate.intelligence_map.find_lead( plan.lead_id );
+    }
     if( candidate_lead == nullptr ) {
         return false;
     }
@@ -7028,6 +7302,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     candidate_lead->status = camp_lead_status::active;
     candidate_lead->last_outcome = "structural_outing_active";
     advance_camp_map_lead_revision( candidate, *candidate_lead );
+    if( frontier_plan ) {
+        normalize_camp_intelligence( candidate );
+    }
     if( !candidate.roster().valid ) {
         return false;
     }
@@ -7056,9 +7333,28 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             site.active_outing.started_minutes < 0 ||
             site.active_outing.expected_return_minutes != structural_expected_return_minutes(
                 site.active_outing.started_minutes, site.anchor,
-                site.active_outing.target_omt ) ||
-            !structural_route_is_canonical( site.active_outing.shared_route, site.anchor,
-                                            site.active_outing.target_omt ) ) {
+                site.active_outing.target_omt ) ) {
+            continue;
+        }
+        const camp_map_lead *current_lead = site.intelligence_map.find_lead(
+                                                site.active_outing.target_id );
+        const std::optional<int> current_frontier_sector = current_lead != nullptr ?
+                frontier_sector_from_lead( *current_lead ) : std::nullopt;
+        const bool current_lead_kind_is_supported = current_lead != nullptr &&
+                ( current_lead->kind == camp_lead_kind::structural_bounty ||
+                  current_frontier_sector.has_value() );
+        const bool current_job_is_consistent = current_lead != nullptr &&
+                ( ( current_lead->kind == camp_lead_kind::structural_bounty &&
+                    site.active_outing.job_type == ( current_lead->target_id == "forest" ?
+                                                     "scavenge" : "scout" ) ) ||
+                  ( current_frontier_sector && site.active_outing.job_type == "scout" ) );
+        if( current_lead_kind_is_supported &&
+            ( !current_job_is_consistent ||
+              current_lead->omt != site.active_outing.target_omt ||
+              !structural_route_is_canonical_for_lead( site.active_outing.shared_route,
+                      site.anchor, *current_lead ) ||
+              ( current_frontier_sector &&
+                !frontier_memory_is_valid( site.intelligence_map ) ) ) ) {
             continue;
         }
         const std::string expected_activity_id = site.active_outing.activity_id;
@@ -7076,7 +7372,10 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
         camp_map_lead *lead = candidate.intelligence_map.find_lead(
                                   candidate.active_outing.target_id );
-        if( lead == nullptr || lead->kind != camp_lead_kind::structural_bounty ) {
+        const std::optional<int> frontier_sector = lead != nullptr ?
+                frontier_sector_from_lead( *lead ) : std::nullopt;
+        if( lead == nullptr ||
+            ( lead->kind != camp_lead_kind::structural_bounty && !frontier_sector ) ) {
             if( release_structural_outing_reservation(
                     candidate, expected_activity_id, expected_generation,
                     "structural outing cleared missing structural lead" ) ) {
@@ -7100,8 +7399,23 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( outing.phase == scout_phase::returning_home ) {
             if( now_minutes >= outing.expected_return_minutes ) {
                 const std::string lead_id = lead->lead_id;
+                const bool completed_frontier_route = frontier_sector &&
+                        outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2;
                 outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 1;
                 outing.last_progress_minutes = now_minutes;
+                if( completed_frontier_route ) {
+                    candidate.intelligence_map.frontier_last_resolved_minutes[
+                        static_cast<std::size_t>( *frontier_sector )] = now_minutes;
+                    candidate.intelligence_map.frontier_sector_cursor =
+                        ( *frontier_sector + 1 ) % frontier_sector_count;
+                    candidate.intelligence_map.frontier_radius_omt = std::max(
+                                candidate.intelligence_map.frontier_radius_omt,
+                                frontier_outer_radius_omt );
+                    lead->status = camp_lead_status::stale;
+                    lead->last_checked_minutes = now_minutes;
+                    lead->last_outcome = "frontier_route_reported_home";
+                    advance_camp_map_lead_revision( candidate, *lead );
+                }
                 const std::optional<int> returned = release_structural_outing_reservation(
                         candidate, expected_activity_id, expected_generation,
                         "structural outing completed its shared route home" );
@@ -7135,7 +7449,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             outing.last_progress_minutes = now_minutes;
             result.stalking_checks_processed++;
 
-            const int effective_interest = structural_effective_interest( *lead, lead->threat );
+            const int effective_interest = frontier_sector ? ( lead->threat > 0 ? 0 : 1 ) :
+                                           structural_effective_interest( *lead, lead->threat );
             if( effective_interest <= 0 ) {
                 const std::string lead_id = lead->lead_id;
                 lead->status = lead->threat > 0 ? camp_lead_status::dangerous : camp_lead_status::stale;
@@ -7165,18 +7480,27 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( outing.phase == scout_phase::observing && outing.local_contact_minutes >= 0 &&
             elapsed >= structural_outing_arrival_delay_minutes( candidate, *lead ) ) {
             const std::string lead_id = lead->lead_id;
-            lead->status = camp_lead_status::harvested;
-            lead->bounty = 0;
-            lead->times_harvested++;
-            lead->last_checked_minutes = now_minutes;
-            lead->last_outcome = "harvested_structural_bounty";
+            if( frontier_sector ) {
+                lead->status = camp_lead_status::scout_confirmed;
+                lead->last_scouted_minutes = now_minutes;
+                lead->last_checked_minutes = now_minutes;
+                lead->last_outcome = "frontier_outer_sample_complete";
+            } else {
+                lead->status = camp_lead_status::harvested;
+                lead->bounty = 0;
+                lead->times_harvested++;
+                lead->last_checked_minutes = now_minutes;
+                lead->last_outcome = "harvested_structural_bounty";
+            }
             advance_camp_map_lead_revision( candidate, *lead );
             outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
             outing.phase = scout_phase::returning_home;
             outing.last_progress_minutes = now_minutes;
             site = std::move( candidate );
             result.arrivals_processed++;
-            result.notes.push_back( "structural outing harvested and began return lead=" + lead_id );
+            result.notes.push_back( frontier_sector ?
+                                    "frontier outing sampled outer ring and began return lead=" + lead_id :
+                                    "structural outing harvested and began return lead=" + lead_id );
             continue;
         }
 
