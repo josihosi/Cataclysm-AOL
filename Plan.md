@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 3 ROUTED DISPATCH
+**Status:** ACTIVE / GREEN / PHASE 3 ABSTRACT/LOCAL HANDOFF
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -176,10 +176,11 @@ two starts, order saturated contenders by real wait age, persist honest no-candi
 prove 100/500-site fairness without charging retired/micro sites. The bounded 100-site artifact
 services every dispatch-eligible camp within six passes. Fair terrain discovery, exact faction fit,
 physical terrain checks, and bounded cheap/final score diagnostics are checkpointed at
-`cb53cbafdb`: the accepted 100-site packet services terrain and dispatch 100/100. Current
-execution is exact dispatch drive/force-due ordering, acquire/retain/risk boundaries, and the real
-top-two/global-eight route consumer. Terrain labels remain static priors, not perception of loot,
-residents, or mobile danger.
+`cb53cbafdb`: the accepted 100-site packet services terrain and dispatch 100/100. Routed dispatch
+is checkpointed at `cab98bc55c`: exact drive/force-due and acquire/retain/risk boundaries feed a
+cheap-top-two route consumer with eight global solves and two starts. The current first unchecked
+row is the atomic abstract/local ownership handoff. Terrain labels remain static priors, not
+perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

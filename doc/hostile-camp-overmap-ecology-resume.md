@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 3 - shared real scouting ecology and finite bounty.
-- Current deterministic execution row: integrate exact dispatch drive/force-due ordering,
-  acquire/retain/risk boundaries, and the real top-two/global-eight route budget.
+- Current deterministic execution row: implement the atomic abstract/local ownership transaction
+  for the complete surviving pair, including partial-failure rollback and save/load idempotency.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -29,8 +29,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   the persisted global fairness envelope through `83c40e3bc3`. Schemas 5/12, save/replay,
   eligible-only 16-camp rotation, two-start allocation, 100/500 fairness, saturated wait ordering,
   and no-candidate backoff are green. Fair terrain discovery, exact faction fit, physical terrain
-  checks, and bounded score diagnostics are checkpointed at `cb53cbafdb`; the real eight-route
-  consumer and its exact thresholds remain unchecked.
+  checks, and bounded score diagnostics are checkpointed at `cb53cbafdb`. Exact dispatch drive,
+  force-due, acquire/retain/risk gates, camp ordering, and the top-two/global-eight route consumer
+  are checkpointed at `cab98bc55c`.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256
@@ -39,8 +40,10 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   passes. Terrain evidence is archived at external
   `phase3-20260803/terrain-fit/MANIFEST.md`: the 80,926,936-byte binary SHA-256 is
   `2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`, the accepted bounded
-  packet reaches terrain and dispatch service 100/100, and zero full-route solves remain the
-  intentional next-row boundary.
+  packet reaches terrain and dispatch service 100/100. Routed-dispatch evidence is archived at
+  external `phase3-20260803/routed-dispatch/MANIFEST.md`; the focused 16-camp fixture proves eight
+  route callbacks and two starts, and the bounded 100-site child remains within the Phase-0
+  provisional budgets.
   Final clean-environment secure-store/API qualification is deferred to the later release gate and
   may not pause deterministic camp-AI work.
 

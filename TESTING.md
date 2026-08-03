@@ -515,17 +515,17 @@ structured review is clean at 0.93 after fixing mixed-site slot use, start monop
 wait ties, backoff/reset semantics, and benchmark clock drift. Exact evidence is under external
 `phase3-20260803/global-scheduler/MANIFEST.md`.
 
-Fair terrain discovery and faction fit/scoring are green at `cb53cbafdb`. Final terrain,
-structural, scheduler, frontier, full live-world, fairness, overmap-save, and save-size gates pass
-5/4,486, 33/5,297, 4/25,610, 5/245, 124/33,705, 1/3,007, 2/24, and 1/10 at seed
-`830204929`. The 80,926,936-byte binary SHA-256 is
-`2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`.
-The accepted 100-site/32-hour artifact records 38,911 ns p95, 60,791 ns max, 212,992-byte timing
-RSS delta, 66,112 serialized bytes of growth, all 100 camps terrain-scanned with spread one, and
-all 100 routine camps serviced within six passes. Exact evidence and review caveats are under
-external `phase3-20260803/terrain-fit/MANIFEST.md`. Current validation target is exact dispatch
-drive/force-due boundaries plus the real top-two/global-eight route budget; the terrain packet's
-zero full-route solves are an intentional next-row boundary, not complete scheduler credit.
+Routed dispatch is green at `cab98bc55c`. Final routed/structural/scheduler/frontier/full
+live-world/fairness/overmap-save/save-size gates pass 4/116, 37/5,413, 8/25,726, 5/245,
+128/33,821, 1/3,007, 2/24, and 1/10 at seed `830204929`. The 81,043,688-byte binary SHA-256 is
+`587e4e8e3db12f53b140d9feb54fa37b897dd34f462eade5aefa27ef7255dc1e`.
+The accepted 100-site/32-hour artifact records 62,463 ns p95, 66,167 ns max, 245,760-byte timing
+RSS delta, 66,002 serialized bytes of growth, all 100 camps terrain-scanned with spread one, and
+all 100 routine camps serviced within six passes. The focused 16-camp fixture proves exactly eight
+route callbacks, at most four final plans, two starts, no false global-budget backoff, and
+byte-stable replay. Exact evidence and caveats are under external
+`phase3-20260803/routed-dispatch/MANIFEST.md`. Current validation target is the atomic
+abstract/local pair-owner handoff, including partial-failure rollback and save/load idempotency.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

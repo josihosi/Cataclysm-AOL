@@ -6,21 +6,18 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Integrate exact dispatch drive/force-due ordering,
-acquire/retain/risk boundaries, and the real top-two/global-eight route budget.** Force-due may
-bypass drive only; it may not bypass readiness, knowledge, danger, route, reservation, or global
-limits.
+Current deterministic execution row: **Implement the atomic abstract/local ownership transaction
+for the complete surviving pair, including partial-failure rollback and save/load idempotency.**
 
-Latest resume packet (behavior checkpoint `cb53cbafdb`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `cab98bc55c`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. World schema 6 and intelligence schemas 4/5 separate fair global/per-camp terrain
-rotation from dispatch capacity, preserve recent-target repetition, and require unconfirmed
-terrain opportunities to travel as physical paired scouts. Terrain/structural/scheduler/frontier/
-live-world/fairness/save gates pass 5/4,486, 33/5,297, 4/25,610, 5/245, 124/33,705, 1/3,007,
-2/24, and 1/10. Test binary SHA-256 is
-`2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`
-(80,926,936 bytes). The accepted 100-site packet services terrain and dispatch 100/100; exact
-evidence is under `phase3-20260803/terrain-fit/MANIFEST.md`. No current blocker.
+untouched. Exact integer drive and force-due policy now orders camps before bounded top-two route
+selection; acquire/retain/static/segment risk gates, eight global solves, two starts, and stable
+active ownership are boundary-tested. Routed/structural/scheduler/frontier/live-world/fairness/
+save gates pass 4/116, 37/5,413, 8/25,726, 5/245, 128/33,821, 1/3,007, 2/24, and 1/10. Test
+binary SHA-256 is `587e4e8e3db12f53b140d9feb54fa37b897dd34f462eade5aefa27ef7255dc1e`
+(81,043,688 bytes). The accepted 100-site packet services terrain and dispatch 100/100; exact
+evidence is under `phase3-20260803/routed-dispatch/MANIFEST.md`. No current blocker.
 
 Production target: `port/cdda-master`
 
@@ -731,7 +728,14 @@ zero-bounty opportunities, and makes both factions physically scout them through
 pair. Cheap/final integer scoring uses exact faction fit, physical evidence/freshness, uncertainty,
 distance/route quality, static risk, and repetition without raw-interest tie leakage. The accepted
 100-site packet services terrain 100/100 with spread one and dispatch 100/100 within six passes.
-Full route solves remain zero until the next bounded route consumer lands.
+Routed-dispatch checkpoint (2026-08-03): `cab98bc55c` implements exact integer need/knowledge/
+target/cadence drive, stable force-due timing, acquire/retain and static/segment risk boundaries,
+and camp ordering by drive plus overdue age. Cheap candidate retention precedes at most two route
+solves per camp, eight globally, and two starts; drive and global-budget denials do not create
+false failure backoff. The production adapter uses the NPC overmap pathfinder without actor/item/
+avatar inspection, while active outings remain pinned. Focused/full/save gates and the bounded
+100-site packet are green; exact evidence is under external
+`phase3-20260803/routed-dispatch/MANIFEST.md`.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
@@ -753,13 +757,13 @@ Full route solves remain zero until the next bounded route consumer lands.
 - [ ] Each actually harvested ground-bounty unit adds two `supply_units`; paid shakedown loot adds `max(1, floor(surrendered_trade_value / 1000))` units, both clamped to the stock cap. No invisible replenishment occurs merely because time passed.
 - [ ] If two camps reach one depleted OMT, only the first successful claim consumes it; the second reports an empty/stale lead.
 - [x] Keep the existing global start budget or replace it with an equally explicit bounded scheduler. _Checkpoint `83c40e3bc3`: eligible-only hourly rotation considers at most 16 and starts at most two exact pairs; global-budget exhaustion is not recorded as camp failure._
-- [ ] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, zero current full-route solves under the reserved cap of eight, and 100/500 fairness. Leave unchecked until real terrain/final-score route consumers enforce and boundary-test the global eight-solve cap._
+- [x] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, and 100/500 fairness; routed-dispatch checkpoint `cab98bc55c` adds the real terrain/final-score consumer and boundary-tests eight global route callbacks, two starts, budget-denial semantics, and byte-stable replay._
 - [ ] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery.
 - [ ] Instrument the origin of every target lead/write (`legacy_radar`, new observer, signal, returned report) so Phase 4 can enforce a single-writer cutover.
 - [ ] Run a live/harness pair-materialization proof now: plausible entry location, stable IDs, shared route/cohesion, and no duplicate abstract advance.
 - [ ] Test loaded/unloaded boundary transitions while outbound, harvesting, regrouping, withdrawing, and returning.
 - [ ] Test repeated load/unload thrash, partial pair spawn, one member dying during handoff, and save/load in both transition directions.
-- [ ] Boundary-test `D=499/500`, `S=299/300`, retained `149/150`, and risk `749/750`; prove force-due does not bypass hard gates.
+- [x] Boundary-test `D=499/500`, `S=299/300`, retained `149/150`, and risk `749/750`; prove force-due does not bypass hard gates. _Checkpoint `cab98bc55c` tests all exact score/risk edges plus route-segment 499/500, first/later force-due clocks, and an impassable force-due control._
 - [ ] Test supply pressure at just below/at 1, 3, and 7 member-days; daily and large-jump consumption; roster/cap changes; legacy seeding; returned bounty replenishment; and no unbounded catch-up loop.
 - [ ] Test outward frontier coverage and legitimate discovery at target separations 10 and 12 OMT; every sector reaches 7-9 OMT by the eighth resolved frontier outing/24-day bound; cheap ranking performs zero full route solves and the global budget solves at most two candidates per considered camp.
 - [ ] Test a bounty-3 resource where the first pair arrives with one survivor and atomically takes one unit, then a full second pair takes exactly the remaining two; replay/save-load cannot change the total.
