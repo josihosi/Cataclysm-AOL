@@ -128,8 +128,12 @@ alert change. Report policy is checkpointed at `258247d26c`: final reports pin a
 bandit-shakedown or cannibal-night-raid policy, and each camp retains at most 64 canonical acted
 watermarks by target ID/OMT/policy. Same-key stale/exact tuples, policy drift, explicit unknown
 fields, and revision exhaustion fail closed; distinct target/policy keys advance independently.
-Current execution row: audit and complete stable idempotency keys for return, report, resource,
-cargo, and member-resolution components before advancing their bounded watermarks.
+Component idempotency is checkpointed at `f12180de5f`: canonical return/report/cargo/resource and
+per-member receipts validate before mutation, persist through schema migration, and remain bounded
+after operation closure. New resource claims require the exact issued camp operation; forged or
+terminal receipts fail atomically. Empty/normal/saturated state is 87/6,020/48,265 bytes.
+Current execution row: add bounded on-demand structured transition events, then complete all-phase
+save/load proof before closing Phase 1.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

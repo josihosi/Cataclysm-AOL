@@ -20,12 +20,12 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 1 - one authoritative persistent model.
-- First unchecked deterministic execution row: give return packets, report delivery, resource
-  depletion, cargo credit, and member return stable operation/idempotency keys.
+- First unchecked deterministic execution row: add bounded, on-demand structured transition
+  events with operation identity/generation, final simulation owner, phase change, reason, and turn.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
-- Current engineering state: Phase 0 is complete; Phase 1 observation semantics and faction-scoped
-  acted-report policy are checkpointed. Final clean-environment secure-store/API qualification is
+- Current engineering state: Phase 0 is complete; Phase 1 component idempotency is checkpointed at
+  `f12180de5f`. Final clean-environment secure-store/API qualification is
   deferred to the later release gate and may not pause deterministic camp-AI work.
 
 ## Launch evidence
@@ -185,17 +185,16 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Audit the existing component keys on top of `258247d26c`, then complete only the missing
-   stable-key/watermark/atomicity contract. Do not reopen Phase-0 statistics unless a later real
-   implementation measurement approaches or exceeds a ratified budget.
+3. Add only the bounded on-demand transition-event seam on top of `f12180de5f`, then prove every
+   active phase survives save/load without duplicate state. Do not reopen Phase-0 statistics unless
+   a later real implementation measurement approaches or exceeds a ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `258247d26c`-source test binary where valid; run one redirected build at a
+5. Reuse the current `f12180de5f`-source test binary where valid; run one redirected build at a
    time after implementation invalidates it.
-6. Complete component watermarks, packet atomicity, bounded transition events, all-phase round
-   trips, and serialized-size evidence before closing Phase 1.
+6. Complete bounded transition events and all-phase round trips before closing Phase 1.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
-report-policy build and focused/full tests completed with explicit exit `0`; earlier failed build
+component-idempotency build and focused/full tests completed with explicit exit `0`; earlier failed build
 and fixture attempts are recorded as non-credit in the artifact manifest. The baseline and
 production candidate remain untouched. Do not start another build until the next Phase-1 source
 change invalidates the current test binary.

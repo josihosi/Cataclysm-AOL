@@ -410,10 +410,17 @@ caveats, and hashes are archived at
 The one root review found and fixed explicit unknown nested policies being mistaken for absent
 legacy fields; the final evidence above is post-fix.
 
+Component idempotency is green at `f12180de5f`. The final redirected Mac build exits `0`; at seed
+`830204929`, resource passes 4/2,117, full live-world 99/5,099, handoff 10/247, playback 37/1,028,
+and overmap save 2/24. Empty/normal/saturated state is 87/6,020/48,265 bytes and remains byte-stable
+below 64 KiB. Canonical component/member receipts, bounded resource replay, exact issued-operation
+authorization, terminal generation guards, and atomic malformed current-schema loads are covered.
+Final xhigh AutoReview is clean at 0.98; exact commands and hashes are in the external
+`phase1-20260802/component-keys/MANIFEST.md` packet.
+
 The active missing evidence is Phase 1:
-- stable component idempotency keys/watermarks and bounded transition owners;
-- extend component byte decomposition as those owners become real. The current scout empty/normal/
-  saturated packet and all-phase serialization are already green.
+- bounded on-demand transition events with committed final owner and no save persistence;
+- world-level save/load proof for every active scout and hostile phase without duplicate effects.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

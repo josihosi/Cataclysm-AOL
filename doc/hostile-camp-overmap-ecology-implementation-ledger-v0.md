@@ -445,9 +445,9 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 - [x] Enforce the ratified numerical caps and deterministic, reference-aware pruning for leads, observations, route cache, reports, and completed state; active operations pin every referenced ID/revision until termination.
 - [x] When the 16-observation cap is full, deterministically compact/replace lower-value stale evidence before burn, casualty, contradiction, hard-danger, or target-revision facts. Define progress as a new deduplicated fact that changes certainty, bounds, route state, or alert; polling and duplicate strength do not reset `last_progress_at`.
 - [x] Version reports and record the last report revision acted upon per target/faction policy.
-- [ ] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
-- [ ] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.
-- [ ] Validate a complete packet before mutating any member, roster count, cargo, resource, or dossier state; replay after save/load is a no-op rather than a duplicate credit.
+- [x] Give return packets, report delivery, resource depletion, cargo credit, and member return stable operation/idempotency keys.
+- [x] Persist monotonic per-camp sortie/operation generations plus component application watermarks and per-member resolution bits. Once a completed record is pruned, packets at or below its watermark remain no-ops; world-resource claims use the resource's monotonic revision. Do not retain an unbounded tombstone list.
+- [x] Validate a complete packet before mutating any member, roster count, cargo, resource, or dossier state; replay after save/load is a no-op rather than a duplicate credit.
 - [ ] Add minimal structured transition events now: operation ID/generation, simulation owner, previous/new phase, reason, and turn. Keep them bounded/on-demand rather than a persisted prose log.
 - [x] Add old-save migration and round-trip tests, including missing/new fields and legacy active groups.
 - [ ] Save/load every active phase without duplicate members, operations, transitions, reports, depletion, or cargo.
@@ -456,10 +456,10 @@ Primary anchors: `bandit_live_world::site_record`, `camp_intelligence_map`, exis
 
 ### Phase 1 exit
 
-- [ ] One state owner exists for each camp, outing, resource, and dossier.
-- [ ] Round trips and legacy migration pass.
-- [ ] Malformed packets are atomic/no-op.
-- [ ] Saturated serialized size remains within the agreed Phase 0 budget.
+- [x] One state owner exists for each camp, outing, resource, and dossier.
+- [x] Round trips and legacy migration pass.
+- [x] Malformed packets are atomic/no-op.
+- [x] Saturated serialized size remains within the agreed Phase 0 budget.
 - [x] Behavior + tests form a reviewable checkpoint commit.
 
 Evidence:
@@ -536,6 +536,15 @@ Evidence:
   controls, cooldown watermark retention, legacy final-report migration, and fail-closed repair.
   It does not claim detailed Phase-5 burn perception/egress or a physical post-close return after
   a missing declaration.
+- Component-idempotency checkpoint `f12180de5f` adds canonical return/report/cargo/resource and
+  per-member receipt keys, validates complete packets before mutation, persists bounded component
+  watermarks plus one last-resource receipt, and binds new resource depletion to the exact issued
+  camp operation. Current schema rejects forged or terminal receipts atomically; exact replay
+  remains a no-op after save/load or operation closure. Final Mac build exits `0`; at seed
+  `830204929`, resource passes 4/2,117, full live-world 99/5,099, handoff 10/247, playback
+  37/1,028, and overmap save 2/24. Empty/normal/saturated state is 87/6,020/48,265 bytes,
+  byte-stable below 64 KiB. Final xhigh AutoReview is clean at 0.98. Exact logs and hashes are in
+  the external `phase1-20260802/component-keys/MANIFEST.md` packet.
 
 ## Phase 2 - roster authority, paired dispatch, and reservations
 
