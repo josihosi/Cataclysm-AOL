@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 BOUNDED SIGNAL EVIDENCE
+**Status:** ACTIVE / GREEN / PHASE 4 BOUNDED LOCAL DANGER EVIDENCE
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -233,8 +233,13 @@ terrain visibility from the scout, records no player/exact-map-square/defender t
 most one uncertain six-hour fact per sense through the typed writer. Both factions, save roundtrip,
 atomic malformed rejection, combined signal/visual cursor ownership, and full live-world regression
 are green under external `phase4-20260803/smoke-light/MANIFEST.md`. The legacy camp-facing signal
-writer remains an explicit later cutover defect. Next, add only significant sounds as uncertain,
-aged evidence. The compound human-camp opportunity-recovery
+writer remains an explicit later cutover defect. Significant sound evidence is checkpointed at
+`1541b351fa`: only explicitly tagged gunfire, alarms, and explosions enter a bounded coarse-OMT
+queue and the actual structural observer's hearing, regional weather, route, and three-hour aging
+boundaries. Ambient noise and exact source/player identity stay out; focused 4/442 and full
+live-world 157/35,638 are green under external
+`phase4-20260803/significant-sound/MANIFEST.md`. Next, record actual local zombie/horde danger only
+when legitimately visible. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

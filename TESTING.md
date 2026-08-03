@@ -636,7 +636,17 @@ save field, reject malformed batches atomically, and batch signal plus visual fa
 cursor. External `phase4-20260803/smoke-light/MANIFEST.md` preserves exact commands and hashes,
 including the first non-credit fixture attempt. The production adapter is compile/source-hook
 proof, not yet a natural live smoke/light scout scenario; legacy camp-facing signal/radar writes
-remain open for the later cutover. Significant-sound evidence is next.
+remain open for the later cutover. Bounded significant-sound evidence is green at `1541b351fa`:
+final sound/queue proof passes 4/442, the adjacent smoke/light gate passes 3/159, and full live-world
+passes 157/35,638 at seed `830204929`. The final 82,015,048-byte test binary SHA-256 is
+`9470243781f1615631ef9cf745b1fc1a4605d3a9f6d0fd4c95b018c734a01a7a`; its final exact-source
+build exited 0 in 51.67 seconds with max RSS 3,510,419,456 bytes. Exact producer tags admit only
+gunfire, alarms, and explosions into a 64-entry coarse-OMT queue; real observer hearing, regional
+weather, route bounds, an observation-window lower bound, and three-hour expiry gate typed facts.
+No new save field is added. Structured review found and closed remote-weather, shotgun-trap, and
+flashbang producer defects, then reran clean. External
+`phase4-20260803/significant-sound/MANIFEST.md` preserves exact commands, hashes, red environment
+attempts, and caveats. Local legitimately visible zombie/horde evidence is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

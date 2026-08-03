@@ -20,8 +20,8 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: add only significant sounds (gunfire, alarms, explosions)
-  as uncertain, three-hour typed evidence without broad ambient-noise or avatar-identity inference.
+- Current deterministic execution row: record actual local zombie/horde observations only when
+  legitimately visible, without population-only hostility inference.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -56,6 +56,15 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   cursor ownership, save roundtrip, focused 3/159, and full live-world 153/35,196 are green under
   external `phase4-20260803/smoke-light/MANIFEST.md`. The legacy camp-facing signal/radar writer is
   still a named later-cutover defect; do not claim single-writer/no-radar yet.
+- Bounded significant-sound evidence is checkpointed at `1541b351fa`: exact gunfire, alarm, and
+  explosion producer tags feed a 64-entry coarse-OMT queue; ambient/sub-threshold sounds do not.
+  The structural observer applies real hearing/deafness, regional weather, current-plus-three route
+  bounds, a current observation window, and three-hour expiry before using the existing typed
+  writer. Both factions, queue dedup/reset, save roundtrip, four-sense batching, focused 4/442,
+  adjacent signal 3/159, and full live-world 157/35,638 are green. No persisted queue/schema or camp
+  lead was added. Exact evidence is under external
+  `phase4-20260803/significant-sound/MANIFEST.md`; the pre-drain save/load false-negative window and
+  later legacy radar cutover remain explicit caveats.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256
