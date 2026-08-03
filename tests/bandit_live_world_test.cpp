@@ -1,4 +1,5 @@
 #include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 
 #include <algorithm>
 #include <limits>
@@ -2901,6 +2902,219 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     bandit_live_world::hostile_operation_state future_phase;
     future_phase.deserialize( future_phase_json.get_object() );
     CHECK( future_phase.phase == hostile_operation_phase::lost );
+}
+
+TEST_CASE( "bandit_live_world_transition_events_report_only_committed_scout_changes",
+           "[bandit][live_world][transition_event][scout]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45500 );
+    add_bandit_camp_member( world, 1, 45500 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                "transition-event-target" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    site.active_outing.phase = bandit_live_world::scout_phase::assembling;
+    const std::string activity_id = site.active_outing.activity_id;
+    const int generation = site.active_outing.generation;
+
+    bandit_live_world_probe::snapshot departure_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        bandit_live_world::simulation_advance_cursor wrong_cursor =
+            require_current_simulation_cursor( site );
+        wrong_cursor.activity_id += ":stale";
+        CHECK_FALSE( bandit_live_world::note_active_sortie_started( site, wrong_cursor, 100 ) );
+        REQUIRE( event_session.result().transition_events.empty() );
+
+        REQUIRE( bandit_live_world::note_active_sortie_started(
+                     site, require_current_simulation_cursor( site ), 100 ) );
+        CHECK( bandit_live_world::transition_active_scout_phase(
+                   site, require_current_simulation_cursor( site ),
+                   bandit_live_world::scout_phase::outbound,
+                   bandit_live_world::scout_phase::outbound, 101 ) ==
+               bandit_live_world::scout_phase_transition_result::unchanged );
+        CHECK( bandit_live_world::transition_active_scout_phase(
+                   site, require_current_simulation_cursor( site ),
+                   bandit_live_world::scout_phase::outbound,
+                   bandit_live_world::scout_phase::searching, 101, "" ) ==
+               bandit_live_world::scout_phase_transition_result::rejected );
+        departure_snapshot = event_session.result();
+    }
+    REQUIRE( departure_snapshot.transition_events.size() == 1 );
+    const bandit_live_world_probe::transition_event &departure =
+        departure_snapshot.transition_events.front();
+    CHECK( departure.operation_id == activity_id );
+    CHECK( departure.generation == generation );
+    CHECK( departure.simulation_owner == "abstract" );
+    CHECK( departure.previous_phase == "assembling" );
+    CHECK( departure.new_phase == "outbound" );
+    CHECK( departure.reason == "sortie departed" );
+    CHECK( departure.at_minutes == 100 );
+    CHECK( departure_snapshot.dropped_transition_events == 0 );
+
+    bandit_live_world_probe::snapshot contact_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        REQUIRE( bandit_live_world::note_active_sortie_local_contact(
+                     site, require_current_simulation_cursor( site ),
+                     site.active_outing.member_ids.front(), 130 ) );
+        contact_snapshot = event_session.result();
+    }
+    REQUIRE( contact_snapshot.transition_events.size() == 1 );
+    const bandit_live_world_probe::transition_event &contact =
+        contact_snapshot.transition_events.front();
+    CHECK( contact.operation_id == activity_id );
+    CHECK( contact.generation == generation );
+    CHECK( contact.simulation_owner == "local" );
+    CHECK( contact.previous_phase == "outbound" );
+    CHECK( contact.new_phase == "observing" );
+    CHECK( contact.reason == "first local contact" );
+    CHECK( contact.at_minutes == 130 );
+
+    const std::string before_round_trip = serialize_world( world );
+    bandit_live_world::world_state loaded;
+    bandit_live_world_probe::snapshot round_trip_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        loaded = round_trip_world( world );
+        round_trip_snapshot = event_session.result();
+    }
+    CHECK( round_trip_snapshot.transition_events.empty() );
+    CHECK( round_trip_snapshot.dropped_transition_events == 0 );
+    CHECK( serialize_world( world ) == before_round_trip );
+    REQUIRE( loaded.sites.size() == 1 );
+    CHECK( loaded.sites.front().active_outing.phase ==
+           bandit_live_world::scout_phase::observing );
+    CHECK( loaded.sites.front().active_outing.owner ==
+           bandit_live_world::simulation_owner::local );
+
+    bandit_live_world_probe::snapshot casualty_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        REQUIRE( bandit_live_world::record_active_outing_casualty(
+                     site, require_current_simulation_cursor( site ),
+                     site.active_outing.member_ids.front(),
+                     bandit_live_world::member_state::dead, 150,
+                     "last scout confirmed dead" ) );
+        casualty_snapshot = event_session.result();
+    }
+    REQUIRE( casualty_snapshot.transition_events.size() == 1 );
+    const bandit_live_world_probe::transition_event &casualty =
+        casualty_snapshot.transition_events.front();
+    CHECK( casualty.operation_id == activity_id );
+    CHECK( casualty.generation == generation );
+    CHECK( casualty.simulation_owner == "local" );
+    CHECK( casualty.previous_phase == "observing" );
+    CHECK( casualty.new_phase == "lost" );
+    CHECK( casualty.reason == "all scout members resolved as casualties" );
+    CHECK( casualty.at_minutes == 150 );
+}
+
+TEST_CASE( "bandit_live_world_transition_events_capture_final_hostile_owner",
+           "[bandit][live_world][transition_event][hostile_operation]" )
+{
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( world, index, 45520 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt rally( 14, 20, 0 );
+    const tripoint_abs_omt target( 18, 20, 0 );
+    prepare_hostile_follow_on( site, 6, 5, "event-hostile-target", target, 700 );
+    const bandit_live_world::hostile_operation_plan plan =
+        bandit_live_world::plan_hostile_operation(
+            site, bandit_live_world::hostile_operation_kind::shakedown,
+            { character_id( 45520 ), character_id( 45521 ) },
+            { site.anchor, rally, target }, rally, 702 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound,
+                 703, "party departed" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::rallying,
+                 710, "rally reached" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::rallying,
+                 bandit_live_world::hostile_operation_phase::approaching,
+                 720, "approach begun" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    const std::string activity_id = site.active_hostile_operation.reservation.activity_id;
+    const int generation = site.active_hostile_operation.reservation.generation;
+
+    bandit_live_world_probe::snapshot event_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        REQUIRE( transition_test_hostile_operation(
+                     site, bandit_live_world::hostile_operation_phase::approaching,
+                     bandit_live_world::hostile_operation_phase::committed_contact,
+                     730, "contact committed" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        event_snapshot = event_session.result();
+    }
+    REQUIRE( event_snapshot.transition_events.size() == 1 );
+    const bandit_live_world_probe::transition_event &event =
+        event_snapshot.transition_events.front();
+    CHECK( event.operation_id == activity_id );
+    CHECK( event.generation == generation );
+    CHECK( event.simulation_owner == "local" );
+    CHECK( event.previous_phase == "approaching" );
+    CHECK( event.new_phase == "committed_contact" );
+    CHECK( event.reason == "contact committed" );
+    CHECK( event.at_minutes == 730 );
+}
+
+TEST_CASE( "bandit_live_world_transition_events_are_bounded",
+           "[bandit][live_world][transition_event][bounded]" )
+{
+    bandit_live_world_probe::snapshot event_snapshot;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        const std::string long_reason( 300, 'r' );
+        const std::string bounded_reason = "bounded transition";
+        for( int index = 0; index < 65; ++index ) {
+            bandit_live_world_probe::record_transition_event(
+                "bounded-operation", index + 1, "abstract", "outbound", "searching",
+                index == 0 ? long_reason : bounded_reason, 800 + index );
+        }
+        const std::string oversized_field(
+            bandit_live_world_probe::max_transition_event_field_length + 1, 'x' );
+        bandit_live_world_probe::record_transition_event(
+            oversized_field, 66, "abstract", "outbound", "searching",
+            bounded_reason, 866 );
+        bandit_live_world_probe::record_transition_event(
+            "bounded-operation", 67, oversized_field, "outbound", "searching",
+            bounded_reason, 867 );
+        bandit_live_world_probe::record_transition_event(
+            "bounded-operation", 68, "abstract", oversized_field, "searching",
+            bounded_reason, 868 );
+        bandit_live_world_probe::record_transition_event(
+            "bounded-operation", 69, "abstract", "outbound", oversized_field,
+            bounded_reason, 869 );
+        bandit_live_world_probe::record_transition_event(
+            "bounded-operation", 70, "abstract", "outbound", "searching",
+            bounded_reason, 870 );
+        event_snapshot = event_session.result();
+    }
+    REQUIRE( event_snapshot.transition_events.size() ==
+             bandit_live_world_probe::max_transition_events );
+    CHECK( event_snapshot.dropped_transition_events == 6 );
+    CHECK( event_snapshot.transition_events.front().generation == 2 );
+    CHECK( event_snapshot.transition_events.front().reason == "bounded transition" );
+    CHECK( event_snapshot.transition_events.back().generation == 65 );
 }
 
 TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on_load",

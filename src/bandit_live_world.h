@@ -7,6 +7,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "character_id.h"
@@ -867,7 +868,8 @@ scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
 scout_phase_transition_result transition_active_scout_phase( site_record &site,
         const simulation_advance_cursor &expected_cursor, scout_phase expected_phase,
-        scout_phase next_phase, int current_minutes );
+        scout_phase next_phase, int current_minutes,
+        std::string_view reason = "explicit phase transition" );
 bool is_valid_camp_decision_transition( camp_decision_state previous_state,
                                         camp_decision_state next_state );
 camp_decision_transition_result accept_current_scout_report_for_assessment( site_record &site );

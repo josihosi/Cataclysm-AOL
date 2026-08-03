@@ -1266,7 +1266,8 @@ bool note_live_bandit_aftermath()
                     const bandit_live_world::scout_phase_transition_result transition =
                         bandit_live_world::transition_active_scout_phase(
                             site, *cursor, site.active_outing.phase,
-                            bandit_live_world::scout_phase::returning_home, current_minutes );
+                            bandit_live_world::scout_phase::returning_home, current_minutes,
+                            "live party returning home" );
                     changed |= transition ==
                                bandit_live_world::scout_phase_transition_result::applied;
                 }

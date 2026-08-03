@@ -54,7 +54,8 @@ enum class site_service : std::size_t {
 
 enum class collection_mode : std::size_t {
     timings,
-    site_services
+    site_services,
+    transition_events
 };
 
 constexpr std::size_t section_count = static_cast<std::size_t>( section::count );
@@ -103,12 +104,29 @@ struct site_service_record {
     std::array<std::uint64_t, site_service_count> counts = {};
 };
 
+constexpr std::size_t max_transition_events = 64;
+constexpr std::size_t max_transition_event_field_length = 256;
+constexpr std::size_t max_transition_event_reason_length = 256;
+
+struct transition_event {
+    std::string operation_id;
+    int generation = 0;
+    std::string simulation_owner;
+    std::string previous_phase;
+    std::string new_phase;
+    std::string reason;
+    int at_minutes = -1;
+};
+
 struct snapshot {
     std::array<section_samples, section_count> sections;
     std::array<std::uint64_t, counter_count> counters = {};
     std::vector<site_service_record> site_services;
+    std::vector<transition_event> transition_events;
+    std::uint64_t dropped_transition_events = 0;
     bool timings_collected = false;
     bool site_services_collected = false;
+    bool transition_events_collected = false;
     bool stack_overflow = false;
 };
 
@@ -131,6 +149,12 @@ class session
         friend void increment( counter target, std::uint64_t amount );
         friend void record_site_service( const std::string &site_id, site_service target,
                                          std::uint64_t amount );
+        friend bool transition_events_enabled() noexcept;
+        friend void record_transition_event( std::string_view operation_id, int generation,
+                                             std::string_view simulation_owner,
+                                             std::string_view previous_phase,
+                                             std::string_view new_phase, std::string_view reason,
+                                             int at_minutes );
 
         struct active_frame {
             section target = section::world_serialize;
@@ -170,6 +194,11 @@ class scoped_section
 void increment( counter target, std::uint64_t amount = 1 );
 void record_site_service( const std::string &site_id, site_service target,
                           std::uint64_t amount = 1 );
+bool transition_events_enabled() noexcept;
+void record_transition_event( std::string_view operation_id, int generation,
+                              std::string_view simulation_owner,
+                              std::string_view previous_phase, std::string_view new_phase,
+                              std::string_view reason, int at_minutes );
 
 std::string_view to_string( section target );
 std::string_view to_string( counter target );

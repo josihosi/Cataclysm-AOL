@@ -4,6 +4,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
+#include <utility>
 
 namespace
 {
@@ -128,6 +129,7 @@ session::session( const collection_mode mode, const std::size_t expected_samples
     previous_ = active_session;
     result_.timings_collected = mode == collection_mode::timings;
     result_.site_services_collected = mode == collection_mode::site_services;
+    result_.transition_events_collected = mode == collection_mode::transition_events;
     if( result_.timings_collected ) {
         timing_state_ = std::make_unique<timing_state>();
     }
@@ -135,6 +137,9 @@ session::session( const collection_mode mode, const std::size_t expected_samples
     if( result_.site_services_collected && expected_sites > 0 ) {
         result_.site_services.reserve( expected_sites );
         site_service_indices_.reserve( expected_sites );
+    }
+    if( result_.transition_events_collected ) {
+        result_.transition_events.reserve( max_transition_events );
     }
     active_session = this;
 }
@@ -232,6 +237,44 @@ void record_site_service( const std::string &site_id, const site_service target,
         record_index = existing->second;
     }
     records[record_index].counts[enum_index( target )] += amount;
+}
+
+bool transition_events_enabled() noexcept
+{
+    return active_session != nullptr && active_session->result_.transition_events_collected;
+}
+
+void record_transition_event( const std::string_view operation_id, const int generation,
+                              const std::string_view simulation_owner,
+                              const std::string_view previous_phase,
+                              const std::string_view new_phase, const std::string_view reason,
+                              const int at_minutes )
+{
+    if( !transition_events_enabled() || reason.empty() ) {
+        return;
+    }
+    if( operation_id.size() > max_transition_event_field_length ||
+        simulation_owner.size() > max_transition_event_field_length ||
+        previous_phase.size() > max_transition_event_field_length ||
+        new_phase.size() > max_transition_event_field_length ||
+        reason.size() > max_transition_event_reason_length ) {
+        active_session->result_.dropped_transition_events++;
+        return;
+    }
+    std::vector<transition_event> &events = active_session->result_.transition_events;
+    if( events.size() >= max_transition_events ) {
+        active_session->result_.dropped_transition_events++;
+        return;
+    }
+    transition_event event;
+    event.operation_id = operation_id;
+    event.generation = generation;
+    event.simulation_owner = simulation_owner;
+    event.previous_phase = previous_phase;
+    event.new_phase = new_phase;
+    event.reason = reason;
+    event.at_minutes = at_minutes;
+    events.push_back( std::move( event ) );
 }
 
 std::string_view to_string( const section target )
