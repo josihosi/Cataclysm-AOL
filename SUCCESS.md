@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
 
-Status: GREEN / PHASE 3 SCHEDULER GREEN / TERRAIN FIT NEXT
+Status: GREEN / PHASE 3 TERRAIN FIT GREEN / ROUTED DISPATCH NEXT
 
 Canonical contract and detailed cross-off evidence:
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.

@@ -513,9 +513,19 @@ The validated 100-site/32-hour child records 42,417 ns p95/max, all 100 routine 
 within six passes, zero fairness-replay RSS delta, and 22,755 serialized bytes of growth. Final
 structured review is clean at 0.93 after fixing mixed-site slot use, start monopolies, saturated
 wait ties, backoff/reset semantics, and benchmark clock drift. Exact evidence is under external
-`phase3-20260803/global-scheduler/MANIFEST.md`. Current validation target is terrain discovery and
-faction fit/scoring. The same artifact intentionally records only 2/100 terrain-scan service; that
-is a measured next-row defect, not scheduler credit.
+`phase3-20260803/global-scheduler/MANIFEST.md`.
+
+Fair terrain discovery and faction fit/scoring are green at `cb53cbafdb`. Final terrain,
+structural, scheduler, frontier, full live-world, fairness, overmap-save, and save-size gates pass
+5/4,486, 33/5,297, 4/25,610, 5/245, 124/33,705, 1/3,007, 2/24, and 1/10 at seed
+`830204929`. The 80,926,936-byte binary SHA-256 is
+`2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`.
+The accepted 100-site/32-hour artifact records 38,911 ns p95, 60,791 ns max, 212,992-byte timing
+RSS delta, 66,112 serialized bytes of growth, all 100 camps terrain-scanned with spread one, and
+all 100 routine camps serviced within six passes. Exact evidence and review caveats are under
+external `phase3-20260803/terrain-fit/MANIFEST.md`. Current validation target is exact dispatch
+drive/force-due boundaries plus the real top-two/global-eight route budget; the terrain packet's
+zero full-route solves are an intentional next-row boundary, not complete scheduler credit.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

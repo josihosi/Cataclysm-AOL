@@ -6,21 +6,21 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Move terrain discovery under fair persisted scheduling and
-add faction terrain preference plus bounded cheap/final scoring.** Terrain labels remain static
-priors, never confirmed safety or remote knowledge of loot, residents, or mobile danger.
+Current deterministic execution row: **Integrate exact dispatch drive/force-due ordering,
+acquire/retain/risk boundaries, and the real top-two/global-eight route budget.** Force-due may
+bypass drive only; it may not bypass readiness, knowledge, danger, route, reservation, or global
+limits.
 
-Latest resume packet (behavior checkpoint `83c40e3bc3`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `cb53cbafdb`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Schemas 5/12 persist the eligible-only hourly cursor, cooldown/backoff, and replay
-guard; 16-considered/two-start caps, 100/500 fairness, saturated wait ordering, and useful versus
-unsuccessful-return streak semantics are green. Final scheduler/frontier/fairness/structural/
-live-world/handoff/overmap-save/save-size gates pass 3/21,220, 5/231, 1/3,007, 28/773,
-119/29,155, 10/307, 2/24, and 1/10. Test binary SHA-256 is
-`bba9f8d75c0212f410c44f25209356f07d46c78ab61b7240d24fb0b35425f41c`
-(80,790,008 bytes). Final structured review is clean at 0.93; exact evidence is under
-`phase3-20260803/global-scheduler/MANIFEST.md`. The retained 2/100 terrain-scan service is the next
-row's measured defect, not scheduler credit; no current blocker.
+untouched. World schema 6 and intelligence schemas 4/5 separate fair global/per-camp terrain
+rotation from dispatch capacity, preserve recent-target repetition, and require unconfirmed
+terrain opportunities to travel as physical paired scouts. Terrain/structural/scheduler/frontier/
+live-world/fairness/save gates pass 5/4,486, 33/5,297, 4/25,610, 5/245, 124/33,705, 1/3,007,
+2/24, and 1/10. Test binary SHA-256 is
+`2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`
+(80,926,936 bytes). The accepted 100-site packet services terrain and dispatch 100/100; exact
+evidence is under `phase3-20260803/terrain-fit/MANIFEST.md`. No current blocker.
 
 Production target: `port/cdda-master`
 
@@ -715,8 +715,8 @@ Evidence defaults: significant sound 3h; smoke/light 6h; mobile threat 24h; huma
 Execution sequencing decision (2026-08-03): after the frontier-memory checkpoint, implement the
 persisted global scheduler envelope before terrain fit/scoring. This isolates and repairs
 dispatch-consideration starvation first while preserving the measured terrain prefix-scan defect.
-Terrain fit/scoring remains the next required behavior slice afterward and must land before the
-complete dispatch contract can be claimed.
+Terrain fit/scoring is checkpointed; the complete dispatch contract still requires exact drive,
+threshold, and bounded full-route consumption.
 
 Scheduler-envelope checkpoint (2026-08-03): `83c40e3bc3` persists schemas 5/12, rotates across
 eligible non-retired routine camps, proves the 16-consider/two-start and 100/500 fairness bounds,
@@ -725,10 +725,18 @@ no-candidate backoff. Current radial planners consume zero of the reserved eight
 the exact global route-solve budget remains unchecked until the terrain/score route consumer lands.
 The benchmark now records dispatch service separately from the still-prefix-starved terrain scan.
 
+Terrain-fit checkpoint (2026-08-03): `cb53cbafdb` persists fair independent terrain rotation and
+recent-target repetition, classifies conservative static terrain families, seeds only unconfirmed
+zero-bounty opportunities, and makes both factions physically scout them through the shared exact
+pair. Cheap/final integer scoring uses exact faction fit, physical evidence/freshness, uncertainty,
+distance/route quality, static risk, and repetition without raw-interest tie leakage. The accepted
+100-site packet services terrain 100/100 with spread one and dispatch 100/100 within six passes.
+Full route solves remain zero until the next bounded route consumer lands.
+
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
 - [x] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory. _Checkpoint `0576113190`: intelligence schema 3 persists one cursor plus exactly eight timestamps; deterministic four-waypoint radius-4/radius-9/home routes cost 18; only physical home return resolves a sector; danger skips without starvation; save/load and malformed-current controls are green._
-- [ ] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety.
+- [x] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety. _Checkpoint `cb53cbafdb`: static exact-family priors seed only unconfirmed zero-bounty terrain opportunities; both factions must send the shared exact pair and physically check them; fair terrain service reaches 100/100 sites with spread one._
 - [x] Give the party one shared high-level route and one movement owner.
 - [ ] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner.
 - [ ] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement.
@@ -789,8 +797,17 @@ Evidence:
   182,271 ns, max 207,916 ns, 245,760-byte replay RSS delta, 525,009-byte serialized growth, and
   all 50 eligible sites serviced; its 234-update wait remains the next scheduler repair, not a
   claimed fairness pass. Exact evidence is in external `phase3-20260803/shared-route/MANIFEST.md`.
+- Fair terrain fit: `cb53cbafdb` separates the global terrain cursor from dispatch, persists each
+  camp's 12-offset cursor and two-target repetition history, uses conservative exact terrain-ID
+  families, and routes unconfirmed terrain opportunities through physical paired scouting. Final
+  terrain/structural/scheduler/frontier/live-world/fairness/save gates pass 5/4,486, 33/5,297,
+  4/25,610, 5/245, 124/33,705, 1/3,007, 2/24, and 1/10. The accepted 100-site packet records
+  38,911 ns p95, 60,791 ns max, 212,992-byte timing RSS delta, 66,112 serialized bytes of growth,
+  terrain service 100/100 with spread one, and dispatch service 100/100 within six passes. Exact
+  commands, hashes, review fixes, and caveats are in external
+  `phase3-20260803/terrain-fit/MANIFEST.md`.
 - Commits: `3424fd5c24` (shared routine parity); `0247de602e` (exact persistent pair);
-  `e537ea7b49` (shared route and movement cursor).
+  `e537ea7b49` (shared route and movement cursor); `cb53cbafdb` (fair terrain fit/scoring).
 - Natural outing harness:
 - Resource concurrency test:
 - Reality-boundary test:

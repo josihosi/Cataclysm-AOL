@@ -20,23 +20,27 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 3 - shared real scouting ecology and finite bounty.
-- Current deterministic execution row: move bounded terrain discovery under the persisted
-  eligible-camp window and add faction terrain fit plus cheap/final scoring. Terrain labels remain
-  static priors and may not reveal loot, residents, or mobile danger.
+- Current deterministic execution row: integrate exact dispatch drive/force-due ordering,
+  acquire/retain/risk boundaries, and the real top-two/global-eight route budget.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
   persistent pairs, bounded shared routes, camp-local frontier memory through `0576113190`, and
   the persisted global fairness envelope through `83c40e3bc3`. Schemas 5/12, save/replay,
   eligible-only 16-camp rotation, two-start allocation, 100/500 fairness, saturated wait ordering,
-  and no-candidate backoff are green. The real eight-route budget stays unchecked until the next
-  terrain/scoring consumer lands.
+  and no-candidate backoff are green. Fair terrain discovery, exact faction fit, physical terrain
+  checks, and bounded score diagnostics are checkpointed at `cb53cbafdb`; the real eight-route
+  consumer and its exact thresholds remain unchecked.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256
   `bba9f8d75c0212f410c44f25209356f07d46c78ab61b7240d24fb0b35425f41c`; final structured
   review is clean at 0.93. Its 100-site benchmark proves all dispatch-eligible camps within six
-  passes while intentionally retaining 2/100 terrain-scan service as the next-row defect.
+  passes. Terrain evidence is archived at external
+  `phase3-20260803/terrain-fit/MANIFEST.md`: the 80,926,936-byte binary SHA-256 is
+  `2fa89eb409a66b91f49ef1442b5540241ed0cca415e0a05bc85c66aecac29fd3`, the accepted bounded
+  packet reaches terrain and dispatch service 100/100, and zero full-route solves remain the
+  intentional next-row boundary.
   Final clean-environment secure-store/API qualification is deferred to the later release gate and
   may not pause deterministic camp-AI work.
 
@@ -238,19 +242,19 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume Phase 3 with the persisted global scheduler and bounded fairness coverage. Do not reopen
+3. Resume Phase 3 with exact drive/force-due thresholds and bounded route consumption. Do not reopen
    Phase-0 statistics unless a later real implementation measurement approaches or exceeds a
    ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `0576113190`-source test binary where valid; run one redirected build at a time
+5. Reuse the current `cb53cbafdb`-source test binary where valid; run one redirected build at a time
    after implementation invalidates it.
 6. Phase 1 is closed; keep its transition and all-phase manifests as the persistence baseline.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
-frontier build and focused/full/save tests completed with exit `0`; the PATH-only `msgfmt` failure
-is recorded as non-credit in the artifact manifest. The baseline and production candidate remain
-untouched. Do not start another build until the scheduler source change invalidates the current
-test binary.
+terrain build and focused/full/save tests completed with exit `0`; the accidental direct
+`tests/Makefile` invocation is recorded as non-credit harness misuse in the artifact manifest.
+The baseline and production candidate remain untouched. Do not start another build until routed
+dispatch source changes invalidate the current test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A
 future Apple prompt may pause only the later release-harness action that requires it; ordinary
