@@ -505,15 +505,17 @@ Its 234-update legacy wait is retained as evidence for the scheduler row, not cl
 fairness pass. Exact logs and JSON are archived in external
 `phase3-20260803/shared-route/MANIFEST.md`.
 
-The persisted frontier route is green at `0576113190`. Final frontier/structural/live-world/
-handoff/overmap-save/save-size gates pass 4/172, 28/766, 116/7,800, 10/275, 2/24, and 1/10 at
-seed `830204929`. The 80,634,424-byte test binary is SHA-256
-`9b85592c80f72aa8f51523a6c59a68d8666597ddb62aaff9680137a91cc0aa6a`. Final structured
-review is clean at 0.92 after concrete regressions proved dangerous-sector skipping and exclusion
-of synthetic frontier leads from generic target matching. Exact logs are archived in external
-`phase3-20260803/frontier-sectors/MANIFEST.md`. Current validation target is the persisted hourly
-global scheduler: exact 16-considered/zero-to-eight-real-route-solve/two-start caps, same-hour
-replay, save/load cursor continuation, and 100/500-site eventual fairness.
+The persisted global scheduler is green at `83c40e3bc3`. Final scheduler/frontier/fairness/
+structural/live-world/handoff/overmap-save/save-size gates pass 3/21,220, 5/231, 1/3,007,
+28/773, 119/29,155, 10/307, 2/24, and 1/10 at seed `830204929`. The 80,790,008-byte test binary
+is SHA-256 `bba9f8d75c0212f410c44f25209356f07d46c78ab61b7240d24fb0b35425f41c`.
+The validated 100-site/32-hour child records 42,417 ns p95/max, all 100 routine camps serviced
+within six passes, zero fairness-replay RSS delta, and 22,755 serialized bytes of growth. Final
+structured review is clean at 0.93 after fixing mixed-site slot use, start monopolies, saturated
+wait ties, backoff/reset semantics, and benchmark clock drift. Exact evidence is under external
+`phase3-20260803/global-scheduler/MANIFEST.md`. Current validation target is terrain discovery and
+faction fit/scoring. The same artifact intentionally records only 2/100 terrain-scan service; that
+is a measured next-row defect, not scheduler credit.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

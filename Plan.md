@@ -170,10 +170,15 @@ approach/target/home clocks, and survives save/load without danger or harvest te
 members. Camp-local frontier coverage is checkpointed at `0576113190`: intelligence schema 3
 persists one cursor and eight last-resolved timestamps, all eight bounded radius-4/radius-9 routes
 cost 18, danger leaves a sector unresolved without starving the other seven, and only physical
-home return advances memory. Current execution row: add the persisted hourly global fairness
-envelope before terrain scoring, because the retained 234-update prefix-scan wait is the concrete
-starvation defect. Terrain preference/scoring remains the immediately following required behavior
-row; neither scheduler work nor frontier geometry claims perception or materialization early.
+home return advances memory. The persisted global fairness envelope is checkpointed at
+`83c40e3bc3`: schemas 5/12 resume the hourly eligible-camp cursor, enforce 16 considerations and
+two starts, order saturated contenders by real wait age, persist honest no-candidate backoff, and
+prove 100/500-site fairness without charging retired/micro sites. The bounded 100-site artifact
+services every dispatch-eligible camp within six passes while honestly retaining legacy terrain
+scan service at only 2/100. Current execution row: move terrain discovery under fair scheduling
+and add faction terrain fit plus bounded cheap/final scoring. Terrain labels remain static priors,
+not perception of loot, residents, or mobile danger; neither the scheduler nor frontier geometry
+claims perception or materialization early.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

@@ -20,13 +20,23 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 3 - shared real scouting ecology and finite bounty.
-- Current deterministic execution row: persist the hourly global scheduler cursor and prove the
-  16-considered/eight-route/two-start caps plus 100/500-site eventual fairness. This deliberately
-  precedes the still-required terrain-fit row to isolate the measured prefix-scan starvation.
+- Current deterministic execution row: move bounded terrain discovery under the persisted
+  eligible-camp window and add faction terrain fit plus cheap/final scoring. Terrain labels remain
+  static priors and may not reveal loot, residents, or mobile danger.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
-  persistent pairs, bounded shared routes, and camp-local frontier memory through `0576113190`.
+  persistent pairs, bounded shared routes, camp-local frontier memory through `0576113190`, and
+  the persisted global fairness envelope through `83c40e3bc3`. Schemas 5/12, save/replay,
+  eligible-only 16-camp rotation, two-start allocation, 100/500 fairness, saturated wait ordering,
+  and no-candidate backoff are green. The real eight-route budget stays unchecked until the next
+  terrain/scoring consumer lands.
+- Scheduler evidence is archived at
+  `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
+  The final test binary is 80,790,008 bytes at SHA-256
+  `bba9f8d75c0212f410c44f25209356f07d46c78ab61b7240d24fb0b35425f41c`; final structured
+  review is clean at 0.93. Its 100-site benchmark proves all dispatch-eligible camps within six
+  passes while intentionally retaining 2/100 terrain-scan service as the next-row defect.
   Final clean-environment secure-store/API qualification is deferred to the later release gate and
   may not pause deterministic camp-AI work.
 

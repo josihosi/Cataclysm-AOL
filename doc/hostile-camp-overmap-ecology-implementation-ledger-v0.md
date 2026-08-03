@@ -6,20 +6,21 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Persist the hourly global scheduler cursor and prove the
-16-considered/eight-route/two-start caps plus 100/500-site eventual fairness.** This explicitly
-precedes the still-required terrain-fit row to isolate the measured prefix-scan starvation.
+Current deterministic execution row: **Move terrain discovery under fair persisted scheduling and
+add faction terrain preference plus bounded cheap/final scoring.** Terrain labels remain static
+priors, never confirmed safety or remote knowledge of loot, residents, or mobile danger.
 
-Latest resume packet (behavior checkpoint `0576113190`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `83c40e3bc3`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase-3 frontier memory now persists one cursor and exactly eight timestamps; all eight
-four-waypoint radius-4/radius-9/home routes cost 18, a dangerous sector remains unresolved without
-starving the others, and only physical home return advances memory. Final frontier/structural/
-live-world/handoff/overmap-save/save-size gates pass 4/172, 28/766, 116/7,800, 10/275, 2/24,
-and 1/10. Test binary SHA-256 is
-`9b85592c80f72aa8f51523a6c59a68d8666597ddb62aaff9680137a91cc0aa6a`
-(80,634,424 bytes). Final structured review is clean; exact evidence is under
-`phase3-20260803/frontier-sectors/MANIFEST.md`; no current blocker.
+untouched. Schemas 5/12 persist the eligible-only hourly cursor, cooldown/backoff, and replay
+guard; 16-considered/two-start caps, 100/500 fairness, saturated wait ordering, and useful versus
+unsuccessful-return streak semantics are green. Final scheduler/frontier/fairness/structural/
+live-world/handoff/overmap-save/save-size gates pass 3/21,220, 5/231, 1/3,007, 28/773,
+119/29,155, 10/307, 2/24, and 1/10. Test binary SHA-256 is
+`bba9f8d75c0212f410c44f25209356f07d46c78ab61b7240d24fb0b35425f41c`
+(80,790,008 bytes). Final structured review is clean at 0.93; exact evidence is under
+`phase3-20260803/global-scheduler/MANIFEST.md`. The retained 2/100 terrain-scan service is the next
+row's measured defect, not scheduler credit; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -712,9 +713,17 @@ Camp-wide routine-dispatch cooldown (`next_routine_dispatch_eligible_at`) plus d
 Evidence defaults: significant sound 3h; smoke/light 6h; mobile threat 24h; human defenses/opportunity 3 days; failed route 72h; positive ground estimate 14 days; static terrain permanent; confirmed exhausted ground permanent. These are real durations, not fractions of a presumed 365-day year.
 
 Execution sequencing decision (2026-08-03): after the frontier-memory checkpoint, implement the
-persisted global scheduler envelope before terrain fit/scoring. This isolates and repairs the
-measured legacy prefix-scan starvation first. Terrain fit/scoring remains the next required
-behavior slice afterward and must land before the complete dispatch contract can be claimed.
+persisted global scheduler envelope before terrain fit/scoring. This isolates and repairs
+dispatch-consideration starvation first while preserving the measured terrain prefix-scan defect.
+Terrain fit/scoring remains the next required behavior slice afterward and must land before the
+complete dispatch contract can be claimed.
+
+Scheduler-envelope checkpoint (2026-08-03): `83c40e3bc3` persists schemas 5/12, rotates across
+eligible non-retired routine camps, proves the 16-consider/two-start and 100/500 fairness bounds,
+orders capped-overdue ties by uncapped wait age, and persists replay-safe 12/24/48-hour
+no-candidate backoff. Current radial planners consume zero of the reserved eight full-route solves;
+the exact global route-solve budget remains unchecked until the terrain/score route consumer lands.
+The benchmark now records dispatch service separately from the still-prefix-starved terrain scan.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
@@ -735,8 +744,8 @@ behavior slice afterward and must land before the complete dispatch contract can
 - [ ] Return abstract cargo to camp stockpile and derive scarcity pressure from real bounded fields rather than a permanent zero/test-only input.
 - [ ] Each actually harvested ground-bounty unit adds two `supply_units`; paid shakedown loot adds `max(1, floor(surrendered_trade_value / 1000))` units, both clamped to the stock cap. No invisible replenishment occurs merely because time passed.
 - [ ] If two camps reach one depleted OMT, only the first successful claim consumes it; the second reports an empty/stale lead.
-- [ ] Keep the existing global start budget or replace it with an equally explicit bounded scheduler.
-- [ ] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests.
+- [x] Keep the existing global start budget or replace it with an equally explicit bounded scheduler. _Checkpoint `83c40e3bc3`: eligible-only hourly rotation considers at most 16 and starts at most two exact pairs; global-budget exhaustion is not recorded as camp failure._
+- [ ] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, zero current full-route solves under the reserved cap of eight, and 100/500 fairness. Leave unchecked until real terrain/final-score route consumers enforce and boundary-test the global eight-solve cap._
 - [ ] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery.
 - [ ] Instrument the origin of every target lead/write (`legacy_radar`, new observer, signal, returned report) so Phase 4 can enforce a single-writer cutover.
 - [ ] Run a live/harness pair-materialization proof now: plausible entry location, stable IDs, shared route/cohesion, and no duplicate abstract advance.
