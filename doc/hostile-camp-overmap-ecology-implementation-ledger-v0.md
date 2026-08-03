@@ -575,18 +575,18 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
 - [x] Generalize singleton-only timeout/return logic to groups.
 - [x] Preserve at most one active external operation per camp for the first production version. The scout-sortie slot must close after all member resolutions or timeout and its final/provisional report revision must be accepted before a fresh follow-on operation can become active; no scouting/raid overlap or in-place type mutation.
-- [ ] Table-test populations 0-10 for both factions, wounds, sleep, incapacity, missing members, and active reservations.
+- [x] Table-test populations 0-10 for both factions, wounds, sleep, incapacity, missing members, and active reservations.
 - [x] Test camp size 2 becoming empty without losing site ownership or creating a phantom home defender.
 - [x] Define origin-loss behavior while a pair is away: camp attacked/captured/deleted/invalidated, recall if legitimately signaled, orphaned return, return failure, mission-slot cleanup, and final site ownership.
-- [ ] Test concurrent dispatch attempts and stale cleanup after a newer operation generation exists.
+- [x] Test concurrent dispatch attempts and stale cleanup after a newer operation generation exists.
 
 ### Phase 2 exit
 
-- [ ] Every v1 camp-backed routine outing is exactly a pair; no trio/singleton fallback is active.
-- [ ] No NPC can be reserved or dispatched twice.
-- [ ] No singleton fallback bypasses readiness/reserve rules.
-- [ ] Dispatch selection benchmark remains bounded and approximately linear.
-- [ ] Behavior + tests form a checkpoint commit.
+- [x] Every v1 camp-backed routine outing is exactly a pair; no trio/singleton fallback is active.
+- [x] No NPC can be reserved or dispatched twice.
+- [x] No singleton fallback bypasses readiness/reserve rules.
+- [x] Dispatch selection benchmark remains bounded and approximately linear.
+- [x] Behavior + tests form a checkpoint commit.
 
 Evidence:
 
@@ -650,7 +650,21 @@ Evidence:
   `6cb7a8727eef742a9666e2771accc6b71f6b7d64dcfe11557bc5dec07bcd7691`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/origin-loss/MANIFEST.md`
   (SHA-256 `595881ac38952fd262de1ed0a4fe6f23379996c09c38e18f13f1112878a62212`).
-- Dispatch benchmark:
+- Population/readiness checkpoint `b9fcddaa7b` covers healthy, wounded, sleeping, incapacitated,
+  missing, and active-pair states for both factions at every population from 0 through 10.
+  `[routine_policy]` passes 3 / 993 and full live-world passes 111 / 7,503.
+- Identity checkpoint `a8252313b7` preserves byte-stable same-camp re-claim, rejects cross-camp
+  claim aliases without mutation, and transactionally rejects a current save with duplicate
+  stable member IDs. Identity passes 1 / 12, same-camp generation/concurrency passes 1 / 70, and
+  full live-world passes 112 / 7,515.
+- Dispatch benchmark: the accepted Phase-0 structural packet records p95 `3,167 ns` at 10 sites
+  and `27,391 ns` at 100 sites (8.65x for 10x camps), with a `36,167 ns` 500-site deterministic
+  stress maximum. Current Phase-2 selection adds only bounded per-site roster validation and two
+  member-selection passes under the tested 0-10 contract; no cross-camp nested scan was added.
+  The forward current-binary runner was not credited: its two focused attempts failed warm-up/
+  binding, and a lower-fidelity direct child exposed that the legacy synthetic dispatch-return
+  fixture no longer satisfies exact operation ownership. That caveat and all hashes are retained
+  in external `phase2-20260803/phase2-closeout/MANIFEST.md`; no benchmark subsystem was added.
 
 ## Phase 3 - shared real scouting ecology and finite bounty
 

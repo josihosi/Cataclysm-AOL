@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 2 POPULATION AND CONCURRENCY CLOSEOUT
+**Status:** ACTIVE / GREEN / PHASE 3 SHARED ROUTINE ECOLOGY
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -153,8 +153,15 @@ checkpointed at `084b7c0747`, and terminal origin handling at `f29808d80b`: succ
 abort, death, legacy migration, origin loss, and current load-failure paths preserve exact
 activity/generation ownership. Schema 11 persists terminal origin and non-dispatchable survivors;
 only a real physical signal recalls a party, and a terminal origin cannot reactivate from later
-spawn claims. Current execution row: table-test populations 0-10 for both factions across
-readiness and active-reservation states, then close concurrent dispatch/duplicate-ID coverage.
+spawn claims. Phase 2 closes with population/readiness matrix checkpoint `b9fcddaa7b` and
+cross-camp stable-identity checkpoint `a8252313b7`: both factions are covered at populations
+0-10, same-camp generation races stay atomic, and no NPC ID can be owned by two camps. The
+accepted Phase-0 structural probe plus bounded current roster passes supplies the pragmatic
+approximately-linear selection gate; the obsolete synthetic dispatch/return fixture is recorded
+as non-credit drift rather than repaired into a new benchmark subsystem.
+Current execution row: enable the same routine structural scan, paired outing, abstract advance,
+and return machinery for both bandit and cannibal camps while retaining the small-site negative
+control.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

@@ -468,25 +468,16 @@ exits `0`; reservation passes 1 / 45, structural bounty 24 / 458, and full live-
 Structured xhigh review reports no findings at 0.96; exact evidence is in external
 `phase2-20260803/reservation-ownership/MANIFEST.md`.
 
-Generation-matched release is green at `61017301a4`. Stale identity/generation cleanup is a
-byte-identical no-op, including against a newer structural outing with the same activity ID;
-matching cleanup releases only unresolved away members, preserves casualties, and reports the
-exact return count. Final build exits `0`; reservation passes 1 / 70, structural bounty 24 / 483,
-and full live-world 109 / 6,478. The initial structured review accounting finding was accepted and
-the required final review is clean at 0.96; exact evidence is in external
-`phase2-20260803/matching-release/MANIFEST.md`.
-
-Complete external release and origin loss are green through `084b7c0747` and `f29808d80b`.
-Schema 11 persists explicit terminal origin plus living non-dispatchable orphans; only a physical
-signal changes an away party's course, terminal return is exact activity/generation-bound, and
-later abstract registration/tracked spawn cannot reactivate the site. Final origin/release/
-migration/current-load-failure filters pass 1/82, 1/93, 5/275, and 1/3; full live-world passes
-111/6,737. The 80,492,104-byte binary SHA-256 is
-`6cb7a8727eef742a9666e2771accc6b71f6b7d64dcfe11557bc5dec07bcd7691`; exact logs and the one
-root-review fix are archived in external `phase2-20260803/origin-loss/MANIFEST.md` (SHA-256
-`595881ac38952fd262de1ed0a4fe6f23379996c09c38e18f13f1112878a62212`). The active missing
-evidence is the population/readiness matrix, concurrent/cross-camp duplicate reservation checks,
-and the Phase-2 bounded-selection exit gate.
+Phase 2 is complete through population matrix `b9fcddaa7b` and cross-camp identity guard
+`a8252313b7`. Both factions are table-tested at populations 0-10 across readiness/missing/active
+states; focused policy passes 3/993. Same-camp generation concurrency passes 1/70, cross-camp
+identity passes 1/12, and final full live-world passes 112/7,515. The accepted Phase-0 structural
+packet remains the credited scale evidence: p95 `3,167 ns` at 10 sites and `27,391 ns` at 100
+sites, with `36,167 ns` at 500-site stress. A current forward runner was not credited after its
+two allowed warm-up/binding attempts; a direct child identified obsolete dispatch-return fixture
+ownership drift. Exact hashes, failures, and the bounded source/test rationale are in external
+`phase2-20260803/phase2-closeout/MANIFEST.md`. Phase-3 validation starts with cannibal/bandit
+structural-path parity, the retained small-site negative control, then full live-world regression.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
