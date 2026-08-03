@@ -2904,6 +2904,220 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     CHECK( future_phase.phase == hostile_operation_phase::lost );
 }
 
+TEST_CASE( "bandit_live_world_round_trips_every_active_hostile_operation_phase",
+           "[bandit][live_world][hostile_operation][phase][save][transition_event]" )
+{
+    using bandit_live_world::hostile_operation_phase;
+    using bandit_live_world::hostile_operation_transition_result;
+    using bandit_live_world::member_state;
+    using bandit_live_world::simulation_owner;
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( world, index, 45500 );
+    }
+    bandit_live_world::site_record &planning_site = world.sites.front();
+    const tripoint_abs_omt rally( 14, 20, 0 );
+    const tripoint_abs_omt target( 18, 20, 0 );
+    const std::vector<character_id> operation_members = {
+        character_id( 45500 ), character_id( 45501 )
+    };
+    prepare_hostile_follow_on( planning_site, 8, 7, "all-phase-target", target, 900 );
+    const bandit_live_world::hostile_operation_plan plan =
+        bandit_live_world::plan_hostile_operation(
+            planning_site, bandit_live_world::hostile_operation_kind::shakedown,
+            operation_members, { planning_site.anchor, rally, target }, rally, 902 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( planning_site, plan ) );
+
+    const std::string operation_id =
+        planning_site.active_hostile_operation.reservation.activity_id;
+    const int operation_generation =
+        planning_site.active_hostile_operation.reservation.generation;
+    const std::string source_report_application_key =
+        planning_site.active_hostile_operation.source_report_application_key;
+    const std::string return_application_key =
+        planning_site.active_hostile_operation.reservation.return_application_key;
+    const std::string report_application_key =
+        planning_site.active_hostile_operation.reservation.report_application_key;
+    const std::string cargo_application_key =
+        planning_site.active_hostile_operation.reservation.cargo_application_key;
+
+    const auto require_canonical_round_trip = [&]( bandit_live_world::world_state &candidate,
+    const hostile_operation_phase expected_phase,
+    const simulation_owner expected_owner,
+    const member_state expected_operation_member_state ) {
+        REQUIRE( candidate.sites.size() == 1 );
+        const bandit_live_world::site_record &before_site = candidate.sites.front();
+        REQUIRE( before_site.active_hostile_operation.is_active() );
+        const bandit_live_world::hostile_operation_state &before_operation =
+            before_site.active_hostile_operation;
+        REQUIRE( before_operation.phase == expected_phase );
+        bandit_live_world::world_state loaded;
+        bandit_live_world::world_state canonical_loaded;
+        bandit_live_world_probe::snapshot event_snapshot;
+        {
+            bandit_live_world_probe::session event_session(
+                bandit_live_world_probe::collection_mode::transition_events );
+            loaded = round_trip_world( candidate );
+            canonical_loaded = round_trip_world( loaded );
+            event_snapshot = event_session.result();
+        }
+        CHECK( event_snapshot.transition_events.empty() );
+        CHECK( event_snapshot.dropped_transition_events == 0 );
+        CHECK( serialize_world( canonical_loaded ) == serialize_world( loaded ) );
+        loaded = std::move( canonical_loaded );
+
+        REQUIRE( loaded.sites.size() == 1 );
+        const bandit_live_world::site_record &loaded_site = loaded.sites.front();
+        REQUIRE( loaded_site.active_hostile_operation.is_active() );
+        CHECK_FALSE( loaded_site.active_outing.is_active() );
+        CHECK( loaded_site.active_external_outing() ==
+               &loaded_site.active_hostile_operation.reservation );
+        const bandit_live_world::hostile_operation_state &loaded_operation =
+            loaded_site.active_hostile_operation;
+        const bandit_live_world::active_outing_state &before_reservation =
+            before_operation.reservation;
+        const bandit_live_world::active_outing_state &loaded_reservation =
+            loaded_operation.reservation;
+
+        CHECK( loaded_operation.operation_kind == before_operation.operation_kind );
+        CHECK( loaded_operation.phase == expected_phase );
+        CHECK( loaded_operation.source_report_revision ==
+               before_operation.source_report_revision );
+        CHECK( loaded_operation.source_report_generation ==
+               before_operation.source_report_generation );
+        CHECK( loaded_operation.source_report_activity_id ==
+               before_operation.source_report_activity_id );
+        CHECK( loaded_operation.source_report_application_key ==
+               source_report_application_key );
+        CHECK( loaded_operation.source_report_application_key ==
+               before_operation.source_report_application_key );
+        CHECK( loaded_operation.has_rally == before_operation.has_rally );
+        CHECK( loaded_operation.rally_omt == before_operation.rally_omt );
+        CHECK( loaded_operation.last_transition_reason ==
+               before_operation.last_transition_reason );
+        CHECK( loaded_operation.legacy_unpinned == before_operation.legacy_unpinned );
+
+        CHECK( loaded_reservation.activity_id == operation_id );
+        CHECK( loaded_reservation.activity_id == before_reservation.activity_id );
+        CHECK( loaded_reservation.generation == operation_generation );
+        CHECK( loaded_reservation.generation == before_reservation.generation );
+        CHECK( loaded_reservation.kind == before_reservation.kind );
+        CHECK( loaded_reservation.camp_id == before_reservation.camp_id );
+        CHECK( loaded_reservation.member_ids == operation_members );
+        CHECK( loaded_reservation.member_ids == before_reservation.member_ids );
+        CHECK( loaded_reservation.leader_id == before_reservation.leader_id );
+        CHECK( loaded_reservation.shared_route == before_reservation.shared_route );
+        CHECK( loaded_reservation.waypoint_index == before_reservation.waypoint_index );
+        CHECK( loaded_reservation.target_id == before_reservation.target_id );
+        CHECK( loaded_reservation.target_omt == before_reservation.target_omt );
+        CHECK( loaded_reservation.job_type == before_reservation.job_type );
+        CHECK( loaded_reservation.target_lead_id == before_reservation.target_lead_id );
+        CHECK( loaded_reservation.target_lead_revision ==
+               before_reservation.target_lead_revision );
+        CHECK( loaded_reservation.casualty_ids == before_reservation.casualty_ids );
+        CHECK( loaded_reservation.resolved_member_ids ==
+               before_reservation.resolved_member_ids );
+        CHECK( loaded_reservation.owner == expected_owner );
+        CHECK( loaded_reservation.owner == before_reservation.owner );
+        CHECK( loaded_reservation.handoff_epoch == before_reservation.handoff_epoch );
+        CHECK( loaded_reservation.last_advanced_minutes ==
+               before_reservation.last_advanced_minutes );
+        CHECK( loaded_reservation.return_application_key == return_application_key );
+        CHECK( loaded_reservation.return_application_key ==
+               before_reservation.return_application_key );
+        CHECK( loaded_reservation.report_application_key == report_application_key );
+        CHECK( loaded_reservation.report_application_key ==
+               before_reservation.report_application_key );
+        CHECK( loaded_reservation.cargo_application_key == cargo_application_key );
+        CHECK( loaded_reservation.cargo_application_key ==
+               before_reservation.cargo_application_key );
+        CHECK( loaded_site.current_scout_report.application_key ==
+               before_site.current_scout_report.application_key );
+        CHECK( loaded_site.current_scout_report.source_activity_id ==
+               before_site.current_scout_report.source_activity_id );
+        CHECK( loaded_site.current_scout_report.source_generation ==
+               before_site.current_scout_report.source_generation );
+
+        REQUIRE( loaded_site.members.size() == before_site.members.size() );
+        for( const bandit_live_world::member_record &before_member : before_site.members ) {
+            const bandit_live_world::member_record *loaded_member =
+                loaded_site.find_member( before_member.npc_id );
+            REQUIRE( loaded_member != nullptr );
+            CHECK( loaded_member->npc_template_id == before_member.npc_template_id );
+            CHECK( loaded_member->home_spawn_tile == before_member.home_spawn_tile );
+            CHECK( loaded_member->state == before_member.state );
+            CHECK( loaded_member->wounded_or_unready == before_member.wounded_or_unready );
+            CHECK( loaded_member->last_writeback_summary ==
+                   before_member.last_writeback_summary );
+            CHECK( std::count_if( loaded_site.members.begin(), loaded_site.members.end(),
+            [&]( const bandit_live_world::member_record &candidate_member ) {
+                return candidate_member.npc_id == before_member.npc_id;
+            } ) == 1 );
+        }
+        for( const character_id &member_id : operation_members ) {
+            CHECK( std::count( loaded_reservation.member_ids.begin(),
+                               loaded_reservation.member_ids.end(), member_id ) == 1 );
+            REQUIRE( loaded_site.find_member( member_id ) != nullptr );
+            CHECK( loaded_site.find_member( member_id )->state ==
+                   expected_operation_member_state );
+        }
+
+        candidate = std::move( loaded );
+    };
+
+    bandit_live_world::world_state lost_world = world;
+    require_canonical_round_trip( world, hostile_operation_phase::assembling,
+                                  simulation_owner::abstract, member_state::at_home );
+
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::assembling,
+                 hostile_operation_phase::outbound, 903, "all-phase departure" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::outbound,
+                                  simulation_owner::abstract, member_state::outbound );
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::outbound,
+                 hostile_operation_phase::rallying, 910, "all-phase rally" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::rallying,
+                                  simulation_owner::abstract, member_state::outbound );
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::rallying,
+                 hostile_operation_phase::waiting_night, 920, "all-phase wait" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::waiting_night,
+                                  simulation_owner::abstract, member_state::outbound );
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::waiting_night,
+                 hostile_operation_phase::approaching, 930, "all-phase approach" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::approaching,
+                                  simulation_owner::abstract, member_state::outbound );
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::approaching,
+                 hostile_operation_phase::committed_contact, 940, "all-phase contact" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::committed_contact,
+                                  simulation_owner::local, member_state::local_contact );
+    REQUIRE( transition_test_hostile_operation(
+                 world.sites.front(), hostile_operation_phase::committed_contact,
+                 hostile_operation_phase::returning_home, 950, "all-phase withdrawal" ) ==
+             hostile_operation_transition_result::applied );
+    require_canonical_round_trip( world, hostile_operation_phase::returning_home,
+                                  simulation_owner::abstract, member_state::outbound );
+
+    REQUIRE( transition_test_hostile_operation(
+                 lost_world.sites.front(), hostile_operation_phase::assembling,
+                 hostile_operation_phase::lost, 903, "all-phase lost copy" ) ==
+             hostile_operation_transition_result::applied );
+    REQUIRE( lost_world.sites.front().active_hostile_operation.reservation.resolved_member_ids ==
+             operation_members );
+    require_canonical_round_trip( lost_world, hostile_operation_phase::lost,
+                                  simulation_owner::abstract, member_state::at_home );
+}
+
 TEST_CASE( "bandit_live_world_transition_events_report_only_committed_scout_changes",
            "[bandit][live_world][transition_event][scout]" )
 {
