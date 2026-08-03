@@ -138,11 +138,12 @@ reason, and minute without entering saves. A real hostile operation now round-tr
 phase plus `lost` without synthetic transitions or duplicate/mutated operation, report, receipt,
 reservation, or member state.
 
-Phase-2 roster authority is checkpointed at `563499e3fe`: one persisted living total now feeds a
-derived, validated view of physical presence, away, reserved, and ready members, including strict
-current-schema validation and bounded legacy repair. Current execution row: materialize exactly the
-selected routine pair plus its policy-required local reserve, while keeping response-party sizing
-and micro-site singleton compatibility separate.
+Phase-2 roster authority is checkpointed at `563499e3fe`, and exact routine pairs are checkpointed
+at `c846be1632`. Bandit/cannibal camp routines now dispatch exactly two or wait, materialize only
+that pair plus one required concrete reserve, preserve the two-person empty-camp case, reject
+overwhelming danger before stale scouting, and keep micro-site singletons and threat-derived
+response sizing separate. Current execution row: select a fresh response party from the post-report
+ready roster so the routine pair never leaks into shakedown or raid force sizing.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

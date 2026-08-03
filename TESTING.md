@@ -435,10 +435,17 @@ SHA-256 `43e235eeb5ce7b3c23e38e796ba7d7dbeb5821ef9a3d19346f478ac8d3761531`;
 the clean final AutoReview and exact logs/hashes are archived in external
 `phase2-20260803/roster-authority/MANIFEST.md`.
 
-The active missing evidence is Phase 2 exact materialization and routine policy: both camp factions
-must materialize only the selected pair plus the policy-required local reserve, never a fixed
-faction count. Then route routine dispatch through exactly two members while keeping response-party
-sizing and micro-site singleton compatibility separate.
+Exact routine pairs are green at `c846be1632`. The final redirected Mac build exits `0`;
+`[routine_policy]` passes 2 cases / 183 assertions, full `[bandit][live_world]` passes 107 / 6,347,
+`[bandit][handoff]` passes 10 / 251, `[bandit][playback]` passes 37 / 1,028, overmap save regression
+passes 2 / 24, and save-size passes 1 / 10 at seed `830204929`. The 80,332,328-byte test binary is
+SHA-256 `fa71e8ff0d1172a4eff727976910d1be59e08cd9be236839c5d61e5f2c63adfd`; final AutoReview is clean.
+Exact commands, failed non-credit build routes, logs, hashes, and caveats are archived in external
+`phase2-20260803/routine-pair/MANIFEST.md`.
+
+The active missing evidence is Phase 2 fresh response selection: choose a new ready party only after
+the physical scout report and size it through the response policy. Then select observer/escort roles
+by actual capability and complete generation-scoped reservation/release coverage.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -74,15 +74,15 @@ The party-size, honest-knowledge, burned-information, faction-outcome, performan
 
 ### Routine party size
 
-- [ ] Living camp size 0-1 dispatches no routine scouting party.
-- [ ] Living camp size 2 dispatches both members when it scouts; the camp is genuinely empty while they are away.
-- [ ] Living camp size 3-4 normally dispatches two and retains the remainder.
-- [ ] Living camp size 5+ dispatches two in v1.
-- [ ] A three-person routine party is deferred policy work, not a v1 fallback. If later promoted, it requires a named logistical reason and at least two ready members remaining at home.
+- [x] Living camp size 0-1 dispatches no routine scouting party.
+- [x] Living camp size 2 dispatches both members when it scouts; the camp is genuinely empty while they are away.
+- [x] Living camp size 3-4 normally dispatches two and retains the remainder.
+- [x] Living camp size 5+ dispatches two in v1.
+- [x] A three-person routine party is deferred policy work, not a v1 fallback. If later promoted, it requires a named logistical reason and at least two ready members remaining at home.
 - [ ] Unknown or overwhelming danger causes delay, reroute, or abort; it never increases the v1 routine party above two.
-- [ ] A camp with fewer than two ready/capable members waits instead of sending a singleton.
-- [ ] The zero-home-reserve exception for a two-person camp applies only to routine scouting, never to a shakedown or lethal raid.
-- [ ] Small roadside/micro-site encounters may retain separate one-off policies; the two-person minimum applies to camp-backed routine scouting.
+- [x] A camp with fewer than two ready/capable members waits instead of sending a singleton.
+- [x] The zero-home-reserve exception for a two-person camp applies only to routine scouting, never to a shakedown or lethal raid.
+- [x] Small roadside/micro-site encounters may retain separate one-off policies; the two-person minimum applies to camp-backed routine scouting.
 
 ### Shared machinery, faction-specific outcome
 
@@ -564,19 +564,19 @@ Evidence:
 Primary anchors: `count_live_members`, abstract `headcount`, lazy materialization, `plan_site_dispatch`, `choose_camp_map_dispatch`, `plan_structural_bounty_outing`, `scout_sortie_should_return_home`.
 
 - [x] Persist and validate distinct roster counts/sets for living total, physically present at site, away, reserved, and ready; never overload one `headcount` with all meanings.
-- [ ] Materialize exactly the selected party plus required local reserve, never fixed faction counts unrelated to the plan.
-- [ ] Implement shared policy plumbing but separate v1 `routine_scout_policy` (exact pair or no outing) from threat-derived `response_party_policy` for shakedowns and raids.
-- [ ] V1 `routine_scout_policy` always returns exactly two or no outing. Keep any future trio hook disabled and separately test that high danger/reward cannot activate it.
+- [x] Materialize exactly the selected party plus required local reserve, never fixed faction counts unrelated to the plan.
+- [x] Implement shared policy plumbing but separate v1 `routine_scout_policy` (exact pair or no outing) from threat-derived `response_party_policy` for shakedowns and raids.
+- [x] V1 `routine_scout_policy` always returns exactly two or no outing. Keep any future trio hook disabled and separately test that high danger/reward cannot activate it.
 - [ ] Use fresh response-party selection after a scout report; two-standard scouting must not leak into combat-force sizing.
-- [ ] Implement the exact routine size matrix in the behavior contract.
+- [x] Implement the exact routine size matrix in the behavior contract.
 - [ ] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
 - [ ] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
 - [ ] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
 - [ ] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
-- [ ] Generalize singleton-only timeout/return logic to groups.
-- [ ] Preserve at most one active external operation per camp for the first production version. The scout-sortie slot must close after all member resolutions or timeout and its final/provisional report revision must be accepted before a fresh follow-on operation can become active; no scouting/raid overlap or in-place type mutation.
+- [x] Generalize singleton-only timeout/return logic to groups.
+- [x] Preserve at most one active external operation per camp for the first production version. The scout-sortie slot must close after all member resolutions or timeout and its final/provisional report revision must be accepted before a fresh follow-on operation can become active; no scouting/raid overlap or in-place type mutation.
 - [ ] Table-test populations 0-10 for both factions, wounds, sleep, incapacity, missing members, and active reservations.
-- [ ] Test camp size 2 becoming empty without losing site ownership or creating a phantom home defender.
+- [x] Test camp size 2 becoming empty without losing site ownership or creating a phantom home defender.
 - [ ] Define origin-loss behavior while a pair is away: camp attacked/captured/deleted/invalidated, recall if legitimately signaled, orphaned return, return failure, mission-slot cleanup, and final site ownership.
 - [ ] Test concurrent dispatch attempts and stale cleanup after a newer operation generation exists.
 
@@ -596,7 +596,14 @@ Evidence:
 - Roster authority: 2 cases / 132 assertions; full live-world: 105 / 6,154; overmap save regression:
   2 / 24; save-size: 1 / 10; handoff: 10 / 251. Final Mac build and every filter exit `0`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/roster-authority/MANIFEST.md`.
-- Matrix test result:
+- Commit: `c846be1632` adds exact bandit/cannibal routine-pair and materialization policy, keeps response
+  sizing and micro-site singleton policy separate, preserves a concrete reserve at population 3+,
+  applies dispatch transactionally, generalizes return timing, and rejects undersized response
+  requests plus overwhelming-danger stale dispatch.
+- Matrix test result: `[routine_policy]` 2 / 183 and full live-world 107 / 6,347; handoff 10 / 251;
+  playback 37 / 1,028; overmap save regression 2 / 24; save-size 1 / 10. Final build and every
+  credited filter exit `0`; final AutoReview is clean.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/routine-pair/MANIFEST.md`.
 - Reservation tests:
 - Dispatch benchmark:
 
