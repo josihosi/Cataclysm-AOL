@@ -727,12 +727,31 @@ struct structural_outing_plan {
     int repetition_penalty = 0;
     int cheap_route_quality = 0;
     int final_route_quality = 0;
+    int full_route_cost = -1;
+    int max_route_segment_risk = 0;
     int cheap_score = 0;
     int final_score = 0;
+    bool route_solved = false;
     int expected_stalking_minutes = -1;
     int expected_arrival_minutes = -1;
     int expected_return_minutes = -1;
     std::vector<std::string> notes;
+};
+
+struct structural_route_read {
+    bool reachable = false;
+    int complete_route_cost = -1;
+    int max_segment_risk = 0;
+    std::string summary;
+};
+
+struct routine_dispatch_evaluation {
+    int need = 0;
+    int knowledge_gap = 0;
+    int best_cheap_target = 0;
+    int cadence = 0;
+    int drive = 0;
+    bool force_due = false;
 };
 
 struct structural_threat_read {
@@ -937,6 +956,13 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
 int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
 int structural_terrain_static_risk( const std::string &terrain_fit_class );
+int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
+                                 int cadence );
+bool hostile_camp_routine_score_eligible( int score, bool retained_target );
+bool hostile_camp_routine_risk_blocked( int risk );
+bool hostile_camp_routine_route_risk_eligible( int risk, int max_segment_risk );
+routine_dispatch_evaluation evaluate_hostile_camp_routine_dispatch(
+    const site_record &site, int now_minutes, int best_cheap_target );
 std::string make_structural_bounty_lead_id( const std::string &site_id,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
@@ -975,7 +1001,9 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         int now_minutes, int scan_budget, int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
-        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
+        const std::function<structural_route_read( const site_record &,
+                const structural_outing_plan & )> &route_lookup = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );

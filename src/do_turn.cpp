@@ -8,6 +8,7 @@
 #include <chrono>
 #include <climits>
 #include <cstdlib>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -2424,6 +2425,40 @@ bandit_live_world::structural_threat_read live_bandit_structural_threat_read(
     return threat;
 }
 
+bandit_live_world::structural_route_read live_bandit_structural_route_read(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::structural_outing_plan &plan )
+{
+    bandit_live_world::structural_route_read read;
+    const auto path = overmap_buffer.get_travel_path(
+                site.anchor, plan.target_omt, overmap_path_params::for_npc() );
+    if( path.points.empty() || path.cost < 0 ) {
+        read.summary = "live structural route solve found no passable route";
+        return read;
+    }
+
+    const long long one_way_cost = ( static_cast<long long>( path.cost ) + 23 ) / 24;
+    read.complete_route_cost = static_cast<int>( std::min<long long>(
+                                   std::numeric_limits<int>::max(), one_way_cost * 2 ) );
+    read.max_segment_risk = 0;
+    for( const tripoint_abs_omt &omt : path.points ) {
+        if( omt == plan.target_omt ) {
+            continue;
+        }
+        const std::string terrain_id = live_bandit_structural_terrain_id( omt ).value_or(
+                                           std::string() );
+        const bandit_live_world::structural_bounty_read terrain =
+            bandit_live_world::classify_structural_bounty_terrain( terrain_id );
+        read.max_segment_risk = std::max(
+            read.max_segment_risk,
+            bandit_live_world::structural_terrain_static_risk( terrain.terrain_fit_class ) );
+    }
+    read.reachable = read.complete_route_cost <= 18;
+    read.summary = read.reachable ? "live structural route solve accepted" :
+                   "live structural route solve exceeded complete-route cap";
+    return read;
+}
+
 bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -2432,7 +2467,7 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
     bandit_live_world::structural_bounty_maintenance_result result =
         bandit_live_world::advance_structural_bounty_maintenance( state, live_bandit_current_minutes(),
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
-                live_bandit_structural_threat_read );
+                live_bandit_structural_threat_read, live_bandit_structural_route_read );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     return result;
 }
