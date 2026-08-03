@@ -604,10 +604,14 @@ observations are green at `600685c1c2`: focused 5/147, legacy compaction 1/47, s
 full live-world 145/34,745, save compatibility 2/24, save-size 1/10, and harness 63/63. The final
 81,672,728-byte binary SHA-256 is `3a074e7a...`; saturated serialization is 51,244 bytes. External
 `phase4-20260803/typed-observation/MANIFEST.md` records the corrected local-owner fixture, both
-exit-0 builds, exact hashes, and private-dead/shared-return proof. Next, the legitimate bounded
-structural observer must write typed outing evidence without changing camp danger before physical
-report; day/dusk/night/weather/optics and quiet no-radar controls follow. Human-camp
-recovery remains sequenced after typed observations and physical reports.
+exit-0 builds, exact hashes, and private-dead/shared-return proof. Production observer/report wiring
+is green at `e7c3da73e7`: focused physical observation 2/183, full abstract threat 7/467, full
+live-world 147/34,928, save compatibility 2/24, save-size 1/10, and harness 63/63. The final
+81,711,064-byte binary SHA-256 is `fb9198ed...`; saturated serialization remains 51,244 bytes.
+External `phase4-20260803/observer-writer/MANIFEST.md` records exact commands, hashes, the two
+root-found correctness fixes, and the boundary: the day/dusk/night/weather/terrain/elevation/optics
+matrix and quiet no-radar controls remain next. Human-camp recovery remains sequenced after typed
+observations and physical reports.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -2,24 +2,22 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 4 legitimate observer wiring**
+Status: **ACTIVE - Phase 4 legitimate visibility envelope**
 
 Active phase: **Phase 4**
 
-Current deterministic execution row: **Persist explicit target-lead origin and prevent the legacy
-player-pressure dispatcher from consuming structural/frontier/terrain-owned leads.**
+Current deterministic execution row: **Prove the production OMT visibility envelope at clear day,
+intermediate conditions, and unlit night with real environmental and optics modifiers.**
 
-Latest resume packet (behavior checkpoint `d5e76a447f`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `e7c3da73e7`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Structural schema 8 reads only current plus at most three legitimately visible committed
-route OMTs under remote weather/light and bounded concrete threat work, persists one exclusive
-overlap episode, consumes at most two withdrawal checks, and applies exact provisional non-victory
-attrition once without damaging the threat. Wound/casualty recovery persists 72 hours. Focused,
-full-live-world, and save gates pass 5/284, 137/34,527, and 3/34; final test binary SHA-256 is
-`41d85072...` (81,582,248 bytes). The accepted 100-site artifact SHA-256 is `5528ba39...` with
-61,951 ns p95, 66,750 ns max, 262,144-byte timed RSS delta, 72,164 serialized growth, and 100/100
-service within six passes. Exact evidence is under external
-`phase3-20260803/abstract-threat/MANIFEST.md`; no current blocker.
+untouched. The production structural reader now writes strict schema-1 route evidence for both
+factions without pre-report camp mutation. Forward evidence is shared only by the unresolved exact
+pair; overlap remains observer-private, and a dead observer cannot teach the camp. Only an eligible
+living return carrier can apply an unexpired, exact-revision hard-danger fact at home. Focused,
+abstract-threat, full-live-world, save, save-size, and harness gates pass 2/183, 7/467,
+147/34,928, 2/24, 1/10, and 63/63; saturated state remains 51,244 bytes. Exact evidence and resume
+state are under external `phase4-20260803/observer-writer/{MANIFEST,RESUME}.md`; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -865,18 +863,18 @@ first Phase-4 slice must persist a test-visible lead origin, exclude structural/
 owners from the legacy consumer, and prove no dual writer before broader observation work.
 
 - [x] Define a compact observation record: stable evidence/source ID, sense, observer ID, source/receiver OMT, time and 30-minute bucket, strength, visual quality, distinct defender IDs plus simultaneity window, normalized observed power/equipment detail, target revision, uncertainty radius, expiry, and shared status. _Checkpoint `600685c1c2` adds strict schema-1 records to the existing bounded outing/report path, exact `(fact,bucket)` dedup, 64-input/16-retained caps, full-batch atomic rejection, legacy schema-0 compatibility, and both-faction save proof._
-- [ ] Use legitimate OMT visibility with clear-day baseline around 3 OMT, intermediate visibility around 2, and unlit night around 1; let weather, light, terrain, elevation, and optics modify the real calculation.
+- [ ] Use legitimate OMT visibility with clear-day baseline around 3 OMT, intermediate visibility around 2, and unlit night around 1; let weather, light, terrain, elevation, and optics modify the real calculation. _Checkpoint `e7c3da73e7` connects the production structural reader to strict physical evidence and bounds it to current plus three permitted route OMTs; the explicit environmental/optics distance matrix remains this row's next target._
 - [ ] Use separate acquire/retain thresholds and last-known-location age so visibility does not flicker every update.
 - [ ] Convert smoke and light into bounded evidence rather than exact avatar coordinates.
 - [ ] Add only significant sounds (gunfire, alarms, explosions) initially; preserve uncertainty and age.
 - [ ] Record actual local zombie/horde observations only when legitimately visible.
-- [ ] Treat terrain danger as a prior and observed mobile danger as timestamped evidence.
-- [ ] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Ownership footing is green at `d801058e79`: lead IDs reject cross-origin rewrites before mutation and the legacy player-pressure consumer excludes structural/frontier/terrain leads. Completion still requires the typed observer writer plus the isolated legacy-only/no-radar production controls._
+- [x] Treat terrain danger as a prior and observed mobile danger as timestamped evidence. _Static route terrain remains a non-mobile prior; checkpoint `e7c3da73e7` records mobile structural danger with exact observed minute/bucket, source/receiver, uncertainty, expiry, and target revision, then applies it only at physical return._
+- [ ] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Ownership footing is green at `d801058e79` and the typed production structural writer is green at `e7c3da73e7`; completion still requires isolated legacy-only/no-radar production controls._
 - [ ] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path.
 - [ ] A quiet evac shelter inside the former radar radius remains undiscovered without a route, signal, or legitimate line of sight.
 - [ ] Moving the player does not drag a stationary camp lead to the new avatar OMT.
 - [ ] False/decoy smoke, light, and sound can produce stale/empty investigations rather than magical correction.
-- [ ] Scouts share observations only while within party communication range; a dead scout's private unshared evidence does not return home. _The state/report boundary is green at `600685c1c2`: private facts never enter final or provisional reports, shared facts become reported at physical return, and the dead-before-share case leaves camp ignorant. The production writer still must derive private/shared from actual party range._
+- [ ] Scouts share observations only while within party communication range; a dead scout's private unshared evidence does not return home. _The state/report boundary is green at `600685c1c2`; the production remote writer at `e7c3da73e7` shares only a forward fact held by both unresolved outbound pair members, keeps overlap private, and proves dead-observer ignorance. A later local-distance case must still prove the same rule after pair separation/materialization._
 - [ ] Add debug rendering/logging of last-known position, evidence provenance, age, and expiry.
 - [ ] Run live/harness proof in this phase for quiet-evac no-radar, day/dusk/night/weather/optics, smoke/light/sound, target relocation, and decoy/empty leads.
 
@@ -891,7 +889,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; external evidence under `phase4-20260803/{lead-origin,typed-observation}/MANIFEST.md`.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer}/MANIFEST.md`.
 - No-radar control:
 - Visibility matrix:
 - Evidence/save benchmark:
