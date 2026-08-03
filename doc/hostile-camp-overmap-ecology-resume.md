@@ -1,6 +1,6 @@
 # Hostile-camp overmap ecology resume packet
 
-Updated: 2026-08-03
+Updated: 2026-08-04
 
 ## Repository state
 
@@ -20,7 +20,7 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: introduce the temporary test-visible single-writer cutover.
+- Current deterministic execution row: prove autonomous observer/signal discovery for both factions, then remove exact player targeting.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -71,7 +71,15 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   writes are absent. Focused 4/389 and full live-world 161/36,027 are green at seed `830204929`.
   Exact evidence is under external `phase4-20260803/local-zombie/{MANIFEST,RESUME}.md`. The first-64
   tracker order may conservatively omit later monsters and IDs are snapshots rather than durable
-  monster identity. The next row is the isolated observer/signal versus legacy-radar cutover.
+  monster identity.
+- The temporary single-writer cutover is checkpointed at `dda62833fc`: production keeps typed
+  structural/local observers active while caller and callee gates disable both legacy hostile-camp
+  writers before their player-position reads. The legacy-only comparison control disables typed
+  observers, and candidate-copy signal updates reject mode/cross-origin collisions byte-identically.
+  Focused 1/24, adjacent live-signal 4/63, full live-world 162/36,051, and handoff/save 12/331 are
+  green at seed `830204929`; exact commands and hashes are under external
+  `phase4-20260804/single-writer/{MANIFEST,RESUME}.md`. Exact-player logic remains only inside the
+  disabled comparison function; autonomous both-faction discovery and its deletion are next.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

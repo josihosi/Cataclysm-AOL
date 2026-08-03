@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 BOUNDED LOCAL DANGER EVIDENCE
+**Status:** ACTIVE / GREEN / PHASE 4 AUTONOMOUS DISCOVERY AND RADAR REMOVAL
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -244,8 +244,13 @@ binding, and ordinary-zombie/rider filtering produce one private 24-hour typed f
 abstract horde population, avatar sight, exact map squares, or lead mutation. Focused 4/389 and
 full live-world 161/36,027 are green under external
 `phase4-20260803/local-zombie/MANIFEST.md`. Tracker-order false negatives and snapshot-not-identity
-IDs remain explicit bounded caveats. Next, isolate observer/signal discovery from legacy radar with
-a test-visible single-writer cutover. The compound human-camp opportunity-recovery
+IDs remain explicit bounded caveats. The temporary single-writer cutover is checkpointed at
+`dda62833fc`: production runs typed observer/signal evidence while both legacy camp-facing writers
+are disabled, and the explicit legacy-only control cannot revise an observer-owned lead. Focused
+1/24, adjacent signal 4/63, full live-world 162/36,051, and handoff/save 12/331 are green under
+external `phase4-20260804/single-writer/MANIFEST.md`. Exact-player logic remains only in the
+disabled comparison function; next, prove autonomous both-faction discovery and remove it. The
+compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

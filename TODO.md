@@ -7,10 +7,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Introduce the test-visible single-writer cutover: observer/signal discovery enabled with legacy
-   radar disabled, plus a separately isolated legacy-only control.
-2. Prove quiet former-radar, avatar-movement, both-faction no-dual-writer, and autonomous discovery
-   controls before removing direct-player targeting.
+1. Prove autonomous observer/signal discovery for bandit and cannibal camps, then remove exact
+   `direct_player_range` targeting and active-player-OMT matching.
+2. Prove quiet former-radar, avatar-movement, both-faction no-dual-writer, and decoy/empty-lead
+   controls on the no-radar production path.
 3. Add evidence provenance/age debug output and the bounded Phase-4 aging/save packet after the
    no-radar production path is green.
 

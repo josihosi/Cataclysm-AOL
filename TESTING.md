@@ -653,8 +653,15 @@ focused live-adapter/persistence/atomicity proof passes 4/389 and full live-worl
 loaded-monster snapshot feeds only active exact-pair NPC LOS and ordinary hostile-zombie evidence;
 riders, abstract horde population, avatar sight, exact map squares, and lead writes are excluded.
 External `phase4-20260803/local-zombie/MANIFEST.md` preserves commands, hashes, review findings,
-and the bounded tracker-order/snapshot-ID caveats. Temporary single-writer/no-radar controls are
-next.
+and the bounded tracker-order/snapshot-ID caveats. The temporary single-writer cutover is green at
+`dda62833fc`: focused mode/atomicity proof passes 1/24, adjacent live-signal 4/63, full live-world
+162/36,051, and handoff/save 12/331 at seed `830204929`. The 82,097,592-byte test binary SHA-256 is
+`b179c23b0c8dc521585d22b2e86ace192ea5e1c2e80da1c2032017ef993aeec4`. Production enables typed
+observers while caller and callee gates disable both legacy hostile-camp writers before those
+writers read player position; legacy-only comparison cannot revise an observer-origin lead or its
+scalar memory. External `phase4-20260804/single-writer/MANIFEST.md` records exact commands, hashes,
+and the claim boundary. Autonomous both-faction discovery, exact-player code removal, quiet
+former-radar, avatar relocation, and decoy/empty investigation proof are next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
