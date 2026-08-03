@@ -2,24 +2,24 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 1 authoritative persistent model**
+Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
-Active phase: **Phase 1**
+Active phase: **Phase 3**
 
-First deterministic execution row: **Give every return/report/resource/cargo/member component a stable idempotency key.**
+Current deterministic execution row: **Persist the hourly global scheduler cursor and prove the
+16-considered/eight-route/two-start caps plus 100/500-site eventual fairness.** This explicitly
+precedes the still-required terrain-fit row to isolate the measured prefix-scan starvation.
 
-Latest resume packet (behavior checkpoint `258247d26c`, 2026-08-02): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `0576113190`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Phase 1 is active at component idempotency. Final reports now persist bandit-shakedown
-or cannibal-night-raid policy and a canonical 64-entry acted watermark keyed by target ID, OMT,
-and policy. Same-key stale/exact tuples cannot reopen assessment; different target/policy keys
-advance independently; policy drift, explicit unknown fields, and revision overflow fail closed.
-The final redirected Mac build exits `0`; policy tests pass 3/42, full live-world 99/5,046,
-handoff 9/203, and save compatibility 2/24. Test binary SHA-256 is
-`12030ac296c498bc03b87f27949107039a036c4331e79a261114c9d4646e5e87`
-(80,057,064 bytes). Manifest SHA-256 is
-`fe377b62d12766fae0fca3fa07c03278d33f5d5963b9eb83fff4645e2b6304b0` under
-`phase1-20260802/report-policy`; no current blocker.
+untouched. Phase-3 frontier memory now persists one cursor and exactly eight timestamps; all eight
+four-waypoint radius-4/radius-9/home routes cost 18, a dangerous sector remains unresolved without
+starving the others, and only physical home return advances memory. Final frontier/structural/
+live-world/handoff/overmap-save/save-size gates pass 4/172, 28/766, 116/7,800, 10/275, 2/24,
+and 1/10. Test binary SHA-256 is
+`9b85592c80f72aa8f51523a6c59a68d8666597ddb62aaff9680137a91cc0aa6a`
+(80,634,424 bytes). Final structured review is clean; exact evidence is under
+`phase3-20260803/frontier-sectors/MANIFEST.md`; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -711,9 +711,14 @@ Camp-wide routine-dispatch cooldown (`next_routine_dispatch_eligible_at`) plus d
 
 Evidence defaults: significant sound 3h; smoke/light 6h; mobile threat 24h; human defenses/opportunity 3 days; failed route 72h; positive ground estimate 14 days; static terrain permanent; confirmed exhausted ground permanent. These are real durations, not fractions of a presumed 365-day year.
 
+Execution sequencing decision (2026-08-03): after the frontier-memory checkpoint, implement the
+persisted global scheduler envelope before terrain fit/scoring. This isolates and repairs the
+measured legacy prefix-scan starvation first. Terrain fit/scoring remains the next required
+behavior slice afterward and must land before the complete dispatch contract can be claimed.
+
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
-- [ ] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory.
+- [x] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory. _Checkpoint `0576113190`: intelligence schema 3 persists one cursor plus exactly eight timestamps; deterministic four-waypoint radius-4/radius-9/home routes cost 18; only physical home return resolves a sector; danger skips without starvation; save/load and malformed-current controls are green._
 - [ ] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety.
 - [x] Give the party one shared high-level route and one movement owner.
 - [ ] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner.

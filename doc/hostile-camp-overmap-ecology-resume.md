@@ -19,17 +19,16 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 ## Active execution state
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
-- Active phase: Phase 2 - roster authority, paired dispatch, and reservations.
-- First unchecked deterministic execution row: release matching reservations on every success,
-  abort, death, migration, origin-loss, and load-failure path.
+- Active phase: Phase 3 - shared real scouting ecology and finite bounty.
+- Current deterministic execution row: persist the hourly global scheduler cursor and prove the
+  16-considered/eight-route/two-start caps plus 100/500-site eventual fairness. This deliberately
+  precedes the still-required terrain-fit row to isolate the measured prefix-scan starvation.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
-- Current engineering state: Phase 0 and Phase 1 are complete. Phase-2 roster authority is
-  checkpointed at `563499e3fe`, exact routine pairs at `c846be1632`, fresh response selection
-  at `5fbefa452e`, capability-aware routine pairs at `f049104375`, atomic reservation ownership
-  at `f65e6bd28a`, and generation-matched structural release at `61017301a4`; final clean-environment
-  secure-store/API qualification is deferred to the later release gate and may not pause
-  deterministic camp-AI work.
+- Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
+  persistent pairs, bounded shared routes, and camp-local frontier memory through `0576113190`.
+  Final clean-environment secure-store/API qualification is deferred to the later release gate and
+  may not pause deterministic camp-AI work.
 
 ## Launch evidence
 
@@ -217,23 +216,30 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   casualties, and returns the exact committed count. Build and focused/structural/full live-world
   filters exit `0`; final review is clean; exact evidence is under
   `phase2-20260803/matching-release/MANIFEST.md`.
+- Phase-3 frontier checkpoint `0576113190` persists one cursor plus eight last-resolved timestamps,
+  plans deterministic four-waypoint radius-4/radius-9/home routes at cost 18, resolves memory only
+  after physical home return, skips dangerous sectors without starving the other seven, and keeps
+  synthetic probes out of generic targeting. The final build exits `0`; frontier/structural/
+  live-world/handoff/overmap-save/save-size gates pass 4/172, 28/766, 116/7,800, 10/275, 2/24,
+  and 1/10. Final structured review is clean; exact evidence is under
+  `phase3-20260803/frontier-sectors/MANIFEST.md`.
 
 ## Resume procedure
 
 1. Confirm `git status --short`, `git log -1 --format=%H`, and `git worktree list` before editing.
 2. Read `Plan.md`, `SUCCESS.md`, `TODO.md`, `TESTING.md`, and the canonical implementation ledger.
-3. Resume Phase 2 with complete matching release-path coverage. Do not reopen
+3. Resume Phase 3 with the persisted global scheduler and bounded fairness coverage. Do not reopen
    Phase-0 statistics unless a later real implementation measurement approaches or exceeds a
    ratified budget.
 4. Do not retry Keychain or send another blocker message during this resume. Retain the shell export and leave the later release-harness secure-store/API row unchecked.
-5. Reuse the current `61017301a4`-source test binary where valid; run one redirected build at a time
+5. Reuse the current `0576113190`-source test binary where valid; run one redirected build at a time
    after implementation invalidates it.
 6. Phase 1 is closed; keep its transition and all-phase manifests as the persistence baseline.
 
 Build state at this checkpoint: no build, test, review, benchmark, or profile is running. The final
-matching-release build and focused/full tests completed with exit `0`; earlier failed fixture routes are
-recorded as non-credit in the artifact manifest. The baseline and production candidate remain
-untouched. Do not start another build until the next Phase-2 source change invalidates the current
+frontier build and focused/full/save tests completed with exit `0`; the PATH-only `msgfmt` failure
+is recorded as non-credit in the artifact manifest. The baseline and production candidate remain
+untouched. Do not start another build until the scheduler source change invalidates the current
 test binary.
 
 Keychain/TCC/password interaction is not a whole-goal blocker for this deterministic package. A

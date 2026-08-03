@@ -167,9 +167,13 @@ pair through load, reject forged singleton packets transactionally, and reject d
 advancement without a threat read or state change. The bounded shared structural route is
 checkpointed at `e537ea7b49`: one exact pair owns a schema-6 radial route, advances through fixed
 approach/target/home clocks, and survives save/load without danger or harvest teleporting its
-members. Current execution row: extend that foundation into the persisted least-recent
-eight-sector frontier contract without claiming terrain, perception, or materialization work
-early.
+members. Camp-local frontier coverage is checkpointed at `0576113190`: intelligence schema 3
+persists one cursor and eight last-resolved timestamps, all eight bounded radius-4/radius-9 routes
+cost 18, danger leaves a sector unresolved without starving the other seven, and only physical
+home return advances memory. Current execution row: add the persisted hourly global fairness
+envelope before terrain scoring, because the retained 234-update prefix-scan wait is the concrete
+starvation defect. Terrain preference/scoring remains the immediately following required behavior
+row; neither scheduler work nor frontier geometry claims perception or materialization early.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
