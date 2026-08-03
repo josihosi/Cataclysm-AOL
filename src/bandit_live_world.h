@@ -86,6 +86,7 @@ enum class local_gate_posture {
 
 enum class camp_lead_kind {
     structural_bounty,
+    terrain_opportunity,
     harvested_site,
     human_activity,
     basecamp_activity,
@@ -269,13 +270,16 @@ struct camp_map_lead {
 };
 
 struct camp_intelligence_map {
-    int schema_version = 3;
+    int schema_version = 5;
     int last_daily_cleanup_minutes = -1;
     int next_near_tick_minutes = -1;
     int next_mid_tick_minutes = -1;
     int next_far_tick_minutes = -1;
     int next_frontier_tick_minutes = -1;
     int known_radius_omt = 0;
+    int terrain_scan_cursor = 0;
+    std::string last_routine_target_lead_id;
+    std::string previous_routine_target_lead_id;
     int frontier_radius_omt = 0;
     int frontier_sector_cursor = 0;
     std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
@@ -615,9 +619,10 @@ struct site_record {
 };
 
 struct world_state {
-    int schema_version = 5;
+    int schema_version = 6;
     std::string owner_id = "hells_raiders_live_owner_v0";
     int routine_scheduler_cursor = 0;
+    int routine_terrain_scan_cursor = 0;
     int routine_scheduler_last_hour = -1;
     std::vector<site_record> sites;
     std::map<tripoint_abs_omt, finite_resource_record> finite_resources;
@@ -675,6 +680,7 @@ struct camp_map_dispatch_decision {
 
 struct structural_bounty_read {
     std::string terrain_class;
+    std::string terrain_fit_class;
     int bounty = 0;
     int confidence = 0;
     int latent_threat = 0;
@@ -715,6 +721,14 @@ struct structural_outing_plan {
     int frontier_cursor = 0;
     int effective_interest = 0;
     int known_threat = 0;
+    int terrain_fit = 0;
+    int static_risk = 0;
+    int estimate_freshness = 0;
+    int repetition_penalty = 0;
+    int cheap_route_quality = 0;
+    int final_route_quality = 0;
+    int cheap_score = 0;
+    int final_score = 0;
     int expected_stalking_minutes = -1;
     int expected_arrival_minutes = -1;
     int expected_return_minutes = -1;
@@ -743,6 +757,9 @@ struct structural_bounty_maintenance_result {
     int scheduler_hour = -1;
     int scheduler_cursor_before = 0;
     int scheduler_cursor_after = 0;
+    int terrain_scan_cursor_before = 0;
+    int terrain_scan_cursor_after = 0;
+    int terrain_scan_sites_selected = 0;
     int scheduler_consider_cap = 16;
     int full_route_solve_cap = 8;
     int full_route_solves = 0;
@@ -917,6 +934,9 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         const std::string &target_id );
 void normalize_camp_intelligence( site_record &site );
 structural_bounty_read classify_structural_bounty_terrain( const std::string &overmap_terrain_id );
+int hostile_camp_terrain_fit( hostile_site_profile profile,
+                              const std::string &terrain_fit_class );
+int structural_terrain_static_risk( const std::string &terrain_fit_class );
 std::string make_structural_bounty_lead_id( const std::string &site_id,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,

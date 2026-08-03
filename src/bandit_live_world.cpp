@@ -331,7 +331,8 @@ bool structural_route_is_canonical_for_lead( const std::vector<tripoint_abs_omt>
         return route.size() >= 2 && lead.omt == route[route.size() - 2] &&
                frontier_route_is_canonical( route, anchor, *frontier_sector );
     }
-    return lead.kind == camp_lead_kind::structural_bounty &&
+    return ( lead.kind == camp_lead_kind::structural_bounty ||
+             lead.kind == camp_lead_kind::terrain_opportunity ) &&
            structural_route_is_canonical( route, anchor, lead.omt );
 }
 
@@ -683,6 +684,9 @@ std::optional<camp_lead_kind> camp_lead_kind_from_string( const std::string &val
     if( value == "structural_bounty" ) {
         return camp_lead_kind::structural_bounty;
     }
+    if( value == "terrain_opportunity" ) {
+        return camp_lead_kind::terrain_opportunity;
+    }
     if( value == "harvested_site" ) {
         return camp_lead_kind::harvested_site;
     }
@@ -1025,6 +1029,17 @@ bool contains_any_token( const std::string &haystack, const std::vector<std::str
     return false;
 }
 
+bool matches_terrain_id_family( const std::string &terrain_id,
+                                const std::vector<std::string> &families )
+{
+    for( const std::string &family : families ) {
+        if( terrain_id == family || terrain_id.rfind( family + "_", 0 ) == 0 ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 camp_lead_kind signal_kind_to_camp_lead_kind( const std::string &kind )
 {
     if( kind == "smoke" ) {
@@ -1050,6 +1065,7 @@ bandit_dry_run::lead_family family_for_camp_map_lead( const camp_map_lead &lead 
         case camp_lead_kind::sound_signal:
             return bandit_dry_run::lead_family::corridor;
         case camp_lead_kind::structural_bounty:
+        case camp_lead_kind::terrain_opportunity:
         case camp_lead_kind::harvested_site:
         case camp_lead_kind::human_activity:
         case camp_lead_kind::basecamp_activity:
@@ -2199,6 +2215,8 @@ std::string to_string( camp_lead_kind kind )
     switch( kind ) {
         case camp_lead_kind::structural_bounty:
             return "structural_bounty";
+        case camp_lead_kind::terrain_opportunity:
+            return "terrain_opportunity";
         case camp_lead_kind::harvested_site:
             return "harvested_site";
         case camp_lead_kind::human_activity:
@@ -3045,13 +3063,18 @@ void camp_map_lead::deserialize( const JsonObject &jo )
 void camp_intelligence_map::serialize( JsonOut &json ) const
 {
     json.start_object();
-    json.member( "schema_version", 3 );
+    json.member( "schema_version", 5 );
     json.member( "last_daily_cleanup_minutes", last_daily_cleanup_minutes );
     json.member( "next_near_tick_minutes", next_near_tick_minutes );
     json.member( "next_mid_tick_minutes", next_mid_tick_minutes );
     json.member( "next_far_tick_minutes", next_far_tick_minutes );
     json.member( "next_frontier_tick_minutes", next_frontier_tick_minutes );
     json.member( "known_radius_omt", known_radius_omt );
+    json.member( "terrain_scan_cursor", std::clamp( terrain_scan_cursor, 0, 11 ) );
+    json.member( "last_routine_target_lead_id",
+                 last_routine_target_lead_id.substr( 0, max_camp_lead_id_length ) );
+    json.member( "previous_routine_target_lead_id",
+                 previous_routine_target_lead_id.substr( 0, max_camp_lead_id_length ) );
     json.member( "frontier_radius_omt", frontier_radius_omt );
     json.member( "frontier_sector_cursor", frontier_sector_cursor );
     json.member( "frontier_last_resolved_minutes", frontier_last_resolved_minutes );
@@ -3064,7 +3087,7 @@ void camp_intelligence_map::deserialize( const JsonObject &jo )
     camp_intelligence_map candidate;
     int loaded_schema_version = 1;
     jo.read( "schema_version", loaded_schema_version );
-    if( loaded_schema_version < 1 || loaded_schema_version > 3 ) {
+    if( loaded_schema_version < 1 || loaded_schema_version > 5 ) {
         jo.throw_error( "camp intelligence schema version is unsupported" );
     }
     jo.read( "last_daily_cleanup_minutes", candidate.last_daily_cleanup_minutes );
@@ -3073,6 +3096,33 @@ void camp_intelligence_map::deserialize( const JsonObject &jo )
     jo.read( "next_far_tick_minutes", candidate.next_far_tick_minutes );
     jo.read( "next_frontier_tick_minutes", candidate.next_frontier_tick_minutes );
     jo.read( "known_radius_omt", candidate.known_radius_omt );
+    if( loaded_schema_version >= 4 ) {
+        if( !jo.has_member( "terrain_scan_cursor" ) ) {
+            jo.throw_error( "schema-v4 camp intelligence is missing terrain scan state" );
+        }
+        jo.read( "terrain_scan_cursor", candidate.terrain_scan_cursor );
+        if( candidate.terrain_scan_cursor < 0 || candidate.terrain_scan_cursor >= 12 ) {
+            jo.throw_error( "schema-v4 camp intelligence has malformed terrain scan state" );
+        }
+    } else if( jo.has_member( "terrain_scan_cursor" ) ) {
+        jo.throw_error( "legacy camp intelligence cannot contain schema-v4 terrain scan state" );
+    }
+    const bool any_routine_target_history = jo.has_member( "last_routine_target_lead_id" ) ||
+                                            jo.has_member( "previous_routine_target_lead_id" );
+    if( loaded_schema_version >= 5 ) {
+        if( !jo.has_member( "last_routine_target_lead_id" ) ||
+            !jo.has_member( "previous_routine_target_lead_id" ) ) {
+            jo.throw_error( "schema-v5 camp intelligence is missing routine target history" );
+        }
+        jo.read( "last_routine_target_lead_id", candidate.last_routine_target_lead_id );
+        jo.read( "previous_routine_target_lead_id", candidate.previous_routine_target_lead_id );
+        if( candidate.last_routine_target_lead_id.size() > max_camp_lead_id_length ||
+            candidate.previous_routine_target_lead_id.size() > max_camp_lead_id_length ) {
+            jo.throw_error( "schema-v5 camp intelligence has oversized routine target history" );
+        }
+    } else if( any_routine_target_history ) {
+        jo.throw_error( "legacy camp intelligence cannot contain schema-v5 routine target history" );
+    }
     jo.read( "frontier_radius_omt", candidate.frontier_radius_omt );
     if( loaded_schema_version >= 3 ) {
         if( !jo.has_member( "frontier_sector_cursor" ) ||
@@ -3090,7 +3140,7 @@ void camp_intelligence_map::deserialize( const JsonObject &jo )
         jo.throw_error( "legacy camp intelligence cannot contain schema-v3 frontier memory" );
     }
     jo.read( "leads", candidate.leads );
-    candidate.schema_version = 3;
+    candidate.schema_version = 5;
     *this = std::move( candidate );
 }
 
@@ -3376,7 +3426,13 @@ void normalize_camp_intelligence( site_record &site )
         site.intelligence_map.frontier_sector_cursor = 0;
         site.intelligence_map.frontier_last_resolved_minutes.assign( frontier_sector_count, -1 );
     }
-    site.intelligence_map.schema_version = 3;
+    site.intelligence_map.terrain_scan_cursor = std::clamp(
+            site.intelligence_map.terrain_scan_cursor, 0, 11 );
+    site.intelligence_map.last_routine_target_lead_id.resize( std::min(
+                site.intelligence_map.last_routine_target_lead_id.size(), max_camp_lead_id_length ) );
+    site.intelligence_map.previous_routine_target_lead_id.resize( std::min(
+                site.intelligence_map.previous_routine_target_lead_id.size(), max_camp_lead_id_length ) );
+    site.intelligence_map.schema_version = 5;
 
     for( std::string &mark : site.known_recent_marks ) {
         mark.resize( std::min( mark.size(), max_live_signal_mark_length ) );
@@ -4700,6 +4756,8 @@ void site_record::deserialize( const JsonObject &jo )
           ( ( structural_lead->kind == camp_lead_kind::structural_bounty &&
               active_outing.job_type == ( structural_lead->target_id == "forest" ?
                                           "scavenge" : "scout" ) ) ||
+            ( structural_lead->kind == camp_lead_kind::terrain_opportunity &&
+              active_outing.job_type == "scout" ) ||
             ( structural_frontier_sector && active_outing.job_type == "scout" ) ) &&
           structural_lead->omt == active_outing.target_omt &&
           structural_route_is_canonical_for_lead( active_outing.shared_route, anchor,
@@ -5517,9 +5575,10 @@ bool site_record::eligible_for_empty_site_retirement() const
 
 void world_state::clear()
 {
-    schema_version = 5;
+    schema_version = 6;
     owner_id = "hells_raiders_live_owner_v0";
     routine_scheduler_cursor = 0;
+    routine_terrain_scan_cursor = 0;
     routine_scheduler_last_hour = -1;
     sites.clear();
     finite_resources.clear();
@@ -5538,6 +5597,12 @@ void world_state::serialize( JsonOut &json ) const
         const int bounded_scheduler_cursor = sites.empty() || routine_scheduler_cursor < 0 ? 0 :
                                              routine_scheduler_cursor % static_cast<int>( sites.size() );
         json.member( "routine_scheduler_cursor", bounded_scheduler_cursor );
+        if( schema_version >= 6 ) {
+            const int bounded_terrain_scan_cursor = sites.empty() || routine_terrain_scan_cursor < 0 ? 0 :
+                                                    routine_terrain_scan_cursor %
+                                                    static_cast<int>( sites.size() );
+            json.member( "routine_terrain_scan_cursor", bounded_terrain_scan_cursor );
+        }
         json.member( "routine_scheduler_last_hour", routine_scheduler_last_hour );
     }
     json.member( "sites", sites );
@@ -5567,31 +5632,46 @@ void world_state::deserialize( const JsonObject &jo )
     world_state candidate;
     int loaded_schema_version = 0;
     jo.read( "schema_version", loaded_schema_version );
-    if( loaded_schema_version < 0 || loaded_schema_version > 5 ) {
+    if( loaded_schema_version < 0 || loaded_schema_version > 6 ) {
         jo.throw_error( "hostile live-world schema version is unsupported" );
     }
     jo.read( "owner_id", candidate.owner_id );
     jo.read( "sites", candidate.sites );
     const bool any_scheduler_field = jo.has_member( "routine_scheduler_cursor" ) ||
+                                     jo.has_member( "routine_terrain_scan_cursor" ) ||
                                      jo.has_member( "routine_scheduler_last_hour" );
-    const bool complete_scheduler_payload = jo.has_member( "routine_scheduler_cursor" ) &&
-                                            jo.has_member( "routine_scheduler_last_hour" );
+    const bool complete_v5_scheduler_payload = jo.has_member( "routine_scheduler_cursor" ) &&
+                                               jo.has_member( "routine_scheduler_last_hour" );
+    const bool complete_v6_scheduler_payload = complete_v5_scheduler_payload &&
+                                               jo.has_member( "routine_terrain_scan_cursor" );
     if( loaded_schema_version < 5 && any_scheduler_field ) {
         jo.throw_error( "pre-v5 world cannot contain routine scheduler state" );
     }
-    if( loaded_schema_version >= 5 && !complete_scheduler_payload ) {
-        jo.throw_error( "v5 world must contain complete routine scheduler state" );
+    if( loaded_schema_version == 5 &&
+        ( !complete_v5_scheduler_payload || jo.has_member( "routine_terrain_scan_cursor" ) ) ) {
+        jo.throw_error( "v5 world must contain exactly the v5 routine scheduler state" );
     }
-    if( complete_scheduler_payload ) {
+    if( loaded_schema_version >= 6 && !complete_v6_scheduler_payload ) {
+        jo.throw_error( "v6 world must contain complete routine scheduler state" );
+    }
+    if( complete_v5_scheduler_payload ) {
         jo.read( "routine_scheduler_cursor", candidate.routine_scheduler_cursor );
         jo.read( "routine_scheduler_last_hour", candidate.routine_scheduler_last_hour );
+        if( loaded_schema_version >= 6 ) {
+            jo.read( "routine_terrain_scan_cursor", candidate.routine_terrain_scan_cursor );
+        }
         const bool cursor_is_valid = candidate.sites.empty() ?
                                      candidate.routine_scheduler_cursor == 0 :
                                      candidate.routine_scheduler_cursor >= 0 &&
                                      candidate.routine_scheduler_cursor <
                                      static_cast<int>( candidate.sites.size() );
-        if( !cursor_is_valid || candidate.routine_scheduler_last_hour < -1 ) {
-            jo.throw_error( "v5 world has malformed routine scheduler state" );
+        const bool terrain_cursor_is_valid = candidate.sites.empty() ?
+                candidate.routine_terrain_scan_cursor == 0 :
+                candidate.routine_terrain_scan_cursor >= 0 &&
+                candidate.routine_terrain_scan_cursor < static_cast<int>( candidate.sites.size() );
+        if( !cursor_is_valid || !terrain_cursor_is_valid ||
+            candidate.routine_scheduler_last_hour < -1 ) {
+            jo.throw_error( "world has malformed routine scheduler state" );
         }
     }
     std::set<character_id> claimed_member_ids;
@@ -5634,7 +5714,7 @@ void world_state::deserialize( const JsonObject &jo )
             }
         }
     }
-    candidate.schema_version = 5;
+    candidate.schema_version = 6;
     *this = std::move( candidate );
 }
 
@@ -5765,7 +5845,7 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
     claimant->applied_resource_generation = operation_generation;
     claimant->last_resource_application_key = application_key;
     claimant->last_resource_claimed_units = claimed_units;
-    state.schema_version = 5;
+    state.schema_version = 6;
     result.status = finite_resource_claim_status::applied;
     result.claimed_units = claimed_units;
     result.remaining_units = updated.remaining_units;
@@ -6463,7 +6543,8 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
     int best_distance = 0;
     int best_score = 0;
     for( const camp_map_lead &lead : site.intelligence_map.leads ) {
-        if( lead.kind == camp_lead_kind::frontier_probe ) {
+        if( lead.kind == camp_lead_kind::frontier_probe ||
+            lead.kind == camp_lead_kind::terrain_opportunity ) {
             continue;
         }
         if( lead.target_id.empty() && lead.lead_id.empty() ) {
@@ -6509,14 +6590,55 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
     const std::string id = lowercase_copy( overmap_terrain_id );
     structural_bounty_read read;
     read.terrain_class = "open";
+    read.terrain_fit_class = "unknown";
     read.summary = "no structural bounty";
 
-    if( id.empty() || contains_any_token( id, { "open", "field", "meadow", "road", "empty" } ) ) {
+    if( id.empty() ) {
         return read;
     }
 
-    if( contains_any_token( id, { "forest", "woods", "wood", "swamp", "wetland" } ) ) {
+    if( contains_any_token( id, { "impassable" } ) ) {
+        read.terrain_fit_class = "impassable";
+        return read;
+    }
+
+    if( matches_terrain_id_family( id, { "road", "highway", "bridge", "bridgehead" } ) ) {
+        read.terrain_fit_class = "road";
+        return read;
+    }
+
+    if( id == "field" || matches_terrain_id_family( id, { "meadow" } ) ) {
+        read.terrain_fit_class = "field";
+        return read;
+    }
+
+    if( contains_any_token( id, { "swamp", "wetland", "forest_water" } ) ) {
         read.terrain_class = "forest";
+        read.terrain_fit_class = "swamp";
+        read.bounty = 1;
+        read.confidence = 1;
+        read.latent_threat = 0;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "low structural swamp/wetland bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "forest_edge", "woods_edge", "forest_trail", "trailhead" } ) ) {
+        read.terrain_class = "forest";
+        read.terrain_fit_class = "forest_edge";
+        read.bounty = 1;
+        read.confidence = 1;
+        read.latent_threat = 0;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "low structural forest-edge bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "forest", "woods", "wood" } ) ) {
+        read.terrain_class = "forest";
+        read.terrain_fit_class = "deep_forest";
         read.bounty = 1;
         read.confidence = 1;
         read.latent_threat = 0;
@@ -6526,8 +6648,33 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
         return read;
     }
 
-    if( contains_any_token( id, { "downtown", "city", "mall", "office_tower", "apartment" } ) ) {
+    if( contains_any_token( id, { "shelter", "cabin" } ) ) {
         read.terrain_class = "town";
+        read.terrain_fit_class = "shelter";
+        read.bounty = 2;
+        read.confidence = 1;
+        read.latent_threat = 1;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium structural shelter bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "rural", "farm" } ) ) {
+        read.terrain_class = "town";
+        read.terrain_fit_class = "rural";
+        read.bounty = 2;
+        read.confidence = 1;
+        read.latent_threat = 1;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium structural rural bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "downtown", "city_center", "city_centre" } ) ) {
+        read.terrain_class = "town";
+        read.terrain_fit_class = "dense_urban";
         read.bounty = 3;
         read.confidence = 1;
         read.latent_threat = 2;
@@ -6537,9 +6684,22 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
         return read;
     }
 
-    if( contains_any_token( id, { "town", "house", "home", "farm", "cabin", "building",
-                                  "shop", "store", "garage", "shelter" } ) ) {
+    if( contains_any_token( id, { "town_edge", "town_outskirt", "outskirts" } ) ) {
         read.terrain_class = "town";
+        read.terrain_fit_class = "town_edge";
+        read.bounty = 2;
+        read.confidence = 1;
+        read.latent_threat = 1;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium structural town-edge bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "house", "home", "building", "shop", "store", "garage",
+                                  "mall", "office", "apartment" } ) ) {
+        read.terrain_class = "town";
+        read.terrain_fit_class = "building";
         read.bounty = 2;
         read.confidence = 1;
         read.latent_threat = 1;
@@ -6549,7 +6709,78 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
         return read;
     }
 
+    if( contains_any_token( id, { "town" } ) ) {
+        read.terrain_class = "town";
+        read.terrain_fit_class = "unknown";
+        read.bounty = 2;
+        read.confidence = 1;
+        read.latent_threat = 1;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium structural town bounty with unknown exact terrain fit";
+        return read;
+    }
+
     return read;
+}
+
+int hostile_camp_terrain_fit( const hostile_site_profile profile,
+                              const std::string &terrain_fit_class )
+{
+    const std::string terrain = lowercase_copy( terrain_fit_class );
+    if( terrain == "impassable" || profile == hostile_site_profile::none ||
+        profile == hostile_site_profile::small_hostile_site ) {
+        return 0;
+    }
+    if( terrain.empty() || terrain == "unknown" ) {
+        return 333;
+    }
+
+    if( profile == hostile_site_profile::camp_style ) {
+        if( terrain == "road" || terrain == "shelter" || terrain == "building" ||
+            terrain == "town_edge" || terrain == "dense_urban" ) {
+            return 1000;
+        }
+        if( terrain == "field" || terrain == "forest_edge" || terrain == "rural" ) {
+            return 500;
+        }
+        if( terrain == "deep_forest" || terrain == "swamp" ) {
+            return 250;
+        }
+    }
+
+    if( profile == hostile_site_profile::cannibal_camp ) {
+        if( terrain == "forest_edge" || terrain == "rural" || terrain == "shelter" ) {
+            return 1000;
+        }
+        if( terrain == "deep_forest" || terrain == "swamp" || terrain == "field" ||
+            terrain == "town_edge" || terrain == "dense_urban" ) {
+            return 500;
+        }
+        if( terrain == "road" || terrain == "building" ) {
+            return 250;
+        }
+    }
+    return 333;
+}
+
+int structural_terrain_static_risk( const std::string &terrain_fit_class )
+{
+    const std::string terrain = lowercase_copy( terrain_fit_class );
+    if( terrain == "impassable" ) {
+        return 1000;
+    }
+    if( terrain == "swamp" || terrain == "dense_urban" ) {
+        return 600;
+    }
+    if( terrain == "deep_forest" || terrain == "forest_edge" || terrain == "building" ||
+        terrain == "town_edge" || terrain == "shelter" ) {
+        return 400;
+    }
+    if( terrain == "road" || terrain == "field" ) {
+        return 200;
+    }
+    return 300;
 }
 
 std::string make_structural_bounty_lead_id( const std::string &site_id,
@@ -6558,6 +6789,15 @@ std::string make_structural_bounty_lead_id( const std::string &site_id,
     std::ostringstream out;
     out << site_id << ":structural_bounty:" << omt.x() << ',' << omt.y() << ',' << omt.z()
         << ':' << ( terrain_class.empty() ? "unknown" : terrain_class );
+    return out.str();
+}
+
+std::string make_terrain_opportunity_lead_id( const std::string &site_id,
+        const tripoint_abs_omt &omt, const std::string &terrain_fit_class )
+{
+    std::ostringstream out;
+    out << site_id << ":terrain_opportunity:" << omt.x() << ',' << omt.y() << ',' << omt.z()
+        << ':' << terrain_fit_class;
     return out.str();
 }
 
@@ -6626,7 +6866,8 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
     lead.target_id = read.terrain_class;
     lead.omt = omt;
     lead.radius_omt = read.radius_omt;
-    lead.source_key = "structural_bounty:" + read.terrain_class;
+    lead.source_key = "structural_bounty:" + read.terrain_class + ":terrain_fit:" +
+                      ( read.terrain_fit_class.empty() ? "unknown" : read.terrain_fit_class );
     lead.source_summary = read.summary;
     lead.first_seen_minutes = now_minutes;
     lead.last_seen_minutes = now_minutes;
@@ -6641,6 +6882,36 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
         lead.times_checked_empty = existing->times_checked_empty;
         lead.times_harvested = existing->times_harvested;
     }
+    return upsert_camp_map_lead( site, std::move( lead ) );
+}
+
+bool upsert_terrain_opportunity_lead( site_record &site, const tripoint_abs_omt &omt,
+                                      const structural_bounty_read &read, const int now_minutes )
+{
+    if( read.terrain_fit_class != "road" && read.terrain_fit_class != "field" ) {
+        return false;
+    }
+
+    camp_map_lead lead;
+    lead.lead_id = make_terrain_opportunity_lead_id( site.site_id, omt,
+                   read.terrain_fit_class );
+    if( site.intelligence_map.find_lead( lead.lead_id ) != nullptr ) {
+        return false;
+    }
+    lead.kind = camp_lead_kind::terrain_opportunity;
+    lead.status = camp_lead_status::suspected;
+    lead.target_id = read.terrain_fit_class;
+    lead.omt = omt;
+    lead.source_key = "terrain_opportunity:terrain_fit:" + read.terrain_fit_class;
+    lead.source_summary = "static " + read.terrain_fit_class +
+                          " terrain worth an honest paired scout check";
+    lead.first_seen_minutes = now_minutes;
+    lead.last_seen_minutes = now_minutes;
+    lead.bounty = 0;
+    lead.threat = 0;
+    lead.confidence = 0;
+    lead.threat_confirmed = false;
+    lead.last_outcome = "terrain_opportunity_suspected";
     return upsert_camp_map_lead( site, std::move( lead ) );
 }
 
@@ -6674,6 +6945,95 @@ bool record_camp_resource_estimate( site_record &site, const std::string &lead_i
     return advance_camp_map_lead_revision( site, *lead );
 }
 
+static void sample_structural_bounty_site( site_record &site,
+        structural_bounty_scan_result &result, const int now_minutes, const int sample_cap,
+        const bool allow_active_outside,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup )
+{
+    static const std::array<std::pair<int, int>, 12> near_offsets = { {
+            { -4, 0 }, { 4, 0 }, { 0, -4 }, { 0, 4 },
+            { -5, -1 }, { 5, 1 }, { -1, 5 }, { 1, -5 },
+            { -6, 0 }, { 6, 0 }, { 0, -6 }, { 0, 6 },
+        } };
+    constexpr int near_scan_cadence_minutes = 60;
+    constexpr int near_scan_radius_omt = 8;
+    result.sites_considered++;
+    bandit_live_world_probe::increment(
+        bandit_live_world_probe::counter::structural_scan_sites_considered );
+    bandit_live_world_probe::record_site_service( site.site_id,
+            bandit_live_world_probe::site_service::scan_considered );
+    if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
+        result.sites_skipped_not_camp++;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::structural_scan_sites_skipped_not_camp );
+        return;
+    }
+    if( site.retired_empty_site ) {
+        result.sites_skipped_retired++;
+        return;
+    }
+    if( site.has_active_outside_pressure() && !allow_active_outside ) {
+        result.sites_skipped_active_outside++;
+        return;
+    }
+    const bool has_ready_home_presence = ready_at_home_member_count( site ) > 0 ||
+                                         site.count_home_side_signals() > 0;
+    if( !has_ready_home_presence ) {
+        result.sites_skipped_no_ready_home++;
+        return;
+    }
+    if( site.intelligence_map.next_near_tick_minutes >= 0 &&
+        now_minutes >= 0 && now_minutes < site.intelligence_map.next_near_tick_minutes ) {
+        result.sites_deferred_by_cadence++;
+        return;
+    }
+
+    int samples_for_site = 0;
+    while( samples_for_site < sample_cap && result.budget_used < result.scan_budget ) {
+        const int offset_index = std::clamp( site.intelligence_map.terrain_scan_cursor, 0, 11 );
+        const std::pair<int, int> &offset = near_offsets[static_cast<std::size_t>( offset_index )];
+        site.intelligence_map.terrain_scan_cursor = ( offset_index + 1 ) %
+                                                    static_cast<int>( near_offsets.size() );
+        const tripoint_abs_omt candidate( site.anchor.x() + offset.first,
+                                          site.anchor.y() + offset.second, site.anchor.z() );
+        result.candidates_sampled++;
+        result.budget_used++;
+        samples_for_site++;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::structural_scan_candidates_sampled );
+        bandit_live_world_probe::record_site_service( site.site_id,
+                bandit_live_world_probe::site_service::scan_samples );
+
+        const std::optional<std::string> terrain_id = terrain_lookup( candidate );
+        if( !terrain_id ) {
+            continue;
+        }
+        const structural_bounty_read read = classify_structural_bounty_terrain( *terrain_id );
+        if( !read.eligible || read.bounty <= 0 ) {
+            if( upsert_terrain_opportunity_lead( site, candidate, read, now_minutes ) ) {
+                result.leads_seeded++;
+            }
+            continue;
+        }
+        if( structural_bounty_scan_memory_suppresses_refresh( site.intelligence_map, candidate,
+                read.terrain_class, now_minutes ) ) {
+            result.leads_suppressed_by_memory++;
+            continue;
+        }
+        if( upsert_structural_bounty_lead( site, candidate, read, now_minutes ) ) {
+            result.leads_seeded++;
+        }
+    }
+
+    if( samples_for_site > 0 ) {
+        site.intelligence_map.known_radius_omt = std::max( site.intelligence_map.known_radius_omt,
+                near_scan_radius_omt );
+        if( now_minutes >= 0 ) {
+            site.intelligence_map.next_near_tick_minutes = now_minutes + near_scan_cadence_minutes;
+        }
+    }
+}
+
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
         const int now_minutes, const int scan_budget,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup )
@@ -6691,102 +7051,16 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
         return result;
     }
 
-    static const std::array<std::pair<int, int>, 12> near_offsets = { {
-            { -4, 0 }, { 4, 0 }, { 0, -4 }, { 0, 4 },
-            { -5, -1 }, { 5, 1 }, { -1, 5 }, { 1, -5 },
-            { -6, 0 }, { 6, 0 }, { 0, -6 }, { 0, 6 },
-        } };
     constexpr int per_site_near_sample_cap = 4;
-    constexpr int near_scan_cadence_minutes = 60;
-    constexpr int near_scan_radius_omt = 8;
-    const int time_bucket = now_minutes >= 0 ? now_minutes / near_scan_cadence_minutes : 0;
-
     for( site_record &site : state.sites ) {
         if( result.budget_used >= result.scan_budget ) {
             result.budget_exhausted = true;
             break;
         }
-
-        result.sites_considered++;
-        bandit_live_world_probe::increment(
-            bandit_live_world_probe::counter::structural_scan_sites_considered );
-        bandit_live_world_probe::record_site_service( site.site_id,
-                bandit_live_world_probe::site_service::scan_considered );
-        if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
-            result.sites_skipped_not_camp++;
-            bandit_live_world_probe::increment(
-                bandit_live_world_probe::counter::structural_scan_sites_skipped_not_camp );
-            continue;
-        }
-        if( site.retired_empty_site ) {
-            result.sites_skipped_retired++;
-            continue;
-        }
-        if( site.has_active_outside_pressure() ) {
-            result.sites_skipped_active_outside++;
-            continue;
-        }
-        const bool has_ready_home_presence = ready_at_home_member_count( site ) > 0 ||
-                                             site.count_home_side_signals() > 0;
-        if( !has_ready_home_presence ) {
-            result.sites_skipped_no_ready_home++;
-            continue;
-        }
-        if( site.intelligence_map.next_near_tick_minutes >= 0 &&
-            now_minutes >= 0 && now_minutes < site.intelligence_map.next_near_tick_minutes ) {
-            result.sites_deferred_by_cadence++;
-            continue;
-        }
-
-        int samples_for_site = 0;
-        const int rotation = static_cast<int>( ( static_cast<long long>( std::max( 0, time_bucket ) ) *
-                                                per_site_near_sample_cap ) % near_offsets.size() );
-        for( int offset_index = 0;
-             offset_index < static_cast<int>( near_offsets.size() ) &&
-             samples_for_site < per_site_near_sample_cap && result.budget_used < result.scan_budget;
-             offset_index++ ) {
-            const std::pair<int, int> &offset = near_offsets[( rotation + offset_index ) %
-                                               near_offsets.size()];
-            const tripoint_abs_omt candidate( site.anchor.x() + offset.first,
-                                              site.anchor.y() + offset.second, site.anchor.z() );
-            result.candidates_sampled++;
-            result.budget_used++;
-            samples_for_site++;
-            bandit_live_world_probe::increment(
-                bandit_live_world_probe::counter::structural_scan_candidates_sampled );
-            bandit_live_world_probe::record_site_service( site.site_id,
-                    bandit_live_world_probe::site_service::scan_samples );
-
-            const std::optional<std::string> terrain_id = terrain_lookup( candidate );
-            if( !terrain_id ) {
-                continue;
-            }
-            const structural_bounty_read read = classify_structural_bounty_terrain( *terrain_id );
-            if( !read.eligible || read.bounty <= 0 ) {
-                continue;
-            }
-            if( structural_bounty_scan_memory_suppresses_refresh( site.intelligence_map, candidate,
-                    read.terrain_class, now_minutes ) ) {
-                result.leads_suppressed_by_memory++;
-                continue;
-            }
-            if( upsert_structural_bounty_lead( site, candidate, read, now_minutes ) ) {
-                result.leads_seeded++;
-            }
-        }
-
-        if( samples_for_site > 0 ) {
-            site.intelligence_map.known_radius_omt = std::max( site.intelligence_map.known_radius_omt,
-                    near_scan_radius_omt );
-            if( now_minutes >= 0 ) {
-                site.intelligence_map.next_near_tick_minutes = now_minutes + near_scan_cadence_minutes;
-            }
-        }
-
-        if( result.budget_used >= result.scan_budget ) {
-            result.budget_exhausted = true;
-        }
+        sample_structural_bounty_site( site, result, now_minutes, per_site_near_sample_cap, false,
+                                       terrain_lookup );
     }
+    result.budget_exhausted = result.budget_used >= result.scan_budget;
 
     result.notes.push_back( "structural scan bounded to near-ring per-camp samples" );
     return result;
@@ -6811,7 +7085,95 @@ int structural_known_threat_for_interest( const camp_map_lead &lead )
 
 int structural_effective_interest( const camp_map_lead &lead, const int threat )
 {
+    if( lead.kind == camp_lead_kind::terrain_opportunity ) {
+        return std::max( 0, 1 - std::max( 0, threat ) );
+    }
     return std::max( 0, lead.bounty ) + std::max( 0, lead.confidence ) - std::max( 0, threat );
+}
+
+std::string structural_terrain_fit_class( const camp_map_lead &lead )
+{
+    static const std::string marker = ":terrain_fit:";
+    const std::size_t marker_at = lead.source_key.find( marker );
+    if( marker_at == std::string::npos ) {
+        return "unknown";
+    }
+    const std::string terrain = lead.source_key.substr( marker_at + marker.size() );
+    return terrain.empty() ? "unknown" : terrain;
+}
+
+int structural_candidate_route_quality( const int route_cost )
+{
+    if( route_cost < 0 || route_cost > max_structural_route_cost_omt ) {
+        return 0;
+    }
+    return std::clamp( 1000 - route_cost * 1000 / max_structural_route_cost_omt, 0, 1000 );
+}
+
+int structural_candidate_novelty( const camp_map_lead &lead, const int now_minutes )
+{
+    const int last_visit = std::max( lead.last_checked_minutes, lead.last_scouted_minutes );
+    if( last_visit < 0 ) {
+        return 1000;
+    }
+    constexpr int novelty_horizon_minutes = 7 * 24 * 60;
+    const long long age = now_minutes >= last_visit ?
+                          static_cast<long long>( now_minutes ) - last_visit : 0;
+    return std::clamp( static_cast<int>( std::min<long long>( 1000,
+                       age * 1000 / novelty_horizon_minutes ) ), 0, 1000 );
+}
+
+int structural_estimate_freshness( const camp_map_lead &lead, const int now_minutes )
+{
+    if( lead.last_checked_minutes < 0 ) {
+        return 0;
+    }
+    constexpr int estimate_freshness_horizon_minutes = 14 * 24 * 60;
+    const long long age = now_minutes >= lead.last_checked_minutes ?
+                          static_cast<long long>( now_minutes ) - lead.last_checked_minutes : 0;
+    if( age >= estimate_freshness_horizon_minutes ) {
+        return 0;
+    }
+    return std::clamp( 1000 - static_cast<int>( age * 1000 /
+                       estimate_freshness_horizon_minutes ), 0, 1000 );
+}
+
+int structural_repetition_penalty( const site_record &site, const camp_map_lead &lead )
+{
+    if( !lead.lead_id.empty() &&
+        lead.lead_id == site.intelligence_map.last_routine_target_lead_id ) {
+        return 1000;
+    }
+    if( !lead.lead_id.empty() &&
+        lead.lead_id == site.intelligence_map.previous_routine_target_lead_id ) {
+        return 500;
+    }
+    return 0;
+}
+
+int structural_candidate_score( const site_record &site, const camp_map_lead &lead,
+                                const int now_minutes, const int route_quality,
+                                const int terrain_fit, const int static_risk )
+{
+    const bool physically_checked = lead.last_checked_minutes >= 0;
+    const int confidence = physically_checked ? std::clamp( lead.confidence * 1000 / 3, 0, 1000 ) : 0;
+    const int freshness = structural_estimate_freshness( lead, now_minutes );
+    const int weighted_confidence = confidence * freshness / 1000;
+    const int remembered_estimate = std::clamp( lead.bounty * 1000 / 3, 0, 1000 );
+    const int neutral_prior = 333;
+    const int reward = ( weighted_confidence * remembered_estimate +
+                         ( 1000 - weighted_confidence ) * neutral_prior ) / 1000;
+    const int information_value = 1000 - weighted_confidence;
+    const int signal = 0;
+    const int novelty = structural_candidate_novelty( lead, now_minutes );
+    const int repetition_penalty = structural_repetition_penalty( site, lead );
+    const long long weighted_score = 300LL * reward + 250LL * information_value +
+                                     150LL * signal + 100LL * novelty +
+                                     100LL * std::clamp( route_quality, 0, 1000 ) +
+                                     100LL * std::clamp( terrain_fit, 0, 1000 ) -
+                                     450LL * std::clamp( static_risk, 0, 1000 ) -
+                                     150LL * repetition_penalty;
+    return std::clamp( static_cast<int>( weighted_score / 1000 ), 0, 1000 );
 }
 
 bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_minutes )
@@ -7203,6 +7565,15 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     plan.target_omt = lead.omt;
     plan.known_threat = structural_known_threat_for_interest( lead );
     plan.effective_interest = structural_effective_interest( lead, plan.known_threat );
+    const std::string terrain_fit_class = structural_terrain_fit_class( lead );
+    plan.terrain_fit = hostile_camp_terrain_fit( effective_profile( site ), terrain_fit_class );
+    plan.static_risk = structural_terrain_static_risk( terrain_fit_class );
+    plan.estimate_freshness = structural_estimate_freshness( lead, now_minutes );
+    plan.repetition_penalty = structural_repetition_penalty( site, lead );
+    plan.cheap_route_quality = structural_candidate_route_quality(
+                                   omt_chebyshev_distance( site.anchor, lead.omt ) );
+    plan.cheap_score = structural_candidate_score( site, lead, now_minutes,
+                       plan.cheap_route_quality, plan.terrain_fit, plan.static_risk );
 
     if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
         plan.notes.push_back( "structural outing blocked: site profile does not run routine camp ecology" );
@@ -7234,8 +7605,10 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         plan.notes.push_back( "structural outing blocked: camp mission slot is not idle" );
         return plan;
     }
-    if( lead.kind != camp_lead_kind::structural_bounty ) {
-        plan.notes.push_back( "structural outing blocked: lead is not structural bounty" );
+    const bool structural_bounty = lead.kind == camp_lead_kind::structural_bounty;
+    const bool terrain_opportunity = lead.kind == camp_lead_kind::terrain_opportunity;
+    if( !structural_bounty && !terrain_opportunity ) {
+        plan.notes.push_back( "structural outing blocked: lead is not a routine terrain candidate" );
         return plan;
     }
     if( lead.status == camp_lead_status::active || lead.status == camp_lead_status::harvested ||
@@ -7243,7 +7616,7 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         plan.notes.push_back( "structural outing blocked: lead status suppresses dispatch" );
         return plan;
     }
-    if( lead.bounty <= 0 ) {
+    if( structural_bounty && lead.bounty <= 0 ) {
         plan.notes.push_back( "structural outing blocked: no remaining structural bounty" );
         return plan;
     }
@@ -7260,6 +7633,10 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         plan.notes.push_back( "structural outing blocked: target has no bounded radial route" );
         return plan;
     }
+    plan.final_route_quality = structural_candidate_route_quality(
+                                   structural_route_cost( plan.shared_route ) );
+    plan.final_score = structural_candidate_score( site, lead, now_minutes,
+                       plan.final_route_quality, plan.terrain_fit, plan.static_risk );
 
     const routine_scout_policy_result routine_policy = routine_scout_policy( site );
     if( !routine_policy.eligible ) {
@@ -7268,7 +7645,8 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         return plan;
     }
 
-    plan.job = lead.target_id == "forest" ? bandit_dry_run::job_template::scavenge :
+    plan.job = structural_bounty && lead.target_id == "forest" ?
+               bandit_dry_run::job_template::scavenge :
                bandit_dry_run::job_template::scout;
     const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
     if( !pair_selection.eligible ) {
@@ -7291,6 +7669,10 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
                           " known_threat=" + std::to_string( plan.known_threat ) +
                           " confidence=" + std::to_string( lead.confidence ) +
                           " effective_interest=" + std::to_string( plan.effective_interest ) +
+                          " terrain_fit=" + std::to_string( plan.terrain_fit ) +
+                          " static_risk=" + std::to_string( plan.static_risk ) +
+                          " cheap_score=" + std::to_string( plan.cheap_score ) +
+                          " radial_score=" + std::to_string( plan.final_score ) +
                           " decision=" + bandit_dry_run::to_string( plan.job ) );
     plan.notes.push_back( "structural outing is non-player camp routine traffic, not pursuit handoff" );
     plan.notes.push_back( "routine pair keeps local reserve=" +
@@ -7311,8 +7693,11 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
         }
         const int candidate_distance = rl_dist( site.anchor, candidate.target_omt );
         const int best_distance = best.valid ? rl_dist( site.anchor, best.target_omt ) : 0;
-        if( !best.valid || candidate.effective_interest > best.effective_interest ||
-            ( candidate.effective_interest == best.effective_interest && candidate_distance < best_distance ) ) {
+        if( !best.valid || candidate.cheap_score > best.cheap_score ||
+            ( candidate.cheap_score == best.cheap_score &&
+              candidate_distance < best_distance ) ||
+            ( candidate.cheap_score == best.cheap_score &&
+              candidate_distance == best_distance && candidate.lead_id < best.lead_id ) ) {
             best = candidate;
         }
     }
@@ -7380,7 +7765,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         if( lead == nullptr || lead->revision != plan.lead_revision ||
             lead->omt != plan.target_omt ||
             lead->revision >= std::numeric_limits<int>::max() ||
-            lead->kind != camp_lead_kind::structural_bounty || lead->bounty <= 0 ||
+            ( lead->kind != camp_lead_kind::structural_bounty &&
+              lead->kind != camp_lead_kind::terrain_opportunity ) ||
+            ( lead->kind == camp_lead_kind::structural_bounty && lead->bounty <= 0 ) ||
             lead->status == camp_lead_status::active ||
             lead->status == camp_lead_status::harvested ||
             lead->status == camp_lead_status::dangerous ||
@@ -7389,8 +7776,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             return false;
         }
         const bandit_dry_run::job_template expected_job =
-            lead->target_id == "forest" ? bandit_dry_run::job_template::scavenge :
-            bandit_dry_run::job_template::scout;
+            lead->kind == camp_lead_kind::structural_bounty && lead->target_id == "forest" ?
+            bandit_dry_run::job_template::scavenge : bandit_dry_run::job_template::scout;
         if( plan.job != expected_job ||
             structural_effective_interest( *lead,
                                             structural_known_threat_for_interest( *lead ) ) <= 0 ) {
@@ -7482,6 +7869,11 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     candidate.active_outing.cargo_application_key =
         bandit_pursuit_handoff::make_operation_component_key(
             candidate.active_outing.activity_id, candidate.active_outing.generation, "cargo" );
+    if( candidate.intelligence_map.last_routine_target_lead_id != plan.lead_id ) {
+        candidate.intelligence_map.previous_routine_target_lead_id =
+            candidate.intelligence_map.last_routine_target_lead_id;
+        candidate.intelligence_map.last_routine_target_lead_id = plan.lead_id;
+    }
     candidate_lead->status = camp_lead_status::active;
     candidate_lead->last_outcome = "structural_outing_active";
     advance_camp_map_lead_revision( candidate, *candidate_lead );
@@ -7525,11 +7917,14 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 frontier_sector_from_lead( *current_lead ) : std::nullopt;
         const bool current_lead_kind_is_supported = current_lead != nullptr &&
                 ( current_lead->kind == camp_lead_kind::structural_bounty ||
+                  current_lead->kind == camp_lead_kind::terrain_opportunity ||
                   current_frontier_sector.has_value() );
         const bool current_job_is_consistent = current_lead != nullptr &&
                 ( ( current_lead->kind == camp_lead_kind::structural_bounty &&
                     site.active_outing.job_type == ( current_lead->target_id == "forest" ?
                                                      "scavenge" : "scout" ) ) ||
+                  ( current_lead->kind == camp_lead_kind::terrain_opportunity &&
+                    site.active_outing.job_type == "scout" ) ||
                   ( current_frontier_sector && site.active_outing.job_type == "scout" ) );
         if( current_lead_kind_is_supported &&
             ( !current_job_is_consistent ||
@@ -7558,7 +7953,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         const std::optional<int> frontier_sector = lead != nullptr ?
                 frontier_sector_from_lead( *lead ) : std::nullopt;
         if( lead == nullptr ||
-            ( lead->kind != camp_lead_kind::structural_bounty && !frontier_sector ) ) {
+            ( lead->kind != camp_lead_kind::structural_bounty &&
+              lead->kind != camp_lead_kind::terrain_opportunity && !frontier_sector ) ) {
             if( release_structural_outing_reservation(
                     candidate, expected_activity_id, expected_generation,
                     "structural outing cleared missing structural lead" ) ) {
@@ -7604,7 +8000,9 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 }
                 const bool useful_return = completed_frontier_route ||
                                            ( !frontier_sector &&
-                                             lead->status == camp_lead_status::harvested );
+                                             ( lead->status == camp_lead_status::harvested ||
+                                               ( lead->kind == camp_lead_kind::terrain_opportunity &&
+                                                 lead->status == camp_lead_status::stale ) ) );
                 const bool danger_withdrawal = lead->status == camp_lead_status::dangerous;
                 candidate.last_routine_resolved_minutes = now_minutes;
                 candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
@@ -7683,6 +8081,11 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 lead->last_scouted_minutes = now_minutes;
                 lead->last_checked_minutes = now_minutes;
                 lead->last_outcome = "frontier_outer_sample_complete";
+            } else if( lead->kind == camp_lead_kind::terrain_opportunity ) {
+                lead->status = camp_lead_status::stale;
+                lead->last_scouted_minutes = now_minutes;
+                lead->last_checked_minutes = now_minutes;
+                lead->last_outcome = "terrain_opportunity_physically_checked";
             } else {
                 lead->status = camp_lead_status::harvested;
                 lead->bounty = 0;
@@ -7696,9 +8099,16 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             outing.last_progress_minutes = now_minutes;
             site = std::move( candidate );
             result.arrivals_processed++;
-            result.notes.push_back( frontier_sector ?
-                                    "frontier outing sampled outer ring and began return lead=" + lead_id :
-                                    "structural outing harvested and began return lead=" + lead_id );
+            if( frontier_sector ) {
+                result.notes.push_back(
+                    "frontier outing sampled outer ring and began return lead=" + lead_id );
+            } else if( lead->kind == camp_lead_kind::terrain_opportunity ) {
+                result.notes.push_back(
+                    "terrain opportunity was physically checked and began return lead=" + lead_id );
+            } else {
+                result.notes.push_back(
+                    "structural outing harvested and began return lead=" + lead_id );
+            }
             continue;
         }
 
@@ -7719,13 +8129,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     structural_bounty_maintenance_result result;
     result.scheduler_consider_cap = routine_scheduler_consider_cap;
     result.full_route_solve_cap = routine_scheduler_full_route_solve_cap;
-    state.schema_version = 5;
+    state.schema_version = 6;
     advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
-    // Discovery rotation and faction terrain scoring are the next roadmap seam; this cursor owns
-    // only bounded dispatch consideration and must not turn a terrain label into camp knowledge.
-    result.scan = advance_structural_bounty_scan( state, now_minutes, scan_budget, terrain_lookup );
 
     bandit_live_world_probe::scoped_section dispatch_probe_section(
         bandit_live_world_probe::section::structural_dispatch );
@@ -7746,22 +8153,61 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     }
     if( routine_site_indices.empty() ) {
         state.routine_scheduler_cursor = 0;
+        state.routine_terrain_scan_cursor = 0;
     } else {
         state.routine_scheduler_cursor = std::max( 0, state.routine_scheduler_cursor ) %
                                          static_cast<int>( routine_site_indices.size() );
+        state.routine_terrain_scan_cursor = std::max( 0, state.routine_terrain_scan_cursor ) %
+                                            static_cast<int>( routine_site_indices.size() );
     }
     if( state.routine_scheduler_last_hour >= result.scheduler_hour ) {
         result.scheduler_replay_suppressed = true;
         result.scheduler_cursor_before = state.routine_scheduler_cursor;
         result.scheduler_cursor_after = state.routine_scheduler_cursor;
+        result.terrain_scan_cursor_before = state.routine_terrain_scan_cursor;
+        result.terrain_scan_cursor_after = state.routine_terrain_scan_cursor;
         result.notes.push_back(
             "structural maintenance dispatch skipped: scheduler hour already processed" );
         return result;
     }
     state.routine_scheduler_last_hour = result.scheduler_hour;
     if( routine_site_indices.empty() ) {
+        result.scan.scan_budget = std::max( 0, scan_budget );
+        result.scan.notes.push_back( "structural scan skipped: no eligible routine camps" );
         return result;
     }
+
+    result.terrain_scan_cursor_before = state.routine_terrain_scan_cursor;
+    result.scan.scan_budget = std::max( 0, scan_budget );
+    if( result.scan.scan_budget == 0 ) {
+        result.scan.notes.push_back( "structural scan skipped: zero budget" );
+    } else if( !terrain_lookup ) {
+        result.scan.notes.push_back( "structural scan skipped: no terrain lookup" );
+    } else {
+        bandit_live_world_probe::scoped_section scan_probe_section(
+            bandit_live_world_probe::section::structural_scan );
+        result.terrain_scan_sites_selected = std::min( result.scan.scan_budget,
+                                             static_cast<int>( routine_site_indices.size() ) );
+        for( int offset = 0; offset < result.terrain_scan_sites_selected; ++offset ) {
+            const int eligible_index = ( result.terrain_scan_cursor_before + offset ) %
+                                       static_cast<int>( routine_site_indices.size() );
+            site_record &site = state.sites[routine_site_indices[static_cast<std::size_t>(
+                                               eligible_index )]];
+            // Static home-side terrain discovery is not another outing and does not dogpile the
+            // pair already outside.  Remaining ready home occupants may still make this one
+            // bounded terrain read; dispatch gates continue to block a second active party.
+            sample_structural_bounty_site( site, result.scan, now_minutes, 1, true,
+                                           terrain_lookup );
+        }
+        state.routine_terrain_scan_cursor =
+            ( result.terrain_scan_cursor_before + result.terrain_scan_sites_selected ) %
+            static_cast<int>( routine_site_indices.size() );
+        result.scan.budget_exhausted = result.scan.budget_used >= result.scan.scan_budget;
+        result.scan.notes.push_back(
+            "structural scan rotated one persisted near-ring sample per selected camp" );
+    }
+    result.terrain_scan_cursor_after = state.routine_terrain_scan_cursor;
+
     result.scheduler_cursor_before = state.routine_scheduler_cursor;
     const int sites_to_consider = std::min( routine_scheduler_consider_cap,
                                            static_cast<int>( routine_site_indices.size() ) );
@@ -7807,7 +8253,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const bool has_structural_candidate_source = std::any_of(
                     site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
         []( const camp_map_lead & lead ) {
-            return lead.kind == camp_lead_kind::structural_bounty;
+            return lead.kind == camp_lead_kind::structural_bounty ||
+                   lead.kind == camp_lead_kind::terrain_opportunity;
         } );
         if( !frontier_due && !has_structural_candidate_source ) {
             continue;
@@ -7890,6 +8337,9 @@ std::string render_structural_bounty_maintenance_report(
         << " scheduler_hour=" << result.scheduler_hour
         << " scheduler_cursor_before=" << result.scheduler_cursor_before
         << " scheduler_cursor_after=" << result.scheduler_cursor_after
+        << " terrain_scan_cursor_before=" << result.terrain_scan_cursor_before
+        << " terrain_scan_cursor_after=" << result.terrain_scan_cursor_after
+        << " terrain_scan_sites_selected=" << result.terrain_scan_sites_selected
         << " scheduler_consider_cap=" << result.scheduler_consider_cap
         << " scheduler_replay_suppressed=" <<
         ( result.scheduler_replay_suppressed ? "yes" : "no" )
