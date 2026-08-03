@@ -431,7 +431,7 @@ bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count
         site.profile = structural_camp ? bandit_live_world::hostile_site_profile::camp_style :
                        bandit_live_world::hostile_site_profile::cannibal_camp;
         site.source_id = structural_camp ? "bandit_camp" : "cannibal_camp";
-        site.headcount = legacy_loaded_roster_members;
+        site.living_total = legacy_loaded_roster_members;
         site.anchor = tripoint_abs_omt( static_cast<int>( site_index * 20 ),
                                        static_cast<int>( site_index * 20 ), 0 );
         site.footprint.push_back( site.anchor );
@@ -447,7 +447,7 @@ bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count
             site.members.push_back( member );
             bandit_live_world::spawn_tile_record spawn_tile;
             spawn_tile.tile = member.home_spawn_tile;
-            spawn_tile.headcount = 1;
+            spawn_tile.assigned_living_total = 1;
             site.spawn_tiles.push_back( spawn_tile );
         }
         if( saturate_existing_leads && structural_camp ) {

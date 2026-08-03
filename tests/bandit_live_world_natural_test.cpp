@@ -130,8 +130,8 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     CHECK( cannibal_site->profile == bandit_live_world::hostile_site_profile::cannibal_camp );
     CHECK( bandit_site->footprint.size() == 8 );
     CHECK( cannibal_site->footprint.size() == 8 );
-    CHECK( bandit_site->headcount == 6 );
-    CHECK( cannibal_site->headcount == 5 );
+    CHECK( bandit_site->living_total == 6 );
+    CHECK( cannibal_site->living_total == 5 );
 
     for( const std::pair<const std::string, tripoint_abs_omt> &camp : camps ) {
         const bandit_live_world::abstract_bootstrap_result repeat =
@@ -151,8 +151,8 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     cannibal_site = find_site_by_source( state, "cannibal_camp" );
     REQUIRE( bandit_site != nullptr );
     REQUIRE( cannibal_site != nullptr );
-    CHECK( bandit_site->headcount == 14 );
-    CHECK( cannibal_site->headcount == 14 );
+    CHECK( bandit_site->living_total == 14 );
+    CHECK( cannibal_site->living_total == 14 );
     CHECK( bandit_site->members.size() == 14 );
     CHECK( cannibal_site->members.size() == 14 );
     for( const bandit_live_world::site_record &site : state.sites ) {

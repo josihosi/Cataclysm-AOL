@@ -100,6 +100,24 @@ std::string serialize_world( const bandit_live_world::world_state &world )
     return out.str();
 }
 
+bandit_live_world::world_state round_trip_legacy_site_world(
+    const bandit_live_world::world_state &world )
+{
+    std::string bytes = serialize_world( world );
+    const std::string current_schema = "\"schema_version\": 10";
+    const std::string current_roster = "\"living_total\"";
+    REQUIRE( bytes.find( current_schema ) != std::string::npos );
+    REQUIRE( bytes.find( current_roster ) != std::string::npos );
+    bytes.replace( bytes.find( current_schema ), current_schema.size(),
+                   "\"schema_version\": 9" );
+    bytes.replace( bytes.find( current_roster ), current_roster.size(), "\"headcount\"" );
+
+    JsonValue jsin = json_loader::from_string( bytes );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+    return loaded;
+}
+
 void issue_test_resource_operation( bandit_live_world::world_state &world,
                                     const tripoint_abs_omt &omt,
                                     const std::string &operation_id,
@@ -117,7 +135,8 @@ void issue_test_resource_operation( bandit_live_world::world_state &world,
         claimant.members.push_back( { member_id, "bandit", tripoint_abs_ms( 0, 0, 0 ),
                                       bandit_live_world::member_state::outbound, false,
                                       "test resource operation" } );
-        claimant.headcount = std::max( claimant.headcount, 1 );
+        claimant.spawn_tiles.push_back( { tripoint_abs_ms( 0, 0, 0 ), 1 } );
+        claimant.living_total = std::max( claimant.living_total, 1 );
         claimant.supply_accounted_living_total = 1;
     } else {
         claimant.find_member( member_id )->state = bandit_live_world::member_state::outbound;
@@ -309,16 +328,16 @@ TEST_CASE( "bandit_live_world_claims_one_bounded_special_backed_site_ledger", "[
     CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_camp );
     CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
     CHECK( site.anchor == tripoint_abs_omt( 10, 20, 0 ) );
-    CHECK( site.headcount == 3 );
+    CHECK( site.living_total == 3 );
     REQUIRE( site.footprint.size() == 4 );
     CHECK( site.footprint.front() == tripoint_abs_omt( 10, 20, 0 ) );
     CHECK( site.footprint.back() == tripoint_abs_omt( 11, 21, 0 ) );
     REQUIRE( site.members.size() == 3 );
     CHECK( site.members.front().npc_template_id == "bandit" );
     REQUIRE( site.spawn_tiles.size() == 3 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->assigned_living_total == 1 );
 }
 
 TEST_CASE( "bandit_live_world_collapses_multi_z_special_camp_into_one_site",
@@ -340,7 +359,7 @@ TEST_CASE( "bandit_live_world_collapses_multi_z_special_camp_into_one_site",
     const bandit_live_world::site_record &site = world.sites.front();
     CHECK( site.site_id == "overmap_special:bandit_camp@10,20,0" );
     CHECK( site.anchor == tripoint_abs_omt( 10, 20, 0 ) );
-    CHECK( site.headcount == 3 );
+    CHECK( site.living_total == 3 );
     REQUIRE( site.footprint.size() == 12 );
     CHECK( site.footprint.front() == tripoint_abs_omt( 10, 20, 0 ) );
     CHECK( site.footprint.back() == tripoint_abs_omt( 11, 21, 5 ) );
@@ -351,9 +370,9 @@ TEST_CASE( "bandit_live_world_collapses_multi_z_special_camp_into_one_site",
         return omt == tripoint_abs_omt( 10, 20, 5 );
     } ) );
     REQUIRE( site.members.size() == 3 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 1 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 5 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 1 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 5 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->assigned_living_total == 1 );
 }
 
 TEST_CASE( "bandit_live_world_keeps_map_extra_hostile_spawns_as_micro_sites", "[bandit][live_world]" )
@@ -372,7 +391,7 @@ TEST_CASE( "bandit_live_world_keeps_map_extra_hostile_spawns_as_micro_sites", "[
     REQUIRE( looters != nullptr );
     CHECK( looters->site_kind == bandit_live_world::owned_site_kind::looters );
     CHECK( looters->profile == bandit_live_world::hostile_site_profile::small_hostile_site );
-    CHECK( looters->headcount == 1 );
+    CHECK( looters->living_total == 1 );
     REQUIRE( looters->footprint.size() == 1 );
     CHECK( looters->footprint.front() == tripoint_abs_omt( 5, 4, 0 ) );
 
@@ -380,7 +399,7 @@ TEST_CASE( "bandit_live_world_keeps_map_extra_hostile_spawns_as_micro_sites", "[
     REQUIRE( roadblock != nullptr );
     CHECK( roadblock->site_kind == bandit_live_world::owned_site_kind::bandits_block );
     CHECK( roadblock->profile == bandit_live_world::hostile_site_profile::small_hostile_site );
-    CHECK( roadblock->headcount == 1 );
+    CHECK( roadblock->living_total == 1 );
     REQUIRE( roadblock->footprint.size() == 1 );
     CHECK( roadblock->footprint.front() == tripoint_abs_omt( 7, 5, 0 ) );
 }
@@ -403,7 +422,7 @@ TEST_CASE( "bandit_live_world_registers_abstract_special_before_npc_materializat
     CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_work_camp );
     CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
     CHECK( site.anchor == tripoint_abs_omt( 40, 50, 0 ) );
-    CHECK( site.headcount == 6 );
+    CHECK( site.living_total == 6 );
     CHECK( site.members.empty() );
     REQUIRE( site.footprint.size() == 9 );
     CHECK( site.footprint.front() == tripoint_abs_omt( 40, 50, 0 ) );
@@ -420,7 +439,7 @@ TEST_CASE( "bandit_live_world_registers_abstract_special_before_npc_materializat
     REQUIRE( loaded.sites.size() == 1 );
     const bandit_live_world::site_record &loaded_site = loaded.sites.front();
     CHECK( loaded_site.site_id == site.site_id );
-    CHECK( loaded_site.headcount == 6 );
+    CHECK( loaded_site.living_total == 6 );
     CHECK( loaded_site.members.empty() );
     REQUIRE( loaded_site.footprint.size() == 9 );
 }
@@ -445,13 +464,319 @@ TEST_CASE( "bandit_live_world_reconciles_materialized_spawns_with_abstract_speci
     REQUIRE( world.sites.size() == 1 );
     const bandit_live_world::site_record &site = world.sites.front();
     CHECK( site.site_id == "overmap_special:bandit_camp@10,20,0" );
-    CHECK( site.headcount == 6 );
+    CHECK( site.living_total == 6 );
     REQUIRE( site.members.size() == 2 );
     CHECK( site.members.front().npc_id == character_id( 203 ) );
     CHECK( site.members.back().npc_id == character_id( 204 ) );
     REQUIRE( site.spawn_tiles.size() == 2 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->assigned_living_total == 1 );
+}
+
+TEST_CASE( "bandit_live_world_derives_disjoint_roster_authorities",
+           "[bandit][live_world][roster]" )
+{
+    bandit_live_world::world_state partial_world;
+    REQUIRE( bandit_live_world::register_abstract_site(
+                 partial_world, bandit_live_world::anchor_source_kind::overmap_special,
+                 "bandit_camp", tripoint_abs_omt( 10, 20, 0 ), special_lookup, 6 ) );
+    bandit_live_world::site_record &partial_site = partial_world.sites.front();
+    bandit_live_world::roster_view roster = partial_site.roster();
+    REQUIRE( roster.valid );
+    CHECK( roster.living_total == 6 );
+    CHECK( roster.materialized_living_total == 0 );
+    CHECK( roster.unmaterialized_home_total == 6 );
+    CHECK( roster.physically_present_total == 6 );
+    CHECK( roster.ready_total == 6 );
+    CHECK( roster.physically_present_ids.empty() );
+    CHECK( roster.away_ids.empty() );
+    CHECK( roster.reserved_unresolved_ids.empty() );
+
+    for( int index = 0; index < 3; ++index ) {
+        add_bandit_camp_member( partial_world, index, 47100 );
+    }
+    partial_site.find_member( character_id( 47100 ) )->wounded_or_unready = true;
+    roster = partial_site.roster();
+    REQUIRE( roster.valid );
+    CHECK( roster.living_total == 6 );
+    CHECK( roster.materialized_living_total == 3 );
+    CHECK( roster.unmaterialized_home_total == 3 );
+    CHECK( roster.physically_present_total == 6 );
+    CHECK( roster.ready_concrete_total == 2 );
+    CHECK( roster.ready_total == 5 );
+    REQUIRE( roster.physically_present_ids.size() == 3 );
+
+    bandit_live_world::world_state pair_world;
+    add_bandit_camp_member( pair_world, 0, 47200 );
+    add_bandit_camp_member( pair_world, 1, 47200 );
+    bandit_live_world::site_record &pair_site = pair_world.sites.front();
+    set_test_active_outing( pair_site, pair_site.site_id + "#scout:pair" );
+    pair_site.active_outing.member_ids = { character_id( 47200 ), character_id( 47201 ) };
+    pair_site.active_outing.leader_id = character_id( 47200 );
+    REQUIRE( bandit_live_world::update_member_state(
+                 pair_site, character_id( 47200 ), bandit_live_world::member_state::outbound,
+                 "paired roster test" ) );
+    REQUIRE( bandit_live_world::update_member_state(
+                 pair_site, character_id( 47201 ), bandit_live_world::member_state::outbound,
+                 "paired roster test" ) );
+    roster = pair_site.roster();
+    REQUIRE( roster.valid );
+    CHECK( roster.living_total == 2 );
+    CHECK( roster.physically_present_total == 0 );
+    CHECK( roster.ready_total == 0 );
+    CHECK( roster.away_ids == pair_site.active_outing.member_ids );
+    CHECK( roster.reserved_unresolved_ids == pair_site.active_outing.member_ids );
+    CHECK_FALSE( pair_site.eligible_for_empty_site_retirement() );
+
+    bandit_live_world::world_state hostile_world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( hostile_world, index, 47300 );
+    }
+    bandit_live_world::site_record &hostile_site = hostile_world.sites.front();
+    prepare_hostile_follow_on( hostile_site, 2, 1, "roster-target",
+                               tripoint_abs_omt( 18, 20, 0 ), 100 );
+    const bandit_live_world::hostile_operation_plan hostile_plan =
+        bandit_live_world::plan_hostile_operation(
+            hostile_site, bandit_live_world::hostile_operation_kind::shakedown,
+            { character_id( 47300 ), character_id( 47301 ) },
+            { hostile_site.anchor, tripoint_abs_omt( 18, 20, 0 ) },
+            hostile_site.anchor, 102 );
+    REQUIRE( hostile_plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( hostile_site, hostile_plan ) );
+    roster = hostile_site.roster();
+    REQUIRE( roster.valid );
+    CHECK( roster.physically_present_total == 6 );
+    CHECK( roster.away_ids.empty() );
+    CHECK( roster.reserved_unresolved_ids == hostile_plan.operation.reservation.member_ids );
+    CHECK( roster.ready_concrete_total == 4 );
+}
+
+TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
+           "[bandit][live_world][roster][migration]" )
+{
+    JsonValue legacy_json = json_loader::from_string(
+        R"({"schema_version":5,"site_id":"legacy-roster","headcount":1,"members":[{"npc_id":47400,"state":"at_home"},{"npc_id":47401,"state":"at_home"}]})" );
+    bandit_live_world::site_record migrated;
+    migrated.deserialize( legacy_json.get_object() );
+    CHECK( migrated.schema_version == 10 );
+    CHECK( migrated.living_total == 2 );
+    REQUIRE( migrated.roster().valid );
+    CHECK( migrated.roster().physically_present_total == 2 );
+    REQUIRE( migrated.spawn_tiles.size() == 1 );
+    CHECK( migrated.spawn_tiles.front().assigned_living_total == 2 );
+
+    bandit_live_world::world_state migrated_world;
+    migrated_world.sites.push_back( migrated );
+    const std::string migrated_bytes = serialize_world( migrated_world );
+    CHECK( migrated_bytes.find( "\"living_total\": 2" ) != std::string::npos );
+    CHECK( migrated_bytes.find( "\"headcount\"" ) == std::string::npos );
+
+    JsonValue legacy_tile_json = json_loader::from_string(
+        R"({"schema_version":5,"site_id":"legacy-tile-roster","headcount":0,"spawn_tiles":[{"tile":[240,480,0],"headcount":2}]})" );
+    bandit_live_world::site_record migrated_tile_site;
+    migrated_tile_site.deserialize( legacy_tile_json.get_object() );
+    CHECK( migrated_tile_site.living_total == 2 );
+    REQUIRE( migrated_tile_site.roster().valid );
+    CHECK( migrated_tile_site.roster().physically_present_total == 2 );
+
+    JsonValue duplicate_legacy_tiles_json = json_loader::from_string(
+        R"({"schema_version":5,"site_id":"legacy-duplicate-tiles","headcount":0,"spawn_tiles":[{"tile":[240,480,0],"headcount":1},{"tile":[240,480,0],"headcount":2}]})" );
+    bandit_live_world::site_record merged_legacy_tiles;
+    merged_legacy_tiles.deserialize( duplicate_legacy_tiles_json.get_object() );
+    CHECK( merged_legacy_tiles.living_total == 2 );
+    REQUIRE( merged_legacy_tiles.spawn_tiles.size() == 1 );
+    CHECK( merged_legacy_tiles.spawn_tiles.front().assigned_living_total == 2 );
+
+    bandit_live_world::world_state materialized_tile_world;
+    REQUIRE( bandit_live_world::register_abstract_site(
+                 materialized_tile_world, bandit_live_world::anchor_source_kind::overmap_special,
+                 "bandit_camp", tripoint_abs_omt( 10, 20, 0 ), special_lookup, 2 ) );
+    bandit_live_world::site_record &materialized_tile_site =
+        materialized_tile_world.sites.front();
+    const tripoint_abs_ms assigned_tile( 240, 480, 0 );
+    const tripoint_abs_ms materialized_elsewhere( 241, 480, 0 );
+    materialized_tile_site.spawn_tiles.push_back( { assigned_tile, 2 } );
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 materialized_tile_world, "bandit", character_id( 47420 ), materialized_elsewhere,
+                 std::string( "bandit_camp" ), std::nullopt, special_lookup ) );
+    CHECK( materialized_tile_site.living_total == 2 );
+    CHECK( materialized_tile_site.find_spawn_tile( assigned_tile )->assigned_living_total == 1 );
+    CHECK( materialized_tile_site.find_spawn_tile(
+               materialized_elsewhere )->assigned_living_total == 1 );
+    REQUIRE( bandit_live_world::claim_tracked_spawn(
+                 materialized_tile_world, "bandit", character_id( 47421 ), assigned_tile,
+                 std::string( "bandit_camp" ), std::nullopt, special_lookup ) );
+    CHECK( materialized_tile_site.living_total == 2 );
+    CHECK( materialized_tile_site.find_spawn_tile( assigned_tile )->assigned_living_total == 1 );
+    CHECK( materialized_tile_site.find_spawn_tile(
+               materialized_elsewhere )->assigned_living_total == 1 );
+    CHECK( serialize_world( round_trip_world( materialized_tile_world ) ) ==
+           serialize_world( materialized_tile_world ) );
+
+    JsonValue legacy_orphan_json = json_loader::from_string(
+        R"({"schema_version":5,"site_id":"legacy-orphan-away","headcount":1,"members":[{"npc_id":47410,"state":"outbound"}]})" );
+    bandit_live_world::site_record migrated_orphan_site;
+    migrated_orphan_site.deserialize( legacy_orphan_json.get_object() );
+    REQUIRE( migrated_orphan_site.roster().valid );
+    REQUIRE( migrated_orphan_site.members.size() == 1 );
+    CHECK( migrated_orphan_site.members.front().state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( migrated_orphan_site.members.front().last_writeback_summary ==
+           "returned orphaned legacy away member home" );
+
+    bandit_live_world::world_state protected_world;
+    add_bandit_camp_member( protected_world, 0, 47500 );
+    add_bandit_camp_member( protected_world, 1, 47500 );
+    const std::string protected_bytes = serialize_world( protected_world );
+    const auto require_atomic_rejection = [&]( std::string malformed_bytes ) {
+        JsonValue malformed_json = json_loader::from_string( malformed_bytes );
+        CHECK_THROWS( protected_world.deserialize( malformed_json.get_object() ) );
+        CHECK( serialize_world( protected_world ) == protected_bytes );
+    };
+
+    std::string too_small = protected_bytes;
+    const std::string living_two = "\"living_total\": 2";
+    REQUIRE( too_small.find( living_two ) != std::string::npos );
+    too_small.replace( too_small.find( living_two ), living_two.size(), "\"living_total\": 1" );
+    require_atomic_rejection( too_small );
+
+    std::string duplicate_id = protected_bytes;
+    const std::string second_id = "\"npc_id\": 47501";
+    REQUIRE( duplicate_id.find( second_id ) != std::string::npos );
+    duplicate_id.replace( duplicate_id.find( second_id ), second_id.size(),
+                          "\"npc_id\": 47500" );
+    require_atomic_rejection( duplicate_id );
+
+    std::string orphan_away = protected_bytes;
+    const std::string at_home = "\"state\": \"at_home\"";
+    REQUIRE( orphan_away.find( at_home ) != std::string::npos );
+    orphan_away.replace( orphan_away.find( at_home ), at_home.size(),
+                         "\"state\": \"outbound\"" );
+    require_atomic_rejection( orphan_away );
+
+    std::string undersized_tile = protected_bytes;
+    const std::string assigned_one = "\"assigned_living_total\": 1";
+    REQUIRE( undersized_tile.find( assigned_one ) != std::string::npos );
+    undersized_tile.replace( undersized_tile.find( assigned_one ), assigned_one.size(),
+                             "\"assigned_living_total\": 0" );
+    require_atomic_rejection( undersized_tile );
+
+    std::string oversized_assignments = protected_bytes;
+    REQUIRE( oversized_assignments.find( assigned_one ) != std::string::npos );
+    oversized_assignments.replace( oversized_assignments.find( assigned_one ),
+                                   assigned_one.size(), "\"assigned_living_total\": 2" );
+    require_atomic_rejection( oversized_assignments );
+
+    std::string duplicate_current_tile = protected_bytes;
+    const std::string second_tile = "\"tile\": [ 241, 480, 0 ]";
+    REQUIRE( duplicate_current_tile.find( second_tile ) != std::string::npos );
+    duplicate_current_tile.replace( duplicate_current_tile.find( second_tile ),
+                                    second_tile.size(), "\"tile\": [ 240, 480, 0 ]" );
+    require_atomic_rejection( duplicate_current_tile );
+
+    std::string missing_concrete_tile = protected_bytes;
+    REQUIRE( missing_concrete_tile.find( second_tile ) != std::string::npos );
+    missing_concrete_tile.replace( missing_concrete_tile.find( second_tile ),
+                                   second_tile.size(), "\"tile\": [ 242, 480, 0 ]" );
+    require_atomic_rejection( missing_concrete_tile );
+
+    std::string incomplete_supply = protected_bytes;
+    const std::string supply_key = "\"supply_units\"";
+    REQUIRE( incomplete_supply.find( supply_key ) != std::string::npos );
+    incomplete_supply.replace( incomplete_supply.find( supply_key ), supply_key.size(),
+                               "\"missing_supply_units\"" );
+    require_atomic_rejection( incomplete_supply );
+
+    bandit_live_world::world_state active_world;
+    add_bandit_camp_member( active_world, 0, 47600 );
+    add_bandit_camp_member( active_world, 1, 47600 );
+    bandit_live_world::site_record &active_site = active_world.sites.front();
+    REQUIRE( bandit_live_world::update_member_state(
+                 active_site, character_id( 47600 ), bandit_live_world::member_state::outbound,
+                 "strict owner fixture" ) );
+    set_test_active_outing( active_site, active_site.site_id + "#scout:strict-owner" );
+    active_site.active_outing.member_ids = { character_id( 47600 ) };
+    active_site.active_outing.leader_id = character_id( 47600 );
+    const std::string active_bytes = serialize_world( active_world );
+    std::string wrong_owner = active_bytes;
+    const std::string correct_camp = "\"camp_id\": \"" + active_site.site_id + "\"";
+    REQUIRE( wrong_owner.find( correct_camp ) != std::string::npos );
+    wrong_owner.replace( wrong_owner.find( correct_camp ), correct_camp.size(),
+                         "\"camp_id\": \"wrong-camp\"" );
+    JsonValue wrong_owner_json = json_loader::from_string( wrong_owner );
+    CHECK_THROWS( active_world.deserialize( wrong_owner_json.get_object() ) );
+    CHECK( serialize_world( active_world ) == active_bytes );
+
+    std::string downgraded_nested_owner = active_bytes;
+    const std::string active_schema = "\"active_outing\": { \"schema_version\": 5";
+    REQUIRE( downgraded_nested_owner.find( active_schema ) != std::string::npos );
+    downgraded_nested_owner.replace( downgraded_nested_owner.find( active_schema ),
+                                     active_schema.size(),
+                                     "\"active_outing\": { \"schema_version\": 3" );
+    JsonValue downgraded_owner_json = json_loader::from_string( downgraded_nested_owner );
+    CHECK_THROWS( active_world.deserialize( downgraded_owner_json.get_object() ) );
+    CHECK( serialize_world( active_world ) == active_bytes );
+
+    bandit_live_world::world_state hostile_kind_world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( hostile_kind_world, index, 47700 );
+    }
+    bandit_live_world::site_record &hostile_kind_site = hostile_kind_world.sites.front();
+    prepare_hostile_follow_on( hostile_kind_site, 2, 1, "kind-target",
+                               tripoint_abs_omt( 18, 20, 0 ), 100 );
+    const bandit_live_world::hostile_operation_plan hostile_kind_plan =
+        bandit_live_world::plan_hostile_operation(
+            hostile_kind_site, bandit_live_world::hostile_operation_kind::shakedown,
+            { character_id( 47700 ), character_id( 47701 ) },
+            { hostile_kind_site.anchor, tripoint_abs_omt( 18, 20, 0 ) },
+            hostile_kind_site.anchor, 102 );
+    REQUIRE( hostile_kind_plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan(
+                 hostile_kind_site, hostile_kind_plan ) );
+    const std::string hostile_kind_bytes = serialize_world( hostile_kind_world );
+    const std::string hostile_kind = "\"kind\": \"hostile_operation\"";
+    std::string malformed_current_hostile_kind = hostile_kind_bytes;
+    REQUIRE( malformed_current_hostile_kind.find( hostile_kind ) != std::string::npos );
+    malformed_current_hostile_kind.replace(
+        malformed_current_hostile_kind.find( hostile_kind ), hostile_kind.size(),
+        "\"kind\": \"scout_sortie\"" );
+    JsonValue malformed_current_hostile_json =
+        json_loader::from_string( malformed_current_hostile_kind );
+    CHECK_THROWS( hostile_kind_world.deserialize( malformed_current_hostile_json.get_object() ) );
+    CHECK( serialize_world( hostile_kind_world ) == hostile_kind_bytes );
+
+    std::string future_hostile_wrapper = hostile_kind_bytes;
+    const std::string hostile_wrapper_schema =
+        "\"active_hostile_operation\": { \"schema_version\": 1";
+    REQUIRE( future_hostile_wrapper.find( hostile_wrapper_schema ) != std::string::npos );
+    future_hostile_wrapper.replace( future_hostile_wrapper.find( hostile_wrapper_schema ),
+                                    hostile_wrapper_schema.size(),
+                                    "\"active_hostile_operation\": { \"schema_version\": 2" );
+    JsonValue future_hostile_wrapper_json = json_loader::from_string( future_hostile_wrapper );
+    CHECK_THROWS( hostile_kind_world.deserialize( future_hostile_wrapper_json.get_object() ) );
+    CHECK( serialize_world( hostile_kind_world ) == hostile_kind_bytes );
+
+    JsonValue future_nested_wrapper_json = json_loader::from_string(
+            R"({"schema_version":2,"operation_kind":"none"})" );
+    bandit_live_world::hostile_operation_state future_nested_wrapper;
+    CHECK_THROWS( future_nested_wrapper.deserialize( future_nested_wrapper_json.get_object() ) );
+
+    std::string legacy_hostile_kind = malformed_current_hostile_kind;
+    const std::string current_site_schema = "\"schema_version\": 10";
+    REQUIRE( legacy_hostile_kind.find( current_site_schema ) != std::string::npos );
+    legacy_hostile_kind.replace( legacy_hostile_kind.find( current_site_schema ),
+                                 current_site_schema.size(), "\"schema_version\": 9" );
+    const std::string current_roster_key = "\"living_total\"";
+    REQUIRE( legacy_hostile_kind.find( current_roster_key ) != std::string::npos );
+    legacy_hostile_kind.replace( legacy_hostile_kind.find( current_roster_key ),
+                                 current_roster_key.size(), "\"headcount\"" );
+    JsonValue legacy_hostile_json = json_loader::from_string( legacy_hostile_kind );
+    bandit_live_world::world_state repaired_hostile_kind_world;
+    repaired_hostile_kind_world.deserialize( legacy_hostile_json.get_object() );
+    REQUIRE( repaired_hostile_kind_world.sites.size() == 1 );
+    CHECK( repaired_hostile_kind_world.sites.front().active_hostile_operation.is_active() );
+    CHECK( repaired_hostile_kind_world.sites.front().active_hostile_operation.reservation.kind ==
+           bandit_live_world::outing_kind::hostile_operation );
 }
 
 TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
@@ -547,15 +872,15 @@ TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_
     CHECK( site.site_id == "overmap_special:bandit_work_camp@40,50,0" );
     CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_work_camp );
     CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
-    CHECK( site.headcount == 2 );
+    CHECK( site.living_total == 2 );
     REQUIRE( site.footprint.size() == 9 );
     REQUIRE( site.members.size() == 2 );
     CHECK( site.members.front().npc_id == character_id( 301 ) );
     CHECK( site.members.front().npc_template_id == "bandit_quartermaster" );
     CHECK( site.members.back().npc_id == character_id( 302 ) );
     REQUIRE( site.spawn_tiles.size() == 2 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 960, 1200, 0 ) )->headcount == 1 );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 984, 1224, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 960, 1200, 0 ) )->assigned_living_total == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 984, 1224, 0 ) )->assigned_living_total == 1 );
     CHECK( site.active_outing.activity_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
     CHECK( site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie );
     CHECK( site.active_outing.generation == 1 );
@@ -860,13 +1185,13 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
            "[bandit][live_world][supply][migration]" )
 {
     bandit_live_world::site_record capacity_site;
-    capacity_site.headcount = 0;
+    capacity_site.living_total = 0;
     CHECK( bandit_live_world::camp_supply_cap( capacity_site ) == 14 );
-    capacity_site.headcount = 1;
+    capacity_site.living_total = 1;
     CHECK( bandit_live_world::camp_supply_cap( capacity_site ) == 14 );
-    capacity_site.headcount = 18;
+    capacity_site.living_total = 18;
     CHECK( bandit_live_world::camp_supply_cap( capacity_site ) == 252 );
-    capacity_site.headcount = 19;
+    capacity_site.living_total = 19;
     CHECK( bandit_live_world::camp_supply_cap( capacity_site ) == 256 );
 
     bandit_live_world::world_state registered;
@@ -880,7 +1205,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
     for( int index = 0; index < 14; ++index ) {
         add_bandit_camp_member( registered, index, 47000 );
     }
-    CHECK( registered.sites.front().headcount == 14 );
+    CHECK( registered.sites.front().living_total == 14 );
     CHECK( registered.sites.front().supply_units == 98 );
     CHECK( registered.sites.front().supply_accounted_living_total == 14 );
 
@@ -888,7 +1213,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
                                 R"({"schema_version":5,"site_id":"legacy-supply","headcount":6})" );
     bandit_live_world::site_record legacy;
     legacy.deserialize( legacy_json.get_object() );
-    CHECK( legacy.schema_version == 9 );
+    CHECK( legacy.schema_version == 10 );
     CHECK( legacy.supply_units == 42 );
     CHECK( legacy.supply_accounted_living_total == 6 );
     CHECK( legacy.supply_member_minute_remainder == 0 );
@@ -898,7 +1223,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
     migrated_world.sites.push_back( legacy );
     const bandit_live_world::world_state migrated_round_trip = round_trip_world( migrated_world );
     REQUIRE( migrated_round_trip.sites.size() == 1 );
-    CHECK( migrated_round_trip.sites.front().schema_version == 9 );
+    CHECK( migrated_round_trip.sites.front().schema_version == 10 );
     CHECK( migrated_round_trip.sites.front().supply_units == 42 );
 
     JsonValue incomplete_current_json = json_loader::from_string(
@@ -914,7 +1239,7 @@ TEST_CASE( "bandit_live_world_camp_supply_catch_up_is_bounded_and_stepwise_stabl
            "[bandit][live_world][supply][time]" )
 {
     bandit_live_world::site_record fractional;
-    fractional.headcount = 3;
+    fractional.living_total = 3;
     fractional.supply_units = 42;
     fractional.supply_accounted_living_total = 3;
     REQUIRE( bandit_live_world::advance_camp_supply( fractional, 100 ) );
@@ -936,7 +1261,7 @@ TEST_CASE( "bandit_live_world_camp_supply_catch_up_is_bounded_and_stepwise_stabl
     CHECK( loaded_fractional.sites.front().supply_member_minute_remainder == 0 );
 
     bandit_live_world::site_record one_jump;
-    one_jump.headcount = 18;
+    one_jump.living_total = 18;
     one_jump.supply_units = 252;
     one_jump.supply_last_update_minutes = 0;
     one_jump.supply_accounted_living_total = 18;
@@ -1276,7 +1601,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 9 );
+        CHECK( site.schema_version == 10 );
         CHECK( site.active_outing.is_active() );
         CHECK( site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie );
         CHECK( site.active_outing.activity_id == "legacy_camp#dispatch" );
@@ -1370,7 +1695,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         site.deserialize( transitional.get_object() );
 
         REQUIRE( site.active_outing.is_active() );
-        CHECK( site.schema_version == 9 );
+        CHECK( site.schema_version == 10 );
         CHECK( site.active_outing.schema_version == 5 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
@@ -1600,7 +1925,7 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 9 );
+        CHECK( site.schema_version == 10 );
         CHECK_FALSE( site.active_outing.is_active() );
         REQUIRE( site.active_hostile_operation.is_active() );
         CHECK( site.active_hostile_operation.operation_kind ==
@@ -1922,7 +2247,7 @@ TEST_CASE( "bandit_live_world_simulation_owner_handoff_is_shared_and_token_check
         simulation_owner::local;
     repaired_hostile.sites.front().active_hostile_operation.reservation.handoff_epoch = 0;
     repaired_hostile.sites.front().active_hostile_operation.reservation.last_advanced_minutes = -1;
-    repaired_hostile = round_trip_world( repaired_hostile );
+    repaired_hostile = round_trip_legacy_site_world( repaired_hostile );
     CHECK_FALSE( repaired_hostile.sites.front().active_hostile_operation.is_active() );
     CHECK( repaired_hostile.sites.front().active_hostile_operation.reservation.member_ids.empty() );
 }
@@ -2141,7 +2466,8 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
     malformed_job_site.active_outing.member_ids = { character_id( 45120 ) };
     malformed_job_site.active_outing.leader_id = character_id( 45120 );
     malformed_job_site.active_outing.job_type = "raid";
-    const bandit_live_world::world_state repaired_job = round_trip_world( malformed_job_world );
+    const bandit_live_world::world_state repaired_job =
+        round_trip_legacy_site_world( malformed_job_world );
     REQUIRE( repaired_job.sites.size() == 1 );
     CHECK_FALSE( repaired_job.sites.front().active_outing.is_active() );
     CHECK( repaired_job.sites.front().find_member( character_id( 45120 ) )->state ==
@@ -2614,7 +2940,7 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     const bandit_live_world::world_state loaded = round_trip_world( world );
     REQUIRE( loaded.sites.size() == 1 );
     const bandit_live_world::site_record &loaded_site = loaded.sites.front();
-    CHECK( loaded_site.schema_version == 9 );
+    CHECK( loaded_site.schema_version == 10 );
     CHECK( loaded_site.active_hostile_operation.is_active() );
     CHECK( loaded_site.active_hostile_operation.operation_kind ==
            hostile_operation_kind::shakedown );
@@ -2633,7 +2959,8 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     malformed_party.sites.front().active_hostile_operation.reservation.member_ids.resize( 1 );
     malformed_party.sites.front().active_hostile_operation.reservation.leader_id =
         malformed_party.sites.front().active_hostile_operation.reservation.member_ids.front();
-    const bandit_live_world::world_state repaired_party = round_trip_world( malformed_party );
+    const bandit_live_world::world_state repaired_party =
+        round_trip_legacy_site_world( malformed_party );
     REQUIRE( repaired_party.sites.size() == 1 );
     CHECK_FALSE( repaired_party.sites.front().active_hostile_operation.is_active() );
     CHECK( repaired_party.sites.front().active_hostile_operation.reservation.member_ids.empty() );
@@ -2642,7 +2969,8 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     for( int member_id = 45203; member_id <= 45206; ++member_id ) {
         broken_reserve.sites.front().find_member( character_id( member_id ) )->wounded_or_unready = true;
     }
-    const bandit_live_world::world_state repaired_reserve = round_trip_world( broken_reserve );
+    const bandit_live_world::world_state repaired_reserve =
+        round_trip_legacy_site_world( broken_reserve );
     REQUIRE( repaired_reserve.sites.size() == 1 );
     CHECK_FALSE( repaired_reserve.sites.front().active_hostile_operation.is_active() );
     CHECK( repaired_reserve.sites.front().active_hostile_operation.reservation.member_ids.empty() );
@@ -3401,7 +3729,7 @@ TEST_CASE( "bandit_live_world_caps_scout_routes_observations_and_reservations_on
         oversized_site.active_outing.member_ids.push_back( member_id );
     }
     oversized_site.active_outing.leader_id = oversized_site.active_outing.member_ids.front();
-    const bandit_live_world::world_state closed = round_trip_world( oversized );
+    const bandit_live_world::world_state closed = round_trip_legacy_site_world( oversized );
     REQUIRE( closed.sites.size() == 1 );
     CHECK_FALSE( closed.sites.front().active_outing.is_active() );
     CHECK( closed.sites.front().active_outing.member_ids.empty() );
@@ -3637,12 +3965,11 @@ TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_
     REQUIRE( inconsistent.sites.front().find_member( character_id( 45301 ) ) != nullptr );
     inconsistent.sites.front().find_member( character_id( 45301 ) )->state =
         bandit_live_world::member_state::local_contact;
-    const bandit_live_world::world_state safely_closed = round_trip_world( inconsistent );
-    REQUIRE( safely_closed.sites.size() == 1 );
-    CHECK_FALSE( safely_closed.sites.front().active_outing.is_active() );
-    CHECK( safely_closed.sites.front().active_outing.casualty_ids.empty() );
-    CHECK( safely_closed.sites.front().find_member( character_id( 45301 ) )->state ==
-           bandit_live_world::member_state::at_home );
+    inconsistent.sites.front().living_total = 2;
+    CHECK_THROWS( round_trip_world( inconsistent ) );
+    CHECK( inconsistent.sites.front().active_outing.is_active() );
+    CHECK( inconsistent.sites.front().find_member( character_id( 45301 ) )->state ==
+           bandit_live_world::member_state::local_contact );
 }
 
 TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_once",
@@ -4140,7 +4467,7 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
         *loaded.find_site( "map_extra:mx_bandits_block@7,5,0" );
 
     CHECK( loaded_camp.anchor == tripoint_abs_omt( 10, 20, 0 ) );
-    CHECK( loaded_camp.headcount == 2 );
+    CHECK( loaded_camp.living_total == 2 );
     CHECK( loaded_camp.active_outing.activity_id == "overmap_special:bandit_camp@10,20,0#dispatch" );
     CHECK( loaded_camp.active_outing.target_id == "player@18,20,0" );
     REQUIRE( loaded_camp.active_outing.member_ids == std::vector<character_id>( { character_id( 1001 ) } ) );
@@ -4155,7 +4482,7 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     CHECK( loaded_camp.known_recent_marks.front() == "west-basecamp-pressure" );
 
     CHECK( loaded_work_camp.anchor == tripoint_abs_omt( 40, 50, 0 ) );
-    CHECK( loaded_work_camp.headcount == 2 );
+    CHECK( loaded_work_camp.living_total == 2 );
     CHECK( loaded_work_camp.active_outing.activity_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
     CHECK( loaded_work_camp.active_outing.target_id == "player@48,50,0" );
     REQUIRE( loaded_work_camp.active_outing.member_ids == std::vector<character_id>( { character_id( 2001 ) } ) );
@@ -4172,7 +4499,7 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     CHECK( loaded_work_camp.known_recent_marks.front() == "east-workcamp-pressure" );
 
     CHECK( loaded_roadblock.anchor == tripoint_abs_omt( 7, 5, 0 ) );
-    CHECK( loaded_roadblock.headcount == 1 );
+    CHECK( loaded_roadblock.living_total == 1 );
     CHECK( loaded_roadblock.active_outing.activity_id == "map_extra:mx_bandits_block@7,5,0#dispatch" );
     CHECK( loaded_roadblock.active_outing.target_id == "player@8,5,0" );
     REQUIRE( loaded_roadblock.active_outing.member_ids == std::vector<character_id>( { character_id( 3001 ) } ) );
@@ -4191,18 +4518,18 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
         bandit_pursuit_handoff::build_return_packet( camp_plan.entry, camp_loss );
 
     REQUIRE( bandit_live_world::apply_return_packet( loaded_camp, camp_packet ) );
-    CHECK( loaded_camp.headcount == 1 );
+    CHECK( loaded_camp.living_total == 1 );
     CHECK( loaded_camp.active_outing.activity_id.empty() );
     CHECK( loaded_camp.active_outing.target_id.empty() );
     CHECK( loaded_camp.active_outing.member_ids.empty() );
     CHECK( loaded_camp.find_member( character_id( 1001 ) )->state ==
            bandit_live_world::member_state::missing );
-    CHECK( loaded_camp.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 0 );
+    CHECK( loaded_camp.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->assigned_living_total == 0 );
     CHECK( loaded_camp.dispatchable_member_capacity() == 0 );
     CHECK_FALSE( bandit_live_world::plan_site_dispatch( loaded_camp, tripoint_abs_omt( 18, 20, 0 ),
                  "player@18,20,0" ).valid );
 
-    CHECK( loaded_work_camp.headcount == 2 );
+    CHECK( loaded_work_camp.living_total == 2 );
     CHECK( loaded_work_camp.active_outing.activity_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
     REQUIRE( loaded_work_camp.active_outing.member_ids == std::vector<character_id>( { character_id( 2001 ) } ) );
     CHECK( loaded_work_camp.find_member( character_id( 2001 ) )->state ==
@@ -4212,7 +4539,7 @@ TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_sav
     REQUIRE( loaded_work_camp.known_recent_marks.size() == 1 );
     CHECK( loaded_work_camp.known_recent_marks.front() == "east-workcamp-pressure" );
 
-    CHECK( loaded_roadblock.headcount == 1 );
+    CHECK( loaded_roadblock.living_total == 1 );
     CHECK( loaded_roadblock.active_outing.activity_id == "map_extra:mx_bandits_block@7,5,0#dispatch" );
     REQUIRE( loaded_roadblock.active_outing.member_ids == std::vector<character_id>( { character_id( 3001 ) } ) );
 }
@@ -4707,7 +5034,7 @@ TEST_CASE( "bandit_structural_scan_skips_active_outside_or_no_ready_home_sites",
     bandit_live_world::site_record &empty_home_site = world.sites.back();
     active_outside_site.active_outing.member_ids.push_back( character_id( 13700 ) );
     empty_home_site.members.clear();
-    empty_home_site.headcount = 0;
+    empty_home_site.living_total = 0;
     empty_home_site.spawn_tiles.clear();
 
     const bandit_live_world::structural_bounty_scan_result result =
@@ -6230,7 +6557,8 @@ TEST_CASE( "bandit_live_world_darkness_can_turn_cannibal_pack_contact_into_attac
     CHECK( high_threat_decision.posture == bandit_live_world::local_gate_posture::abort );
 }
 
-TEST_CASE( "bandit_live_world_writeback_shrinks_headcount_and_future_dispatch_capacity", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_writeback_shrinks_living_total_and_future_dispatch_capacity",
+           "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 701 ),
@@ -6244,24 +6572,24 @@ TEST_CASE( "bandit_live_world_writeback_shrinks_headcount_and_future_dispatch_ca
              special_lookup ) );
 
     bandit_live_world::site_record &site = world.sites.front();
-    CHECK( site.headcount == 3 );
+    CHECK( site.living_total == 3 );
     CHECK( site.count_live_members() == 3 );
     CHECK( site.dispatchable_member_capacity() == 2 );
     REQUIRE( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) ) != nullptr );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->assigned_living_total == 1 );
 
     REQUIRE( bandit_live_world::update_member_state( site, character_id( 702 ),
              bandit_live_world::member_state::dead, "killed during local contact" ) );
-    CHECK( site.headcount == 2 );
+    CHECK( site.living_total == 2 );
     CHECK( site.count_live_members() == 2 );
     CHECK( site.dispatchable_member_capacity() == 1 );
     CHECK( site.find_member( character_id( 702 ) )->last_writeback_summary ==
            "killed during local contact" );
-    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 0 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->assigned_living_total == 0 );
 
     REQUIRE( bandit_live_world::update_member_state( site, character_id( 703 ),
              bandit_live_world::member_state::missing, "never returned from scout" ) );
-    CHECK( site.headcount == 1 );
+    CHECK( site.living_total == 1 );
     CHECK( site.count_live_members() == 1 );
     CHECK( site.dispatchable_member_capacity() == 0 );
 
@@ -7112,7 +7440,7 @@ TEST_CASE( "bandit_live_world_applies_a_return_packet_onto_the_active_owned_outi
     CHECK( site.find_member( character_id( 801 ) )->last_writeback_summary ==
            "return repelled from player_basecamp_nearby (dead)" );
     CHECK( site.find_member( character_id( 802 ) )->state == bandit_live_world::member_state::at_home );
-    CHECK( site.headcount == 1 );
+    CHECK( site.living_total == 1 );
     CHECK( site.dispatchable_member_capacity() == 0 );
     CHECK( site.active_outing.activity_id.empty() );
     CHECK( site.active_outing.target_id.empty() );
@@ -7258,7 +7586,7 @@ TEST_CASE( "bandit_live_world_report_watermark_does_not_close_a_legacy_hostile_o
     site.active_outing.job_type = "toll";
     site.applied_report_generation = site.active_outing.generation;
 
-    const bandit_live_world::world_state loaded = round_trip_world( world );
+    const bandit_live_world::world_state loaded = round_trip_legacy_site_world( world );
     REQUIRE( loaded.sites.size() == 1 );
     CHECK_FALSE( loaded.sites.front().active_outing.is_active() );
     CHECK( loaded.sites.front().active_outing.member_ids.empty() );
@@ -7556,7 +7884,7 @@ TEST_CASE( "bandit_live_world_resolves_bounded_live_aftermath_observations", "[b
         CHECK( wiped_packet->anchored_identity_updates.front().status == "dead" );
         REQUIRE( bandit_live_world::apply_return_packet( site, *wiped_packet ) );
         CHECK( site.find_member( character_id( 901 ) )->state == bandit_live_world::member_state::dead );
-        CHECK( site.headcount == 1 );
+        CHECK( site.living_total == 1 );
     }
 
     SECTION( "missing member resolves to a broken return packet" ) {
@@ -7577,7 +7905,7 @@ TEST_CASE( "bandit_live_world_resolves_bounded_live_aftermath_observations", "[b
         CHECK( lost_packet->anchored_identity_updates.front().status == "missing" );
         REQUIRE( bandit_live_world::apply_return_packet( site, *lost_packet ) );
         CHECK( site.find_member( character_id( 901 ) )->state == bandit_live_world::member_state::missing );
-        CHECK( site.headcount == 1 );
+        CHECK( site.living_total == 1 );
     }
 }
 

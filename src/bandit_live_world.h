@@ -214,7 +214,7 @@ struct member_record {
 
 struct spawn_tile_record {
     tripoint_abs_ms tile;
-    int headcount = 0;
+    int assigned_living_total = 0;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -452,15 +452,29 @@ struct finite_resource_claim_result {
     std::string application_key;
 };
 
+struct roster_view {
+    bool valid = false;
+    int living_total = 0;
+    int materialized_living_total = 0;
+    int unmaterialized_home_total = 0;
+    std::vector<character_id> physically_present_ids;
+    int physically_present_total = 0;
+    std::vector<character_id> away_ids;
+    std::vector<character_id> reserved_unresolved_ids;
+    std::vector<character_id> ready_concrete_ids;
+    int ready_concrete_total = 0;
+    int ready_total = 0;
+};
+
 struct site_record {
-    int schema_version = 9;
+    int schema_version = 10;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
     hostile_site_profile profile = hostile_site_profile::none;
     std::string source_id;
     tripoint_abs_omt anchor;
-    int headcount = 0;
+    int living_total = 0;
     int supply_units = 0;
     int supply_last_update_minutes = -1;
     int supply_accounted_living_total = 0;
@@ -517,6 +531,7 @@ struct site_record {
     const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
     int count_members_in_state( member_state state ) const;
     int count_live_members() const;
+    roster_view roster() const;
     int active_outing_survivor_count() const;
     int count_home_side_signals() const;
     int dispatchable_member_capacity() const;

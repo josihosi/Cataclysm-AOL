@@ -18,7 +18,7 @@ overmap_global_state populated_global_state()
 
     bandit_live_world::site_record site;
     site.site_id = "save_compatibility_site";
-    site.headcount = 2;
+    site.living_total = 2;
     site.supply_units = 13;
     site.supply_last_update_minutes = 100;
     site.supply_accounted_living_total = 2;
@@ -195,7 +195,7 @@ TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
 
     REQUIRE( loaded.bandit_live_world.sites.size() == 1 );
     CHECK( loaded.bandit_live_world.sites.front().site_id == "save_compatibility_site" );
-    CHECK( loaded.bandit_live_world.sites.front().headcount == 2 );
+    CHECK( loaded.bandit_live_world.sites.front().living_total == 2 );
     CHECK( loaded.bandit_live_world.sites.front().supply_units == 13 );
     CHECK( loaded.bandit_live_world.sites.front().supply_last_update_minutes == 100 );
     CHECK( loaded.bandit_live_world.sites.front().supply_accounted_living_total == 2 );

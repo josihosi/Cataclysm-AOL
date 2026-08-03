@@ -1487,12 +1487,12 @@ int live_bandit_materialize_abstract_members_for_dispatch(
     bandit_live_world::world_state &state, bandit_live_world::site_record &site )
 {
     if( site.source_kind != bandit_live_world::anchor_source_kind::overmap_special ||
-        site.source_id.empty() || site.headcount <= 0 ) {
+        site.source_id.empty() || site.living_total <= 0 ) {
         return 0;
     }
 
     const int materialized_live_members = site.count_live_members();
-    const int abstract_members_remaining = site.headcount - materialized_live_members;
+    const int abstract_members_remaining = site.living_total - materialized_live_members;
     const int at_home_goal = live_bandit_minimum_concrete_roster_for_scout_dispatch( site );
     const int missing_at_home_members = at_home_goal - site.count_members_in_state(
                                             bandit_live_world::member_state::at_home );
@@ -1544,7 +1544,7 @@ int live_bandit_materialize_abstract_members_for_dispatch(
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialized abstract roster: site="
                                    << site.site_id << " created_members=" << created_members
                                    << " concrete_live_members=" << site.count_live_members()
-                                   << " abstract_headcount=" << site.headcount
+                                   << " living_total=" << site.living_total
                                    << " template=" << template_id.str() << '\n';
     }
     return created_members;
