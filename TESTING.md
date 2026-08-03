@@ -538,6 +538,18 @@ generic benchmark does not claim real NPC materialization. Exact evidence and ca
 external `phase3-20260803/local-handoff/MANIFEST.md`. Current validation target is symmetric
 local-to-abstract snapshot/writeback, partial-read rejection, and exact resumption.
 
+Local-pair dematerialization is green at `f83b6bb116`. Final local-handoff/structural/
+existing-handoff/full-live-world/overmap-save/save-size gates pass 1/189, 38/5,602, 10/307,
+129/34,010, 2/24, and 1/10 at seed `830204929`. The 81,226,776-byte binary SHA-256 is
+`2776f83565f8c781239a782e88ce5ff02dbb1be61f8dda15685c05c279a8cfbe`.
+The accepted 100-site/32-hour artifact records 60,927 ns p95, 67,042 ns max, 262,144-byte timing
+RSS delta, 67,826 serialized bytes of growth, and 100/100 terrain/scheduler service within six
+passes. Focused proof covers physical death-before-cleanup, missing-is-not-dead, exact exit/HP/
+cargo/death writeback, partial-read and second-quiesce rollback, save/load/replay, same-minute
+freeze, and one later abstract advance. Exact evidence is under external
+`phase3-20260803/dematerialization/MANIFEST.md`. Current validation target is bounded local pair
+cohesion, deterministic leader continuity, abort-return, and complete-survivor staging arrival.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

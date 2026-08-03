@@ -6,19 +6,19 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **On dematerialization, snapshot all local pair changes and
-stable NPC IDs before atomically reactivating abstract advancement.**
+Current deterministic execution row: **Use bounded leader/follower cohesion and define arrival as
+every surviving member assembled at staging, with deterministic re-election and abort-return.**
 
-Latest resume packet (behavior checkpoint `367337c9e4`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `f83b6bb116`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Schema 7 now snapshots the exact route cursor, direction, cargo, casualties, stable
-members, HP, and plausible route-facing entry tiles; both existing NPCs bind before the odd local
-epoch commits. Partial bind failure rolls every attempt back, while committed save/load and replay
-are idempotent. Local-handoff/structural/live-world/save gates pass 1/102, 38/5,515, 129/33,923,
-2/24, and 1/10. Test binary SHA-256 is
-`7e80e64ee92de6020ac50976a2bccee7ffc318a2578b85c488b0900515ff8d12`
-(81,129,096 bytes). The accepted 100-site packet remains within the provisional budgets; exact
-evidence is under `phase3-20260803/local-handoff/MANIFEST.md`. No current blocker.
+untouched. Schema 7 now also snapshots the complete pair's exit/HP/cargo/death state, records
+physical death before NPC cleanup, rejects missing-as-dead inference, rolls back partial quiesce,
+and commits even abstract ownership last. Save/load/replay and exactly-once abstract resumption are
+green. Local-handoff/structural/live-world/save gates pass 1/189, 38/5,602, 129/34,010, 2/24,
+and 1/10. Test binary SHA-256 is
+`2776f83565f8c781239a782e88ce5ff02dbb1be61f8dda15685c05c279a8cfbe`
+(81,226,776 bytes). The accepted 100-site packet remains within the provisional budgets; exact
+evidence is under `phase3-20260803/dematerialization/MANIFEST.md`. No current blocker.
 
 Production target: `port/cdda-master`
 
@@ -743,6 +743,12 @@ NPCs before owner commit, and rejects active/missing/dead/partial pairs. Any fai
 bind rolls back every attempted member in reverse and leaves the camp byte-identical; committed
 save/load and replay are no-ops. Exact evidence is under external
 `phase3-20260803/local-handoff/MANIFEST.md`.
+Dematerialization checkpoint (2026-08-03): `f83b6bb116` snapshots the complete local pair's exact
+exit/HP/cargo/death state, records physical death before cleanup, never infers death from absence,
+quiesces both NPCs with reverse rollback, and commits even abstract ownership last. Save/load and
+replay are idempotent; same-minute work stays frozen; the first later abstract advance consumes the
+bounded receipt exactly once. Exact evidence is under external
+`phase3-20260803/dematerialization/MANIFEST.md`.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
@@ -750,7 +756,7 @@ save/load and replay are no-ops. Exact evidence is under external
 - [x] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety. _Checkpoint `cb53cbafdb`: static exact-family priors seed only unconfirmed zero-bounty terrain opportunities; both factions must send the shared exact pair and physically check them; fair terrain service reaches 100/100 sites with spread one._
 - [x] Give the party one shared high-level route and one movement owner.
 - [x] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner. _Checkpoint `367337c9e4`: schema 7 binds the complete existing stable pair at distinct route-facing tiles and commits owner last; generic owner flips cannot bypass the transaction._
-- [ ] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement.
+- [x] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement. _Checkpoint `f83b6bb116`: complete exit/HP/cargo/death state commits under an even epoch only after both stable NPCs quiesce; physical death is captured before cleanup, partial reads/quiesce leave local ownership byte-identical, and the next abstract advance occurs once._
 - [x] Record `last_advanced_turn` and reject a second advance in the same owner generation.
 - [x] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent. _Checkpoint `367337c9e4`: injected second-bind failure rolls back the attempted second and first members in reverse with byte-identical camp state; committed save/load and replay perform no new bind._
 - [ ] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return.

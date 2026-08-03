@@ -179,10 +179,11 @@ physical terrain checks, and bounded cheap/final score diagnostics are checkpoin
 `cb53cbafdb`: the accepted 100-site packet services terrain and dispatch 100/100. Routed dispatch
 is checkpointed at `cab98bc55c`: exact drive/force-due and acquire/retain/risk boundaries feed a
 cheap-top-two route consumer with eight global solves and two starts. The current first unchecked
-row is local-to-abstract dematerialization after the atomic pair handoff checkpoint
-`367337c9e4`: schema 7 freezes abstract work, snapshots exact pair/route/HP state, binds both
-existing stable NPCs before committing local ownership, and rolls back a partial bind without
-changing the camp. Terrain labels remain static priors, not
+row is local pair cohesion and assembled arrival after dematerialization checkpoint `f83b6bb116`:
+schema 7 snapshots exact exit/HP/cargo/death state, records physical death before cleanup, rolls
+back partial quiesce, commits the even owner last, and resumes abstract work exactly once. The next
+slice must add bounded leader/follower rendezvous and require all surviving members at staging;
+first-member arrival cannot complete the group. Terrain labels remain static priors, not
 perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
