@@ -1068,7 +1068,7 @@ void hacking_activity_actor::finish( player_activity &act, Character &who )
             get_event_bus().send<event_type::triggers_alarm>( who.getID() );
             sounds::sound( who.pos_bub(), MAX_VIEW_DISTANCE, sounds::sound_t::music, _( "an alarm sound!" ),
                            true,
-                           "environment", "alarm" );
+                           "environment", "alarm", sounds::significant_sound_t::alarm );
             break;
         case hack_result::NOTHING:
             who.add_msg_if_player( _( "You fail the hack, but no alarms are triggered." ) );
@@ -3515,7 +3515,7 @@ void lockpick_activity_actor::finish( player_activity &act, Character &who )
     if( !perfect && ter_type == ter_t_door_locked_alarm && ( lock_roll + dice( 1, 30 ) ) > pick_roll ) {
         sounds::sound( who.pos_bub(), 40, sounds::sound_t::alarm, _( "an alarm sound!" ), true,
                        "environment",
-                       "alarm" );
+                       "alarm", sounds::significant_sound_t::alarm );
     }
 
     if( destroy && lockpick.has_value() ) {
@@ -9468,7 +9468,7 @@ void prying_activity_actor::handle_prying( Character &who )
         get_event_bus().send<event_type::triggers_alarm>( who.getID() );
         sounds::sound( who.pos_bub(), 40, sounds::sound_t::alarm, _( "an alarm sound!" ), true,
                        "environment",
-                       "alarm" );
+                       "alarm", sounds::significant_sound_t::alarm );
     }
 
     if( !data->message().empty() ) {

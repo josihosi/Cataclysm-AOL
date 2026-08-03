@@ -549,7 +549,7 @@ void computer_session::helper_release( float radius )
     sounds::sound( player_character.pos_bub(), 40, sounds::sound_t::alarm, _( "an alarm sound!" ),
                    false,
                    "environment",
-                   "alarm" );
+                   "alarm", sounds::significant_sound_t::alarm );
     get_map().translate_radius( ter_t_reinforced_glass_lab, ter_t_thconc_floor, radius,
                                 player_character.pos_bub(),
                                 true );
@@ -1278,7 +1278,7 @@ void computer_session::action_irradiator()
                         sounds::sound( player_character.pos_bub(), 30, sounds::sound_t::alarm, _( "an alarm sound!" ),
                                        false,
                                        "environment",
-                                       "alarm" );
+                                       "alarm", sounds::significant_sound_t::alarm );
                         here.i_rem( dest, it );
                         here.make_rubble( dest );
                         here.propagate_field( dest, fd_nuke_gas, 100, 3 );
@@ -1548,7 +1548,7 @@ void computer_session::failure_alarm()
     sounds::sound( player_character.pos_bub(), 60, sounds::sound_t::alarm, _( "an alarm sound!" ),
                    false,
                    "environment",
-                   "alarm" );
+                   "alarm", sounds::significant_sound_t::alarm );
 }
 
 void computer_session::failure_manhacks()

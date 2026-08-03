@@ -6,16 +6,19 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "cata_catch.h"
+#include "calendar.h"
 #include "game_constants.h"
 #include "json.h"
 #include "json_loader.h"
 #include "lightmap.h"
 #include "npc.h"
 #include "omdata.h"
+#include "sounds.h"
 #include "weather_type.h"
 
 namespace
@@ -248,6 +251,25 @@ bandit_live_world::structural_signal_read make_structural_signal_read(
     read.summary = sense == bandit_live_world::sortie_observation_sense::smoke ?
                    "uncertain smoke along the committed route" :
                    "uncertain light along the committed route";
+    return read;
+}
+
+bandit_live_world::structural_signal_read make_structural_sound_read(
+    const bandit_live_world::structural_sound_kind kind,
+    const tripoint_abs_omt &source_omt, const int emitted_minutes,
+    const int strength = 4, const int confidence = 70,
+    const int uncertainty_radius_omt = 2 )
+{
+    bandit_live_world::structural_signal_read read;
+    read.sense = bandit_live_world::sortie_observation_sense::sound;
+    read.sound_kind = kind;
+    read.source_omt = source_omt;
+    read.emitted_minutes = emitted_minutes;
+    read.range_cap_omt = 40;
+    read.strength = strength;
+    read.confidence = confidence;
+    read.uncertainty_radius_omt = uncertainty_radius_omt;
+    read.summary = "uncertain significant sound along the committed route";
     return read;
 }
 
@@ -9807,6 +9829,312 @@ TEST_CASE( "hostile_camp_structural_signal_and_visual_fact_share_one_advance",
         };
     } );
     CHECK( serialize_world( world ) == after_one_advance );
+}
+
+TEST_CASE( "hostile_camp_structural_sound_recorder_preserves_coarse_event_class",
+           "[bandit][live_world][phase4_sound_observation]" )
+{
+    struct sound_case {
+        bandit_live_world::structural_sound_kind kind;
+        const char *name;
+        bool forward_source;
+    };
+    const std::vector<sound_case> cases = {
+        { bandit_live_world::structural_sound_kind::gunfire, "gunfire", false },
+        { bandit_live_world::structural_sound_kind::alarm, "alarm", true },
+        { bandit_live_world::structural_sound_kind::explosion, "explosion", true },
+    };
+    int fixture_index = 0;
+    for( const bool cannibal : { false, true } ) {
+        for( const sound_case &fixture : cases ) {
+            CAPTURE( cannibal, fixture.name );
+            bandit_live_world::world_state world = make_structural_signal_test_world(
+                        cannibal, 15920 + fixture_index * 10 );
+            fixture_index++;
+            bandit_live_world::site_record &site = world.sites.front();
+            const bandit_live_world::scout_phase phase_before = site.active_outing.phase;
+            const int waypoint_before = site.active_outing.waypoint_index;
+            const character_id observer_id = site.active_outing.leader_id;
+            const int target_revision = site.active_outing.target_lead_revision;
+            const std::string lead_id = site.active_outing.target_lead_id;
+            const bandit_live_world::camp_map_lead *lead =
+                site.intelligence_map.find_lead( lead_id );
+            REQUIRE( lead != nullptr );
+            REQUIRE( target_revision == lead->revision );
+            const std::string lead_before = serialize_camp_map_lead( *lead );
+            tripoint_abs_omt expected_source;
+            int callback_calls = 0;
+
+            const bandit_live_world::structural_signal_record_result recorded =
+                bandit_live_world::record_structural_signal_observations(
+                    world, 221,
+            [&fixture, &expected_source, &callback_calls]( const bandit_live_world::site_record &,
+                    const bandit_live_world::active_outing_state &,
+            const bandit_live_world::structural_threat_observer_request & request ) {
+                callback_calls++;
+                REQUIRE_FALSE( request.visible_forward_omts.empty() );
+                expected_source = fixture.forward_source ? request.visible_forward_omts.front() :
+                                  request.current_omt;
+                return std::vector<bandit_live_world::structural_signal_read> {
+                    make_structural_sound_read( fixture.kind, expected_source, 220 ),
+                };
+            } );
+
+            CHECK( recorded.sites_considered == 1 );
+            CHECK( recorded.active_outings_considered == 1 );
+            CHECK( recorded.callbacks_invoked == 1 );
+            CHECK( recorded.sites_recorded == 1 );
+            CHECK( recorded.facts_recorded == 1 );
+            CHECK( callback_calls == 1 );
+            REQUIRE( site.active_outing.observations.size() == 1 );
+            const bandit_live_world::sortie_observation &sound =
+                site.active_outing.observations.front();
+            CHECK( sound.sense == bandit_live_world::sortie_observation_sense::sound );
+            CHECK( sound.observer_id == observer_id );
+            CHECK( sound.target_revision == target_revision );
+            CHECK( sound.source_omt == expected_source );
+            CHECK( sound.observed_minutes == 220 );
+            CHECK( sound.bucket_start_minutes == 210 );
+            CHECK( sound.simultaneity_start_minutes == 220 );
+            CHECK( sound.simultaneity_end_minutes == 220 );
+            CHECK( sound.expiry_minutes == 220 + 180 );
+            CHECK( sound.uncertainty_radius_omt == 2 );
+            CHECK( sound.state_key == "structural-" + std::string( fixture.name ) + "-signal" );
+            CHECK( sound.source_id.find(
+                       "structural-" + std::string( fixture.name ) + "@" ) == 0 );
+            CHECK( sound.source_id.find( "player@" ) == std::string::npos );
+            CHECK( sound.fact_key.find( "player@" ) == std::string::npos );
+            CHECK( sound.visual_quality == 0 );
+            CHECK( sound.defender_ids.empty() );
+            CHECK( sound.observed_power_low == 0 );
+            CHECK( sound.observed_power_high == 0 );
+            CHECK( sound.equipment_detail == 0 );
+            CHECK( sound.share_state == ( fixture.forward_source ?
+                   bandit_live_world::sortie_observation_share_state::shared :
+                   bandit_live_world::sortie_observation_share_state::observer_private ) );
+            CHECK( site.active_outing.phase == phase_before );
+            CHECK( site.active_outing.waypoint_index == waypoint_before );
+            lead = site.intelligence_map.find_lead( lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( serialize_camp_map_lead( *lead ) == lead_before );
+
+            const std::string after_record = serialize_world( world );
+            int replay_callbacks = 0;
+            const bandit_live_world::structural_signal_record_result replayed =
+                bandit_live_world::record_structural_signal_observations(
+                    world, 221,
+            [&replay_callbacks]( const bandit_live_world::site_record &,
+                                 const bandit_live_world::active_outing_state &,
+            const bandit_live_world::structural_threat_observer_request & request ) {
+                replay_callbacks++;
+                return std::vector<bandit_live_world::structural_signal_read> {
+                    make_structural_sound_read(
+                        bandit_live_world::structural_sound_kind::explosion,
+                        request.current_omt, 221 ),
+                };
+            } );
+            CHECK( replayed.callbacks_invoked == 0 );
+            CHECK( replayed.sites_recorded == 0 );
+            CHECK( replayed.facts_recorded == 0 );
+            CHECK( replay_callbacks == 0 );
+            CHECK( serialize_world( world ) == after_record );
+
+            world = round_trip_world( world );
+            CHECK( serialize_world( world ) == after_record );
+        }
+    }
+}
+
+TEST_CASE( "hostile_camp_significant_sound_queue_is_semantic_bounded_and_drained",
+           "[bandit][live_world][phase4_sound_queue]" )
+{
+    struct sound_state_guard {
+        time_point prior_turn = calendar::turn;
+        ~sound_state_guard() {
+            sounds::reset_sounds();
+            calendar::turn = prior_turn;
+        }
+    } guard;
+    calendar::turn = calendar::start_of_cataclysm + 300_minutes;
+    sounds::reset_sounds();
+    const tripoint_bub_ms source( 0, 0, 0 );
+
+    sounds::sound( source, 23, sounds::sound_t::combat, "quiet suppressed shot", false,
+                   "", "default", sounds::significant_sound_t::gunfire );
+    sounds::sound( source, 80, sounds::sound_t::movement, "ordinary untagged noise" );
+    sounds::sound( source, 40, sounds::sound_t::combat, "gunfire", false,
+                   "", "default", sounds::significant_sound_t::gunfire );
+    sounds::sound( source, 55, sounds::sound_t::combat, "louder same-bucket gunfire", false,
+                   "", "default", sounds::significant_sound_t::gunfire );
+    sounds::sound( source, 45, sounds::sound_t::alarm, "security alarm", false,
+                   "environment", "alarm", sounds::significant_sound_t::alarm );
+    sounds::sound( source, 60, sounds::sound_t::combat, "explosion", false,
+                   "explosion", "default", sounds::significant_sound_t::explosion );
+
+    std::vector<std::tuple<tripoint_abs_omt, int, sounds::significant_sound_t, int>> drained;
+    sounds::consume_significant_sounds( [&drained]( const tripoint_abs_omt &source_omt,
+    const int volume, const sounds::significant_sound_t kind, const int emitted_minutes ) {
+        drained.emplace_back( source_omt, volume, kind, emitted_minutes );
+    } );
+    REQUIRE( drained.size() == 3 );
+    CHECK( std::get<1>( drained[0] ) == 55 );
+    CHECK( std::get<2>( drained[0] ) == sounds::significant_sound_t::gunfire );
+    CHECK( std::get<1>( drained[1] ) == 45 );
+    CHECK( std::get<2>( drained[1] ) == sounds::significant_sound_t::alarm );
+    CHECK( std::get<1>( drained[2] ) == 60 );
+    CHECK( std::get<2>( drained[2] ) == sounds::significant_sound_t::explosion );
+    for( const auto &event : drained ) {
+        CHECK( std::get<0>( event ) == std::get<0>( drained.front() ) );
+        CHECK( std::get<3>( event ) == 300 );
+    }
+
+    int replay_count = 0;
+    sounds::consume_significant_sounds( [&replay_count]( const tripoint_abs_omt &, int,
+    sounds::significant_sound_t, int ) {
+        replay_count++;
+    } );
+    CHECK( replay_count == 0 );
+
+    sounds::sound( source, 50, sounds::sound_t::alarm, "queued before reset", false,
+                   "environment", "alarm", sounds::significant_sound_t::alarm );
+    sounds::reset_sounds();
+    sounds::consume_significant_sounds( [&replay_count]( const tripoint_abs_omt &, int,
+    sounds::significant_sound_t, int ) {
+        replay_count++;
+    } );
+    CHECK( replay_count == 0 );
+}
+
+TEST_CASE( "hostile_camp_structural_hourly_advance_retains_sound_with_other_senses",
+           "[bandit][live_world][phase4_sound_observation]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 15990 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::advance_structural_bounty_outings(
+        world, 240, {},
+    []( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        REQUIRE_FALSE( request.visible_forward_omts.empty() );
+        return make_abstract_threat_read( request.visible_forward_omts.front(), 1, false );
+    }, []( const bandit_live_world::site_record &,
+           const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        REQUIRE_FALSE( request.visible_forward_omts.empty() );
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_signal_read(
+                bandit_live_world::sortie_observation_sense::smoke,
+                request.current_omt, 2, 55, 3 ),
+            make_structural_signal_read(
+                bandit_live_world::sortie_observation_sense::light,
+                request.visible_forward_omts.front(), 3, 65, 2 ),
+            make_structural_sound_read(
+                bandit_live_world::structural_sound_kind::alarm,
+                request.visible_forward_omts.front(), 239 ),
+        };
+    } );
+
+    REQUIRE( site.active_outing.observations.size() == 4 );
+    for( const bandit_live_world::sortie_observation_sense sense : {
+             bandit_live_world::sortie_observation_sense::smoke,
+             bandit_live_world::sortie_observation_sense::light,
+             bandit_live_world::sortie_observation_sense::sound,
+             bandit_live_world::sortie_observation_sense::visual
+         } ) {
+        CHECK( std::count_if( site.active_outing.observations.begin(),
+        site.active_outing.observations.end(), [sense](
+        const bandit_live_world::sortie_observation & observation ) {
+            return observation.sense == sense;
+        } ) == 1 );
+    }
+    const auto sound = std::find_if( site.active_outing.observations.begin(),
+    site.active_outing.observations.end(), []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.sense == bandit_live_world::sortie_observation_sense::sound;
+    } );
+    REQUIRE( sound != site.active_outing.observations.end() );
+    CHECK( sound->state_key == "structural-alarm-signal" );
+    CHECK( sound->observed_minutes == 239 );
+    CHECK( sound->expiry_minutes == 239 + 180 );
+    CHECK( site.active_outing.last_advanced_minutes == 240 );
+}
+
+TEST_CASE( "hostile_camp_structural_sound_recorder_rejects_bad_batches_atomically",
+           "[bandit][live_world][phase4_sound_observation]" )
+{
+    enum class invalid_case {
+        malformed,
+        future,
+        too_old,
+        before_observation_window,
+        none_kind,
+        local_reality,
+        off_route,
+    };
+    const std::vector<std::pair<const char *, invalid_case>> cases = {
+        { "malformed", invalid_case::malformed },
+        { "future", invalid_case::future },
+        { "older than 180 minutes", invalid_case::too_old },
+        { "before current waypoint observation window", invalid_case::before_observation_window },
+        { "none kind", invalid_case::none_kind },
+        { "local reality", invalid_case::local_reality },
+        { "off route", invalid_case::off_route },
+    };
+    int fixture_index = 0;
+    for( const std::pair<const char *, invalid_case> &fixture : cases ) {
+        CAPTURE( fixture.first );
+        bandit_live_world::world_state world = make_structural_signal_test_world(
+                    fixture_index % 2 != 0, 16000 + fixture_index * 10 );
+        fixture_index++;
+        const std::string before = serialize_world( world );
+        const bandit_live_world::structural_signal_record_result recorded =
+            bandit_live_world::record_structural_signal_observations(
+                world, 221,
+        [&fixture]( const bandit_live_world::site_record &,
+                    const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            bandit_live_world::structural_signal_read invalid =
+                make_structural_sound_read(
+                    bandit_live_world::structural_sound_kind::gunfire,
+                    request.current_omt, 220 );
+            switch( fixture.second ) {
+                case invalid_case::malformed:
+                    invalid.confidence = 101;
+                    break;
+                case invalid_case::future:
+                    invalid.emitted_minutes = 222;
+                    break;
+                case invalid_case::too_old:
+                    invalid.emitted_minutes = 40;
+                    break;
+                case invalid_case::before_observation_window:
+                    invalid.emitted_minutes = 219;
+                    break;
+                case invalid_case::none_kind:
+                    invalid.sound_kind = bandit_live_world::structural_sound_kind::none;
+                    break;
+                case invalid_case::local_reality:
+                    invalid.local_reality = true;
+                    break;
+                case invalid_case::off_route:
+                    invalid.source_omt = tripoint_abs_omt(
+                                             request.current_omt.x() + 50,
+                                             request.current_omt.y() + 50,
+                                             request.current_omt.z() );
+                    break;
+            }
+            return std::vector<bandit_live_world::structural_signal_read> {
+                make_structural_signal_read(
+                    bandit_live_world::sortie_observation_sense::smoke,
+                    request.current_omt, 2, 55, 3 ),
+                invalid,
+            };
+        } );
+        CHECK( recorded.callbacks_invoked == 1 );
+        CHECK( recorded.sites_recorded == 0 );
+        CHECK( recorded.facts_recorded == 0 );
+        CHECK( world.sites.front().active_outing.observations.empty() );
+        CHECK( serialize_world( world ) == before );
+    }
 }
 
 TEST_CASE( "hostile_camp_structural_observer_records_owned_evidence_before_returning_report",

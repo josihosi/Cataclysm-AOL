@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 
@@ -203,6 +204,13 @@ struct sound_event {
     std::string season;
 };
 
+struct significant_sound_event {
+    tripoint_abs_omt source_omt;
+    int volume = 0;
+    sounds::significant_sound_t kind = sounds::significant_sound_t::none;
+    int emitted_minutes = -1;
+};
+
 struct centroid {
     // Values have to be floats to prevent rounding errors.
     float x;
@@ -246,8 +254,58 @@ std::string enum_to_string<sounds::sound_t>( sounds::sound_t data )
 static std::vector<std::pair<tripoint_bub_ms, monster_sound_event>> recent_sounds;
 // The sound events since the last interactive player turn. (doesn't count sleep etc)
 static std::vector<std::pair<tripoint_bub_ms, sound_event>> sounds_since_last_turn;
+// Hostile-camp observation boundary.  It deliberately retains only coarse, semantic facts.
+static std::vector<significant_sound_event> recent_significant_sounds;
 // The sound events currently displayed to the player.
 static std::unordered_map<tripoint_bub_ms, sound_event> sound_markers;
+
+static constexpr int significant_sound_min_volume = 24;
+static constexpr int significant_sound_max_volume = 2000;
+static constexpr std::size_t significant_sound_cap = 64;
+
+static void record_significant_sound( const tripoint_bub_ms &p, const int volume,
+                                      const sounds::significant_sound_t kind )
+{
+    if( kind == sounds::significant_sound_t::none || volume < significant_sound_min_volume ) {
+        return;
+    }
+    const int emitted_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    if( emitted_minutes < 0 ) {
+        return;
+    }
+    const tripoint_abs_omt source_omt = coords::project_to<coords::omt>( get_map().get_abs( p ) );
+    const int bucket = emitted_minutes - emitted_minutes % 30;
+    const auto matching = std::find_if( recent_significant_sounds.begin(),
+    recent_significant_sounds.end(), [&source_omt, kind, bucket](
+    const significant_sound_event & event ) {
+        return event.source_omt == source_omt && event.kind == kind &&
+               event.emitted_minutes - event.emitted_minutes % 30 == bucket;
+    } );
+    const int bounded_volume = std::clamp( volume, significant_sound_min_volume,
+                                          significant_sound_max_volume );
+    if( matching != recent_significant_sounds.end() ) {
+        if( bounded_volume > matching->volume ||
+            ( bounded_volume == matching->volume && emitted_minutes > matching->emitted_minutes ) ) {
+            matching->volume = bounded_volume;
+            matching->emitted_minutes = emitted_minutes;
+        }
+        return;
+    }
+
+    recent_significant_sounds.push_back( { source_omt, bounded_volume, kind, emitted_minutes } );
+    std::sort( recent_significant_sounds.begin(), recent_significant_sounds.end(),
+    []( const significant_sound_event & lhs, const significant_sound_event & rhs ) {
+        return std::make_tuple( -lhs.volume, -lhs.emitted_minutes, lhs.source_omt.z(),
+                                lhs.source_omt.y(), lhs.source_omt.x(),
+                                static_cast<int>( lhs.kind ) ) <
+               std::make_tuple( -rhs.volume, -rhs.emitted_minutes, rhs.source_omt.z(),
+                                rhs.source_omt.y(), rhs.source_omt.x(),
+                                static_cast<int>( rhs.kind ) );
+    } );
+    if( recent_significant_sounds.size() > significant_sound_cap ) {
+        recent_significant_sounds.resize( significant_sound_cap );
+    }
+}
 
 // This is an attempt to handle attenuation of sound for underground areas.
 // The main issue it addresses is that you can hear activity
@@ -323,6 +381,15 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
                     const std::string &description,
                     bool ambient, const std::string &id, const std::string &variant )
 {
+    sounds::sound( p, vol, category, description, ambient, id, variant,
+                   significant_sound_t::none );
+}
+
+void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
+                    const std::string &description,
+                    bool ambient, const std::string &id, const std::string &variant,
+                    const significant_sound_t significant_kind )
+{
     if( vol < 0 ) {
         // Bail out if no volume.
         debugmsg( "negative sound volume %d", vol );
@@ -341,6 +408,7 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     sounds_since_last_turn.emplace_back( p,
                                          sound_event{ vol, category, description, ambient,
                                                  false, id, variant, seas_str } );
+    record_significant_sound( p, vol, significant_kind );
 }
 
 void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
@@ -348,6 +416,15 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
                     bool ambient, const std::string &id, const std::string &variant )
 {
     sounds::sound( p, vol, category, description.translated(), ambient, id, variant );
+}
+
+void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
+                    const translation &description,
+                    bool ambient, const std::string &id, const std::string &variant,
+                    const significant_sound_t significant_kind )
+{
+    sounds::sound( p, vol, category, description.translated(), ambient, id, variant,
+                   significant_kind );
 }
 
 void sounds::add_footstep( const tripoint_bub_ms &p, int volume, int, monster *,
@@ -791,7 +868,28 @@ void sounds::reset_sounds()
 {
     recent_sounds.clear();
     sounds_since_last_turn.clear();
+    recent_significant_sounds.clear();
     sound_markers.clear();
+}
+
+void sounds::consume_significant_sounds( const std::function<void( const tripoint_abs_omt &, int,
+        significant_sound_t, int )> &visitor )
+{
+    const int current_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    std::sort( recent_significant_sounds.begin(), recent_significant_sounds.end(),
+    []( const significant_sound_event & lhs, const significant_sound_event & rhs ) {
+        return std::make_tuple( lhs.emitted_minutes, lhs.source_omt.z(), lhs.source_omt.y(),
+                                lhs.source_omt.x(), static_cast<int>( lhs.kind ), -lhs.volume ) <
+               std::make_tuple( rhs.emitted_minutes, rhs.source_omt.z(), rhs.source_omt.y(),
+                                rhs.source_omt.x(), static_cast<int>( rhs.kind ), -rhs.volume );
+    } );
+    for( const significant_sound_event &event : recent_significant_sounds ) {
+        if( visitor && event.emitted_minutes >= 0 && event.emitted_minutes <= current_minutes &&
+            current_minutes - event.emitted_minutes <= 180 ) {
+            visitor( event.source_omt, event.volume, event.kind, event.emitted_minutes );
+        }
+    }
+    recent_significant_sounds.clear();
 }
 
 void sounds::reset_markers()

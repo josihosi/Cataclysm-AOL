@@ -4466,7 +4466,7 @@ void map::bash_ter_furn( const tripoint_bub_ms &p, bash_params &params, bool rep
 
     if( has_flag( ter_furn_flag::TFLAG_ALARMED, p ) ) {
         sounds::sound( p, 40, sounds::sound_t::alarm, _( "an alarm go off!" ),
-                       false, "environment", "alarm" );
+                       false, "environment", "alarm", sounds::significant_sound_t::alarm );
     }
 
     if( !bash || ( bash->destroy_only && !params.destroy ) ) {
@@ -5112,7 +5112,7 @@ double map::shoot( const tripoint_bub_ms &p, projectile &proj, const bool hit_it
                 // TODO: fix alarm event weirdness (not just here, also in bash, hack, etc)
                 if( !destroyed && data.has_flag( ter_furn_flag::TFLAG_ALARMED ) ) {
                     sounds::sound( p, 40, sounds::sound_t::alarm, _( "an alarm go off!" ),
-                                   false, "environment", "alarm" );
+                                   false, "environment", "alarm", sounds::significant_sound_t::alarm );
                 }
                 return true;
             }

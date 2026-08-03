@@ -2553,7 +2553,8 @@ void make_gun_sound_effect( const Character &p, bool burst, item *weapon )
     const item::sound_data data = weapon->gun_noise( burst );
     if( data.volume > 0 ) {
         sounds::sound( p.pos_bub(), data.volume, sounds::sound_t::combat,
-                       data.sound.empty() ? _( "Bang!" ) : data.sound );
+                       data.sound.empty() ? _( "Bang!" ) : data.sound, false, "", "default",
+                       sounds::significant_sound_t::gunfire );
     }
     tname::segment_bitset segs( tname::unprefixed_tname );
     segs.set( tname::segments::CONTENTS, false );

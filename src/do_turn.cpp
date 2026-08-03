@@ -1477,6 +1477,13 @@ struct live_bandit_signal_observation {
     bandit_mark_generation::light_projection light_projection;
 };
 
+struct live_bandit_sound_observation {
+    tripoint_abs_omt source_omt;
+    int volume = 0;
+    sounds::significant_sound_t kind = sounds::significant_sound_t::none;
+    int emitted_minutes = -1;
+};
+
 struct live_bandit_dispatch_candidate {
     int distance = 0;
     size_t site_index = 0;
@@ -2986,13 +2993,17 @@ bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
                sight_points, terrain_see_costs );
 }
 
-int live_bandit_structural_observer_sight( const npc &observer,
-        const tripoint_abs_omt &origin )
+weather_type_id live_bandit_remote_weather_at( const tripoint_abs_omt &origin )
 {
     const tripoint_abs_ms origin_ms = project_to<coords::ms>( origin );
     const weather_generator_id &weather_generator = overmap_buffer.get_settings( origin ).weather;
-    const weather_type_id weather = weather_generator->get_weather_conditions(
-                                        origin_ms, calendar::turn, g->get_seed() );
+    return weather_generator->get_weather_conditions( origin_ms, calendar::turn, g->get_seed() );
+}
+
+int live_bandit_structural_observer_sight( const npc &observer,
+        const tripoint_abs_omt &origin )
+{
+    const weather_type_id weather = live_bandit_remote_weather_at( origin );
     const float remote_light = origin.z() < 0 ? LIGHT_AMBIENT_MINIMAL :
                                std::max<float>( LIGHT_AMBIENT_MINIMAL,
                                        sun_moon_light_at( calendar::turn ) *
@@ -3284,6 +3295,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
 
 std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_signal_reads(
     const std::vector<live_bandit_signal_observation> &signals,
+    const std::vector<live_bandit_sound_observation> &sound_events,
     const bandit_live_world::site_record &,
     const bandit_live_world::active_outing_state &outing,
     const bandit_live_world::structural_threat_observer_request &request )
@@ -3354,11 +3366,92 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         read.summary = signal.weather_summary;
         result.push_back( std::move( read ) );
     }
+
+    struct audible_sound {
+        const live_bandit_sound_observation *event = nullptr;
+        int effective_volume = 0;
+        int distance_omt = 0;
+    };
+    std::vector<audible_sound> audible;
+    const int now_minutes = live_bandit_current_minutes();
+    const int weather_attenuation = live_bandit_remote_weather_at(
+                                        request.current_omt )->sound_attn;
+    for( const live_bandit_sound_observation &event : sound_events ) {
+        const bool supported_kind = event.kind == sounds::significant_sound_t::gunfire ||
+                                    event.kind == sounds::significant_sound_t::alarm ||
+                                    event.kind == sounds::significant_sound_t::explosion;
+        const bool source_is_permitted = event.source_omt == request.current_omt ||
+                                         std::find( request.visible_forward_omts.begin(),
+                                                 request.visible_forward_omts.end(),
+                                                 event.source_omt ) !=
+                                         request.visible_forward_omts.end();
+        if( !supported_kind || !source_is_permitted || event.volume < 24 ||
+            event.emitted_minutes < 0 || event.emitted_minutes > now_minutes ||
+            now_minutes - event.emitted_minutes > 180 || observer->is_deaf() ) {
+            continue;
+        }
+        const int distance_omt = rl_dist( request.current_omt, event.source_omt );
+        const int vertical_omt = std::abs( request.current_omt.z() - event.source_omt.z() );
+        const int conservative_distance_ms = ( distance_omt + 1 ) * 2 * SEEX - 1 +
+                                             vertical_omt * 10 * SEEX;
+        const int effective_volume = static_cast<int>( std::floor(
+                                         std::max( 0, event.volume - weather_attenuation ) *
+                                         observer->hearing_ability() ) );
+        if( effective_volume >= conservative_distance_ms ) {
+            audible.push_back( { &event, effective_volume, distance_omt } );
+        }
+    }
+    std::sort( audible.begin(), audible.end(), []( const audible_sound &lhs,
+    const audible_sound &rhs ) {
+        return std::make_tuple( -lhs.effective_volume, -lhs.event->emitted_minutes,
+                                lhs.distance_omt, lhs.event->source_omt.z(),
+                                lhs.event->source_omt.y(), lhs.event->source_omt.x(),
+                                static_cast<int>( lhs.event->kind ) ) <
+               std::make_tuple( -rhs.effective_volume, -rhs.event->emitted_minutes,
+                                rhs.distance_omt, rhs.event->source_omt.z(),
+                                rhs.event->source_omt.y(), rhs.event->source_omt.x(),
+                                static_cast<int>( rhs.event->kind ) );
+    } );
+    if( !audible.empty() ) {
+        const audible_sound &selected = audible.front();
+        const live_bandit_sound_observation &event = *selected.event;
+        bandit_live_world::structural_signal_read read;
+        read.sense = bandit_live_world::sortie_observation_sense::sound;
+        switch( event.kind ) {
+            case sounds::significant_sound_t::gunfire:
+                read.sound_kind = bandit_live_world::structural_sound_kind::gunfire;
+                read.summary = "uncertain gunfire heard along the committed route";
+                break;
+            case sounds::significant_sound_t::alarm:
+                read.sound_kind = bandit_live_world::structural_sound_kind::alarm;
+                read.summary = "uncertain alarm heard along the committed route";
+                break;
+            case sounds::significant_sound_t::explosion:
+                read.sound_kind = bandit_live_world::structural_sound_kind::explosion;
+                read.summary = "uncertain explosion heard along the committed route";
+                break;
+            case sounds::significant_sound_t::none:
+                break;
+        }
+        read.source_omt = event.source_omt;
+        read.emitted_minutes = event.emitted_minutes;
+        read.range_cap_omt = std::clamp( std::max( 1,
+                                                ( selected.effective_volume - ( 2 * SEEX - 1 ) ) /
+                                                ( 2 * SEEX ) ), 1, 40 );
+        read.strength = std::clamp( selected.effective_volume / ( 2 * SEEX ), 1, 6 );
+        const int age_minutes = now_minutes - event.emitted_minutes;
+        read.confidence = std::clamp( 45 + selected.effective_volume / 12 -
+                                      5 * ( age_minutes / 30 ), 25, 75 );
+        read.uncertainty_radius_omt = std::clamp( 1 + selected.distance_omt / 2 +
+                                                age_minutes / 60, 1, 40 );
+        result.push_back( std::move( read ) );
+    }
     return result;
 }
 
 bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty(
-    const std::vector<live_bandit_signal_observation> &live_signals )
+    const std::vector<live_bandit_signal_observation> &live_signals,
+    const std::vector<live_bandit_sound_observation> &live_sounds )
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     static constexpr int structural_scan_budget = 12;
@@ -3368,14 +3461,31 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
                 live_bandit_structural_threat_read, live_bandit_structural_route_read,
                 live_bandit_structural_abstract_threat_read,
-                [&live_signals](
+                [&live_signals, &live_sounds](
                     const bandit_live_world::site_record & site,
                     const bandit_live_world::active_outing_state & outing,
                     const bandit_live_world::structural_threat_observer_request & request ) {
-                    return live_bandit_structural_signal_reads( live_signals, site, outing, request );
+                    return live_bandit_structural_signal_reads( live_signals, live_sounds,
+                            site, outing, request );
                 } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     return result;
+}
+
+bandit_live_world::structural_signal_record_result record_live_bandit_structural_sounds(
+    bandit_live_world::world_state &state,
+    const std::vector<live_bandit_sound_observation> &live_sounds )
+{
+    const std::vector<live_bandit_signal_observation> no_field_signals;
+    return bandit_live_world::record_structural_signal_observations(
+               state, live_bandit_current_minutes(),
+               [&no_field_signals, &live_sounds](
+                   const bandit_live_world::site_record & site,
+                   const bandit_live_world::active_outing_state & outing,
+               const bandit_live_world::structural_threat_observer_request & request ) {
+        return live_bandit_structural_signal_reads(
+                   no_field_signals, live_sounds, site, outing, request );
+    } );
 }
 
 bandit_live_world::camp_map_dispatch_pressure live_bandit_camp_map_dispatch_pressure(
@@ -3984,6 +4094,12 @@ void overmap_npc_move()
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
     const bool structural_cadence_due = calendar::once_every( 60_minutes );
     std::vector<live_bandit_signal_observation> live_signals;
+    std::vector<live_bandit_sound_observation> live_sounds;
+    sounds::consume_significant_sounds( [&live_sounds]( const tripoint_abs_omt &source_omt,
+    const int volume, const sounds::significant_sound_t kind,
+    const int emitted_minutes ) {
+        live_sounds.push_back( { source_omt, volume, kind, emitted_minutes } );
+    } );
     if( signal_cadence_due || structural_cadence_due ) {
         bootstrap_live_bandit_abstract_sites_near_player();
     }
@@ -4007,7 +4123,16 @@ void overmap_npc_move()
                                    << " signal_interval=5_minutes\n";
     }
     if( structural_cadence_due ) {
-        maintain_live_bandit_structural_bounty( live_signals );
+        maintain_live_bandit_structural_bounty( live_signals, live_sounds );
+    } else if( !live_sounds.empty() ) {
+        const bandit_live_world::structural_signal_record_result recorded =
+            record_live_bandit_structural_sounds( bandit_state, live_sounds );
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_observation sites="
+                                   << recorded.sites_considered
+                                   << " active=" << recorded.active_outings_considered
+                                   << " callbacks=" << recorded.callbacks_invoked
+                                   << " recorded=" << recorded.sites_recorded
+                                   << " facts=" << recorded.facts_recorded << '\n';
     }
     materialize_live_bandit_structural_handoffs();
     const auto dispatch_done = std::chrono::steady_clock::now();
@@ -4083,6 +4208,7 @@ void overmap_npc_move()
                                    << " active_sites=" << active_sites
                                    << " active_job_mix=" << ( active_job_mix.empty() ? "none" : active_jobs.str() )
                                    << " signals=" << live_signals.size()
+                                   << " significant_sounds=" << live_sounds.size()
                                    << " retired_reports=" << empty_site_retirement_reports.size()
                                    << " travelling_npcs=" << travelling_npcs.size()
                                    << " npcs_need_reload=" << ( npcs_need_reload ? "yes" : "no" )

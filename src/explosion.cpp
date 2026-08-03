@@ -580,13 +580,13 @@ void _make_explosion( map *m, const Creature *source, const tripoint_bub_ms &p,
         if( noise >= 30 ) {
             sounds::sound( bubble_pos, noise, sounds::sound_t::combat, _( "a huge explosion!" ), false,
                            "explosion",
-                           "huge" );
+                           "huge", sounds::significant_sound_t::explosion );
         } else if( noise >= 4 ) {
             sounds::sound( bubble_pos, noise, sounds::sound_t::combat, _( "an explosion!" ), false, "explosion",
-                           "default" );
+                           "default", sounds::significant_sound_t::explosion );
         } else if( noise > 0 ) {
             sounds::sound( bubble_pos, 3, sounds::sound_t::combat, _( "a loud pop!" ), false, "explosion",
-                           "small" );
+                           "small", sounds::significant_sound_t::explosion );
         }
     }
 
@@ -696,7 +696,8 @@ void flashbang( const tripoint_bub_ms &p, bool player_immune, const int radius )
             }
         }
     }
-    sounds::sound( p, 120, sounds::sound_t::combat, _( "a huge boom!" ), false, "misc", "flashbang" );
+    sounds::sound( p, 120, sounds::sound_t::combat, _( "a huge boom!" ), false, "misc", "flashbang",
+                   sounds::significant_sound_t::explosion );
 }
 
 void shockwave( const tripoint_bub_ms &p, int radius, int force, int stun, int dam_mult,

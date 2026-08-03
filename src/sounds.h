@@ -2,6 +2,7 @@
 #ifndef CATA_SRC_SOUNDS_H
 #define CATA_SRC_SOUNDS_H
 
+#include <functional>
 #include <optional>
 #include <string> // IWYU pragma: keep
 #include <string_view>
@@ -38,6 +39,13 @@ enum class sound_t : int {
     LAST // must always be last
 };
 
+enum class significant_sound_t : int {
+    none = 0,
+    gunfire,
+    alarm,
+    explosion,
+};
+
 inline auto format_as( sound_t st )
 {
     return static_cast<std::underlying_type_t<sound_t>>( st );
@@ -62,9 +70,15 @@ inline auto format_as( sound_t st )
 void sound( const tripoint_bub_ms &p, int vol, sound_t category, const std::string &description,
             bool ambient = false, const std::string &id = "",
             const std::string &variant = "default" );
+void sound( const tripoint_bub_ms &p, int vol, sound_t category, const std::string &description,
+            bool ambient, const std::string &id, const std::string &variant,
+            significant_sound_t significant_kind );
 void sound( const tripoint_bub_ms &p, int vol, sound_t category, const translation &description,
             bool ambient = false, const std::string &id = "",
             const std::string &variant = "default" );
+void sound( const tripoint_bub_ms &p, int vol, sound_t category, const translation &description,
+            bool ambient, const std::string &id, const std::string &variant,
+            significant_sound_t significant_kind );
 /** Functions identical to sound(..., true). */
 void ambient_sound( const tripoint_bub_ms &p, int vol, sound_t category,
                     const std::string &description );
@@ -75,6 +89,10 @@ void add_footstep( const tripoint_bub_ms &p, int volume, int distance, monster *
 /* Make sure the sounds are all reset when we start a new game. */
 void reset_sounds();
 void reset_markers();
+
+/** Drain the bounded, OMT-coarsened gunfire/alarm/explosion queue. */
+void consume_significant_sounds( const std::function<void( const tripoint_abs_omt &, int,
+                                 significant_sound_t, int )> &visitor );
 
 // Methods for processing sound events, these
 // process_sounds() applies the sounds since the last turn to monster AI,

@@ -1220,7 +1220,8 @@ void vehicle::alarm( map &here )
                     }
                 };
                 sounds::sound( pos_bub( here ), static_cast<int>( rng( 45, 80 ) ),
-                               sounds::sound_t::alarm, random_entry_ref( sound_msgs ), false, "vehicle", "car_alarm" );
+                               sounds::sound_t::alarm, random_entry_ref( sound_msgs ), false, "vehicle", "car_alarm",
+                               sounds::significant_sound_t::alarm );
             }
             if( one_in( 1000 ) ) {
                 is_alarm_on = false;

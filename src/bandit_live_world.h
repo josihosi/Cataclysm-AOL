@@ -943,6 +943,7 @@ struct abstract_threat_detour_read {
 
 struct structural_threat_observer_request {
     tripoint_abs_omt current_omt;
+    int observation_window_start_minutes = -1;
     std::vector<tripoint_abs_omt> visible_forward_omts;
     std::optional<tripoint_abs_omt> retained_threat_omt;
     std::vector<std::string> retained_threat_ids;
@@ -982,15 +983,32 @@ struct abstract_threat_read {
     std::string summary;
 };
 
+enum class structural_sound_kind {
+    none,
+    gunfire,
+    alarm,
+    explosion,
+};
+
 struct structural_signal_read {
     sortie_observation_sense sense = sortie_observation_sense::smoke;
+    structural_sound_kind sound_kind = structural_sound_kind::none;
     tripoint_abs_omt source_omt;
+    int emitted_minutes = -1;
     int range_cap_omt = 0;
     int strength = 0;
     int confidence = 0;
     int uncertainty_radius_omt = 1;
     bool local_reality = false;
     std::string summary;
+};
+
+struct structural_signal_record_result {
+    int sites_considered = 0;
+    int active_outings_considered = 0;
+    int callbacks_invoked = 0;
+    int sites_recorded = 0;
+    int facts_recorded = 0;
 };
 
 enum class abstract_threat_resolution_kind {
@@ -1263,6 +1281,11 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup = {} );
+structural_signal_record_result record_structural_signal_observations( world_state &state,
+        int now_minutes,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup );
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         int now_minutes, int scan_budget, int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,

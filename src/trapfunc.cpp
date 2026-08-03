@@ -647,7 +647,8 @@ bool trapfunc::shotgun( const tripoint_bub_ms &p, Creature *c, item * )
 {
     map &here = get_map();
     sounds::sound( p, MAX_VIEW_DISTANCE, sounds::sound_t::combat, _( "Kerblam!" ), false, "fire_gun",
-                   here.tr_at( p ) == tr_shotgun_1 ? "shotgun_s" : "shotgun_d" );
+                   here.tr_at( p ) == tr_shotgun_1 ? "shotgun_s" : "shotgun_d",
+                   sounds::significant_sound_t::gunfire );
     int shots = 1;
     if( c != nullptr ) {
         if( c->has_effect( effect_ridden ) ) {
