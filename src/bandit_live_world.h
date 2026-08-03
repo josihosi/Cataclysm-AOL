@@ -177,6 +177,19 @@ enum class sortie_observation_kind {
     burn,
 };
 
+enum class sortie_observation_sense {
+    visual,
+    smoke,
+    light,
+    sound,
+};
+
+enum class sortie_observation_share_state {
+    observer_private,
+    shared,
+    reported,
+};
+
 enum class camp_decision_state {
     idle,
     report_awaiting_assessment,
@@ -303,6 +316,14 @@ struct camp_intelligence_map {
 };
 
 struct sortie_observation {
+    sortie_observation() = default;
+    sortie_observation( const std::string &fact_key, const std::string &summary, int confidence,
+                        int observed_minutes, bool critical, sortie_observation_kind kind,
+                        const std::string &state_key ) :
+        fact_key( fact_key ), summary( summary ), confidence( confidence ),
+        observed_minutes( observed_minutes ), critical( critical ), kind( kind ),
+        state_key( state_key ) {}
+
     std::string fact_key;
     std::string summary;
     int confidence = 0;
@@ -310,6 +331,26 @@ struct sortie_observation {
     bool critical = false;
     sortie_observation_kind kind = sortie_observation_kind::routine;
     std::string state_key;
+    int record_schema_version = 0;
+    std::string source_id;
+    sortie_observation_sense sense = sortie_observation_sense::visual;
+    character_id observer_id;
+    tripoint_abs_omt source_omt;
+    tripoint_abs_omt receiver_omt;
+    int bucket_start_minutes = -1;
+    int strength = 0;
+    int visual_quality = 0;
+    std::vector<std::string> defender_ids;
+    int simultaneity_start_minutes = -1;
+    int simultaneity_end_minutes = -1;
+    int observed_power_low = 0;
+    int observed_power_high = 0;
+    int equipment_detail = 0;
+    int target_revision = 0;
+    int uncertainty_radius_omt = 0;
+    int expiry_minutes = -1;
+    sortie_observation_share_state share_state =
+        sortie_observation_share_state::observer_private;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -1220,6 +1261,10 @@ bool note_active_sortie_local_contact( site_record &site,
 sortie_observation_effect record_active_sortie_observations( site_record &site,
         const simulation_advance_cursor &expected_cursor,
         const std::vector<sortie_observation> &observations, int current_minutes );
+sortie_observation_effect record_active_typed_observations( site_record &site,
+        const simulation_advance_cursor &expected_cursor, character_id observer_id,
+        int expected_target_revision, const std::vector<sortie_observation> &observations,
+        int current_minutes );
 simulation_owner_transition_result transition_external_simulation_owner( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, simulation_owner next_owner,

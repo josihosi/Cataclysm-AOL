@@ -134,6 +134,51 @@ std::string serialize_camp_map_lead( const bandit_live_world::camp_map_lead &lea
     return out.str();
 }
 
+std::string serialize_sortie_observation(
+    const bandit_live_world::sortie_observation &observation )
+{
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    observation.serialize( jsout );
+    return out.str();
+}
+
+bandit_live_world::sortie_observation make_typed_visual_observation(
+    const character_id observer_id, const int target_revision, const int observed_minutes,
+    const std::string &fact_key,
+    const bandit_live_world::sortie_observation_share_state share_state )
+{
+    bandit_live_world::sortie_observation observation;
+    observation.fact_key = fact_key;
+    observation.summary = "physically observed defenders";
+    observation.confidence = 80;
+    observation.observed_minutes = observed_minutes;
+    observation.kind = bandit_live_world::sortie_observation_kind::certainty;
+    observation.state_key = "defenders-present";
+    observation.record_schema_version = 1;
+    observation.source_id = "physical-source:" + fact_key;
+    observation.sense = bandit_live_world::sortie_observation_sense::visual;
+    observation.observer_id = observer_id;
+    observation.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    observation.receiver_omt = tripoint_abs_omt( 10, 20, 0 );
+    observation.bucket_start_minutes = observed_minutes - observed_minutes % 30;
+    observation.strength = 4;
+    observation.visual_quality = 3;
+    observation.defender_ids = { "defender:1", "defender:2" };
+    observation.simultaneity_start_minutes = std::max(
+            observation.bucket_start_minutes, observed_minutes - 1 );
+    observation.simultaneity_end_minutes = std::min(
+            observation.bucket_start_minutes + 29, observed_minutes + 1 );
+    observation.observed_power_low = 5;
+    observation.observed_power_high = 8;
+    observation.equipment_detail = 2;
+    observation.target_revision = target_revision;
+    observation.uncertainty_radius_omt = 1;
+    observation.expiry_minutes = observed_minutes + 180;
+    observation.share_state = share_state;
+    return observation;
+}
+
 bandit_live_world::world_state make_abstract_threat_test_world( const bool cannibal,
         const int id_base )
 {
@@ -4503,6 +4548,334 @@ TEST_CASE( "bandit_live_world_compacts_scout_facts_and_only_semantic_change_prog
     REQUIRE( loaded_certainty != loaded.sites.front().active_outing.observations.end() );
     CHECK( loaded_certainty->kind == sortie_observation_kind::certainty );
     CHECK( loaded_certainty->state_key == "uncertain" );
+}
+
+TEST_CASE( "bandit_live_world_round_trips_typed_physical_observations_for_both_camps",
+           "[bandit][live_world][typed_observation][save]" )
+{
+    for( const bool cannibal : { false, true } ) {
+        bandit_live_world::world_state world;
+        const int id_base = cannibal ? 45220 : 45210;
+        if( cannibal ) {
+            add_cannibal_camp_member( world, 0, id_base );
+            add_cannibal_camp_member( world, 1, id_base );
+        } else {
+            add_bandit_camp_member( world, 0, id_base );
+            add_bandit_camp_member( world, 1, id_base );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const character_id observer_id( id_base );
+        REQUIRE( bandit_live_world::update_member_state(
+                     site, observer_id, bandit_live_world::member_state::outbound,
+                     "typed observation fixture" ) );
+        set_test_active_outing( site, site.site_id + "#scout:typed-round-trip" );
+        site.active_outing.member_ids = { observer_id };
+        site.active_outing.leader_id = observer_id;
+        site.active_outing.target_id = "typed-target";
+        site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
+        site.active_outing.target_lead_revision = 7;
+        site.active_outing.started_minutes = 90;
+        site.active_outing.last_progress_minutes = 100;
+        site.active_outing.last_advanced_minutes = 100;
+        const bandit_live_world::sortie_observation observation =
+            make_typed_visual_observation(
+                observer_id, 7, 121, cannibal ? "cannibal-visual" : "bandit-visual",
+                bandit_live_world::sortie_observation_share_state::shared );
+
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_active_typed_observations(
+                site, require_current_simulation_cursor( site ), observer_id, 7,
+                { observation }, 125 );
+        REQUIRE( effect.valid );
+        CHECK( effect.progress );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+
+        const bandit_live_world::world_state loaded = round_trip_world( world );
+        REQUIRE( loaded.sites.size() == 1 );
+        REQUIRE( loaded.sites.front().active_outing.observations.size() == 1 );
+        const bandit_live_world::sortie_observation &loaded_observation =
+            loaded.sites.front().active_outing.observations.front();
+        CHECK( serialize_sortie_observation( loaded_observation ) ==
+               serialize_sortie_observation( observation ) );
+        CHECK( loaded_observation.record_schema_version == 1 );
+        CHECK( loaded_observation.observer_id == observer_id );
+        CHECK( loaded_observation.defender_ids ==
+               std::vector<std::string> { "defender:1", "defender:2" } );
+        CHECK( loaded_observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::shared );
+    }
+}
+
+TEST_CASE( "bandit_live_world_rejects_malformed_typed_observations_atomically",
+           "[bandit][live_world][typed_observation][transaction]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45230 );
+    add_bandit_camp_member( world, 1, 45230 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const character_id observer_id( 45230 );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, observer_id, bandit_live_world::member_state::outbound,
+                 "typed observation fixture" ) );
+    set_test_active_outing( site, site.site_id + "#scout:typed-invalid" );
+    site.active_outing.member_ids = { observer_id };
+    site.active_outing.leader_id = observer_id;
+    site.active_outing.target_lead_revision = 7;
+    site.active_outing.last_advanced_minutes = 100;
+    const bandit_live_world::sortie_observation valid =
+        make_typed_visual_observation(
+            observer_id, 7, 121, "invalid-candidate",
+            bandit_live_world::sortie_observation_share_state::observer_private );
+
+    const auto rejects = [&world, observer_id](
+    const bandit_live_world::sortie_observation & observation,
+    const character_id supplied_observer = character_id( 45230 ),
+    const int expected_revision = 7 ) {
+        bandit_live_world::world_state attempt = world;
+        bandit_live_world::site_record &attempt_site = attempt.sites.front();
+        const std::string before = serialize_world( attempt );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_active_typed_observations(
+                attempt_site, require_current_simulation_cursor( attempt_site ),
+                supplied_observer, expected_revision, { observation }, 130 );
+        CHECK_FALSE( effect.valid );
+        CHECK_FALSE( effect.changed );
+        CHECK( serialize_world( attempt ) == before );
+        CHECK( attempt_site.active_outing.observations.empty() );
+        ( void )observer_id;
+    };
+
+    bandit_live_world::sortie_observation malformed = valid;
+    malformed.bucket_start_minutes++;
+    rejects( malformed );
+    malformed = valid;
+    malformed.simultaneity_start_minutes = malformed.observed_minutes + 1;
+    rejects( malformed );
+    malformed = valid;
+    malformed.expiry_minutes = malformed.observed_minutes - 1;
+    rejects( malformed );
+    malformed = valid;
+    malformed.strength = 7;
+    rejects( malformed );
+    malformed = valid;
+    malformed.sense = bandit_live_world::sortie_observation_sense::sound;
+    rejects( malformed );
+    malformed = valid;
+    malformed.observed_power_high = 201;
+    rejects( malformed );
+    malformed = valid;
+    malformed.defender_ids = { "defender:2", "defender:1" };
+    rejects( malformed );
+    malformed = valid;
+    malformed.defender_ids.assign( 17, "defender" );
+    rejects( malformed );
+    malformed = valid;
+    malformed.defender_ids = { "defender:1", "defender:1" };
+    rejects( malformed );
+    malformed = valid;
+    malformed.source_omt = tripoint_abs_omt::invalid;
+    rejects( malformed );
+    malformed = valid;
+    malformed.share_state = bandit_live_world::sortie_observation_share_state::reported;
+    rejects( malformed );
+    rejects( valid, character_id( 49999 ) );
+    rejects( valid, observer_id, 6 );
+
+    bandit_live_world::simulation_advance_cursor stale_cursor =
+        require_current_simulation_cursor( site );
+    stale_cursor.generation++;
+    const std::string before_stale = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::record_active_typed_observations(
+                     site, stale_cursor, observer_id, 7, { valid }, 130 ).valid );
+    CHECK( serialize_world( world ) == before_stale );
+
+    bandit_live_world::world_state structural_world = world;
+    bandit_live_world::site_record &structural_site = structural_world.sites.front();
+    structural_site.active_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    structural_site.active_outing.job_type = "scavenge";
+    CHECK( bandit_live_world::record_active_typed_observations(
+               structural_site, require_current_simulation_cursor( structural_site ),
+               observer_id, 7, { valid }, 130 ).valid );
+
+    bandit_live_world::world_state hostile_world = world;
+    bandit_live_world::site_record &hostile_site = hostile_world.sites.front();
+    hostile_site.active_outing.kind = bandit_live_world::outing_kind::hostile_operation;
+    const std::string before_hostile = serialize_world( hostile_world );
+    CHECK_FALSE( bandit_live_world::record_active_typed_observations(
+                     hostile_site, require_current_simulation_cursor( hostile_site ),
+                     observer_id, 7, { valid }, 130 ).valid );
+    CHECK( serialize_world( hostile_world ) == before_hostile );
+
+    bandit_live_world::world_state extreme_world = world;
+    bandit_live_world::site_record &extreme_site = extreme_world.sites.front();
+    bandit_live_world::sortie_observation extreme = valid;
+    extreme.observed_minutes = std::numeric_limits<int>::max();
+    extreme.bucket_start_minutes = extreme.observed_minutes - extreme.observed_minutes % 30;
+    extreme.simultaneity_start_minutes = extreme.observed_minutes;
+    extreme.simultaneity_end_minutes = extreme.observed_minutes;
+    extreme.expiry_minutes = extreme.observed_minutes;
+    CHECK( bandit_live_world::record_active_typed_observations(
+               extreme_site, require_current_simulation_cursor( extreme_site ),
+               observer_id, 7, { extreme }, std::numeric_limits<int>::max() ).valid );
+}
+
+TEST_CASE( "bandit_live_world_deduplicates_and_caps_typed_observation_buckets",
+           "[bandit][live_world][typed_observation][retention]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45240 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const character_id observer_id( 45240 );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, observer_id, bandit_live_world::member_state::outbound,
+                 "typed observation fixture" ) );
+    set_test_active_outing( site, site.site_id + "#scout:typed-retention" );
+    site.active_outing.member_ids = { observer_id };
+    site.active_outing.leader_id = observer_id;
+    site.active_outing.target_lead_revision = 3;
+    site.active_outing.last_advanced_minutes = 100;
+
+    bandit_live_world::sortie_observation private_sample =
+        make_typed_visual_observation(
+            observer_id, 3, 121, "recurring-defenders",
+            bandit_live_world::sortie_observation_share_state::observer_private );
+    bandit_live_world::sortie_observation shared_sample = private_sample;
+    shared_sample.observed_minutes = 122;
+    shared_sample.simultaneity_start_minutes = 121;
+    shared_sample.simultaneity_end_minutes = 123;
+    shared_sample.share_state = bandit_live_world::sortie_observation_share_state::shared;
+    const bandit_live_world::sortie_observation later_bucket =
+        make_typed_visual_observation(
+            observer_id, 3, 151, "recurring-defenders",
+            bandit_live_world::sortie_observation_share_state::shared );
+    REQUIRE( bandit_live_world::record_active_typed_observations(
+                 site, require_current_simulation_cursor( site ), observer_id, 3,
+                 { private_sample, shared_sample, later_bucket }, 160 ).valid );
+    REQUIRE( site.active_outing.observations.size() == 2 );
+    CHECK( site.active_outing.observations.front().bucket_start_minutes == 120 );
+    CHECK( site.active_outing.observations.front().share_state ==
+           bandit_live_world::sortie_observation_share_state::shared );
+    CHECK( site.active_outing.observations.back().bucket_start_minutes == 150 );
+
+    const std::size_t before_replay = site.active_outing.observations.size();
+    const bandit_live_world::sortie_observation_effect replay =
+        bandit_live_world::record_active_typed_observations(
+            site, require_current_simulation_cursor( site ), observer_id, 3,
+            { shared_sample }, 170 );
+    REQUIRE( replay.valid );
+    CHECK_FALSE( replay.progress );
+    CHECK( site.active_outing.observations.size() == before_replay );
+
+    std::vector<bandit_live_world::sortie_observation> additional;
+    for( int index = 0; index < 16; ++index ) {
+        additional.push_back( make_typed_visual_observation(
+                                  observer_id, 3, 181 + index,
+                                  "bounded-typed-" + std::to_string( index ),
+                                  bandit_live_world::sortie_observation_share_state::shared ) );
+    }
+    REQUIRE( bandit_live_world::record_active_typed_observations(
+                 site, require_current_simulation_cursor( site ), observer_id, 3,
+                 additional, 210 ).valid );
+    CHECK( site.active_outing.observations.size() == 16 );
+}
+
+TEST_CASE( "bandit_live_world_migrates_unversioned_observations_and_rejects_partial_typed_records",
+           "[bandit][live_world][typed_observation][migration]" )
+{
+    JsonValue legacy_json = json_loader::from_string(
+                                R"({"fact_key":"legacy","summary":"old fact","confidence":40,"observed_minutes":10,"critical":false})" );
+    bandit_live_world::sortie_observation legacy;
+    legacy.deserialize( legacy_json.get_object() );
+    CHECK( legacy.record_schema_version == 0 );
+    CHECK( legacy.fact_key == "legacy" );
+    CHECK( serialize_sortie_observation( legacy ).find( "\"schema_version\": 0" ) !=
+           std::string::npos );
+
+    const bandit_live_world::sortie_observation typed = make_typed_visual_observation(
+                character_id( 45250 ), 5, 121, "typed-persistence",
+                bandit_live_world::sortie_observation_share_state::shared );
+    std::string partial = serialize_sortie_observation( typed );
+    erase_pretty_json_member_line( partial, "source_id" );
+    CHECK_THROWS( [&partial]() {
+        JsonValue json = json_loader::from_string( partial );
+        bandit_live_world::sortie_observation observation;
+        observation.deserialize( json.get_object() );
+    }() );
+
+    std::string unknown = serialize_sortie_observation( typed );
+    const std::string supported = "\"schema_version\": 1";
+    REQUIRE( unknown.find( supported ) != std::string::npos );
+    unknown.replace( unknown.find( supported ), supported.size(), "\"schema_version\": 2" );
+    CHECK_THROWS( [&unknown]() {
+        JsonValue json = json_loader::from_string( unknown );
+        bandit_live_world::sortie_observation observation;
+        observation.deserialize( json.get_object() );
+    }() );
+}
+
+TEST_CASE( "bandit_live_world_private_observer_evidence_dies_without_reaching_the_report",
+           "[bandit][live_world][typed_observation][physical_report]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45260 );
+    add_bandit_camp_member( world, 1, 45260 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const character_id doomed_observer( 45260 );
+    const character_id surviving_partner( 45261 );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, doomed_observer, bandit_live_world::member_state::local_contact,
+                 "paired observers active" ) );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, surviving_partner, bandit_live_world::member_state::local_contact,
+                 "paired observers active" ) );
+    set_test_active_outing( site, site.site_id + "#scout:typed-report" );
+    site.active_outing.member_ids = { doomed_observer, surviving_partner };
+    site.active_outing.leader_id = doomed_observer;
+    site.active_outing.target_id = "typed-report-target";
+    site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
+    site.active_outing.target_lead_revision = 9;
+    site.active_outing.started_minutes = 90;
+    site.active_outing.last_progress_minutes = 100;
+    site.active_outing.owner = bandit_live_world::simulation_owner::local;
+    site.active_outing.handoff_epoch = 1;
+    site.active_outing.last_advanced_minutes = 100;
+    const bandit_live_world::sortie_observation private_observation =
+        make_typed_visual_observation(
+            doomed_observer, 9, 105, "private-before-death",
+            bandit_live_world::sortie_observation_share_state::observer_private );
+    REQUIRE( bandit_live_world::record_active_typed_observations(
+                 site, require_current_simulation_cursor( site ), doomed_observer, 9,
+                 { private_observation }, 110 ).valid );
+    const bandit_live_world::sortie_observation shared_observation =
+        make_typed_visual_observation(
+            surviving_partner, 9, 115, "shared-by-survivor",
+            bandit_live_world::sortie_observation_share_state::shared );
+    REQUIRE( bandit_live_world::record_active_typed_observations(
+                 site, require_current_simulation_cursor( site ), surviving_partner, 9,
+                 { shared_observation }, 120 ).valid );
+
+    const std::vector<bandit_live_world::active_member_observation> aftermath = {
+        { doomed_observer, bandit_live_world::active_member_observation_state::dead,
+          "observer died before sharing" },
+        { surviving_partner, bandit_live_world::active_member_observation_state::home,
+          "partner returned with shared evidence" }
+    };
+    const bandit_live_world::scout_resolution_effect resolved =
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), aftermath, 200 );
+    REQUIRE( resolved.valid );
+    REQUIRE( resolved.completed );
+    REQUIRE( site.current_scout_report.is_present() );
+    REQUIRE( site.current_scout_report.observations.size() == 1 );
+    CHECK( site.current_scout_report.observations.front().fact_key ==
+           "shared-by-survivor" );
+    CHECK( site.current_scout_report.observations.front().share_state ==
+           bandit_live_world::sortie_observation_share_state::reported );
+    CHECK( std::none_of( site.current_scout_report.observations.begin(),
+                        site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "private-before-death";
+    } ) );
 }
 
 TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_the_partner",
