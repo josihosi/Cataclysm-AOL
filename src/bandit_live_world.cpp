@@ -5691,6 +5691,64 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     return decision;
 }
 
+response_party_selection_result select_fresh_response_party( const site_record &site,
+        const hostile_operation_kind operation_kind )
+{
+    response_party_selection_result selection;
+    selection.job = operation_kind == hostile_operation_kind::raid ?
+                    bandit_dry_run::job_template::raid : bandit_dry_run::job_template::toll;
+    const camp_report_policy expected_policy = report_policy_for_profile(
+                effective_profile( site ) );
+    if( site.retired_empty_site || site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
+        site.camp_decision.report_policy != expected_policy ||
+        operation_kind != operation_kind_for_report_policy( expected_policy ) ||
+        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ) {
+        selection.rejection_reason = "post-report response decision is not ready";
+        return selection;
+    }
+
+    int requested_party_size = 0;
+    if( !site.camp_decision.target_lead_id.empty() ) {
+        const camp_map_lead *lead = site.intelligence_map.find_lead(
+                                        site.camp_decision.target_lead_id );
+        const std::string lead_target_id = lead == nullptr ? "" :
+                                           lead->target_id.empty() ? lead->lead_id : lead->target_id;
+        if( lead == nullptr || lead->revision != site.camp_decision.target_lead_revision ||
+            lead_target_id != site.camp_decision.target_id ||
+            lead->omt != site.camp_decision.target_omt ) {
+            selection.rejection_reason = "pinned response lead is missing or stale";
+            return selection;
+        }
+        const camp_map_dispatch_decision decision = choose_camp_map_dispatch( site, *lead );
+        if( decision.intent != selection.job || decision.selected_member_count <= 0 ) {
+            selection.rejection_reason = "current pinned threat/reward state no longer supports the response";
+            return selection;
+        }
+        requested_party_size = decision.selected_member_count;
+        selection.threat_derived = true;
+    }
+
+    const response_party_policy_result policy = response_party_policy(
+                site, selection.job, requested_party_size );
+    selection.party_size = policy.party_size;
+    selection.required_local_reserve = policy.required_local_reserve;
+    if( !policy.eligible ) {
+        selection.rejection_reason = policy.rejection_reason;
+        return selection;
+    }
+
+    selection.member_ids = select_dispatch_members( site, policy.party_size );
+    if( static_cast<int>( selection.member_ids.size() ) != policy.party_size ) {
+        selection.member_ids.clear();
+        selection.rejection_reason = "fresh response selection could not fill the policy size";
+        return selection;
+    }
+
+    selection.eligible = true;
+    return selection;
+}
+
 const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &site,
         const tripoint_abs_omt &target_omt,
         const std::string &target_id )
@@ -6697,7 +6755,6 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
 hostile_operation_plan plan_hostile_operation( const site_record &site,
         const hostile_operation_kind operation_kind,
-        const std::vector<character_id> &member_ids,
         const std::vector<tripoint_abs_omt> &route,
         const tripoint_abs_omt &rally_omt, const int current_minutes )
 {
@@ -6715,9 +6772,10 @@ hostile_operation_plan plan_hostile_operation( const site_record &site,
         plan.notes.push_back( "hostile operation blocked: camp decision/report/profile is not ready" );
         return plan;
     }
-    if( member_ids.size() < 2 || member_ids.size() > max_hostile_operation_members ||
-        !hostile_operation_party_preserves_home( site, member_ids.size() ) ) {
-        plan.notes.push_back( "hostile operation blocked: fresh party violates size or home reserve" );
+    const response_party_selection_result selection = select_fresh_response_party(
+                site, operation_kind );
+    if( !selection.eligible ) {
+        plan.notes.push_back( "hostile operation blocked: " + selection.rejection_reason );
         return plan;
     }
     if( route.size() < 2 || route.size() > max_active_outing_route_steps ||
@@ -6725,20 +6783,6 @@ hostile_operation_plan plan_hostile_operation( const site_record &site,
         std::find( route.begin(), route.end(), rally_omt ) == route.end() ) {
         plan.notes.push_back( "hostile operation blocked: route/rally does not connect camp to report target" );
         return plan;
-    }
-
-    std::vector<character_id> checked_member_ids;
-    checked_member_ids.reserve( member_ids.size() );
-    for( const character_id &member_id : member_ids ) {
-        const member_record *member = site.find_member( member_id );
-        if( member == nullptr || member->state != member_state::at_home ||
-            member->wounded_or_unready ||
-            std::find( checked_member_ids.begin(), checked_member_ids.end(), member_id ) !=
-            checked_member_ids.end() ) {
-            plan.notes.push_back( "hostile operation blocked: party is not a fresh unique home reservation" );
-            return plan;
-        }
-        checked_member_ids.push_back( member_id );
     }
 
     hostile_operation_state &operation = plan.operation;
@@ -6757,8 +6801,8 @@ hostile_operation_plan plan_hostile_operation( const site_record &site,
                               std::to_string( site.next_outing_generation );
     reservation.camp_id = site.site_id;
     reservation.generation = site.next_outing_generation;
-    reservation.member_ids = checked_member_ids;
-    reservation.leader_id = checked_member_ids.front();
+    reservation.member_ids = selection.member_ids;
+    reservation.leader_id = selection.member_ids.front();
     reservation.shared_route = route;
     reservation.waypoint_index = 0;
     reservation.target_id = site.camp_decision.target_id;
@@ -6800,6 +6844,8 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
                                    std::find( reservation.shared_route.begin(),
                                            reservation.shared_route.end(),
                                            operation.rally_omt ) != reservation.shared_route.end();
+    const response_party_selection_result selection = select_fresh_response_party(
+                site, operation.operation_kind );
     if( !plan.valid || site.retired_empty_site || site.has_active_outside_pressure() ||
         site.camp_decision.state != camp_decision_state::preparing_follow_on ||
         site.camp_decision.report_policy != expected_policy ||
@@ -6811,6 +6857,7 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
         reservation.phase != scout_phase::assembling || reservation.camp_id != site.site_id ||
         reservation.activity_id != expected_activity_id ||
         reservation.generation != site.next_outing_generation ||
+        !selection.eligible || reservation.member_ids != selection.member_ids ||
         reservation.member_ids.size() < 2 ||
         reservation.member_ids.size() > max_hostile_operation_members ||
         !hostile_operation_party_preserves_home( site, reservation.member_ids.size() ) ||

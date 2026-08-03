@@ -242,7 +242,8 @@ bandit_live_world::simulation_advance_cursor require_current_simulation_cursor(
 
 void prepare_hostile_follow_on( bandit_live_world::site_record &site, const int report_revision,
                                 const int scout_generation, const std::string &target_id,
-                                const tripoint_abs_omt &target_omt, const int delivered_minutes )
+                                const tripoint_abs_omt &target_omt, const int delivered_minutes,
+                                const std::string &target_lead_id = "" )
 {
     site.current_scout_report.revision = report_revision;
     site.current_scout_report.action_policy =
@@ -255,6 +256,7 @@ void prepare_hostile_follow_on( bandit_live_world::site_record &site, const int 
     site.current_scout_report.source_job_type = "scout";
     site.current_scout_report.target_id = target_id;
     site.current_scout_report.target_omt = target_omt;
+    site.current_scout_report.target_lead_id = target_lead_id;
     site.current_scout_report.target_lead_revision = 3;
     site.current_scout_report.application_key =
         site.current_scout_report.source_activity_id + ":report:" +
@@ -282,8 +284,8 @@ void apply_test_hostile_dispatch( bandit_live_world::site_record &site,
         bandit_live_world::hostile_operation_kind::shakedown;
     const bandit_live_world::hostile_operation_plan operation =
         bandit_live_world::plan_hostile_operation(
-            site, operation_kind, dispatch.member_ids,
-            { site.anchor, dispatch.target_omt }, site.anchor, current_minutes );
+            site, operation_kind, { site.anchor, dispatch.target_omt },
+            site.anchor, current_minutes );
     REQUIRE( operation.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, operation ) );
     REQUIRE( bandit_live_world::transition_hostile_operation_phase(
@@ -538,7 +540,6 @@ TEST_CASE( "bandit_live_world_derives_disjoint_roster_authorities",
     const bandit_live_world::hostile_operation_plan hostile_plan =
         bandit_live_world::plan_hostile_operation(
             hostile_site, bandit_live_world::hostile_operation_kind::shakedown,
-            { character_id( 47300 ), character_id( 47301 ) },
             { hostile_site.anchor, tripoint_abs_omt( 18, 20, 0 ) },
             hostile_site.anchor, 102 );
     REQUIRE( hostile_plan.valid );
@@ -867,7 +868,6 @@ TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
     const bandit_live_world::hostile_operation_plan hostile_kind_plan =
         bandit_live_world::plan_hostile_operation(
             hostile_kind_site, bandit_live_world::hostile_operation_kind::shakedown,
-            { character_id( 47700 ), character_id( 47701 ) },
             { hostile_kind_site.anchor, tripoint_abs_omt( 18, 20, 0 ) },
             hostile_kind_site.anchor, 102 );
     REQUIRE( hostile_kind_plan.valid );
@@ -2411,7 +2411,6 @@ TEST_CASE( "bandit_live_world_simulation_owner_handoff_is_shared_and_token_check
     const bandit_live_world::hostile_operation_plan hostile_plan =
         bandit_live_world::plan_hostile_operation(
             hostile_site, bandit_live_world::hostile_operation_kind::shakedown,
-            { character_id( 45600 ), character_id( 45601 ) },
             { hostile_site.anchor, rally, target }, rally, 702 );
     REQUIRE( hostile_plan.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( hostile_site, hostile_plan ) );
@@ -3075,25 +3074,42 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     const tripoint_abs_omt target( 18, 20, 0 );
     const std::vector<tripoint_abs_omt> route = { site.anchor, rally, target };
     const std::vector<character_id> members = {
-        character_id( 45200 ), character_id( 45201 ), character_id( 45202 )
+        character_id( 45200 ), character_id( 45201 )
     };
     prepare_hostile_follow_on( site, 9, 4, "report-target", target, 600 );
 
+    site.find_member( character_id( 45200 ) )->wounded_or_unready = true;
+    const bandit_live_world::response_party_selection_result shifted_selection =
+        bandit_live_world::select_fresh_response_party(
+            site, hostile_operation_kind::shakedown );
+    REQUIRE( shifted_selection.eligible );
+    CHECK_FALSE( shifted_selection.threat_derived );
+    CHECK( shifted_selection.party_size == 2 );
+    const std::vector<character_id> shifted_expected = {
+        character_id( 45201 ), character_id( 45202 )
+    };
+    CHECK( shifted_selection.member_ids == shifted_expected );
+    site.find_member( character_id( 45200 ) )->wounded_or_unready = false;
+
     const std::string before_rejections = serialize_world( world );
     CHECK_FALSE( bandit_live_world::plan_hostile_operation(
-                     site, hostile_operation_kind::raid, members, route, rally, 602 ).valid );
+                     site, hostile_operation_kind::raid, route, rally, 602 ).valid );
     CHECK_FALSE( bandit_live_world::plan_hostile_operation(
-                     site, hostile_operation_kind::shakedown, members,
+                     site, hostile_operation_kind::shakedown,
                      { site.anchor, target }, rally, 602 ).valid );
-    site.find_member( members.back() )->wounded_or_unready = true;
+    for( int member_id = 45203; member_id <= 45206; ++member_id ) {
+        site.find_member( character_id( member_id ) )->wounded_or_unready = true;
+    }
     CHECK_FALSE( bandit_live_world::plan_hostile_operation(
-                     site, hostile_operation_kind::shakedown, members, route, rally, 602 ).valid );
-    site.find_member( members.back() )->wounded_or_unready = false;
+                     site, hostile_operation_kind::shakedown, route, rally, 602 ).valid );
+    for( int member_id = 45203; member_id <= 45206; ++member_id ) {
+        site.find_member( character_id( member_id ) )->wounded_or_unready = false;
+    }
     CHECK( serialize_world( world ) == before_rejections );
 
     const bandit_live_world::hostile_operation_plan plan =
         bandit_live_world::plan_hostile_operation(
-            site, hostile_operation_kind::shakedown, members, route, rally, 602 );
+            site, hostile_operation_kind::shakedown, route, rally, 602 );
     REQUIRE( plan.valid );
     CHECK( plan.operation.operation_kind == hostile_operation_kind::shakedown );
     CHECK( plan.operation.phase == hostile_operation_phase::assembling );
@@ -3114,6 +3130,12 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     CHECK( plan.operation.reservation.shared_route == route );
     CHECK( plan.operation.reservation.target_id == "report-target" );
     CHECK( plan.operation.reservation.job_type == "toll" );
+
+    site.find_member( members.front() )->wounded_or_unready = true;
+    const std::string changed_roster = serialize_world( world );
+    CHECK_FALSE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+    CHECK( serialize_world( world ) == changed_roster );
+    site.find_member( members.front() )->wounded_or_unready = false;
 
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
     CHECK_FALSE( site.active_outing.is_active() );
@@ -3175,9 +3197,6 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     bandit_live_world::site_record &cannibal_site = cannibal_world.sites.front();
     const tripoint_abs_omt cannibal_rally( 72, 80, 0 );
     const tripoint_abs_omt cannibal_target( 75, 80, 0 );
-    const std::vector<character_id> cannibal_members = {
-        character_id( 45300 ), character_id( 45301 )
-    };
     prepare_hostile_follow_on( cannibal_site, 3, 2, "night-target",
                                cannibal_target, 700 );
     CHECK( cannibal_site.current_scout_report.action_policy ==
@@ -3185,12 +3204,12 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     CHECK( cannibal_site.camp_decision.report_policy ==
            bandit_live_world::camp_report_policy::cannibal_night_raid );
     CHECK_FALSE( bandit_live_world::plan_hostile_operation(
-                     cannibal_site, hostile_operation_kind::shakedown, cannibal_members,
+                     cannibal_site, hostile_operation_kind::shakedown,
                      { cannibal_site.anchor, cannibal_rally, cannibal_target },
                      cannibal_rally, 702 ).valid );
     const bandit_live_world::hostile_operation_plan raid_plan =
         bandit_live_world::plan_hostile_operation(
-            cannibal_site, hostile_operation_kind::raid, cannibal_members,
+            cannibal_site, hostile_operation_kind::raid,
             { cannibal_site.anchor, cannibal_rally, cannibal_target },
             cannibal_rally, 702 );
     REQUIRE( raid_plan.valid );
@@ -3198,7 +3217,7 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     bandit_live_world::site_record drifted_profile = cannibal_site;
     drifted_profile.profile = bandit_live_world::hostile_site_profile::camp_style;
     CHECK_FALSE( bandit_live_world::plan_hostile_operation(
-                     drifted_profile, hostile_operation_kind::shakedown, cannibal_members,
+                     drifted_profile, hostile_operation_kind::shakedown,
                      { drifted_profile.anchor, cannibal_rally, cannibal_target },
                      cannibal_rally, 702 ).valid );
 }
@@ -3283,7 +3302,7 @@ TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
     prepare_hostile_follow_on( site, 5, 4, "phase-target", target, 800 );
     const bandit_live_world::hostile_operation_plan plan =
         bandit_live_world::plan_hostile_operation(
-            site, bandit_live_world::hostile_operation_kind::shakedown, members,
+            site, bandit_live_world::hostile_operation_kind::shakedown,
             { site.anchor, rally, target }, rally, 802 );
     REQUIRE( plan.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
@@ -3447,7 +3466,7 @@ TEST_CASE( "bandit_live_world_round_trips_every_active_hostile_operation_phase",
     const bandit_live_world::hostile_operation_plan plan =
         bandit_live_world::plan_hostile_operation(
             planning_site, bandit_live_world::hostile_operation_kind::shakedown,
-            operation_members, { planning_site.anchor, rally, target }, rally, 902 );
+            { planning_site.anchor, rally, target }, rally, 902 );
     REQUIRE( plan.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( planning_site, plan ) );
 
@@ -3779,7 +3798,6 @@ TEST_CASE( "bandit_live_world_transition_events_capture_final_hostile_owner",
     const bandit_live_world::hostile_operation_plan plan =
         bandit_live_world::plan_hostile_operation(
             site, bandit_live_world::hostile_operation_kind::shakedown,
-            { character_id( 45520 ), character_id( 45521 ) },
             { site.anchor, rally, target }, rally, 702 );
     REQUIRE( plan.valid );
     REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
@@ -6224,7 +6242,7 @@ TEST_CASE( "bandit_live_world_two_bandit_camp_uses_zero_reserve_only_for_routine
 
     const bandit_live_world::hostile_operation_plan operation =
         bandit_live_world::plan_hostile_operation(
-            site, bandit_live_world::hostile_operation_kind::shakedown, plan.member_ids,
+            site, bandit_live_world::hostile_operation_kind::shakedown,
             { site.anchor, confirmed.omt }, site.anchor, 102 );
     CHECK_FALSE( operation.valid );
     CHECK_FALSE( site.active_hostile_operation.is_active() );
@@ -6279,9 +6297,11 @@ TEST_CASE( "bandit_live_world_scout_confirmed_basecamp_promotes_to_toll_party",
     lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
     lead.target_id = "player@18,20,0";
     lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.revision = 3;
     lead.bounty = 8;
     lead.threat = 1;
     lead.confidence = 3;
+    site.intelligence_map.leads.push_back( lead );
 
     const bandit_live_world::camp_map_dispatch_decision decision =
         bandit_live_world::choose_camp_map_dispatch( site, lead );
@@ -6290,7 +6310,23 @@ TEST_CASE( "bandit_live_world_scout_confirmed_basecamp_promotes_to_toll_party",
     CHECK( decision.dispatchable == 5 );
     CHECK( decision.selected_member_count == 3 );
 
-    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100 );
+    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100,
+                               lead.lead_id );
+    const bandit_live_world::response_party_selection_result response =
+        bandit_live_world::select_fresh_response_party(
+            site, bandit_live_world::hostile_operation_kind::shakedown );
+    REQUIRE( response.eligible );
+    CHECK( response.threat_derived );
+    CHECK( response.party_size == 3 );
+
+    bandit_live_world::world_state stale_lead_world = world;
+    bandit_live_world::site_record &stale_lead_site = stale_lead_world.sites.front();
+    stale_lead_site.intelligence_map.leads.front().omt = tripoint_abs_omt( 19, 20, 0 );
+    const std::string before_stale_selection = serialize_world( stale_lead_world );
+    CHECK_FALSE( bandit_live_world::select_fresh_response_party(
+                     stale_lead_site,
+                     bandit_live_world::hostile_operation_kind::shakedown ).eligible );
+    CHECK( serialize_world( stale_lead_world ) == before_stale_selection );
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, lead );
     REQUIRE( plan.valid );
@@ -6333,9 +6369,11 @@ TEST_CASE( "bandit_live_world_cannibal_scout_confirmation_promotes_to_attack_pac
     lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
     lead.target_id = "player@72,80,0";
     lead.omt = tripoint_abs_omt( 72, 80, 0 );
+    lead.revision = 3;
     lead.bounty = 9;
     lead.threat = 1;
     lead.confidence = 3;
+    site.intelligence_map.leads.push_back( lead );
 
     const bandit_live_world::camp_map_dispatch_decision decision =
         bandit_live_world::choose_camp_map_dispatch( site, lead );
@@ -6344,7 +6382,14 @@ TEST_CASE( "bandit_live_world_cannibal_scout_confirmation_promotes_to_attack_pac
     CHECK( decision.dispatchable == 4 );
     CHECK( decision.selected_member_count == 4 );
 
-    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100 );
+    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100,
+                               lead.lead_id );
+    const bandit_live_world::response_party_selection_result response =
+        bandit_live_world::select_fresh_response_party(
+            site, bandit_live_world::hostile_operation_kind::raid );
+    REQUIRE( response.eligible );
+    CHECK( response.threat_derived );
+    CHECK( response.party_size == 4 );
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, lead );
     REQUIRE( plan.valid );
@@ -8168,6 +8213,7 @@ TEST_CASE( "bandit_live_world_plans_live_dispatch_from_remembered_camp_map_lead"
     lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
     lead.target_id = "player@18,20,0";
     lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.revision = 3;
     lead.radius_omt = 2;
     lead.bounty = 7;
     lead.threat = 1;
@@ -8180,7 +8226,8 @@ TEST_CASE( "bandit_live_world_plans_live_dispatch_from_remembered_camp_map_lead"
     REQUIRE( matched_lead != nullptr );
     CHECK( matched_lead->lead_id == lead.lead_id );
 
-    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100 );
+    prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100,
+                               lead.lead_id );
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
     REQUIRE( plan.valid );

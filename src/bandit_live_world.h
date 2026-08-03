@@ -483,6 +483,16 @@ struct response_party_policy_result {
     std::string rejection_reason;
 };
 
+struct response_party_selection_result {
+    bool eligible = false;
+    bool threat_derived = false;
+    bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
+    int party_size = 0;
+    int required_local_reserve = 0;
+    std::vector<character_id> member_ids;
+    std::string rejection_reason;
+};
+
 struct site_record {
     int schema_version = 10;
     std::string site_id;
@@ -826,6 +836,8 @@ routine_scout_policy_result routine_scout_policy( const site_record &site );
 int routine_scout_materialization_count( const site_record &site );
 response_party_policy_result response_party_policy( const site_record &site,
         bandit_dry_run::job_template job, int requested_party_size = 0 );
+response_party_selection_result select_fresh_response_party( const site_record &site,
+        hostile_operation_kind operation_kind );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
@@ -920,9 +932,8 @@ hostile_operation_transition_result transition_hostile_operation_phase( site_rec
         hostile_operation_phase expected_phase, hostile_operation_phase next_phase,
         int current_minutes, const std::string &reason );
 hostile_operation_plan plan_hostile_operation( const site_record &site,
-        hostile_operation_kind operation_kind, const std::vector<character_id> &member_ids,
-        const std::vector<tripoint_abs_omt> &route, const tripoint_abs_omt &rally_omt,
-        int current_minutes );
+        hostile_operation_kind operation_kind, const std::vector<tripoint_abs_omt> &route,
+        const tripoint_abs_omt &rally_omt, int current_minutes );
 bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
                                       int sortie_limit_minutes );
