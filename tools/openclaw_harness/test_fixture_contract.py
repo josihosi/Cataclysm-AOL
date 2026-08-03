@@ -42,6 +42,7 @@ RELEASE_GATE_SCENARIOS = (
 
 from startup_harness import (  # noqa: E402
     StartupPlan,
+    audit_saved_bandit_live_world_state,
     apply_bandit_clone_site_transform,
     apply_game_turn_to_payload,
     apply_option_overrides_to_file,
@@ -63,6 +64,7 @@ from startup_harness import (  # noqa: E402
     run_probe_mode,
     scenarios_root,
     store_secure_llm_credential,
+    summarize_bandit_live_world_site,
     validate_enabled_api_runtime,
     write_macos_llm_credential,
 )
@@ -611,6 +613,157 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
 
 
 class BanditLiveWorldAuditContractTest(unittest.TestCase):
+    @staticmethod
+    def current_pair_site() -> Dict[str, Any]:
+        return {
+            "site_id": "camp-current",
+            "site_kind": "bandit_camp",
+            "hostile_profile": "bandit_camp",
+            "members": [
+                {"npc_id": 101, "state": "local_contact"},
+                {"npc_id": 102, "state": "local_contact"},
+            ],
+            "active_outing": {
+                "schema_version": 8,
+                "kind": "structural_sortie",
+                "activity_id": "camp-current#structural",
+                "camp_id": "camp-current",
+                "generation": 3,
+                "member_ids": [101, 102],
+                "leader_id": 101,
+                "shared_route": [[1, 1, 0], [2, 1, 0], [3, 1, 0]],
+                "waypoint_index": 1,
+                "target_id": "forest",
+                "target_omt": [2, 1, 0],
+                "job_type": "scavenge",
+                "phase": "outbound",
+                "simulation_owner": "local",
+                "handoff_epoch": 1,
+                "started_minutes": 60,
+                "local_contact_minutes": 120,
+                "last_progress_minutes": 120,
+                "last_advanced_minutes": 120,
+                "local_handoff": {
+                    "schema_version": 3,
+                    "activity_id": "camp-current#structural",
+                    "activity_generation": 3,
+                    "handoff_epoch": 1,
+                    "waypoint_index": 1,
+                    "phase": "outbound",
+                    "cohesion_leader_id": 101,
+                    "route_position": [2, 1, 0],
+                    "committed_minutes": 120,
+                    "members": [
+                        {
+                            "npc_id": 101,
+                            "entry_position": [48, 24, 0],
+                            "staging_position": [49, 24, 0],
+                            "hp_percent": 100,
+                            "dead": False,
+                        },
+                        {
+                            "npc_id": 102,
+                            "entry_position": [48, 25, 0],
+                            "staging_position": [49, 25, 0],
+                            "hp_percent": 85,
+                            "dead": False,
+                        },
+                    ],
+                },
+            },
+        }
+
+    @staticmethod
+    def write_world(world_dir: Path, site: Dict[str, Any]) -> None:
+        (world_dir / "dimension_data.gsav").write_text(
+            "# version 39\n"
+            + json.dumps({
+                "overmapbuffer": {
+                    "bandit_live_world": {"sites": [site]},
+                },
+            }),
+            encoding="utf-8",
+        )
+
+    def test_current_pair_summary_exposes_nested_owner_route_handoff_and_cursor(self) -> None:
+        summary = summarize_bandit_live_world_site(self.current_pair_site())
+        outing = summary["active_outing"]
+        handoff = outing["local_handoff"]
+
+        self.assertEqual(summary["active_group_id"], "camp-current#structural")
+        self.assertEqual(summary["active_member_ids"], [101, 102])
+        self.assertEqual(outing["simulation_cursor"], {
+            "activity_id": "camp-current#structural",
+            "generation": 3,
+            "simulation_owner": "local",
+            "handoff_epoch": 1,
+            "last_advanced_minutes": 120,
+        })
+        self.assertTrue(outing["exact_pair_with_leader"])
+        self.assertTrue(outing["structural_route_valid"])
+        self.assertEqual(outing["waypoint_omt"], [2, 1, 0])
+        self.assertTrue(outing["owner_cursor_valid"])
+        self.assertEqual(handoff["state"], "local")
+        self.assertEqual(handoff["member_ids"], [101, 102])
+        self.assertTrue(handoff["distinct_entry_positions"])
+        self.assertTrue(handoff["distinct_staging_positions"])
+        self.assertTrue(handoff["entry_staging_positions_separate"])
+        self.assertTrue(handoff["cursor_consistent"])
+        self.assertTrue(handoff["pair_contract_valid"])
+        self.assertTrue(outing["pair_contract_valid"])
+
+    def test_current_pair_requirements_reject_malformed_handoff_without_legacy_bypass(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            self.write_world(world_dir, site)
+            green = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_active_outing_kind="structural_sortie",
+                required_active_outing_activity_id_contains="#structural",
+                required_active_outing_generation=3,
+                required_active_outing_simulation_owner="local",
+                required_active_outing_handoff_epoch=1,
+                required_active_outing_phase="outbound",
+                required_active_outing_waypoint_index=1,
+                required_active_outing_last_advanced_minutes=120,
+                required_active_outing_exact_pair=True,
+                required_active_outing_pair_contract=True,
+                required_local_handoff_state="local",
+                required_local_handoff_exact_pair=True,
+                required_local_handoff_pair_contract=True,
+            )
+            legacy_empty = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_active_group_id_exact="",
+            )
+
+            site["active_outing"]["local_handoff"]["members"][1]["staging_position"] = [49, 24, 0]
+            self.write_world(world_dir, site)
+            malformed = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_local_handoff_pair_contract=True,
+            )
+
+        self.assertEqual(green["status"], "required_state_present")
+        self.assertEqual(legacy_empty["status"], "required_state_missing")
+        self.assertEqual(malformed["status"], "required_state_missing")
+
+    def test_legacy_active_fields_remain_auditable_without_nested_outing(self) -> None:
+        legacy_site = {
+            "site_id": "camp-legacy",
+            "site_kind": "bandit_camp",
+            "active_group_id": "legacy-group",
+            "active_target_id": "legacy-target",
+            "active_member_ids": [7],
+        }
+        summary = summarize_bandit_live_world_site(legacy_site)
+
+        self.assertEqual(summary["active_group_id"], "legacy-group")
+        self.assertEqual(summary["active_target_id"], "legacy-target")
+        self.assertEqual(summary["active_member_ids"], [7])
+        self.assertFalse(summary["active_outing"]["is_active"])
+
     def test_windows_uses_exe_zzip_helper(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root = Path(temp_dir)

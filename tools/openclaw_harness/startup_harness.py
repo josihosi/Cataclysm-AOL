@@ -4476,6 +4476,233 @@ def build_portal_storm_warning_for_report(
     )
 
 
+def summarize_bandit_active_outing(site: Dict[str, Any]) -> Dict[str, Any]:
+    def integer_field(record: Dict[str, Any], key: str, default: int) -> int:
+        value = record.get(key, default)
+        return default if value is None else int(value)
+
+    raw_outing = site.get("active_outing")
+    outing = raw_outing if isinstance(raw_outing, dict) else {}
+    activity_id = str(outing.get("activity_id", "") or "")
+    kind = str(outing.get("kind", "") or "")
+    generation = integer_field(outing, "generation", 0)
+    is_active = bool(activity_id and kind not in {"", "none"} and generation > 0)
+
+    member_ids = outing.get("member_ids", [])
+    if not isinstance(member_ids, list):
+        member_ids = []
+    member_id_keys = [str(value) for value in member_ids]
+    leader_id = outing.get("leader_id")
+    exact_pair = (
+        len(member_ids) == 2
+        and len(set(member_id_keys)) == 2
+        and str(leader_id) in member_id_keys
+    )
+
+    shared_route = outing.get("shared_route", [])
+    if not isinstance(shared_route, list):
+        shared_route = []
+    waypoint_index = integer_field(outing, "waypoint_index", -1)
+    waypoint_in_route = 0 <= waypoint_index < len(shared_route)
+    waypoint_omt = shared_route[waypoint_index] if waypoint_in_route else []
+    structural_route_valid = (
+        kind == "structural_sortie"
+        and 3 <= len(shared_route) <= 5
+        and waypoint_in_route
+    )
+
+    simulation_owner = str(outing.get("simulation_owner", "") or "")
+    handoff_epoch = integer_field(outing, "handoff_epoch", 0)
+    last_advanced_minutes = integer_field(outing, "last_advanced_minutes", -1)
+    started_minutes = integer_field(outing, "started_minutes", -1)
+    local_contact_minutes = integer_field(outing, "local_contact_minutes", -1)
+    last_progress_minutes = integer_field(outing, "last_progress_minutes", -1)
+    owner_cursor_valid = bool(
+        handoff_epoch >= 0
+        and (
+            (simulation_owner == "abstract" and handoff_epoch % 2 == 0)
+            or (simulation_owner == "local" and handoff_epoch % 2 == 1)
+        )
+        and last_advanced_minutes
+        >= max(started_minutes, local_contact_minutes, last_progress_minutes)
+    )
+    raw_handoff = outing.get("local_handoff")
+    handoff = raw_handoff if isinstance(raw_handoff, dict) else {}
+    handoff_activity_id = str(handoff.get("activity_id", "") or "")
+    handoff_generation = integer_field(handoff, "activity_generation", 0)
+    handoff_epoch_value = integer_field(handoff, "handoff_epoch", -1)
+    handoff_committed_minutes = integer_field(handoff, "committed_minutes", -1)
+    handoff_schema = integer_field(handoff, "schema_version", 0)
+    handoff_members = handoff.get("members", [])
+    if not isinstance(handoff_members, list):
+        handoff_members = []
+    handoff_member_rows = [member for member in handoff_members if isinstance(member, dict)]
+    handoff_member_ids = [member.get("npc_id") for member in handoff_member_rows]
+    handoff_member_keys = [str(value) for value in handoff_member_ids]
+
+    def valid_position(value: Any) -> bool:
+        return isinstance(value, list) and len(value) >= 3
+
+    entry_positions = [member.get("entry_position") for member in handoff_member_rows]
+    staging_positions = [member.get("staging_position") for member in handoff_member_rows]
+    distinct_entries = (
+        len(entry_positions) == 2
+        and all(valid_position(value) for value in entry_positions)
+        and entry_positions[0] != entry_positions[1]
+    )
+    distinct_staging = (
+        len(staging_positions) == 2
+        and all(valid_position(value) for value in staging_positions)
+        and staging_positions[0] != staging_positions[1]
+    )
+    entry_staging_separate = (
+        len(entry_positions) == 2
+        and len(staging_positions) == 2
+        and all(
+            valid_position(entry_positions[index])
+            and valid_position(staging_positions[index])
+            and entry_positions[index] != staging_positions[index]
+            for index in range(2)
+        )
+    )
+    health_valid = len(handoff_member_rows) == 2 and all(
+        (
+            bool(member.get("dead", False))
+            and int(member.get("hp_percent", -1) or 0) == 0
+        )
+        or (
+            not bool(member.get("dead", False))
+            and 0 < int(member.get("hp_percent", 0) or 0) <= 100
+        )
+        for member in handoff_member_rows
+    )
+    handoff_exact_pair = (
+        len(handoff_members) == 2
+        and len(handoff_member_rows) == 2
+        and len(set(handoff_member_keys)) == 2
+    )
+    handoff_member_ids_match_outing = (
+        handoff_exact_pair
+        and len(member_ids) == 2
+        and set(handoff_member_keys) == set(member_id_keys)
+    )
+    handoff_identity_matches_outing = bool(
+        is_active
+        and handoff_activity_id == activity_id
+        and handoff_generation == generation
+        and handoff_epoch_value == handoff_epoch
+        and integer_field(handoff, "waypoint_index", -1) == waypoint_index
+        and handoff.get("route_position", []) == waypoint_omt
+    )
+    handoff_cursor_consistent = bool(
+        handoff_identity_matches_outing
+        and handoff_committed_minutes >= 0
+        and handoff_committed_minutes <= last_advanced_minutes
+    )
+    handoff_state = "empty"
+    if handoff_activity_id:
+        if handoff_schema in {1, 2, 3} and handoff_epoch_value > 0:
+            handoff_state = "local" if handoff_epoch_value % 2 == 1 else "abstract_resume"
+        else:
+            handoff_state = "malformed"
+    handoff_pair_contract_valid = bool(
+        handoff_state in {"local", "abstract_resume"}
+        and handoff_exact_pair
+        and handoff_member_ids_match_outing
+        and handoff_identity_matches_outing
+        and handoff_cursor_consistent
+        and distinct_entries
+        and distinct_staging
+        and entry_staging_separate
+        and health_valid
+        and (
+            handoff_schema < 3
+            or str(handoff.get("cohesion_leader_id")) == str(leader_id)
+        )
+    )
+    handoff_valid_for_owner = (
+        handoff_state == "empty"
+        if simulation_owner == "abstract"
+        else False
+    ) or (
+        handoff_pair_contract_valid
+        and (
+            (simulation_owner == "local" and handoff_state == "local")
+            or (simulation_owner == "abstract" and handoff_state == "abstract_resume")
+        )
+    )
+
+    return {
+        "present": isinstance(raw_outing, dict),
+        "is_active": is_active,
+        "schema_version": integer_field(outing, "schema_version", 0),
+        "kind": kind,
+        "activity_id": activity_id,
+        "camp_id": str(outing.get("camp_id", "") or ""),
+        "generation": generation,
+        "member_ids": member_ids,
+        "member_count": len(member_ids),
+        "leader_id": leader_id,
+        "exact_pair_with_leader": exact_pair,
+        "shared_route": shared_route,
+        "shared_route_count": len(shared_route),
+        "waypoint_index": waypoint_index,
+        "waypoint_in_route": waypoint_in_route,
+        "waypoint_omt": waypoint_omt,
+        "structural_route_valid": structural_route_valid,
+        "target_id": str(outing.get("target_id", "") or ""),
+        "target_omt": outing.get("target_omt", []),
+        "job_type": str(outing.get("job_type", "") or ""),
+        "phase": str(outing.get("phase", "") or ""),
+        "simulation_owner": simulation_owner,
+        "handoff_epoch": handoff_epoch,
+        "owner_cursor_valid": owner_cursor_valid,
+        "started_minutes": started_minutes,
+        "local_contact_minutes": local_contact_minutes,
+        "last_progress_minutes": last_progress_minutes,
+        "last_advanced_minutes": last_advanced_minutes,
+        "simulation_cursor": {
+            "activity_id": activity_id,
+            "generation": generation,
+            "simulation_owner": simulation_owner,
+            "handoff_epoch": handoff_epoch,
+            "last_advanced_minutes": last_advanced_minutes,
+        },
+        "pair_contract_valid": bool(
+            is_active
+            and exact_pair
+            and structural_route_valid
+            and owner_cursor_valid
+            and handoff_valid_for_owner
+        ),
+        "local_handoff": {
+            "present": isinstance(raw_handoff, dict),
+            "state": handoff_state,
+            "schema_version": handoff_schema,
+            "activity_id": handoff_activity_id,
+            "activity_generation": handoff_generation,
+            "handoff_epoch": handoff_epoch_value,
+            "waypoint_index": integer_field(handoff, "waypoint_index", -1),
+            "phase": str(handoff.get("phase", "") or ""),
+            "cohesion_leader_id": handoff.get("cohesion_leader_id"),
+            "route_position": handoff.get("route_position", []),
+            "committed_minutes": handoff_committed_minutes,
+            "member_ids": handoff_member_ids,
+            "member_count": len(handoff_members),
+            "members": handoff_member_rows,
+            "exact_pair": handoff_exact_pair,
+            "member_ids_match_outing": handoff_member_ids_match_outing,
+            "identity_matches_outing": handoff_identity_matches_outing,
+            "cursor_consistent": handoff_cursor_consistent,
+            "distinct_entry_positions": distinct_entries,
+            "distinct_staging_positions": distinct_staging,
+            "entry_staging_positions_separate": entry_staging_separate,
+            "member_health_valid": health_valid,
+            "pair_contract_valid": handoff_pair_contract_valid,
+        },
+    }
+
+
 def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     intelligence_map = site.get("intelligence_map")
     leads = []
@@ -4511,7 +4738,8 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
                     "times_harvested": lead.get("times_harvested", 0),
                     "last_outcome": lead.get("last_outcome", ""),
                 })
-    active_member_ids = site.get("active_member_ids", [])
+    active_outing = summarize_bandit_active_outing(site)
+    active_member_ids = active_outing.get("member_ids", []) if active_outing.get("is_active") else site.get("active_member_ids", [])
     if not isinstance(active_member_ids, list):
         active_member_ids = []
     retired_empty_site = bool(site.get("retired_empty_site", False))
@@ -4574,14 +4802,15 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "wounded_or_unready_count": wounded_or_unready,
         "active_outside_count": len(active_outside_ids),
         "member_state_counts": member_state_counts,
-        "active_group_id": site.get("active_group_id", ""),
-        "active_target_id": site.get("active_target_id", ""),
-        "active_target_omt": site.get("active_target_omt", []),
-        "active_job_type": site.get("active_job_type", ""),
-        "active_sortie_started_minutes": site.get("active_sortie_started_minutes", -1),
-        "active_sortie_local_contact_minutes": site.get("active_sortie_local_contact_minutes", -1),
+        "active_group_id": active_outing.get("activity_id", "") if active_outing.get("is_active") else site.get("active_group_id", ""),
+        "active_target_id": active_outing.get("target_id", "") if active_outing.get("is_active") else site.get("active_target_id", ""),
+        "active_target_omt": active_outing.get("target_omt", []) if active_outing.get("is_active") else site.get("active_target_omt", []),
+        "active_job_type": active_outing.get("job_type", "") if active_outing.get("is_active") else site.get("active_job_type", ""),
+        "active_sortie_started_minutes": site.get("active_outing", {}).get("started_minutes", -1) if active_outing.get("is_active") else site.get("active_sortie_started_minutes", -1),
+        "active_sortie_local_contact_minutes": site.get("active_outing", {}).get("local_contact_minutes", -1) if active_outing.get("is_active") else site.get("active_sortie_local_contact_minutes", -1),
         "active_member_ids": active_member_ids,
         "active_member_count": len(active_member_ids),
+        "active_outing": active_outing,
         "remembered_target_or_mark": site.get("remembered_target_or_mark", ""),
         "remembered_pressure": site.get("remembered_pressure", ""),
         "known_recent_marks": known_recent_marks,
@@ -4604,6 +4833,19 @@ def audit_saved_bandit_live_world_state(
     required_active_job_type: str = "",
     required_active_sortie_started_minutes: Optional[int] = None,
     required_active_sortie_local_contact_minutes: Optional[int] = None,
+    required_active_outing_kind: str = "",
+    required_active_outing_activity_id_contains: str = "",
+    required_active_outing_generation: Optional[int] = None,
+    required_active_outing_simulation_owner: str = "",
+    required_active_outing_handoff_epoch: Optional[int] = None,
+    required_active_outing_phase: str = "",
+    required_active_outing_waypoint_index: Optional[int] = None,
+    required_active_outing_last_advanced_minutes: Optional[int] = None,
+    required_active_outing_exact_pair: Optional[bool] = None,
+    required_active_outing_pair_contract: Optional[bool] = None,
+    required_local_handoff_state: str = "",
+    required_local_handoff_exact_pair: Optional[bool] = None,
+    required_local_handoff_pair_contract: Optional[bool] = None,
     required_member_count: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
     required_wounded_or_unready_count: Optional[int] = None,
@@ -4776,6 +5018,15 @@ def audit_saved_bandit_live_world_state(
     required_active_target_id_prefix = str(required_active_target_id_prefix or "").strip()
     required_active_target_id_contains = str(required_active_target_id_contains or "").strip()
     required_active_job_type = str(required_active_job_type or "").strip()
+    required_active_outing_kind = str(required_active_outing_kind or "").strip()
+    required_active_outing_activity_id_contains = str(
+        required_active_outing_activity_id_contains or ""
+    ).strip()
+    required_active_outing_simulation_owner = str(
+        required_active_outing_simulation_owner or ""
+    ).strip()
+    required_active_outing_phase = str(required_active_outing_phase or "").strip()
+    required_local_handoff_state = str(required_local_handoff_state or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_remembered_pressure = str(required_remembered_pressure or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
@@ -4808,6 +5059,38 @@ def audit_saved_bandit_live_world_state(
         if required_active_sortie_started_minutes is not None and int(site.get("active_sortie_started_minutes", -1) or -1) != required_active_sortie_started_minutes:
             return False
         if required_active_sortie_local_contact_minutes is not None and int(site.get("active_sortie_local_contact_minutes", -1) or -1) != required_active_sortie_local_contact_minutes:
+            return False
+        active_outing = site.get("active_outing", {})
+        if not isinstance(active_outing, dict):
+            active_outing = {}
+        local_handoff = active_outing.get("local_handoff", {})
+        if not isinstance(local_handoff, dict):
+            local_handoff = {}
+        if required_active_outing_kind and str(active_outing.get("kind", "")) != required_active_outing_kind:
+            return False
+        if required_active_outing_activity_id_contains and required_active_outing_activity_id_contains not in str(active_outing.get("activity_id", "")):
+            return False
+        if required_active_outing_generation is not None and int(active_outing.get("generation", 0)) != required_active_outing_generation:
+            return False
+        if required_active_outing_simulation_owner and str(active_outing.get("simulation_owner", "")) != required_active_outing_simulation_owner:
+            return False
+        if required_active_outing_handoff_epoch is not None and int(active_outing.get("handoff_epoch", 0)) != required_active_outing_handoff_epoch:
+            return False
+        if required_active_outing_phase and str(active_outing.get("phase", "")) != required_active_outing_phase:
+            return False
+        if required_active_outing_waypoint_index is not None and int(active_outing.get("waypoint_index", -1)) != required_active_outing_waypoint_index:
+            return False
+        if required_active_outing_last_advanced_minutes is not None and int(active_outing.get("last_advanced_minutes", -1)) != required_active_outing_last_advanced_minutes:
+            return False
+        if required_active_outing_exact_pair is not None and bool(active_outing.get("exact_pair_with_leader", False)) != required_active_outing_exact_pair:
+            return False
+        if required_active_outing_pair_contract is not None and bool(active_outing.get("pair_contract_valid", False)) != required_active_outing_pair_contract:
+            return False
+        if required_local_handoff_state and str(local_handoff.get("state", "")) != required_local_handoff_state:
+            return False
+        if required_local_handoff_exact_pair is not None and bool(local_handoff.get("exact_pair", False)) != required_local_handoff_exact_pair:
+            return False
+        if required_local_handoff_pair_contract is not None and bool(local_handoff.get("pair_contract_valid", False)) != required_local_handoff_pair_contract:
             return False
         if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
             return False
@@ -4907,6 +5190,19 @@ def audit_saved_bandit_live_world_state(
         "required_active_job_type": required_active_job_type,
         "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
         "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
+        "required_active_outing_kind": required_active_outing_kind,
+        "required_active_outing_activity_id_contains": required_active_outing_activity_id_contains,
+        "required_active_outing_generation": required_active_outing_generation,
+        "required_active_outing_simulation_owner": required_active_outing_simulation_owner,
+        "required_active_outing_handoff_epoch": required_active_outing_handoff_epoch,
+        "required_active_outing_phase": required_active_outing_phase,
+        "required_active_outing_waypoint_index": required_active_outing_waypoint_index,
+        "required_active_outing_last_advanced_minutes": required_active_outing_last_advanced_minutes,
+        "required_active_outing_exact_pair": required_active_outing_exact_pair,
+        "required_active_outing_pair_contract": required_active_outing_pair_contract,
+        "required_local_handoff_state": required_local_handoff_state,
+        "required_local_handoff_exact_pair": required_local_handoff_exact_pair,
+        "required_local_handoff_pair_contract": required_local_handoff_pair_contract,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_wounded_or_unready_count": required_wounded_or_unready_count,
@@ -11961,12 +12257,34 @@ def execute_probe_steps(
                     return int(raw_value)
                 return None
 
+            def optional_step_bool(key: str) -> Optional[bool]:
+                raw_value = step.get(key)
+                if raw_value is None or str(raw_value).strip() == "":
+                    return None
+                if isinstance(raw_value, bool):
+                    return raw_value
+                return str(raw_value).strip().lower() in {"1", "true", "yes", "y"}
+
             required_member_count = optional_step_int("required_member_count")
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
             required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
             required_active_outside_count = optional_step_int("required_active_outside_count")
             required_active_sortie_started_minutes = optional_step_int("required_active_sortie_started_minutes")
             required_active_sortie_local_contact_minutes = optional_step_int("required_active_sortie_local_contact_minutes")
+            required_active_outing_generation = optional_step_int("required_active_outing_generation")
+            required_active_outing_handoff_epoch = optional_step_int("required_active_outing_handoff_epoch")
+            required_active_outing_waypoint_index = optional_step_int("required_active_outing_waypoint_index")
+            required_active_outing_last_advanced_minutes = optional_step_int(
+                "required_active_outing_last_advanced_minutes"
+            )
+            required_active_outing_exact_pair = optional_step_bool("required_active_outing_exact_pair")
+            required_active_outing_pair_contract = optional_step_bool(
+                "required_active_outing_pair_contract"
+            )
+            required_local_handoff_exact_pair = optional_step_bool("required_local_handoff_exact_pair")
+            required_local_handoff_pair_contract = optional_step_bool(
+                "required_local_handoff_pair_contract"
+            )
             required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
             required_lead_bounty = optional_step_int("required_lead_bounty")
             required_lead_threat = optional_step_int("required_lead_threat")
@@ -12021,6 +12339,27 @@ def execute_probe_steps(
                     required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
                     required_active_sortie_started_minutes=required_active_sortie_started_minutes,
                     required_active_sortie_local_contact_minutes=required_active_sortie_local_contact_minutes,
+                    required_active_outing_kind=str(step.get("required_active_outing_kind", "") or "").strip(),
+                    required_active_outing_activity_id_contains=str(
+                        step.get("required_active_outing_activity_id_contains", "") or ""
+                    ).strip(),
+                    required_active_outing_generation=required_active_outing_generation,
+                    required_active_outing_simulation_owner=str(
+                        step.get("required_active_outing_simulation_owner", "") or ""
+                    ).strip(),
+                    required_active_outing_handoff_epoch=required_active_outing_handoff_epoch,
+                    required_active_outing_phase=str(
+                        step.get("required_active_outing_phase", "") or ""
+                    ).strip(),
+                    required_active_outing_waypoint_index=required_active_outing_waypoint_index,
+                    required_active_outing_last_advanced_minutes=required_active_outing_last_advanced_minutes,
+                    required_active_outing_exact_pair=required_active_outing_exact_pair,
+                    required_active_outing_pair_contract=required_active_outing_pair_contract,
+                    required_local_handoff_state=str(
+                        step.get("required_local_handoff_state", "") or ""
+                    ).strip(),
+                    required_local_handoff_exact_pair=required_local_handoff_exact_pair,
+                    required_local_handoff_pair_contract=required_local_handoff_pair_contract,
                     required_member_count=required_member_count,
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_wounded_or_unready_count=required_wounded_or_unready_count,
