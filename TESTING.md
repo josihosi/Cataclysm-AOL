@@ -479,6 +479,13 @@ ownership drift. Exact hashes, failures, and the bounded source/test rationale a
 `phase2-20260803/phase2-closeout/MANIFEST.md`. Phase-3 validation starts with cannibal/bandit
 structural-path parity, the retained small-site negative control, then full live-world regression.
 
+Phase-3 shared routine parity is green. One common eligibility predicate now gates routine policy,
+structural scan, and structural outing planning for both camp factions; the small-hostile profile
+remains a negative control. The first focused run exposed only a misclassified work-camp test
+fixture; after correcting it, the authoritative build exits `0`, structural maintenance passes
+24/514, routine policy passes 3/993, and full live-world passes 112/7,546 at seed `830204929`.
+Current validation target is persistent pair ownership/save-load before bounded route work.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 3 SHARED ROUTINE ECOLOGY
+**Status:** ACTIVE / GREEN / PHASE 3 PERSISTENT PAIRED OUTING
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -159,9 +159,10 @@ cross-camp stable-identity checkpoint `a8252313b7`: both factions are covered at
 accepted Phase-0 structural probe plus bounded current roster passes supplies the pragmatic
 approximately-linear selection gate; the obsolete synthetic dispatch/return fixture is recorded
 as non-credit drift rather than repaired into a new benchmark subsystem.
-Current execution row: enable the same routine structural scan, paired outing, abstract advance,
-and return machinery for both bandit and cannibal camps while retaining the small-site negative
-control.
+Phase-3 shared routine ecology is green: bandit and cannibal camps now traverse the same structural
+scan, exact-pair reservation, abstract advance, and return path, while small hostile sites remain
+excluded. Current execution row: verify and complete replacement of the legacy singleton abstract
+timer with one persistent paired outing, then introduce the first bounded shared route.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

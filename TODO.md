@@ -7,10 +7,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Share the existing structural scan, exact-pair outing, abstract advance, and return path with
-   cannibal camps while retaining a non-camp/small-site negative control.
-2. Then add the smallest persistent bounded frontier-route slice without folding in perception,
-   local cohesion, or faction-outcome work early.
+1. Verify and complete the legacy-singleton-to-persistent-pair row across save/load and abstract
+   advancement; reuse the typed outing authority instead of adding a parallel owner.
+2. Then add the smallest bounded 3-5-waypoint shared-route/frontier slice without folding in
+   perception, local cohesion, or faction-outcome work early.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
 Keychain retries or blocker messages while Josef is unavailable, and leave final clean-environment

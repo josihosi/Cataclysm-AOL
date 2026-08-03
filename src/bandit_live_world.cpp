@@ -1197,6 +1197,12 @@ hostile_site_profile effective_profile( const bandit_live_world::site_record &si
            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
 }
 
+bool supports_routine_camp_ecology( const hostile_site_profile profile )
+{
+    return profile == hostile_site_profile::camp_style ||
+           profile == hostile_site_profile::cannibal_camp;
+}
+
 camp_report_policy report_policy_for_profile( const hostile_site_profile profile )
 {
     switch( profile ) {
@@ -4790,8 +4796,7 @@ routine_scout_policy_result routine_scout_policy( const site_record &site )
 {
     routine_scout_policy_result policy;
     const hostile_site_profile profile = effective_profile( site );
-    policy.applies = profile == hostile_site_profile::camp_style ||
-                     profile == hostile_site_profile::cannibal_camp;
+    policy.applies = supports_routine_camp_ecology( profile );
     if( !policy.applies ) {
         policy.rejection_reason = "routine pair policy does not apply to this site profile";
         return policy;
@@ -6225,7 +6230,7 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
             bandit_live_world_probe::counter::structural_scan_sites_considered );
         bandit_live_world_probe::record_site_service( site.site_id,
                 bandit_live_world_probe::site_service::scan_considered );
-        if( effective_profile( site ) != hostile_site_profile::camp_style ) {
+        if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
             result.sites_skipped_not_camp++;
             bandit_live_world_probe::increment(
                 bandit_live_world_probe::counter::structural_scan_sites_skipped_not_camp );
@@ -6638,8 +6643,8 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     plan.known_threat = structural_known_threat_for_interest( lead );
     plan.effective_interest = structural_effective_interest( lead, plan.known_threat );
 
-    if( effective_profile( site ) != hostile_site_profile::camp_style ) {
-        plan.notes.push_back( "structural outing blocked: only camp-style bandit sites run routine structural outings" );
+    if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
+        plan.notes.push_back( "structural outing blocked: site profile does not run routine camp ecology" );
         return plan;
     }
     if( site.retired_empty_site ) {
