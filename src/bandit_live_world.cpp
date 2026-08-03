@@ -6834,12 +6834,16 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
         }
         return result;
     }
+    const bool issued_resource_job = issued_operation != nullptr &&
+            ( ( issued_operation->kind == outing_kind::structural_sortie &&
+                ( issued_operation->job_type == "scavenge" ||
+                  issued_operation->job_type == "scout" ) ) ||
+              ( issued_operation->kind == outing_kind::scout_sortie &&
+                issued_operation->job_type == "scavenge" ) );
     if( issued_operation == nullptr || !issued_operation->is_active() ||
         issued_operation->activity_id != operation_id ||
         issued_operation->generation != operation_generation ||
-        issued_operation->target_omt != omt || issued_operation->job_type != "scavenge" ||
-        ( issued_operation->kind != outing_kind::structural_sortie &&
-          issued_operation->kind != outing_kind::scout_sortie ) ) {
+        issued_operation->target_omt != omt || !issued_resource_job ) {
         return result;
     }
 
@@ -7813,6 +7817,20 @@ int structural_terrain_static_risk( const std::string &terrain_fit_class )
     return 300;
 }
 
+int normalize_ground_bounty_opportunity( const int bounty_units )
+{
+    switch( std::clamp( bounty_units, 0, max_finite_resource_units ) ) {
+        case 0:
+            return 0;
+        case 1:
+            return 333;
+        case 2:
+            return 667;
+        default:
+            return 1000;
+    }
+}
+
 int hostile_camp_dispatch_drive( const int need, const int knowledge_gap,
                                  const int best_cheap_target, const int cadence )
 {
@@ -8277,7 +8295,7 @@ int structural_candidate_score( const site_record &site, const camp_map_lead &le
     const int confidence = physically_checked ? std::clamp( lead.confidence * 1000 / 3, 0, 1000 ) : 0;
     const int freshness = structural_estimate_freshness( lead, now_minutes );
     const int weighted_confidence = confidence * freshness / 1000;
-    const int remembered_estimate = std::clamp( lead.bounty * 1000 / 3, 0, 1000 );
+    const int remembered_estimate = normalize_ground_bounty_opportunity( lead.bounty );
     const int neutral_prior = 333;
     const int reward = ( weighted_confidence * remembered_estimate +
                          ( 1000 - weighted_confidence ) * neutral_prior ) / 1000;
@@ -9195,13 +9213,122 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     return true;
 }
 
+namespace
+{
+struct structural_resource_arrival_receipt {
+    int claimed_units = 0;
+    int remaining_units = 0;
+};
+
+std::optional<structural_resource_arrival_receipt> apply_structural_resource_arrival(
+    world_state &candidate_state, const std::size_t site_index, const int now_minutes )
+{
+    if( site_index >= candidate_state.sites.size() || now_minutes < 0 ) {
+        return std::nullopt;
+    }
+    site_record &site = candidate_state.sites[site_index];
+    active_outing_state &outing = site.active_outing;
+    camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_id );
+    const int survivor_count = std::min( max_finite_resource_claim_units,
+                                        site.active_outing_survivor_count() );
+    if( outing.kind != outing_kind::structural_sortie ||
+        outing.phase != scout_phase::observing ||
+        lead == nullptr || lead->kind != camp_lead_kind::structural_bounty ||
+        lead->omt != outing.target_omt || survivor_count <= 0 ||
+        outing.cargo.supply_units != 0 || outing.cargo.trade_value != 0 ||
+        lead->times_harvested >= std::numeric_limits<int>::max() ||
+        lead->times_checked_empty >= std::numeric_limits<int>::max() ) {
+        return std::nullopt;
+    }
+
+    const finite_resource_record expected = finite_resource_snapshot(
+            candidate_state, outing.target_omt, lead->bounty );
+    const std::string application_key = finite_resource_claim_application_key(
+                                            outing.activity_id, outing.generation,
+                                            outing.target_omt );
+    const finite_resource_claim_result claim = claim_finite_resource_units(
+                candidate_state, site.site_id, outing.target_omt, expected,
+                survivor_count, outing.activity_id, outing.generation, application_key );
+    if( claim.status != finite_resource_claim_status::applied &&
+        claim.status != finite_resource_claim_status::depleted ) {
+        return std::nullopt;
+    }
+    if( ( claim.status == finite_resource_claim_status::applied &&
+          ( claim.claimed_units <= 0 || claim.claimed_units > survivor_count ) ) ||
+        ( claim.status == finite_resource_claim_status::depleted && claim.claimed_units != 0 ) ) {
+        return std::nullopt;
+    }
+
+    site_record &claimed_site = candidate_state.sites[site_index];
+    camp_map_lead *claimed_lead = claimed_site.intelligence_map.find_lead( outing.target_id );
+    if( claimed_lead == nullptr ) {
+        return std::nullopt;
+    }
+    if( claim.claimed_units > 0 ) {
+        claimed_lead->times_harvested++;
+    } else {
+        claimed_lead->times_checked_empty++;
+    }
+    if( !record_camp_resource_estimate( claimed_site, claimed_lead->lead_id,
+                                        claim.remaining_units, max_finite_resource_units,
+                                        now_minutes ) ) {
+        return std::nullopt;
+    }
+
+    active_outing_state &claimed_outing = claimed_site.active_outing;
+    claimed_outing.cargo.supply_units = 2 * claim.claimed_units;
+    claimed_outing.waypoint_index = static_cast<int>( claimed_outing.shared_route.size() ) - 2;
+    claimed_outing.phase = scout_phase::returning_home;
+    claimed_outing.last_progress_minutes = now_minutes;
+    camp_map_lead *updated_lead = claimed_site.intelligence_map.find_lead(
+                                      claimed_outing.target_id );
+    if( updated_lead == nullptr ) {
+        return std::nullopt;
+    }
+    if( claim.claimed_units > 0 && claim.remaining_units == 0 ) {
+        updated_lead->last_outcome = "harvested_structural_bounty";
+    }
+    return structural_resource_arrival_receipt { claim.claimed_units,
+            claim.remaining_units };
+}
+
+bool credit_structural_return_cargo( site_record &candidate, const int now_minutes )
+{
+    active_outing_state &outing = candidate.active_outing;
+    if( outing.kind != outing_kind::structural_sortie || now_minutes < 0 ||
+        ( candidate.supply_last_update_minutes >= 0 &&
+          now_minutes < candidate.supply_last_update_minutes ) ||
+        outing.cargo.supply_units < 0 || outing.cargo.trade_value != 0 ) {
+        return false;
+    }
+    advance_camp_supply( candidate, now_minutes );
+    if( outing.cargo.supply_units == 0 ) {
+        return true;
+    }
+    const std::string expected_key = bandit_pursuit_handoff::make_operation_component_key(
+                                         outing.activity_id, outing.generation, "cargo" );
+    if( outing.generation <= candidate.applied_cargo_generation ||
+        outing.cargo_application_key != expected_key ) {
+        return false;
+    }
+    const long long credited = static_cast<long long>( candidate.supply_units ) +
+                               outing.cargo.supply_units;
+    candidate.supply_units = static_cast<int>( std::min<long long>(
+                                 camp_supply_cap( candidate ), credited ) );
+    candidate.applied_cargo_generation = outing.generation;
+    candidate.last_cargo_application_key = outing.cargo_application_key;
+    return true;
+}
+} // namespace
+
 structural_outing_result advance_structural_bounty_outings( world_state &state, const int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_outings );
     structural_outing_result result;
-    for( site_record &site : state.sites ) {
+    for( std::size_t site_index = 0; site_index < state.sites.size(); ++site_index ) {
+        site_record &site = state.sites[site_index];
         result.sites_considered++;
         bandit_live_world_probe::increment(
             bandit_live_world_probe::counter::structural_outing_sites_considered );
@@ -9308,6 +9435,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     candidate.routine_activated_minutes = candidate.active_outing.started_minutes;
                 }
                 const bool useful_return = completed_frontier_route ||
+                                           candidate.active_outing.cargo.supply_units > 0 ||
                                            ( !frontier_sector &&
                                              ( lead->status == camp_lead_status::harvested ||
                                                ( lead->kind == camp_lead_kind::terrain_opportunity &&
@@ -9320,6 +9448,9 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                                 useful_return || danger_withdrawal ? 24 * 60 : 18 * 60 ) );
                 if( useful_return ) {
                     candidate.routine_no_candidate_streak = 0;
+                }
+                if( !credit_structural_return_cargo( candidate, now_minutes ) ) {
+                    continue;
                 }
                 const std::optional<int> returned = release_structural_outing_reservation(
                         candidate, expected_activity_id, expected_generation,
@@ -9396,11 +9527,37 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 lead->last_checked_minutes = now_minutes;
                 lead->last_outcome = "terrain_opportunity_physically_checked";
             } else {
-                lead->status = camp_lead_status::harvested;
-                lead->bounty = 0;
-                lead->times_harvested++;
-                lead->last_checked_minutes = now_minutes;
-                lead->last_outcome = "harvested_structural_bounty";
+                world_state transaction;
+                transaction.schema_version = state.schema_version;
+                transaction.sites.push_back( std::move( candidate ) );
+                const auto current_resource = state.finite_resources.find(
+                                                  transaction.sites.front().active_outing.target_omt );
+                if( current_resource != state.finite_resources.end() ) {
+                    transaction.finite_resources.emplace( current_resource->first,
+                                                          current_resource->second );
+                }
+                const std::optional<structural_resource_arrival_receipt> receipt =
+                    apply_structural_resource_arrival( transaction, 0, now_minutes );
+                if( !receipt ) {
+                    continue;
+                }
+                if( receipt->claimed_units > 0 ) {
+                    const auto updated_resource = transaction.finite_resources.find(
+                                                      transaction.sites.front().active_outing.target_omt );
+                    if( updated_resource == transaction.finite_resources.end() ) {
+                        continue;
+                    }
+                    state.finite_resources.insert_or_assign( updated_resource->first,
+                            updated_resource->second );
+                }
+                state.schema_version = transaction.schema_version;
+                site = std::move( transaction.sites.front() );
+                result.arrivals_processed++;
+                result.notes.push_back( "structural outing claimed " +
+                                        std::to_string( receipt->claimed_units ) +
+                                        " finite bounty units and left " +
+                                        std::to_string( receipt->remaining_units ) );
+                continue;
             }
             advance_camp_map_lead_revision( candidate, *lead );
             outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;

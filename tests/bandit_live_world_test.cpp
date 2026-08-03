@@ -306,6 +306,39 @@ void set_test_active_outing( bandit_live_world::site_record &site, const std::st
             activity_id, site.active_outing.generation, "cargo" );
 }
 
+std::pair<std::string, bandit_live_world::structural_outing_plan>
+start_test_structural_bounty_outing( bandit_live_world::world_state &world,
+                                     const std::size_t site_index,
+                                     const tripoint_abs_omt &target,
+                                     const int now_minutes )
+{
+    REQUIRE( site_index < world.sites.size() );
+    bandit_live_world::site_record &site = world.sites[site_index];
+    bandit_live_world::structural_bounty_read read;
+    read.terrain_class = "town";
+    read.terrain_fit_class = "building";
+    read.bounty = 3;
+    read.confidence = 1;
+    read.eligible = true;
+    read.summary = "three-unit structural test bounty";
+    REQUIRE( read.eligible );
+    REQUIRE( read.bounty == 3 );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                 site, target, read, now_minutes ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                    site.site_id, target, read.terrain_class );
+    const bandit_live_world::camp_map_lead *lead =
+        site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, now_minutes );
+    REQUIRE( plan.valid );
+    REQUIRE( plan.job == bandit_dry_run::job_template::scout );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan(
+                 site, plan, now_minutes ) );
+    return { lead_id, std::move( plan ) };
+}
+
 bandit_live_world::simulation_advance_cursor require_current_simulation_cursor(
     const bandit_live_world::site_record &site )
 {
@@ -5367,6 +5400,11 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
 TEST_CASE( "bandit_structural_bounty_classifies_coarse_terrain",
            "[bandit][live_world][structural_bounty]" )
 {
+    CHECK( bandit_live_world::normalize_ground_bounty_opportunity( 0 ) == 0 );
+    CHECK( bandit_live_world::normalize_ground_bounty_opportunity( 1 ) == 333 );
+    CHECK( bandit_live_world::normalize_ground_bounty_opportunity( 2 ) == 667 );
+    CHECK( bandit_live_world::normalize_ground_bounty_opportunity( 3 ) == 1000 );
+
     const bandit_live_world::structural_bounty_read forest =
         bandit_live_world::classify_structural_bounty_terrain( "forest_thick" );
     CHECK( forest.eligible );
@@ -5658,6 +5696,218 @@ TEST_CASE( "bandit_road_opportunity_is_physically_scouted_without_fabricating_bo
     CHECK( site->active_outing.activity_id.empty() );
     CHECK( site->returned_cargo_stock.supply_units == 0 );
     CHECK( site->returned_cargo_stock.trade_value == 0 );
+}
+
+TEST_CASE( "bandit_structural_bounty_claim_becomes_bounded_supply_only_after_return",
+           "[bandit][live_world][structural_bounty][resource][supply][save]" )
+{
+    bandit_live_world::world_state world;
+    add_scheduler_test_site( world, 0, false, 14800 );
+    bandit_live_world::site_record *site = &world.sites.front();
+    site->supply_units = bandit_live_world::camp_supply_cap( *site ) - 2;
+    const tripoint_abs_omt target( site->anchor.x() + 4, site->anchor.y(), 0 );
+    const auto prepared = start_test_structural_bounty_outing( world, 0, target, 100 );
+    const std::string &lead_id = prepared.first;
+    const bandit_live_world::structural_outing_plan &plan = prepared.second;
+    const int generation = site->active_outing.generation;
+    const std::string cargo_key = site->active_outing.cargo_application_key;
+    CHECK( site->active_outing.job_type == "scout" );
+
+    const auto quiet = []( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 0, true, "quiet structural target" };
+    };
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, plan.expected_stalking_minutes, quiet ).stalking_checks_processed == 1 );
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, plan.expected_arrival_minutes, quiet ).arrivals_processed == 1 );
+
+    site = &world.sites.front();
+    const bandit_live_world::finite_resource_record *resource =
+        world.find_finite_resource( target );
+    REQUIRE( resource != nullptr );
+    CHECK( resource->remaining_units == 1 );
+    CHECK( resource->revision == 1 );
+    const bandit_live_world::camp_map_lead *lead =
+        site->intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->bounty == 1 );
+    CHECK( lead->confidence == 3 );
+    CHECK( lead->last_checked_minutes == plan.expected_arrival_minutes );
+    CHECK( lead->last_outcome == "physical_resource_estimate_updated" );
+    CHECK( site->applied_resource_generation == generation );
+    CHECK( site->last_resource_claimed_units == 2 );
+    CHECK( site->last_resource_application_key ==
+           bandit_live_world::finite_resource_claim_application_key(
+               plan.activity_id, generation, target ) );
+    CHECK( site->active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    CHECK( site->active_outing.cargo.supply_units == 4 );
+    CHECK( site->supply_units == bandit_live_world::camp_supply_cap( *site ) - 2 );
+    CHECK( site->returned_cargo_stock.supply_units == 0 );
+
+    world = round_trip_world( world );
+    site = &world.sites.front();
+    CHECK( site->active_outing.cargo.supply_units == 4 );
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, plan.expected_return_minutes, quiet ).members_returned == 2 );
+    site = &world.sites.front();
+    CHECK( site->active_outing.kind == bandit_live_world::outing_kind::none );
+    CHECK( site->supply_units == bandit_live_world::camp_supply_cap( *site ) );
+    CHECK( site->returned_cargo_stock.supply_units == 0 );
+    CHECK( site->applied_cargo_generation == generation );
+    CHECK( site->last_cargo_application_key == cargo_key );
+    CHECK( site->applied_return_generation == generation );
+
+    const std::string completed = serialize_world( world );
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, plan.expected_return_minutes, quiet ).members_returned == 0 );
+    CHECK( serialize_world( world ) == completed );
+    CHECK( serialize_world( round_trip_world( world ) ) == completed );
+}
+
+TEST_CASE( "bandit_structural_bounty_contest_is_global_but_estimates_stay_private",
+           "[bandit][live_world][structural_bounty][resource][knowledge]" )
+{
+    const auto quiet = []( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 0, true, "quiet contested target" };
+    };
+
+    SECTION( "full pairs divide a three-unit target two then one" ) {
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, 0, false, 14900 );
+        add_scheduler_test_site( world, 1, false, 14900 );
+        world.sites[1].anchor = tripoint_abs_omt( 0, 5, 0 );
+        world.sites[1].footprint = { world.sites[1].anchor };
+        const tripoint_abs_omt target( 4, 0, 0 );
+        const auto first = start_test_structural_bounty_outing( world, 0, target, 100 );
+        const auto second = start_test_structural_bounty_outing( world, 1, target, 100 );
+        REQUIRE( first.second.expected_arrival_minutes < second.second.expected_arrival_minutes );
+
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, std::max( first.second.expected_stalking_minutes,
+                                    second.second.expected_stalking_minutes ), quiet
+               ).stalking_checks_processed == 2 );
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, first.second.expected_arrival_minutes, quiet
+               ).arrivals_processed == 1 );
+        const bandit_live_world::finite_resource_record *resource =
+            world.find_finite_resource( target );
+        REQUIRE( resource != nullptr );
+        CHECK( resource->remaining_units == 1 );
+        CHECK( resource->revision == 1 );
+        CHECK( world.sites[0].intelligence_map.find_lead( first.first )->bounty == 1 );
+        CHECK( world.sites[1].intelligence_map.find_lead( second.first )->bounty == 3 );
+        CHECK( world.sites[0].active_outing.cargo.supply_units == 4 );
+        CHECK( world.sites[1].active_outing.cargo.supply_units == 0 );
+
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, second.second.expected_arrival_minutes, quiet
+               ).arrivals_processed == 1 );
+        resource = world.find_finite_resource( target );
+        REQUIRE( resource != nullptr );
+        CHECK( resource->remaining_units == 0 );
+        CHECK( resource->revision == 2 );
+        CHECK( world.sites[0].intelligence_map.find_lead( first.first )->bounty == 1 );
+        CHECK( world.sites[1].intelligence_map.find_lead( second.first )->bounty == 0 );
+        CHECK( world.sites[0].last_resource_claimed_units == 2 );
+        CHECK( world.sites[1].last_resource_claimed_units == 1 );
+        CHECK( world.sites[0].active_outing.cargo.supply_units == 4 );
+        CHECK( world.sites[1].active_outing.cargo.supply_units == 2 );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
+    SECTION( "one physically recorded survivor takes one before the full pair takes two" ) {
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, 0, false, 15000 );
+        add_scheduler_test_site( world, 1, false, 15000 );
+        world.sites[1].anchor = tripoint_abs_omt( 0, 5, 0 );
+        world.sites[1].footprint = { world.sites[1].anchor };
+        const tripoint_abs_omt target( 4, 0, 0 );
+        const auto first = start_test_structural_bounty_outing( world, 0, target, 100 );
+        const auto second = start_test_structural_bounty_outing( world, 1, target, 100 );
+        REQUIRE( first.second.expected_arrival_minutes < second.second.expected_arrival_minutes );
+        const character_id casualty_id = world.sites[0].active_outing.member_ids.back();
+        REQUIRE( bandit_live_world::record_matching_external_outing_casualty(
+                     world.sites[0], first.second.activity_id, first.second.generation,
+                     casualty_id, bandit_live_world::member_state::dead, 101,
+                     "physical casualty leaves one structural survivor" ) );
+        CHECK( world.sites[0].active_outing_survivor_count() == 1 );
+
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, std::max( first.second.expected_stalking_minutes,
+                                    second.second.expected_stalking_minutes ), quiet
+               ).stalking_checks_processed == 2 );
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, first.second.expected_arrival_minutes, quiet
+               ).arrivals_processed == 1 );
+        const bandit_live_world::finite_resource_record *resource =
+            world.find_finite_resource( target );
+        REQUIRE( resource != nullptr );
+        CHECK( resource->remaining_units == 2 );
+        CHECK( resource->revision == 1 );
+        CHECK( world.sites[0].intelligence_map.find_lead( first.first )->bounty == 2 );
+        CHECK( world.sites[1].intelligence_map.find_lead( second.first )->bounty == 3 );
+        CHECK( world.sites[0].last_resource_claimed_units == 1 );
+        CHECK( world.sites[0].active_outing.cargo.supply_units == 2 );
+
+        CHECK( bandit_live_world::advance_structural_bounty_outings(
+                   world, second.second.expected_arrival_minutes, quiet
+               ).arrivals_processed == 1 );
+        resource = world.find_finite_resource( target );
+        REQUIRE( resource != nullptr );
+        CHECK( resource->remaining_units == 0 );
+        CHECK( resource->revision == 2 );
+        CHECK( world.sites[0].intelligence_map.find_lead( first.first )->bounty == 2 );
+        CHECK( world.sites[1].intelligence_map.find_lead( second.first )->bounty == 0 );
+        CHECK( world.sites[1].last_resource_claimed_units == 2 );
+        CHECK( world.sites[1].active_outing.cargo.supply_units == 4 );
+    }
+}
+
+TEST_CASE( "bandit_structural_bounty_depleted_arrival_is_empty_and_idempotent",
+           "[bandit][live_world][structural_bounty][resource]" )
+{
+    bandit_live_world::world_state world;
+    add_scheduler_test_site( world, 0, false, 15100 );
+    const tripoint_abs_omt target( 4, 0, 0 );
+    world.finite_resources.emplace( target,
+                                    bandit_live_world::finite_resource_record { 0, 1 } );
+    const auto prepared = start_test_structural_bounty_outing( world, 0, target, 100 );
+    CHECK( world.sites.front().active_outing.job_type == "scout" );
+    const auto quiet = []( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 0, true, "quiet depleted target" };
+    };
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, prepared.second.expected_stalking_minutes,
+               quiet ).stalking_checks_processed == 1 );
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, prepared.second.expected_arrival_minutes,
+               quiet ).arrivals_processed == 1 );
+    const bandit_live_world::finite_resource_record *resource =
+        world.find_finite_resource( target );
+    REQUIRE( resource != nullptr );
+    CHECK( resource->remaining_units == 0 );
+    CHECK( resource->revision == 1 );
+    const bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::camp_map_lead *lead =
+        site.intelligence_map.find_lead( prepared.first );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->bounty == 0 );
+    CHECK( lead->confidence == 3 );
+    CHECK( lead->status == bandit_live_world::camp_lead_status::harvested );
+    CHECK( lead->last_outcome == "physical_resource_depletion_observed" );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    CHECK( site.active_outing.cargo.supply_units == 0 );
+    CHECK( site.applied_resource_generation == 0 );
+    CHECK( site.last_resource_application_key.empty() );
+
+    const std::string after_empty_arrival = serialize_world( world );
+    CHECK( bandit_live_world::advance_structural_bounty_outings(
+               world, prepared.second.expected_arrival_minutes,
+               quiet ).arrivals_processed == 0 );
+    CHECK( serialize_world( world ) == after_empty_arrival );
 }
 
 TEST_CASE( "bandit_structural_bounty_lead_upsert_respects_debounce",
@@ -9281,6 +9531,9 @@ TEST_CASE( "bandit_live_world_vertical_targets_route_via_reachable_ground_dispat
     CHECK( ground_matched_lead->lead_id == elevated_lead.lead_id );
 
     prepare_hostile_follow_on( site, 2, 1, elevated_lead.target_id, ground_target, 100 );
+    matched_lead = bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                       site, roof_target, "" );
+    REQUIRE( matched_lead != nullptr );
     const bandit_live_world::dispatch_plan camp_map_plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
     REQUIRE( camp_map_plan.valid );
@@ -10436,6 +10689,9 @@ TEST_CASE( "bandit_live_world_plans_live_dispatch_from_remembered_camp_map_lead"
 
     prepare_hostile_follow_on( site, 2, 1, lead.target_id, lead.omt, 100,
                                lead.lead_id );
+    matched_lead = bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                       site, tripoint_abs_omt( 19, 20, 0 ), "" );
+    REQUIRE( matched_lead != nullptr );
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
     REQUIRE( plan.valid );

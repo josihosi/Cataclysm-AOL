@@ -1055,6 +1055,7 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
 int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
 int structural_terrain_static_risk( const std::string &terrain_fit_class );
+int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );
 bool hostile_camp_routine_score_eligible( int score, bool retained_target );
