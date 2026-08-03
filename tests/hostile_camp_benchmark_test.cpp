@@ -79,13 +79,13 @@ struct whole_save_metrics {
 
 struct scheduler_wait_record {
     std::string site_id;
-    bool structurally_eligible = false;
-    std::uint64_t scan_samples = 0;
-    std::uint64_t service_updates = 0;
-    std::optional<std::size_t> first_service_update;
-    std::optional<std::size_t> last_service_update;
-    std::optional<std::size_t> maximum_wait_updates;
-    std::optional<std::size_t> trailing_wait_updates;
+    bool routine_eligible = false;
+    std::uint64_t dispatch_considered = 0;
+    std::uint64_t service_passes = 0;
+    std::optional<std::size_t> first_service_pass;
+    std::optional<std::size_t> last_service_pass;
+    std::optional<std::size_t> maximum_wait_passes;
+    std::optional<std::size_t> trailing_wait_passes;
 };
 
 class scoped_rng_restore
@@ -469,16 +469,17 @@ class scheduler_wait_tracker
             for( const bandit_live_world::site_record &site : world.sites ) {
                 scheduler_wait_record record;
                 record.site_id = site.site_id;
-                record.structurally_eligible = site.profile ==
-                                               bandit_live_world::hostile_site_profile::camp_style;
+                record.routine_eligible =
+                    site.profile == bandit_live_world::hostile_site_profile::camp_style ||
+                    site.profile == bandit_live_world::hostile_site_profile::cannibal_camp;
                 const std::size_t index = records_.size();
                 records_.push_back( std::move( record ) );
                 record_indices_.emplace( records_.back().site_id, index );
             }
         }
 
-        void observe_update( const std::size_t update_index,
-                             const bandit_live_world_probe::snapshot &probe ) {
+        void observe_pass( const std::size_t pass_index,
+                           const bandit_live_world_probe::snapshot &probe ) {
             if( !enabled_ ) {
                 return;
             }
@@ -488,47 +489,47 @@ class scheduler_wait_tracker
                     continue;
                 }
                 scheduler_wait_record &record = records_[found->second];
-                if( !record.structurally_eligible ) {
+                if( !record.routine_eligible ) {
                     continue;
                 }
-                const std::uint64_t scan_samples = service.counts[static_cast<std::size_t>(
-                        bandit_live_world_probe::site_service::scan_samples )];
-                if( scan_samples <= record.scan_samples ) {
+                const std::uint64_t dispatch_considered = service.counts[static_cast<std::size_t>(
+                        bandit_live_world_probe::site_service::dispatch_considered )];
+                if( dispatch_considered <= record.dispatch_considered ) {
                     continue;
                 }
 
-                const std::size_t wait_updates = record.last_service_update ?
-                                                 update_index - *record.last_service_update - 1 : update_index;
-                if( !record.maximum_wait_updates ||
-                    wait_updates > *record.maximum_wait_updates ) {
-                    record.maximum_wait_updates = wait_updates;
+                const std::size_t wait_passes = record.last_service_pass ?
+                                                pass_index - *record.last_service_pass - 1 : pass_index;
+                if( !record.maximum_wait_passes ||
+                    wait_passes > *record.maximum_wait_passes ) {
+                    record.maximum_wait_passes = wait_passes;
                 }
-                if( !record.first_service_update ) {
-                    record.first_service_update = update_index;
+                if( !record.first_service_pass ) {
+                    record.first_service_pass = pass_index;
                 }
-                record.last_service_update = update_index;
-                record.scan_samples = scan_samples;
-                record.service_updates++;
+                record.last_service_pass = pass_index;
+                record.dispatch_considered = dispatch_considered;
+                record.service_passes++;
             }
         }
 
-        void finish( const std::size_t update_count ) {
+        void finish( const std::size_t pass_count ) {
             if( !enabled_ ) {
                 return;
             }
             for( scheduler_wait_record &record : records_ ) {
-                if( !record.structurally_eligible ) {
+                if( !record.routine_eligible ) {
                     continue;
                 }
-                const std::size_t trailing_wait = record.last_service_update ?
-                                                  update_count - *record.last_service_update - 1 : update_count;
-                record.trailing_wait_updates = trailing_wait;
-                if( !record.maximum_wait_updates ||
-                    trailing_wait > *record.maximum_wait_updates ) {
-                    record.maximum_wait_updates = trailing_wait;
+                const std::size_t trailing_wait = record.last_service_pass ?
+                                                  pass_count - *record.last_service_pass - 1 : pass_count;
+                record.trailing_wait_passes = trailing_wait;
+                if( !record.maximum_wait_passes ||
+                    trailing_wait > *record.maximum_wait_passes ) {
+                    record.maximum_wait_passes = trailing_wait;
                 }
             }
-            update_count_ = update_count;
+            pass_count_ = pass_count;
             finished_ = true;
         }
 
@@ -540,8 +541,8 @@ class scheduler_wait_tracker
             return finished_;
         }
 
-        std::size_t update_count() const {
-            return update_count_;
+        std::size_t pass_count() const {
+            return pass_count_;
         }
 
         const std::vector<scheduler_wait_record> &records() const {
@@ -556,7 +557,7 @@ class scheduler_wait_tracker
     private:
         bool enabled_ = false;
         bool finished_ = false;
-        std::size_t update_count_ = 0;
+        std::size_t pass_count_ = 0;
         std::vector<scheduler_wait_record> records_;
         std::unordered_map<std::string, std::size_t> record_indices_;
 };
@@ -742,13 +743,13 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
     std::uint64_t minimum_scan_samples = 0;
     std::uint64_t maximum_scan_samples = 0;
     std::uint64_t scan_serviced_sites = 0;
-    std::uint64_t eligible_structural_sites = 0;
-    std::uint64_t eligible_structural_sites_serviced = 0;
-    std::uint64_t minimum_eligible_scan_samples = 0;
-    std::uint64_t maximum_eligible_scan_samples = 0;
+    std::uint64_t eligible_routine_sites = 0;
+    std::uint64_t eligible_routine_sites_scan_serviced = 0;
+    std::uint64_t minimum_eligible_routine_scan_samples = 0;
+    std::uint64_t maximum_eligible_routine_scan_samples = 0;
     bool have_site = false;
     bool have_eligible_site = false;
-    std::optional<std::size_t> maximum_scheduler_wait_updates;
+    std::optional<std::size_t> maximum_scheduler_wait_passes;
     std::uint64_t eligible_sites_eventually_serviced = 0;
 
     json.start_object();
@@ -770,18 +771,21 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
         }
         maximum_scan_samples = std::max( maximum_scan_samples, scan_samples );
         scan_serviced_sites += scan_samples > 0 ? 1 : 0;
-        const bool structurally_eligible = site.profile ==
-                                           bandit_live_world::hostile_site_profile::camp_style;
-        if( structurally_eligible ) {
-            eligible_structural_sites++;
-            eligible_structural_sites_serviced += scan_samples > 0 ? 1 : 0;
+        const bool routine_eligible =
+            site.profile == bandit_live_world::hostile_site_profile::camp_style ||
+            site.profile == bandit_live_world::hostile_site_profile::cannibal_camp;
+        if( routine_eligible ) {
+            eligible_routine_sites++;
+            eligible_routine_sites_scan_serviced += scan_samples > 0 ? 1 : 0;
             if( !have_eligible_site ) {
-                minimum_eligible_scan_samples = scan_samples;
+                minimum_eligible_routine_scan_samples = scan_samples;
                 have_eligible_site = true;
             } else {
-                minimum_eligible_scan_samples = std::min( minimum_eligible_scan_samples, scan_samples );
+                minimum_eligible_routine_scan_samples = std::min(
+                            minimum_eligible_routine_scan_samples, scan_samples );
             }
-            maximum_eligible_scan_samples = std::max( maximum_eligible_scan_samples, scan_samples );
+            maximum_eligible_routine_scan_samples = std::max(
+                        maximum_eligible_routine_scan_samples, scan_samples );
         }
 
         json.start_object();
@@ -791,28 +795,28 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
             json.member( bandit_live_world_probe::to_string( target ), counts[index] );
         }
         const scheduler_wait_record *wait_record = wait_tracker.find( site.site_id );
-        json.member( "structurally_eligible", structurally_eligible );
-        if( wait_tracker.enabled() && structurally_eligible && wait_record != nullptr ) {
-            json.member( "scheduler_service_updates", wait_record->service_updates );
-            write_optional_size( json, "first_scheduler_service_update",
-                                 wait_record->first_service_update );
-            write_optional_size( json, "maximum_scheduler_wait_updates",
-                                 wait_record->maximum_wait_updates );
-            write_optional_size( json, "trailing_scheduler_wait_updates",
-                                 wait_record->trailing_wait_updates );
-            if( wait_record->service_updates > 0 ) {
+        json.member( "routine_scheduler_eligible", routine_eligible );
+        if( wait_tracker.enabled() && routine_eligible && wait_record != nullptr ) {
+            json.member( "scheduler_service_passes", wait_record->service_passes );
+            write_optional_size( json, "first_scheduler_service_pass",
+                                 wait_record->first_service_pass );
+            write_optional_size( json, "maximum_scheduler_wait_passes",
+                                 wait_record->maximum_wait_passes );
+            write_optional_size( json, "trailing_scheduler_wait_passes",
+                                 wait_record->trailing_wait_passes );
+            if( wait_record->service_passes > 0 ) {
                 eligible_sites_eventually_serviced++;
             }
-            if( wait_record->maximum_wait_updates ) {
-                maximum_scheduler_wait_updates = std::max(
-                                                     maximum_scheduler_wait_updates.value_or( 0 ),
-                                                     *wait_record->maximum_wait_updates );
+            if( wait_record->maximum_wait_passes ) {
+                maximum_scheduler_wait_passes = std::max(
+                                                    maximum_scheduler_wait_passes.value_or( 0 ),
+                                                    *wait_record->maximum_wait_passes );
             }
         } else {
-            json.null_member( "scheduler_service_updates" );
-            json.null_member( "first_scheduler_service_update" );
-            json.null_member( "maximum_scheduler_wait_updates" );
-            json.null_member( "trailing_scheduler_wait_updates" );
+            json.null_member( "scheduler_service_passes" );
+            json.null_member( "first_scheduler_service_pass" );
+            json.null_member( "maximum_scheduler_wait_passes" );
+            json.null_member( "trailing_scheduler_wait_passes" );
         }
         json.end_object();
     }
@@ -822,36 +826,38 @@ void write_fairness( JsonOut &json, const bandit_live_world::world_state &world,
     json.member( "minimum_scan_samples", minimum_scan_samples );
     json.member( "maximum_scan_samples", maximum_scan_samples );
     json.member( "scan_sample_spread", maximum_scan_samples - minimum_scan_samples );
-    json.member( "eligible_structural_sites", eligible_structural_sites );
-    json.member( "eligible_structural_sites_serviced", eligible_structural_sites_serviced );
-    json.member( "minimum_eligible_scan_samples", minimum_eligible_scan_samples );
-    json.member( "maximum_eligible_scan_samples", maximum_eligible_scan_samples );
-    json.member( "eligible_scan_sample_spread",
-                 maximum_eligible_scan_samples - minimum_eligible_scan_samples );
-    json.member( "eventual_structural_service",
-                 eligible_structural_sites_serviced == eligible_structural_sites );
+    json.member( "eligible_routine_sites", eligible_routine_sites );
+    json.member( "eligible_routine_sites_scan_serviced", eligible_routine_sites_scan_serviced );
+    json.member( "minimum_eligible_routine_scan_samples", minimum_eligible_routine_scan_samples );
+    json.member( "maximum_eligible_routine_scan_samples", maximum_eligible_routine_scan_samples );
+    json.member( "eligible_routine_scan_sample_spread",
+                 maximum_eligible_routine_scan_samples - minimum_eligible_routine_scan_samples );
+    json.member( "eventual_routine_scan_service",
+                 eligible_routine_sites_scan_serviced == eligible_routine_sites );
     json.member( "scheduler_wait_applicable", wait_tracker.enabled() );
-    json.member( "scheduler_wait_unit", "completed benchmark updates without scan samples" );
+    json.member( "scheduler_wait_unit",
+                 "completed hourly scheduler passes without dispatch consideration" );
     if( wait_tracker.enabled() ) {
-        json.member( "scheduler_updates_observed", wait_tracker.update_count() );
+        json.member( "scheduler_hourly_passes_observed", wait_tracker.pass_count() );
         json.member( "eligible_sites_eventually_serviced", eligible_sites_eventually_serviced );
         json.member( "eligible_sites_never_serviced",
-                     eligible_structural_sites - eligible_sites_eventually_serviced );
+                     eligible_routine_sites - eligible_sites_eventually_serviced );
         json.member( "eventual_scheduler_service",
-                     eligible_sites_eventually_serviced == eligible_structural_sites );
-        write_optional_size( json, "scheduler_wait_updates", maximum_scheduler_wait_updates );
+                     eligible_sites_eventually_serviced == eligible_routine_sites );
+        write_optional_size( json, "scheduler_wait_passes", maximum_scheduler_wait_passes );
     } else {
-        json.null_member( "scheduler_updates_observed" );
+        json.null_member( "scheduler_hourly_passes_observed" );
         json.null_member( "eligible_sites_eventually_serviced" );
         json.null_member( "eligible_sites_never_serviced" );
         json.null_member( "eventual_scheduler_service" );
-        json.null_member( "scheduler_wait_updates" );
+        json.null_member( "scheduler_wait_passes" );
     }
     json.end_object();
 }
 
 void run_workload_update( const std::string &workload, bandit_live_world::world_state &world,
-                          const std::size_t update_index, std::string &last_serialized )
+                          const std::size_t update_index, std::string &last_serialized,
+                          const bool hourly_scheduler_cadence = false )
 {
     if( workload == "serialize" ) {
         last_serialized = serialize_world( world );
@@ -888,8 +894,11 @@ void run_workload_update( const std::string &workload, bandit_live_world::world_
         return;
     }
 
-    const int now_minutes = static_cast<int>( update_index %
-                            static_cast<std::size_t>( std::numeric_limits<int>::max() ) );
+    const std::size_t minute_multiplier = hourly_scheduler_cadence ? 60 : 1;
+    const int now_minutes = static_cast<int>(
+                                update_index % ( static_cast<std::size_t>(
+                                        std::numeric_limits<int>::max() ) / minute_multiplier ) ) *
+                            static_cast<int>( minute_multiplier );
     const bool saturated_leads = workload == "lead_saturated";
     const int scan_budget = saturated_leads ? static_cast<int>( world.sites.size() * 4 ) :
                             workload == "structural" ? 4 : 0;
@@ -1149,7 +1158,7 @@ TEST_CASE( "hostile camp scheduler wait evidence records the 500-site stress fix
            "[bandit][hostile_camp_benchmark_fairness]" )
 {
     constexpr std::size_t site_count = 500;
-    constexpr std::size_t update_count = 250;
+    constexpr std::size_t pass_count = 32;
     constexpr unsigned int seed = 424242;
     const scoped_calendar_restore restore_calendar;
     const scoped_rng_restore restore_rng;
@@ -1159,8 +1168,8 @@ TEST_CASE( "hostile camp scheduler wait evidence records the 500-site stress fix
     bandit_live_world::world_state timing_world = make_legacy_fixture( site_count, false );
     rng_set_engine_seed( seed );
     std::string timing_last_serialized;
-    for( std::size_t update = 0; update < update_count; ++update ) {
-        run_workload_update( "structural", timing_world, update, timing_last_serialized );
+    for( std::size_t pass = 0; pass < pass_count; ++pass ) {
+        run_workload_update( "structural", timing_world, pass, timing_last_serialized, true );
     }
 
     apply_benchmark_calendar( configuration );
@@ -1172,50 +1181,48 @@ TEST_CASE( "hostile camp scheduler wait evidence records the 500-site stress fix
         bandit_live_world_probe::session session(
             bandit_live_world_probe::collection_mode::site_services, 0, site_count );
         std::string fairness_last_serialized;
-        for( std::size_t update = 0; update < update_count; ++update ) {
-            run_workload_update( "structural", fairness_world, update,
-                                 fairness_last_serialized );
-            tracker.observe_update( update, session.result() );
+        for( std::size_t pass = 0; pass < pass_count; ++pass ) {
+            run_workload_update( "structural", fairness_world, pass,
+                                 fairness_last_serialized, true );
+            tracker.observe_pass( pass, session.result() );
         }
-        tracker.finish( update_count );
+        tracker.finish( pass_count );
         probe = session.result();
     }
 
     REQUIRE( tracker.finished() );
-    CHECK( tracker.update_count() == update_count );
+    CHECK( tracker.pass_count() == pass_count );
     CHECK_FALSE( probe.stack_overflow );
     CHECK( serialize_world( fairness_world ) == serialize_world( timing_world ) );
 
     std::size_t eligible_sites = 0;
     std::size_t eventually_serviced_sites = 0;
-    std::size_t maximum_wait_updates = 0;
+    std::size_t maximum_wait_passes = 0;
     for( const scheduler_wait_record &record : tracker.records() ) {
-        if( !record.structurally_eligible ) {
-            CHECK_FALSE( record.maximum_wait_updates );
+        if( !record.routine_eligible ) {
+            CHECK_FALSE( record.maximum_wait_passes );
             continue;
         }
         eligible_sites++;
         INFO( record.site_id );
-        REQUIRE( record.maximum_wait_updates );
-        REQUIRE( record.trailing_wait_updates );
-        CHECK( *record.maximum_wait_updates <= update_count );
-        if( record.service_updates > 0 ) {
-            REQUIRE( record.first_service_update );
-            CHECK( record.scan_samples > 0 );
-            CHECK( *record.first_service_update < update_count );
+        REQUIRE( record.maximum_wait_passes );
+        REQUIRE( record.trailing_wait_passes );
+        CHECK( *record.maximum_wait_passes <= 31 );
+        if( record.service_passes > 0 ) {
+            REQUIRE( record.first_service_pass );
+            CHECK( record.dispatch_considered > 0 );
+            CHECK( *record.first_service_pass < pass_count );
             eventually_serviced_sites++;
         } else {
-            CHECK_FALSE( record.first_service_update );
-            CHECK( record.scan_samples == 0 );
-            CHECK( *record.maximum_wait_updates == update_count );
+            CHECK_FALSE( record.first_service_pass );
+            CHECK( record.dispatch_considered == 0 );
         }
-        maximum_wait_updates = std::max( maximum_wait_updates,
-                                         *record.maximum_wait_updates );
+        maximum_wait_passes = std::max( maximum_wait_passes,
+                                        *record.maximum_wait_passes );
     }
-    CHECK( eligible_sites == 250 );
-    CHECK( eventually_serviced_sites > 0 );
-    CHECK( eventually_serviced_sites <= eligible_sites );
-    CHECK( maximum_wait_updates <= update_count );
+    CHECK( eligible_sites == site_count );
+    CHECK( eventually_serviced_sites == eligible_sites );
+    CHECK( maximum_wait_passes == 31 );
 }
 
 TEST_CASE( "hostile camp deterministic benchmark driver",
@@ -1315,7 +1322,8 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
             if( workload == "whole_save" ) {
                 run_whole_save_round_trip( world, whole_save );
             } else {
-                run_workload_update( workload, world, update, last_serialized );
+                run_workload_update( workload, world, update, last_serialized,
+                                     workload == "structural" );
             }
             update_latency_histogram.add( std::chrono::duration_cast<std::chrono::nanoseconds>(
                                               benchmark_clock::now() - update_started ).count() );
@@ -1348,8 +1356,9 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
         std::string fairness_last_serialized;
         if( workload != "serialize" && workload != "whole_save" ) {
             for( std::size_t update = 0; update < updates; ++update ) {
-                run_workload_update( workload, fairness_world, update, fairness_last_serialized );
-                wait_tracker.observe_update( update, fairness_session.result() );
+                run_workload_update( workload, fairness_world, update, fairness_last_serialized,
+                                     workload == "structural" );
+                wait_tracker.observe_pass( update, fairness_session.result() );
             }
         }
         wait_tracker.finish( updates );

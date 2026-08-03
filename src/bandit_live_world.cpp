@@ -34,6 +34,7 @@ using bandit_live_world::origin_disposition;
 using bandit_live_world::outing_kind;
 using bandit_live_world::scout_phase;
 using bandit_live_world::simulation_owner;
+using bandit_live_world::site_record;
 using bandit_live_world::sortie_observation_kind;
 
 constexpr std::size_t max_active_outing_members = 16;
@@ -68,6 +69,10 @@ constexpr int max_structural_route_cost_omt = 18;
 constexpr int frontier_sector_count = 8;
 constexpr int frontier_inner_radius_omt = 4;
 constexpr int frontier_outer_radius_omt = 9;
+constexpr int routine_scheduler_consider_cap = 16;
+constexpr int routine_scheduler_full_route_solve_cap = 8;
+constexpr int routine_scheduler_start_cap = 2;
+constexpr int routine_frontier_recurrence_minutes = 72 * 60;
 
 void bound_camp_map_lead_strings( camp_map_lead &lead )
 {
@@ -216,6 +221,80 @@ bool frontier_memory_is_valid( const camp_intelligence_map &intelligence )
     []( const int resolved_minutes ) {
         return resolved_minutes >= -1;
     } );
+}
+
+unsigned int stable_string_hash( const std::string &value )
+{
+    unsigned int hash = 2166136261U;
+    for( const unsigned char character : value ) {
+        hash ^= character;
+        hash *= 16777619U;
+    }
+    return hash;
+}
+
+int first_frontier_due_delay_minutes( const std::string &site_id )
+{
+    return ( 6 + static_cast<int>( stable_string_hash( site_id ) % 13U ) ) * 60;
+}
+
+int routine_cooldown_delay_minutes( const std::string &site_id, const int base_minutes )
+{
+    const unsigned int jitter_hash = stable_string_hash( site_id + ":routine_cooldown" );
+    return base_minutes + static_cast<int>( jitter_hash % 7U ) * 60;
+}
+
+int routine_no_candidate_base_delay_minutes( const int streak )
+{
+    if( streak <= 1 ) {
+        return 12 * 60;
+    }
+    if( streak == 2 ) {
+        return 24 * 60;
+    }
+    return 48 * 60;
+}
+
+bool frontier_dispatch_is_due( const site_record &site, const int now_minutes )
+{
+    if( now_minutes < 0 || site.routine_activated_minutes < 0 ||
+        !frontier_memory_is_valid( site.intelligence_map ) ) {
+        return false;
+    }
+    const int latest_frontier_resolution = *std::max_element(
+            site.intelligence_map.frontier_last_resolved_minutes.begin(),
+            site.intelligence_map.frontier_last_resolved_minutes.end() );
+    if( latest_frontier_resolution < 0 ) {
+        return now_minutes >= minutes_after_saturated(
+                   site.routine_activated_minutes,
+                   first_frontier_due_delay_minutes( site.site_id ) );
+    }
+    return now_minutes >= minutes_after_saturated(
+               latest_frontier_resolution, routine_frontier_recurrence_minutes );
+}
+
+int routine_dispatch_wait_minutes( const site_record &site, const int now_minutes,
+                                   const bool frontier_due )
+{
+    int eligible_since = site.routine_activated_minutes;
+    if( frontier_due ) {
+        const int latest_frontier_resolution = *std::max_element(
+                site.intelligence_map.frontier_last_resolved_minutes.begin(),
+                site.intelligence_map.frontier_last_resolved_minutes.end() );
+        eligible_since = latest_frontier_resolution < 0 ? minutes_after_saturated(
+                             site.routine_activated_minutes,
+                             first_frontier_due_delay_minutes( site.site_id ) ) :
+                         minutes_after_saturated( latest_frontier_resolution,
+                                 routine_frontier_recurrence_minutes );
+    } else if( site.next_routine_dispatch_eligible_minutes >= 0 ) {
+        eligible_since = site.next_routine_dispatch_eligible_minutes;
+    } else if( site.last_routine_resolved_minutes >= 0 ) {
+        eligible_since = site.last_routine_resolved_minutes;
+    }
+    if( eligible_since < 0 || now_minutes <= eligible_since ) {
+        return 0;
+    }
+    return now_minutes - eligible_since;
 }
 
 std::vector<int> least_recent_frontier_sectors( const camp_intelligence_map &intelligence )
@@ -3857,7 +3936,7 @@ void site_record::serialize( JsonOut &json ) const
     normalize_camp_intelligence( bounded );
     normalize_acted_reports( bounded );
     json.start_object();
-    json.member( "schema_version", 11 );
+    json.member( "schema_version", 12 );
     json.member( "site_id", site_id );
     json.member( "source_kind", to_string( source_kind ) );
     json.member( "site_kind", to_string( site_kind ) );
@@ -3869,6 +3948,11 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "supply_last_update_minutes", supply_last_update_minutes );
     json.member( "supply_accounted_living_total", supply_accounted_living_total );
     json.member( "supply_member_minute_remainder", supply_member_minute_remainder );
+    json.member( "routine_activated_minutes", routine_activated_minutes );
+    json.member( "last_routine_resolved_minutes", last_routine_resolved_minutes );
+    json.member( "next_routine_dispatch_eligible_minutes",
+                 next_routine_dispatch_eligible_minutes );
+    json.member( "routine_no_candidate_streak", routine_no_candidate_streak );
     json.member( "footprint", footprint );
     json.member( "members", members );
     json.member( "spawn_tiles", spawn_tiles );
@@ -3924,6 +4008,10 @@ void site_record::deserialize( const JsonObject &jo )
     supply_last_update_minutes = -1;
     supply_accounted_living_total = 0;
     supply_member_minute_remainder = 0;
+    routine_activated_minutes = -1;
+    last_routine_resolved_minutes = -1;
+    next_routine_dispatch_eligible_minutes = -1;
+    routine_no_candidate_streak = 0;
     next_outing_generation = 1;
     applied_return_generation = 0;
     applied_report_generation = 0;
@@ -3943,8 +4031,8 @@ void site_record::deserialize( const JsonObject &jo )
     origin_summary.clear();
     jo.read( "schema_version", schema_version );
     const int loaded_schema_version = schema_version;
-    if( loaded_schema_version > 11 ) {
-        jo.throw_error( "site schema version is newer than supported schema v11" );
+    if( loaded_schema_version > 12 ) {
+        jo.throw_error( "site schema version is newer than supported schema v12" );
     }
     jo.read( "site_id", site_id );
     std::string source_kind_string = "none";
@@ -3981,6 +4069,46 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "supply_last_update_minutes", supply_last_update_minutes );
     jo.read( "supply_accounted_living_total", supply_accounted_living_total );
     jo.read( "supply_member_minute_remainder", supply_member_minute_remainder );
+    const bool any_routine_scheduler_field = jo.has_member( "routine_activated_minutes" ) ||
+            jo.has_member( "last_routine_resolved_minutes" ) ||
+            jo.has_member( "next_routine_dispatch_eligible_minutes" ) ||
+            jo.has_member( "routine_no_candidate_streak" );
+    const bool complete_routine_scheduler_payload =
+        jo.has_member( "routine_activated_minutes" ) &&
+        jo.has_member( "last_routine_resolved_minutes" ) &&
+        jo.has_member( "next_routine_dispatch_eligible_minutes" ) &&
+        jo.has_member( "routine_no_candidate_streak" );
+    if( loaded_schema_version < 12 && any_routine_scheduler_field ) {
+        jo.throw_error( "pre-v12 site cannot contain routine scheduler state" );
+    }
+    if( loaded_schema_version >= 12 && !complete_routine_scheduler_payload ) {
+        jo.throw_error( "v12 site must contain complete routine scheduler state" );
+    }
+    if( complete_routine_scheduler_payload ) {
+        jo.read( "routine_activated_minutes", routine_activated_minutes );
+        jo.read( "last_routine_resolved_minutes", last_routine_resolved_minutes );
+        jo.read( "next_routine_dispatch_eligible_minutes",
+                 next_routine_dispatch_eligible_minutes );
+        jo.read( "routine_no_candidate_streak", routine_no_candidate_streak );
+        const bool activation_is_consistent = routine_activated_minutes >= -1 &&
+                last_routine_resolved_minutes >= -1 &&
+                next_routine_dispatch_eligible_minutes >= -1 &&
+                routine_no_candidate_streak >= 0 && routine_no_candidate_streak <= 3 &&
+                ( routine_activated_minutes >= 0 ||
+                  ( last_routine_resolved_minutes == -1 &&
+                    next_routine_dispatch_eligible_minutes == -1 &&
+                    routine_no_candidate_streak == 0 ) ) &&
+                ( next_routine_dispatch_eligible_minutes < 0 ||
+                  next_routine_dispatch_eligible_minutes >= routine_activated_minutes ) &&
+                ( last_routine_resolved_minutes < 0 ||
+                  last_routine_resolved_minutes >= routine_activated_minutes ) &&
+                ( last_routine_resolved_minutes < 0 ||
+                  next_routine_dispatch_eligible_minutes < 0 ||
+                  next_routine_dispatch_eligible_minutes >= last_routine_resolved_minutes );
+        if( !activation_is_consistent ) {
+            jo.throw_error( "v12 site has malformed routine scheduler state" );
+        }
+    }
     jo.read( "footprint", footprint );
     jo.read( "members", members );
     const std::string migrated_member_template =
@@ -4869,7 +4997,7 @@ void site_record::deserialize( const JsonObject &jo )
     if( !roster().valid ) {
         jo.throw_error( "site roster authority remains inconsistent after legacy repair" );
     }
-    schema_version = 11;
+    schema_version = 12;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -5389,8 +5517,10 @@ bool site_record::eligible_for_empty_site_retirement() const
 
 void world_state::clear()
 {
-    schema_version = 4;
+    schema_version = 5;
     owner_id = "hells_raiders_live_owner_v0";
+    routine_scheduler_cursor = 0;
+    routine_scheduler_last_hour = -1;
     sites.clear();
     finite_resources.clear();
 }
@@ -5404,6 +5534,12 @@ void world_state::serialize( JsonOut &json ) const
     json.start_object();
     json.member( "schema_version", schema_version );
     json.member( "owner_id", owner_id );
+    if( schema_version >= 5 ) {
+        const int bounded_scheduler_cursor = sites.empty() || routine_scheduler_cursor < 0 ? 0 :
+                                             routine_scheduler_cursor % static_cast<int>( sites.size() );
+        json.member( "routine_scheduler_cursor", bounded_scheduler_cursor );
+        json.member( "routine_scheduler_last_hour", routine_scheduler_last_hour );
+    }
     json.member( "sites", sites );
     if( !finite_resources.empty() ) {
         json.member( "finite_resources" );
@@ -5431,8 +5567,33 @@ void world_state::deserialize( const JsonObject &jo )
     world_state candidate;
     int loaded_schema_version = 0;
     jo.read( "schema_version", loaded_schema_version );
+    if( loaded_schema_version < 0 || loaded_schema_version > 5 ) {
+        jo.throw_error( "hostile live-world schema version is unsupported" );
+    }
     jo.read( "owner_id", candidate.owner_id );
     jo.read( "sites", candidate.sites );
+    const bool any_scheduler_field = jo.has_member( "routine_scheduler_cursor" ) ||
+                                     jo.has_member( "routine_scheduler_last_hour" );
+    const bool complete_scheduler_payload = jo.has_member( "routine_scheduler_cursor" ) &&
+                                            jo.has_member( "routine_scheduler_last_hour" );
+    if( loaded_schema_version < 5 && any_scheduler_field ) {
+        jo.throw_error( "pre-v5 world cannot contain routine scheduler state" );
+    }
+    if( loaded_schema_version >= 5 && !complete_scheduler_payload ) {
+        jo.throw_error( "v5 world must contain complete routine scheduler state" );
+    }
+    if( complete_scheduler_payload ) {
+        jo.read( "routine_scheduler_cursor", candidate.routine_scheduler_cursor );
+        jo.read( "routine_scheduler_last_hour", candidate.routine_scheduler_last_hour );
+        const bool cursor_is_valid = candidate.sites.empty() ?
+                                     candidate.routine_scheduler_cursor == 0 :
+                                     candidate.routine_scheduler_cursor >= 0 &&
+                                     candidate.routine_scheduler_cursor <
+                                     static_cast<int>( candidate.sites.size() );
+        if( !cursor_is_valid || candidate.routine_scheduler_last_hour < -1 ) {
+            jo.throw_error( "v5 world has malformed routine scheduler state" );
+        }
+    }
     std::set<character_id> claimed_member_ids;
     for( const site_record &site : candidate.sites ) {
         for( const member_record &member : site.members ) {
@@ -5473,7 +5634,7 @@ void world_state::deserialize( const JsonObject &jo )
             }
         }
     }
-    candidate.schema_version = 4;
+    candidate.schema_version = 5;
     *this = std::move( candidate );
 }
 
@@ -5604,7 +5765,7 @@ finite_resource_claim_result claim_finite_resource_units( world_state &state,
     claimant->applied_resource_generation = operation_generation;
     claimant->last_resource_application_key = application_key;
     claimant->last_resource_claimed_units = claimed_units;
-    state.schema_version = 4;
+    state.schema_version = 5;
     result.status = finite_resource_claim_status::applied;
     result.claimed_units = claimed_units;
     result.remaining_units = updated.remaining_units;
@@ -6957,6 +7118,9 @@ structural_outing_plan plan_frontier_outing( const site_record &site,
     plan.activity_id = site.site_id + "#structural";
     plan.generation = site.next_outing_generation;
     if( now_minutes < 0 || !supports_routine_camp_ecology( effective_profile( site ) ) ||
+        site.routine_activated_minutes > now_minutes ||
+        ( site.next_routine_dispatch_eligible_minutes >= 0 &&
+          now_minutes < site.next_routine_dispatch_eligible_minutes ) ||
         site.retired_empty_site || site.has_active_outside_pressure() ||
         !camp_decision_allows_dispatch( site.camp_decision,
                                         bandit_dry_run::job_template::scout ) ||
@@ -7042,6 +7206,19 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
 
     if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
         plan.notes.push_back( "structural outing blocked: site profile does not run routine camp ecology" );
+        return plan;
+    }
+    if( now_minutes < 0 ) {
+        plan.notes.push_back( "structural outing blocked: invalid time" );
+        return plan;
+    }
+    if( site.routine_activated_minutes > now_minutes ) {
+        plan.notes.push_back( "structural outing blocked: routine activation is in the future" );
+        return plan;
+    }
+    if( site.next_routine_dispatch_eligible_minutes >= 0 &&
+        now_minutes < site.next_routine_dispatch_eligible_minutes ) {
+        plan.notes.push_back( "structural outing blocked: camp-wide routine cooldown is active" );
         return plan;
     }
     if( site.retired_empty_site ) {
@@ -7156,6 +7333,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                                     structural_route_is_canonical( plan.shared_route, site.anchor,
                                             plan.target_omt );
     if( now_minutes < 0 || !plan.valid || plan.site_id != site.site_id ||
+        site.routine_activated_minutes > now_minutes ||
+        ( site.next_routine_dispatch_eligible_minutes >= 0 &&
+          now_minutes < site.next_routine_dispatch_eligible_minutes ) ||
         plan.activity_id != site.site_id + "#structural" ||
         plan.generation <= 0 || plan.generation != site.next_outing_generation ||
         plan.lead_id.empty() ||
@@ -7238,6 +7418,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     }
 
     site_record candidate = site;
+    if( candidate.routine_activated_minutes < 0 ) {
+        candidate.routine_activated_minutes = now_minutes;
+    }
     camp_map_lead *candidate_lead = candidate.intelligence_map.find_lead( plan.lead_id );
     if( frontier_plan && candidate_lead == nullptr ) {
         camp_map_lead frontier_lead;
@@ -7416,6 +7599,21 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     lead->last_outcome = "frontier_route_reported_home";
                     advance_camp_map_lead_revision( candidate, *lead );
                 }
+                if( candidate.routine_activated_minutes < 0 ) {
+                    candidate.routine_activated_minutes = candidate.active_outing.started_minutes;
+                }
+                const bool useful_return = completed_frontier_route ||
+                                           ( !frontier_sector &&
+                                             lead->status == camp_lead_status::harvested );
+                const bool danger_withdrawal = lead->status == camp_lead_status::dangerous;
+                candidate.last_routine_resolved_minutes = now_minutes;
+                candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                            now_minutes, routine_cooldown_delay_minutes(
+                                candidate.site_id,
+                                useful_return || danger_withdrawal ? 24 * 60 : 18 * 60 ) );
+                if( useful_return ) {
+                    candidate.routine_no_candidate_streak = 0;
+                }
                 const std::optional<int> returned = release_structural_outing_reservation(
                         candidate, expected_activity_id, expected_generation,
                         "structural outing completed its shared route home" );
@@ -7519,47 +7717,160 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     bandit_live_world_probe::increment(
         bandit_live_world_probe::counter::structural_maintenance_updates );
     structural_bounty_maintenance_result result;
+    result.scheduler_consider_cap = routine_scheduler_consider_cap;
+    result.full_route_solve_cap = routine_scheduler_full_route_solve_cap;
+    state.schema_version = 5;
     advance_world_camp_supplies( state, now_minutes );
-    result.dispatch_cap = std::max( 0, dispatch_cap );
+    result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
+    // Discovery rotation and faction terrain scoring are the next roadmap seam; this cursor owns
+    // only bounded dispatch consideration and must not turn a terrain label into camp knowledge.
     result.scan = advance_structural_bounty_scan( state, now_minutes, scan_budget, terrain_lookup );
 
     bandit_live_world_probe::scoped_section dispatch_probe_section(
         bandit_live_world_probe::section::structural_dispatch );
 
-    if( result.dispatch_cap == 0 ) {
-        result.notes.push_back( "structural maintenance dispatch skipped: zero cap" );
+    if( now_minutes < 0 ) {
+        result.notes.push_back( "structural maintenance dispatch skipped: invalid time" );
         return result;
     }
-
-    for( site_record &site : state.sites ) {
+    result.scheduler_hour = now_minutes / 60;
+    std::vector<std::size_t> routine_site_indices;
+    routine_site_indices.reserve( state.sites.size() );
+    for( std::size_t index = 0; index < state.sites.size(); ++index ) {
+        const site_record &site = state.sites[index];
+        if( supports_routine_camp_ecology( effective_profile( site ) ) &&
+            !site.retired_empty_site ) {
+            routine_site_indices.push_back( index );
+        }
+    }
+    if( routine_site_indices.empty() ) {
+        state.routine_scheduler_cursor = 0;
+    } else {
+        state.routine_scheduler_cursor = std::max( 0, state.routine_scheduler_cursor ) %
+                                         static_cast<int>( routine_site_indices.size() );
+    }
+    if( state.routine_scheduler_last_hour >= result.scheduler_hour ) {
+        result.scheduler_replay_suppressed = true;
+        result.scheduler_cursor_before = state.routine_scheduler_cursor;
+        result.scheduler_cursor_after = state.routine_scheduler_cursor;
+        result.notes.push_back(
+            "structural maintenance dispatch skipped: scheduler hour already processed" );
+        return result;
+    }
+    state.routine_scheduler_last_hour = result.scheduler_hour;
+    if( routine_site_indices.empty() ) {
+        return result;
+    }
+    result.scheduler_cursor_before = state.routine_scheduler_cursor;
+    const int sites_to_consider = std::min( routine_scheduler_consider_cap,
+                                           static_cast<int>( routine_site_indices.size() ) );
+    struct routine_dispatch_contender {
+        std::size_t site_index;
+        structural_outing_plan plan;
+        int overdue_minutes;
+        int wait_minutes;
+    };
+    std::vector<routine_dispatch_contender> contenders;
+    contenders.reserve( static_cast<std::size_t>( sites_to_consider ) );
+    for( int offset = 0; offset < sites_to_consider; ++offset ) {
+        const int eligible_index = ( result.scheduler_cursor_before + offset ) %
+                                   static_cast<int>( routine_site_indices.size() );
+        const std::size_t site_index = routine_site_indices[static_cast<std::size_t>(
+                                           eligible_index )];
+        site_record &site = state.sites[site_index];
         result.sites_considered_for_dispatch++;
         bandit_live_world_probe::increment(
             bandit_live_world_probe::counter::structural_dispatch_sites_considered );
         bandit_live_world_probe::record_site_service( site.site_id,
                 bandit_live_world_probe::site_service::dispatch_considered );
+        if( site.routine_activated_minutes < 0 ) {
+            site.routine_activated_minutes = now_minutes;
+        }
+        const bool frontier_due = frontier_dispatch_is_due( site, now_minutes );
+        if( site.next_routine_dispatch_eligible_minutes >= 0 &&
+            now_minutes < site.next_routine_dispatch_eligible_minutes ) {
+            continue;
+        }
+        if( result.dispatch_cap == 0 ) {
+            continue;
+        }
+        const routine_scout_policy_result routine_policy = routine_scout_policy( site );
+        const routine_scout_pair_selection_result pair_selection =
+            select_routine_scout_pair( site );
+        if( site.has_active_outside_pressure() ||
+            !camp_decision_allows_dispatch( site.camp_decision,
+                                            bandit_dry_run::job_template::scout ) ||
+            !routine_policy.eligible || !pair_selection.eligible ) {
+            continue;
+        }
+        const bool has_structural_candidate_source = std::any_of(
+                    site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
+        []( const camp_map_lead & lead ) {
+            return lead.kind == camp_lead_kind::structural_bounty;
+        } );
+        if( !frontier_due && !has_structural_candidate_source ) {
+            continue;
+        }
+        structural_outing_plan plan;
+        if( frontier_due ) {
+            plan = plan_frontier_outing( site, now_minutes );
+        }
+        if( !plan.valid ) {
+            plan = plan_structural_bounty_outing( site, now_minutes );
+        }
+        if( !plan.valid ) {
+            site.routine_no_candidate_streak = site.routine_no_candidate_streak >= 2 ? 3 :
+                                               std::max( 0, site.routine_no_candidate_streak ) + 1;
+            const int base_delay = routine_no_candidate_base_delay_minutes(
+                                       site.routine_no_candidate_streak );
+            site.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                        now_minutes, routine_cooldown_delay_minutes( site.site_id, base_delay ) );
+            result.notes.push_back( "routine dispatch found no candidate or bounded route site=" +
+                                    site.site_id + " streak=" +
+                                    std::to_string( site.routine_no_candidate_streak ) );
+            continue;
+        }
+        result.dispatches_planned++;
+        const int wait_minutes = routine_dispatch_wait_minutes( site, now_minutes,
+                                 frontier_due );
+        contenders.push_back( { site_index, std::move( plan ),
+                                std::min( 72 * 60, wait_minutes ), wait_minutes } );
+    }
+
+    std::sort( contenders.begin(), contenders.end(), [&state](
+    const routine_dispatch_contender & lhs, const routine_dispatch_contender & rhs ) {
+        if( lhs.overdue_minutes != rhs.overdue_minutes ) {
+            return lhs.overdue_minutes > rhs.overdue_minutes;
+        }
+        if( lhs.wait_minutes != rhs.wait_minutes ) {
+            return lhs.wait_minutes > rhs.wait_minutes;
+        }
+        return state.sites[lhs.site_index].site_id < state.sites[rhs.site_index].site_id;
+    } );
+    for( routine_dispatch_contender &contender : contenders ) {
         if( result.dispatches_applied >= result.dispatch_cap ) {
             result.dispatch_cap_reached = true;
             break;
         }
-        const structural_outing_plan plan = plan_structural_bounty_outing( site, now_minutes );
-        if( !plan.valid ) {
-            continue;
-        }
-        result.dispatches_planned++;
-        for( const std::string &note : plan.notes ) {
+        site_record &site = state.sites[contender.site_index];
+        for( const std::string &note : contender.plan.notes ) {
             result.notes.push_back( note );
         }
-        if( apply_structural_bounty_outing_plan( site, plan, now_minutes ) ) {
+        if( apply_structural_bounty_outing_plan( site, contender.plan, now_minutes ) ) {
             result.dispatches_applied++;
             result.notes.push_back( "structural maintenance dispatched site=" + site.site_id +
-                                    " lead=" + plan.lead_id );
+                                    " lead=" + contender.plan.lead_id );
         } else {
             result.dispatches_blocked++;
             result.notes.push_back( "structural maintenance dispatch apply blocked site=" + site.site_id +
-                                    " lead=" + plan.lead_id );
+                                    " lead=" + contender.plan.lead_id );
         }
     }
+
+    state.routine_scheduler_cursor = ( result.scheduler_cursor_before + sites_to_consider ) %
+                                     static_cast<int>( routine_site_indices.size() );
+    result.scheduler_cursor_after = state.routine_scheduler_cursor;
 
     return result;
 }
@@ -7576,6 +7887,14 @@ std::string render_structural_bounty_maintenance_report(
         << " candidates_sampled=" << result.scan.candidates_sampled
         << " leads_seeded=" << result.scan.leads_seeded
         << " leads_suppressed=" << result.scan.leads_suppressed_by_memory
+        << " scheduler_hour=" << result.scheduler_hour
+        << " scheduler_cursor_before=" << result.scheduler_cursor_before
+        << " scheduler_cursor_after=" << result.scheduler_cursor_after
+        << " scheduler_consider_cap=" << result.scheduler_consider_cap
+        << " scheduler_replay_suppressed=" <<
+        ( result.scheduler_replay_suppressed ? "yes" : "no" )
+        << " full_route_solve_cap=" << result.full_route_solve_cap
+        << " full_route_solves=" << result.full_route_solves
         << " dispatch_cap=" << result.dispatch_cap
         << " dispatches_planned=" << result.dispatches_planned
         << " dispatches_applied=" << result.dispatches_applied

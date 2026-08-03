@@ -533,7 +533,7 @@ struct response_party_selection_result {
 };
 
 struct site_record {
-    int schema_version = 11;
+    int schema_version = 12;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -545,6 +545,10 @@ struct site_record {
     int supply_last_update_minutes = -1;
     int supply_accounted_living_total = 0;
     int supply_member_minute_remainder = 0;
+    int routine_activated_minutes = -1;
+    int last_routine_resolved_minutes = -1;
+    int next_routine_dispatch_eligible_minutes = -1;
+    int routine_no_candidate_streak = 0;
     std::vector<tripoint_abs_omt> footprint;
     std::vector<member_record> members;
     std::vector<spawn_tile_record> spawn_tiles;
@@ -611,8 +615,10 @@ struct site_record {
 };
 
 struct world_state {
-    int schema_version = 4;
+    int schema_version = 5;
     std::string owner_id = "hells_raiders_live_owner_v0";
+    int routine_scheduler_cursor = 0;
+    int routine_scheduler_last_hour = -1;
     std::vector<site_record> sites;
     std::map<tripoint_abs_omt, finite_resource_record> finite_resources;
 
@@ -734,6 +740,13 @@ struct structural_outing_result {
 struct structural_bounty_maintenance_result {
     structural_outing_result outing;
     structural_bounty_scan_result scan;
+    int scheduler_hour = -1;
+    int scheduler_cursor_before = 0;
+    int scheduler_cursor_after = 0;
+    int scheduler_consider_cap = 16;
+    int full_route_solve_cap = 8;
+    int full_route_solves = 0;
+    bool scheduler_replay_suppressed = false;
     int sites_considered_for_dispatch = 0;
     int dispatches_planned = 0;
     int dispatches_applied = 0;
