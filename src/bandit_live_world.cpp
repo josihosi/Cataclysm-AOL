@@ -41,6 +41,7 @@ using bandit_live_world::site_record;
 using bandit_live_world::sortie_observation_kind;
 using bandit_live_world::sortie_observation_sense;
 using bandit_live_world::sortie_observation_share_state;
+using bandit_live_world::structural_signal_read;
 
 constexpr std::size_t max_active_outing_members = 16;
 constexpr std::size_t max_active_outing_route_steps = 256;
@@ -50,6 +51,7 @@ constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_abstract_threat_ids = 16;
 constexpr std::size_t max_abstract_threat_id_length = 128;
+constexpr std::size_t max_structural_signal_reads = 4;
 constexpr std::size_t max_abstract_encounter_outcome_length = 128;
 constexpr int abstract_wound_recovery_minutes = 72 * 60;
 constexpr std::size_t max_camp_intelligence_leads = 64;
@@ -9326,6 +9328,132 @@ bool structural_abstract_threat_read_is_valid( const tripoint_abs_omt &current_o
     return true;
 }
 
+std::string structural_signal_sense_name( const sortie_observation_sense sense )
+{
+    switch( sense ) {
+        case sortie_observation_sense::smoke:
+            return "smoke";
+        case sortie_observation_sense::light:
+            return "light";
+        default:
+            return std::string();
+    }
+}
+
+bool structural_signal_reads_are_valid( const structural_threat_observer_request &request,
+                                        const std::vector<structural_signal_read> &reads )
+{
+    if( reads.size() > max_structural_signal_reads ) {
+        return false;
+    }
+    std::vector<std::pair<sortie_observation_sense, tripoint_abs_omt>> identities;
+    identities.reserve( reads.size() );
+    for( const structural_signal_read &read : reads ) {
+        const bool source_is_permitted = read.source_omt == request.current_omt ||
+                                         std::find( request.visible_forward_omts.begin(),
+                                                 request.visible_forward_omts.end(),
+                                                 read.source_omt ) !=
+                                         request.visible_forward_omts.end();
+        const std::pair<sortie_observation_sense, tripoint_abs_omt> identity = {
+            read.sense, read.source_omt
+        };
+        if( structural_signal_sense_name( read.sense ).empty() || !source_is_permitted ||
+            read.range_cap_omt < 1 || read.range_cap_omt > 40 ||
+            omt_chebyshev_distance( request.current_omt, read.source_omt ) > read.range_cap_omt ||
+            read.strength < 1 || read.strength > 6 || read.confidence < 0 ||
+            read.confidence > 100 || read.uncertainty_radius_omt < 1 ||
+            read.uncertainty_radius_omt > 40 || read.local_reality ||
+            read.summary.size() > max_sortie_summary_length ||
+            std::find( identities.begin(), identities.end(), identity ) != identities.end() ) {
+            return false;
+        }
+        identities.push_back( identity );
+    }
+    return true;
+}
+
+bool structural_pair_can_share_signal_observation( const site_record &site,
+        const structural_signal_read &read, const structural_threat_observer_request &request )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( read.source_omt == request.current_omt || read.local_reality ||
+        outing.owner != simulation_owner::abstract || outing.member_ids.size() != 2 ||
+        std::find( outing.member_ids.begin(), outing.member_ids.end(), outing.leader_id ) ==
+        outing.member_ids.end() ) {
+        return false;
+    }
+    return std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
+    [&site, &outing]( const character_id member_id ) {
+        const member_record *member = site.find_member( member_id );
+        return member != nullptr && member->state == member_state::outbound &&
+               !outing.member_is_resolved( member_id ) &&
+               std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) ==
+               outing.casualty_ids.end();
+    } );
+}
+
+sortie_observation make_structural_signal_observation( const site_record &site,
+        const structural_threat_observer_request &request, const structural_signal_read &read,
+        const int now_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    const std::string sense_name = structural_signal_sense_name( read.sense );
+    const std::string source_id = "structural-" + sense_name + "@" + read.source_omt.to_string();
+    sortie_observation observation;
+    observation.fact_key = "structural-signal:" + source_id;
+    observation.summary = read.summary;
+    observation.confidence = read.confidence;
+    observation.observed_minutes = now_minutes;
+    observation.kind = sortie_observation_kind::certainty;
+    observation.state_key = "structural-" + sense_name + "-signal";
+    observation.record_schema_version = 1;
+    observation.source_id = source_id;
+    observation.sense = read.sense;
+    observation.observer_id = outing.leader_id;
+    observation.source_omt = read.source_omt;
+    observation.receiver_omt = request.current_omt;
+    observation.bucket_start_minutes = now_minutes - now_minutes % 30;
+    observation.strength = read.strength;
+    observation.simultaneity_start_minutes = now_minutes;
+    observation.simultaneity_end_minutes = now_minutes;
+    observation.target_revision = outing.target_lead_revision;
+    observation.uncertainty_radius_omt = read.uncertainty_radius_omt;
+    observation.expiry_minutes = minutes_after_saturated( now_minutes, 6 * 60 );
+    observation.share_state = structural_pair_can_share_signal_observation( site, read, request ) ?
+                              sortie_observation_share_state::shared :
+                              sortie_observation_share_state::observer_private;
+    return observation;
+}
+
+std::vector<sortie_observation> make_structural_signal_observations( const site_record &site,
+        const structural_threat_observer_request &request,
+        std::vector<structural_signal_read> reads, const int now_minutes )
+{
+    std::sort( reads.begin(), reads.end(), [&request]( const structural_signal_read &lhs,
+    const structural_signal_read &rhs ) {
+        return std::make_tuple( omt_chebyshev_distance( request.current_omt, lhs.source_omt ),
+                                lhs.source_omt.z(), lhs.source_omt.y(), lhs.source_omt.x(),
+                                static_cast<int>( lhs.sense ) ) <
+               std::make_tuple( omt_chebyshev_distance( request.current_omt, rhs.source_omt ),
+                                rhs.source_omt.z(), rhs.source_omt.y(), rhs.source_omt.x(),
+                                static_cast<int>( rhs.sense ) );
+    } );
+    std::vector<sortie_observation> result;
+    for( const sortie_observation_sense sense : {
+             sortie_observation_sense::smoke, sortie_observation_sense::light
+         } ) {
+        const auto found = std::find_if( reads.begin(), reads.end(), [sense](
+        const structural_signal_read & read ) {
+            return read.sense == sense;
+        } );
+        if( found != reads.end() ) {
+            result.push_back( make_structural_signal_observation( site, request, *found,
+                              now_minutes ) );
+        }
+    }
+    return result;
+}
+
 unsigned long long structural_threat_fact_hash( const abstract_threat_read &read )
 {
     unsigned long long hash = 1469598103934665603ULL;
@@ -10446,7 +10574,10 @@ bool credit_structural_return_cargo( site_record &candidate, const int now_minut
 structural_outing_result advance_structural_bounty_outings( world_state &state, const int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
         const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
-                const structural_threat_observer_request & )> &abstract_threat_lookup )
+                const structural_threat_observer_request & )> &abstract_threat_lookup,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_outings );
@@ -10552,7 +10683,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         bool waypoint_progressed = false;
         std::optional<std::pair<structural_threat_observer_request, abstract_threat_read>>
         deferred_abstract_input;
-        if( abstract_threat_lookup &&
+        if( ( abstract_threat_lookup || signal_lookup ) &&
             ( pre_advance_outing.phase == scout_phase::outbound ||
               pre_advance_outing.phase == scout_phase::observing ) ) {
             if( pre_advance_outing.phase == scout_phase::outbound &&
@@ -10582,52 +10713,72 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     pre_advance_outing.shared_route[static_cast<std::size_t>( index )] );
             }
             add_structural_observer_retained_track( candidate, request, now_minutes );
-            const abstract_threat_read abstract_read = abstract_threat_lookup(
-                        candidate, pre_advance_outing, request );
-            bool threat_omt_is_permitted = !abstract_read.observed;
-            if( abstract_read.observed ) {
-                threat_omt_is_permitted = abstract_read.threat_omt == request.current_omt ||
-                                          std::find( request.visible_forward_omts.begin(),
-                                                  request.visible_forward_omts.end(),
-                                                  abstract_read.threat_omt ) !=
-                                          request.visible_forward_omts.end();
+            abstract_threat_read abstract_read;
+            if( abstract_threat_lookup ) {
+                abstract_read = abstract_threat_lookup( candidate, pre_advance_outing, request );
+                bool threat_omt_is_permitted = !abstract_read.observed;
+                if( abstract_read.observed ) {
+                    threat_omt_is_permitted = abstract_read.threat_omt == request.current_omt ||
+                                              std::find( request.visible_forward_omts.begin(),
+                                                      request.visible_forward_omts.end(),
+                                                      abstract_read.threat_omt ) !=
+                                              request.visible_forward_omts.end();
+                }
+                if( threat_omt_is_permitted &&
+                    structural_abstract_threat_read_is_valid( request.current_omt, abstract_read ) ) {
+                    deferred_abstract_input = std::make_pair( request, abstract_read );
+                }
             }
-            if( threat_omt_is_permitted &&
-                structural_abstract_threat_read_is_valid( request.current_omt, abstract_read ) ) {
-                deferred_abstract_input = std::make_pair( request, abstract_read );
+
+            std::vector<sortie_observation> observations;
+            if( signal_lookup && request.party_power > 0 ) {
+                std::vector<structural_signal_read> signal_reads = signal_lookup(
+                            candidate, pre_advance_outing, request );
+                if( structural_signal_reads_are_valid( request, signal_reads ) ) {
+                    observations = make_structural_signal_observations(
+                                       candidate, request, std::move( signal_reads ), now_minutes );
+                }
             }
-            if( deferred_abstract_input && abstract_read.observed &&
-                !abstract_read.local_reality && request.party_power > 0 ) {
-                const sortie_observation observation = make_structural_threat_observation(
-                            candidate, request, abstract_read, now_minutes );
+            const bool records_visual_threat = deferred_abstract_input && abstract_read.observed &&
+                                               !abstract_read.local_reality &&
+                                               request.party_power > 0;
+            if( records_visual_threat ) {
+                observations.push_back( make_structural_threat_observation(
+                                            candidate, request, abstract_read, now_minutes ) );
+            }
+            if( !observations.empty() ) {
                 const sortie_observation_effect recorded = record_active_typed_observations(
                             candidate, *expected_cursor, pre_advance_outing.leader_id,
-                            pre_advance_outing.target_lead_revision, { observation }, now_minutes );
+                            pre_advance_outing.target_lead_revision, observations, now_minutes );
                 if( !recorded.valid ) {
-                    deferred_abstract_input.reset();
+                    if( records_visual_threat ) {
+                        deferred_abstract_input.reset();
+                    }
                 } else {
+                    simulation_advance_consumed = true;
                     if( waypoint_progressed ) {
                         candidate.active_outing.last_progress_minutes = now_minutes;
                     }
-                    const abstract_threat_resolution resolution =
-                        resolve_structural_abstract_threat(
-                            candidate, request.current_omt, abstract_read, now_minutes );
-                    if( !resolution.valid ) {
-                        continue;
+                    if( records_visual_threat ) {
+                        const abstract_threat_resolution resolution =
+                            resolve_structural_abstract_threat(
+                                candidate, request.current_omt, abstract_read, now_minutes );
+                        if( !resolution.valid ) {
+                            continue;
+                        }
+                        result.notes.insert( result.notes.end(), resolution.notes.begin(),
+                                             resolution.notes.end() );
+                        if( resolution.changed ||
+                            resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
+                            resolution.kind == abstract_threat_resolution_kind::withdrawal ||
+                            resolution.kind == abstract_threat_resolution_kind::wounded_pair ||
+                            resolution.kind == abstract_threat_resolution_kind::one_missing ||
+                            resolution.kind == abstract_threat_resolution_kind::all_missing ) {
+                            site = std::move( candidate );
+                            continue;
+                        }
+                        deferred_abstract_input.reset();
                     }
-                    result.notes.insert( result.notes.end(), resolution.notes.begin(),
-                                         resolution.notes.end() );
-                    if( resolution.changed ||
-                        resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
-                        resolution.kind == abstract_threat_resolution_kind::withdrawal ||
-                        resolution.kind == abstract_threat_resolution_kind::wounded_pair ||
-                        resolution.kind == abstract_threat_resolution_kind::one_missing ||
-                        resolution.kind == abstract_threat_resolution_kind::all_missing ) {
-                        site = std::move( candidate );
-                        continue;
-                    }
-                    simulation_advance_consumed = true;
-                    deferred_abstract_input.reset();
                 }
             }
         }
@@ -10874,7 +11025,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<structural_route_read( const site_record &,
                 const structural_outing_plan & )> &route_lookup,
         const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
-                const structural_threat_observer_request & )> &abstract_threat_lookup )
+                const structural_threat_observer_request & )> &abstract_threat_lookup,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_maintenance );
@@ -10887,7 +11041,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup,
-                    abstract_threat_lookup );
+                    abstract_threat_lookup, signal_lookup );
 
     bandit_live_world_probe::scoped_section dispatch_probe_section(
         bandit_live_world_probe::section::structural_dispatch );

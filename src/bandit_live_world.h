@@ -982,6 +982,17 @@ struct abstract_threat_read {
     std::string summary;
 };
 
+struct structural_signal_read {
+    sortie_observation_sense sense = sortie_observation_sense::smoke;
+    tripoint_abs_omt source_omt;
+    int range_cap_omt = 0;
+    int strength = 0;
+    int confidence = 0;
+    int uncertainty_radius_omt = 1;
+    bool local_reality = false;
+    std::string summary;
+};
+
 enum class abstract_threat_resolution_kind {
     none,
     deferred_to_local,
@@ -1248,7 +1259,10 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
 structural_outing_result advance_structural_bounty_outings( world_state &state, int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup,
         const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
-                const structural_threat_observer_request & )> &abstract_threat_lookup = {} );
+                const structural_threat_observer_request & )> &abstract_threat_lookup = {},
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup = {} );
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         int now_minutes, int scan_budget, int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
@@ -1256,7 +1270,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<structural_route_read( const site_record &,
                 const structural_outing_plan & )> &route_lookup = {},
         const std::function<abstract_threat_read( const site_record &, const active_outing_state &,
-                const structural_threat_observer_request & )> &abstract_threat_lookup = {} );
+                const structural_threat_observer_request & )> &abstract_threat_lookup = {},
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );

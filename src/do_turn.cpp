@@ -3282,7 +3282,83 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     return read;
 }
 
-bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty()
+std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_signal_reads(
+    const std::vector<live_bandit_signal_observation> &signals,
+    const bandit_live_world::site_record &,
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request )
+{
+    std::vector<bandit_live_world::structural_signal_read> result;
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        outing.owner != bandit_live_world::simulation_owner::abstract ||
+        request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
+        get_map().inbounds( request.current_omt ) ) {
+        return result;
+    }
+    const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( outing.leader_id );
+    if( !observer || observer->is_dead() ) {
+        return result;
+    }
+    const int sight_points = live_bandit_structural_observer_sight( *observer,
+                             request.current_omt );
+
+    std::vector<const live_bandit_signal_observation *> candidates;
+    for( const live_bandit_signal_observation &signal : signals ) {
+        const bool supported_kind = signal.mark.kind == "smoke" ||
+                                    signal.mark.kind == "light" ||
+                                    signal.mark.kind == "searchlight";
+        const bool source_is_permitted = signal.source_omt == request.current_omt ||
+                                         std::find( request.visible_forward_omts.begin(),
+                                                 request.visible_forward_omts.end(),
+                                                 signal.source_omt ) !=
+                                         request.visible_forward_omts.end();
+        const int scout_range = rl_dist( request.current_omt, signal.source_omt );
+        if( supported_kind && source_is_permitted && signal.range_cap_omt > 0 &&
+            signal.range_cap_omt <= 40 && scout_range <= signal.range_cap_omt &&
+            ( signal.source_omt == request.current_omt ||
+              live_bandit_overmap_los_from( request.current_omt, signal.source_omt,
+                      sight_points ) ) ) {
+            candidates.push_back( &signal );
+        }
+    }
+    std::sort( candidates.begin(), candidates.end(), [&request](
+    const live_bandit_signal_observation *lhs,
+    const live_bandit_signal_observation *rhs ) {
+        return std::make_tuple( rl_dist( request.current_omt, lhs->source_omt ),
+                                lhs->source_omt.z(), lhs->source_omt.y(), lhs->source_omt.x(),
+                                lhs->mark.kind, lhs->mark.mark_id ) <
+               std::make_tuple( rl_dist( request.current_omt, rhs->source_omt ),
+                                rhs->source_omt.z(), rhs->source_omt.y(), rhs->source_omt.x(),
+                                rhs->mark.kind, rhs->mark.mark_id );
+    } );
+
+    for( const bool select_smoke : { true, false } ) {
+        const auto found = std::find_if( candidates.begin(), candidates.end(), [select_smoke](
+        const live_bandit_signal_observation * candidate ) {
+            return ( candidate->mark.kind == "smoke" ) == select_smoke;
+        } );
+        if( found == candidates.end() ) {
+            continue;
+        }
+        const live_bandit_signal_observation &signal = **found;
+        const int scout_range = rl_dist( request.current_omt, signal.source_omt );
+        bandit_live_world::structural_signal_read read;
+        read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
+                     bandit_live_world::sortie_observation_sense::light;
+        read.source_omt = signal.source_omt;
+        read.range_cap_omt = signal.range_cap_omt;
+        read.strength = std::clamp( signal.mark.strength, 1, 6 );
+        read.confidence = std::clamp( 40 + 10 * signal.mark.confidence, 0, 60 );
+        read.uncertainty_radius_omt = std::clamp( std::max( 1, ( scout_range + 2 ) / 3 ) +
+                                                ( select_smoke ? 1 : 0 ), 1, 40 );
+        read.summary = signal.weather_summary;
+        result.push_back( std::move( read ) );
+    }
+    return result;
+}
+
+bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty(
+    const std::vector<live_bandit_signal_observation> &live_signals )
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     static constexpr int structural_scan_budget = 12;
@@ -3291,7 +3367,13 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
         bandit_live_world::advance_structural_bounty_maintenance( state, live_bandit_current_minutes(),
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
                 live_bandit_structural_threat_read, live_bandit_structural_route_read,
-                live_bandit_structural_abstract_threat_read );
+                live_bandit_structural_abstract_threat_read,
+                [&live_signals](
+                    const bandit_live_world::site_record & site,
+                    const bandit_live_world::active_outing_state & outing,
+                    const bandit_live_world::structural_threat_observer_request & request ) {
+                    return live_bandit_structural_signal_reads( live_signals, site, outing, request );
+                } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     return result;
 }
@@ -3925,7 +4007,7 @@ void overmap_npc_move()
                                    << " signal_interval=5_minutes\n";
     }
     if( structural_cadence_due ) {
-        maintain_live_bandit_structural_bounty();
+        maintain_live_bandit_structural_bounty( live_signals );
     }
     materialize_live_bandit_structural_handoffs();
     const auto dispatch_done = std::chrono::steady_clock::now();
