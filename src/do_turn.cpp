@@ -1620,7 +1620,173 @@ struct live_bandit_local_handoff_member_backup {
     tripoint_abs_omt goal;
     std::vector<tripoint_abs_omt> omt_path;
     npc_mission mission = NPC_MISSION_NULL;
+    npc_mission previous_mission = NPC_MISSION_NULL;
 };
+
+bool note_live_bandit_structural_deaths_before_cleanup()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    bool changed = false;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        if( !site.active_outing.is_active() ||
+            site.active_outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            site.active_outing.schema_version < 7 ||
+            site.active_outing.owner != bandit_live_world::simulation_owner::local ||
+            !site.active_outing.local_handoff.is_active() ) {
+            continue;
+        }
+        const std::vector<bandit_live_world::local_handoff_member_snapshot> snapshots =
+            site.active_outing.local_handoff.members;
+        for( const bandit_live_world::local_handoff_member_snapshot &snapshot : snapshots ) {
+            if( snapshot.dead ) {
+                continue;
+            }
+            npc *member = g->find_npc( snapshot.npc_id );
+            if( member == nullptr || !member->is_dead() ) {
+                continue;
+            }
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            if( cursor && bandit_live_world::record_local_pair_member_death(
+                    site, *cursor, snapshot.npc_id, member->pos_abs(),
+                    live_bandit_current_minutes() ) ) {
+                changed = true;
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_handoff physical death"
+                                           << " site=" << site.site_id
+                                           << " activity=" << site.active_outing.activity_id
+                                           << " generation=" << site.active_outing.generation
+                                           << " member=" << snapshot.npc_id.get_value()
+                                           << " position=" << member->pos_abs().to_string() << '\n';
+            }
+        }
+    }
+    return changed;
+}
+
+bool dematerialize_live_bandit_structural_handoffs()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    map &here = get_map();
+    bool changed = false;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( site.retired_empty_site || !outing.is_active() ||
+            outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            outing.schema_version < 7 ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor ) {
+            continue;
+        }
+
+        std::vector<live_bandit_local_handoff_member_backup> backups;
+        std::vector<bandit_live_world::local_dematerialization_member_read> reads;
+        backups.reserve( outing.local_handoff.members.size() );
+        reads.reserve( outing.local_handoff.members.size() );
+        bool preflight_failed = false;
+        for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+             outing.local_handoff.members ) {
+            const bandit_live_world::member_record *persisted_member = site.find_member(
+                        snapshot.npc_id );
+            const bool casualty_recorded = std::find( outing.casualty_ids.begin(),
+                                           outing.casualty_ids.end(), snapshot.npc_id ) !=
+                                           outing.casualty_ids.end();
+            if( snapshot.dead ) {
+                if( persisted_member == nullptr ||
+                    persisted_member->state != bandit_live_world::member_state::dead ||
+                    !outing.member_is_resolved( snapshot.npc_id ) || !casualty_recorded ) {
+                    preflight_failed = true;
+                    break;
+                }
+                bandit_live_world::local_dematerialization_member_read read;
+                read.npc_id = snapshot.npc_id;
+                read.readable = true;
+                read.dead = true;
+                read.current_position = snapshot.exit_position;
+                reads.push_back( read );
+                continue;
+            }
+            shared_ptr_fast<npc> member = overmap_buffer.find_npc( snapshot.npc_id );
+            if( persisted_member == nullptr || casualty_recorded || !member ||
+                member->is_dead() || member->is_active() ||
+                here.inbounds( member->pos_abs() ) ) {
+                preflight_failed = true;
+                break;
+            }
+            backups.push_back( { member, member->pos_abs(), member->goal, member->omt_path,
+                                 member->mission, member->previous_mission } );
+            bandit_live_world::local_dematerialization_member_read read;
+            read.npc_id = member->getID();
+            read.readable = true;
+            read.hp_percent = member->hp_percentage();
+            read.current_position = member->pos_abs();
+            reads.push_back( read );
+        }
+        if( preflight_failed ) {
+            continue;
+        }
+
+        const bandit_live_world::local_dematerialization_plan plan =
+            bandit_live_world::plan_local_pair_dematerialization(
+                site, *cursor, live_bandit_current_minutes(), reads, outing.cargo );
+        if( !plan.valid ) {
+            continue;
+        }
+        const auto find_backup = [&backups]( const character_id member_id ) {
+            return std::find_if( backups.begin(), backups.end(),
+            [&member_id]( const live_bandit_local_handoff_member_backup & backup ) {
+                return backup.member->getID() == member_id;
+            } );
+        };
+        const auto quiesce_member = [&find_backup, &backups](
+        const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
+            if( snapshot.dead ) {
+                return true;
+            }
+            const auto backup = find_backup( snapshot.npc_id );
+            if( backup == backups.end() || backup->member->is_dead() ||
+                backup->member->is_active() || backup->member->pos_abs() != snapshot.exit_position ) {
+                return false;
+            }
+            backup->member->goal = npc::no_goal_point;
+            backup->member->omt_path.clear();
+            backup->member->mission = NPC_MISSION_NULL;
+            backup->member->previous_mission = NPC_MISSION_NULL;
+            return true;
+        };
+        const auto rollback_member = [&find_backup, &backups](
+        const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
+            const auto backup = find_backup( snapshot.npc_id );
+            if( backup == backups.end() ) {
+                return;
+            }
+            backup->member->goal = backup->goal;
+            backup->member->omt_path = backup->omt_path;
+            backup->member->mission = backup->mission;
+            backup->member->previous_mission = backup->previous_mission;
+        };
+        const bandit_live_world::local_handoff_commit_result result =
+            bandit_live_world::commit_local_pair_dematerialization(
+                site, plan, quiesce_member, rollback_member );
+        if( result != bandit_live_world::local_handoff_commit_result::applied ) {
+            continue;
+        }
+        changed = true;
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_dematerialization committed"
+                                   << " site=" << site.site_id
+                                   << " activity=" << site.active_outing.activity_id
+                                   << " generation=" << site.active_outing.generation
+                                   << " epoch=" << site.active_outing.handoff_epoch
+                                   << " route_position="
+                                   << site.active_outing.local_handoff.route_position.to_string()
+                                   << " members=" << reads.size() << '\n';
+    }
+    return changed;
+}
 
 std::vector<tripoint_abs_ms> live_bandit_local_handoff_entry_positions(
     const tripoint_abs_omt &route_position, const tripoint_abs_omt &approach_from,
@@ -1732,7 +1898,7 @@ bool materialize_live_bandit_structural_handoffs()
                 break;
             }
             backups.push_back( { member, member->pos_abs(), member->goal, member->omt_path,
-                                 member->mission } );
+                                 member->mission, member->previous_mission } );
             bandit_live_world::local_handoff_member_read read;
             read.npc_id = member_id;
             read.bindable = true;
@@ -1773,7 +1939,8 @@ bool materialize_live_bandit_structural_handoffs()
             member->spawn_at_precise( snapshot.entry_position );
             member->goal = npc::no_goal_point;
             member->omt_path.clear();
-            member->set_mission( NPC_MISSION_NULL );
+            member->mission = NPC_MISSION_NULL;
+            member->previous_mission = NPC_MISSION_NULL;
             overmap_buffer.insert_npc( member );
             return true;
         };
@@ -1790,7 +1957,8 @@ bool materialize_live_bandit_structural_handoffs()
             member->spawn_at_precise( backup->position );
             member->goal = backup->goal;
             member->omt_path = backup->omt_path;
-            member->set_mission( backup->mission );
+            member->mission = backup->mission;
+            member->previous_mission = backup->previous_mission;
             overmap_buffer.insert_npc( member );
         };
         const bandit_live_world::local_handoff_commit_result result =
@@ -3253,6 +3421,7 @@ void monmove()
             guy.npc_update_body();
         }
     }
+    note_live_bandit_structural_deaths_before_cleanup();
     g->cleanup_dead();
 }
 
@@ -3262,6 +3431,7 @@ void overmap_npc_move()
     avatar &u = get_avatar();
     bandit_live_world::world_state &bandit_state = overmap_buffer.global_state.bandit_live_world;
     note_live_bandit_aftermath();
+    const bool dematerialized_handoffs = dematerialize_live_bandit_structural_handoffs();
     const auto aftermath_done = std::chrono::steady_clock::now();
     std::vector<std::string> empty_site_retirement_reports;
     bandit_live_world::retire_empty_hostile_sites( bandit_state, &empty_site_retirement_reports );
@@ -3375,6 +3545,8 @@ void overmap_npc_move()
                                    << " retired_reports=" << empty_site_retirement_reports.size()
                                    << " travelling_npcs=" << travelling_npcs.size()
                                    << " npcs_need_reload=" << ( npcs_need_reload ? "yes" : "no" )
+                                   << " dematerialized_handoffs="
+                                   << ( dematerialized_handoffs ? "yes" : "no" )
                                    << " signal_cadence_due=" << ( signal_cadence_due ? "yes" : "no" )
                                    << " dispatch_cadence_due=" << ( dispatch_cadence_due ? "yes" : "no" )
                                    << " aftermath_us=" << elapsed_us( perf_started, aftermath_done )

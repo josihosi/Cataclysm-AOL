@@ -326,6 +326,7 @@ struct local_handoff_member_snapshot {
     character_id npc_id;
     tripoint_abs_ms prior_position;
     tripoint_abs_ms entry_position;
+    tripoint_abs_ms exit_position;
     int hp_percent = 0;
     bool dead = false;
 
@@ -334,7 +335,7 @@ struct local_handoff_member_snapshot {
 };
 
 struct local_handoff_snapshot {
-    int schema_version = 1;
+    int schema_version = 2;
     std::string activity_id;
     int activity_generation = 0;
     int handoff_epoch = -1;
@@ -350,6 +351,7 @@ struct local_handoff_snapshot {
 
     void clear();
     bool is_active() const;
+    bool is_abstract_resume() const;
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 };
@@ -367,6 +369,21 @@ struct local_handoff_plan {
     bool valid = false;
     simulation_advance_cursor expected_cursor;
     local_handoff_snapshot snapshot;
+    std::vector<std::string> notes;
+};
+
+struct local_dematerialization_member_read {
+    character_id npc_id;
+    bool readable = false;
+    bool dead = false;
+    int hp_percent = 0;
+    tripoint_abs_ms current_position;
+};
+
+struct local_dematerialization_plan {
+    bool valid = false;
+    simulation_advance_cursor expected_cursor;
+    local_handoff_snapshot resume_snapshot;
     std::vector<std::string> notes;
 };
 
@@ -1103,6 +1120,19 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
         const local_handoff_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &bind_member,
         const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+local_dematerialization_plan plan_local_pair_dematerialization( const site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_dematerialization_member_read> &member_reads,
+        const sortie_cargo &cargo );
+local_handoff_commit_result commit_local_pair_dematerialization( site_record &site,
+        const local_dematerialization_plan &plan,
+        const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
+        const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+bool record_local_pair_member_death( site_record &site,
+                                     const simulation_advance_cursor &expected_cursor,
+                                     character_id member_id,
+                                     const tripoint_abs_ms &death_position,
+                                     int current_minutes );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
