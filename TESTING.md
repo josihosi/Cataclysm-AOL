@@ -599,9 +599,14 @@ pass 3/61, camp-map 18/378, exact local handoff 1/281, full live-world 140/34,59
 2/24, save-size 1/10, and the harness 63/63. The 81,600,632-byte test binary SHA-256 is
 `a29645ec0efee1a577121e6a55c9d80c5328b4f56f65e13ef6d0151c7a0dc971`; saturated live-world
 serialization remains 50,572 bytes. External `phase4-20260803/lead-origin/MANIFEST.md` records the
-two corrected build attempts, final exit-0 build, exact log hashes, and boundary. The next tests are
-typed observation atomicity/roundtrip/dedup plus dead-before-share ignorance for both factions;
-quiet no-radar and no-avatar-drag production controls follow the first observer writer. Human-camp
+two corrected build attempts, final exit-0 build, exact log hashes, and boundary. Typed physical
+observations are green at `600685c1c2`: focused 5/147, legacy compaction 1/47, split return 2/148,
+full live-world 145/34,745, save compatibility 2/24, save-size 1/10, and harness 63/63. The final
+81,672,728-byte binary SHA-256 is `3a074e7a...`; saturated serialization is 51,244 bytes. External
+`phase4-20260803/typed-observation/MANIFEST.md` records the corrected local-owner fixture, both
+exit-0 builds, exact hashes, and private-dead/shared-return proof. Next, the legitimate bounded
+structural observer must write typed outing evidence without changing camp danger before physical
+report; day/dusk/night/weather/optics and quiet no-radar controls follow. Human-camp
 recovery remains sequenced after typed observations and physical reports.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60

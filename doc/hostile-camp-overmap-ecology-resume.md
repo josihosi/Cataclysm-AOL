@@ -20,9 +20,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: extend the existing bounded sortie observation into a
-  strict, versioned physical record, then prove private evidence cannot reach camp if its observer
-  dies before sharing it.
+- Current deterministic execution row: connect legitimate bounded OMT visibility to the first
+  production observer writer, recording outing evidence without changing camp intelligence until
+  a shared fact physically returns.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -42,7 +42,13 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   lead-origin/single-writer repair is checkpointed at `d801058e79`: current producers persist exact
   origin, cross-origin rewrites reject atomically, and the legacy player-pressure consumer cannot
   steal structural/frontier/terrain leads. Exact build/test/save evidence is under external
-  `phase4-20260803/lead-origin/MANIFEST.md`; typed physical observations are next.
+  `phase4-20260803/lead-origin/MANIFEST.md`.
+- The typed observation envelope is checkpointed at `600685c1c2`: schema-1 pins complete physical
+  provenance and target revision, strict batches reject atomically, `(fact,bucket)` compaction is
+  64-input/16-retained bounded, and only shared facts cross final/provisional physical return. The
+  dead-before-share negative control, both factions, legacy migration, structural/hostile boundary,
+  full live-world, save compatibility, and 51,244-byte saturated save gate are green. Exact evidence
+  is under external `phase4-20260803/typed-observation/MANIFEST.md`.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

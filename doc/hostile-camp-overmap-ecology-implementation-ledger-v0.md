@@ -2,7 +2,7 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 4 typed physical observation**
+Status: **ACTIVE - Phase 4 legitimate observer wiring**
 
 Active phase: **Phase 4**
 
@@ -864,7 +864,7 @@ its own `#dispatch` scout pair, and preventing the structural scheduler from own
 first Phase-4 slice must persist a test-visible lead origin, exclude structural/frontier/terrain
 owners from the legacy consumer, and prove no dual writer before broader observation work.
 
-- [ ] Define a compact observation record: stable evidence/source ID, sense, observer ID, source/receiver OMT, time and 30-minute bucket, strength, visual quality, distinct defender IDs plus simultaneity window, normalized observed power/equipment detail, target revision, uncertainty radius, expiry, and shared status.
+- [x] Define a compact observation record: stable evidence/source ID, sense, observer ID, source/receiver OMT, time and 30-minute bucket, strength, visual quality, distinct defender IDs plus simultaneity window, normalized observed power/equipment detail, target revision, uncertainty radius, expiry, and shared status. _Checkpoint `600685c1c2` adds strict schema-1 records to the existing bounded outing/report path, exact `(fact,bucket)` dedup, 64-input/16-retained caps, full-batch atomic rejection, legacy schema-0 compatibility, and both-faction save proof._
 - [ ] Use legitimate OMT visibility with clear-day baseline around 3 OMT, intermediate visibility around 2, and unlit night around 1; let weather, light, terrain, elevation, and optics modify the real calculation.
 - [ ] Use separate acquire/retain thresholds and last-known-location age so visibility does not flicker every update.
 - [ ] Convert smoke and light into bounded evidence rather than exact avatar coordinates.
@@ -876,7 +876,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [ ] A quiet evac shelter inside the former radar radius remains undiscovered without a route, signal, or legitimate line of sight.
 - [ ] Moving the player does not drag a stationary camp lead to the new avatar OMT.
 - [ ] False/decoy smoke, light, and sound can produce stale/empty investigations rather than magical correction.
-- [ ] Scouts share observations only while within party communication range; a dead scout's private unshared evidence does not return home.
+- [ ] Scouts share observations only while within party communication range; a dead scout's private unshared evidence does not return home. _The state/report boundary is green at `600685c1c2`: private facts never enter final or provisional reports, shared facts become reported at physical return, and the dead-before-share case leaves camp ignorant. The production writer still must derive private/shared from actual party range._
 - [ ] Add debug rendering/logging of last-known position, evidence provenance, age, and expiry.
 - [ ] Run live/harness proof in this phase for quiet-evac no-radar, day/dusk/night/weather/optics, smoke/light/sound, target relocation, and decoy/empty leads.
 
@@ -891,7 +891,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; external evidence `phase4-20260803/lead-origin/MANIFEST.md`.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; external evidence under `phase4-20260803/{lead-origin,typed-observation}/MANIFEST.md`.
 - No-radar control:
 - Visibility matrix:
 - Evidence/save benchmark:

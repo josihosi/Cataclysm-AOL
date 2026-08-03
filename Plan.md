@@ -205,9 +205,16 @@ Phase 4 lead-origin/single-writer footing is checkpointed at `d801058e79`: every
 persists an exact origin, cross-origin rewrites fail before mutation, and the legacy player-pressure
 consumer cannot steal structural/frontier/terrain leads. Focused origin/camp-map/local-handoff,
 full live-world, save-compatibility, save-size, and 63 harness tests are green; exact artifacts live
-under external `phase4-20260803/lead-origin/MANIFEST.md`. The first unchecked execution row is now
-the compact typed physical-observation record and its existing sortie/report ingestion boundary,
-including the dead-before-share negative control. The compound human-camp opportunity-recovery
+under external `phase4-20260803/lead-origin/MANIFEST.md`. The compact physical-observation envelope
+is checkpointed at `600685c1c2`: schema-1 facts pin exact observer/source/receiver/bucket/revision
+provenance, strict batches reject atomically, `(fact,bucket)` retention stays 16/64 bounded, and only
+shared evidence crosses final/provisional physical report return. Bandit/cannibal roundtrip,
+malformed/replay/cap/migration, structural-positive/hostile-negative, and dead-before-share proof
+are green; saturated state is 51,244 bytes. Exact artifacts live under external
+`phase4-20260803/typed-observation/MANIFEST.md`. The first unchecked row is now the legitimate OMT
+visibility/production observer writer: connect the bounded structural threat read to outing evidence
+and stop camp-lead danger writeback before a shared physical report. The compound human-camp
+opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
