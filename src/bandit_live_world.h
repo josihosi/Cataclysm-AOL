@@ -947,6 +947,17 @@ struct structural_threat_observer_request {
     int party_power = 0;
 };
 
+struct structural_observer_visibility_read {
+    int ordinary_sight_range_ms = 0;
+    float weather_sight_penalty = 1.0f;
+    int elevation_omt = 0;
+    bool has_optic = false;
+};
+
+int structural_observer_omt_sight_range( const structural_observer_visibility_read &read );
+bool structural_observer_route_is_visible( int sight_points,
+        const std::vector<int> &terrain_see_costs );
+
 struct abstract_threat_read {
     bool observed = false;
     bool overlap = false;

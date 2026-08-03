@@ -10,8 +10,13 @@
 #include <vector>
 
 #include "cata_catch.h"
+#include "game_constants.h"
 #include "json.h"
 #include "json_loader.h"
+#include "lightmap.h"
+#include "npc.h"
+#include "omdata.h"
+#include "weather_type.h"
 
 namespace
 {
@@ -9352,6 +9357,99 @@ TEST_CASE( "hostile_camp_abstract_threat_observer_is_corridor_bounded_and_detour
         CHECK( lead->times_harvested == 0 );
         CHECK( lead->bounty == 1 );
     }
+}
+
+TEST_CASE( "hostile_camp_structural_observer_visibility_uses_real_sight_inputs",
+           "[bandit][live_world][structural_bounty][phase4_visibility]" )
+{
+    struct visibility_case {
+        const char *label;
+        int ordinary_sight_range_ms;
+        float weather_sight_penalty;
+        int elevation_omt;
+        bool has_optic;
+        int expected_omt_range;
+    };
+    const std::vector<visibility_case> cases = {
+        { "unlit night", SEEX - 1, 1.0f, 0, false, 1 },
+        { "intermediate light", SEEX * 2, 1.0f, 0, false, 2 },
+        { "clear day", SEEX * 4 + 1, 1.0f, 0, false, 3 },
+        { "ordinary bad weather", SEEX * 4 + 1, 1.2f, 0, false, 2 },
+        { "severe bad weather", SEEX * 4 + 1, 1.7f, 0, false, 1 },
+        { "foggy unlit night", SEEX - 1, 1.7f, 0, false, 0 },
+        { "night optics", SEEX - 1, 1.0f, 0, true, 2 },
+        { "elevated night observer", SEEX - 1, 1.0f, 1, false, 3 },
+        { "clear elevated optical terrain budget", SEEX * 4 + 1, 1.0f, 2, true, 14 },
+    };
+    for( const visibility_case &fixture : cases ) {
+        CAPTURE( fixture.label );
+        bandit_live_world::structural_observer_visibility_read read;
+        read.ordinary_sight_range_ms = fixture.ordinary_sight_range_ms;
+        read.weather_sight_penalty = fixture.weather_sight_penalty;
+        read.elevation_omt = fixture.elevation_omt;
+        read.has_optic = fixture.has_optic;
+        CHECK( bandit_live_world::structural_observer_omt_sight_range( read ) ==
+               fixture.expected_omt_range );
+    }
+
+    standard_npc observer( "Phase 4 visibility observer" );
+    observer.recalc_sight_limits();
+    const weather_type_id sunny( "sunny" );
+    const weather_type_id rainstorm( "rainstorm" );
+    const weather_type_id fog( "fog" );
+    REQUIRE( sunny.is_valid() );
+    REQUIRE( rainstorm.is_valid() );
+    REQUIRE( fog.is_valid() );
+    const auto real_visibility = [&observer]( const float light,
+    const weather_type_id & weather, const int elevation_omt = 0,
+    const bool has_optic = false ) {
+        bandit_live_world::structural_observer_visibility_read read;
+        read.ordinary_sight_range_ms = observer.sight_range( light, light );
+        read.weather_sight_penalty = weather->sight_penalty;
+        read.elevation_omt = elevation_omt;
+        read.has_optic = has_optic;
+        return bandit_live_world::structural_observer_omt_sight_range( read );
+    };
+    const int actual_night = real_visibility( LIGHT_AMBIENT_MINIMAL, sunny );
+    const int actual_intermediate = real_visibility( LIGHT_AMBIENT_LIT, sunny );
+    const int actual_clear_day = real_visibility( 100.0f, sunny );
+    CAPTURE( observer.sight_range( LIGHT_AMBIENT_MINIMAL, LIGHT_AMBIENT_MINIMAL ) );
+    CAPTURE( observer.sight_range( LIGHT_AMBIENT_LIT, LIGHT_AMBIENT_LIT ) );
+    CAPTURE( observer.sight_range( 100.0f, 100.0f ) );
+    CHECK( actual_night == 1 );
+    CHECK( actual_intermediate == 2 );
+    CHECK( actual_clear_day == 3 );
+    CHECK( real_visibility( 100.0f, rainstorm ) == 2 );
+    CHECK( real_visibility( 100.0f, fog ) == 1 );
+
+    const oter_str_id field( "field" );
+    const oter_str_id forest( "forest" );
+    REQUIRE( field.is_valid() );
+    REQUIRE( forest.is_valid() );
+    const int field_see_cost = static_cast<int>( field->get_see_cost() );
+    const int forest_see_cost = static_cast<int>( forest->get_see_cost() );
+    CAPTURE( field_see_cost, forest_see_cost );
+    CHECK( field_see_cost == 0 );
+    CHECK( forest_see_cost == 4 );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible(
+                     actual_clear_day, { forest_see_cost } ) );
+    CHECK( bandit_live_world::structural_observer_route_is_visible(
+               real_visibility( 100.0f, sunny, 0, true ), { forest_see_cost } ) );
+    CHECK( bandit_live_world::structural_observer_route_is_visible(
+               real_visibility( 100.0f, sunny, 1 ), { forest_see_cost } ) );
+
+    bandit_live_world::structural_observer_visibility_read invalid;
+    invalid.ordinary_sight_range_ms = -1;
+    CHECK( bandit_live_world::structural_observer_omt_sight_range( invalid ) == 0 );
+    invalid.ordinary_sight_range_ms = SEEX * 4 + 1;
+    invalid.weather_sight_penalty = std::numeric_limits<float>::quiet_NaN();
+    CHECK( bandit_live_world::structural_observer_omt_sight_range( invalid ) == 0 );
+
+    CHECK( bandit_live_world::structural_observer_route_is_visible( 3, { 1, 1, 1 } ) );
+    CHECK( bandit_live_world::structural_observer_route_is_visible( 2, { 1, 1 } ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 2, { 1, 1, 1 } ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 3, { 1, 3 } ) );
+    CHECK_FALSE( bandit_live_world::structural_observer_route_is_visible( 3, { -1 } ) );
 }
 
 TEST_CASE( "hostile_camp_structural_observer_records_owned_evidence_before_returning_report",

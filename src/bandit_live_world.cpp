@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <optional>
@@ -14,6 +15,7 @@
 #include <vector>
 
 #include "bandit_live_world_probe.h"
+#include "game_constants.h"
 #include "json.h"
 
 namespace
@@ -9177,6 +9179,41 @@ int structural_outing_party_power( const site_record &site )
                                    capability.defender, 1, 10 );
     }
     return std::clamp( party_power, 0, 200 );
+}
+
+int structural_observer_omt_sight_range( const structural_observer_visibility_read &read )
+{
+    if( read.ordinary_sight_range_ms < 0 ||
+        !std::isfinite( read.weather_sight_penalty ) || read.weather_sight_penalty < 1.0f ) {
+        return 0;
+    }
+    long long sight = read.ordinary_sight_range_ms < SEEX ? 1 :
+                      read.ordinary_sight_range_ms <= SEEX * 4 ? 2 : 3;
+    sight += static_cast<long long>( std::max( 0, read.elevation_omt ) ) * 2;
+    if( read.has_optic ) {
+        sight *= 2;
+    }
+    sight = static_cast<long long>( std::floor( sight / read.weather_sight_penalty ) );
+    return static_cast<int>( std::clamp<long long>(
+                                 sight, 0, std::numeric_limits<int>::max() ) );
+}
+
+bool structural_observer_route_is_visible( int sight_points,
+        const std::vector<int> &terrain_see_costs )
+{
+    if( sight_points < 0 ) {
+        return false;
+    }
+    for( const int see_cost : terrain_see_costs ) {
+        if( see_cost < 0 ) {
+            return false;
+        }
+        sight_points -= see_cost;
+        if( sight_points < 0 ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 namespace

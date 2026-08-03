@@ -2970,13 +2970,13 @@ bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
         offset.y() < -sight_points || offset.y() > sight_points ) {
         return false;
     }
+    std::vector<int> terrain_see_costs;
     for( const tripoint_abs_omt &omt : line_to( origin, target ) ) {
-        sight_points -= static_cast<int>( overmap_buffer.ter( omt )->get_see_cost() );
-        if( sight_points < 0 ) {
-            return false;
-        }
+        terrain_see_costs.push_back(
+            static_cast<int>( overmap_buffer.ter( omt )->get_see_cost() ) );
     }
-    return true;
+    return bandit_live_world::structural_observer_route_is_visible(
+               sight_points, terrain_see_costs );
 }
 
 int live_bandit_structural_observer_sight( const npc &observer,
@@ -2990,8 +2990,6 @@ int live_bandit_structural_observer_sight( const npc &observer,
                                std::max<float>( LIGHT_AMBIENT_MINIMAL,
                                        sun_moon_light_at( calendar::turn ) *
                                        weather->light_multiplier + weather->light_modifier );
-    int sight = observer.overmap_sight_range( remote_light, remote_light );
-    sight += std::max( 0, origin.z() ) * 2;
     static const json_character_flag enhanced_vision( "ENHANCED_VISION" );
     const bool has_optic = observer.cache_has_item_with( flag_ZOOM ) ||
                            observer.has_flag( enhanced_vision ) ||
@@ -3002,11 +3000,12 @@ int live_bandit_structural_observer_sight( const npc &observer,
             return mod != nullptr && mod->has_flag( flag_ZOOM );
         } );
     } );
-    if( has_optic ) {
-        sight *= 2;
-    }
-    const float weather_penalty = std::max( 1.0f, weather->sight_penalty );
-    return std::max( 0, static_cast<int>( std::floor( sight / weather_penalty ) ) );
+    bandit_live_world::structural_observer_visibility_read visibility;
+    visibility.ordinary_sight_range_ms = observer.sight_range( remote_light, remote_light );
+    visibility.weather_sight_penalty = std::max( 1.0f, weather->sight_penalty );
+    visibility.elevation_omt = origin.z();
+    visibility.has_optic = has_optic;
+    return bandit_live_world::structural_observer_omt_sight_range( visibility );
 }
 
 struct live_bandit_omt_threat_read {
