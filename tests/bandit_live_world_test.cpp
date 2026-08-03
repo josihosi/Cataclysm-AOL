@@ -624,18 +624,101 @@ TEST_CASE( "bandit_live_world_routine_policy_sizes_exact_pairs_and_materializati
         bandit_live_world::hostile_site_profile::camp_style,
         bandit_live_world::hostile_site_profile::cannibal_camp,
     };
+    std::vector<std::pair<std::string, bandit_live_world::routine_member_readiness_snapshot>>
+    unready_variants;
+    bandit_live_world::routine_member_readiness_snapshot wounded;
+    wounded.hp_percent = 50;
+    unready_variants.emplace_back( "wounded", wounded );
+    bandit_live_world::routine_member_readiness_snapshot sleeping;
+    sleeping.sleeping = true;
+    unready_variants.emplace_back( "sleeping", sleeping );
+    bandit_live_world::routine_member_readiness_snapshot incapacitated;
+    incapacitated.incapacitated = true;
+    unready_variants.emplace_back( "incapacitated", incapacitated );
     for( const bandit_live_world::hostile_site_profile profile : camp_profiles ) {
         for( int population = 0; population <= 10; ++population ) {
             const bandit_live_world::site_record site = make_site( profile, population );
             const bandit_live_world::routine_scout_policy_result policy =
                 bandit_live_world::routine_scout_policy( site );
+            const bandit_live_world::roster_view roster = site.roster();
             CAPTURE( static_cast<int>( profile ), population );
+            REQUIRE( roster.valid );
+            CHECK( roster.living_total == population );
+            CHECK( roster.ready_total == population );
             CHECK( policy.applies );
             CHECK( policy.eligible == ( population >= 2 ) );
             CHECK( policy.party_size == ( population >= 2 ? 2 : 0 ) );
             CHECK( policy.required_local_reserve == ( population >= 3 ? 1 : 0 ) );
             CHECK( policy.concrete_ready_goal == ( population >= 3 ? 3 :
                                                    population == 2 ? 2 : 0 ) );
+
+            for( const auto &unready_variant : unready_variants ) {
+                bandit_live_world::site_record unready_site = make_site( profile, population );
+                if( population > 0 ) {
+                    unready_site.members.front().wounded_or_unready =
+                        bandit_live_world::routine_member_is_unready( unready_variant.second );
+                }
+                const bool expected_eligible = population >= 4;
+                const bandit_live_world::routine_scout_policy_result unready_policy =
+                    bandit_live_world::routine_scout_policy( unready_site );
+                const bandit_live_world::routine_scout_pair_selection_result unready_pair =
+                    bandit_live_world::select_routine_scout_pair( unready_site );
+                const bandit_live_world::roster_view unready_roster = unready_site.roster();
+                CAPTURE( unready_variant.first );
+                REQUIRE( unready_roster.valid );
+                CHECK( unready_roster.living_total == population );
+                CHECK( unready_roster.ready_total == std::max( 0, population - 1 ) );
+                CHECK( unready_policy.eligible == expected_eligible );
+                CHECK( unready_pair.eligible == expected_eligible );
+                if( unready_pair.eligible ) {
+                    CHECK( std::find( unready_pair.member_ids.begin(),
+                                      unready_pair.member_ids.end(),
+                                      unready_site.members.front().npc_id ) ==
+                           unready_pair.member_ids.end() );
+                }
+            }
+
+            bandit_live_world::site_record missing_site = make_site( profile, population );
+            if( population > 0 ) {
+                REQUIRE( bandit_live_world::update_member_state(
+                             missing_site, missing_site.members.front().npc_id,
+                             bandit_live_world::member_state::missing,
+                             "population matrix missing member" ) );
+            }
+            CHECK( missing_site.living_total == std::max( 0, population - 1 ) );
+            REQUIRE( missing_site.roster().valid );
+            CHECK( missing_site.roster().ready_total == std::max( 0, population - 1 ) );
+            CHECK( bandit_live_world::routine_scout_policy( missing_site ).eligible ==
+                   ( population >= 3 ) );
+            CHECK( bandit_live_world::select_routine_scout_pair( missing_site ).eligible ==
+                   ( population >= 3 ) );
+
+            if( population >= 2 ) {
+                bandit_live_world::site_record reserved_site = make_site( profile, population );
+                set_test_active_outing( reserved_site, reserved_site.site_id + "#matrix-active" );
+                reserved_site.active_outing.member_ids = {
+                    reserved_site.members[0].npc_id, reserved_site.members[1].npc_id
+                };
+                reserved_site.active_outing.leader_id = reserved_site.members[0].npc_id;
+                for( const character_id &member_id : reserved_site.active_outing.member_ids ) {
+                    REQUIRE( bandit_live_world::update_member_state(
+                                 reserved_site, member_id,
+                                 bandit_live_world::member_state::outbound,
+                                 "population matrix active reservation" ) );
+                }
+                const bandit_live_world::roster_view reserved_roster = reserved_site.roster();
+                REQUIRE( reserved_roster.valid );
+                CHECK( reserved_roster.living_total == population );
+                CHECK( reserved_roster.ready_total == population - 2 );
+                CHECK( reserved_roster.away_ids == reserved_site.active_outing.member_ids );
+                const bandit_live_world::routine_scout_policy_result reserved_policy =
+                    bandit_live_world::routine_scout_policy( reserved_site );
+                CHECK_FALSE( reserved_policy.eligible );
+                CHECK( reserved_policy.party_size == 0 );
+                CHECK( reserved_policy.required_local_reserve == 0 );
+                CHECK( reserved_policy.concrete_ready_goal == 0 );
+                CHECK_FALSE( bandit_live_world::select_routine_scout_pair( reserved_site ).eligible );
+            }
         }
     }
 
