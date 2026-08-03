@@ -183,12 +183,18 @@ green through dematerialization checkpoint `f83b6bb116` and local cohesion check
 `71bde93d48`: distinct same-OMT staging tiles, physical-death-only leader re-election, six-tile
 cohesion, ten-minute incomplete-assembly timeout, two failed paths, and final live survivor
 recheck prevent first-member completion or wedged local ownership. The current first unchecked row
-is atomic finite physical bounty: connect structural arrival to the existing world-global resource
-authority with one unit per survivor and at most two per pair, without remote knowledge or replayed
-cargo. Terrain labels remain static priors, not perception of loot, residents, or mobile danger.
+is the honest abstract-threat adapter: inspect only the party's current OMT plus at most three
+ordinary-observer-visible committed forward OMTs, persist one bounded overlap episode, attempt at
+most two passable detours, and apply the provisional non-victory attrition outcome once. Unseen,
+screened, off-corridor, or future threats must not steer the party; abstract resolution must not
+damage the threat, and local/abstract owners cannot both resolve one episode. Terrain labels remain
+static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
+Finite physical arrival is checkpointed at `dfddc712d4`: full pairs contest a three-unit OMT as
+`2+1`, a physically recorded casualty produces `1+2`, each harvested unit carries two supply units,
+and home credit/resource depletion/private belief/save-load/replay share existing exact receipts.
 Post-close
 physical arrival by a member already declared missing is not yet claimed; that later bounded
 receipt belongs with detailed outcome semantics. The repaired Mac

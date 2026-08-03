@@ -6,19 +6,19 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Atomically consume finite ground bounty at the existing
-world resource, with survivor-bounded cargo and no duplicated depletion.**
+Current deterministic execution row: **Wire the bounded legitimately-visible forward-corridor
+abstract-threat adapter and one-shot detour/attrition episode.**
 
-Latest resume packet (behavior checkpoint `71bde93d48`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `dfddc712d4`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Local schema 3 persists distinct same-OMT staging tiles, one authoritative leader,
-six-tile cohesion, a fixed ten-minute incomplete-assembly deadline, two failed-path limit, and
-coherent return. Every confirmed survivor must reach staging; absence never implies death, and
-only physical leader death re-elects. Local-handoff/structural/live-world/save gates pass 1/281,
-38/5,694, 129/34,102, 2/24, and 1/10. Test binary SHA-256 is `441f0126...`
-(81,290,984 bytes). The current-head generic benchmark has an explicit two-attempt non-credit
-caveat; the prior 100-site packet remains the nearest performance footing. Exact evidence is under
-`phase3-20260803/local-cohesion/MANIFEST.md` (SHA-256 `21aad181...`). No current blocker.
+untouched. Structural arrival atomically claims the one OMT-global resource, takes at most one unit
+per confirmed survivor/two per pair, updates only the claimant's estimate, and carries two supply
+units per harvested unit home under exact resource/cargo watermarks. Contests resolve `2+1` and
+casualty-limited `1+2`; depleted arrival and save/load/replay are no-ops for resource/cargo.
+Resource/structural/save/full-live-world gates pass 7/2,252, 41/5,833, 21/8,581, and 132/34,243.
+Test binary SHA-256 is `a551b906...` (81,368,552 bytes). Exact evidence is under external
+`phase3-20260803/finite-bounty/MANIFEST.md` (SHA-256 `e0132e84...`). Phase-3 aggregate performance
+remains due after the threat adapter; no current blocker.
 
 Production target: `port/cdda-master`
 
@@ -768,14 +768,14 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [x] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent. _Checkpoint `367337c9e4`: injected second-bind failure rolls back the attempted second and first members in reverse with byte-identical camp state; committed save/load and replay perform no new bind._
 - [x] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return. _Checkpoint `71bde93d48`: six-tile cohesion, ten-minute incomplete-assembly deadline, two failed paths, physical-death-only stable re-election, and coherent returning-home are persisted and replay-safe._
 - [x] Define group arrival as the required surviving members assembled at staging, not first-member arrival. _Checkpoint `71bde93d48`: distinct per-member staging tiles and a final live-position recheck block first-member/stale-latch dematerialization; bandit/cannibal, save/load, unload-timeout, and sole-survivor controls are green._
-- [ ] Ground bounty is finite and atomically depleted at the world resource.
+- [x] Ground bounty is finite and atomically depleted at the world resource. _Checkpoint `dfddc712d4`: structural arrival stages the exact claimant and target record, applies the issued operation/generation resource key, and commits global truth, private estimate, cargo, and phase only after every validation succeeds._
 - [ ] Wire the bounded current/legitimately-visible-forward-corridor abstract-threat adapter and one-shot detour/attrition resolver; the ordinary OMT observer may expose at most three committed route OMTs, an unseen horde cannot reroute scouts, an overlapped horde cannot be ignored, and abstract scouts never damage the horde without local simulation.
-- [ ] Normalize existing ground bounty 1/2/3 to 333/667/1000; a surviving pair atomically takes at most one unit per survivor, so two camps contesting bounty 3 resolve as 2 then 1 rather than duplicating it.
-- [ ] Ordinary ground bounty does not replenish; human-camp opportunity may recover through new observed activity/storage.
-- [ ] Treat initial abstract bounty as ambient salvage unless actual map-item mutation is implemented; never claim visible player-loaded items vanished when no physical mutation occurred.
-- [ ] Return abstract cargo to camp stockpile and derive scarcity pressure from real bounded fields rather than a permanent zero/test-only input.
-- [ ] Each actually harvested ground-bounty unit adds two `supply_units`; paid shakedown loot adds `max(1, floor(surrendered_trade_value / 1000))` units, both clamped to the stock cap. No invisible replenishment occurs merely because time passed.
-- [ ] If two camps reach one depleted OMT, only the first successful claim consumes it; the second reports an empty/stale lead.
+- [x] Normalize existing ground bounty 1/2/3 to 333/667/1000; a surviving pair atomically takes at most one unit per survivor, so two camps contesting bounty 3 resolve as 2 then 1 rather than duplicating it. _Checkpoint `dfddc712d4`: exact normalization is unit-tested; full pairs contest as `2+1`, and a physically recorded casualty limits the first claim so the contest resolves `1+2`._
+- [ ] Ordinary ground bounty does not replenish; human-camp opportunity may recover through new observed activity/storage. _Ground depletion persistence is green through `432c0f9da7`/`dfddc712d4`; the human-camp recovery half remains for the dossier/evidence phases._
+- [x] Treat initial abstract bounty as ambient salvage unless actual map-item mutation is implemented; never claim visible player-loaded items vanished when no physical mutation occurred. _Checkpoint `dfddc712d4` consumes the abstract OMT record only; it performs and claims no map-item deletion._
+- [x] Return abstract cargo to camp stockpile and derive scarcity pressure from real bounded fields rather than a permanent zero/test-only input. _Checkpoint `dfddc712d4` persists in-transit cargo, advances time-based supply consumption at home, credits the bounded `site.supply_units` authority once, writes the cargo watermark, and then releases the matching party._
+- [ ] Each actually harvested ground-bounty unit adds two `supply_units`; paid shakedown loot adds `max(1, floor(surrendered_trade_value / 1000))` units, both clamped to the stock cap. No invisible replenishment occurs merely because time passed. _Ground-bounty conversion/cap is green at `dfddc712d4`; paid-shakedown conversion remains unchecked._
+- [x] If two camps reach one depleted OMT, only the first successful claim consumes it; the second reports an empty/stale lead. _Checkpoint `dfddc712d4`: the second camp retains its stale estimate until physical arrival, then records the exact remaining amount; an already depleted town/scout arrival creates no receipt or cargo and is byte-stable on replay._
 - [x] Keep the existing global start budget or replace it with an equally explicit bounded scheduler. _Checkpoint `83c40e3bc3`: eligible-only hourly rotation considers at most 16 and starts at most two exact pairs; global-budget exhaustion is not recorded as camp failure._
 - [x] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, and 100/500 fairness; routed-dispatch checkpoint `cab98bc55c` adds the real terrain/final-score consumer and boundary-tests eight global route callbacks, two starts, budget-denial semantics, and byte-stable replay._
 - [ ] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery.
@@ -784,9 +784,9 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [ ] Test loaded/unloaded boundary transitions while outbound, harvesting, regrouping, withdrawing, and returning.
 - [ ] Test repeated load/unload thrash, partial pair spawn, one member dying during handoff, and save/load in both transition directions.
 - [x] Boundary-test `D=499/500`, `S=299/300`, retained `149/150`, and risk `749/750`; prove force-due does not bypass hard gates. _Checkpoint `cab98bc55c` tests all exact score/risk edges plus route-segment 499/500, first/later force-due clocks, and an impassable force-due control._
-- [ ] Test supply pressure at just below/at 1, 3, and 7 member-days; daily and large-jump consumption; roster/cap changes; legacy seeding; returned bounty replenishment; and no unbounded catch-up loop.
+- [x] Test supply pressure at just below/at 1, 3, and 7 member-days; daily and large-jump consumption; roster/cap changes; legacy seeding; returned bounty replenishment; and no unbounded catch-up loop. _Supply checkpoint `37498066ba` covers fixed-point pressure/consumption/migration/caps; `dfddc712d4` adds persisted returned-bounty replenishment with cap and replay controls._
 - [ ] Test outward frontier coverage and legitimate discovery at target separations 10 and 12 OMT; every sector reaches 7-9 OMT by the eighth resolved frontier outing/24-day bound; cheap ranking performs zero full route solves and the global budget solves at most two candidates per considered camp.
-- [ ] Test a bounty-3 resource where the first pair arrives with one survivor and atomically takes one unit, then a full second pair takes exactly the remaining two; replay/save-load cannot change the total.
+- [x] Test a bounty-3 resource where the first pair arrives with one survivor and atomically takes one unit, then a full second pair takes exactly the remaining two; replay/save-load cannot change the total. _Checkpoint `dfddc712d4`; focused resource coverage passes 7 cases / 2,252 assertions and full live-world passes 132 / 34,243 at seed `830204929`._
 - [ ] Boundary-test bandit bounty cues: occupied-only 0->1; one valid cue 1->2; a duplicate cue/source/bucket is a no-op; two distinct cue classes in distinct buckets or one quality-3 bulk-handling observation reach 3; light/smoke/hidden storage/exact item value alone do not raise it; newer clear-empty evidence returns it to 0 without erasing audit provenance.
 - [ ] Boundary-test abstract danger: visible pre-entry versus dark/screened/off-corridor controls; two-detour cap; `danger_high` just below/equal to party power and just below/equal to twice party power; continuous overlap across hours/save/load/owner handoff applies one outcome; leaving then genuinely re-encountering creates exactly one new episode; local materialization and abstract resolution never both own one episode.
 - [ ] Prove quiet targets inside the old radar radius create no candidate, decoy signals lead only to their uncertainty area, movement of the avatar does not drag an outing, and hidden camp recovery creates no new pressure without a returned post-event report.
@@ -796,9 +796,9 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [ ] Both factions naturally send coherent paired outings without player proximity.
 - [ ] Parties follow one plausible route and cannot double-resolve abstract/local work.
 - [ ] Pair materialization/cohesion has live artifact proof in this phase rather than being deferred to Phase 8.
-- [ ] Finite resource depletion is globally atomic and camp beliefs remain independent.
+- [x] Finite resource depletion is globally atomic and camp beliefs remain independent. _Checkpoint `dfddc712d4`; exact `2+1`, `1+2`, stale-belief, depleted, save/load, and replay controls are recorded in external `phase3-20260803/finite-bounty/MANIFEST.md`._
 - [ ] CPU, allocation, and save-size microbenchmarks stay within the phase budgets.
-- [ ] Behavior + tests form a checkpoint commit.
+- [x] Behavior + tests form a checkpoint commit. _Finite-resource behavior/tests are checkpointed at `dfddc712d4`; later Phase-3 rows will add their own narrow checkpoints before the phase closes._
 
 Evidence:
 
@@ -832,6 +832,13 @@ Evidence:
   `phase3-20260803/terrain-fit/MANIFEST.md`.
 - Commits: `3424fd5c24` (shared routine parity); `0247de602e` (exact persistent pair);
   `e537ea7b49` (shared route and movement cursor); `cb53cbafdb` (fair terrain fit/scoring).
+- Finite physical bounty: `dfddc712d4` composes the existing resource, private-estimate, cargo,
+  supply, and reservation authorities without a new schema. Final resource/structural/save/full
+  live-world gates pass 7/2,252, 41/5,833, 21/8,581, and 132/34,243 at seed `830204929`; the
+  81,368,552-byte test binary SHA-256 is `a551b906...`. The compact resource slope remains 29
+  bytes per harvested OMT at 500-to-1,000 records. Exact commands, hashes, review correction, and
+  the deliberate no-new-generic-benchmark boundary are in external
+  `phase3-20260803/finite-bounty/MANIFEST.md`.
 - Natural outing harness:
 - Resource concurrency test:
 - Reality-boundary test:

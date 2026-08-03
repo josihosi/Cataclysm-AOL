@@ -559,8 +559,21 @@ accepted P1 review fix closed an unload-time ownership wedge; final AutoReview i
 The current 100-site benchmark made two pre-measurement non-credit attempts (fixture hash drift,
 then wrong fixture name), so no current timing number is claimed. The prior dematerialization
 packet remains the nearest honest gross performance footing. Exact evidence is under external
-`phase3-20260803/local-cohesion/MANIFEST.md`. Current validation target is atomic finite-resource
-depletion, survivor-bounded cargo, competing camps, private belief, and replay.
+`phase3-20260803/local-cohesion/MANIFEST.md`.
+
+Finite physical bounty is green at `dfddc712d4`. The final 81,368,552-byte `cata_test` SHA-256 is
+`a551b90690cb90eb1177a16c9bff49959fb93fb004749d0c8db1a4a03535aac7`; resource, structural,
+save, and full-live-world gates pass 7/2,252, 41/5,833, 21/8,581, and 132/34,243 at seed
+`830204929`. Full pairs contest bounty three as `2+1`; a physically recorded casualty produces
+`1+2`; only the arriving camp learns the remaining estimate; each unit becomes two persisted
+in-transit supply units and credits the bounded home stock once. Depleted arrival and save/replay
+cannot duplicate resource or cargo. One broad-pass crash exposed and fixed two older test pointers
+retained across site replacement; the final full order is green. Exact commands/hashes are under
+external `phase3-20260803/finite-bounty/MANIFEST.md`. No new generic timing claim was added; the
+existing 29-byte harvested-OMT slope and prior accepted 100-site footing remain valid, and an
+aggregate Phase-3 measurement is due after the threat adapter. Current validation target is
+legitimate forward-corridor visibility, two-detour cap, one-shot overlap attrition, threat
+non-mutation, save/load/replay, and exclusive local/abstract episode ownership.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
