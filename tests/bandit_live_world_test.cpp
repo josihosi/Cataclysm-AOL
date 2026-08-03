@@ -100,17 +100,62 @@ std::string serialize_world( const bandit_live_world::world_state &world )
     return out.str();
 }
 
+void erase_pretty_json_member_line( std::string &bytes, const std::string &member_name )
+{
+    const std::size_t member = bytes.find( "\"" + member_name + "\"" );
+    REQUIRE( member != std::string::npos );
+    const std::size_t colon = bytes.find( ':', member );
+    REQUIRE( colon != std::string::npos );
+    std::size_t value = colon + 1;
+    while( value < bytes.size() && ( bytes[value] == ' ' || bytes[value] == '\t' ) ) {
+        value++;
+    }
+    std::size_t value_end = value;
+    if( value < bytes.size() && bytes[value] == '"' ) {
+        value_end++;
+        bool escaped = false;
+        for( ; value_end < bytes.size(); value_end++ ) {
+            const char current = bytes[value_end];
+            if( current == '"' && !escaped ) {
+                value_end++;
+                break;
+            }
+            escaped = current == '\\' && !escaped;
+            if( current != '\\' ) {
+                escaped = false;
+            }
+        }
+    } else {
+        value_end = bytes.find_first_of( ",}\n", value );
+    }
+    REQUIRE( value_end != std::string::npos );
+    while( value_end < bytes.size() && ( bytes[value_end] == ' ' || bytes[value_end] == '\t' ) ) {
+        value_end++;
+    }
+    REQUIRE( ( value_end < bytes.size() && bytes[value_end] == ',' ) );
+    value_end++;
+    std::size_t member_begin = member;
+    while( member_begin > 0 &&
+           ( bytes[member_begin - 1] == ' ' || bytes[member_begin - 1] == '\t' ) ) {
+        member_begin--;
+    }
+    bytes.erase( member_begin, value_end - member_begin );
+}
+
 bandit_live_world::world_state round_trip_legacy_site_world(
     const bandit_live_world::world_state &world )
 {
     std::string bytes = serialize_world( world );
-    const std::string current_schema = "\"schema_version\": 10";
+    const std::string current_schema = "\"schema_version\": 11";
     const std::string current_roster = "\"living_total\"";
     REQUIRE( bytes.find( current_schema ) != std::string::npos );
     REQUIRE( bytes.find( current_roster ) != std::string::npos );
     bytes.replace( bytes.find( current_schema ), current_schema.size(),
                    "\"schema_version\": 9" );
     bytes.replace( bytes.find( current_roster ), current_roster.size(), "\"headcount\"" );
+    erase_pretty_json_member_line( bytes, "origin_disposition" );
+    erase_pretty_json_member_line( bytes, "origin_changed_minutes" );
+    erase_pretty_json_member_line( bytes, "origin_summary" );
 
     JsonValue jsin = json_loader::from_string( bytes );
     bandit_live_world::world_state loaded;
@@ -818,7 +863,7 @@ TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
         R"({"schema_version":5,"site_id":"legacy-roster","headcount":1,"members":[{"npc_id":47400,"state":"at_home"},{"npc_id":47401,"state":"at_home"}]})" );
     bandit_live_world::site_record migrated;
     migrated.deserialize( legacy_json.get_object() );
-    CHECK( migrated.schema_version == 10 );
+    CHECK( migrated.schema_version == 11 );
     CHECK( migrated.living_total == 2 );
     REQUIRE( migrated.roster().valid );
     CHECK( migrated.roster().physically_present_total == 2 );
@@ -1023,7 +1068,7 @@ TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
     CHECK_THROWS( future_nested_wrapper.deserialize( future_nested_wrapper_json.get_object() ) );
 
     std::string legacy_hostile_kind = malformed_current_hostile_kind;
-    const std::string current_site_schema = "\"schema_version\": 10";
+    const std::string current_site_schema = "\"schema_version\": 11";
     REQUIRE( legacy_hostile_kind.find( current_site_schema ) != std::string::npos );
     legacy_hostile_kind.replace( legacy_hostile_kind.find( current_site_schema ),
                                  current_site_schema.size(), "\"schema_version\": 9" );
@@ -1031,6 +1076,9 @@ TEST_CASE( "bandit_live_world_migrates_and_strictly_validates_roster_authority",
     REQUIRE( legacy_hostile_kind.find( current_roster_key ) != std::string::npos );
     legacy_hostile_kind.replace( legacy_hostile_kind.find( current_roster_key ),
                                  current_roster_key.size(), "\"headcount\"" );
+    erase_pretty_json_member_line( legacy_hostile_kind, "origin_disposition" );
+    erase_pretty_json_member_line( legacy_hostile_kind, "origin_changed_minutes" );
+    erase_pretty_json_member_line( legacy_hostile_kind, "origin_summary" );
     JsonValue legacy_hostile_json = json_loader::from_string( legacy_hostile_kind );
     bandit_live_world::world_state repaired_hostile_kind_world;
     repaired_hostile_kind_world.deserialize( legacy_hostile_json.get_object() );
@@ -1528,7 +1576,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
                                 R"({"schema_version":5,"site_id":"legacy-supply","headcount":6})" );
     bandit_live_world::site_record legacy;
     legacy.deserialize( legacy_json.get_object() );
-    CHECK( legacy.schema_version == 10 );
+    CHECK( legacy.schema_version == 11 );
     CHECK( legacy.supply_units == 42 );
     CHECK( legacy.supply_accounted_living_total == 6 );
     CHECK( legacy.supply_member_minute_remainder == 0 );
@@ -1538,7 +1586,7 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
     migrated_world.sites.push_back( legacy );
     const bandit_live_world::world_state migrated_round_trip = round_trip_world( migrated_world );
     REQUIRE( migrated_round_trip.sites.size() == 1 );
-    CHECK( migrated_round_trip.sites.front().schema_version == 10 );
+    CHECK( migrated_round_trip.sites.front().schema_version == 11 );
     CHECK( migrated_round_trip.sites.front().supply_units == 42 );
 
     JsonValue incomplete_current_json = json_loader::from_string(
@@ -1916,7 +1964,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 10 );
+        CHECK( site.schema_version == 11 );
         CHECK( site.active_outing.is_active() );
         CHECK( site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie );
         CHECK( site.active_outing.activity_id == "legacy_camp#dispatch" );
@@ -2010,7 +2058,7 @@ TEST_CASE( "bandit_live_world_migrates_and_normalizes_legacy_active_outing_ident
         site.deserialize( transitional.get_object() );
 
         REQUIRE( site.active_outing.is_active() );
-        CHECK( site.schema_version == 10 );
+        CHECK( site.schema_version == 11 );
         CHECK( site.active_outing.schema_version == 5 );
         CHECK( site.active_outing.member_ids == std::vector<character_id> { character_id( 44 ) } );
         CHECK( site.active_outing.leader_id == character_id( 44 ) );
@@ -2240,7 +2288,7 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
         bandit_live_world::site_record site;
         site.deserialize( legacy.get_object() );
 
-        CHECK( site.schema_version == 10 );
+        CHECK( site.schema_version == 11 );
         CHECK_FALSE( site.active_outing.is_active() );
         REQUIRE( site.active_hostile_operation.is_active() );
         CHECK( site.active_hostile_operation.operation_kind ==
@@ -3277,7 +3325,7 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
     const bandit_live_world::world_state loaded = round_trip_world( world );
     REQUIRE( loaded.sites.size() == 1 );
     const bandit_live_world::site_record &loaded_site = loaded.sites.front();
-    CHECK( loaded_site.schema_version == 10 );
+    CHECK( loaded_site.schema_version == 11 );
     CHECK( loaded_site.active_hostile_operation.is_active() );
     CHECK( loaded_site.active_hostile_operation.operation_kind ==
            hostile_operation_kind::shakedown );
@@ -6042,6 +6090,175 @@ TEST_CASE( "bandit_live_world_releases_every_matching_external_owner_without_res
         }
         REQUIRE( site.roster().valid );
         CHECK( site.roster().reserved_unresolved_ids.empty() );
+    }
+}
+
+TEST_CASE( "bandit_live_world_origin_loss_recalls_and_releases_the_exact_external_party",
+           "[bandit][live_world][reservation][origin_loss]" )
+{
+    SECTION( "physical recall survives save load and terminal return orphans survivors" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 3; ++index ) {
+            add_bandit_camp_member( world, index, 14700 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 18, 20, 0 ), "lost-origin-target" );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+        const std::string activity_id = site.active_outing.activity_id;
+        const int generation = site.active_outing.generation;
+        const bandit_live_world::simulation_advance_cursor cursor =
+            require_current_simulation_cursor( site );
+
+        const std::string before_signal = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::request_origin_recall(
+                         site, cursor, false, 1, "no physical messenger" ) );
+        bandit_live_world::simulation_advance_cursor stale_cursor = cursor;
+        stale_cursor.generation++;
+        CHECK_FALSE( bandit_live_world::request_origin_recall(
+                         site, stale_cursor, true, 1, "stale physical messenger" ) );
+        CHECK( serialize_world( world ) == before_signal );
+
+        REQUIRE( bandit_live_world::request_origin_recall(
+                     site, cursor, true, 1, "survivor carried a physical recall" ) );
+        CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+        REQUIRE( bandit_live_world::invalidate_site_origin(
+                     site, bandit_live_world::origin_disposition::captured_non_hostile,
+                     2, "camp captured before the party returned" ) );
+        CHECK( site.retired_empty_site );
+        CHECK( site.active_outing.is_active() );
+        CHECK( site.roster().reserved_unresolved_ids == plan.member_ids );
+        CHECK( bandit_live_world::camp_supply_living_total( site ) == 0 );
+        CHECK( bandit_live_world::camp_supply_cap( site ) == 0 );
+
+        world = round_trip_world( world );
+        bandit_live_world::site_record &loaded_site = world.sites.front();
+        CHECK( loaded_site.schema_version == 11 );
+        CHECK( loaded_site.origin ==
+               bandit_live_world::origin_disposition::captured_non_hostile );
+        CHECK( loaded_site.origin_changed_minutes == 2 );
+        CHECK( loaded_site.active_outing.activity_id == activity_id );
+        CHECK( loaded_site.active_outing.generation == generation );
+        REQUIRE( loaded_site.roster().valid );
+
+        const std::string terminal_bytes = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::claim_tracked_spawn(
+                         world, "bandit", character_id( 14799 ),
+                         tripoint_abs_ms( 243, 480, 0 ), std::string( "bandit_camp" ),
+                         std::nullopt, special_lookup ) );
+        CHECK_FALSE( bandit_live_world::register_abstract_site(
+                         world, bandit_live_world::anchor_source_kind::overmap_special,
+                         "bandit_camp", tripoint_abs_omt( 10, 20, 0 ), special_lookup, 5 ) );
+        CHECK_FALSE( bandit_live_world::invalidate_site_origin(
+                         loaded_site, bandit_live_world::origin_disposition::deleted,
+                         3, "duplicate terminal origin event" ) );
+        CHECK( serialize_world( world ) == terminal_bytes );
+
+        const std::vector<bandit_live_world::active_member_observation> observations = {
+            { plan.member_ids.front(), bandit_live_world::active_member_observation_state::home,
+              "returned to find a captured camp" },
+            { plan.member_ids.back(), bandit_live_world::active_member_observation_state::dead,
+              "died during the return" }
+        };
+        CHECK_FALSE( bandit_live_world::resolve_origin_loss_return(
+                         loaded_site, activity_id + ":stale", generation,
+                         observations, 3, "stale origin return" ).valid );
+        CHECK( serialize_world( world ) == terminal_bytes );
+
+        const bandit_live_world::origin_loss_resolution_effect effect =
+            bandit_live_world::resolve_origin_loss_return(
+                loaded_site, activity_id, generation, observations, 3,
+                "party resolved against terminal origin" );
+        REQUIRE( effect.valid );
+        CHECK( effect.changed );
+        CHECK( effect.reservation_released );
+        CHECK( effect.orphaned_survivors == 1 );
+        CHECK( effect.dead_members == 1 );
+        CHECK( effect.missing_members == 0 );
+        CHECK( loaded_site.active_external_outing() == nullptr );
+        CHECK( loaded_site.find_member( plan.member_ids.front() )->state ==
+               bandit_live_world::member_state::orphaned );
+        CHECK( loaded_site.find_member( plan.member_ids.back() )->state ==
+               bandit_live_world::member_state::dead );
+        REQUIRE( loaded_site.roster().valid );
+        CHECK( loaded_site.roster().orphaned_ids ==
+               std::vector<character_id> { plan.member_ids.front() } );
+        CHECK( loaded_site.roster().ready_concrete_total == 1 );
+        CHECK( loaded_site.applied_return_generation == generation );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
+    SECTION( "missing resolution waits for the persisted deadline" ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 3; ++index ) {
+            add_bandit_camp_member( world, index, 14750 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 18, 20, 0 ), "missing-origin-target" );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+        site.active_outing.missing_deadline_minutes = 10;
+        const std::string activity_id = site.active_outing.activity_id;
+        const int generation = site.active_outing.generation;
+        REQUIRE( bandit_live_world::invalidate_site_origin(
+                     site, bandit_live_world::origin_disposition::deleted,
+                     1, "origin deleted while party was away" ) );
+        const std::vector<bandit_live_world::active_member_observation> observations = {
+            { plan.member_ids.front(), bandit_live_world::active_member_observation_state::home,
+              "survivor found no camp" },
+            { plan.member_ids.back(), bandit_live_world::active_member_observation_state::missing,
+              "member did not return" }
+        };
+        const std::string before_deadline = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::resolve_origin_loss_return(
+                         site, activity_id, generation, observations, 9,
+                         "premature missing resolution" ).valid );
+        CHECK( serialize_world( world ) == before_deadline );
+
+        const bandit_live_world::origin_loss_resolution_effect effect =
+            bandit_live_world::resolve_origin_loss_return(
+                site, activity_id, generation, observations, 10,
+                "missing deadline reached at terminal origin" );
+        REQUIRE( effect.valid );
+        CHECK( effect.orphaned_survivors == 1 );
+        CHECK( effect.missing_members == 1 );
+        CHECK( site.find_member( plan.member_ids.back() )->state ==
+               bandit_live_world::member_state::missing );
+        CHECK( site.active_external_outing() == nullptr );
+        REQUIRE( site.roster().valid );
+    }
+
+    SECTION( "v10 packets migrate to an active origin and v11 requires all origin fields" ) {
+        bandit_live_world::world_state world;
+        add_bandit_camp_member( world, 0, 14790 );
+        std::string legacy_bytes = serialize_world( world );
+        const std::string current_schema = "\"schema_version\": 11";
+        REQUIRE( legacy_bytes.find( current_schema ) != std::string::npos );
+        legacy_bytes.replace( legacy_bytes.find( current_schema ), current_schema.size(),
+                              "\"schema_version\": 10" );
+        erase_pretty_json_member_line( legacy_bytes, "origin_disposition" );
+        erase_pretty_json_member_line( legacy_bytes, "origin_changed_minutes" );
+        erase_pretty_json_member_line( legacy_bytes, "origin_summary" );
+        bandit_live_world::world_state migrated;
+        JsonValue legacy_json = json_loader::from_string( legacy_bytes );
+        migrated.deserialize( legacy_json.get_object() );
+        REQUIRE( migrated.sites.size() == 1 );
+        CHECK( migrated.sites.front().schema_version == 11 );
+        CHECK( migrated.sites.front().origin ==
+               bandit_live_world::origin_disposition::active_hostile );
+        CHECK( migrated.sites.front().origin_changed_minutes == -1 );
+        CHECK( migrated.sites.front().origin_summary.empty() );
+
+        std::string malformed_v11 = serialize_world( world );
+        erase_pretty_json_member_line( malformed_v11, "origin_summary" );
+        JsonValue malformed_json = json_loader::from_string( malformed_v11 );
+        const std::string before = serialize_world( migrated );
+        CHECK_THROWS( migrated.deserialize( malformed_json.get_object() ) );
+        CHECK( serialize_world( migrated ) == before );
     }
 }
 

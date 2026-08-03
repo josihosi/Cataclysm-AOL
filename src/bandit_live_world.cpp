@@ -27,6 +27,7 @@ using bandit_live_world::hostile_operation_kind;
 using bandit_live_world::hostile_operation_phase;
 using bandit_live_world::member_state;
 using bandit_live_world::owned_site_kind;
+using bandit_live_world::origin_disposition;
 using bandit_live_world::outing_kind;
 using bandit_live_world::scout_phase;
 using bandit_live_world::simulation_owner;
@@ -358,6 +359,9 @@ std::optional<member_state> member_state_from_string( const std::string &value )
     if( value == "local_contact" ) {
         return member_state::local_contact;
     }
+    if( value == "orphaned" ) {
+        return member_state::orphaned;
+    }
     if( value == "dead" ) {
         return member_state::dead;
     }
@@ -365,6 +369,28 @@ std::optional<member_state> member_state_from_string( const std::string &value )
         return member_state::missing;
     }
     return std::nullopt;
+}
+
+std::optional<origin_disposition> origin_disposition_from_string( const std::string &value )
+{
+    if( value == "active_hostile" ) {
+        return origin_disposition::active_hostile;
+    }
+    if( value == "captured_non_hostile" ) {
+        return origin_disposition::captured_non_hostile;
+    }
+    if( value == "deleted" ) {
+        return origin_disposition::deleted;
+    }
+    if( value == "invalidated" ) {
+        return origin_disposition::invalidated;
+    }
+    return std::nullopt;
+}
+
+bool terminal_origin_disposition( const origin_disposition disposition )
+{
+    return disposition != origin_disposition::active_hostile;
 }
 
 std::optional<camp_lead_kind> camp_lead_kind_from_string( const std::string &value )
@@ -1148,7 +1174,7 @@ bool is_routine_scout_job( const bandit_dry_run::job_template job )
 bool counts_toward_live_headcount( member_state state )
 {
     return state == member_state::at_home || state == member_state::outbound ||
-           state == member_state::local_contact;
+           state == member_state::local_contact || state == member_state::orphaned;
 }
 
 struct hostile_site_profile_rules {
@@ -1800,6 +1826,8 @@ std::string to_string( member_state state )
             return "outbound";
         case member_state::local_contact:
             return "local_contact";
+        case member_state::orphaned:
+            return "orphaned";
         case member_state::dead:
             return "dead";
         case member_state::missing:
@@ -1807,6 +1835,22 @@ std::string to_string( member_state state )
     }
 
     return "at_home";
+}
+
+std::string to_string( origin_disposition disposition )
+{
+    switch( disposition ) {
+        case origin_disposition::active_hostile:
+            return "active_hostile";
+        case origin_disposition::captured_non_hostile:
+            return "captured_non_hostile";
+        case origin_disposition::deleted:
+            return "deleted";
+        case origin_disposition::invalidated:
+            return "invalidated";
+    }
+
+    return "active_hostile";
 }
 
 std::string to_string( active_member_observation_state state )
@@ -3554,7 +3598,7 @@ void site_record::serialize( JsonOut &json ) const
     normalize_camp_intelligence( bounded );
     normalize_acted_reports( bounded );
     json.start_object();
-    json.member( "schema_version", 10 );
+    json.member( "schema_version", 11 );
     json.member( "site_id", site_id );
     json.member( "source_kind", to_string( source_kind ) );
     json.member( "site_kind", to_string( site_kind ) );
@@ -3605,6 +3649,9 @@ void site_record::serialize( JsonOut &json ) const
                  shakedown_basecamp_defender_observation_pending );
     json.member( "shakedown_reopen_available", shakedown_reopen_available );
     json.member( "shakedown_reopen_used", shakedown_reopen_used );
+    json.member( "origin_disposition", to_string( origin ) );
+    json.member( "origin_changed_minutes", origin_changed_minutes );
+    json.member( "origin_summary", origin_summary.substr( 0, max_sortie_summary_length ) );
     json.member( "retired_empty_site", retired_empty_site );
     json.member( "retirement_summary", retirement_summary );
     json.end_object();
@@ -3632,10 +3679,13 @@ void site_record::deserialize( const JsonObject &jo )
     returned_cargo_stock = sortie_cargo();
     active_outing.clear();
     active_hostile_operation.clear();
+    origin = origin_disposition::active_hostile;
+    origin_changed_minutes = -1;
+    origin_summary.clear();
     jo.read( "schema_version", schema_version );
     const int loaded_schema_version = schema_version;
-    if( loaded_schema_version > 10 ) {
-        jo.throw_error( "site schema version is newer than supported schema v10" );
+    if( loaded_schema_version > 11 ) {
+        jo.throw_error( "site schema version is newer than supported schema v11" );
     }
     jo.read( "site_id", site_id );
     std::string source_kind_string = "none";
@@ -3665,8 +3715,8 @@ void site_record::deserialize( const JsonObject &jo )
                                          jo.has_member( "supply_last_update_minutes" ) &&
                                          jo.has_member( "supply_accounted_living_total" ) &&
                                          jo.has_member( "supply_member_minute_remainder" );
-    if( loaded_schema_version == 10 && !complete_supply_payload ) {
-        jo.throw_error( "v10 site must contain a complete supply payload" );
+    if( loaded_schema_version >= 10 && !complete_supply_payload ) {
+        jo.throw_error( "v10+ site must contain a complete supply payload" );
     }
     jo.read( "supply_units", supply_units );
     jo.read( "supply_last_update_minutes", supply_last_update_minutes );
@@ -3708,8 +3758,8 @@ void site_record::deserialize( const JsonObject &jo )
         } );
         if( duplicate == unique_spawn_tiles.end() ) {
             unique_spawn_tiles.push_back( spawn_tile );
-        } else if( loaded_schema_version == 10 ) {
-            jo.throw_error( "v10 site contains duplicate spawn tile authorities" );
+        } else if( loaded_schema_version >= 10 ) {
+            jo.throw_error( "v10+ site contains duplicate spawn tile authorities" );
         } else {
             duplicate->assigned_living_total = std::max(
                                                    duplicate->assigned_living_total,
@@ -3722,8 +3772,8 @@ void site_record::deserialize( const JsonObject &jo )
             find_spawn_tile( member.home_spawn_tile ) != nullptr ) {
             continue;
         }
-        if( loaded_schema_version == 10 ) {
-            jo.throw_error( "v10 concrete living member has no spawn tile authority" );
+        if( loaded_schema_version >= 10 ) {
+            jo.throw_error( "v10+ concrete living member has no spawn tile authority" );
         }
         spawn_tile_record migrated_spawn_tile;
         migrated_spawn_tile.tile = member.home_spawn_tile;
@@ -3851,7 +3901,7 @@ void site_record::deserialize( const JsonObject &jo )
         JsonObject active_outing_json = jo.get_object( "active_outing" );
         active_outing_has_embedded_payload = active_outing_json.has_member( "member_ids" );
         active_outing_json.read( "schema_version", active_outing_loaded_schema_version );
-        if( loaded_schema_version == 10 &&
+        if( loaded_schema_version >= 10 &&
             !current_serialized_owner_fields_are_consistent( active_outing_json ) ) {
             active_outing_json.allow_omitted_members();
             active_outing_json.throw_error( "v10 site contains a non-canonical active outing owner" );
@@ -3864,7 +3914,7 @@ void site_record::deserialize( const JsonObject &jo )
         jo.has_member( "active_hostile_operation" );
     if( active_hostile_operation_was_present ) {
         JsonObject hostile_operation_json = jo.get_object( "active_hostile_operation" );
-        if( loaded_schema_version == 10 ) {
+        if( loaded_schema_version >= 10 ) {
             int hostile_operation_schema_version = 0;
             if( !hostile_operation_json.has_member( "schema_version" ) ) {
                 hostile_operation_json.allow_omitted_members();
@@ -3954,7 +4004,7 @@ void site_record::deserialize( const JsonObject &jo )
             active_outing.missing_deadline_minutes = minutes_after_saturated(
                     active_outing.expected_return_minutes, scout_missing_grace_minutes );
         }
-    } else if( malformed_current_active_payload && loaded_schema_version == 10 ) {
+    } else if( malformed_current_active_payload && loaded_schema_version >= 10 ) {
         jo.throw_error( "v10 site contains an incomplete active outing payload" );
     } else if( malformed_current_active_payload ) {
         for( member_record &member : members ) {
@@ -4003,8 +4053,43 @@ void site_record::deserialize( const JsonObject &jo )
              shakedown_basecamp_defender_observation_pending );
     jo.read( "shakedown_reopen_available", shakedown_reopen_available );
     jo.read( "shakedown_reopen_used", shakedown_reopen_used );
+    const bool any_origin_field = jo.has_member( "origin_disposition" ) ||
+                                  jo.has_member( "origin_changed_minutes" ) ||
+                                  jo.has_member( "origin_summary" );
+    const bool complete_origin_payload = jo.has_member( "origin_disposition" ) &&
+                                         jo.has_member( "origin_changed_minutes" ) &&
+                                         jo.has_member( "origin_summary" );
+    if( loaded_schema_version < 11 && any_origin_field ) {
+        jo.throw_error( "pre-v11 site cannot contain an origin disposition payload" );
+    }
+    if( loaded_schema_version >= 11 && !complete_origin_payload ) {
+        jo.throw_error( "v11 site must contain a complete origin disposition payload" );
+    }
+    if( complete_origin_payload ) {
+        std::string origin_string;
+        jo.read( "origin_disposition", origin_string );
+        const std::optional<origin_disposition> parsed_origin =
+            origin_disposition_from_string( origin_string );
+        if( !parsed_origin ) {
+            jo.throw_error( "site has an invalid origin disposition" );
+        }
+        origin = *parsed_origin;
+        jo.read( "origin_changed_minutes", origin_changed_minutes );
+        jo.read( "origin_summary", origin_summary );
+        if( origin_summary.size() > max_sortie_summary_length ) {
+            jo.throw_error( "site origin disposition summary exceeds its persisted bound" );
+        }
+    }
     jo.read( "retired_empty_site", retired_empty_site );
     jo.read( "retirement_summary", retirement_summary );
+    if( origin == origin_disposition::active_hostile ) {
+        if( origin_changed_minutes != -1 || !origin_summary.empty() ) {
+            jo.throw_error( "active hostile origin has terminal disposition metadata" );
+        }
+    } else if( origin_changed_minutes < 0 || origin_summary.empty() ||
+               !retired_empty_site ) {
+        jo.throw_error( "terminal origin disposition is incomplete or not retired" );
+    }
 
     if( !active_outing_was_present && !legacy_active_group_id.empty() ) {
         active_outing.schema_version = 1;
@@ -4138,16 +4223,16 @@ void site_record::deserialize( const JsonObject &jo )
     next_outing_generation = std::max( next_outing_generation, applied_cargo_generation + 1 );
     next_outing_generation = std::max( next_outing_generation, applied_resource_generation + 1 );
 
-    if( loaded_schema_version == 10 && !roster().valid ) {
-        jo.throw_error( "v10 site has malformed roster authority or external reservation ownership" );
+    if( loaded_schema_version >= 10 && !roster().valid ) {
+        jo.throw_error( "v10+ site has malformed roster authority or external reservation ownership" );
     }
 
     const bool both_external_owners_present =
         ( active_outing.is_active() || !active_outing.member_ids.empty() ) &&
         ( active_hostile_operation.is_active() ||
           !active_hostile_operation.reservation.member_ids.empty() );
-    if( both_external_owners_present && loaded_schema_version == 10 ) {
-        jo.throw_error( "v10 site contains multiple external reservation owners" );
+    if( both_external_owners_present && loaded_schema_version >= 10 ) {
+        jo.throw_error( "v10+ site contains multiple external reservation owners" );
     } else if( both_external_owners_present ) {
         active_outing_state &duplicate = active_outing.kind == outing_kind::hostile_operation ?
                                          active_outing : active_hostile_operation.reservation;
@@ -4224,8 +4309,8 @@ void site_record::deserialize( const JsonObject &jo )
     const bool active_outing_payload_present = active_outing.is_active() ||
             !active_outing.member_ids.empty();
     if( !active_outing_is_consistent && active_outing_payload_present &&
-        loaded_schema_version == 10 ) {
-        jo.throw_error( "v10 site contains an inconsistent active outing owner" );
+        loaded_schema_version >= 10 ) {
+        jo.throw_error( "v10+ site contains an inconsistent active outing owner" );
     }
     if( !active_outing_is_consistent && active_outing_payload_present ) {
         for( const character_id &member_id : active_outing.member_ids ) {
@@ -4336,8 +4421,8 @@ void site_record::deserialize( const JsonObject &jo )
     const bool hostile_operation_payload_present = active_hostile_operation.is_active() ||
             !hostile_reservation.member_ids.empty();
     if( !hostile_operation_is_consistent && hostile_operation_payload_present &&
-        loaded_schema_version == 10 ) {
-        jo.throw_error( "v10 site contains an inconsistent hostile operation owner" );
+        loaded_schema_version >= 10 ) {
+        jo.throw_error( "v10+ site contains an inconsistent hostile operation owner" );
     }
     if( !hostile_operation_is_consistent && hostile_operation_payload_present ) {
         for( const character_id &member_id : hostile_reservation.member_ids ) {
@@ -4459,7 +4544,7 @@ void site_record::deserialize( const JsonObject &jo )
     if( !roster().valid ) {
         jo.throw_error( "site roster authority remains inconsistent after legacy repair" );
     }
-    schema_version = 10;
+    schema_version = 11;
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -4538,6 +4623,8 @@ roster_view site_record::roster() const
         result.materialized_living_total++;
         if( member.state == member_state::at_home ) {
             result.physically_present_ids.push_back( member.npc_id );
+        } else if( member.state == member_state::orphaned ) {
+            result.orphaned_ids.push_back( member.npc_id );
         } else {
             result.away_ids.push_back( member.npc_id );
         }
@@ -4597,6 +4684,7 @@ roster_view site_record::roster() const
     };
     sort_ids( result.physically_present_ids );
     sort_ids( result.away_ids );
+    sort_ids( result.orphaned_ids );
     sort_ids( result.reserved_unresolved_ids );
     if( hostile_assembling ) {
         result.valid &= result.away_ids.empty();
@@ -4621,17 +4709,24 @@ roster_view site_record::roster() const
     result.physically_present_total = result.unmaterialized_home_total +
                                       static_cast<int>( result.physically_present_ids.size() );
     result.valid &= result.physically_present_total +
-                    static_cast<int>( result.away_ids.size() ) == result.living_total;
+                    static_cast<int>( result.away_ids.size() ) +
+                    static_cast<int>( result.orphaned_ids.size() ) == result.living_total;
     return result;
 }
 
 int camp_supply_living_total( const site_record &site )
 {
+    if( terminal_origin_disposition( site.origin ) ) {
+        return 0;
+    }
     return std::max( std::max( 0, site.living_total ), site.count_live_members() );
 }
 
 int camp_supply_cap( const site_record &site )
 {
+    if( terminal_origin_disposition( site.origin ) ) {
+        return 0;
+    }
     const long long capacity = static_cast<long long>( camp_supply_days_at_capacity ) *
                                std::max( 1, camp_supply_living_total( site ) );
     return static_cast<int>( std::min<long long>( max_camp_supply_units, capacity ) );
@@ -5355,7 +5450,7 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
         return true;
     }
 
-    if( site->retired_empty_site ) {
+    if( terminal_origin_disposition( site->origin ) || site->retired_empty_site ) {
         return false;
     }
 
@@ -5473,6 +5568,8 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
         new_site.footprint = footprint.footprint;
         state.sites.push_back( new_site );
         site = &state.sites.back();
+    } else if( terminal_origin_disposition( site->origin ) ) {
+        return false;
     } else if( site->footprint.size() < footprint.footprint.size() ) {
         site->footprint = footprint.footprint;
         site->anchor = footprint.anchor;
@@ -6287,6 +6384,220 @@ std::optional<int> release_matching_external_reservation( site_record &site,
     }
     site = std::move( candidate );
     return released_members;
+}
+
+bool invalidate_site_origin( site_record &site, const origin_disposition disposition,
+                             const int current_minutes, const std::string &summary )
+{
+    if( !terminal_origin_disposition( disposition ) ||
+        terminal_origin_disposition( site.origin ) || current_minutes < 0 || summary.empty() ||
+        ( site.supply_last_update_minutes >= 0 &&
+          current_minutes < site.supply_last_update_minutes ) ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    advance_camp_supply( candidate, current_minutes );
+    candidate.origin = disposition;
+    candidate.origin_changed_minutes = current_minutes;
+    candidate.origin_summary = summary.substr( 0, max_sortie_summary_length );
+    candidate.retired_empty_site = true;
+    candidate.retirement_summary = candidate.origin_summary;
+    candidate.supply_units = 0;
+    candidate.supply_last_update_minutes = current_minutes;
+    candidate.supply_accounted_living_total = 0;
+    candidate.supply_member_minute_remainder = 0;
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
+bool request_origin_recall( site_record &site,
+                            const simulation_advance_cursor &expected_cursor,
+                            const bool physical_signal, const int current_minutes,
+                            const std::string &summary )
+{
+    const active_outing_state *outing = site.active_external_outing();
+    if( !physical_signal || summary.empty() || outing == nullptr ||
+        !simulation_cursor_matches( *outing, expected_cursor ) || current_minutes < 0 ||
+        current_minutes <= outing->last_advanced_minutes ||
+        outing->phase == scout_phase::returning_home || outing->phase == scout_phase::lost ||
+        !site.roster().valid ||
+        ( outing->owner == simulation_owner::local &&
+          outing->handoff_epoch == std::numeric_limits<int>::max() ) ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    std::optional<scout_phase> recalled_scout_previous_phase;
+    if( outing->kind == outing_kind::hostile_operation ) {
+        const hostile_operation_phase previous_phase =
+            candidate.active_hostile_operation.phase;
+        if( transition_hostile_operation_phase(
+                candidate, expected_cursor, previous_phase,
+                hostile_operation_phase::returning_home, current_minutes, summary ) !=
+            hostile_operation_transition_result::applied ) {
+            return false;
+        }
+    } else if( outing->kind == outing_kind::scout_sortie ) {
+        const simulation_owner previous_owner = candidate.active_outing.owner;
+        recalled_scout_previous_phase = candidate.active_outing.phase;
+        if( transition_active_scout_phase_impl(
+                candidate, expected_cursor, candidate.active_outing.phase,
+                scout_phase::returning_home, current_minutes, summary, false ) !=
+            scout_phase_transition_result::applied ) {
+            return false;
+        }
+        if( previous_owner == simulation_owner::local ) {
+            candidate.active_outing.owner = simulation_owner::abstract;
+            candidate.active_outing.handoff_epoch++;
+            for( const character_id &member_id : candidate.active_outing.member_ids ) {
+                member_record *member = candidate.find_member( member_id );
+                if( member != nullptr && member->state == member_state::local_contact &&
+                    !candidate.active_outing.member_is_resolved( member_id ) ) {
+                    member->state = member_state::outbound;
+                    member->last_writeback_summary = summary;
+                }
+            }
+        }
+    } else if( outing->kind == outing_kind::structural_sortie ) {
+        active_outing_state &structural = candidate.active_outing;
+        if( structural.owner == simulation_owner::local ) {
+            if( structural.handoff_epoch == std::numeric_limits<int>::max() ) {
+                return false;
+            }
+            structural.owner = simulation_owner::abstract;
+            structural.handoff_epoch++;
+        }
+        for( const character_id &member_id : structural.member_ids ) {
+            member_record *member = candidate.find_member( member_id );
+            if( member != nullptr && member->state == member_state::local_contact &&
+                !structural.member_is_resolved( member_id ) ) {
+                member->state = member_state::outbound;
+                member->last_writeback_summary = summary;
+            }
+        }
+        structural.phase = scout_phase::returning_home;
+        structural.last_progress_minutes = current_minutes;
+        structural.last_advanced_minutes = current_minutes;
+    } else {
+        return false;
+    }
+
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    if( recalled_scout_previous_phase ) {
+        record_scout_phase_transition_event(
+            site.active_outing, *recalled_scout_previous_phase,
+            scout_phase::returning_home, summary, current_minutes );
+    }
+    return true;
+}
+
+origin_loss_resolution_effect resolve_origin_loss_return( site_record &site,
+        const std::string &expected_activity_id, const int expected_generation,
+        const std::vector<active_member_observation> &observations,
+        const int current_minutes, const std::string &summary )
+{
+    origin_loss_resolution_effect effect;
+    const active_outing_state *outing = site.active_external_outing();
+    if( !terminal_origin_disposition( site.origin ) || !site.retired_empty_site ||
+        outing == nullptr || outing->activity_id != expected_activity_id ||
+        outing->generation != expected_generation || current_minutes < 0 ||
+        current_minutes <= outing->last_advanced_minutes || summary.empty() ||
+        observations.size() != outing->member_ids.size() || !site.roster().valid ) {
+        return effect;
+    }
+
+    std::vector<character_id> observed_ids;
+    observed_ids.reserve( observations.size() );
+    for( const active_member_observation &observation : observations ) {
+        if( std::find( outing->member_ids.begin(), outing->member_ids.end(), observation.npc_id ) ==
+            outing->member_ids.end() ||
+            std::find( observed_ids.begin(), observed_ids.end(), observation.npc_id ) !=
+            observed_ids.end() ||
+            ( observation.state != active_member_observation_state::home &&
+              observation.state != active_member_observation_state::dead &&
+              observation.state != active_member_observation_state::missing ) ||
+            ( observation.state == active_member_observation_state::missing &&
+              ( outing->missing_deadline_minutes < 0 ||
+                current_minutes < outing->missing_deadline_minutes ) ) ) {
+            return effect;
+        }
+        observed_ids.push_back( observation.npc_id );
+    }
+
+    site_record candidate = site;
+    advance_camp_supply( candidate, current_minutes );
+    active_outing_state *candidate_outing = candidate.active_external_outing();
+    if( candidate_outing == nullptr ) {
+        return effect;
+    }
+    for( const character_id &member_id : candidate_outing->member_ids ) {
+        const auto observation_iter = std::find_if( observations.begin(), observations.end(),
+        [&member_id]( const active_member_observation & observation ) {
+            return observation.npc_id == member_id;
+        } );
+        member_record *member = candidate.find_member( member_id );
+        if( observation_iter == observations.end() || member == nullptr ) {
+            return origin_loss_resolution_effect();
+        }
+
+        const std::string &member_summary = observation_iter->summary.empty() ?
+                                            summary : observation_iter->summary;
+        member_state resolved_state = member_state::orphaned;
+        if( observation_iter->state == active_member_observation_state::dead ) {
+            resolved_state = member_state::dead;
+            effect.dead_members++;
+        } else if( observation_iter->state == active_member_observation_state::missing ) {
+            resolved_state = member_state::missing;
+            effect.missing_members++;
+        } else {
+            effect.orphaned_survivors++;
+        }
+
+        if( candidate_outing->member_is_resolved( member_id ) ) {
+            const bool matching_resolution =
+                ( resolved_state == member_state::orphaned && member->state == member_state::at_home ) ||
+                member->state == resolved_state;
+            if( !matching_resolution ) {
+                return origin_loss_resolution_effect();
+            }
+        }
+        if( member->state != resolved_state &&
+            !update_member_state( candidate, member_id, resolved_state, member_summary ) ) {
+            return origin_loss_resolution_effect();
+        }
+        if( resolved_state == member_state::dead || resolved_state == member_state::missing ) {
+            if( std::find( candidate_outing->casualty_ids.begin(),
+                          candidate_outing->casualty_ids.end(), member_id ) ==
+                candidate_outing->casualty_ids.end() ) {
+                candidate_outing->casualty_ids.push_back( member_id );
+            }
+        }
+        if( !candidate_outing->member_is_resolved( member_id ) ) {
+            candidate_outing->resolved_member_ids.push_back( member_id );
+        }
+    }
+    candidate_outing->last_progress_minutes = current_minutes;
+    candidate_outing->last_advanced_minutes = current_minutes;
+    if( !release_matching_external_reservation(
+            candidate, expected_activity_id, expected_generation, summary ) ) {
+        return origin_loss_resolution_effect();
+    }
+    if( !candidate.roster().valid ) {
+        return origin_loss_resolution_effect();
+    }
+
+    site = std::move( candidate );
+    effect.valid = true;
+    effect.changed = true;
+    effect.reservation_released = true;
+    return effect;
 }
 
 std::optional<int> release_structural_outing_reservation( site_record &site,

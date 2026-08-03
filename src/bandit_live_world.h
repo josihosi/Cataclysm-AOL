@@ -45,8 +45,25 @@ enum class member_state {
     at_home,
     outbound,
     local_contact,
+    orphaned,
     dead,
     missing,
+};
+
+enum class origin_disposition {
+    active_hostile,
+    captured_non_hostile,
+    deleted,
+    invalidated,
+};
+
+struct origin_loss_resolution_effect {
+    bool valid = false;
+    bool changed = false;
+    bool reservation_released = false;
+    int orphaned_survivors = 0;
+    int dead_members = 0;
+    int missing_members = 0;
 };
 
 enum class active_member_observation_state {
@@ -460,6 +477,7 @@ struct roster_view {
     std::vector<character_id> physically_present_ids;
     int physically_present_total = 0;
     std::vector<character_id> away_ids;
+    std::vector<character_id> orphaned_ids;
     std::vector<character_id> reserved_unresolved_ids;
     std::vector<character_id> ready_concrete_ids;
     int ready_concrete_total = 0;
@@ -513,7 +531,7 @@ struct response_party_selection_result {
 };
 
 struct site_record {
-    int schema_version = 10;
+    int schema_version = 11;
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
@@ -564,6 +582,9 @@ struct site_record {
     bool shakedown_basecamp_defender_observation_pending = false;
     bool shakedown_reopen_available = false;
     bool shakedown_reopen_used = false;
+    origin_disposition origin = origin_disposition::active_hostile;
+    int origin_changed_minutes = -1;
+    std::string origin_summary;
     bool retired_empty_site = false;
     std::string retirement_summary;
 
@@ -895,6 +916,16 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
 std::optional<int> release_matching_external_reservation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::string &summary );
+bool invalidate_site_origin( site_record &site, origin_disposition disposition,
+                             int current_minutes, const std::string &summary );
+bool request_origin_recall( site_record &site,
+                            const simulation_advance_cursor &expected_cursor,
+                            bool physical_signal, int current_minutes,
+                            const std::string &summary );
+origin_loss_resolution_effect resolve_origin_loss_return( site_record &site,
+        const std::string &expected_activity_id, int expected_generation,
+        const std::vector<active_member_observation> &observations,
+        int current_minutes, const std::string &summary );
 std::optional<int> release_structural_outing_reservation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::string &summary );
@@ -1000,6 +1031,7 @@ std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
 std::string to_string( hostile_site_profile profile );
 std::string to_string( member_state state );
+std::string to_string( origin_disposition disposition );
 std::string to_string( active_member_observation_state state );
 std::string to_string( local_gate_posture posture );
 std::string to_string( camp_lead_kind kind );
