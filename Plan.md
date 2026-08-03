@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 VISIBILITY ENVELOPE
+**Status:** ACTIVE / GREEN / PHASE 4 ACQUIRE-RETAIN HYSTERESIS
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -217,9 +217,13 @@ structural threat read writes strict typed evidence without changing camp intell
 pair evidence is shared only by the unresolved pair, and hard mobile danger reaches the camp only
 when an eligible living observer physically returns. Dead-before-share, local-owner exclusion,
 save/replay, below-gate route progress, and both factions are green; exact evidence is under external
-`phase4-20260803/observer-writer/MANIFEST.md`. Next, prove the production clear-day/intermediate/
-unlit-night envelope and weather/light/terrain/elevation/optics modifiers without inventing another
-visibility framework. The compound human-camp opportunity-recovery
+`phase4-20260803/observer-writer/MANIFEST.md`. The production visibility envelope is checkpointed at
+`1738cf5ca2`: real NPC sight maps through existing CDDA thresholds to clear-day 3 OMT,
+intermediate 2, and unlit-night 1 before actual weather, elevation, optics, and terrain cost;
+candidate inspection remains current plus three committed route OMTs. The real forest-cost control,
+full live-world regression, and clean structured review are archived under external
+`phase4-20260803/visibility-envelope/MANIFEST.md`. Next, add the smallest acquire/retain and
+last-known-age behavior at this same typed observation seam. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

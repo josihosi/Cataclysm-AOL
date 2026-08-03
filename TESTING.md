@@ -613,6 +613,15 @@ root-found correctness fixes, and the boundary: the day/dusk/night/weather/terra
 matrix and quiet no-radar controls remain next. Human-camp recovery remains sequenced after typed
 observations and physical reports.
 
+Legitimate structural visibility is green at `1738cf5ca2`: focused visibility 1/31, observation
+regression 2/183, abstract threat 7/467, and full live-world 148/34,959. The test uses a real PER-8
+NPC, real `sunny`/`rainstorm`/`fog` definitions, and real field/forest see costs 0/4; clear daylight
+cannot cross the forest screen until elevation or optics supplies enough occlusion budget. The
+81,746,904-byte binary SHA-256 is `e41ee72c...`. Structured review is clean with no finding at 0.94
+confidence. External `phase4-20260803/visibility-envelope/MANIFEST.md` records both build attempts,
+exact commands/hashes, and the physical-contact/blindness non-claim. Acquire/retain and bounded
+last-known age are next; no persistence test was rerun because this slice changed no saved shape.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

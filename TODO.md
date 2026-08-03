@@ -7,12 +7,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Expose the production OMT visibility decision at its existing seam and prove clear-day about
-   3 OMT, intermediate about 2, and unlit-night about 1 with weather, light, terrain, elevation,
-   and optics modifiers.
-2. Add the smallest separate acquire/retain and last-known-age behavior needed to prevent update
-   flicker, reusing the same observation record and production reader.
-3. Finish quiet former-radar, avatar-movement, signal uncertainty, and both-faction no-dual-writer
+1. Add separate acquire/retain thresholds and a bounded last-known-location age at the existing
+   production structural observation seam so one marginal update cannot flicker a tracked threat.
+2. Convert smoke/light and significant sound into uncertain, expiring typed evidence without exact
+   avatar coordinates or magical correction.
+3. Finish quiet former-radar, avatar-movement, both-faction no-dual-writer, and autonomous discovery
    controls before removing direct-player radar.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
