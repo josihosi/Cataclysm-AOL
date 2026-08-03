@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 3 ABSTRACT/LOCAL HANDOFF
+**Status:** ACTIVE / GREEN / PHASE 3 LIVE PAIR PROOF
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -182,13 +182,19 @@ cheap-top-two route consumer with eight global solves and two starts. Abstract/l
 green through dematerialization checkpoint `f83b6bb116` and local cohesion checkpoint
 `71bde93d48`: distinct same-OMT staging tiles, physical-death-only leader re-election, six-tile
 cohesion, ten-minute incomplete-assembly timeout, two failed paths, and final live survivor
-recheck prevent first-member completion or wedged local ownership. The current first unchecked row
-is the honest abstract-threat adapter: inspect only the party's current OMT plus at most three
-ordinary-observer-visible committed forward OMTs, persist one bounded overlap episode, attempt at
-most two passable detours, and apply the provisional non-victory attrition outcome once. Unseen,
-screened, off-corridor, or future threats must not steer the party; abstract resolution must not
-damage the threat, and local/abstract owners cannot both resolve one episode. Terrain labels remain
-static priors, not perception of loot, residents, or mobile danger.
+recheck prevent first-member completion or wedged local ownership. Bounded abstract threat is
+checkpointed at `d5e76a447f`: an ordinary remote observer reads only current plus at most three
+visible committed route OMTs under remote weather/light, bounded concrete threat work, and no
+population-only hostility inference. Structural schema 8 persists one overlap episode, two-detour
+withdrawal cap, exact `<P`/`[P,2P)`/`>=2P` attrition, local-owner exclusion, 72-hour wound/casualty
+recovery, and replay-safe clearing/re-entry without ever damaging the abstract threat. Final
+focused/live-world/save gates pass 5/284, 137/34,527, and 3/34; the 100-site artifact remains under
+the provisional Phase-0 CPU/memory/save gates and services 100/100 within six passes.
+The next executable row is live pair-materialization proof through the production handoff/cohesion
+path. The compound human-camp opportunity-recovery row is explicitly sequenced after Phase-4 typed
+observations and later physical-report/outcome semantics; lead-origin cutover instrumentation opens
+Phase 4. Neither is silently waived or prematurely implemented. Terrain labels remain static priors,
+not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.

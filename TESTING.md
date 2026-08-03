@@ -570,10 +570,24 @@ in-transit supply units and credits the bounded home stock once. Depleted arriva
 cannot duplicate resource or cargo. One broad-pass crash exposed and fixed two older test pointers
 retained across site replacement; the final full order is green. Exact commands/hashes are under
 external `phase3-20260803/finite-bounty/MANIFEST.md`. No new generic timing claim was added; the
-existing 29-byte harvested-OMT slope and prior accepted 100-site footing remain valid, and an
-aggregate Phase-3 measurement is due after the threat adapter. Current validation target is
-legitimate forward-corridor visibility, two-detour cap, one-shot overlap attrition, threat
-non-mutation, save/load/replay, and exclusive local/abstract episode ownership.
+existing 29-byte harvested-OMT slope and prior accepted 100-site footing remain valid.
+
+Bounded abstract threat is green at `d5e76a447f`. Final `cata_test` is 81,582,248 bytes with
+SHA-256 `41d850721ddbf5cff075c451103c8a3dd10e0a6857ad8559ce77aa7a1eaafb91`;
+focused abstract-threat, full live-world, and combined save gates pass 5/284, 137/34,527, and 3/34
+at seed `830204929`. The final accepted 100-site/32-update artifact SHA-256 is `5528ba39...`:
+61,951 ns p95, 66,750 ns max, 262,144-byte timed RSS delta, 72,164 serialized growth, and 100/100
+eventual scheduler service within six passes. Three structured review rounds found and closed real
+arrival, hostility, wound, remote-light, local-owner, cooldown, and bounded-work defects; per the
+user's one-review-loop boundary, the root performed final review and reran the complete packet
+without another polish review. Exact commands, hashes, caveats, and review outputs are under
+external `phase3-20260803/abstract-threat/MANIFEST.md`.
+
+Current validation target is one live production pair handoff/cohesion artifact. The current
+harness audit must read nested current-schema `active_outing`/`local_handoff` state rather than
+legacy singleton fields, and same-run evidence must show two stable IDs, distinct plausible
+staging, unchanged route, cohesion, and no duplicate abstract advance. Human-camp recovery remains
+sequenced after typed observations and physical reports; it is not a current harness blocker.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
