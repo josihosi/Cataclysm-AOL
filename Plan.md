@@ -238,8 +238,14 @@ writer remains an explicit later cutover defect. Significant sound evidence is c
 queue and the actual structural observer's hearing, regional weather, route, and three-hour aging
 boundaries. Ambient noise and exact source/player identity stay out; focused 4/442 and full
 live-world 157/35,638 are green under external
-`phase4-20260803/significant-sound/MANIFEST.md`. Next, record actual local zombie/horde danger only
-when legitimately visible. The compound human-camp opportunity-recovery
+`phase4-20260803/significant-sound/MANIFEST.md`. Honest local-zombie evidence is checkpointed at
+`8828bcdbfd`: one shared 64-monster snapshot, exact active-pair NPC LOS and hostility, route-OMT
+binding, and ordinary-zombie/rider filtering produce one private 24-hour typed fact without
+abstract horde population, avatar sight, exact map squares, or lead mutation. Focused 4/389 and
+full live-world 161/36,027 are green under external
+`phase4-20260803/local-zombie/MANIFEST.md`. Tracker-order false negatives and snapshot-not-identity
+IDs remain explicit bounded caveats. Next, isolate observer/signal discovery from legacy radar with
+a test-visible single-writer cutover. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

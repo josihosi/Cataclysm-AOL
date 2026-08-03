@@ -20,8 +20,7 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: record actual local zombie/horde observations only when
-  legitimately visible, without population-only hostility inference.
+- Current deterministic execution row: introduce the temporary test-visible single-writer cutover.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -65,6 +64,14 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   lead was added. Exact evidence is under external
   `phase4-20260803/significant-sound/MANIFEST.md`; the pre-drain save/load false-negative window and
   later legacy radar cutover remain explicit caveats.
+- Honest local-zombie evidence is checkpointed at `8828bcdbfd`: one shared snapshot of at most 64
+  loaded monsters feeds exact active-pair NPC LOS, hostility, ordinary-ZOMBIE/rider filtering, and
+  handoff-route OMT binding. One observer-private 24-hour typed fact records bounded type/ordinal
+  plus overflow IDs; abstract horde population, avatar sight, exact map squares, and camp lead
+  writes are absent. Focused 4/389 and full live-world 161/36,027 are green at seed `830204929`.
+  Exact evidence is under external `phase4-20260803/local-zombie/{MANIFEST,RESUME}.md`. The first-64
+  tracker order may conservatively omit later monsters and IDs are snapshots rather than durable
+  monster identity. The next row is the isolated observer/signal versus legacy-radar cutover.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

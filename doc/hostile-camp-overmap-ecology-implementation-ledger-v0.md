@@ -2,23 +2,21 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 4 bounded local danger evidence**
+Status: **ACTIVE - Phase 4 single-writer cutover**
 
 Active phase: **Phase 4**
 
-Current deterministic execution row: **Record actual local zombie/horde observations only when
-legitimately visible.**
+Current deterministic execution row: **Introduce the temporary test-visible single-writer cutover.**
 
-Latest resume packet (behavior checkpoint `1541b351fa`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `8828bcdbfd`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Gunfire, alarms, and explosions now enter a bounded coarse-OMT queue only through exact
-semantic producer tags, then reach the existing typed outing writer through the real observer's
-hearing, remote weather, committed route, and three-hour aging boundaries. Ambient noise, exact
-map squares, descriptions, shooters, and avatar identity never cross the adapter. Both factions,
-queue bounds/dedup/reset, four-sense batching, save roundtrip, focused 4/442, and full live-world
-157/35,638 are green. Exact evidence and resume state are under external
-`phase4-20260803/significant-sound/{MANIFEST,RESUME}.md`; the legacy camp-facing signal/radar writer
-remains an explicit later cutover caveat, not a blocker.
+untouched. One shared snapshot of at most 64 loaded monsters feeds exact active-pair NPC LOS; only
+living hostile non-hallucination ordinary zombies on the handoff-route OMT can create one private
+24-hour typed fact. Riders, abstract horde population, avatar sight, exact map squares, and camp
+lead writes never enter the adapter. Focused 4/389 and full live-world 161/36,027 are green at seed
+`830204929`; exact evidence is under external `phase4-20260803/local-zombie/{MANIFEST,RESUME}.md`.
+Tracker-order false negatives and snapshot-not-identity IDs are explicit caveats. The legacy
+camp-facing signal/radar writer remains the next cutover defect, not a blocker.
 
 Production target: `port/cdda-master`
 
@@ -868,7 +866,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [x] Use separate acquire/retain thresholds and last-known-location age so visibility does not flicker every update. _Checkpoint `b7a2333f7f` derives the last-known track from the persisted typed visual fact, keeps ordinary LOS for acquisition, and permits exactly one extra terrain-cost point for the same route OMT and exact stable threat IDs through age 60. Age 61, target-revision drift, replacement/movement, malformed IDs, and expiry fail closed; both-faction save/fork proof is green and no saved field is added._
 - [x] Convert smoke and light into bounded evidence rather than exact avatar coordinates. _Checkpoint `190fab0de5` filters the physical field/light adapter through scout-relative range and ordinary terrain visibility, current-plus-three committed route OMTs, a four-read input cap, and deterministic one-per-sense retention. Typed clues have nonzero uncertainty, six-hour expiry, no player/exact-map-square/defender truth, and share one simulation-cursor batch with visual evidence; both factions and save roundtrip are green. The legacy camp-facing signal writer remains for the later explicit cutover row._
 - [x] Add only significant sounds (gunfire, alarms, explosions) initially; preserve uncertainty and age. _Checkpoint `1541b351fa` adds exact producer tags, a bounded/deduplicated coarse-OMT queue, real observer hearing plus regional weather, current-plus-three committed-route filtering, and uncertain three-hour typed facts. Ambient and sub-threshold sounds are excluded; no exact map square, description, shooter, avatar identity, new save field, or camp lead crosses the adapter. Both factions, temporal-window rejection, four-sense batching, queue reset, save roundtrip, and full live-world regression are green._
-- [ ] Record actual local zombie/horde observations only when legitimately visible.
+- [x] Record actual local zombie/horde observations only when legitimately visible. _Checkpoint `8828bcdbfd` gives an exact active materialized pair one shared 64-loaded-monster snapshot, real NPC LOS and hostility, ordinary-ZOMBIE/rider exclusion, handoff-route OMT binding, bounded deterministic type/ordinal-plus-overflow IDs, and one observer-private 24-hour typed fact. Abstract horde population, avatar vision, exact map squares, and lead writes are absent. Both factions, live-adapter active/offloaded controls, atomic malformed rejection, save roundtrip, focused 4/389, and full live-world 161/36,027 are green. First-64 tracker order can conservatively miss later monsters and materialized monsters lack durable cross-time identity._
 - [x] Treat terrain danger as a prior and observed mobile danger as timestamped evidence. _Static route terrain remains a non-mobile prior; checkpoint `e7c3da73e7` records mobile structural danger with exact observed minute/bucket, source/receiver, uncertainty, expiry, and target revision, then applies it only at physical return._
 - [ ] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Ownership footing is green at `d801058e79` and the typed production structural writer is green at `e7c3da73e7`; completion still requires isolated legacy-only/no-radar production controls._
 - [ ] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path.
@@ -890,7 +888,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound}/MANIFEST.md`.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md`.
 - No-radar control:
 - Visibility matrix:
 - Evidence/save benchmark:

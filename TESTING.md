@@ -646,7 +646,15 @@ weather, route bounds, an observation-window lower bound, and three-hour expiry 
 No new save field is added. Structured review found and closed remote-weather, shotgun-trap, and
 flashbang producer defects, then reran clean. External
 `phase4-20260803/significant-sound/MANIFEST.md` preserves exact commands, hashes, red environment
-attempts, and caveats. Local legitimately visible zombie/horde evidence is next.
+attempts, and caveats. Local legitimately visible zombie evidence is green at `8828bcdbfd`:
+focused live-adapter/persistence/atomicity proof passes 4/389 and full live-world passes
+161/36,027 at seed `830204929`. The final 82,080,072-byte test binary SHA-256 is
+`f7cf14b10181b369095248eb3624db9831ecea94432261622ab46c8a9db2ff96`. One shared first-64
+loaded-monster snapshot feeds only active exact-pair NPC LOS and ordinary hostile-zombie evidence;
+riders, abstract horde population, avatar sight, exact map squares, and lead writes are excluded.
+External `phase4-20260803/local-zombie/MANIFEST.md` preserves commands, hashes, review findings,
+and the bounded tracker-order/snapshot-ID caveats. Temporary single-writer/no-radar controls are
+next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
