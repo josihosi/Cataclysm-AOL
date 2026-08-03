@@ -443,9 +443,17 @@ SHA-256 `fa71e8ff0d1172a4eff727976910d1be59e08cd9be236839c5d61e5f2c63adfd`; fina
 Exact commands, failed non-credit build routes, logs, hashes, and caveats are archived in external
 `phase2-20260803/routine-pair/MANIFEST.md`.
 
-The active missing evidence is Phase 2 fresh response selection: choose a new ready party only after
-the physical scout report and size it through the response policy. Then select observer/escort roles
-by actual capability and complete generation-scoped reservation/release coverage.
+Fresh post-report response selection is green at `5fbefa452e`. Hostile callers no longer supply
+member IDs; pinned current leads derive bandit toll/cannibal raid sizes from current threat/reward,
+and apply rejects stale lead or readiness drift atomically. The final redirected build exits `0`;
+the hostile-plan case passes 1 / 82, full `[bandit][live_world]` passes 107 / 6,359,
+`[bandit][handoff]` passes 10 / 251, `[bandit][playback]` passes 37 / 1,028, overmap save regression
+passes 2 / 24, and save-size passes 1 / 10. The 80,332,760-byte test binary is SHA-256
+`a12e450a59806bc5555a6657c7424486dcded8855f7ac67ba6b5edf5894b1fe3`; exact commands, diagnostic
+fixture failures, logs, and hashes are archived in external `phase2-20260803/fresh-response/MANIFEST.md`.
+
+The active missing evidence is Phase 2 capability-aware observer/escort selection, followed by
+generation-scoped reservation/release and remaining population/origin/concurrency coverage.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

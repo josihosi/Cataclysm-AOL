@@ -567,7 +567,7 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] Materialize exactly the selected party plus required local reserve, never fixed faction counts unrelated to the plan.
 - [x] Implement shared policy plumbing but separate v1 `routine_scout_policy` (exact pair or no outing) from threat-derived `response_party_policy` for shakedowns and raids.
 - [x] V1 `routine_scout_policy` always returns exactly two or no outing. Keep any future trio hook disabled and separately test that high danger/reward cannot activate it.
-- [ ] Use fresh response-party selection after a scout report; two-standard scouting must not leak into combat-force sizing.
+- [x] Use fresh response-party selection after a scout report; two-standard scouting must not leak into combat-force sizing.
 - [x] Implement the exact routine size matrix in the behavior contract.
 - [ ] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
 - [ ] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
@@ -604,6 +604,14 @@ Evidence:
   playback 37 / 1,028; overmap save regression 2 / 24; save-size 1 / 10. Final build and every
   credited filter exit `0`; final AutoReview is clean.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/routine-pair/MANIFEST.md`.
+- Commit: `5fbefa452e` removes caller-supplied hostile member IDs, selects from the current ready
+  post-report roster, recomputes pinned lead threat/reward sizing for both factions, validates the
+  lead ID/revision/target/OMT, and rejects roster or dossier drift atomically at apply.
+- Fresh response result: hostile-plan 1 / 82 and final full live-world 107 / 6,359; handoff 10 / 251;
+  playback 37 / 1,028; overmap save regression 2 / 24; save-size 1 / 10. Final build and every
+  credited filter exit `0`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/fresh-response/MANIFEST.md`
+  (SHA-256 `94c0c9327f43854ef206edaae978823fedf98a4129b9859a19fe02772e1c7dd1`).
 - Reservation tests:
 - Dispatch benchmark:
 

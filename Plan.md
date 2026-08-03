@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 2 ROSTER AUTHORITY AND PAIRED DISPATCH
+**Status:** ACTIVE / GREEN / PHASE 2 CAPABILITY-AWARE PAIRED DISPATCH
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -138,12 +138,13 @@ reason, and minute without entering saves. A real hostile operation now round-tr
 phase plus `lost` without synthetic transitions or duplicate/mutated operation, report, receipt,
 reservation, or member state.
 
-Phase-2 roster authority is checkpointed at `563499e3fe`, and exact routine pairs are checkpointed
-at `c846be1632`. Bandit/cannibal camp routines now dispatch exactly two or wait, materialize only
-that pair plus one required concrete reserve, preserve the two-person empty-camp case, reject
-overwhelming danger before stale scouting, and keep micro-site singletons and threat-derived
-response sizing separate. Current execution row: select a fresh response party from the post-report
-ready roster so the routine pair never leaks into shakedown or raid force sizing.
+Phase-2 roster authority is checkpointed at `563499e3fe`, exact routine pairs at `c846be1632`, and
+fresh post-report response selection at `5fbefa452e`. Bandit/cannibal camp routines now dispatch
+exactly two or wait, materialize only that pair plus one required concrete reserve, and preserve the
+two-person empty-camp case. Hostile response callers cannot supply member IDs: a pinned current
+dossier recomputes threat/reward sizing from the current ready roster, and apply rejects roster or
+dossier drift atomically. Current execution row: select the routine observer and escort from actual
+readiness/capability without draining the strongest defenders.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
