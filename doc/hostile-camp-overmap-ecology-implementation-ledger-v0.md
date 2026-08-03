@@ -2,7 +2,7 @@
 
 ## Durable implementation ledger
 
-Status: **ACTIVE - Phase 4 lead-origin and single-writer cutover**
+Status: **ACTIVE - Phase 4 typed physical observation**
 
 Active phase: **Phase 4**
 
@@ -779,8 +779,8 @@ wedge. Exact evidence and the non-credit benchmark caveat are under external
 - [x] If two camps reach one depleted OMT, only the first successful claim consumes it; the second reports an empty/stale lead. _Checkpoint `dfddc712d4`: the second camp retains its stale estimate until physical arrival, then records the exact remaining amount; an already depleted town/scout arrival creates no receipt or cargo and is byte-stable on replay._
 - [x] Keep the existing global start budget or replace it with an equally explicit bounded scheduler. _Checkpoint `83c40e3bc3`: eligible-only hourly rotation considers at most 16 and starts at most two exact pairs; global-budget exhaustion is not recorded as camp failure._
 - [x] Implement and persist the exact hourly 16-camp/eight-route/two-start scheduler cursor, including eventual-fairness and save/load tests. _Envelope checkpoint `83c40e3bc3` proves schemas 5/12, save/replay, and 100/500 fairness; routed-dispatch checkpoint `cab98bc55c` adds the real terrain/final-score consumer and boundary-tests eight global route callbacks, two starts, budget-denial semantics, and byte-stable replay._
-- [ ] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery.
-- [ ] Instrument the origin of every target lead/write (`legacy_radar`, new observer, signal, returned report) so Phase 4 can enforce a single-writer cutover. _Explicit opening Phase-4 slice; it depends on the typed observation writer and is not silently skipped in Phase 3._
+- [x] During this phase, prove route/resource ecology only. Legacy player radar may not supply credit for target discovery. _All Phase-3 credit is deterministic route/resource/ownership evidence; the bounded live packet is explicitly non-credit after exposing the legacy collision._
+- [x] Instrument the origin of every target lead/write (`legacy_radar`, new observer, signal, returned report) so Phase 4 can enforce a single-writer cutover. _Checkpoint `d801058e79` persists exact legacy-radar, signal, returned-report, structural-routine, and reserved observer origins; legacy missing fields infer conservatively, unknown explicit fields fail closed, and cross-origin rewrites reject atomically. The observer producer itself remains the next typed-record row._
 - [x] Run a bounded live/harness pair-materialization attempt: plausible entry location, stable IDs, shared route/cohesion, and no duplicate abstract advance. _Two meaningfully different direct attempts are archived as honest non-credit under external `phase3-20260803/pair-handoff/MANIFEST.md`: the inherited north geometry hit a stale shakedown contact; the corrected east geometry proved a concrete legacy player-pressure/structural mission-slot collision and spawn-tile fixture-bootstrap drift. Josef's two-attempt pragmatic rule closes this instrumentation row without live feature credit; the later natural-lifecycle packet retains the missing proof._
 - [ ] Test loaded/unloaded boundary transitions while outbound, harvesting, regrouping, withdrawing, and returning.
 - [ ] Test repeated load/unload thrash, partial pair spawn, one member dying during handoff, and save/load in both transition directions.
@@ -871,7 +871,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [ ] Add only significant sounds (gunfire, alarms, explosions) initially; preserve uncertainty and age.
 - [ ] Record actual local zombie/horde observations only when legitimately visible.
 - [ ] Treat terrain danger as a prior and observed mobile danger as timestamped evidence.
-- [ ] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision.
+- [ ] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Ownership footing is green at `d801058e79`: lead IDs reject cross-origin rewrites before mutation and the legacy player-pressure consumer excludes structural/frontier/terrain leads. Completion still requires the typed observer writer plus the isolated legacy-only/no-radar production controls._
 - [ ] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path.
 - [ ] A quiet evac shelter inside the former radar radius remains undiscovered without a route, signal, or legitimate line of sight.
 - [ ] Moving the player does not drag a stationary camp lead to the new avatar OMT.
@@ -891,7 +891,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit:
+- Commit: lead-origin/single-writer footing `d801058e79`; external evidence `phase4-20260803/lead-origin/MANIFEST.md`.
 - No-radar control:
 - Visibility matrix:
 - Evidence/save benchmark:

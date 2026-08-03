@@ -20,8 +20,9 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
 
 - Goal: complete the engineering success state in `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
 - Active phase: Phase 4 - bounded perception, evidence aging, and removal of radar.
-- Current deterministic execution row: persist explicit target-lead origin and prevent the legacy
-  player-pressure dispatcher from consuming structural/frontier/terrain-owned leads.
+- Current deterministic execution row: extend the existing bounded sortie observation into a
+  strict, versioned physical record, then prove private evidence cannot reach camp if its observer
+  dies before sharing it.
 - Scope: bandits and cannibals only. Writhing-stalker AI, zombie-rider AI/progression, and flesh-raptor behavior are excluded.
 - Non-blocking release-harness gap: the guarded Security.framework write returned `OSStatus -25308` (`interaction not allowed`). The existing shell export remains intact; make no more Keychain attempts while Josef is unavailable.
 - Current engineering state: Phases 0-2 are complete. Phase 3 has shared routine parity, exact
@@ -37,8 +38,11 @@ No push, publication, tag, release, upstream merge, Windows mutation, or product
   `beafbbbd86`, and the fixture correction at `7f4cac4ae0`. The two-attempt live packet is honest
   non-credit evidence under external `phase3-20260803/pair-handoff/MANIFEST.md`; its full log proves
   a legacy player-pressure dispatcher/structural mission-slot collision plus spawn-tile fixture
-  bootstrap drift. Do not start a third fixture loop or weaken the startup classifier. Phase 4
-  opens with the concrete lead-origin/single-writer repair.
+  bootstrap drift. Do not start a third fixture loop or weaken the startup classifier. The concrete
+  lead-origin/single-writer repair is checkpointed at `d801058e79`: current producers persist exact
+  origin, cross-origin rewrites reject atomically, and the legacy player-pressure consumer cannot
+  steal structural/frontier/terrain leads. Exact build/test/save evidence is under external
+  `phase4-20260803/lead-origin/MANIFEST.md`; typed physical observations are next.
 - Scheduler evidence is archived at
   `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase3-20260803/global-scheduler/MANIFEST.md`.
   The final test binary is 80,790,008 bytes at SHA-256

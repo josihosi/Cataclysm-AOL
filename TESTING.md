@@ -594,8 +594,14 @@ dispatcher matched the structural lead by avatar proximity, created `#dispatch` 
 and made structural maintenance report `active_outings=0` plus unresolved outside pressure; runtime
 spawn-tile reconciliation also restored fourteen living members instead of the fixture's intended
 five. Phase-3 deterministic ownership and the accepted `d5e76a447f` 100-site CPU/RSS/save packet
-remain the honest gross gate, while Phase 4 now validates an explicit lead-origin/single-writer
-cutover, a quiet former-radar target, and no avatar-drag before any new live attempt. Human-camp
+remain the honest gross gate. Phase-4 lead ownership is green at `d801058e79`: origin-focused tests
+pass 3/61, camp-map 18/378, exact local handoff 1/281, full live-world 140/34,598, save compatibility
+2/24, save-size 1/10, and the harness 63/63. The 81,600,632-byte test binary SHA-256 is
+`a29645ec0efee1a577121e6a55c9d80c5328b4f56f65e13ef6d0151c7a0dc971`; saturated live-world
+serialization remains 50,572 bytes. External `phase4-20260803/lead-origin/MANIFEST.md` records the
+two corrected build attempts, final exit-0 build, exact log hashes, and boundary. The next tests are
+typed observation atomicity/roundtrip/dedup plus dead-before-share ignorance for both factions;
+quiet no-radar and no-avatar-drag production controls follow the first observer writer. Human-camp
 recovery remains sequenced after typed observations and physical reports.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60

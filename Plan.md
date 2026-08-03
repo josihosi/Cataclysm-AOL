@@ -201,8 +201,13 @@ The strict startup classifier was not weakened and no third fixture loop is perm
 pragmatic attempt budget. Phase 3's exact-pair ownership, shared route, dematerialization, cohesion,
 finite bounty, abstract threat, fairness, and gross CPU/RSS/save gates are deterministically green;
 its missing live credit is an explicit limitation carried into the later natural-lifecycle packet.
-Phase 4 now opens with lead-origin/single-writer instrumentation and removal of the concrete legacy
-radar collision before expanding typed perception. The compound human-camp opportunity-recovery
+Phase 4 lead-origin/single-writer footing is checkpointed at `d801058e79`: every current producer
+persists an exact origin, cross-origin rewrites fail before mutation, and the legacy player-pressure
+consumer cannot steal structural/frontier/terrain leads. Focused origin/camp-map/local-handoff,
+full live-world, save-compatibility, save-size, and 63 harness tests are green; exact artifacts live
+under external `phase4-20260803/lead-origin/MANIFEST.md`. The first unchecked execution row is now
+the compact typed physical-observation record and its existing sortie/report ingestion boundary,
+including the dead-before-share negative control. The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate

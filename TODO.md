@@ -7,11 +7,12 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-1. Add explicit, persisted lead-origin classification and make the legacy player-pressure dispatcher
-   reject structural/frontier/terrain-owned leads instead of stealing their mission slot.
-2. Prove single-writer behavior, a quiet former-radar target, avatar movement without lead dragging,
-   migration/save bounds, and both-faction observer/signal footing before removing the remaining
-   exact direct-player dispatch path.
+1. Extend the existing bounded sortie observation into a strict, versioned physical record with
+   exact observer/source/receiver/time-bucket/revision/provenance fields and atomic batch rejection.
+2. Keep private observations out of the camp report until a living party member shares them; prove
+   bandit/cannibal round trip, dedup/caps, legacy migration, and dead-before-share ignorance.
+3. Connect the smallest legitimate observer writer, then finish quiet former-radar, avatar-movement,
+   signal uncertainty, and both-faction no-dual-writer controls before removing direct-player radar.
 
 Deferred, non-blocking release-harness gap: retain the existing Mac shell export, make no more
 Keychain retries or blocker messages while Josef is unavailable, and leave final clean-environment
