@@ -6,18 +6,19 @@ Status: **ACTIVE - Phase 3 shared real scouting ecology and finite bounty**
 
 Active phase: **Phase 3**
 
-Current deterministic execution row: **Implement the atomic abstract/local ownership transaction
-for the complete surviving pair, including partial-failure rollback and save/load idempotency.**
+Current deterministic execution row: **On dematerialization, snapshot all local pair changes and
+stable NPC IDs before atomically reactivating abstract advancement.**
 
-Latest resume packet (behavior checkpoint `cab98bc55c`, 2026-08-03): `dev` on the isolated Mac
+Latest resume packet (behavior checkpoint `367337c9e4`, 2026-08-03): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Exact integer drive and force-due policy now orders camps before bounded top-two route
-selection; acquire/retain/static/segment risk gates, eight global solves, two starts, and stable
-active ownership are boundary-tested. Routed/structural/scheduler/frontier/live-world/fairness/
-save gates pass 4/116, 37/5,413, 8/25,726, 5/245, 128/33,821, 1/3,007, 2/24, and 1/10. Test
-binary SHA-256 is `587e4e8e3db12f53b140d9feb54fa37b897dd34f462eade5aefa27ef7255dc1e`
-(81,043,688 bytes). The accepted 100-site packet services terrain and dispatch 100/100; exact
-evidence is under `phase3-20260803/routed-dispatch/MANIFEST.md`. No current blocker.
+untouched. Schema 7 now snapshots the exact route cursor, direction, cargo, casualties, stable
+members, HP, and plausible route-facing entry tiles; both existing NPCs bind before the odd local
+epoch commits. Partial bind failure rolls every attempt back, while committed save/load and replay
+are idempotent. Local-handoff/structural/live-world/save gates pass 1/102, 38/5,515, 129/33,923,
+2/24, and 1/10. Test binary SHA-256 is
+`7e80e64ee92de6020ac50976a2bccee7ffc318a2578b85c488b0900515ff8d12`
+(81,129,096 bytes). The accepted 100-site packet remains within the provisional budgets; exact
+evidence is under `phase3-20260803/local-handoff/MANIFEST.md`. No current blocker.
 
 Production target: `port/cdda-master`
 
@@ -736,16 +737,22 @@ false failure backoff. The production adapter uses the NPC overmap pathfinder wi
 avatar inspection, while active outings remain pinned. Focused/full/save gates and the bounded
 100-site packet are green; exact evidence is under external
 `phase3-20260803/routed-dispatch/MANIFEST.md`.
+Atomic local-handoff checkpoint (2026-08-03): `367337c9e4` requires one complete surviving stable
+pair, snapshots exact route/member/direction/egress/HP/cargo/casualty state, binds both persisted
+NPCs before owner commit, and rejects active/missing/dead/partial pairs. Any failed or throwing
+bind rolls back every attempted member in reverse and leaves the camp byte-identical; committed
+save/load and replay are no-ops. Exact evidence is under external
+`phase3-20260803/local-handoff/MANIFEST.md`.
 
 - [x] Enable the same routine scan/outing machinery for bandit and cannibal camps.
 - [x] Replace the bandit-only singleton abstract timer with a persistent paired outing.
 - [x] Choose bounded frontier sectors and 3-5 waypoint routes using camp-local least-recently-observed memory. _Checkpoint `0576113190`: intelligence schema 3 persists one cursor plus exactly eight timestamps; deterministic four-waypoint radius-4/radius-9/home routes cost 18; only physical home return resolves a sector; danger skips without starvation; save/load and malformed-current controls are green._
 - [x] Prefer plausible roads, forest edges, rural sites, shelters, and town outskirts without treating terrain labels as confirmed safety. _Checkpoint `cb53cbafdb`: static exact-family priors seed only unconfirmed zero-bounty terrain opportunities; both factions must send the shared exact pair and physically check them; fair terrain service reaches 100/100 sites with spread one._
 - [x] Give the party one shared high-level route and one movement owner.
-- [ ] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner.
+- [x] Implement the abstract/local ownership transaction: freeze the current owner; increment handoff generation; snapshot position/direction/phase/route/egress/HP/cargo/deaths; atomically spawn or bind the complete surviving pair at one plausible entry edge; then activate the new owner. _Checkpoint `367337c9e4`: schema 7 binds the complete existing stable pair at distinct route-facing tiles and commits owner last; generic owner flips cannot bypass the transaction._
 - [ ] On dematerialization, snapshot all local changes and stable NPC IDs before reactivating abstract advancement.
 - [x] Record `last_advanced_turn` and reject a second advance in the same owner generation.
-- [ ] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent.
+- [x] Roll back a partial spawn/bind failure without losing members or leaving both owners active; save/load of a committed handoff is idempotent. _Checkpoint `367337c9e4`: injected second-bind failure rolls back the attempted second and first members in reverse with byte-identical camp state; committed save/load and replay perform no new bind._
 - [ ] Use a leader/follower cohesion radius, rendezvous timeout, deterministic leader re-election, bounded reroutes, and abort-return.
 - [ ] Define group arrival as the required surviving members assembled at staging, not first-member arrival.
 - [ ] Ground bounty is finite and atomically depleted at the world resource.

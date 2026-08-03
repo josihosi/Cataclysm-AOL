@@ -524,8 +524,19 @@ RSS delta, 66,002 serialized bytes of growth, all 100 camps terrain-scanned with
 all 100 routine camps serviced within six passes. The focused 16-camp fixture proves exactly eight
 route callbacks, at most four final plans, two starts, no false global-budget backoff, and
 byte-stable replay. Exact evidence and caveats are under external
-`phase3-20260803/routed-dispatch/MANIFEST.md`. Current validation target is the atomic
-abstract/local pair-owner handoff, including partial-failure rollback and save/load idempotency.
+`phase3-20260803/routed-dispatch/MANIFEST.md`.
+
+Atomic local-pair handoff is green at `367337c9e4`. Final local-handoff/structural/existing-handoff/
+full-live-world/overmap-save/save-size gates pass 1/102, 38/5,515, 10/307, 129/33,923, 2/24,
+and 1/10 at seed `830204929`. The 81,129,096-byte binary SHA-256 is
+`7e80e64ee92de6020ac50976a2bccee7ffc318a2578b85c488b0900515ff8d12`.
+The accepted 100-site/32-hour artifact records 62,463 ns p95, 68,000 ns max, 229,376-byte timing
+RSS delta, 67,826 serialized bytes of growth, and 100/100 terrain and scheduler service within six
+passes. The focused case directly proves both factions, exact stable identities, owner-last commit,
+reverse rollback after an injected second bind failure, save/load, and replay idempotency; the
+generic benchmark does not claim real NPC materialization. Exact evidence and caveats are under
+external `phase3-20260803/local-handoff/MANIFEST.md`. Current validation target is symmetric
+local-to-abstract snapshot/writeback, partial-read rejection, and exact resumption.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
