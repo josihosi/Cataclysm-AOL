@@ -569,7 +569,7 @@ Primary anchors: `count_live_members`, abstract `headcount`, lazy materializatio
 - [x] V1 `routine_scout_policy` always returns exactly two or no outing. Keep any future trio hook disabled and separately test that high danger/reward cannot activate it.
 - [x] Use fresh response-party selection after a scout report; two-standard scouting must not leak into combat-force sizing.
 - [x] Implement the exact routine size matrix in the behavior contract.
-- [ ] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
+- [x] Select a scout/observer and escort using actual readiness and capability; do not always drain the strongest defenders.
 - [ ] Reserve all selected member IDs and the relevant camp mission slot atomically under the owning operation ID and generation.
 - [ ] Release a reservation only when operation ID and generation still match; stale abort/load cleanup must not release a newer operation's members.
 - [ ] Release matching reservations on every success, abort, death, migration, origin loss, and load-failure path.
@@ -612,6 +612,15 @@ Evidence:
   credited filter exit `0`.
 - Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/fresh-response/MANIFEST.md`
   (SHA-256 `94c0c9327f43854ef206edaae978823fedf98a4129b9859a19fe02772e1c7dd1`).
+- Commit: `f049104375` selects a stable strongest observer plus the lightest return-safe escort,
+  refreshes presence/death/HP/sleep/incapacity from live NPC state, rejects role/readiness drift at
+  apply, and repairs legacy members without template IDs to the profile's generic scout.
+- Capability result: routine policy 3 / 227, migration 1 / 87, save round trip 1 / 32, multi-site
+  1 / 67, and final full live-world 108 / 6,408. Final authoritative Mac builds and every credited
+  filter exit `0`; binary SHA-256 is
+  `02b3e3c4bd398a0a7287578a7b49da57adcd8d3f7e7cd33b048e8ba007e89471`.
+- Artifact: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase2-20260803/capability-pair/MANIFEST.md`
+  (SHA-256 `a2784be680ceb76e0b08c044ced8d753fcdad4212b24466800ee83a74d938808`).
 - Reservation tests:
 - Dispatch benchmark:
 

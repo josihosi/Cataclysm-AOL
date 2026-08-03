@@ -452,8 +452,17 @@ passes 2 / 24, and save-size passes 1 / 10. The 80,332,760-byte test binary is S
 `a12e450a59806bc5555a6657c7424486dcded8855f7ac67ba6b5edf5894b1fe3`; exact commands, diagnostic
 fixture failures, logs, and hashes are archived in external `phase2-20260803/fresh-response/MANIFEST.md`.
 
-The active missing evidence is Phase 2 capability-aware observer/escort selection, followed by
-generation-scoped reservation/release and remaining population/origin/concurrency coverage.
+Capability-aware routine pairs are green at `f049104375`. Live presence/death/HP/sleep/incapacity
+refresh excludes unready members; stable capability selects the strongest observer and lightest
+return-safe escort; plan/apply drift rejects atomically; legacy empty templates normalize safely.
+The final authoritative build exits `0`; routine policy passes 3 / 227, migration 1 / 87, save
+round trip 1 / 32, multi-site 1 / 67, and full `[bandit][live_world]` 108 / 6,408. The
+80,371,336-byte binary is SHA-256
+`02b3e3c4bd398a0a7287578a7b49da57adcd8d3f7e7cd33b048e8ba007e89471`; resolved command-route and
+fixture failures plus final logs are archived in external `phase2-20260803/capability-pair/MANIFEST.md`.
+
+The active missing evidence is Phase 2 atomic operation/generation reservation ownership, followed
+by matching release and remaining population/origin/concurrency coverage.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

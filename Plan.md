@@ -138,13 +138,15 @@ reason, and minute without entering saves. A real hostile operation now round-tr
 phase plus `lost` without synthetic transitions or duplicate/mutated operation, report, receipt,
 reservation, or member state.
 
-Phase-2 roster authority is checkpointed at `563499e3fe`, exact routine pairs at `c846be1632`, and
-fresh post-report response selection at `5fbefa452e`. Bandit/cannibal camp routines now dispatch
+Phase-2 roster authority is checkpointed at `563499e3fe`, exact routine pairs at `c846be1632`,
+fresh post-report response selection at `5fbefa452e`, and capability-aware pairs at `f049104375`.
+Bandit/cannibal camp routines now dispatch
 exactly two or wait, materialize only that pair plus one required concrete reserve, and preserve the
 two-person empty-camp case. Hostile response callers cannot supply member IDs: a pinned current
 dossier recomputes threat/reward sizing from the current ready roster, and apply rejects roster or
-dossier drift atomically. Current execution row: select the routine observer and escort from actual
-readiness/capability without draining the strongest defenders.
+dossier drift atomically. Routine selection uses live readiness and stable observer/return-safe
+escort capability without draining the strongest defenders. Current execution row: reserve every
+selected member and the camp mission slot atomically under the owning operation ID and generation.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
 updates are timestamped/confidence-bearing and neither global claims nor another camp mutate them.
 Bounded supply remains checkpointed at `37498066ba`, and world-global resources at `432c0f9da7`.
