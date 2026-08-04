@@ -6102,7 +6102,7 @@ def debug_map_editor_place_item(
     )
     # The editor starts at player position plus the current view offset. CENTER
     # gives scenario target keys a deterministic player-relative origin.
-    peekaboo_press_sequence(pid, ["0"], delay_ms=delay_ms)
+    peekaboo_hotkey(pid, "0", hold_ms=max(30, min(delay_ms, 200)))
     time.sleep(prompt_settle_seconds)
     if target_keys:
         peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
@@ -6155,7 +6155,7 @@ def debug_map_editor_place_field(
     )
     # The editor starts at player position plus the current view offset. CENTER
     # gives scenario target keys a deterministic player-relative origin.
-    peekaboo_press_sequence(pid, ["0"], delay_ms=delay_ms)
+    peekaboo_hotkey(pid, "0", hold_ms=max(30, min(delay_ms, 200)))
     time.sleep(prompt_settle_seconds)
     if target_keys:
         peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)

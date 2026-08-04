@@ -1052,11 +1052,13 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
             "release_blocking": False,
             "contaminating": False,
         }
+        input_calls = mock.Mock()
         with (
             tempfile.TemporaryDirectory() as temp_dir,
             mock.patch("startup_harness.run_debug_menu_shortcut_path"),
             mock.patch("startup_harness.apply_uilist_filter"),
-            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.peekaboo_hotkey", input_calls.hotkey),
+            mock.patch("startup_harness.peekaboo_press_sequence", input_calls.press),
             mock.patch("startup_harness.time.sleep"),
             mock.patch(
                 "startup_harness.acknowledge_blocking_interruptions",
@@ -1070,10 +1072,10 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
                 profile="dev-harness",
                 world="McWilliams",
             )
-        return reports[0], press
+        return reports[0], input_calls
 
     def test_default_intensity_preserves_existing_selection_path(self) -> None:
-        report, press = self.execute_field_step({
+        report, input_calls = self.execute_field_step({
             "kind": "debug_map_editor_place_field",
             "label": "place_smoke",
             "field_query": "fd_smoke",
@@ -1087,11 +1089,11 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         )
         self.assertNotIn(
             "down",
-            [key for call in press.call_args_list for key in call.args[1]],
+            [key for call in input_calls.press.call_args_list for key in call.args[1]],
         )
 
     def test_intensity_three_moves_through_real_menu_and_records_path(self) -> None:
-        report, press = self.execute_field_step({
+        report, input_calls = self.execute_field_step({
             "kind": "debug_map_editor_place_field",
             "label": "place_fire",
             "field_query": "fd_fire",
@@ -1110,11 +1112,11 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         )
         self.assertIn(
             ["down", "down"],
-            [call.args[1] for call in press.call_args_list],
+            [call.args[1] for call in input_calls.press.call_args_list],
         )
 
     def test_centers_cursor_before_field_target_keys(self) -> None:
-        report, press = self.execute_field_step({
+        report, input_calls = self.execute_field_step({
             "kind": "debug_map_editor_place_field",
             "label": "place_smoke",
             "field_query": "fd_smoke",
@@ -1122,8 +1124,11 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         })
 
         self.assertEqual(
-            [call.args[1] for call in press.call_args_list[:2]],
-            [["0"], ["right", "right"]],
+            input_calls.mock_calls[:2],
+            [
+                mock.call.hotkey(42, "0", hold_ms=200),
+                mock.call.press(42, ["right", "right"], delay_ms=200),
+            ],
         )
         self.assertEqual(report["selection_path"][:3], ["0", "right", "right"])
 
@@ -1163,11 +1168,13 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
             "release_blocking": False,
             "contaminating": False,
         }
+        input_calls = mock.Mock()
         with (
             tempfile.TemporaryDirectory() as temp_dir,
             mock.patch("startup_harness.run_debug_menu_shortcut_path") as debug_path,
             mock.patch("startup_harness.apply_uilist_filter") as apply_filter,
-            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.peekaboo_hotkey", input_calls.hotkey),
+            mock.patch("startup_harness.peekaboo_press_sequence", input_calls.press),
             mock.patch("startup_harness.time.sleep"),
             mock.patch(
                 "startup_harness.acknowledge_blocking_interruptions",
@@ -1206,10 +1213,15 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
             settle_seconds=0.2,
         )
         self.assertEqual(
-            [call.args[1] for call in press.call_args_list],
+            input_calls.mock_calls,
             [
-                ["0"], ["right", "right"], ["i"], ["a"], ["enter"], ["esc"],
-                ["esc"],
+                mock.call.hotkey(42, "0", hold_ms=123),
+                mock.call.press(42, ["right", "right"], delay_ms=123),
+                mock.call.press(42, ["i"], delay_ms=123),
+                mock.call.press(42, ["a"], delay_ms=123),
+                mock.call.press(42, ["enter"], delay_ms=123),
+                mock.call.press(42, ["esc"], delay_ms=123),
+                mock.call.press(42, ["esc"], delay_ms=123),
             ],
         )
         self.assertEqual(report["item_query"], "c4armed")
@@ -1225,10 +1237,12 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
         self.assertEqual(report["spawn_target"], "map_editor_target_tile")
 
     def test_centers_cursor_before_item_target_keys(self) -> None:
+        input_calls = mock.Mock()
         with (
             mock.patch("startup_harness.run_debug_menu_shortcut_path"),
             mock.patch("startup_harness.apply_uilist_filter"),
-            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.peekaboo_hotkey", input_calls.hotkey),
+            mock.patch("startup_harness.peekaboo_press_sequence", input_calls.press),
             mock.patch("startup_harness.time.sleep"),
         ):
             debug_map_editor_place_item(
@@ -1238,8 +1252,11 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
             )
 
         self.assertEqual(
-            [call.args[1] for call in press.call_args_list[:2]],
-            [["0"], ["left", "left"]],
+            input_calls.mock_calls[:2],
+            [
+                mock.call.hotkey(42, "0", hold_ms=200),
+                mock.call.press(42, ["left", "left"], delay_ms=200),
+            ],
         )
 
     def test_missing_blank_and_wrong_type_queries_fail_before_input(self) -> None:
