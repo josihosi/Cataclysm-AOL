@@ -203,13 +203,13 @@
       "kind": "debug_map_editor_place_item",
       "label": "stage_active_explosive_on_target_omt",
       "item_query": "C-4 explosive (active)",
-      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
+      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 61 map squares east, safely inside target OMT, ten minutes before the hourly scan with its engine countdown running",
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed on target OMT from the map editor's restored cursor origin ten minutes before the hourly scan with its engine countdown running",
       "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
     },
     {
@@ -260,13 +260,13 @@
       "label": "stage_physical_fire_on_target_omt",
       "field_query": "fd_fire",
       "field_intensity": 3,
-      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
+      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed 60 map squares east on target OMT minutes before the hourly scan; production projects both physical smoke and light from that source",
+      "expected_visible_fact": "one real intense fd_fire field is placed on target OMT from the map editor's restored cursor origin minutes before the hourly scan; production projects both physical smoke and light from that source",
       "proof_deferred_to_label": "audit_exact_phase4_structural_smoke_light_sound_matrix"
     },
     {
@@ -298,6 +298,7 @@
       "kind": "audit_log_contains",
       "label": "audit_phase4_three_active_signal_facts",
       "required_line_patterns": [
+        ["bandit_live_world signal_adapter request", "current_omt=(137,51,0)", "current_inbounds=no", "field_signals=2", "sound_events=0"],
         ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(137,51,0)", "sense=smoke", "share=shared"],
         ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(137,51,0)", "sense=light", "share=shared"],
         ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(140,51,0)", "source_id=structural-explosion@(136,51,0)", "sense=sound", "share=shared"]

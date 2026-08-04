@@ -3376,6 +3376,15 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
 {
     std::vector<bandit_live_world::structural_signal_read> result;
     const bool request_current_inbounds = get_map().inbounds( request.current_omt );
+    if( !signals.empty() || !sound_events.empty() ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal_adapter request"
+                                   << " current_omt=" << request.current_omt
+                                   << " map_origin_omt="
+                                   << coords::project_to<coords::omt>( get_map().get_abs_sub() )
+                                   << " current_inbounds=" << ( request_current_inbounds ? "yes" : "no" )
+                                   << " field_signals=" << signals.size()
+                                   << " sound_events=" << sound_events.size() << '\n';
+    }
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
         outing.owner != bandit_live_world::simulation_owner::abstract ||
         request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
