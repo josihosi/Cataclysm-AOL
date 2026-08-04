@@ -42,6 +42,7 @@
       "required_ready_at_home_count": 5,
       "required_wounded_or_unready_count": 0,
       "required_active_outside_count": 0,
+      "required_home_side_signal_count": 10,
       "required_active_group_id_exact": "",
       "required_active_target_id_exact": "",
       "required_min_leads": 1,
@@ -73,19 +74,35 @@
     },
     {
       "kind": "long_wait",
-      "label": "wait_3_hours_for_phase4_visibility_road_day_observer",
-      "choice_key": "7",
-      "expected_duration": "3h",
+      "label": "wait_first_6_hours_toward_phase4_visibility_road_day_due",
+      "choice_key": "8",
+      "expected_duration": "6h",
       "allow_artifact_elapsed_without_menu_ocr": true,
       "pre_menu_choice_key": "w",
-      "pre_menu_expected_visible_fact": "the wait menu is opened and the three-hour duration is chosen",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
+      "completion_wait_seconds": 60.0,
+      "artifact_state_patterns": [
+        "scheduler_hour=149",
+        "now_minutes=8940"
+      ],
+      "expected_visible_fact": "six real game hours pass while production owns legacy migration and initializes the exact camp's routine activation clock",
+      "failure_rule": "If the first bounded wait does not complete, the deterministic 11-hour dispatch window is not reached."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_second_6_hours_for_phase4_visibility_road_day_observer",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
       "completion_wait_seconds": 90.0,
       "artifact_state_patterns": [
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
         "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0",
         "bandit_live_world structural_visibility:"
       ],
-      "expected_visible_fact": "three real game hours carry the idle camp through production dispatch and at least one production structural visibility read",
+      "expected_visible_fact": "the real hourly cadence crosses this camp's deterministic 11-hour due boundary and production performs at least one structural visibility read",
       "failure_rule": "If the bounded wait lacks exact dispatch and visibility artifacts, the row is red/inconclusive."
     },
     {

@@ -5,6 +5,15 @@
   "description": "Shared Phase-4 road-visibility footing. It keeps the real player twelve OMT south of the camp, replaces the old forest lead with one four-OMT-west road lead, and places three concrete hostile zombie entities on that exact target OMT. Child fixtures set the calendar turn; production still owns dispatch, routing, observer selection, visibility, and evidence.",
   "save_transforms": [
     {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "clear_spawn_tile_headcount": true
+    },
+    {
       "kind": "bandit_clear_site_evidence",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:bandit_camp@140,51,0"
@@ -33,14 +42,6 @@
       "last_outcome": "phase4_visibility_road_horde_fixture",
       "clear_active_pressure": true,
       "mark_cleared_active_members_unready": false
-    },
-    {
-      "kind": "bandit_routine_dispatch_clock",
-      "site_id": "overmap_special:bandit_camp@140,51,0",
-      "routine_activated_minutes": 0,
-      "last_routine_resolved_minutes": -1,
-      "next_routine_dispatch_eligible_minutes": -1,
-      "routine_no_candidate_streak": 0
     },
     {
       "kind": "horde_entity_near_player",
