@@ -1,0 +1,40 @@
+{
+  "name": "manual.phase4_ecology_observer_mcw",
+  "description": "One-command manual ecology-observer handoff on the Phase-4 structural signal footing. Fixture installation keeps inherited DEBUG_CLOAK and adds exactly DEBUG_CLAIRVOYANCE, then the launch-only handoff starts McWilliams without scripted gameplay input. Ordinary starts and source fixtures are untouched.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2"
+    }
+  },
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_phase4_ecology_observer_handoff_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the prepared Phase-4 observer world reaches normal gameplay before manual overmap inspection"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.phase4_ecology_observer_mcw --launch-only --compact-stdout",
+  "manual_playtest": {
+    "question": "Can the tester open the overmap from one prepared handoff and inspect Phase-4 ecology without manual mutation setup?",
+    "tester_notes": [
+      "Confirm the fixture-install transform report names DEBUG_CLAIRVOYANCE and records whether it was newly added.",
+      "Open the overmap after load; the ecology overlay itself is a later C++ slice and is not claimed by this launch-only footing.",
+      "Advance time only when the observer overlay under test is available; this scenario deliberately sends no gameplay keys after launch."
+    ]
+  },
+  "evidence_contract": {
+    "claim": "fixture installation adds the DEBUG_CLAIRVOYANCE observer gate to the inherited passive Phase-4 signal footing and launches McWilliams without post-load automation",
+    "load_only_verdict": "observer handoff footing only; no ecology-overlay rendering or behavior proof is claimed before the C++ observer exists"
+  }
+}

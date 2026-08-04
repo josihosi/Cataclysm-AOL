@@ -319,7 +319,11 @@ the remaining Phase-4 live matrix. The ratified roadmap and success-state packet
 `DEBUG_CLAIRVOYANCE`-gated, side-effect-free camp/dispatch view shared by overmap UI and compact
 harness artifacts; horde/stalker adapters, watches/incident capture, and the first authoritative
 casualty intervention follow in that order. Smoke/light/sound is the first live row that must use
-the observer and preserve a screenshot/snapshot pair.
+the observer and preserve a screenshot/snapshot pair. The prepared O0 handoff is green: one derived
+fixture preserves the inherited `DEBUG_CLOAK`, idempotently adds only `DEBUG_CLAIRVOYANCE`, reports
+before/after/already-present state, and exposes one launch-only manual command. The system-Python
+fixture contract passes 125 tests and the dry-run is plan-only; overlay/save-neutrality claims remain
+open for the shared-view/UI rows.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

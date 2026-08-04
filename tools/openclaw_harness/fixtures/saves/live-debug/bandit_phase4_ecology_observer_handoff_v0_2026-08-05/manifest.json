@@ -1,0 +1,13 @@
+{
+  "name": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+  "source_fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+  "source_profile": "live-debug",
+  "description": "Launch-only Phase-4 ecology-observer handoff derived from the structural signal-matrix footing. It preserves the inherited DEBUG_CLOAK passive-observer protection and idempotently adds only DEBUG_CLAIRVOYANCE as the predictable observer gate; fixture installation reports the requested mutation, before/after traits, and whether it was newly added.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_CLAIRVOYANCE"]
+    }
+  ]
+}

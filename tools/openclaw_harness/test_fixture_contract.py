@@ -49,6 +49,7 @@ from startup_harness import (  # noqa: E402
     apply_fixture_save_transforms,
     apply_game_turn_to_payload,
     apply_option_overrides_to_file,
+    apply_player_mutations_transform,
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
     classify_blocking_interruption,
@@ -2312,6 +2313,70 @@ class ProfileOptionOverrideContractTest(unittest.TestCase):
             self.assertEqual(updated[1], {"name": "SOUND_ENABLED", "value": "true"})
 
 
+class PlayerMutationsTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_normalizes_report_and_is_idempotent_without_replacing_mutation_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            inherited_mutation = {
+                "corrupted": 0,
+                "key": 99,
+                "charge": 7,
+                "powered": True,
+                "show_sprite": False,
+            }
+            payload = {
+                "player": {
+                    "traits": ["DEBUG_CLOAK"],
+                    "mutations": {"DEBUG_CLOAK": inherited_mutation},
+                    "cached_mutations": {"DEBUG_CLOAK": inherited_mutation},
+                },
+            }
+            player_save.write_text(json.dumps(payload), encoding="utf-8")
+            transform = {
+                "kind": "player_mutations",
+                "player_save": player_save.name,
+                "mutations": [" DEBUG_CLAIRVOYANCE ", "DEBUG_CLAIRVOYANCE"],
+            }
+
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                first_report = apply_player_mutations_transform(world_dir, transform)
+                first_payload = json.loads(player_save.read_text(encoding="utf-8"))
+                second_report = apply_player_mutations_transform(world_dir, transform)
+                second_payload = json.loads(player_save.read_text(encoding="utf-8"))
+
+        self.assertEqual(first_report["requested_mutations"], ["DEBUG_CLAIRVOYANCE"])
+        self.assertEqual(first_report["traits_before"], ["DEBUG_CLOAK"])
+        self.assertEqual(
+            first_report["traits_after"],
+            ["DEBUG_CLOAK", "DEBUG_CLAIRVOYANCE"],
+        )
+        self.assertEqual(first_report["added_traits"], ["DEBUG_CLAIRVOYANCE"])
+        self.assertEqual(first_report["already_present"], [])
+        self.assertTrue(first_report["newly_added"])
+        self.assertEqual(second_report["added_traits"], [])
+        self.assertEqual(second_report["already_present"], ["DEBUG_CLAIRVOYANCE"])
+        self.assertFalse(second_report["newly_added"])
+        self.assertEqual(second_report["traits_before"], second_report["traits_after"])
+        self.assertEqual(first_payload, second_payload)
+        self.assertEqual(
+            second_payload["player"]["mutations"]["DEBUG_CLOAK"],
+            inherited_mutation,
+        )
+        self.assertEqual(
+            second_payload["player"]["cached_mutations"]["DEBUG_CLOAK"],
+            inherited_mutation,
+        )
+
+
 class BanditCloneSiteTransformContractTest(unittest.TestCase):
     def test_clone_can_set_cannibal_profile_explicitly(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -3237,6 +3302,35 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertEqual(hordes["mon_writhing_stalker"]["offset_ms"], [72, 72, 0])
         self.assertGreater(max(abs(value) for value in hordes["mon_writhing_stalker"]["offset_ms"][:2]), 60)
+
+    def test_phase4_observer_handoff_inherits_cloak_and_adds_only_clairvoyance(self) -> None:
+        resolved = resolve_fixture_payload(
+            "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+            "live-debug",
+        )
+        mutation_transforms = [
+            transform
+            for transform in resolved["save_transforms"]
+            if transform["kind"] == "player_mutations"
+        ]
+        scenario = load_scenario("manual.phase4_ecology_observer_mcw")
+
+        self.assertEqual(
+            [transform["mutations"] for transform in mutation_transforms[-2:]],
+            [["DEBUG_CLOAK"], ["DEBUG_CLAIRVOYANCE"]],
+        )
+        self.assertEqual(
+            mutation_transforms[-1],
+            {
+                "kind": "player_mutations",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "mutations": ["DEBUG_CLAIRVOYANCE"],
+            },
+        )
+        self.assertEqual(scenario["profile"], "dev-harness")
+        self.assertEqual(scenario["world"], "McWilliams")
+        self.assertEqual(scenario["fixture"], resolved["source_chain"][0][1])
+        self.assertIn("--launch-only", scenario["recommended_test_command"])
 
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):

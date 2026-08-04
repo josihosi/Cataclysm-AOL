@@ -801,6 +801,15 @@ deltas with explicit truncation; stale/dead/completed and co-located/z-level cas
 closed observer work is zero. Smoke/light/sound is the first later live row that must preserve a
 screenshot plus the exact compact snapshot.
 
+Observer O0 prepared handoff is green at the current checkpoint. Derived fixture
+`bandit_phase4_ecology_observer_handoff_v0_2026-08-05` preserves inherited `DEBUG_CLOAK` and its
+single new transform requests only `DEBUG_CLAIRVOYANCE`; the transform report records requested,
+before/after, added, already-present, and idempotent state. `/usr/bin/python3 -m unittest
+tools.openclaw_harness.test_fixture_contract` passes 125 tests, and the launch-only handoff dry-run
+exits 0 with plan-only evidence. Homebrew Python 3.14 lacks the fixture suite's `flatbuffers`
+dependency and is not credited. This proves disposable prepared footing only: no overlay, ordinary
+start, knowledge/save-neutrality, or gameplay behavior claim is closed by the dry-run.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

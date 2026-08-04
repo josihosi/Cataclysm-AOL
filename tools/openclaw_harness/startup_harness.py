@@ -9460,12 +9460,20 @@ def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any])
     else:
         raise SystemExit(f"Player cached_mutations is not a supported container in {extracted_save}")
 
-    requested_mutations = [str(value) for value in transform.get("mutations", []) if str(value).strip()]
+    requested_mutations: List[str] = []
+    for raw_mutation_id in transform.get("mutations", []):
+        mutation_id = str(raw_mutation_id).strip()
+        if mutation_id and mutation_id not in requested_mutations:
+            requested_mutations.append(mutation_id)
+    traits_before = list(traits)
     added_traits: List[str] = []
+    already_present: List[str] = []
     for mutation_id in requested_mutations:
         if mutation_id not in traits:
             traits.append(mutation_id)
             added_traits.append(mutation_id)
+        else:
+            already_present.append(mutation_id)
         mutations.setdefault(mutation_id, dict(PLAYER_MUTATION_STATE_TEMPLATE))
         cached_mutations.setdefault(mutation_id, dict(PLAYER_MUTATION_STATE_TEMPLATE))
 
@@ -9482,7 +9490,12 @@ def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any])
         "world": world_dir.name,
         "player_save": str(transform.get("player_save", "")),
         "mutations": requested_mutations,
+        "requested_mutations": requested_mutations,
+        "traits_before": traits_before,
+        "traits_after": list(traits),
         "added_traits": added_traits,
+        "already_present": already_present,
+        "newly_added": bool(added_traits),
     }
 
 

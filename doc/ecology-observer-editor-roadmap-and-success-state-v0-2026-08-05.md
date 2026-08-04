@@ -113,8 +113,11 @@ natural while retaining causal linkage to the intervention ledger.
 ### O0 - packet, handoff, and no-mutation contract
 
 - [x] Ratify this gate, owner map, exact caps, proof workflow, and deferrals.
-- [ ] Add one prepared observer handoff transform that idempotently adds
-  `DEBUG_CLAIRVOYANCE`, reports the mutation, and leaves ordinary starts untouched.
+- [x] Add one prepared observer handoff transform that idempotently adds
+  `DEBUG_CLAIRVOYANCE`, reports the mutation, and leaves ordinary starts untouched. _O0 handoff
+  checkpoint: derived fixture preserves inherited `DEBUG_CLOAK`, requests only
+  `DEBUG_CLAIRVOYANCE`, reports before/after/added/already-present state, and the launch-only dry-run
+  is plan-only. System-Python fixture contract: 125 tests green._
 - [ ] Prove observer off/on changes no map knowledge or save bytes beyond the intentional harness
   mutation.
 
