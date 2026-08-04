@@ -3428,10 +3428,11 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
     const std::vector<live_bandit_sound_observation> &live_sounds )
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int current_minutes = live_bandit_current_minutes();
     static constexpr int structural_scan_budget = 12;
     static constexpr int structural_dispatch_cap = 2;
     bandit_live_world::structural_bounty_maintenance_result result =
-        bandit_live_world::advance_structural_bounty_maintenance( state, live_bandit_current_minutes(),
+        bandit_live_world::advance_structural_bounty_maintenance( state, current_minutes,
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
                 live_bandit_structural_threat_read, live_bandit_structural_route_read,
                 live_bandit_structural_abstract_threat_read,
@@ -3449,6 +3450,8 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                                world, world.sites[site_index] );
                 } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
+    DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_evidence_debug_report(
+                                  state, current_minutes );
     return result;
 }
 

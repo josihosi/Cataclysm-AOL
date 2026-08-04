@@ -1324,6 +1324,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
+std::string render_evidence_debug_report( const world_state &state, int current_minutes );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

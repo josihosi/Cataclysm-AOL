@@ -15596,3 +15596,157 @@ TEST_CASE( "bandit_live_world_scheduler_replay_and_frontier_due_state_are_determ
         }
     }
 }
+
+TEST_CASE( "bandit_live_world_evidence_debug_report_is_bounded_deterministic_and_read_only",
+           "[bandit][live_world][phase4_evidence_debug]" )
+{
+    static constexpr int now_minutes = 600;
+    bandit_live_world::world_state world;
+    for( int site_index = 0; site_index < 10; ++site_index ) {
+        bandit_live_world::site_record site;
+        site.site_id = "debug-site-" + std::string( site_index < 10 ? "0" : "" ) +
+                       std::to_string( site_index );
+        site.anchor = tripoint_abs_omt( site_index, site_index + 1, 0 );
+
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = "lead-00";
+        lead.omt = tripoint_abs_omt( site_index + 4, site_index + 5, 0 );
+        lead.origin = bandit_live_world::camp_lead_origin::observer;
+        lead.source_key = "scout-source";
+        lead.last_seen_minutes = 540 + site_index;
+        site.intelligence_map.leads.push_back( lead );
+        world.sites.push_back( site );
+    }
+
+    bandit_live_world::site_record &first_site = world.sites.front();
+    first_site.intelligence_map.leads.clear();
+    for( int lead_index = 0; lead_index < 10; ++lead_index ) {
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = lead_index == 0 ? "00-placeholder" :
+                       lead_index == 1 ? "01 bad\n=id" :
+                       "lead-" + std::to_string( lead_index );
+        lead.revision = lead_index == 1 ? 3 : 1;
+        lead.omt = lead_index == 1 ? tripoint_abs_omt( 7, 8, 0 ) :
+                   tripoint_abs_omt( lead_index, 0, 0 );
+        lead.origin = lead_index == 1 ? bandit_live_world::camp_lead_origin::returned_report :
+                      bandit_live_world::camp_lead_origin::observer;
+        lead.source_key = lead_index == 1 ? "scout\n=alpha" : "source";
+        lead.last_seen_minutes = lead_index == 1 ? 540 : 560;
+        if( lead_index == 1 ) {
+            lead.kind = bandit_live_world::camp_lead_kind::sound_signal;
+            lead.generated_by_this_camp_routine = true;
+        } else if( lead_index == 2 ) {
+            lead.kind = bandit_live_world::camp_lead_kind::sound_signal;
+            lead.origin = bandit_live_world::camp_lead_origin::returned_report;
+            lead.generated_by_this_camp_routine = true;
+            lead.last_seen_minutes = 300;
+        }
+        first_site.intelligence_map.leads.push_back( lead );
+    }
+
+    for( int observation_index = 0; observation_index < 10; ++observation_index ) {
+        const std::string fact_key = observation_index == 0 ? "00-placeholder" :
+                                     observation_index == 1 ? "01-fresh" :
+                                     observation_index == 2 ? "02-expired" :
+                                     observation_index == 3 ? "03-future" :
+                                     observation_index == 4 ? "04-injection\n=case" :
+                                     ( observation_index < 10 ? "0" : "" ) +
+                                     std::to_string( observation_index ) + "-fact";
+        bandit_live_world::sortie_observation observation = make_typed_visual_observation(
+                    character_id( 7000 + observation_index ), 3, 560, fact_key,
+                    bandit_live_world::sortie_observation_share_state::shared );
+        observation.source_id = "scout:" + std::to_string( observation_index );
+        observation.source_omt = tripoint_abs_omt( 7, 8, 0 );
+        observation.receiver_omt = first_site.anchor;
+        if( observation_index == 2 ) {
+            observation.observed_minutes = 530;
+            observation.expiry_minutes = 590;
+        } else if( observation_index == 3 ) {
+            observation.observed_minutes = 610;
+            observation.expiry_minutes = 640;
+        } else if( observation_index == 4 ) {
+            observation.record_schema_version = 0;
+            observation.expiry_minutes = -1;
+        } else {
+            observation.expiry_minutes = 620;
+        }
+        first_site.active_outing.observations.push_back( observation );
+    }
+
+    bandit_live_world::sortie_observation report_observation = make_typed_visual_observation(
+                character_id( 8000 ), 2, 580, "returned-report",
+                bandit_live_world::sortie_observation_share_state::reported );
+    report_observation.source_id = "returning-scout";
+    report_observation.source_omt = tripoint_abs_omt( 11, 12, 0 );
+    report_observation.receiver_omt = world.sites[1].anchor;
+    report_observation.expiry_minutes = 660;
+    world.sites[1].current_scout_report.observations.push_back( report_observation );
+
+    const std::string before = serialize_world( world );
+    const std::string report = bandit_live_world::render_evidence_debug_report(
+                                   world, now_minutes );
+    CHECK( bandit_live_world::render_evidence_debug_report( world, now_minutes ) == report );
+    CHECK( serialize_world( world ) == before );
+    CHECK( report.size() < 30000 );
+    CHECK( report.find( "site_cap=8 lead_cap=8 observation_cap=8 rotation_hour=10 "
+                        "rotation_cycle=1 "
+                        "evidence_sites_total=10 "
+                        "sites_rendered=8 sites_omitted=2 start=0" ) != std::string::npos );
+    CHECK( report.find( "site id=debug-site-00" ) != std::string::npos );
+    CHECK( report.find( "site id=debug-site-07" ) != std::string::npos );
+    CHECK( report.find( "site id=debug-site-08" ) == std::string::npos );
+    CHECK( report.find( "site id=debug-site-09" ) == std::string::npos );
+    CHECK( report.find( "leads_total=10 leads_rendered=8 leads_omitted=2 lead_start=1 "
+                        "observations_total=10 observations_rendered=8 observations_omitted=2 "
+                        "observation_start=1" ) !=
+           std::string::npos );
+    CHECK( report.find( "lead id=01_bad__id revision=3 last_known_omt=(7,8,0) "
+                        "origin=returned_report source_key=scout__alpha last_seen_minutes=540 "
+                        "age_minutes=+60 expiry_minutes=720 remaining_minutes=+120 "
+                        "state=fresh" ) != std::string::npos );
+    CHECK( report.find( "lead id=lead-2 revision=1 last_known_omt=(2,0,0) "
+                        "origin=returned_report source_key=source last_seen_minutes=300 "
+                        "age_minutes=+300 expiry_minutes=480 remaining_minutes=-120 "
+                        "state=expired" ) != std::string::npos );
+    CHECK( report.find( "fact_key=01-fresh" ) != std::string::npos );
+    CHECK( report.find( "observed_minutes=560 age_minutes=+40 expiry_minutes=620 "
+                        "remaining_minutes=+20 state=fresh" ) != std::string::npos );
+    CHECK( report.find( "fact_key=02-expired" ) != std::string::npos );
+    CHECK( report.find( "observed_minutes=530 age_minutes=+70 expiry_minutes=590 "
+                        "remaining_minutes=-10 state=expired" ) != std::string::npos );
+    CHECK( report.find( "fact_key=03-future" ) != std::string::npos );
+    CHECK( report.find( "observed_minutes=610 age_minutes=-10 expiry_minutes=640 "
+                        "remaining_minutes=+40 state=future" ) != std::string::npos );
+    CHECK( report.find( "fact_key=04-injection__case" ) != std::string::npos );
+    CHECK( report.find( "expiry_minutes=unknown remaining_minutes=unknown state=unbounded" ) !=
+           std::string::npos );
+    CHECK( report.find( "04-injection\n=case" ) == std::string::npos );
+    CHECK( report.find( "observation scope=report fact_key=returned-report" ) !=
+           std::string::npos );
+
+    const std::string rotated = bandit_live_world::render_evidence_debug_report(
+                                    world, now_minutes + 9 * 60 );
+    CHECK( rotated.find( "rotation_hour=19 rotation_cycle=1 evidence_sites_total=10 "
+                         "sites_rendered=8 "
+                         "sites_omitted=2 start=9" ) != std::string::npos );
+    CHECK( rotated.find( "site id=debug-site-09" ) != std::string::npos );
+    CHECK( rotated.find( "site id=debug-site-06" ) != std::string::npos );
+    CHECK( rotated.find( "site id=debug-site-07" ) == std::string::npos );
+    CHECK( rotated.find( "site id=debug-site-08" ) == std::string::npos );
+    const std::string nested_rotated = bandit_live_world::render_evidence_debug_report(
+                                           world, now_minutes + 80 * 60 );
+    CHECK( nested_rotated.find( "rotation_hour=90 rotation_cycle=9 evidence_sites_total=10 "
+                                "sites_rendered=8 sites_omitted=2 start=0" ) !=
+           std::string::npos );
+    CHECK( nested_rotated.find( "site id=debug-site-00 anchor=(0,1,0) leads_total=10 "
+                                "leads_rendered=8 leads_omitted=2 lead_start=9 "
+                                "observations_total=10 observations_rendered=8 "
+                                "observations_omitted=2 observation_start=9" ) !=
+           std::string::npos );
+    CHECK( nested_rotated.find( "lead id=lead-9" ) != std::string::npos );
+    CHECK( nested_rotated.find( "fact_key=09-fact" ) != std::string::npos );
+    CHECK( nested_rotated.find( "lead id=lead-7" ) == std::string::npos );
+    CHECK( nested_rotated.find( "lead id=lead-8" ) == std::string::npos );
+    CHECK( nested_rotated.find( "fact_key=07-fact" ) == std::string::npos );
+    CHECK( nested_rotated.find( "fact_key=08-fact" ) == std::string::npos );
+}

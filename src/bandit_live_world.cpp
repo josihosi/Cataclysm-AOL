@@ -12046,6 +12046,219 @@ std::string render_structural_bounty_maintenance_report(
     return out.str();
 }
 
+std::string render_evidence_debug_report( const world_state &state, const int current_minutes )
+{
+    static constexpr std::size_t site_cap = 8;
+    static constexpr std::size_t lead_cap = 8;
+    static constexpr std::size_t observation_cap = 8;
+    static constexpr std::size_t token_cap = 96;
+
+    const auto token = []( const std::string &raw ) {
+        std::string result;
+        result.reserve( std::min( raw.size(), token_cap ) );
+        for( const char character : raw ) {
+            if( result.size() == token_cap ) {
+                break;
+            }
+            const unsigned char byte = static_cast<unsigned char>( character );
+            result.push_back( byte <= 0x20 || byte == 0x7f || character == '"' ||
+                              character == '\\' || character == '=' ? '_' : character );
+        }
+        if( raw.size() > token_cap && !result.empty() ) {
+            result.back() = '~';
+        }
+        return result.empty() ? std::string( "-" ) : result;
+    };
+    const auto omt = []( const tripoint_abs_omt &point ) {
+        return "(" + std::to_string( point.x() ) + "," + std::to_string( point.y() ) + "," +
+               std::to_string( point.z() ) + ")";
+    };
+    const auto signed_delta = []( const int lhs, const int rhs ) {
+        const long long delta = static_cast<long long>( lhs ) - rhs;
+        return std::string( delta >= 0 ? "+" : "" ) + std::to_string( delta );
+    };
+    const auto age = [&signed_delta, current_minutes]( const int observed_minutes ) {
+        return observed_minutes < 0 ? std::string( "unknown" ) :
+               signed_delta( current_minutes, observed_minutes );
+    };
+
+    struct site_view {
+        const site_record *site;
+        std::size_t persisted_index;
+    };
+    std::vector<site_view> sites;
+    for( std::size_t index = 0; index < state.sites.size(); ++index ) {
+        const site_record &site = state.sites[index];
+        if( !site.intelligence_map.leads.empty() ||
+            !site.active_outing.observations.empty() ||
+            !site.current_scout_report.observations.empty() ) {
+            sites.push_back( { &site, index } );
+        }
+    }
+    std::sort( sites.begin(), sites.end(), []( const site_view &lhs, const site_view &rhs ) {
+        return std::tie( lhs.site->site_id, lhs.site->anchor, lhs.persisted_index ) <
+               std::tie( rhs.site->site_id, rhs.site->anchor, rhs.persisted_index );
+    } );
+
+    const std::size_t rendered_sites = std::min( sites.size(), site_cap );
+    const int rotation_hour = std::max( 0, current_minutes ) / 60;
+    const std::size_t start = sites.empty() ? 0 :
+                              static_cast<std::size_t>( rotation_hour ) % sites.size();
+    const std::size_t rotation_cycle = sites.empty() ? 0 :
+                                       static_cast<std::size_t>( rotation_hour ) / sites.size();
+    std::ostringstream out;
+    out << "bandit_live_world evidence debug:"
+        << " now_minutes=" << current_minutes
+        << " site_cap=" << site_cap
+        << " lead_cap=" << lead_cap
+        << " observation_cap=" << observation_cap
+        << " rotation_hour=" << rotation_hour
+        << " rotation_cycle=" << rotation_cycle
+        << " evidence_sites_total=" << sites.size()
+        << " sites_rendered=" << rendered_sites
+        << " sites_omitted=" << sites.size() - rendered_sites
+        << " start=" << start << '\n';
+
+    for( std::size_t site_offset = 0; site_offset < rendered_sites; ++site_offset ) {
+        const site_record &site = *sites[( start + site_offset ) % sites.size()].site;
+        std::vector<const camp_map_lead *> leads;
+        leads.reserve( site.intelligence_map.leads.size() );
+        for( const camp_map_lead &lead : site.intelligence_map.leads ) {
+            leads.push_back( &lead );
+        }
+        std::sort( leads.begin(), leads.end(), []( const camp_map_lead *lhs,
+        const camp_map_lead *rhs ) {
+            return std::make_tuple( lhs->lead_id, lhs->revision, lhs->omt.x(), lhs->omt.y(),
+                                    lhs->omt.z(), lhs->origin, lhs->source_key,
+                                    lhs->last_seen_minutes ) <
+                   std::make_tuple( rhs->lead_id, rhs->revision, rhs->omt.x(), rhs->omt.y(),
+                                    rhs->omt.z(), rhs->origin, rhs->source_key,
+                                    rhs->last_seen_minutes );
+        } );
+
+        struct observation_view {
+            std::string_view scope;
+            const sortie_observation *observation;
+        };
+        std::vector<observation_view> observations;
+        observations.reserve( site.active_outing.observations.size() +
+                              site.current_scout_report.observations.size() );
+        for( const sortie_observation &observation : site.active_outing.observations ) {
+            observations.push_back( { "active", &observation } );
+        }
+        for( const sortie_observation &observation : site.current_scout_report.observations ) {
+            observations.push_back( { "report", &observation } );
+        }
+        std::sort( observations.begin(), observations.end(),
+        []( const observation_view &lhs, const observation_view &rhs ) {
+            const sortie_observation &left = *lhs.observation;
+            const sortie_observation &right = *rhs.observation;
+            return std::make_tuple( lhs.scope, left.fact_key, left.observed_minutes,
+                                    left.source_id, left.observer_id.get_value(),
+                                    left.source_omt.x(), left.source_omt.y(), left.source_omt.z(),
+                                    left.receiver_omt.x(), left.receiver_omt.y(),
+                                    left.receiver_omt.z(), left.record_schema_version,
+                                    left.sense, left.share_state ) <
+                   std::make_tuple( rhs.scope, right.fact_key, right.observed_minutes,
+                                    right.source_id, right.observer_id.get_value(),
+                                    right.source_omt.x(), right.source_omt.y(), right.source_omt.z(),
+                                    right.receiver_omt.x(), right.receiver_omt.y(),
+                                    right.receiver_omt.z(), right.record_schema_version,
+                                    right.sense, right.share_state );
+        } );
+
+        const std::size_t rendered_leads = std::min( leads.size(), lead_cap );
+        const std::size_t rendered_observations = std::min( observations.size(), observation_cap );
+        const std::size_t lead_start = leads.empty() ? 0 : rotation_cycle % leads.size();
+        const std::size_t observation_start = observations.empty() ? 0 :
+                                              rotation_cycle % observations.size();
+        out << "site id=" << token( site.site_id )
+            << " anchor=" << omt( site.anchor )
+            << " leads_total=" << leads.size()
+            << " leads_rendered=" << rendered_leads
+            << " leads_omitted=" << leads.size() - rendered_leads
+            << " lead_start=" << lead_start
+            << " observations_total=" << observations.size()
+            << " observations_rendered=" << rendered_observations
+            << " observations_omitted=" << observations.size() - rendered_observations
+            << " observation_start=" << observation_start << '\n';
+
+        for( std::size_t lead_offset = 0; lead_offset < rendered_leads; ++lead_offset ) {
+            const camp_map_lead &lead = *leads[( lead_start + lead_offset ) % leads.size()];
+            out << " lead id=" << token( lead.lead_id )
+                << " revision=" << lead.revision
+                << " last_known_omt=" << omt( lead.omt )
+                << " origin=" << to_string( lead.origin )
+                << " source_key=" << token( lead.source_key )
+                << " last_seen_minutes=";
+            if( lead.last_seen_minutes < 0 ) {
+                out << "unknown";
+            } else {
+                out << lead.last_seen_minutes;
+            }
+            out << " age_minutes=" << age( lead.last_seen_minutes );
+            if( returned_structural_signal_lead( lead ) && lead.last_seen_minutes >= 0 ) {
+                const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ?
+                                            3 * 60 : 6 * 60;
+                const int expiry_minutes = minutes_after_saturated( lead.last_seen_minutes,
+                                           horizon_minutes );
+                const char *state_name = lead.last_seen_minutes > current_minutes ? "future" :
+                                         expiry_minutes <= current_minutes ? "expired" : "fresh";
+                out << " expiry_minutes=" << expiry_minutes
+                    << " remaining_minutes=" << signed_delta( expiry_minutes, current_minutes )
+                    << " state=" << state_name << '\n';
+            } else if( returned_structural_signal_lead( lead ) ) {
+                out << " expiry_minutes=unknown remaining_minutes=unknown state=unknown\n";
+            } else {
+                out << " expiry_minutes=none remaining_minutes=none state=unbounded\n";
+            }
+        }
+
+        for( std::size_t observation_offset = 0;
+             observation_offset < rendered_observations; ++observation_offset ) {
+            const observation_view &view = observations[( observation_start + observation_offset ) %
+                                           observations.size()];
+            const sortie_observation &observation = *view.observation;
+            std::string freshness;
+            if( observation.expiry_minutes < 0 ) {
+                freshness = "unbounded";
+            } else if( observation.observed_minutes > current_minutes ) {
+                freshness = "future";
+            } else if( observation.expiry_minutes < current_minutes ) {
+                freshness = "expired";
+            } else {
+                freshness = "fresh";
+            }
+            out << " observation scope=" << view.scope
+                << " fact_key=" << token( observation.fact_key )
+                << " source_omt=" << omt( observation.source_omt )
+                << " receiver_omt=" << omt( observation.receiver_omt )
+                << " schema=" << observation.record_schema_version
+                << " source_id=" << token( observation.source_id )
+                << " observer=" << observation.observer_id.get_value()
+                << " sense=" << sortie_observation_sense_to_string( observation.sense )
+                << " share=" << sortie_observation_share_state_to_string( observation.share_state )
+                << " observed_minutes=";
+            if( observation.observed_minutes < 0 ) {
+                out << "unknown";
+            } else {
+                out << observation.observed_minutes;
+            }
+            out << " age_minutes=" << age( observation.observed_minutes )
+                << " expiry_minutes=";
+            if( observation.expiry_minutes < 0 ) {
+                out << "unknown remaining_minutes=unknown";
+            } else {
+                out << observation.expiry_minutes
+                    << " remaining_minutes=" << signed_delta( observation.expiry_minutes,
+                            current_minutes );
+            }
+            out << " state=" << freshness << '\n';
+        }
+    }
+    return out.str();
+}
+
 tripoint_abs_omt reachable_ground_dispatch_target( const site_record &site,
         const tripoint_abs_omt &target_omt )
 {
