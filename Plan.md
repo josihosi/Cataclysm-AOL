@@ -323,7 +323,13 @@ the observer and preserve a screenshot/snapshot pair. The prepared O0 handoff is
 fixture preserves the inherited `DEBUG_CLOAK`, idempotently adds only `DEBUG_CLAIRVOYANCE`, reports
 before/after/already-present state, and exposes one launch-only manual command. The system-Python
 fixture contract passes 125 tests and the dry-run is plan-only; overlay/save-neutrality claims remain
-open for the shared-view/UI rows.
+open for the shared-view/UI rows. The O1 shared camp/dispatch query is also green at the current
+checkpoint: it reads only the authoritative camp-style/cannibal world owner, includes genuinely
+unmaterialized camps, removes terminal/survivor-less dispatches, distinguishes abstract/local and
+loaded state, and retains deterministic candidates in `O(N log 2048)` work before the 256-marker
+cap. Selected-only route/reason/deadline/member detail, z-level/co-location, exact save round-trip,
+and gate-closed byte neutrality pass 5 focused cases / 61 assertions. AutoReview found and closed
+five concrete adapter/cap defects; the final rerun is clean. Overmap UI and compact JSON remain O2.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

@@ -810,6 +810,21 @@ exits 0 with plan-only evidence. Homebrew Python 3.14 lacks the fixture suite's 
 dependency and is not credited. This proves disposable prepared footing only: no overlay, ordinary
 start, knowledge/save-neutrality, or gameplay behavior claim is closed by the dry-run.
 
+Observer O1 camp/dispatch core is green at the current checkpoint. Exact Mac compilation of
+`obj/tiles/ecology_debug_view.o` and the focused test object exits 0; linked
+`[ecology_debug][observer][phase4]` passes 5 cases / 61 assertions at seed `830204929`. Coverage
+includes gate-closed zero callbacks plus byte-identical owner serialization, genuinely
+unmaterialized camps, exclusion of small hostile map extras, abstract/local ownership, unresolved-
+survivor-only loaded filtering, selected-only name/HP reads, stable aliases/provenance, co-located
+entities, z-levels, save/load, terminal lost/dead/completed removal, exact 2,048/256/128 metadata,
+deterministic `O(N log 2048)` retention, truncation, and selected-row forcing. Initial AutoReview
+accepted five concrete findings across abstract camps, supported profiles, resolved loaded state,
+terminal lost state, and unbounded sorting; all are fixed. Final command
+`autoreview --mode local` exits 0 with no accepted/actionable findings. `astyle` is unavailable on
+this Mac; Josef should apply astyle 3.1 if a formatting gate later reports drift. This is Mac
+compile/unit evidence only and does not claim the O2 overmap gate, JSON artifact, or foreign
+platforms.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

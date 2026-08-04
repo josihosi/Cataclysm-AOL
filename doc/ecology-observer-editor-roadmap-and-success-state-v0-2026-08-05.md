@@ -123,13 +123,19 @@ natural while retaining causal linkage to the intervention ledger.
 
 ### O1 - shared read-only camp/dispatch view
 
-- [ ] Implement one side-effect-free view/query type with stable sort/cap/truncation/provenance and
-  selected-only rich detail.
-- [ ] Read bandit/cannibal camps and active dispatches from `bandit_live_world`; cover concrete /
+- [x] Implement one side-effect-free view/query type with stable sort/cap/truncation/provenance and
+  selected-only rich detail. _O1 core checkpoint: deterministic retained heap bounds sort work at
+  `O(N log 2048)`, emits at most 256, forces a valid selected row, and exposes the 128 event cap
+  without owning history._
+- [x] Read bandit/cannibal camps and active dispatches from `bandit_live_world`; cover concrete /
   abstract owner, loaded state, source, route, phase, blocked reason/deadline, members/HP, z-level,
-  co-location, completion/death removal, and save/load.
-- [ ] Add deterministic unit/contract tests for gating, cap/sort, no mutation, stale removal,
-  co-location, z-levels, and closed-query zero work.
+  co-location, completion/death removal, and save/load. _Unmaterialized abstract camps remain
+  visible; small hostile sites, terminal lost owners, casualties/resolved members, and completed
+  parties cannot leave false dispatch markers._
+- [x] Add deterministic unit/contract tests for gating, cap/sort, no mutation, stale removal,
+  co-location, z-levels, and closed-query zero work. _Exact Mac compile green; focused 5/61 at seed
+  `830204929`; five accepted review findings fixed and final AutoReview clean. UI/JSON adapters are
+  deliberately O2._
 
 ### O2 - overmap observer UX
 
