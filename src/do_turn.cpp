@@ -3375,10 +3375,21 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
     const bandit_live_world::structural_threat_observer_request &request )
 {
     std::vector<bandit_live_world::structural_signal_read> result;
+    const bool request_current_inbounds = get_map().inbounds( request.current_omt );
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
         outing.owner != bandit_live_world::simulation_owner::abstract ||
         request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
-        get_map().inbounds( request.current_omt ) ) {
+        request_current_inbounds ) {
+        if( !sound_events.empty() ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_adapter rejected_request"
+                                       << " current_omt=" << request.current_omt
+                                       << " current_inbounds=" << ( request_current_inbounds ? "yes" : "no" )
+                                       << " outing_kind=" << static_cast<int>( outing.kind )
+                                       << " owner=" << static_cast<int>( outing.owner )
+                                       << " party_power=" << request.party_power
+                                       << " forward_count=" << request.visible_forward_omts.size()
+                                       << " events=" << sound_events.size() << '\n';
+        }
         return result;
     }
     const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( outing.leader_id );
@@ -3459,11 +3470,6 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                                                  request.visible_forward_omts.end(),
                                                  event.source_omt ) !=
                                          request.visible_forward_omts.end();
-        if( !supported_kind || !source_is_permitted || event.volume < 24 ||
-            event.emitted_minutes < 0 || event.emitted_minutes > now_minutes ||
-            now_minutes - event.emitted_minutes > 180 || observer->is_deaf() ) {
-            continue;
-        }
         const int distance_omt = rl_dist( request.current_omt, event.source_omt );
         const int vertical_omt = std::abs( request.current_omt.z() - event.source_omt.z() );
         const int conservative_distance_ms = ( distance_omt + 1 ) * 2 * SEEX - 1 +
@@ -3471,6 +3477,23 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         const int effective_volume = static_cast<int>( std::floor(
                                          std::max( 0, event.volume - weather_attenuation ) *
                                          observer->hearing_ability() ) );
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_adapter event"
+                                   << " source_omt=" << event.source_omt
+                                   << " current_omt=" << request.current_omt
+                                   << " supported=" << ( supported_kind ? "yes" : "no" )
+                                   << " permitted=" << ( source_is_permitted ? "yes" : "no" )
+                                   << " volume=" << event.volume
+                                   << " emitted_minutes=" << event.emitted_minutes
+                                   << " now_minutes=" << now_minutes
+                                   << " observer_deaf=" << ( observer->is_deaf() ? "yes" : "no" )
+                                   << " weather_attenuation=" << weather_attenuation
+                                   << " effective_volume=" << effective_volume
+                                   << " required_volume=" << conservative_distance_ms << '\n';
+        if( !supported_kind || !source_is_permitted || event.volume < 24 ||
+            event.emitted_minutes < 0 || event.emitted_minutes > now_minutes ||
+            now_minutes - event.emitted_minutes > 180 || observer->is_deaf() ) {
+            continue;
+        }
         if( effective_volume >= conservative_distance_ms ) {
             audible.push_back( { &event, effective_volume, distance_omt } );
         }

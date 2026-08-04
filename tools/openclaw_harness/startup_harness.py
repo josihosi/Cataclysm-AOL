@@ -2311,24 +2311,34 @@ def classify_wait_step_ledger(
     if elapsed["status"] == "clock_delta_parsed" and expected_seconds is not None and \
             elapsed.get( "delta_seconds" ) != expected_seconds and \
             before_clock["clock_matches"] and after_clock["clock_matches"]:
+        before_match = before_clock["clock_matches"][0]
         after_match = after_clock["clock_matches"][0]
+        before_display_hour = before_match.get( "display_hour" )
+        before_meridiem = str( before_match.get( "meridiem", "" ) )
+        before_seconds = before_match.get( "seconds_since_midnight" )
         after_display_hour = after_match.get( "display_hour" )
         after_meridiem = str( after_match.get( "meridiem", "" ) )
         after_seconds = after_match.get( "seconds_since_midnight" )
-        alternative_after_seconds = None
-        alternative_delta_seconds = None
+        before_candidates = [before_seconds]
+        after_candidates = [after_seconds]
+        if isinstance( before_display_hour, int ) and 1 <= before_display_hour <= 12 and \
+                not before_meridiem and isinstance( before_seconds, int ):
+            before_candidates.append( ( before_seconds + 12 * 60 * 60 ) % ( 24 * 60 * 60 ) )
         if isinstance( after_display_hour, int ) and 1 <= after_display_hour <= 12 and \
                 not after_meridiem and isinstance( after_seconds, int ):
-            alternative_after_seconds = ( after_seconds + 12 * 60 * 60 ) % ( 24 * 60 * 60 )
-            before_seconds = before_clock["clock_matches"][0]["seconds_since_midnight"]
-            alternative_delta_seconds = (
-                alternative_after_seconds - before_seconds
-            ) % ( 24 * 60 * 60 )
+            after_candidates.append( ( after_seconds + 12 * 60 * 60 ) % ( 24 * 60 * 60 ) )
+        alternative_delta_seconds = next( (
+            ( candidate_after - candidate_before ) % ( 24 * 60 * 60 )
+            for candidate_before in before_candidates
+            for candidate_after in after_candidates
+            if candidate_before != before_seconds or candidate_after != after_seconds
+            if ( candidate_after - candidate_before ) % ( 24 * 60 * 60 ) == expected_seconds
+        ), None )
         meridiem_ambiguity_confirmed = bool(
             allow_exact_artifact_meridiem_ambiguity and
             selected_duration_matches_expected and
             alternative_delta_seconds == expected_seconds and
-            wait_status == "completed" and
+            wait_status in {"completed", "unknown_after_wait"} and
             artifact_status == "captured" and
             artifact_has_new_bytes and
             artifact_elapsed["matched"] and
@@ -2337,14 +2347,15 @@ def classify_wait_step_ledger(
         )
         elapsed.update( {
             "raw_delta_seconds": elapsed.get( "delta_seconds" ),
-            "alternative_after_seconds_since_midnight": alternative_after_seconds,
+            "alternative_before_seconds_candidates": before_candidates,
+            "alternative_after_seconds_candidates": after_candidates,
             "alternative_delta_seconds": alternative_delta_seconds,
         } )
         if meridiem_ambiguity_confirmed:
             elapsed.update( {
                 "status": "artifact_confirmed_meridiem_ambiguity",
                 "note": (
-                    "the after-clock omitted AM/PM; toggling its 12-hour interpretation matches "
+                    "at least one clock endpoint omitted AM/PM; toggling its 12-hour interpretation matches "
                     "the exact bounded choice and newly captured scheduler_hour/now_minutes endpoints"
                 ),
             } )
@@ -2405,7 +2416,7 @@ def classify_wait_step_ledger(
             "either a parsed before/after clock or turn delta or all configured post-wait cadence artifacts, "
             "and either a finish signal, classified interruption, or completed-by-artifact delta. A scenario may explicitly "
             "defer noisy wait-menu OCR to bounded choice-key plus matched post-wait cadence artifacts. A separate explicit "
-            "opt-in accepts a bare after-clock meridiem ambiguity only when the exact choice, completed status, newly captured "
+            "opt-in accepts a bare endpoint meridiem ambiguity only when the exact choice, bounded completion status, newly captured "
             "artifact bytes, all configured patterns, and exact scheduler_hour/now_minutes endpoints agree."
         ),
     }
@@ -2894,7 +2905,7 @@ def execute_long_wait_action(
     )
     tail_lines = int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 32)) or 32)
     complete_patterns = normalize_screen_text_patterns(
-        step.get("wait_complete_text_contains", ["You finish waiting."])
+        step.get("wait_complete_text_contains", ["You finish waiting"])
     )
     state_patterns = normalize_string_list(step.get("artifact_state_patterns", artifact_patterns or []))
     interrupt_patterns = normalize_screen_text_patterns(
@@ -6070,10 +6081,54 @@ def debug_map_editor_place_furniture(
         time.sleep(prompt_settle_seconds)
 
 
+def debug_map_editor_place_item(
+    pid: int,
+    *,
+    item_query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+) -> None:
+    if not isinstance(item_query, str) or not item_query.strip():
+        raise SystemExit("Map-editor item placement needs non-empty string item_query")
+    query = item_query.strip()
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "M"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["i"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["a"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    apply_uilist_filter(
+        pid,
+        query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    # Map-target item wishing adds exactly one selected item and returns to the
+    # item editor without opening the inventory-spawn count prompt.
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+
+
 def debug_map_editor_place_field(
     pid: int,
     *,
     field_query: str,
+    field_intensity: int = 1,
     target_keys: Optional[List[str]] = None,
     delay_ms: int = 200,
     type_delay_ms: int = 20,
@@ -6084,6 +6139,10 @@ def debug_map_editor_place_field(
     query = str(field_query or "").strip()
     if not query:
         raise SystemExit("Map-editor field placement needs field_query")
+    if isinstance(field_intensity, bool) or not isinstance(field_intensity, int):
+        raise SystemExit("Map-editor field placement field_intensity must be an integer from 1 to 3")
+    if field_intensity < 1 or field_intensity > 3:
+        raise SystemExit("Map-editor field placement field_intensity must be from 1 to 3")
     run_debug_menu_shortcut_path(
         pid,
         ["m", "M"],
@@ -6104,8 +6163,13 @@ def debug_map_editor_place_field(
     )
     peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
     time.sleep(prompt_settle_seconds)
-    # Field selection opens an intensity menu; accept the default highlighted
-    # intensity before applying the brush to the target tile.
+    # Field selection opens a three-choice intensity menu with intensity 1
+    # highlighted by default. Move to the requested entry before applying the
+    # brush to the target tile.
+    intensity_keys = ["down"] * (field_intensity - 1)
+    if intensity_keys:
+        peekaboo_press_sequence(pid, intensity_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
     peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
     time.sleep(prompt_settle_seconds)
     peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
@@ -12346,6 +12410,7 @@ AUTO_ACKNOWLEDGE_COMPLETED_INTERACTION_KINDS = frozenset({
     "debug_force_temperature",
     "debug_map_editor_place_field",
     "debug_map_editor_place_furniture",
+    "debug_map_editor_place_item",
     "debug_map_editor_place_radiation",
     "debug_map_editor_place_terrain",
     "debug_map_editor_place_trap",
@@ -12849,6 +12914,43 @@ def execute_probe_steps(
                 "selection_path": target_keys + ["r", "/", furniture_query, "enter", "enter"],
                 "spawn_target": "map_editor_target_tile",
             })
+        elif kind == "debug_map_editor_place_item":
+            raw_item_query = step.get("item_query")
+            if not isinstance(raw_item_query, str) or not raw_item_query.strip():
+                raise SystemExit(f"Scenario step '{label}' needs non-empty string item_query")
+            item_query = raw_item_query.strip()
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_item(
+                pid,
+                item_query=item_query,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "item_query": item_query,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys
+                + ["i", "a", "/", item_query, "enter", "enter", "esc", "esc"],
+                "spawn_target": "map_editor_target_tile",
+            })
         elif kind == "debug_map_editor_place_field":
             field_query = str(
                 step.get("field_query")
@@ -12858,6 +12960,12 @@ def execute_probe_steps(
             ).strip()
             if not field_query:
                 raise SystemExit(f"Scenario step '{label}' needs field_query/field")
+            raw_field_intensity = step.get("field_intensity", 1)
+            if isinstance(raw_field_intensity, bool) or not isinstance(raw_field_intensity, int):
+                raise SystemExit(f"Scenario step '{label}' field_intensity must be an integer from 1 to 3")
+            field_intensity = raw_field_intensity
+            if field_intensity < 1 or field_intensity > 3:
+                raise SystemExit(f"Scenario step '{label}' field_intensity must be from 1 to 3")
             raw_target_keys = step.get("target_keys", [])
             if isinstance(raw_target_keys, str):
                 target_keys = [raw_target_keys] if raw_target_keys.strip() else []
@@ -12872,6 +12980,7 @@ def execute_probe_steps(
             debug_map_editor_place_field(
                 pid,
                 field_query=field_query,
+                field_intensity=field_intensity,
                 target_keys=target_keys,
                 delay_ms=delay_ms,
                 type_delay_ms=type_delay_ms,
@@ -12880,13 +12989,16 @@ def execute_probe_steps(
             )
             report.update({
                 "field_query": field_query,
+                "field_intensity": field_intensity,
                 "target_keys": target_keys,
                 "delay_ms": delay_ms,
                 "type_delay_ms": type_delay_ms,
                 "menu_settle_seconds": menu_settle_seconds,
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "M"],
-                "selection_path": target_keys + ["e", "/", field_query, "enter", "enter", "enter"],
+                "intensity_selection_path": (["down"] * (field_intensity - 1)) + ["enter"],
+                "selection_path": target_keys + ["e", "/", field_query, "enter"]
+                + (["down"] * (field_intensity - 1)) + ["enter", "enter"],
                 "spawn_target": "map_editor_target_tile",
             })
         elif kind == "debug_map_editor_place_terrain":

@@ -52,7 +52,10 @@ from startup_harness import (  # noqa: E402
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
     classify_blocking_interruption,
+    classify_wait_screen_text,
     classify_wait_step_ledger,
+    debug_map_editor_place_field,
+    debug_map_editor_place_item,
     extract_clock_or_turn_evidence,
     execute_long_wait_action,
     execute_probe_steps,
@@ -306,6 +309,24 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
 
 
 class WaitStepLedgerContractTest(unittest.TestCase):
+    def test_wait_completion_phrase_does_not_require_ocr_punctuation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            screen_text_path = Path(temp_dir) / "screen_text.json"
+            screen_text_path.write_text(json.dumps({
+                "lines": ["The darkness makes you nervous.", "You finish waiting"],
+            }), encoding="utf-8")
+            report = classify_wait_screen_text(
+                {"json_path": str(screen_text_path)},
+                ["You finish waiting"],
+                ["Stop moving?"],
+            )
+
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(
+            report["complete_matches"],
+            [{"pattern": "You finish waiting", "line": "You finish waiting"}],
+        )
+
     @staticmethod
     def artifact_report() -> Dict[str, Any]:
         return {
@@ -429,6 +450,22 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertTrue(report["meridiem_ambiguity_confirmed"])
         self.assertEqual(report["verdict"], "green_wait_step_proven")
 
+    def test_exact_artifacts_can_confirm_bare_before_clock_meridiem_ambiguity(self) -> None:
+        report = self.classify(
+            "8",
+            "6h",
+            "Time: 4:01:00\nMay 21\nWind: calm",
+            "Time: 10:01:00PM",
+            artifact_report=self.exact_endpoint_artifact_report(),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertEqual(report["before_clock_or_turn"]["clock_matches"][0]["meridiem"], "")
+        self.assertEqual(report["elapsed"]["raw_delta_seconds"], 18 * 60 * 60)
+        self.assertEqual(report["elapsed"]["alternative_delta_seconds"], 6 * 60 * 60)
+        self.assertTrue(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "green_wait_step_proven")
+
     def test_bare_after_clock_meridiem_ambiguity_requires_explicit_opt_in(self) -> None:
         report = self.classify(
             "5",
@@ -466,7 +503,7 @@ class WaitStepLedgerContractTest(unittest.TestCase):
             allow_meridiem_ambiguity=True,
         )
 
-        self.assertEqual(report["elapsed"]["alternative_delta_seconds"], 2 * 60 * 60)
+        self.assertIsNone(report["elapsed"]["alternative_delta_seconds"])
         self.assertFalse(report["meridiem_ambiguity_confirmed"])
         self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
 
@@ -505,9 +542,9 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertFalse(report["meridiem_ambiguity_confirmed"])
         self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
 
-    def test_meridiem_ambiguity_requires_exact_completed_status(self) -> None:
+    def test_meridiem_ambiguity_accepts_artifact_completed_and_rejects_interrupted_status(self) -> None:
         for wait_status, expected_verdict in (
-            ("unknown_after_wait", "yellow_wait_elapsed_or_menu_not_fully_proven"),
+            ("unknown_after_wait", "green_wait_step_proven"),
             ("interrupted_or_prompt_visible", "blocked_wait_interrupted_or_prompt_visible"),
         ):
             with self.subTest(wait_status=wait_status):
@@ -521,7 +558,10 @@ class WaitStepLedgerContractTest(unittest.TestCase):
                     allow_meridiem_ambiguity=True,
                 )
 
-                self.assertFalse(report["meridiem_ambiguity_confirmed"])
+                self.assertEqual(
+                    report["meridiem_ambiguity_confirmed"],
+                    wait_status == "unknown_after_wait",
+                )
                 self.assertEqual(report["verdict"], expected_verdict)
 
     def test_meridiem_ambiguity_requires_new_artifact_bytes(self) -> None:
@@ -1001,6 +1041,207 @@ class WaitStepLedgerContractTest(unittest.TestCase):
             [call.args[1] for call in press.call_args_list],
             [["|"], ["w"], ["5"]],
         )
+
+
+class MapEditorFieldIntensityContractTest(unittest.TestCase):
+    @staticmethod
+    def execute_field_step(step: Dict[str, Any]) -> tuple[Dict[str, Any], mock.Mock]:
+        clear_interruption = {
+            "status": "clear",
+            "acknowledgement_count": 0,
+            "release_blocking": False,
+            "contaminating": False,
+        }
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            mock.patch("startup_harness.run_debug_menu_shortcut_path"),
+            mock.patch("startup_harness.apply_uilist_filter"),
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.time.sleep"),
+            mock.patch(
+                "startup_harness.acknowledge_blocking_interruptions",
+                return_value=clear_interruption,
+            ),
+        ):
+            reports = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [step],
+                profile="dev-harness",
+                world="McWilliams",
+            )
+        return reports[0], press
+
+    def test_default_intensity_preserves_existing_selection_path(self) -> None:
+        report, press = self.execute_field_step({
+            "kind": "debug_map_editor_place_field",
+            "label": "place_smoke",
+            "field_query": "fd_smoke",
+        })
+
+        self.assertEqual(report["field_intensity"], 1)
+        self.assertEqual(report["intensity_selection_path"], ["enter"])
+        self.assertEqual(
+            report["selection_path"],
+            ["e", "/", "fd_smoke", "enter", "enter", "enter"],
+        )
+        self.assertNotIn(
+            "down",
+            [key for call in press.call_args_list for key in call.args[1]],
+        )
+
+    def test_intensity_three_moves_through_real_menu_and_records_path(self) -> None:
+        report, press = self.execute_field_step({
+            "kind": "debug_map_editor_place_field",
+            "label": "place_fire",
+            "field_query": "fd_fire",
+            "field_intensity": 3,
+            "target_keys": ["right"],
+        })
+
+        self.assertEqual(report["field_intensity"], 3)
+        self.assertEqual(report["intensity_selection_path"], ["down", "down", "enter"])
+        self.assertEqual(
+            report["selection_path"],
+            [
+                "right", "e", "/", "fd_fire", "enter", "down", "down",
+                "enter", "enter",
+            ],
+        )
+        self.assertIn(
+            ["down", "down"],
+            [call.args[1] for call in press.call_args_list],
+        )
+
+    def test_invalid_intensity_is_rejected_before_input(self) -> None:
+        invalid_values = (0, 4, "3", 3.0, True)
+        for value in invalid_values:
+            with self.subTest(value=value):
+                with mock.patch("startup_harness.debug_map_editor_place_field") as place_field:
+                    with self.assertRaisesRegex(SystemExit, "field_intensity must be"):
+                        execute_probe_steps(
+                            42,
+                            Path("unused"),
+                            [{
+                                "kind": "debug_map_editor_place_field",
+                                "label": "invalid_field_intensity",
+                                "field_query": "fd_fire",
+                                "field_intensity": value,
+                            }],
+                            profile="dev-harness",
+                            world="McWilliams",
+                        )
+                place_field.assert_not_called()
+
+        with self.assertRaisesRegex(SystemExit, "field_intensity must be from 1 to 3"):
+            debug_map_editor_place_field(
+                42,
+                field_query="fd_fire",
+                field_intensity=0,
+            )
+
+
+class MapEditorItemPlacementContractTest(unittest.TestCase):
+    def test_routes_one_item_to_target_tile_and_records_exact_path(self) -> None:
+        clear_interruption = {
+            "status": "clear",
+            "acknowledgement_count": 0,
+            "release_blocking": False,
+            "contaminating": False,
+        }
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            mock.patch("startup_harness.run_debug_menu_shortcut_path") as debug_path,
+            mock.patch("startup_harness.apply_uilist_filter") as apply_filter,
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.time.sleep"),
+            mock.patch(
+                "startup_harness.acknowledge_blocking_interruptions",
+                return_value=clear_interruption,
+            ),
+        ):
+            reports = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "debug_map_editor_place_item",
+                    "label": "place_active_c4",
+                    "item_query": "  c4armed  ",
+                    "target_keys": ["right", "right"],
+                    "delay_ms": 123,
+                    "type_delay_ms": 7,
+                    "menu_settle_seconds": 0.1,
+                    "prompt_settle_seconds": 0.2,
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )
+
+        report = reports[0]
+        debug_path.assert_called_once_with(
+            42,
+            ["m", "M"],
+            delay_ms=123,
+            menu_settle_seconds=0.1,
+        )
+        apply_filter.assert_called_once_with(
+            42,
+            "c4armed",
+            delay_ms=123,
+            type_delay_ms=7,
+            settle_seconds=0.2,
+        )
+        self.assertEqual(
+            [call.args[1] for call in press.call_args_list],
+            [
+                ["right", "right"], ["i"], ["a"], ["enter"], ["esc"],
+                ["esc"],
+            ],
+        )
+        self.assertEqual(report["item_query"], "c4armed")
+        self.assertEqual(report["target_keys"], ["right", "right"])
+        self.assertEqual(report["debug_menu_path"], ["}", "m", "M"])
+        self.assertEqual(
+            report["selection_path"],
+            [
+                "right", "right", "i", "a", "/", "c4armed", "enter",
+                "enter", "esc", "esc",
+            ],
+        )
+        self.assertEqual(report["spawn_target"], "map_editor_target_tile")
+
+    def test_missing_blank_and_wrong_type_queries_fail_before_input(self) -> None:
+        invalid_steps = (
+            {},
+            {"item_query": ""},
+            {"item_query": "   "},
+            {"item_query": 3},
+            {"item_query": ["c4armed"]},
+            {"item_query": False},
+        )
+        for invalid in invalid_steps:
+            with self.subTest(invalid=invalid):
+                step = {
+                    "kind": "debug_map_editor_place_item",
+                    "label": "invalid_item_query",
+                    **invalid,
+                }
+                with mock.patch("startup_harness.debug_map_editor_place_item") as place_item:
+                    with self.assertRaisesRegex(
+                        SystemExit,
+                        "needs non-empty string item_query",
+                    ):
+                        execute_probe_steps(
+                            42,
+                            Path("unused"),
+                            [step],
+                            profile="dev-harness",
+                            world="McWilliams",
+                        )
+                place_item.assert_not_called()
+
+        with self.assertRaisesRegex(SystemExit, "needs non-empty string item_query"):
+            debug_map_editor_place_item(42, item_query=3)  # type: ignore[arg-type]
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
