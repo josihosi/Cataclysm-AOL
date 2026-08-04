@@ -395,7 +395,8 @@ class WaitStepLedgerContractTest(unittest.TestCase):
                 {
                     "ok": True,
                     "text": (
-                        "The darkness makes you nervous.\n"
+                        "You suddenly realize this area seems almost devoid of life. "
+                        "What happened to the grass?\n"
                         "Waiting 25%\nPress | to interrupt waiting"
                     ),
                 },
@@ -409,14 +410,14 @@ class WaitStepLedgerContractTest(unittest.TestCase):
                 {
                     "ok": True,
                     "text": (
-                        "The darkness makes you nervous.\n"
+                        "You suddenly realize this area seems almost devoid of life.\n"
                         "Waiting 31%\nPress | to interrupt waiting"
                     ),
                 },
                 {
                     "ok": True,
                     "text": (
-                        "The darkness makes you nervous.\n"
+                        "You suddenly realize this area seems almost devoid of life.\n"
                         "Waiting 43%\nPress | to interrupt waiting"
                     ),
                 },
@@ -467,6 +468,39 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(result["interruption_handling"]["response_keys"], ["space", "I"])
         self.assertEqual(result["interruption_handling"]["acknowledgement_count"], 2)
         self.assertEqual([call.args[1] for call in press.call_args_list], [["space"], ["I"]])
+
+    def test_retained_shadow_suppression_cannot_override_unknown_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={
+                        "ok": True,
+                        "text": (
+                            "You suddenly realize this area seems almost devoid of life.\n"
+                            "Apply changes? (y/n)"
+                        ),
+                    },
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.interruption",
+                    stop_on_unknown=True,
+                    suppress_retained_shadow_warning=True,
+                )
+
+        self.assertEqual(result["status"], "blocked_unknown_prompt")
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "unhandled_blocking_menu",
+        )
+        self.assertEqual(result["acknowledgement_count"], 0)
+        press.assert_not_called()
 
     def test_poll_aborts_unknown_interruption_without_response_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

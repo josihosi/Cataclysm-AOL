@@ -7418,6 +7418,10 @@ def acknowledge_blocking_interruptions(
     suppress_retained_portal_notice_once = False
     suppress_retained_shadow_warning_once = suppress_retained_shadow_warning
     portal_notice_family = {"portal_storm_notice", "partial_portal_storm_notice"}
+    shadow_warning_family = {
+        "shadow_warning_wilderness_flavor_popup",
+        "partial_lifeless_grass_wilderness_flavor_popup",
+    }
 
     while True:
         scan_count += 1
@@ -7429,7 +7433,7 @@ def acknowledge_blocking_interruptions(
             status = str(classification.get("status", "unobservable"))
             classification_name = str(classification.get("classification", ""))
             if suppress_retained_shadow_warning_once and \
-                    classification_name == "shadow_warning_wilderness_flavor_popup":
+                    classification_name in shadow_warning_family:
                 classification = {
                     **classification,
                     "status": "clear",
