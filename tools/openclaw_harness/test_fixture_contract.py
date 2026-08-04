@@ -358,6 +358,37 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(report["elapsed"]["delta_seconds"], 6 * 60 * 60)
         self.assertEqual(report["verdict"], "green_wait_step_proven")
 
+    def test_accepts_split_hud_meridiem_after_month(self) -> None:
+        before = "Time: Friday, 12:00:00PM"
+        after = "Time: 1:00:00\nMay\nPM\n21"
+
+        parsed_after = extract_clock_or_turn_evidence({"text": after})
+        report = self.classify("5", "1h", before, after)
+
+        self.assertEqual(
+            parsed_after["clock_matches"][0]["seconds_since_midnight"],
+            13 * 60 * 60,
+        )
+        self.assertEqual(report["elapsed"]["delta_seconds"], 60 * 60)
+        self.assertEqual(report["verdict"], "green_wait_step_proven")
+
+    def test_does_not_attach_split_meridiem_across_unrelated_hud_prose(self) -> None:
+        parsed = extract_clock_or_turn_evidence({
+            "text": "Time: 1:00:00\nYou hear a noise nearby.\nPM",
+        })
+        distant = extract_clock_or_turn_evidence({
+            "text": "Time: 1:00:00" + ( "\n" * 12 ) + "PM",
+        })
+
+        self.assertEqual(
+            parsed["clock_matches"][0]["seconds_since_midnight"],
+            60 * 60,
+        )
+        self.assertEqual(
+            distant["clock_matches"][0]["seconds_since_midnight"],
+            60 * 60,
+        )
+
     def test_rejects_incorrect_turn_delta(self) -> None:
         report = self.classify("4", "30m", "turn 100", "turn 101")
 

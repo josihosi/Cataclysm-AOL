@@ -2190,7 +2190,7 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
     text = screen_text_body( screen_text_report )
     clock_matches: List[Dict[str, Any]] = []
     for match in re.finditer(
-        r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?\s*([ap]m)?\b",
+        r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?[ \t\r\n]{0,8}([ap]m)?\b",
         text,
         flags=re.IGNORECASE,
     ):
@@ -2199,9 +2199,14 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
         second = int( match.group( 3 ) or 0 )
         meridiem = str( match.group( 4 ) or "" ).lower()
         if not meridiem and 1 <= hour <= 12:
+            calendar_label = (
+                r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+                r"january|february|march|april|may|june|july|august|"
+                r"september|october|november|december)"
+            )
+            split_gap = r"[ \t\r\n]{0,8}"
             split_meridiem = re.match(
-                r"\s*(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*,?\s*)?"
-                r"(am|pm)\b",
+                rf"{split_gap}(?:(?:{calendar_label}),?{split_gap}){{0,2}}(am|pm)\b",
                 text[match.end():],
                 flags=re.IGNORECASE,
             )
