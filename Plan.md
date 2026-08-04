@@ -275,8 +275,15 @@ partner. Structural death writeback now belongs to the shared cleanup boundary; 
 death tiles persist without occupying living resume geometry, and same-ID lead replacement at a
 different OMT cannot inherit the report. Focused 3/316, combined 15/1,453, full live-world
 168/38,818, handoff/save 12/331, and save-size 1/10 are green under external
-`phase4-20260804/local-communication-control/MANIFEST.md`. Evidence provenance/age/expiry debug
-output is next. The
+`phase4-20260804/local-communication-control/MANIFEST.md`. Bounded evidence diagnostics are green
+at `4cbd85c57e`: the hourly production path renders last-known OMT, writer/source/observer
+provenance, signed age, and effective expiry for bounded rotating site/lead/observation windows.
+Returned sound and smoke/light leads use their real three-hour/six-hour decision horizons; unsafe
+tokens cannot inject lines, and completed site sweeps advance independent inner windows so capped
+entries cannot starve. The pure renderer is byte-read-only and adds no persisted debug state.
+Focused 1/34, adjacent Phase-4 8/739, full live-world 169/38,852, handoff/save 12/331, and save-size
+1/10 are green after clean read-only review under external
+`phase4-20260804/evidence-debug/MANIFEST.md`. The remaining Phase-4 live/harness matrix is next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

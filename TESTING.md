@@ -723,8 +723,24 @@ test binary SHA-256 is `35dc71c6a5b48a2ea4285ae0a368367fc6402e033077f7af03d23642
 Fresh read-only review found pinned-lead replacement, cleanup-ownership, off-route-death, and
 dead-position occupancy defects; all are repaired and the final pass is clean. External
 `phase4-20260804/local-communication-control/MANIFEST.md` records commands, cleanup integration,
-artifact cleanup, and the deterministic/live claim boundary. Evidence provenance/age/expiry debug
-output is next.
+artifact cleanup, and the deterministic/live claim boundary.
+
+Bounded evidence provenance diagnostics are green at `4cbd85c57e`. Hourly structural maintenance
+now logs a pure capped view of last-known OMT, writer/source/observer provenance, signed age, and
+effective expiry. Sites rotate every hour; lead and observation windows rotate once per completed
+site sweep, preventing nested phase-lock starvation without persisted debug state. Returned sound
+leads use the existing three-hour expiry and smoke/light leads six hours; reachable schema-0 legacy
+facts cover the explicit unbounded case. Tokens are capped/sanitized, repeated rendering is
+deterministic, and serialized state remains byte-identical. At seed `830204929`, focused
+`[phase4_evidence_debug]` passes 1/34, adjacent evidence/communication/local-zombie passes 8/739,
+full `[bandit][live_world]` passes 169/38,852, handoff/save passes 12/331, and save-size passes 1/10.
+The final 82,500,104-byte test binary SHA-256 is
+`62b942e77da342332ae98f6f384a799a09395c9335b7f553d0790a202d4f943a`. Fresh read-only review
+found and drove repairs for scheduler-cursor site starvation, false unbounded signal-lead labels,
+an unreachable schema-1 unbounded fixture, first-eight entry starvation, and outer/inner phase
+locking; its final pass is clean. External `phase4-20260804/evidence-debug/MANIFEST.md` records the
+commands and deterministic/live claim boundary. The remaining Phase-4 live/harness matrix is next;
+startup/load images alone are not feature-path proof.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
