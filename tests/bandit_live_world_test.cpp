@@ -9902,6 +9902,7 @@ TEST_CASE( "hostile_camp_structural_signals_become_leads_only_after_physical_ret
         site = &world.sites.front();
         CHECK( returned.members_returned == 2 );
         CHECK( site->active_outing.kind == bandit_live_world::outing_kind::none );
+        CHECK( site->next_routine_dispatch_eligible_minutes == expected_return_minutes + 1 );
         CHECK( site->intelligence_map.leads.size() == initial_lead_count + expected_leads.size() );
         CHECK( std::count_if( site->intelligence_map.leads.begin(),
                              site->intelligence_map.leads.end(), is_returned_signal_lead ) ==
@@ -9934,7 +9935,519 @@ TEST_CASE( "hostile_camp_structural_signals_become_leads_only_after_physical_ret
             CHECK( found->source_key.find( "player@" ) == std::string::npos );
             CHECK( found->source_summary.find( "player@" ) == std::string::npos );
         }
+        CHECK( std::count_if( site->intelligence_map.leads.begin(),
+                              site->intelligence_map.leads.end(), [site, expected_return_minutes](
+        const bandit_live_world::camp_map_lead & lead ) {
+            return lead.origin == bandit_live_world::camp_lead_origin::returned_report &&
+                   ( lead.kind == bandit_live_world::camp_lead_kind::smoke_signal ||
+                     lead.kind == bandit_live_world::camp_lead_kind::light_signal ) &&
+                   bandit_live_world::plan_structural_bounty_outing(
+                       *site, lead, expected_return_minutes + 1 ).valid;
+        } ) == static_cast<int>( expected_leads.size() ) );
         CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+}
+
+TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
+           "[bandit][live_world][phase4_decoy_signal_control][scheduler][save]" )
+{
+    struct signal_case {
+        bandit_live_world::camp_lead_kind kind;
+        const char *name;
+    };
+    const std::vector<signal_case> cases = {
+        { bandit_live_world::camp_lead_kind::smoke_signal, "smoke" },
+        { bandit_live_world::camp_lead_kind::light_signal, "light" },
+        { bandit_live_world::camp_lead_kind::sound_signal, "explosion" },
+    };
+    constexpr int dispatch_minutes = 10000;
+    int fixture_index = 0;
+    for( const bool cannibal : { false, true } ) {
+        for( const signal_case &fixture : cases ) {
+            CAPTURE( cannibal, fixture.name );
+            bandit_live_world::world_state world;
+            add_scheduler_test_site( world, fixture_index, cannibal, 723000 );
+            fixture_index++;
+            bandit_live_world::site_record *site = &world.sites.front();
+            site->routine_activated_minutes = 0;
+            site->last_routine_resolved_minutes = dispatch_minutes - 72 * 60;
+            site->supply_units = 0;
+            site->supply_last_update_minutes = 0;
+            site->routine_no_candidate_streak = 2;
+            site->intelligence_map.frontier_last_resolved_minutes.assign( 8,
+                    dispatch_minutes );
+            const tripoint_abs_omt signal_omt( site->anchor.x() + 4,
+                                               site->anchor.y(), site->anchor.z() );
+
+            bandit_live_world::camp_map_lead signal;
+            signal.kind = fixture.kind;
+            signal.origin = bandit_live_world::camp_lead_origin::returned_report;
+            signal.status = bandit_live_world::camp_lead_status::suspected;
+            signal.target_id = "structural-" + std::string( fixture.name ) + "@" +
+                               signal_omt.to_string();
+            signal.lead_id = site->site_id + "#lead:" +
+                             bandit_live_world::to_string( signal.kind ) + ':' +
+                             signal.target_id + '@' + std::to_string( signal_omt.x() ) + ',' +
+                             std::to_string( signal_omt.y() ) + ',' +
+                             std::to_string( signal_omt.z() );
+            signal.omt = signal_omt;
+            signal.radius_omt = 2;
+            signal.source_key = "structural-signal:" + signal.target_id;
+            signal.source_summary = "uncertain returned signal selected as a decoy fixture";
+            signal.first_seen_minutes = dispatch_minutes - 30;
+            signal.last_seen_minutes = dispatch_minutes - 30;
+            signal.last_scouted_minutes = dispatch_minutes - 30;
+            signal.confidence = 3;
+            signal.generated_by_this_camp_routine = true;
+            signal.last_outcome = "returned_structural_" +
+                                  std::string( fixture.kind ==
+                                               bandit_live_world::camp_lead_kind::sound_signal ?
+                                               "sound" : fixture.name ) + "_report";
+            REQUIRE( bandit_live_world::upsert_camp_map_lead( *site, signal ) );
+            REQUIRE( site->intelligence_map.leads.size() == 1 );
+            CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                       *site, signal_omt, signal.target_id ) == nullptr );
+            const bandit_live_world::dispatch_plan generic_signal_dispatch =
+                bandit_live_world::plan_site_dispatch_from_camp_map_lead( *site, signal );
+            CHECK_FALSE( generic_signal_dispatch.valid );
+            CHECK( std::any_of( generic_signal_dispatch.notes.begin(),
+                                generic_signal_dispatch.notes.end(), []( const std::string & note ) {
+                return note.find( "bounded routine investigation" ) != std::string::npos;
+            } ) );
+            const int signal_revision = site->intelligence_map.leads.front().revision;
+            bandit_live_world::site_record expired_site = *site;
+            bandit_live_world::camp_map_lead *expired_lead =
+                expired_site.intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( expired_lead != nullptr );
+            expired_lead->last_seen_minutes = dispatch_minutes - 6 * 60;
+            CHECK_FALSE( bandit_live_world::plan_structural_bounty_outing(
+                             expired_site, *expired_lead, dispatch_minutes ).valid );
+
+            int terrain_calls = 0;
+            int route_calls = 0;
+            int materialization_calls = 0;
+            int stalking_minutes = -1;
+            int arrival_minutes = -1;
+            int return_minutes = -1;
+            const bandit_live_world::structural_bounty_maintenance_result dispatched =
+                bandit_live_world::advance_structural_bounty_maintenance(
+                    world, dispatch_minutes, 0, 1,
+            [&terrain_calls]( const tripoint_abs_omt & ) -> std::optional<std::string> {
+                terrain_calls++;
+                return std::nullopt;
+            }, {}, [&route_calls, &stalking_minutes, &arrival_minutes,
+                    &return_minutes]( const bandit_live_world::site_record &,
+            const bandit_live_world::structural_outing_plan & plan ) {
+                route_calls++;
+                stalking_minutes = plan.expected_stalking_minutes;
+                arrival_minutes = plan.expected_arrival_minutes;
+                return_minutes = plan.expected_return_minutes;
+                return bandit_live_world::structural_route_read{
+                    true, plan.full_route_cost, 0,
+                    "decoy signal control bounded route"
+                };
+            }, {}, {}, [&materialization_calls]( bandit_live_world::world_state &,
+            std::size_t ) {
+                materialization_calls++;
+                return 0;
+            } );
+            site = &world.sites.front();
+            CHECK( terrain_calls == 0 );
+            CHECK( route_calls == 1 );
+            CHECK( materialization_calls == 0 );
+            CHECK( dispatched.dispatches_planned == 1 );
+            CHECK( dispatched.dispatches_applied == 1 );
+            CHECK( dispatched.materialization_attempts == 0 );
+            CHECK( site->active_outing.kind ==
+                   bandit_live_world::outing_kind::structural_sortie );
+            CHECK( site->active_outing.target_lead_id == signal.lead_id );
+            CHECK( site->active_outing.target_omt == signal_omt );
+            CHECK( site->active_outing.member_ids.size() == 2 );
+            CHECK( site->active_outing.expected_return_minutes == return_minutes );
+            CHECK( stalking_minutes > dispatch_minutes );
+            CHECK( arrival_minutes > stalking_minutes );
+            CHECK( return_minutes > arrival_minutes );
+
+            int threat_calls = 0;
+            const bandit_live_world::structural_outing_result stalked =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, stalking_minutes,
+            [&threat_calls]( const bandit_live_world::site_record &,
+            const bandit_live_world::camp_map_lead & ) {
+                threat_calls++;
+                bandit_live_world::structural_threat_read read;
+                read.summary = "paired scouts found no threat near the uncertain signal";
+                return read;
+            } );
+            site = &world.sites.front();
+            CHECK( threat_calls == 1 );
+            CHECK( stalked.stalking_checks_processed == 1 );
+            CHECK( site->active_outing.phase == bandit_live_world::scout_phase::observing );
+            const bandit_live_world::camp_map_lead *lead =
+                site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->status == bandit_live_world::camp_lead_status::scout_confirmed );
+            CHECK( lead->revision == signal_revision + 2 );
+
+            const bandit_live_world::structural_outing_result arrived =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, arrival_minutes, {} );
+            site = &world.sites.front();
+            CHECK( arrived.arrivals_processed == 1 );
+            CHECK( site->active_outing.phase ==
+                   bandit_live_world::scout_phase::returning_home );
+            lead = site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->origin == bandit_live_world::camp_lead_origin::returned_report );
+            CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
+            CHECK( lead->omt == signal_omt );
+            CHECK( lead->last_seen_minutes == dispatch_minutes - 30 );
+            CHECK( lead->last_checked_minutes == arrival_minutes );
+            CHECK( lead->last_scouted_minutes == arrival_minutes );
+            CHECK( lead->confidence == 0 );
+            CHECK( lead->times_checked_empty == 1 );
+            CHECK( lead->times_harvested == 0 );
+            CHECK( lead->last_outcome == "signal_investigation_empty" );
+            CHECK( lead->source_summary ==
+                   "paired scouts found no source inside the returned signal uncertainty area" );
+            CHECK( lead->revision == signal_revision + 3 );
+            REQUIRE( site->intelligence_map.leads.size() == 1 );
+
+            const std::string empty_return_bytes = serialize_world( world );
+            world = round_trip_world( world );
+            CHECK( serialize_world( world ) == empty_return_bytes );
+            const std::string before_replay = serialize_world( world );
+            const bandit_live_world::structural_outing_result replay =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, arrival_minutes, {} );
+            CHECK( replay.arrivals_processed == 0 );
+            CHECK( serialize_world( world ) == before_replay );
+
+            const bandit_live_world::structural_outing_result returned =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, return_minutes, {} );
+            site = &world.sites.front();
+            CHECK( returned.members_returned == 2 );
+            CHECK( site->active_outing.kind == bandit_live_world::outing_kind::none );
+            REQUIRE( site->intelligence_map.leads.size() == 1 );
+            lead = site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->origin == bandit_live_world::camp_lead_origin::returned_report );
+            CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
+            CHECK( lead->confidence == 0 );
+            CHECK( lead->times_checked_empty == 1 );
+            CHECK( lead->last_outcome == "signal_investigation_empty" );
+            CHECK( site->routine_no_candidate_streak == 2 );
+            CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                       *site, signal_omt, signal.target_id ) == nullptr );
+            CHECK_FALSE( bandit_live_world::plan_structural_bounty_outing(
+                             *site, *lead, return_minutes + 24 * 60 ).valid );
+            CHECK( serialize_world( world ).find( "player@" ) == std::string::npos );
+            CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+
+            const int supported_dispatch_minutes = ( return_minutes / 60 + 1 ) * 60;
+            signal.status = bandit_live_world::camp_lead_status::suspected;
+            signal.first_seen_minutes = supported_dispatch_minutes;
+            signal.last_seen_minutes = supported_dispatch_minutes;
+            signal.last_scouted_minutes = supported_dispatch_minutes;
+            signal.last_checked_minutes = -1;
+            signal.confidence = 3;
+            signal.times_checked_empty = 0;
+            signal.source_summary = "fresh returned signal selected for support control";
+            signal.last_outcome = "returned_structural_" +
+                                  std::string( fixture.kind ==
+                                               bandit_live_world::camp_lead_kind::sound_signal ?
+                                               "sound" : fixture.name ) + "_report";
+            site->next_routine_dispatch_eligible_minutes = supported_dispatch_minutes;
+            site->last_routine_resolved_minutes = supported_dispatch_minutes - 72 * 60;
+            site->intelligence_map.last_routine_target_lead_id.clear();
+            site->intelligence_map.previous_routine_target_lead_id.clear();
+            REQUIRE( bandit_live_world::upsert_camp_map_lead( *site, signal ) );
+            lead = site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            int supported_stalking_minutes = -1;
+            int supported_arrival_minutes = -1;
+            int supported_return_minutes = -1;
+            const bandit_live_world::structural_bounty_maintenance_result supported_dispatch =
+                bandit_live_world::advance_structural_bounty_maintenance(
+                    world, supported_dispatch_minutes, 0, 1, {}, {},
+            [&supported_stalking_minutes, &supported_arrival_minutes,
+             &supported_return_minutes]( const bandit_live_world::site_record &,
+            const bandit_live_world::structural_outing_plan & plan ) {
+                supported_stalking_minutes = plan.expected_stalking_minutes;
+                supported_arrival_minutes = plan.expected_arrival_minutes;
+                supported_return_minutes = plan.expected_return_minutes;
+                return bandit_live_world::structural_route_read{
+                    true, plan.full_route_cost, 0,
+                    "supporting signal control bounded route"
+                };
+            } );
+            site = &world.sites.front();
+            CAPTURE( supported_dispatch.scheduler_replay_suppressed,
+                     supported_dispatch.sites_considered_for_dispatch,
+                     supported_dispatch.full_route_solves,
+                     supported_dispatch.dispatches_planned,
+                     site->next_routine_dispatch_eligible_minutes,
+                     site->last_routine_resolved_minutes );
+            REQUIRE( supported_dispatch.dispatches_applied == 1 );
+            REQUIRE( supported_stalking_minutes > supported_dispatch_minutes );
+            REQUIRE( supported_arrival_minutes > supported_stalking_minutes );
+            REQUIRE( supported_return_minutes > supported_arrival_minutes );
+            CAPTURE( supported_dispatch_minutes, supported_stalking_minutes,
+                     supported_arrival_minutes, supported_return_minutes );
+
+            const bandit_live_world::structural_outing_result supported_stalked =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, supported_stalking_minutes,
+            []( const bandit_live_world::site_record &,
+            const bandit_live_world::camp_map_lead & ) {
+                bandit_live_world::structural_threat_read read;
+                read.summary = "supporting signal control found no mobile threat";
+                return read;
+            } );
+            CHECK( supported_stalked.stalking_checks_processed == 1 );
+
+            int supporting_signal_calls = 0;
+            const bandit_live_world::structural_outing_result supported_arrived =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, supported_arrival_minutes, {}, {},
+            [&supporting_signal_calls, &fixture, &signal_omt,
+             supported_arrival_minutes]( const bandit_live_world::site_record &,
+            const bandit_live_world::active_outing_state &,
+            const bandit_live_world::structural_threat_observer_request & request ) {
+                supporting_signal_calls++;
+                CHECK( request.current_omt == signal_omt );
+                if( fixture.kind == bandit_live_world::camp_lead_kind::sound_signal ) {
+                    return std::vector<bandit_live_world::structural_signal_read> {
+                        make_structural_sound_read(
+                            bandit_live_world::structural_sound_kind::explosion,
+                            signal_omt, supported_arrival_minutes )
+                    };
+                }
+                const bandit_live_world::sortie_observation_sense sense =
+                    fixture.kind == bandit_live_world::camp_lead_kind::smoke_signal ?
+                    bandit_live_world::sortie_observation_sense::smoke :
+                    bandit_live_world::sortie_observation_sense::light;
+                return std::vector<bandit_live_world::structural_signal_read> {
+                    make_structural_signal_read( sense, signal_omt, 4, 75, 2 )
+                };
+            } );
+            site = &world.sites.front();
+            CHECK( supporting_signal_calls == 1 );
+            CHECK( supported_arrived.arrivals_processed == 1 );
+            CHECK( site->active_outing.phase ==
+                   bandit_live_world::scout_phase::returning_home );
+            REQUIRE( site->active_outing.observations.size() == 1 );
+            const bandit_live_world::sortie_observation &supporting_observation =
+                site->active_outing.observations.front();
+            CHECK( supporting_observation.source_id == signal.target_id );
+            CHECK( supporting_observation.source_omt == signal_omt );
+            CHECK( supporting_observation.expiry_minutes >= supported_return_minutes );
+            CHECK( supporting_observation.target_revision <=
+                   site->active_outing.target_lead_revision );
+            const bandit_live_world::member_record *supporting_observer =
+                site->find_member( supporting_observation.observer_id );
+            REQUIRE( supporting_observer != nullptr );
+            CHECK( supporting_observer->state == bandit_live_world::member_state::outbound );
+            lead = site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->status == bandit_live_world::camp_lead_status::scout_confirmed );
+            CHECK( lead->last_seen_minutes == supported_dispatch_minutes );
+            CHECK( lead->times_checked_empty == 0 );
+            CHECK( lead->last_outcome == "threat_revealed_interest_survives" );
+            CHECK( std::any_of( supported_arrived.notes.begin(), supported_arrived.notes.end(),
+            []( const std::string & note ) {
+                return note.find( "signal investigation found support" ) != std::string::npos;
+            } ) );
+            const std::string supported_arrival_bytes = serialize_world( world );
+            world = round_trip_world( world );
+            CHECK( serialize_world( world ) == supported_arrival_bytes );
+
+            const bandit_live_world::structural_outing_result supported_returned =
+                bandit_live_world::advance_structural_bounty_outings(
+                    world, supported_return_minutes, {} );
+            site = &world.sites.front();
+            CHECK( supported_returned.members_returned == 2 );
+            REQUIRE( site->intelligence_map.leads.size() == 1 );
+            lead = site->intelligence_map.find_lead( signal.lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->status == bandit_live_world::camp_lead_status::suspected );
+            CHECK( lead->last_seen_minutes == supported_arrival_minutes );
+            CHECK( lead->times_checked_empty == 0 );
+            CHECK( lead->last_outcome == signal.last_outcome );
+            CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+        }
+    }
+}
+
+TEST_CASE( "hostile_camp_returned_signals_receive_bounded_urgent_scheduler_service",
+           "[bandit][live_world][phase4_decoy_signal_control][scheduler][fairness][save]" )
+{
+    constexpr int site_count = 500;
+    constexpr int now_minutes = 20000;
+    for( const int urgent_index : { 498, 499 } ) {
+        CAPTURE( urgent_index );
+        bandit_live_world::world_state world;
+        world.sites.reserve( site_count );
+        for( int index = 0; index < site_count; ++index ) {
+            add_scheduler_test_site( world, index, index % 2 != 0, 724000 );
+            bandit_live_world::site_record &site = world.sites.back();
+            site.routine_activated_minutes = 0;
+            site.last_routine_resolved_minutes = now_minutes - 72 * 60;
+            site.next_routine_dispatch_eligible_minutes = now_minutes + 1;
+            site.supply_units = 0;
+            site.supply_last_update_minutes = 0;
+            site.intelligence_map.frontier_last_resolved_minutes.assign( 8, now_minutes );
+        }
+
+        bandit_live_world::site_record &urgent_site = world.sites[urgent_index];
+        urgent_site.next_routine_dispatch_eligible_minutes = now_minutes;
+        const tripoint_abs_omt signal_omt( urgent_site.anchor.x() + 4,
+                                           urgent_site.anchor.y(), urgent_site.anchor.z() );
+        bandit_live_world::camp_map_lead signal;
+        signal.lead_id = urgent_site.site_id + "#lead:urgent-returned-sound";
+        signal.kind = bandit_live_world::camp_lead_kind::sound_signal;
+        signal.origin = bandit_live_world::camp_lead_origin::returned_report;
+        signal.status = bandit_live_world::camp_lead_status::suspected;
+        signal.target_id = "structural-explosion@" + signal_omt.to_string();
+        signal.omt = signal_omt;
+        signal.radius_omt = 2;
+        signal.source_key = "structural-signal:" + signal.target_id;
+        signal.source_summary = "short-lived returned sound beyond the normal scheduler window";
+        signal.first_seen_minutes = now_minutes - 60;
+        signal.last_seen_minutes = now_minutes - 60;
+        signal.last_scouted_minutes = now_minutes - 60;
+        signal.confidence = 3;
+        signal.generated_by_this_camp_routine = true;
+        signal.last_outcome = "returned_structural_sound_report";
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( urgent_site, signal ) );
+
+        int route_calls = 0;
+        const bandit_live_world::structural_bounty_maintenance_result dispatched =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, now_minutes, 0, 2, {}, {},
+        [&route_calls, &urgent_site]( const bandit_live_world::site_record &site,
+        const bandit_live_world::structural_outing_plan & plan ) {
+            route_calls++;
+            CHECK( site.site_id == urgent_site.site_id );
+            return bandit_live_world::structural_route_read{
+                true, plan.full_route_cost, 0,
+                "bounded urgent signal route"
+            };
+        } );
+        CHECK( dispatched.scheduler_cursor_before == 0 );
+        CHECK( dispatched.scheduler_cursor_after == 15 );
+        CHECK( dispatched.scheduler_consider_cap == 16 );
+        CHECK( dispatched.sites_considered_for_dispatch == 16 );
+        CHECK( dispatched.full_route_solve_cap == 8 );
+        CHECK( dispatched.full_route_solves == 1 );
+        CHECK( dispatched.dispatch_cap == 2 );
+        CHECK( dispatched.dispatches_planned == 1 );
+        CHECK( dispatched.dispatches_applied == 1 );
+        CHECK( route_calls == 1 );
+        CHECK( world.sites[urgent_index].active_outing.kind ==
+               bandit_live_world::outing_kind::structural_sortie );
+        CHECK( world.sites[urgent_index].active_outing.target_lead_id == signal.lead_id );
+        CHECK( std::count_if( world.sites.begin(), world.sites.end(),
+        []( const bandit_live_world::site_record & site ) {
+            return site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie;
+        } ) == 1 );
+
+        const std::string before_replay = serialize_world( world );
+        const bandit_live_world::structural_bounty_maintenance_result replay =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, now_minutes, 0, 2, {}, {} );
+        CHECK( replay.scheduler_replay_suppressed );
+        CHECK( replay.sites_considered_for_dispatch == 0 );
+        CHECK( serialize_world( world ) == before_replay );
+    }
+
+    SECTION( "earliest expiry owns both starts and displaces higher-score terrain" ) {
+        bandit_live_world::world_state world;
+        world.sites.reserve( site_count );
+        for( int index = 0; index < site_count; ++index ) {
+            add_scheduler_test_site( world, index, index % 2 != 0, 725000 );
+            bandit_live_world::site_record &site = world.sites.back();
+            site.routine_activated_minutes = 0;
+            site.last_routine_resolved_minutes = now_minutes - 72 * 60;
+            site.next_routine_dispatch_eligible_minutes = now_minutes + 1;
+            site.supply_units = 0;
+            site.supply_last_update_minutes = 0;
+            site.intelligence_map.frontier_last_resolved_minutes.assign( 8, now_minutes );
+        }
+
+        std::array<std::string, 3> signal_lead_ids;
+        const bandit_live_world::structural_bounty_read forest =
+            bandit_live_world::classify_structural_bounty_terrain( "forest" );
+        for( int offset = 0; offset < 3; ++offset ) {
+            const int site_index = 496 + offset;
+            bandit_live_world::site_record &site = world.sites[site_index];
+            site.next_routine_dispatch_eligible_minutes = now_minutes;
+            const tripoint_abs_omt signal_omt( site.anchor.x() + 4,
+                                               site.anchor.y(), site.anchor.z() );
+            bandit_live_world::camp_map_lead signal;
+            signal.lead_id = site.site_id + "#lead:urgent-expiry-" +
+                             std::to_string( offset );
+            signal_lead_ids[static_cast<std::size_t>( offset )] = signal.lead_id;
+            signal.kind = bandit_live_world::camp_lead_kind::sound_signal;
+            signal.origin = bandit_live_world::camp_lead_origin::returned_report;
+            signal.status = bandit_live_world::camp_lead_status::suspected;
+            signal.target_id = "structural-explosion@" + signal_omt.to_string();
+            signal.omt = signal_omt;
+            signal.radius_omt = 2;
+            signal.source_key = "structural-signal:" + signal.target_id;
+            signal.source_summary = "competing short-lived returned sound";
+            signal.first_seen_minutes = now_minutes - 120 + offset * 30;
+            signal.last_seen_minutes = signal.first_seen_minutes;
+            signal.last_scouted_minutes = signal.first_seen_minutes;
+            signal.confidence = 3;
+            signal.generated_by_this_camp_routine = true;
+            signal.last_outcome = "returned_structural_sound_report";
+            REQUIRE( bandit_live_world::upsert_camp_map_lead( site, signal ) );
+
+            const tripoint_abs_omt forest_omt( site.anchor.x() + 3,
+                                               site.anchor.y() + 1, site.anchor.z() );
+            REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                         site, forest_omt, forest, now_minutes ) );
+            bandit_live_world::camp_map_lead *forest_lead =
+                site.intelligence_map.find_lead(
+                    bandit_live_world::make_structural_bounty_lead_id(
+                        site.site_id, forest_omt, "forest" ) );
+            REQUIRE( forest_lead != nullptr );
+            forest_lead->bounty = 3;
+            forest_lead->confidence = 3;
+            forest_lead->last_checked_minutes = -1;
+            forest_lead->last_scouted_minutes = -1;
+        }
+
+        int route_calls = 0;
+        const bandit_live_world::structural_bounty_maintenance_result dispatched =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, now_minutes, 0, 2, {}, {},
+        [&route_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::structural_outing_plan & plan ) {
+            route_calls++;
+            CHECK( plan.lead_id.find( "#lead:urgent-expiry-" ) != std::string::npos );
+            return bandit_live_world::structural_route_read{
+                true, plan.full_route_cost, 0,
+                "earliest-expiry urgent route"
+            };
+        } );
+        CHECK( dispatched.scheduler_cursor_before == 0 );
+        CHECK( dispatched.scheduler_cursor_after == 13 );
+        CHECK( dispatched.sites_considered_for_dispatch == 16 );
+        CHECK( dispatched.full_route_solves == 3 );
+        CHECK( dispatched.dispatches_planned == 3 );
+        CHECK( dispatched.dispatches_applied == 2 );
+        CHECK( dispatched.dispatch_cap_reached );
+        CHECK( route_calls == 3 );
+        CHECK( world.sites[496].active_outing.target_lead_id == signal_lead_ids[0] );
+        CHECK( world.sites[497].active_outing.target_lead_id == signal_lead_ids[1] );
+        CHECK( world.sites[498].active_outing.kind == bandit_live_world::outing_kind::none );
+        CHECK( world.sites[496].profile ==
+               bandit_live_world::hostile_site_profile::camp_style );
+        CHECK( world.sites[497].profile ==
+               bandit_live_world::hostile_site_profile::cannibal_camp );
     }
 }
 
