@@ -3005,8 +3005,18 @@ weather_type_id live_bandit_remote_weather_at( const tripoint_abs_omt &origin )
     return weather_generator->get_weather_conditions( origin_ms, calendar::turn, g->get_seed() );
 }
 
-int live_bandit_structural_observer_sight( const npc &observer,
-        const tripoint_abs_omt &origin )
+struct live_bandit_structural_visibility_details {
+    std::string weather_id = "none";
+    float remote_light = -1.0f;
+    int ordinary_sight_range_ms = -1;
+    float weather_sight_penalty = -1.0f;
+    int elevation_omt = 0;
+    bool has_optic = false;
+    int sight_points = -1;
+};
+
+live_bandit_structural_visibility_details live_bandit_structural_observer_sight(
+    const npc &observer, const tripoint_abs_omt &origin )
 {
     const weather_type_id weather = live_bandit_remote_weather_at( origin );
     const float remote_light = origin.z() < 0 ? LIGHT_AMBIENT_MINIMAL :
@@ -3023,12 +3033,20 @@ int live_bandit_structural_observer_sight( const npc &observer,
             return mod != nullptr && mod->has_flag( flag_ZOOM );
         } );
     } );
+    live_bandit_structural_visibility_details details;
+    details.weather_id = weather.str();
+    details.remote_light = remote_light;
+    details.ordinary_sight_range_ms = observer.sight_range( remote_light, remote_light );
+    details.weather_sight_penalty = std::max( 1.0f, weather->sight_penalty );
+    details.elevation_omt = origin.z();
+    details.has_optic = has_optic;
     bandit_live_world::structural_observer_visibility_read visibility;
-    visibility.ordinary_sight_range_ms = observer.sight_range( remote_light, remote_light );
-    visibility.weather_sight_penalty = std::max( 1.0f, weather->sight_penalty );
-    visibility.elevation_omt = origin.z();
-    visibility.has_optic = has_optic;
-    return bandit_live_world::structural_observer_omt_sight_range( visibility );
+    visibility.ordinary_sight_range_ms = details.ordinary_sight_range_ms;
+    visibility.weather_sight_penalty = details.weather_sight_penalty;
+    visibility.elevation_omt = details.elevation_omt;
+    visibility.has_optic = details.has_optic;
+    details.sight_points = bandit_live_world::structural_observer_omt_sight_range( visibility );
+    return details;
 }
 
 struct live_bandit_omt_threat_read {
@@ -3207,17 +3225,62 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
     const bandit_live_world::structural_threat_observer_request &request )
 {
     bandit_live_world::abstract_threat_read result;
+    live_bandit_structural_visibility_details visibility;
+    bool first_forward_acquired = false;
+    bool first_forward_checked = false;
+    const auto bounded_debug_token = []( const std::string & value ) {
+        static constexpr std::size_t token_cap = 120;
+        std::string token;
+        token.reserve( std::min( value.size(), token_cap ) );
+        for( const unsigned char ch : value ) {
+            if( token.size() >= token_cap ) {
+                break;
+            }
+            token.push_back( ch >= 33U && ch <= 126U && ch != '=' ?
+                             static_cast<char>( ch ) : '_' );
+        }
+        return token.empty() ? std::string( "none" ) : token;
+    };
+    const auto log_visibility = [&]() {
+        const bool has_first_forward = !request.visible_forward_omts.empty();
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world structural_visibility:"
+                                   << " site=" << bounded_debug_token( site.site_id )
+                                   << " activity=" << bounded_debug_token( outing.activity_id )
+                                   << " observer=" << outing.leader_id.get_value()
+                                   << " current_omt=" << request.current_omt.to_string()
+                                   << " remote_light=" << visibility.remote_light
+                                   << " weather=" << bounded_debug_token( visibility.weather_id )
+                                   << " sight_penalty=" << visibility.weather_sight_penalty
+                                   << " npc_sight_ms=" << visibility.ordinary_sight_range_ms
+                                   << " elevation_omt=" << visibility.elevation_omt
+                                   << " optic=" << ( visibility.has_optic ? "yes" : "no" )
+                                   << " sight_points=" << visibility.sight_points
+                                   << " forward_candidates=" << request.visible_forward_omts.size()
+                                   << " first_forward_omt=" << ( has_first_forward ?
+                                           request.visible_forward_omts.front().to_string() : "none" )
+                                   << " first_forward_distance=" << ( has_first_forward ?
+                                           rl_dist( request.current_omt,
+                                                    request.visible_forward_omts.front() ) : -1 )
+                                   << " first_forward_acquired=" << ( first_forward_checked ?
+                                           ( first_forward_acquired ? "yes" : "no" ) : "not_checked" )
+                                   << " outcome=" << ( result.observed ? "observed" :
+                                           "no_visible_threat" )
+                                   << " threat_omt=" << ( result.observed ?
+                                           result.threat_omt.to_string() : "none" ) << '\n';
+    };
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
         request.party_power <= 0 || request.visible_forward_omts.size() > 3 ) {
+        log_visibility();
         return result;
     }
     const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( outing.leader_id );
     if( !observer || observer->is_dead() ) {
+        log_visibility();
         return result;
     }
     result.local_reality = get_map().inbounds( request.current_omt );
-    const int sight_points = live_bandit_structural_observer_sight( *observer,
-                             request.current_omt );
+    visibility = live_bandit_structural_observer_sight( *observer, request.current_omt );
+    const int sight_points = visibility.sight_points;
     std::vector<tripoint_abs_omt> permitted_omts;
     permitted_omts.push_back( request.current_omt );
     permitted_omts.insert( permitted_omts.end(), request.visible_forward_omts.begin(),
@@ -3227,6 +3290,10 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
         const bool overlap = index == 0;
         const bool acquired = overlap || live_bandit_overmap_los_from(
                                   request.current_omt, omt, sight_points );
+        if( index == 1 ) {
+            first_forward_acquired = acquired;
+            first_forward_checked = true;
+        }
         const bool retained = !acquired && request.retained_threat_omt &&
                               omt == *request.retained_threat_omt &&
                               live_bandit_overmap_los_from(
@@ -3259,8 +3326,10 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
             result.detours = live_bandit_structural_detour_reads(
                                  site, request.current_omt, omt );
         }
+        log_visibility();
         return result;
     }
+    log_visibility();
     return result;
 }
 
@@ -3316,8 +3385,8 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
     if( !observer || observer->is_dead() ) {
         return result;
     }
-    const int sight_points = live_bandit_structural_observer_sight( *observer,
-                             request.current_omt );
+    const int sight_points = live_bandit_structural_observer_sight(
+                                 *observer, request.current_omt ).sight_points;
 
     std::vector<const live_bandit_signal_observation *> candidates;
     for( const live_bandit_signal_observation &signal : signals ) {
