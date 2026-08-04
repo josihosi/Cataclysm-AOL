@@ -14,7 +14,7 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-    "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0",
+    "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
     "bandit_live_world structural_visibility:",
     "site=overmap_special:bandit_camp@140,51,0",
     "optic=no",
@@ -99,11 +99,25 @@
       "completion_wait_seconds": 90.0,
       "artifact_state_patterns": [
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-        "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0",
+        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
+      ],
+      "expected_visible_fact": "the real hourly cadence crosses this camp's deterministic 11-hour due boundary and dispatches an exact pair toward the naturally confirmed road target",
+      "failure_rule": "If the bounded wait lacks the exact dispatch artifact, the row is red/inconclusive."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_5_minutes_for_phase4_visibility_road_day_observer",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 5-minute duration menu",
+      "completion_wait_seconds": 60.0,
+      "artifact_state_patterns": [
         "bandit_live_world structural_visibility:"
       ],
-      "expected_visible_fact": "the real hourly cadence crosses this camp's deterministic 11-hour due boundary and production performs at least one structural visibility read",
-      "failure_rule": "If the bounded wait lacks exact dispatch and visibility artifacts, the row is red/inconclusive."
+      "expected_visible_fact": "five real game minutes advance the dispatched pair to its route-facing observation point and run the production structural visibility read",
+      "failure_rule": "If the bounded post-dispatch wait lacks a visibility artifact, the row is red/inconclusive."
     },
     {
       "kind": "audit_log_contains",
@@ -111,7 +125,7 @@
       "required_line_patterns": [
         [
           "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-          "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0"
+          "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
         ],
         [
           "bandit_live_world structural_visibility:",
