@@ -1,5 +1,7 @@
 {
   "name": "bandit.variable_roster_tiny_dispatch_sizing_live",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 active-player camp-map dispatcher scenario; roster sizing remains deterministic-test coverage.",
   "description": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence after the camp roster is shaped to two living ready at-home members. The scenario requires same-run logs and saved state proving reserve/dispatch sizing comes from the current tiny roster: two living, two ready, reserve zero, dispatchable two, selected two-member stalk pressure.",
   "profile": "dev-harness",
   "world": "McWilliams",

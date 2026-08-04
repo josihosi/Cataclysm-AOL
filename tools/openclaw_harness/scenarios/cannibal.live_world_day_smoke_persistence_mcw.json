@@ -1,5 +1,7 @@
 {
   "name": "cannibal.live_world_day_smoke_persistence_mcw",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 camp-facing smoke dispatch scenario; autonomous clues now return through scouts.",
   "description": "Scenario 6 save/writeback half for cannibal camp night-raid live matrix: create a real daylight smoke cannibal stalk/dispatch active group through the live signal/local-gate path, then prove a guarded save writes the active cannibal group/profile/target/lead state into dimension_data.gsav. Attempt-2 proof deliberately gates the save on saved-file mtime rather than OCR because the ASCIITiles save-prompt capture was visually captured but OCR-garbled in attempt 1. Frau attempt-3 guidance: live smoke lead-state for this packet is persisted `known_recent_marks`, not `intelligence_map.leads`.",
   "profile": "dev-harness",
   "world": "McWilliams",

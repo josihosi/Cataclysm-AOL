@@ -1,5 +1,7 @@
 {
   "name": "bandit.hostile_camp_toll_escalation_live",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 legacy-radar scenario: it requires an exact player-target cadence dispatch.",
   "description": "Slice 4 staged/live proof: a scout-confirmed remembered basecamp lead with a seven-member ready bandit camp runs through the real 30-minute overmap cadence and must promote to a toll/shakedown-capable pressure party instead of repeating scout-only pressure.",
   "profile": "dev-harness",
   "world": "McWilliams",

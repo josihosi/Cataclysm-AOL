@@ -1,5 +1,7 @@
 {
     "name": "bandit.stalk_pressure_waits_for_opening",
+    "status": "blocked",
+    "blocked_reason": "Retired active-player remembered-lead cadence scenario; it requires the removed live dispatcher.",
     "description": "Fixture-backed camp-map product proof: a scout-confirmed target has an active stalk/pressure lead waiting for a named opening. The real 30-minute live cadence must name the absent opening, reject a new dogpile dispatch, hold/return/decay the lead, and persist no active outside group.",
     "profile": "dev-harness",
     "world": "McWilliams",

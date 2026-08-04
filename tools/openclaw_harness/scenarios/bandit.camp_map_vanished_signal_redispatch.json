@@ -1,5 +1,7 @@
 {
   "name": "bandit.camp_map_vanished_signal_redispatch",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 legacy-radar scenario: remembered active-player OMT redispatch was deliberately removed.",
   "description": "Fixture-backed camp-map product proof: a current-build McWilliams bandit live-world camp starts outside direct-player range with no live smoke/fire signal, but has a persisted scout-confirmed remembered lead. The scenario waits through the real 30-minute overmap dispatch cadence, then requires same-run logs and saved state proving the camp re-dispatched from remembered camp-map knowledge and sized a larger-than-scout stalk/pressure group.",
   "profile": "dev-harness",
   "world": "McWilliams",

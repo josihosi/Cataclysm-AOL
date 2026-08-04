@@ -1,5 +1,7 @@
 {
   "name": "bandit.high_threat_low_reward_holds",
+  "status": "blocked",
+  "blocked_reason": "Retired active-player remembered-lead cadence scenario; decision logic remains deterministic-test coverage.",
   "description": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead with low bounty and high confirmed threat is evaluated through the real 30-minute live dispatch cadence. The camp must name the remembered lead and hold rather than escalating into a new stalk/scout dispatch.",
   "profile": "dev-harness",
   "world": "McWilliams",

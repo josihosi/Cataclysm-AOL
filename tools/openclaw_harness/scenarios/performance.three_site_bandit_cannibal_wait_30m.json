@@ -1,7 +1,8 @@
 {
   "name": "performance.three_site_bandit_cannibal_wait_30m",
   "description": "Blocked direct-range performance-audit guardrail: intended to prove three active hostile overmap AI sites, with a persisted remembered-lead bandit camp plus two seeded direct-range cannibal_camps. Run 20260429_035001 proved this footing only reaches sites=3 active_sites=2 because the two direct-range cannibal sites consume the live player-pressure cap before the remembered-lead bandit camp dispatches. Retain this scenario as blocked/cap evidence; do not rerun it as the next green-row proof without a material footing or contract change.",
-  "status": "blocked_direct_range_cap_guardrail",
+  "status": "blocked",
+  "blocked_reason": "Historical direct-player-range cap guardrail; the production dispatcher was removed in Phase 4.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "performance_three_site_bandit_cannibal_v0_2026-04-29",

@@ -1,5 +1,7 @@
 {
   "name": "performance.two_site_bandit_cannibal_wait_30m",
+  "status": "blocked",
+  "blocked_reason": "Retired direct-player-range performance fixture; use the non-player pre-staged performance scenario.",
   "description": "Performance-audit row: two active hostile overmap AI sites. A bandit camp starts from a persisted remembered camp-map lead while a seeded cannibal_camp sits at the direct-player-range boundary without smoke/fire fields; the scenario waits through the same real 30-minute overmap AI cadence and captures compact live-path timing/counter lines from bandit_live_world perf instrumentation.",
   "profile": "dev-harness",
   "world": "McWilliams",

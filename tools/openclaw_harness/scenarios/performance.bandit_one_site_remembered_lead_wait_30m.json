@@ -1,5 +1,7 @@
 {
   "name": "performance.bandit_one_site_remembered_lead_wait_30m",
+  "status": "blocked",
+  "blocked_reason": "Retired active-player remembered-lead dispatch performance fixture.",
   "description": "Performance-audit row: one active hostile overmap AI site. A bandit camp starts from a persisted remembered camp-map lead, waits through the real 30-minute overmap AI cadence, and captures compact live-path timing/counter lines from bandit_live_world perf instrumentation.",
   "profile": "dev-harness",
   "world": "McWilliams",

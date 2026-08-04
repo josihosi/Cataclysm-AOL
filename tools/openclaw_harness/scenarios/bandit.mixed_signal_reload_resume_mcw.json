@@ -1,5 +1,7 @@
 {
   "name": "bandit.mixed_signal_reload_resume_mcw",
+  "status": "blocked",
+  "blocked_reason": "Depends on the retired mixed live-signal/player-target dispatch scenario and its saved active group.",
   "description": "Challenge C for CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0: no-fixture reload/resume audit for the currently saved McWilliams dev-harness world produced by the green mixed-signal coexistence run. It starts the saved world without reinstalling a fixture, verifies the active live-signal scout and active structural scavenge groups are still present, advances a bounded 5-minute wait, saves, and verifies the same active groups/sites did not disappear, duplicate, or stale out.",
   "profile": "dev-harness",
   "world": "McWilliams",

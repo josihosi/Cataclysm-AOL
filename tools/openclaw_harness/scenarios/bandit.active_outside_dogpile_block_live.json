@@ -1,5 +1,7 @@
 {
   "name": "bandit.active_outside_dogpile_block_live",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 legacy-radar scenario: its cadence artifact requires the deleted exact-avatar dispatcher.",
   "description": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence while the camp already has unresolved outbound stalk pressure. The camp must reject a new dogpile dispatch and preserve the existing active outside group instead of spawning another one.",
   "profile": "dev-harness",
   "world": "McWilliams",

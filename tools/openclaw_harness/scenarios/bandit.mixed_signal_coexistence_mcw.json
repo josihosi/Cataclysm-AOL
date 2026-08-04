@@ -1,5 +1,7 @@
 {
   "name": "bandit.mixed_signal_coexistence_mcw",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 dual-writer scenario: live-signal camp dispatch and direct-range comparison were removed.",
   "description": "Challenge B for CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0: a live smoke/fire source near the player pulls one clean camp by candidate_reason=live_signal while a second clean camp outside signal range carries and runs a structural_bounty lead. The proof is same-run live maintenance under bounded wait, not fixture/setup presence.",
   "profile": "dev-harness",
   "world": "McWilliams",

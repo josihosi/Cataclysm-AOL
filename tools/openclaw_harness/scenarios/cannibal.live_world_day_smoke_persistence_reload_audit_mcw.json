@@ -1,5 +1,7 @@
 {
   "name": "cannibal.live_world_day_smoke_persistence_reload_audit_mcw",
+  "status": "blocked",
+  "blocked_reason": "Depends on the retired cannibal camp-facing smoke dispatch scenario and its saved player target.",
   "description": "No-fixture reload support audit for scenario 6: start the currently saved McWilliams dev-harness world after the cannibal day-smoke persistence save, then read saved dimension-data to confirm the active cannibal group/profile/target/member plus known_recent_marks signal state remains present. This is reload support, not independent product closure without the paired create/save run.",
   "profile": "dev-harness",
   "world": "McWilliams",

@@ -1,5 +1,7 @@
 {
   "name": "bandit.roof_z_dispatch_fallback_mcw",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 exact-player target scenario; keep only as historical fixture evidence.",
   "description": "Live roof/tower-z dispatch fallback proof: a scout-confirmed remembered bandit lead points at an elevated z target id/OMT while the currently reachable approach coordinate is on ground. The scenario waits through the real 30-minute overmap dispatch cadence and requires same-run artifacts plus saved state showing dispatch kept the elevated target id but routed to the ground OMT rather than route_missing/throttle silence.",
   "profile": "dev-harness",
   "world": "McWilliams",

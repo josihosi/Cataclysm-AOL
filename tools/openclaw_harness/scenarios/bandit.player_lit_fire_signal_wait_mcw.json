@@ -1,5 +1,7 @@
 {
   "name": "bandit.player_lit_fire_signal_wait_mcw",
+  "status": "blocked",
+  "blocked_reason": "Retired Phase-4 camp-facing signal scenario: field signals now require structural observation and physical return.",
   "description": "Player-lit fire bandit signal-response probe: start from the green visible-brazier/source-zone saved fd_fire proof, install mineral water plus an AUTO_DRINK support zone, prove the saved fire/water/zone footing, wait a bounded 30 in-game minutes through the real wait UI, require same-run live-signal/dispatch artifacts, then save and inspect turn delta plus persisted bandit live-world signal metadata. This does not prove roof/horde behavior.",
   "profile": "dev-harness",
   "world": "McWilliams",
