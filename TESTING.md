@@ -767,8 +767,23 @@ the focused C++ handoff test passes 332 assertions and harness contracts pass 78
 ownership is preflighted before any NPC or site mutation. Ordinary hostility may move an assembled
 member, after which maintenance can honestly reacquire rendezvous. External
 `phase4-20260804/autonomous-pair-handoff/MANIFEST.md` preserves the report, audits, screenshots,
-build logs, and rejected non-credit attempts. This is staging/handoff proof, not the open day/dusk/
-night/weather/optics matrix.
+build logs, and rejected non-credit attempts. This is staging/handoff proof; the completed
+day/dusk/night/weather/optics matrix is recorded below.
+
+The Phase-4 live visibility matrix is green at production runtime checkpoint `98707f2da0` and final
+contract checkpoint `8afe569474`; runtime-relevant sources are unchanged between them. Credited
+runs `20260804_143110`, `20260804_152858`, `20260804_145631`, `20260804_151754`, and
+`20260804_152015` are each `feature-path`, 9/9 step-local, and 3/3 wait green. Exact production
+traces derive road budgets 2/3/1 for clear twilight/clear day/cloudy-neutral night, acquire the
+one-OMT forward road target, derive 6 with real binoculars across the clear forest screen, and apply
+fog penalty 1.7 to reduce the same optical forest budget to 3 and block acquisition. Harness
+contracts pass 108/108; transform-focused coverage passes 4/4; syntax, JSON, diff, and fresh
+read-only closeout review are green. Forest fixtures pre-stage the known target, concrete hostiles,
+and optics and defer only that site's near-terrain scan to minute 10861, one minute beyond the
+experiment. The row therefore does not claim autonomous target discovery, competing-target forest
+preference, cannibal live parity, or every fog/terrain configuration. External
+`phase4-20260804/structural-visibility-matrix/MANIFEST.md` preserves credited and rejected runs.
+Smoke/light/sound is the next live row.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

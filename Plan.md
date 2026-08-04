@@ -298,8 +298,14 @@ dematerialization. The feature ledger is 11/11 green, focused C++ coverage passe
 and harness contracts pass 78/78 under external
 `phase4-20260804/autonomous-pair-handoff/MANIFEST.md`. Ownership preflight is atomic across the
 site. Ordinary hostility can move an assembled member and require later rendezvous reacquisition;
-live day/dusk/night/weather/optics is the next slice. The
-compound human-camp opportunity-recovery
+the live visibility matrix is green at runtime checkpoint `98707f2da0` and final contract checkpoint
+`8afe569474`. Five 9/9 feature-path runs prove clear twilight/day/cloudy-neutral night road budgets
+of 2/3/1, clear optical forest acquisition at 6, and fog-penalized optical forest non-acquisition at
+3. The forest pair defers only site-local terrain discovery beyond the experiment, so it proves
+production dispatch/route/weather/optic/visibility behavior without claiming competing-target
+preference. Evidence is archived under external
+`phase4-20260804/structural-visibility-matrix/MANIFEST.md`; smoke/light/sound is the next live slice.
+The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
 Private per-camp resource estimates are checkpointed at `1aa9851902`; physical estimate
