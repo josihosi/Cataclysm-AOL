@@ -245,11 +245,16 @@ abstract horde population, avatar sight, exact map squares, or lead mutation. Fo
 full live-world 161/36,027 are green under external
 `phase4-20260803/local-zombie/MANIFEST.md`. Tracker-order false negatives and snapshot-not-identity
 IDs remain explicit bounded caveats. The temporary single-writer cutover is checkpointed at
-`dda62833fc`: production runs typed observer/signal evidence while both legacy camp-facing writers
-are disabled, and the explicit legacy-only control cannot revise an observer-owned lead. Focused
-1/24, adjacent signal 4/63, full live-world 162/36,051, and handoff/save 12/331 are green under
-external `phase4-20260804/single-writer/MANIFEST.md`. Exact-player logic remains only in the
-disabled comparison function; next, prove autonomous both-faction discovery and remove it. The
+`dda62833fc`; autonomous discovery and radar removal are checkpointed at `f28450a2a6`, with retired
+legacy harness contracts separated at `641ea0884b`. Scheduler-owned maintenance now materializes
+only a bounded dispatch finalist, both factions carry typed signal facts home into transactional
+`returned_report` leads, and the exact-avatar dispatcher, active-player-OMT matcher, camp-facing
+signal writer, comparison mode, and `player@...` signal envelope are deleted. Focused 2/1,698,
+scheduler 9/27,248, full live-world 161/37,686, handoff/save 12/331, save-size 1/10, and 63 harness
+contract tests are green under external `phase4-20260804/autonomous-discovery/MANIFEST.md`. The
+500-site seam creates only two materialization attempts/six members/two starts and none on replay,
+cooldown, or no-candidate paths. Natural NPC insertion remains compile-path rather than live proof;
+the quiet former-radar and avatar-relocation controls are next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

@@ -660,8 +660,19 @@ and the bounded tracker-order/snapshot-ID caveats. The temporary single-writer c
 observers while caller and callee gates disable both legacy hostile-camp writers before those
 writers read player position; legacy-only comparison cannot revise an observer-origin lead or its
 scalar memory. External `phase4-20260804/single-writer/MANIFEST.md` records exact commands, hashes,
-and the claim boundary. Autonomous both-faction discovery, exact-player code removal, quiet
-former-radar, avatar relocation, and decoy/empty investigation proof are next.
+and the claim boundary. Autonomous discovery/radar removal is green at `f28450a2a6`, with 18
+deleted-path harness scenarios retired separately at `641ea0884b`: focused both-faction return plus
+500-site materialization proof passes 2/1,698, scheduler 9/27,248, signal/observation 8/769, full
+live-world 161/37,686, handoff/save 12/331, save-size 1/10, and harness contracts 63/63 at seed
+`830204929`. The final 82,119,560-byte test binary SHA-256 is
+`a49ed545e2027174787dc87336bbc05114ca3c25f3b6c67f7f4478623e5ac997`. Production materializes
+only a bounded finalist after replay/cooldown/candidate/route gates; typed facts create camp leads
+only at physical return, while exact-avatar targeting/matching and direct camp signal writes are
+deleted. Fresh read-only review is clean. Synthetic member records prove the bounded callback seam;
+real NPC template/claim insertion remains production compile-path evidence. External
+`phase4-20260804/autonomous-discovery/MANIFEST.md` records the commands, hashes, initial rejected
+eager-materialization design, and claim boundary. Quiet former-radar, avatar relocation, and
+decoy/empty investigation proof are next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

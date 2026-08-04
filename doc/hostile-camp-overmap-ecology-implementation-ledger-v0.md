@@ -6,17 +6,19 @@ Status: **ACTIVE - Phase 4 autonomous discovery and radar removal**
 
 Active phase: **Phase 4**
 
-Current deterministic execution row: **Prove autonomous observer/signal discovery for both factions, then remove exact player targeting.**
+Current deterministic execution row: **Prove a quiet former-radar target remains undiscovered.**
 
-Latest resume packet (behavior checkpoint `dda62833fc`, 2026-08-04): `dev` on the isolated Mac
-worktree; production `port/cdda-master` remains `660057ff728bdf77531f607b1bd42a175f027a5f` and
-untouched. Production selects a closed typed-observer mode and gates both legacy hostile-camp
-writers at caller and callee before those writers read player position or mutate camp state. An
-explicit legacy-only control disables typed observers, and candidate-copy signal writes reject
-cross-origin collisions byte-identically. Focused 1/24, adjacent signal 4/63, full live-world
-162/36,051, and handoff/save 12/331 are green at seed `830204929`; exact evidence is under external
-`phase4-20260804/single-writer/{MANIFEST,RESUME}.md`. Exact-player logic remains only in the
-disabled legacy comparison function and must be removed by the next row.
+Latest checkpoint (behavior `f28450a2a6`, harness retirement `641ea0884b`, 2026-08-04): `dev` on
+the isolated Mac worktree; production `port/cdda-master` remains
+`660057ff728bdf77531f607b1bd42a175f027a5f` and untouched. Scheduler-owned maintenance materializes
+only a bounded dispatch finalist, both factions carry typed signals home into transactional
+`returned_report` leads, and the exact-avatar dispatcher, active-player-OMT matcher, camp-facing
+signal writer, comparison mode, and `player@...` signal envelope are deleted. Focused 2/1,698,
+scheduler 9/27,248, full live-world 161/37,686, handoff/save 12/331, save-size 1/10, and 63 harness
+tests are green at seed `830204929`; exact evidence is under external
+`phase4-20260804/autonomous-discovery/MANIFEST.md`. The 500-site seam proves two attempts/six
+members/two starts and zero replay/cooldown/no-candidate materialization. Natural real-NPC insertion
+is production compile-path rather than live proof; quiet-target and relocation controls remain next.
 
 Production target: `port/cdda-master`
 
@@ -869,7 +871,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [x] Record actual local zombie/horde observations only when legitimately visible. _Checkpoint `8828bcdbfd` gives an exact active materialized pair one shared 64-loaded-monster snapshot, real NPC LOS and hostility, ordinary-ZOMBIE/rider exclusion, handoff-route OMT binding, bounded deterministic type/ordinal-plus-overflow IDs, and one observer-private 24-hour typed fact. Abstract horde population, avatar vision, exact map squares, and lead writes are absent. Both factions, live-adapter active/offloaded controls, atomic malformed rejection, save roundtrip, focused 4/389, and full live-world 161/36,027 are green. First-64 tracker order can conservatively miss later monsters and materialized monsters lack durable cross-time identity._
 - [x] Treat terrain danger as a prior and observed mobile danger as timestamped evidence. _Static route terrain remains a non-mobile prior; checkpoint `e7c3da73e7` records mobile structural danger with exact observed minute/bucket, source/receiver, uncertainty, expiry, and target revision, then applies it only at physical return._
 - [x] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Checkpoint `dda62833fc`: one closed production mode keeps typed structural/local observers active and disables both legacy camp-facing writers; the separate legacy-only control disables typed observers, and candidate-copy mode/cross-origin rejection is byte-identical. Focused 1/24, live-signal 4/63, full live-world 162/36,051, and handoff/save 12/331 are green under external `phase4-20260804/single-writer/MANIFEST.md`._
-- [ ] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path.
+- [x] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path. _Checkpoint `f28450a2a6`: bounded scheduler finalists materialize exact pairs for both factions, typed smoke/light facts become camp leads only on physical return, repeated facts select the newest report, and the returned batch is atomic. Exact-avatar targeting/matching, camp signal writes, comparison mode, and player envelope are deleted. Focused 2/1,698, scheduler 9/27,248, full live-world 161/37,686, handoff/save 12/331, save-size 1/10, and harness 63/63 are green; `641ea0884b` marks 18 deleted-path scenarios blocked._
 - [ ] A quiet evac shelter inside the former radar radius remains undiscovered without a route, signal, or legitimate line of sight.
 - [ ] Moving the player does not drag a stationary camp lead to the new avatar OMT.
 - [ ] False/decoy smoke, light, and sound can produce stale/empty investigations rather than magical correction.
@@ -888,8 +890,8 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/single-writer/MANIFEST.md`.
-- No-radar control: temporary production/legacy isolation is green; exact-player deletion and quiet-target/live proof remain open.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery}/MANIFEST.md`.
+- No-radar control: exact-player production code is deleted and returned observer reports are green; quiet-target, relocation, and live proof remain open.
 - Visibility matrix:
 - Evidence/save benchmark:
 
