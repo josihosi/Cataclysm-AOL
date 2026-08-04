@@ -203,13 +203,13 @@
       "kind": "debug_map_editor_place_item",
       "label": "stage_active_explosive_on_target_omt",
       "item_query": "C-4 explosive (active)",
-      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
+      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 36 screen-right editor actions from the centered player origin on target OMT ten minutes before the hourly scan with its engine countdown running",
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 44 screen-right editor actions from the centered player origin on target OMT ten minutes before the hourly scan with its engine countdown running",
       "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
     },
     {
@@ -260,13 +260,13 @@
       "label": "stage_physical_fire_on_target_omt",
       "field_query": "fd_fire",
       "field_intensity": 3,
-      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
+      "target_keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed 36 screen-right editor actions from the centered player origin on target OMT minutes before the hourly scan; production projects both physical smoke and light from that source",
+      "expected_visible_fact": "one real intense fd_fire field is placed 44 screen-right editor actions from the centered player origin on target OMT minutes before the hourly scan; production projects both physical smoke and light from that source",
       "proof_deferred_to_label": "audit_exact_phase4_structural_smoke_light_sound_matrix"
     },
     {
