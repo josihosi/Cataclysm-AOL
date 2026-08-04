@@ -1085,7 +1085,7 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         self.assertEqual(report["intensity_selection_path"], ["enter"])
         self.assertEqual(
             report["selection_path"],
-            ["0", "e", "/", "fd_smoke", "enter", "enter", "enter"],
+            ["0", "0", "0", "e", "/", "fd_smoke", "enter", "enter", "enter"],
         )
         self.assertNotIn(
             "down",
@@ -1106,7 +1106,7 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         self.assertEqual(
             report["selection_path"],
             [
-                "0", "right", "e", "/", "fd_fire", "enter", "down", "down",
+                "0", "0", "0", "right", "e", "/", "fd_fire", "enter", "down", "down",
                 "enter", "enter",
             ],
         )
@@ -1124,13 +1124,15 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         })
 
         self.assertEqual(
-            input_calls.mock_calls[:2],
+            input_calls.mock_calls[:4],
             [
+                mock.call.hotkey(42, "0", hold_ms=200),
+                mock.call.hotkey(42, "0", hold_ms=200),
                 mock.call.hotkey(42, "0", hold_ms=200),
                 mock.call.press(42, ["right", "right"], delay_ms=200),
             ],
         )
-        self.assertEqual(report["selection_path"][:3], ["0", "right", "right"])
+        self.assertEqual(report["selection_path"][:5], ["0", "0", "0", "right", "right"])
 
     def test_invalid_intensity_is_rejected_before_input(self) -> None:
         invalid_values = (0, 4, "3", 3.0, True)
@@ -1216,6 +1218,8 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
             input_calls.mock_calls,
             [
                 mock.call.hotkey(42, "0", hold_ms=123),
+                mock.call.hotkey(42, "0", hold_ms=123),
+                mock.call.hotkey(42, "0", hold_ms=123),
                 mock.call.press(42, ["right", "right"], delay_ms=123),
                 mock.call.press(42, ["i"], delay_ms=123),
                 mock.call.press(42, ["a"], delay_ms=123),
@@ -1230,7 +1234,7 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
         self.assertEqual(
             report["selection_path"],
             [
-                "0", "right", "right", "i", "a", "/", "c4armed", "enter",
+                "0", "0", "0", "right", "right", "i", "a", "/", "c4armed", "enter",
                 "enter", "esc", "esc",
             ],
         )
@@ -1252,8 +1256,10 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
             )
 
         self.assertEqual(
-            input_calls.mock_calls[:2],
+            input_calls.mock_calls[:4],
             [
+                mock.call.hotkey(42, "0", hold_ms=200),
+                mock.call.hotkey(42, "0", hold_ms=200),
                 mock.call.hotkey(42, "0", hold_ms=200),
                 mock.call.press(42, ["left", "left"], delay_ms=200),
             ],
