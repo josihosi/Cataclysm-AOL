@@ -267,8 +267,16 @@ cursor. Arrival with no matching typed evidence records an empty investigation w
 routine no-candidate streak; matching private/shared evidence prevents false emptiness and refreshes
 the camp lead only after physical return. Generic terrain matching and the exported site planner
 reject these signal-only leads. Focused 2/619, scheduler 11/27,867, full live-world 165/38,502,
-handoff/save 12/331, and save-size 1/10 are green. Local communication range and dead-scout private
-evidence after materialized separation are next. The
+handoff/save 12/331, and save-size 1/10 are green. Local communication and dead-scout evidence
+control are green at `429385ec26`: a materialized pair shares observer-private typed facts only
+inside its exact six-tile cohesion boundary, stale/malformed promotion is atomic, and a private
+fact dies with a separated observer while a previously shared fact can return through the living
+partner. Structural death writeback now belongs to the shared cleanup boundary; true off-route
+death tiles persist without occupying living resume geometry, and same-ID lead replacement at a
+different OMT cannot inherit the report. Focused 3/316, combined 15/1,453, full live-world
+168/38,818, handoff/save 12/331, and save-size 1/10 are green under external
+`phase4-20260804/local-communication-control/MANIFEST.md`. Evidence provenance/age/expiry debug
+output is next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

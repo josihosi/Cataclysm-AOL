@@ -708,8 +708,23 @@ scheduler 11/27,867, full live-world 165/38,502, handoff/save 12/331, and save-s
 the original reachability, support-matching, alternate-planner, urgent-order, and no-candidate-streak
 defects; each is repaired in the checkpoint. External
 `phase4-20260804/decoy-signal-control/MANIFEST.md` records commands and the bounded burst caveat:
-more than eight simultaneous urgent signals may expire honestly. Local communication range and
-dead-scout private evidence after materialized separation are next.
+more than eight simultaneous urgent signals may expire honestly.
+
+Local communication and dead-scout evidence control are green at `429385ec26`. Observer-private
+typed facts become shared only when both living materialized scouts are on the owned route and
+inside the exact six-tile cohesion boundary; malformed counts and stale replay reject without
+mutation. A separated observer's private fact dies with them, while an already-shared local-zombie
+hard-danger fact can return only to the same pinned lead identity/OMT. Physical death writeback now
+runs inside shared `game::cleanup_dead()` before removal, preserves exact off-route death tiles, and
+does not treat dead evidence as living occupancy. At seed `830204929`, focused proof passes 3/316,
+combined communication/local-zombie/handoff/abstract-threat proof passes 15/1,453, full live-world
+passes 168/38,818, handoff/save passes 12/331, and save-size passes 1/10. The final 82,442,312-byte
+test binary SHA-256 is `35dc71c6a5b48a2ea4285ae0a368367fc6402e033077f7af03d236420bf94fd8`.
+Fresh read-only review found pinned-lead replacement, cleanup-ownership, off-route-death, and
+dead-position occupancy defects; all are repaired and the final pass is clean. External
+`phase4-20260804/local-communication-control/MANIFEST.md` records commands, cleanup integration,
+artifact cleanup, and the deterministic/live claim boundary. Evidence provenance/age/expiry debug
+output is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
