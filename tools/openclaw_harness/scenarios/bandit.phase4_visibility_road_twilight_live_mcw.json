@@ -80,7 +80,7 @@
       "pre_menu_choice_key": "w",
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
       "completion_wait_seconds": 60.0,
-      "artifact_state_patterns": ["scheduler_hour=156", "now_minutes=9360"],
+      "artifact_state_patterns": ["scheduler_hour=141", "now_minutes=8460"],
       "expected_visible_fact": "six real game hours pass while production initializes the exact camp's routine activation clock",
       "failure_rule": "If the first bounded wait does not complete, the deterministic dispatch window is not reached."
     },
@@ -94,8 +94,8 @@
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
       "completion_wait_seconds": 90.0,
       "artifact_state_patterns": [
-        "scheduler_hour=162",
-        "now_minutes=9720",
+        "scheduler_hour=147",
+        "now_minutes=8820",
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
         "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
       ],
