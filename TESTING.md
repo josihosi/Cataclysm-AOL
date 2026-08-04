@@ -671,8 +671,18 @@ only at physical return, while exact-avatar targeting/matching and direct camp s
 deleted. Fresh read-only review is clean. Synthetic member records prove the bounded callback seam;
 real NPC template/claim insertion remains production compile-path evidence. External
 `phase4-20260804/autonomous-discovery/MANIFEST.md` records the commands, hashes, initial rejected
-eager-materialization design, and claim boundary. Quiet former-radar, avatar relocation, and
-decoy/empty investigation proof are next.
+eager-materialization design, and claim boundary. Avatar relocation and decoy/empty investigation
+proof remain after the quiet control below.
+
+The quiet former-radar control is green at `f80c33996b`: both faction camps sit six OMT from the
+real avatar, inside the deleted ten-OMT range, yet zero-budget maintenance calls none of the
+terrain/threat/route/observer/signal/materialization seams and creates no lead, route, report,
+decision, hostile operation, or `player@...` state across exact save/load. Focused proof passes
+1/80 and the adjacent autonomous packet passes 3/1,778 at seed `830204929`; the 82,157,240-byte
+test binary SHA-256 is `7d878652bc131d6696550788e612afe2d37f7e15ec3236b7f48a66bcf64549eb`.
+External `phase4-20260804/quiet-radar-control/MANIFEST.md` records commands and the deliberate
+boundary: this isolates proximity with zero terrain-scan budget and does not forbid the established
+static zero-bounty shelter prior. Avatar relocation/no-second-writer is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

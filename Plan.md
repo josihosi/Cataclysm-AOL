@@ -254,7 +254,10 @@ scheduler 9/27,248, full live-world 161/37,686, handoff/save 12/331, save-size 1
 contract tests are green under external `phase4-20260804/autonomous-discovery/MANIFEST.md`. The
 500-site seam creates only two materialization attempts/six members/two starts and none on replay,
 cooldown, or no-candidate paths. Natural NPC insertion remains compile-path rather than live proof;
-the quiet former-radar and avatar-relocation controls are next. The
+the quiet former-radar control is green at `f80c33996b` for both factions with 1/80 focused and
+3/1,778 adjacent autonomous assertions. It deliberately isolates the deleted proximity path with
+zero terrain-scan budget; legitimate static terrain priors remain allowed. Avatar relocation and
+the no-second-writer control are next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
