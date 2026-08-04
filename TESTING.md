@@ -783,7 +783,23 @@ and optics and defer only that site's near-terrain scan to minute 10861, one min
 experiment. The row therefore does not claim autonomous target discovery, competing-target forest
 preference, cannibal live parity, or every fog/terrain configuration. External
 `phase4-20260804/structural-visibility-matrix/MANIFEST.md` preserves credited and rejected runs.
-Smoke/light/sound is the next live row.
+Physical signal return is green at `92aadee446d9`. The exact Mac build of
+`obj/bandit_live_world.o`, `obj/do_turn.o`, and `tests` exits 0; the focused transactional handoff
+case passes 1/440 and `[bandit][live_world][structural_bounty]` passes 51/6,574. Coverage includes
+normal and abort homeward exits, split-owner continued physical travel, camp-only dematerialization,
+early-arrival hold, multi-OMT return, save/reload, stale/contradictory cursor rejection, off-camp
+deadline blocking, repeated owner handoff, and recorded casualty plus survivor. Final AutoReview is
+clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the honest pre-fix
+red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
+retry is justified before the observer exists.
+
+The current validation target is observer O0/O1 from
+`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: prove the harness adds
+only `DEBUG_CLAIRVOYANCE`; observer off/on leaves knowledge and save bytes unchanged beyond that
+mutation; the shared camp/dispatch view is deterministic at 2,048 considered / 256 emitted / 128
+deltas with explicit truncation; stale/dead/completed and co-located/z-level cases are honest; and
+closed observer work is zero. Smoke/light/sound is the first later live row that must preserve a
+screenshot plus the exact compact snapshot.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

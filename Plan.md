@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 AUTONOMOUS DISCOVERY AND RADAR REMOVAL
+**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY OBSERVER O0 NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -304,7 +304,22 @@ of 2/3/1, clear optical forest acquisition at 6, and fog-penalized optical fores
 3. The forest pair defers only site-local terrain discovery beyond the experiment, so it proves
 production dispatch/route/weather/optic/visibility behavior without claiming competing-target
 preference. Evidence is archived under external
-`phase4-20260804/structural-visibility-matrix/MANIFEST.md`; smoke/light/sound is the next live slice.
+`phase4-20260804/structural-visibility-matrix/MANIFEST.md`. Physical home return is checkpointed at
+`92aadee446d9`: once an assembled structural pair enters a homeward-only phase, staging releases
+motor ownership, concrete survivors keep travelling under local ownership across load/unload, an
+early arrival waits inside its source footprint, and only a complete pair or recorded casualty plus
+survivor at camp can commit abstract return. Time-based completion cannot outrun concrete NPC
+location. The exact Mac compile is green, focused handoff coverage passes 1/440, the broader
+structural tag passes 51/6,574, and final closeout review is clean. Harness run `20260804_214456`
+remains honest pre-fix red/inconclusive evidence; it is not recredited or retried by ritual.
+
+Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
+the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
+`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`. The first row is one
+`DEBUG_CLAIRVOYANCE`-gated, side-effect-free camp/dispatch view shared by overmap UI and compact
+harness artifacts; horde/stalker adapters, watches/incident capture, and the first authoritative
+casualty intervention follow in that order. Smoke/light/sound is the first live row that must use
+the observer and preserve a screenshot/snapshot pair.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
