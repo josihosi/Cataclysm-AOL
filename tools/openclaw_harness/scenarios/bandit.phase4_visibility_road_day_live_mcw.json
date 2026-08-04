@@ -17,7 +17,10 @@
     "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
     "bandit_live_world structural_visibility:",
     "site=overmap_special:bandit_camp@140,51,0",
+    "weather=clear",
+    "sight_penalty=1",
     "optic=no",
+    "sight_points=3",
     "first_forward_acquired=yes",
     "outcome=observed",
     "threat_omt=(136,51,0)"
@@ -140,7 +143,10 @@
         [
           "bandit_live_world structural_visibility:",
           "site=overmap_special:bandit_camp@140,51,0",
+          "weather=clear",
+          "sight_penalty=1",
           "optic=no",
+          "sight_points=3",
           "forward_candidates=1",
           "first_forward_omt=(136,51,0)",
           "first_forward_distance=1",
@@ -151,8 +157,8 @@
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_visibility_road_day_artifact_missing",
-      "abort_reason": "same-run debug delta did not prove a bounded no-optic forward acquisition and concrete threat observation on the exact road target",
-      "failure_rule": "No day-row credit if dispatch and exact visibility outcome are not present on same-run lines."
+      "abort_reason": "same-run debug delta did not prove the exact clear-weather three-point no-optic budget, bounded forward acquisition, and concrete threat observation on the exact road target",
+      "failure_rule": "No day-row credit if dispatch, exact clear-weather visibility inputs, and exact visibility outcome are not present on same-run lines."
     },
     {
       "kind": "audit_log_not_contains",
