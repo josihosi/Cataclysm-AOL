@@ -1748,46 +1748,6 @@ int record_live_bandit_local_zombie_observations()
     return recorded;
 }
 
-bool note_live_bandit_structural_deaths_before_cleanup()
-{
-    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
-    bool changed = false;
-    for( bandit_live_world::site_record &site : state.sites ) {
-        if( !site.active_outing.is_active() ||
-            site.active_outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-            site.active_outing.schema_version < 7 ||
-            site.active_outing.owner != bandit_live_world::simulation_owner::local ||
-            !site.active_outing.local_handoff.is_active() ) {
-            continue;
-        }
-        const std::vector<bandit_live_world::local_handoff_member_snapshot> snapshots =
-            site.active_outing.local_handoff.members;
-        for( const bandit_live_world::local_handoff_member_snapshot &snapshot : snapshots ) {
-            if( snapshot.dead ) {
-                continue;
-            }
-            npc *member = g->find_npc( snapshot.npc_id );
-            if( member == nullptr || !member->is_dead() ) {
-                continue;
-            }
-            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
-                bandit_live_world::current_external_simulation_cursor( site );
-            if( cursor && bandit_live_world::record_local_pair_member_death(
-                    site, *cursor, snapshot.npc_id, member->pos_abs(),
-                    live_bandit_current_minutes() ) ) {
-                changed = true;
-                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_handoff physical death"
-                                           << " site=" << site.site_id
-                                           << " activity=" << site.active_outing.activity_id
-                                           << " generation=" << site.active_outing.generation
-                                           << " member=" << snapshot.npc_id.get_value()
-                                           << " position=" << member->pos_abs().to_string() << '\n';
-            }
-        }
-    }
-    return changed;
-}
-
 bool maintain_live_bandit_local_pair_cohesion()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -3783,6 +3743,10 @@ void monmove()
     if( calendar::once_every( 1_minutes ) ) {
         const int local_zombie_observations = record_live_bandit_local_zombie_observations();
         if( local_zombie_observations > 0 ) {
+            // The first cohesion pass owns safety movement.  Re-read exact positions after
+            // recording so an assembled pair can communicate the new fact before either NPC
+            // moves or dies later in this turn.
+            maintain_live_bandit_local_pair_cohesion();
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
                                        << local_zombie_observations << '\n';
         }
@@ -3831,7 +3795,6 @@ void monmove()
             guy.npc_update_body();
         }
     }
-    note_live_bandit_structural_deaths_before_cleanup();
     g->cleanup_dead();
 }
 

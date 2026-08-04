@@ -481,6 +481,8 @@ struct local_cohesion_plan {
     character_id leader_id;
     character_id follower_id;
     std::vector<std::pair<character_id, tripoint_abs_ms>> movement_orders;
+    bool share_private_observations = false;
+    int observations_shared = 0;
     bool reroute_needed = false;
     bool abort_return = false;
     std::vector<std::string> notes;

@@ -26,6 +26,7 @@
 #include "monster.h"
 #include "npc.h"
 #include "omdata.h"
+#include "overmapbuffer.h"
 #include "player_helpers.h"
 #include "point.h"
 #include "sounds.h"
@@ -10981,6 +10982,280 @@ TEST_CASE( "hostile_camp_live_local_zombie_adapter_uses_active_scouts_and_one_bo
     clear_npcs();
 }
 
+TEST_CASE( "hostile_camp_shared_cleanup_records_off_route_scout_death_before_erasure",
+           "[bandit][live_world][phase4_local_communication]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map();
+    clear_vehicles();
+    set_time_to_day();
+    bandit_live_world::world_state saved_world =
+        overmap_buffer.global_state.bandit_live_world;
+    on_out_of_scope cleanup( [saved_world = std::move( saved_world )]() mutable {
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        clear_creatures();
+        clear_npcs();
+    } );
+
+    map &here = get_map();
+    get_avatar().setpos( here, tripoint_bub_ms( 45, 45, 0 ) );
+    const character_id leader_id = here.place_npc( point_bub_ms( 50, 50 ),
+                                   npc_template_test_talker );
+    const character_id partner_id = here.place_npc( point_bub_ms( 50, 51 ),
+                                    npc_template_test_talker );
+    g->load_npcs();
+    npc *leader = g->find_npc( leader_id );
+    npc *partner = g->find_npc( partner_id );
+    REQUIRE( leader != nullptr );
+    REQUIRE( partner != nullptr );
+
+    bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                false, 16190 );
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.active_outing.member_ids.size() == 2 );
+    const std::vector<character_id> old_ids = site.active_outing.member_ids;
+    const std::vector<character_id> live_ids = { leader_id, partner_id };
+    const tripoint_abs_omt physical_omt = leader->pos_abs_omt();
+    const tripoint_abs_omt pinned_route( physical_omt.x() + 1,
+                                        physical_omt.y(), physical_omt.z() );
+    const tripoint_abs_ms pinned_origin = project_to<coords::ms>( pinned_route );
+    for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+        bandit_live_world::member_record *member = site.find_member( old_ids[index] );
+        REQUIRE( member != nullptr );
+        member->npc_id = live_ids[index];
+        site.active_outing.member_ids[index] = live_ids[index];
+        bandit_live_world::local_handoff_member_snapshot &snapshot =
+            site.active_outing.local_handoff.members[index];
+        snapshot.npc_id = live_ids[index];
+        const tripoint_abs_ms pinned_position(
+            pinned_origin.x() + static_cast<int>( index ), pinned_origin.y(), pinned_origin.z() );
+        snapshot.prior_position = pinned_position;
+        snapshot.entry_position = pinned_position;
+        snapshot.staging_position = pinned_position;
+        snapshot.exit_position = pinned_position;
+    }
+    site.active_outing.leader_id = leader_id;
+    site.active_outing.local_handoff.cohesion_leader_id = leader_id;
+    bandit_live_world::local_handoff_snapshot &handoff = site.active_outing.local_handoff;
+    const std::size_t waypoint = static_cast<std::size_t>( handoff.waypoint_index );
+    REQUIRE( waypoint < site.active_outing.shared_route.size() );
+    handoff.route_position = pinned_route;
+    site.active_outing.shared_route[waypoint] = handoff.route_position;
+    handoff.approach_from = waypoint == 0 ? handoff.route_position :
+                            site.active_outing.shared_route[waypoint - 1];
+    handoff.egress_omt = waypoint + 1 < site.active_outing.shared_route.size() ?
+                         site.active_outing.shared_route[waypoint + 1] : handoff.route_position;
+    REQUIRE( bandit_live_world::current_external_simulation_cursor( site ) );
+    const int living_before = site.living_total;
+    overmap_buffer.global_state.bandit_live_world = std::move( world );
+
+    const tripoint_abs_ms death_position = leader->pos_abs();
+    leader->die( &here, nullptr );
+    REQUIRE( leader->is_dead() );
+    g->cleanup_dead();
+
+    const bandit_live_world::site_record &cleaned_site =
+        overmap_buffer.global_state.bandit_live_world.sites.front();
+    CHECK( g->find_npc( leader_id ) == nullptr );
+    CHECK( g->find_npc( partner_id ) != nullptr );
+    CHECK( cleaned_site.living_total == living_before - 1 );
+    REQUIRE( cleaned_site.active_outing.local_handoff.members.size() == 2 );
+    CHECK( cleaned_site.active_outing.local_handoff.members[0].dead );
+    CHECK_FALSE( cleaned_site.active_outing.local_handoff.members[1].dead );
+    CHECK( cleaned_site.active_outing.local_handoff.members[0].exit_position ==
+           death_position );
+    CHECK( project_to<coords::omt>(
+               cleaned_site.active_outing.local_handoff.members[0].exit_position ) !=
+           cleaned_site.active_outing.local_handoff.route_position );
+    CHECK( cleaned_site.active_outing.casualty_ids ==
+           std::vector<character_id>{ leader_id } );
+    CHECK( cleaned_site.active_outing.leader_id == partner_id );
+    CHECK( cleaned_site.active_outing.local_handoff.cohesion_leader_id == partner_id );
+
+    bandit_live_world::site_record &returning_site =
+        overmap_buffer.global_state.bandit_live_world.sites.front();
+    std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( returning_site );
+    REQUIRE( cursor );
+    std::vector<bandit_live_world::local_cohesion_member_read> cohesion_reads;
+    for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+         returning_site.active_outing.local_handoff.members ) {
+        bandit_live_world::local_cohesion_member_read read;
+        read.npc_id = snapshot.npc_id;
+        read.dead = snapshot.dead;
+        read.present = !snapshot.dead;
+        read.current_position = snapshot.dead ? snapshot.exit_position : snapshot.staging_position;
+        cohesion_reads.push_back( read );
+    }
+    const int cohesion_minutes = cursor->last_advanced_minutes + 1;
+    const bandit_live_world::local_cohesion_plan cohesion =
+        bandit_live_world::plan_local_pair_cohesion(
+            returning_site, *cursor, cohesion_minutes, cohesion_reads );
+    REQUIRE( cohesion.valid );
+    REQUIRE( cohesion.snapshot.cohesion_assembled );
+    REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                 returning_site, cohesion, false, false ) );
+
+    cursor = bandit_live_world::current_external_simulation_cursor( returning_site );
+    REQUIRE( cursor );
+    std::vector<bandit_live_world::local_dematerialization_member_read> exit_reads;
+    for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+         returning_site.active_outing.local_handoff.members ) {
+        bandit_live_world::local_dematerialization_member_read read;
+        read.npc_id = snapshot.npc_id;
+        read.readable = true;
+        read.dead = snapshot.dead;
+        read.hp_percent = snapshot.dead ? 0 : snapshot.hp_percent;
+        read.current_position = snapshot.dead ? snapshot.exit_position : snapshot.staging_position;
+        exit_reads.push_back( read );
+    }
+    const bandit_live_world::local_dematerialization_plan dematerialization =
+        bandit_live_world::plan_local_pair_dematerialization(
+            returning_site, *cursor, cohesion_minutes + 1, exit_reads,
+            returning_site.active_outing.cargo );
+    REQUIRE( dematerialization.valid );
+    REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                 returning_site, dematerialization,
+    []( const bandit_live_world::local_handoff_member_snapshot & ) {
+        return true;
+    }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    CHECK( returning_site.active_outing.owner ==
+           bandit_live_world::simulation_owner::abstract );
+    CHECK( returning_site.active_outing.local_handoff.members[0].exit_position ==
+           death_position );
+}
+
+TEST_CASE( "hostile_camp_dead_evidence_does_not_occupy_the_survivor_resume_tile",
+           "[bandit][live_world][phase4_local_communication]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map();
+    clear_vehicles();
+    set_time_to_day();
+    bandit_live_world::world_state saved_world =
+        overmap_buffer.global_state.bandit_live_world;
+    on_out_of_scope cleanup( [saved_world = std::move( saved_world )]() mutable {
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        clear_creatures();
+        clear_npcs();
+    } );
+
+    map &here = get_map();
+    get_avatar().setpos( here, tripoint_bub_ms( 45, 45, 0 ) );
+    const character_id leader_id = here.place_npc( point_bub_ms( 50, 50 ),
+                                   npc_template_test_talker );
+    const character_id partner_id = here.place_npc( point_bub_ms( 50, 51 ),
+                                    npc_template_test_talker );
+    g->load_npcs();
+    npc *leader = g->find_npc( leader_id );
+    npc *partner = g->find_npc( partner_id );
+    REQUIRE( leader != nullptr );
+    REQUIRE( partner != nullptr );
+
+    bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                false, 16195 );
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.active_outing.member_ids.size() == 2 );
+    const std::vector<character_id> old_ids = site.active_outing.member_ids;
+    const std::vector<character_id> live_ids = { leader_id, partner_id };
+    const tripoint_abs_ms shared_death_and_resume_position = leader->pos_abs();
+    const tripoint_abs_omt pinned_route = leader->pos_abs_omt();
+    for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+        bandit_live_world::member_record *member = site.find_member( old_ids[index] );
+        REQUIRE( member != nullptr );
+        member->npc_id = live_ids[index];
+        site.active_outing.member_ids[index] = live_ids[index];
+        bandit_live_world::local_handoff_member_snapshot &snapshot =
+            site.active_outing.local_handoff.members[index];
+        snapshot.npc_id = live_ids[index];
+        const tripoint_abs_ms pinned_position = index == 0 ?
+                tripoint_abs_ms( shared_death_and_resume_position.x() + 1,
+                                 shared_death_and_resume_position.y(),
+                                 shared_death_and_resume_position.z() ) :
+                shared_death_and_resume_position;
+        snapshot.prior_position = pinned_position;
+        snapshot.entry_position = pinned_position;
+        snapshot.staging_position = pinned_position;
+        snapshot.exit_position = pinned_position;
+    }
+    site.active_outing.leader_id = leader_id;
+    site.active_outing.local_handoff.cohesion_leader_id = leader_id;
+    bandit_live_world::local_handoff_snapshot &handoff = site.active_outing.local_handoff;
+    const std::size_t waypoint = static_cast<std::size_t>( handoff.waypoint_index );
+    REQUIRE( waypoint < site.active_outing.shared_route.size() );
+    handoff.route_position = pinned_route;
+    site.active_outing.shared_route[waypoint] = pinned_route;
+    handoff.approach_from = waypoint == 0 ? pinned_route :
+                            site.active_outing.shared_route[waypoint - 1];
+    handoff.egress_omt = waypoint + 1 < site.active_outing.shared_route.size() ?
+                         site.active_outing.shared_route[waypoint + 1] : pinned_route;
+    REQUIRE( bandit_live_world::current_external_simulation_cursor( site ) );
+    overmap_buffer.global_state.bandit_live_world = std::move( world );
+
+    leader->die( &here, nullptr );
+    REQUIRE( leader->is_dead() );
+    g->cleanup_dead();
+
+    bandit_live_world::site_record &cleaned_site =
+        overmap_buffer.global_state.bandit_live_world.sites.front();
+    REQUIRE( cleaned_site.active_outing.local_handoff.members[0].dead );
+    CHECK( cleaned_site.active_outing.local_handoff.members[0].exit_position ==
+           shared_death_and_resume_position );
+    CHECK( cleaned_site.active_outing.local_handoff.members[1].exit_position ==
+           shared_death_and_resume_position );
+
+    std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( cleaned_site );
+    REQUIRE( cursor );
+    std::vector<bandit_live_world::local_cohesion_member_read> cohesion_reads;
+    std::vector<bandit_live_world::local_dematerialization_member_read> exit_reads;
+    for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+         cleaned_site.active_outing.local_handoff.members ) {
+        bandit_live_world::local_cohesion_member_read cohesion_read;
+        cohesion_read.npc_id = snapshot.npc_id;
+        cohesion_read.dead = snapshot.dead;
+        cohesion_read.present = !snapshot.dead;
+        cohesion_read.current_position = shared_death_and_resume_position;
+        cohesion_reads.push_back( cohesion_read );
+
+        bandit_live_world::local_dematerialization_member_read exit_read;
+        exit_read.npc_id = snapshot.npc_id;
+        exit_read.readable = true;
+        exit_read.dead = snapshot.dead;
+        exit_read.hp_percent = snapshot.dead ? 0 : snapshot.hp_percent;
+        exit_read.current_position = shared_death_and_resume_position;
+        exit_reads.push_back( exit_read );
+    }
+    const int cohesion_minutes = cursor->last_advanced_minutes + 1;
+    const bandit_live_world::local_cohesion_plan cohesion =
+        bandit_live_world::plan_local_pair_cohesion(
+            cleaned_site, *cursor, cohesion_minutes, cohesion_reads );
+    REQUIRE( cohesion.valid );
+    REQUIRE( cohesion.snapshot.cohesion_assembled );
+    REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                 cleaned_site, cohesion, false, false ) );
+
+    cursor = bandit_live_world::current_external_simulation_cursor( cleaned_site );
+    REQUIRE( cursor );
+    const bandit_live_world::local_dematerialization_plan dematerialization =
+        bandit_live_world::plan_local_pair_dematerialization(
+            cleaned_site, *cursor, cohesion_minutes + 1, exit_reads,
+            cleaned_site.active_outing.cargo );
+    REQUIRE( dematerialization.valid );
+    REQUIRE( dematerialization.resume_snapshot.members[0].exit_position ==
+             dematerialization.resume_snapshot.members[1].exit_position );
+    REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                 cleaned_site, dematerialization,
+    []( const bandit_live_world::local_handoff_member_snapshot & ) {
+        return true;
+    }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    CHECK( cleaned_site.active_outing.owner == bandit_live_world::simulation_owner::abstract );
+}
+
 TEST_CASE( "hostile_camp_local_zombie_observation_is_private_bounded_and_persistent",
            "[bandit][live_world][phase4_local_zombie_observation]" )
 {
@@ -11056,6 +11331,249 @@ TEST_CASE( "hostile_camp_local_zombie_observation_is_private_bounded_and_persist
         const std::string after_record = serialize_world( world );
         world = round_trip_world( world );
         CHECK( serialize_world( world ) == after_record );
+    }
+}
+
+TEST_CASE( "hostile_camp_materialized_pair_shares_only_in_range_before_observer_death",
+           "[bandit][live_world][phase4_local_communication][save]" )
+{
+    const auto cohesion_reads_at_distance = [](
+    const bandit_live_world::site_record & site, const int distance ) {
+        std::vector<bandit_live_world::local_cohesion_member_read> reads;
+        const tripoint_abs_ms origin = site.active_outing.local_handoff.members.front().staging_position;
+        for( std::size_t index = 0; index < site.active_outing.local_handoff.members.size(); ++index ) {
+            const bandit_live_world::local_handoff_member_snapshot &member =
+                site.active_outing.local_handoff.members[index];
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = member.npc_id;
+            read.present = true;
+            read.current_position = index == 0 ? origin :
+                                    tripoint_abs_ms( origin.x() + distance, origin.y(), origin.z() );
+            reads.push_back( read );
+        }
+        return reads;
+    };
+    const auto finish_after_observer_death = [](
+    bandit_live_world::world_state & world, const character_id observer_id,
+    const tripoint_abs_ms & death_position, const int death_minutes ) {
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::string lead_id = site.active_outing.target_lead_id;
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::record_local_pair_member_death(
+                     site, *cursor, observer_id, death_position, death_minutes ) );
+
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::local_cohesion_member_read> cohesion_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = member.npc_id;
+            read.dead = member.dead;
+            read.present = !member.dead;
+            read.current_position = member.dead ? member.exit_position : member.staging_position;
+            cohesion_reads.push_back( read );
+        }
+        const bandit_live_world::local_cohesion_plan cohesion =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *cursor, death_minutes + 1, cohesion_reads );
+        REQUIRE( cohesion.valid );
+        REQUIRE( cohesion.snapshot.cohesion_assembled );
+        CHECK_FALSE( cohesion.share_private_observations );
+        CHECK( cohesion.observations_shared == 0 );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     site, cohesion, false, false ) );
+
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::local_dematerialization_member_read> exit_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            bandit_live_world::local_dematerialization_member_read read;
+            read.npc_id = member.npc_id;
+            read.readable = true;
+            read.dead = member.dead;
+            read.hp_percent = member.dead ? 0 : member.hp_percent;
+            read.current_position = member.dead ? member.exit_position : member.staging_position;
+            exit_reads.push_back( read );
+        }
+        const bandit_live_world::local_dematerialization_plan dematerialization =
+            bandit_live_world::plan_local_pair_dematerialization(
+                site, *cursor, death_minutes + 2, exit_reads, site.active_outing.cargo );
+        REQUIRE( dematerialization.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     site, dematerialization,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+
+        const std::string dematerialized = serialize_world( world );
+        world = round_trip_world( world );
+        CHECK( serialize_world( world ) == dematerialized );
+        bandit_live_world::advance_structural_bounty_outings(
+            world, death_minutes + 3, {} );
+        const int return_minutes = std::max(
+                                       world.sites.front().active_outing.expected_return_minutes,
+                                       death_minutes + 4 );
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes, {} );
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes + 1, {} );
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes + 2, {} );
+        const bandit_live_world::camp_map_lead *lead =
+            world.sites.front().intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        return *lead;
+    };
+
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        {
+            INFO( "separation keeps the observer fact private and death destroys it" );
+            bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                        cannibal, cannibal ? 16320 : 16300 );
+            bandit_live_world::site_record &site = world.sites.front();
+            const character_id observer_id = site.active_outing.member_ids.front();
+            std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            bandit_live_world::structural_local_zombie_read zombie_read =
+                make_structural_local_zombie_read( site );
+            zombie_read.danger_low = 100;
+            zombie_read.danger_high = 200;
+            REQUIRE( bandit_live_world::record_structural_local_zombie_observation(
+                         site, *cursor, zombie_read, 101 ).valid );
+            REQUIRE( site.active_outing.observations.size() == 1 );
+
+            const std::vector<bandit_live_world::local_cohesion_member_read> separated =
+                cohesion_reads_at_distance( site, 7 );
+            cursor = bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_cohesion_plan cohesion =
+                bandit_live_world::plan_local_pair_cohesion( site, *cursor, 102, separated );
+            REQUIRE( cohesion.valid );
+            CHECK_FALSE( cohesion.share_private_observations );
+            CHECK( cohesion.observations_shared == 0 );
+            REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                         site, cohesion, false, false ) );
+            CHECK( site.active_outing.observations.front().share_state ==
+                   bandit_live_world::sortie_observation_share_state::observer_private );
+
+            const bandit_live_world::camp_map_lead returned_lead =
+                finish_after_observer_death(
+                    world, observer_id, separated.front().current_position, 103 );
+            CHECK( returned_lead.last_outcome != "returned_shared_structural_threat_report" );
+            CHECK( returned_lead.source_summary !=
+                   "legitimately visible local zombie danger" );
+        }
+
+        {
+            INFO( "the exact communication boundary lets the survivor carry the fact home" );
+            bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                        cannibal, cannibal ? 16360 : 16340 );
+            bandit_live_world::site_record &site = world.sites.front();
+            const character_id observer_id = site.active_outing.member_ids.front();
+            std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            bandit_live_world::structural_local_zombie_read zombie_read =
+                make_structural_local_zombie_read( site );
+            zombie_read.danger_low = 100;
+            zombie_read.danger_high = 200;
+            REQUIRE( bandit_live_world::record_structural_local_zombie_observation(
+                         site, *cursor, zombie_read, 101 ).valid );
+
+            const std::vector<bandit_live_world::local_cohesion_member_read> touching_boundary =
+                cohesion_reads_at_distance( site, 6 );
+            cursor = bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_cohesion_plan cohesion =
+                bandit_live_world::plan_local_pair_cohesion(
+                    site, *cursor, 101, touching_boundary );
+            REQUIRE( cohesion.valid );
+            REQUIRE( cohesion.share_private_observations );
+            CHECK( cohesion.observations_shared == 1 );
+            bandit_live_world::local_cohesion_plan malformed_share_count = cohesion;
+            malformed_share_count.observations_shared = 2;
+            const std::string before_malformed_commit = serialize_world( world );
+            CHECK_FALSE( bandit_live_world::commit_local_pair_cohesion(
+                             site, malformed_share_count, false, false ) );
+            CHECK( serialize_world( world ) == before_malformed_commit );
+            REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                         site, cohesion, false, false ) );
+            REQUIRE( site.active_outing.observations.size() == 1 );
+            CHECK( site.active_outing.observations.front().share_state ==
+                   bandit_live_world::sortie_observation_share_state::shared );
+            const std::string shared = serialize_world( world );
+            CHECK_FALSE( bandit_live_world::commit_local_pair_cohesion(
+                             site, cohesion, false, false ) );
+            CHECK( serialize_world( world ) == shared );
+
+            const tripoint_abs_omt route_omt =
+                site.active_outing.local_handoff.route_position;
+            const tripoint_abs_ms off_route_death = project_to<coords::ms>(
+                        tripoint_abs_omt( route_omt.x() + 1, route_omt.y(), route_omt.z() ) );
+            const bandit_live_world::camp_map_lead returned_lead =
+                finish_after_observer_death(
+                    world, observer_id, off_route_death, 102 );
+            CHECK( returned_lead.status == bandit_live_world::camp_lead_status::dangerous );
+            CHECK( returned_lead.threat_confirmed );
+            CHECK( returned_lead.threat == 200 );
+            CHECK( returned_lead.last_outcome == "returned_shared_structural_threat_report" );
+            CHECK( returned_lead.source_summary ==
+                   "legitimately visible local zombie danger" );
+        }
+
+        {
+            INFO( "a same-id replacement at another OMT cannot inherit the shared fact" );
+            bandit_live_world::world_state world = make_structural_local_zombie_test_world(
+                        cannibal, cannibal ? 16400 : 16380 );
+            bandit_live_world::site_record &site = world.sites.front();
+            std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            bandit_live_world::structural_local_zombie_read zombie_read =
+                make_structural_local_zombie_read( site );
+            zombie_read.danger_low = 100;
+            zombie_read.danger_high = 200;
+            REQUIRE( bandit_live_world::record_structural_local_zombie_observation(
+                         site, *cursor, zombie_read, 101 ).valid );
+            const std::vector<bandit_live_world::local_cohesion_member_read> touching_boundary =
+                cohesion_reads_at_distance( site, 6 );
+            cursor = bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_cohesion_plan cohesion =
+                bandit_live_world::plan_local_pair_cohesion(
+                    site, *cursor, 101, touching_boundary );
+            REQUIRE( cohesion.valid );
+            REQUIRE( cohesion.share_private_observations );
+            REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                         site, cohesion, false, false ) );
+
+            bandit_live_world::camp_map_lead *lead =
+                site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+            REQUIRE( lead != nullptr );
+            bandit_live_world::camp_map_lead replacement = *lead;
+            replacement.omt = tripoint_abs_omt( replacement.omt.x() + 1,
+                                                replacement.omt.y(), replacement.omt.z() );
+            REQUIRE( bandit_live_world::upsert_camp_map_lead( site, replacement ) );
+            lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+            REQUIRE( lead != nullptr );
+            REQUIRE( lead->omt == replacement.omt );
+            REQUIRE( lead->omt != site.active_outing.target_omt );
+            const std::string replaced_world = serialize_world( world );
+            const int return_minutes = site.active_outing.expected_return_minutes;
+            bandit_live_world::advance_structural_bounty_outings( world, return_minutes, {} );
+            bandit_live_world::advance_structural_bounty_outings( world, return_minutes + 1, {} );
+            bandit_live_world::advance_structural_bounty_outings( world, return_minutes + 2, {} );
+            CHECK( serialize_world( world ) == replaced_world );
+            lead = world.sites.front().intelligence_map.find_lead(
+                       world.sites.front().active_outing.target_lead_id );
+            REQUIRE( lead != nullptr );
+            CHECK( lead->last_outcome != "returned_shared_structural_threat_report" );
+            CHECK( lead->source_summary != "legitimately visible local zombie danger" );
+        }
     }
 }
 
