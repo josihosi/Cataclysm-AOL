@@ -1,6 +1,6 @@
 {
   "name": "bandit.phase4_visibility_road_night_live_mcw",
-  "description": "Phase-4 live clear-night road row. A real idle camp dispatches an abstract exact pair toward three concrete hostile entities; the production trace must derive the one-point ordinary night sight budget and observe only the one-OMT forward road target.",
+  "description": "Phase-4 live neutral-weather night road row. A real idle camp dispatches an abstract exact pair toward three concrete hostile entities; the production trace must derive the one-point ordinary night sight budget under generated cloudy weather with no sight penalty and observe only the one-OMT forward road target.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_phase4_visibility_road_night_v0_2026-08-04",
@@ -10,7 +10,7 @@
   "profile_option_overrides_by_platform": {"macos": {"SCALING_FACTOR": "2"}},
   "replace_existing_worlds": true,
   "artifact_source": "debug.log",
-  "artifact_patterns": ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road", "bandit_live_world structural_visibility:", "weather=clear", "optic=no", "sight_points=1", "first_forward_acquired=yes", "outcome=observed", "threat_omt=(136,51,0)"],
+  "artifact_patterns": ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road", "bandit_live_world structural_visibility:", "weather=cloudy", "sight_penalty=1", "optic=no", "sight_points=1", "first_forward_acquired=yes", "outcome=observed", "threat_omt=(136,51,0)"],
   "steps": [
     {"kind": "wait", "label": "post_load_phase4_visibility_road_night_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 400, "expected_screen_text_after_contains": ["Move:", "Wield:"], "expected_visible_fact": "the night road/horde fixture reaches normal gameplay; this is startup footing only", "failure_rule": "If gameplay does not load, no live visibility proof can be credited."},
     {
@@ -28,12 +28,12 @@
       "kind": "audit_log_contains", "label": "audit_phase4_visibility_road_night_artifact",
       "required_line_patterns": [
         ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"],
-        ["bandit_live_world structural_visibility:", "site=overmap_special:bandit_camp@140,51,0", "current_omt=(137,51,0)", "weather=clear", "optic=no", "sight_points=1", "forward_candidates=1", "first_forward_omt=(136,51,0)", "first_forward_distance=1", "first_forward_acquired=yes", "outcome=observed", "threat_omt=(136,51,0)"]
+        ["bandit_live_world structural_visibility:", "site=overmap_special:bandit_camp@140,51,0", "current_omt=(137,51,0)", "weather=cloudy", "sight_penalty=1", "optic=no", "sight_points=1", "forward_candidates=1", "first_forward_omt=(136,51,0)", "first_forward_distance=1", "first_forward_acquired=yes", "outcome=observed", "threat_omt=(136,51,0)"]
       ],
-      "abort_on_metadata_failure": true, "abort_verdict": "blocked_phase4_visibility_road_night_artifact_missing", "abort_reason": "same-run debug delta did not prove the exact clear-night forward acquisition and concrete road threat observation", "failure_rule": "No night-row credit if dispatch and exact visibility outcome are not present on same-run lines."
+      "abort_on_metadata_failure": true, "abort_verdict": "blocked_phase4_visibility_road_night_artifact_missing", "abort_reason": "same-run debug delta did not prove the exact neutral-weather night forward acquisition and concrete road threat observation", "failure_rule": "No night-row credit if dispatch, neutral sight penalty, and exact visibility outcome are not present on same-run lines."
     },
     {"kind": "audit_log_not_contains", "label": "audit_phase4_visibility_road_night_no_fixture_optic", "forbidden_line_patterns": [["bandit_live_world structural_visibility:", "site=overmap_special:bandit_camp@140,51,0", "optic=yes"]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_phase4_visibility_road_night_unexpected_optic", "abort_reason": "the no-optic road fixture produced an optical visibility trace", "failure_rule": "Unexpected optics invalidate this ordinary-night contrast."}
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_visibility_road_night_live_mcw",
-  "evidence_contract": {"claim": "a real abstract exact pair derives a one-point ordinary clear-night budget and observes concrete hostiles only on its one-OMT committed forward road target without fixture optics or player-coordinate input", "load_only_verdict": "load/setup proof only / inconclusive for structural visibility", "failure_rule": "No Phase-4 night-row credit unless startup, exact idle site/lead, exact three-entity target footing, elapsed production dispatch, bounded night observer inputs, forward acquisition, observed threat outcome, and no-optic control are separately green."}
+  "evidence_contract": {"claim": "a real abstract exact pair derives a one-point ordinary night budget under generated cloudy weather with sight penalty 1 and observes concrete hostiles only on its one-OMT committed forward road target without fixture optics or player-coordinate input", "load_only_verdict": "load/setup proof only / inconclusive for structural visibility", "failure_rule": "No Phase-4 night-row credit unless startup, exact idle site/lead, exact three-entity target footing, elapsed production dispatch, bounded neutral-weather night observer inputs, forward acquisition, observed threat outcome, and no-optic control are separately green."}
 }
