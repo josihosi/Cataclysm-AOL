@@ -7988,6 +7988,56 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_routine_dispatch_clock":
+            site_id = str(raw.get("site_id", "")).strip()
+            if not site_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_routine_dispatch_clock needs exact site_id in {manifest_path}"
+                )
+            try:
+                activated_minutes = int(raw.get("routine_activated_minutes", 0))
+                resolved_minutes = int(raw.get("last_routine_resolved_minutes", -1))
+                eligible_minutes = int(raw.get("next_routine_dispatch_eligible_minutes", -1))
+                no_candidate_streak = int(raw.get("routine_no_candidate_streak", 0))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_routine_dispatch_clock needs integer scheduler fields in {manifest_path}"
+                )
+            scheduler_is_consistent = (
+                activated_minutes >= -1
+                and resolved_minutes >= -1
+                and eligible_minutes >= -1
+                and 0 <= no_candidate_streak <= 3
+                and (
+                    activated_minutes >= 0
+                    or (
+                        resolved_minutes == -1
+                        and eligible_minutes == -1
+                        and no_candidate_streak == 0
+                    )
+                )
+                and (eligible_minutes < 0 or eligible_minutes >= activated_minutes)
+                and (resolved_minutes < 0 or resolved_minutes >= activated_minutes)
+                and (
+                    resolved_minutes < 0
+                    or eligible_minutes < 0
+                    or eligible_minutes >= resolved_minutes
+                )
+            )
+            if not scheduler_is_consistent:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_routine_dispatch_clock has malformed scheduler state in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "site_id": site_id,
+                "routine_activated_minutes": activated_minutes,
+                "last_routine_resolved_minutes": resolved_minutes,
+                "next_routine_dispatch_eligible_minutes": eligible_minutes,
+                "routine_no_candidate_streak": no_candidate_streak,
+            })
+            continue
+
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
 
@@ -8791,7 +8841,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
-            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clear_site_evidence, "
+            "bandit_active_sortie_clock, bandit_routine_dispatch_clock, bandit_camp_map_lead, bandit_clear_site_evidence, "
             "bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
@@ -11253,6 +11303,57 @@ def apply_bandit_active_sortie_clock_transform(world_dir: Path, transform: Dict[
     }
 
 
+def apply_bandit_routine_dispatch_clock_transform(
+    world_dir: Path, transform: Dict[str, Any]
+) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit routine clock target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    live_world = overmapbuffer.get("bandit_live_world", {}) if isinstance(overmapbuffer, dict) else {}
+    sites = live_world.get("sites", []) if isinstance(live_world, dict) else []
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    site_id = str(transform.get("site_id", "") or "").strip()
+    matching_sites = [
+        site for site in sites
+        if isinstance(site, dict) and str(site.get("site_id", "")) == site_id
+    ]
+    if len(matching_sites) != 1:
+        raise SystemExit(
+            f"Fixture bandit routine clock found {len(matching_sites)} sites exactly matching {site_id}"
+        )
+    selected_site = matching_sites[0]
+    scheduler_fields = {
+        "routine_activated_minutes": int(transform.get("routine_activated_minutes", 0)),
+        "last_routine_resolved_minutes": int(transform.get("last_routine_resolved_minutes", -1)),
+        "next_routine_dispatch_eligible_minutes": int(
+            transform.get("next_routine_dispatch_eligible_minutes", -1)
+        ),
+        "routine_no_candidate_streak": int(transform.get("routine_no_candidate_streak", 0)),
+    }
+    selected_site.update(scheduler_fields)
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_routine_dispatch_clock",
+        "world": world_dir.name,
+        "site_id": site_id,
+        **scheduler_fields,
+    }
+
+
 
 def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     dimension_path = world_dir / "dimension_data.gsav"
@@ -11729,6 +11830,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         kind = str(transform.get("kind", "")).strip().lower()
         if kind == "bandit_active_sortie_clock":
             reports.append(apply_bandit_active_sortie_clock_transform(world_dir, transform))
+            continue
+        if kind == "bandit_routine_dispatch_clock":
+            reports.append(apply_bandit_routine_dispatch_clock_transform(world_dir, transform))
             continue
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))

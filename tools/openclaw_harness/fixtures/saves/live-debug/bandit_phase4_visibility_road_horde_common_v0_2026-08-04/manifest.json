@@ -35,6 +35,14 @@
       "mark_cleared_active_members_unready": false
     },
     {
+      "kind": "bandit_routine_dispatch_clock",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "routine_activated_minutes": 0,
+      "last_routine_resolved_minutes": -1,
+      "next_routine_dispatch_eligible_minutes": -1,
+      "routine_no_candidate_streak": 0
+    },
+    {
       "kind": "horde_entity_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "monster_id": "mon_zombie",

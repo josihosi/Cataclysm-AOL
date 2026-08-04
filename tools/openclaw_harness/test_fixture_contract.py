@@ -1135,6 +1135,60 @@ class BanditRosterShapeTransformContractTest(unittest.TestCase):
         self.assertEqual(updated["spawn_tiles"][0]["headcount"], 0)
 
 
+class BanditRoutineDispatchClockTransformContractTest(unittest.TestCase):
+    def test_sets_one_exact_site_to_valid_due_scheduler_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [
+                                {"site_id": "camp-selected", "routine_activated_minutes": 90},
+                                {"site_id": "camp-untouched", "routine_activated_minutes": 120},
+                            ],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_routine_dispatch_clock",
+                    "site_id": "camp-selected",
+                    "routine_activated_minutes": 0,
+                    "last_routine_resolved_minutes": -1,
+                    "next_routine_dispatch_eligible_minutes": -1,
+                    "routine_no_candidate_streak": 0,
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            reports = apply_fixture_save_transforms(world_dir, normalized)
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            selected, untouched = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+
+        self.assertEqual(reports[0]["kind"], "bandit_routine_dispatch_clock")
+        self.assertEqual(selected["routine_activated_minutes"], 0)
+        self.assertEqual(selected["last_routine_resolved_minutes"], -1)
+        self.assertEqual(selected["next_routine_dispatch_eligible_minutes"], -1)
+        self.assertEqual(selected["routine_no_candidate_streak"], 0)
+        self.assertEqual(untouched["routine_activated_minutes"], 120)
+
+    def test_rejects_malformed_scheduler_state(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "malformed scheduler state"):
+            normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_routine_dispatch_clock",
+                    "site_id": "camp-selected",
+                    "routine_activated_minutes": -1,
+                    "last_routine_resolved_minutes": 10,
+                }],
+                manifest_path=Path("fixture") / "manifest.json",
+            )
+
+
 class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
     def test_clears_only_exact_site_evidence_and_preserves_identity_and_roster(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
