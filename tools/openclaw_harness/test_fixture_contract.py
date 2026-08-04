@@ -1083,7 +1083,7 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         self.assertEqual(report["intensity_selection_path"], ["enter"])
         self.assertEqual(
             report["selection_path"],
-            ["e", "/", "fd_smoke", "enter", "enter", "enter"],
+            ["0", "e", "/", "fd_smoke", "enter", "enter", "enter"],
         )
         self.assertNotIn(
             "down",
@@ -1104,7 +1104,7 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
         self.assertEqual(
             report["selection_path"],
             [
-                "right", "e", "/", "fd_fire", "enter", "down", "down",
+                "0", "right", "e", "/", "fd_fire", "enter", "down", "down",
                 "enter", "enter",
             ],
         )
@@ -1112,6 +1112,20 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
             ["down", "down"],
             [call.args[1] for call in press.call_args_list],
         )
+
+    def test_centers_cursor_before_field_target_keys(self) -> None:
+        report, press = self.execute_field_step({
+            "kind": "debug_map_editor_place_field",
+            "label": "place_smoke",
+            "field_query": "fd_smoke",
+            "target_keys": ["right", "right"],
+        })
+
+        self.assertEqual(
+            [call.args[1] for call in press.call_args_list[:2]],
+            [["0"], ["right", "right"]],
+        )
+        self.assertEqual(report["selection_path"][:3], ["0", "right", "right"])
 
     def test_invalid_intensity_is_rejected_before_input(self) -> None:
         invalid_values = (0, 4, "3", 3.0, True)
@@ -1194,7 +1208,7 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
         self.assertEqual(
             [call.args[1] for call in press.call_args_list],
             [
-                ["right", "right"], ["i"], ["a"], ["enter"], ["esc"],
+                ["0"], ["right", "right"], ["i"], ["a"], ["enter"], ["esc"],
                 ["esc"],
             ],
         )
@@ -1204,11 +1218,29 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
         self.assertEqual(
             report["selection_path"],
             [
-                "right", "right", "i", "a", "/", "c4armed", "enter",
+                "0", "right", "right", "i", "a", "/", "c4armed", "enter",
                 "enter", "esc", "esc",
             ],
         )
         self.assertEqual(report["spawn_target"], "map_editor_target_tile")
+
+    def test_centers_cursor_before_item_target_keys(self) -> None:
+        with (
+            mock.patch("startup_harness.run_debug_menu_shortcut_path"),
+            mock.patch("startup_harness.apply_uilist_filter"),
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.time.sleep"),
+        ):
+            debug_map_editor_place_item(
+                42,
+                item_query="c4armed",
+                target_keys=["left", "left"],
+            )
+
+        self.assertEqual(
+            [call.args[1] for call in press.call_args_list[:2]],
+            [["0"], ["left", "left"]],
+        )
 
     def test_missing_blank_and_wrong_type_queries_fail_before_input(self) -> None:
         invalid_steps = (

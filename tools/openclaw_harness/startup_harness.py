@@ -6100,6 +6100,10 @@ def debug_map_editor_place_item(
         delay_ms=delay_ms,
         menu_settle_seconds=menu_settle_seconds,
     )
+    # The editor starts at player position plus the current view offset. CENTER
+    # gives scenario target keys a deterministic player-relative origin.
+    peekaboo_press_sequence(pid, ["0"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
     if target_keys:
         peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
@@ -6149,6 +6153,10 @@ def debug_map_editor_place_field(
         delay_ms=delay_ms,
         menu_settle_seconds=menu_settle_seconds,
     )
+    # The editor starts at player position plus the current view offset. CENTER
+    # gives scenario target keys a deterministic player-relative origin.
+    peekaboo_press_sequence(pid, ["0"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
     if target_keys:
         peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
@@ -12947,7 +12955,7 @@ def execute_probe_steps(
                 "menu_settle_seconds": menu_settle_seconds,
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "M"],
-                "selection_path": target_keys
+                "selection_path": ["0"] + target_keys
                 + ["i", "a", "/", item_query, "enter", "enter", "esc", "esc"],
                 "spawn_target": "map_editor_target_tile",
             })
@@ -12997,7 +13005,7 @@ def execute_probe_steps(
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "M"],
                 "intensity_selection_path": (["down"] * (field_intensity - 1)) + ["enter"],
-                "selection_path": target_keys + ["e", "/", field_query, "enter"]
+                "selection_path": ["0"] + target_keys + ["e", "/", field_query, "enter"]
                 + (["down"] * (field_intensity - 1)) + ["enter", "enter"],
                 "spawn_target": "map_editor_target_tile",
             })
