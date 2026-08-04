@@ -299,6 +299,7 @@ input_context editmap_ui::setup_input_context()
     input_context ctxt( "EDITMAP" );
     ctxt.set_iso( true );
     ctxt.register_directions();
+    ctxt.register_action( "CENTER" );
     ctxt.register_action( "CONFIRM" );
 
     ctxt.register_action( "EDITMAP_SELECT_BRUSH" );
