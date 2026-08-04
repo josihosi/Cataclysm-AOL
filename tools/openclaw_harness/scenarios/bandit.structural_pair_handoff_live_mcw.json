@@ -136,7 +136,7 @@
       "required_local_handoff_state": "local",
       "required_local_handoff_exact_pair": true,
       "required_local_handoff_pair_contract": true,
-      "required_active_target_id_exact": "road",
+      "required_active_target_id_exact": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
       "required_active_job_type": "scout",
       "required_min_active_member_ids": 2,
       "abort_on_metadata_failure": true,
