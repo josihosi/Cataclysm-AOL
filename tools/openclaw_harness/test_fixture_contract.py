@@ -18,7 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, List, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 from unittest import mock
 
 from flatbuffers import flexbuffers
@@ -313,7 +313,36 @@ class WaitStepLedgerContractTest(unittest.TestCase):
             "path": "endpoint.log",
         }
 
-    def classify(self, choice_key: str, expected_duration: str, before: str, after: str) -> Dict[str, Any]:
+    @staticmethod
+    def exact_endpoint_artifact_report(
+        *,
+        start_size: int = 100,
+        end_size: int = 200,
+    ) -> Dict[str, Any]:
+        patterns = ["scheduler_hour=149", "now_minutes=8940"]
+        return {
+            "status": "captured",
+            "start_size": start_size,
+            "end_size": end_size,
+            "patterns": patterns,
+            "matches_by_pattern": [
+                {"pattern": pattern, "lines": [f"cadence {pattern}"]}
+                for pattern in patterns
+            ],
+            "path": "endpoint.log",
+        }
+
+    def classify(
+        self,
+        choice_key: str,
+        expected_duration: str,
+        before: str,
+        after: str,
+        *,
+        artifact_report: Optional[Dict[str, Any]] = None,
+        wait_status: str = "completed",
+        allow_meridiem_ambiguity: bool = False,
+    ) -> Dict[str, Any]:
         return classify_wait_step_ledger(
             label="wait_contract",
             choice_key=choice_key,
@@ -321,9 +350,10 @@ class WaitStepLedgerContractTest(unittest.TestCase):
             before_text={"text": before},
             menu_text={"text": "Wait a while: 5 minutes, 1 hour, 6 hours"},
             after_text={"text": after},
-            wait_classification={"status": "completed"},
-            artifact_after_wait=self.artifact_report(),
+            wait_classification={"status": wait_status},
+            artifact_after_wait=artifact_report or self.artifact_report(),
             allow_artifact_elapsed_without_menu_ocr=True,
+            allow_exact_artifact_meridiem_ambiguity=allow_meridiem_ambiguity,
         )
 
     def test_rejects_choice_key_and_elapsed_duration_mismatch(self) -> None:
@@ -371,6 +401,143 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         )
         self.assertEqual(report["elapsed"]["delta_seconds"], 60 * 60)
         self.assertEqual(report["verdict"], "green_wait_step_proven")
+
+    def test_exact_artifacts_can_confirm_bare_after_clock_meridiem_ambiguity(self) -> None:
+        before = "Time: 12:00:00PM"
+        after = (
+            "Time: 1:00:00\nMay 21\nWind: 3 mph\nLight: bright\n"
+            "Air: comfortable\nPM"
+        )
+        report = self.classify(
+            "5",
+            "1h",
+            before,
+            after,
+            artifact_report=self.exact_endpoint_artifact_report(),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertEqual(report["after_clock_or_turn"]["clock_matches"][0]["meridiem"], "")
+        self.assertEqual(report["elapsed"]["raw_delta_seconds"], 13 * 60 * 60)
+        self.assertEqual(report["elapsed"]["alternative_delta_seconds"], 60 * 60)
+        self.assertEqual(
+            report["elapsed"]["status"],
+            "artifact_confirmed_meridiem_ambiguity",
+        )
+        self.assertIn("omitted AM/PM", report["elapsed"]["note"])
+        self.assertTrue(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "green_wait_step_proven")
+
+    def test_bare_after_clock_meridiem_ambiguity_requires_explicit_opt_in(self) -> None:
+        report = self.classify(
+            "5",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 1:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+            artifact_report=self.exact_endpoint_artifact_report(),
+        )
+
+        self.assertEqual(report["elapsed"]["status"], "clock_delta_parsed")
+        self.assertIn("clock_delta_does_not_match_expected_duration", report["issues"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+
+    def test_explicit_after_meridiem_is_not_treated_as_ambiguous(self) -> None:
+        report = self.classify(
+            "5",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 1:00:00AM",
+            artifact_report=self.exact_endpoint_artifact_report(),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertEqual(report["after_clock_or_turn"]["clock_matches"][0]["meridiem"], "am")
+        self.assertFalse(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+
+    def test_non_twelve_hour_clock_mismatch_stays_yellow(self) -> None:
+        report = self.classify(
+            "5",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 2:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+            artifact_report=self.exact_endpoint_artifact_report(),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertEqual(report["elapsed"]["alternative_delta_seconds"], 2 * 60 * 60)
+        self.assertFalse(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+
+    def test_meridiem_ambiguity_rejects_wrong_choice_key(self) -> None:
+        report = self.classify(
+            "3",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 1:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+            artifact_report=self.exact_endpoint_artifact_report(),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertFalse(report["meridiem_ambiguity_confirmed"])
+        self.assertIn("choice_key_does_not_match_expected_duration", report["issues"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+
+    def test_meridiem_ambiguity_rejects_generic_artifacts(self) -> None:
+        generic_artifact = {
+            "status": "captured",
+            "start_size": 100,
+            "end_size": 200,
+            "patterns": ["endpoint"],
+            "matches_by_pattern": [{"pattern": "endpoint", "lines": ["endpoint"]}],
+            "path": "endpoint.log",
+        }
+        report = self.classify(
+            "5",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 1:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+            artifact_report=generic_artifact,
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertFalse(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+
+    def test_meridiem_ambiguity_requires_exact_completed_status(self) -> None:
+        for wait_status, expected_verdict in (
+            ("unknown_after_wait", "yellow_wait_elapsed_or_menu_not_fully_proven"),
+            ("interrupted_or_prompt_visible", "blocked_wait_interrupted_or_prompt_visible"),
+        ):
+            with self.subTest(wait_status=wait_status):
+                report = self.classify(
+                    "5",
+                    "1h",
+                    "Time: 12:00:00PM",
+                    "Time: 1:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+                    artifact_report=self.exact_endpoint_artifact_report(),
+                    wait_status=wait_status,
+                    allow_meridiem_ambiguity=True,
+                )
+
+                self.assertFalse(report["meridiem_ambiguity_confirmed"])
+                self.assertEqual(report["verdict"], expected_verdict)
+
+    def test_meridiem_ambiguity_requires_new_artifact_bytes(self) -> None:
+        report = self.classify(
+            "5",
+            "1h",
+            "Time: 12:00:00PM",
+            "Time: 1:00:00\nMay 21\nWind: calm\nLight: bright\nAir: clear\nPM",
+            artifact_report=self.exact_endpoint_artifact_report(
+                start_size=100,
+                end_size=100,
+            ),
+            allow_meridiem_ambiguity=True,
+        )
+
+        self.assertFalse(report["meridiem_ambiguity_confirmed"])
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
 
     def test_does_not_attach_split_meridiem_across_unrelated_hud_prose(self) -> None:
         parsed = extract_clock_or_turn_evidence({

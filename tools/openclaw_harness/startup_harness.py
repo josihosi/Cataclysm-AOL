@@ -2217,6 +2217,8 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
         if hour <= 23:
             clock_matches.append( {
                 "text": match.group( 0 ),
+                "display_hour": int( match.group( 1 ) ),
+                "meridiem": meridiem,
                 "seconds_since_midnight": hour * 3600 + minute * 60 + second,
             } )
     turn_matches: List[Dict[str, Any]] = []
@@ -2240,6 +2242,7 @@ def classify_wait_step_ledger(
     wait_classification: Dict[str, Any],
     artifact_after_wait: Optional[Dict[str, Any]] = None,
     allow_artifact_elapsed_without_menu_ocr: bool = False,
+    allow_exact_artifact_meridiem_ambiguity: bool = False,
 ) -> Dict[str, Any]:
     expected_seconds = wait_duration_seconds( expected_duration )
     selected_duration = LONG_WAIT_MENU_CHOICES.get( choice_key, "" )
@@ -2251,6 +2254,34 @@ def classify_wait_step_ledger(
     before_clock = extract_clock_or_turn_evidence( before_text )
     after_clock = extract_clock_or_turn_evidence( after_text )
     artifact_elapsed = artifact_delta_matches_all_patterns( artifact_after_wait )
+    artifact_status = str(
+        artifact_after_wait.get( "status", "" )
+        if isinstance( artifact_after_wait, dict ) else ""
+    )
+    artifact_start_size = (
+        artifact_after_wait.get( "start_size" )
+        if isinstance( artifact_after_wait, dict ) else None
+    )
+    artifact_end_size = (
+        artifact_after_wait.get( "end_size" )
+        if isinstance( artifact_after_wait, dict ) else None
+    )
+    artifact_has_new_bytes = bool(
+        isinstance( artifact_start_size, ( int, float ) ) and
+        not isinstance( artifact_start_size, bool ) and
+        isinstance( artifact_end_size, ( int, float ) ) and
+        not isinstance( artifact_end_size, bool ) and
+        artifact_end_size > artifact_start_size
+    )
+    artifact_patterns = artifact_elapsed["patterns"]
+    artifact_has_exact_scheduler_endpoint = any(
+        re.fullmatch( r"scheduler_hour=\d+", pattern )
+        for pattern in artifact_patterns
+    )
+    artifact_has_exact_now_endpoint = any(
+        re.fullmatch( r"now_minutes=\d+", pattern )
+        for pattern in artifact_patterns
+    )
     elapsed: Dict[str, Any] = {
         "status": "not_parsed",
         "expected_seconds": expected_seconds,
@@ -2260,7 +2291,8 @@ def classify_wait_step_ledger(
         elapsed.update( {"status": "turn_delta_parsed", "delta_turns": delta} )
     elif before_clock["clock_matches"] and after_clock["clock_matches"]:
         before_seconds = before_clock["clock_matches"][0]["seconds_since_midnight"]
-        after_seconds = after_clock["clock_matches"][0]["seconds_since_midnight"]
+        after_match = after_clock["clock_matches"][0]
+        after_seconds = after_match["seconds_since_midnight"]
         delta = after_seconds - before_seconds
         if delta < 0:
             delta += 24 * 60 * 60
@@ -2272,6 +2304,50 @@ def classify_wait_step_ledger(
         } )
 
     wait_status = str( wait_classification.get( "status", "" ) )
+    selected_duration_matches_expected = bool(
+        expected_seconds is not None and selected_seconds == expected_seconds
+    )
+    meridiem_ambiguity_confirmed = False
+    if elapsed["status"] == "clock_delta_parsed" and expected_seconds is not None and \
+            elapsed.get( "delta_seconds" ) != expected_seconds and \
+            before_clock["clock_matches"] and after_clock["clock_matches"]:
+        after_match = after_clock["clock_matches"][0]
+        after_display_hour = after_match.get( "display_hour" )
+        after_meridiem = str( after_match.get( "meridiem", "" ) )
+        after_seconds = after_match.get( "seconds_since_midnight" )
+        alternative_after_seconds = None
+        alternative_delta_seconds = None
+        if isinstance( after_display_hour, int ) and 1 <= after_display_hour <= 12 and \
+                not after_meridiem and isinstance( after_seconds, int ):
+            alternative_after_seconds = ( after_seconds + 12 * 60 * 60 ) % ( 24 * 60 * 60 )
+            before_seconds = before_clock["clock_matches"][0]["seconds_since_midnight"]
+            alternative_delta_seconds = (
+                alternative_after_seconds - before_seconds
+            ) % ( 24 * 60 * 60 )
+        meridiem_ambiguity_confirmed = bool(
+            allow_exact_artifact_meridiem_ambiguity and
+            selected_duration_matches_expected and
+            alternative_delta_seconds == expected_seconds and
+            wait_status == "completed" and
+            artifact_status == "captured" and
+            artifact_has_new_bytes and
+            artifact_elapsed["matched"] and
+            artifact_has_exact_scheduler_endpoint and
+            artifact_has_exact_now_endpoint
+        )
+        elapsed.update( {
+            "raw_delta_seconds": elapsed.get( "delta_seconds" ),
+            "alternative_after_seconds_since_midnight": alternative_after_seconds,
+            "alternative_delta_seconds": alternative_delta_seconds,
+        } )
+        if meridiem_ambiguity_confirmed:
+            elapsed.update( {
+                "status": "artifact_confirmed_meridiem_ambiguity",
+                "note": (
+                    "the after-clock omitted AM/PM; toggling its 12-hour interpretation matches "
+                    "the exact bounded choice and newly captured scheduler_hour/now_minutes endpoints"
+                ),
+            } )
     effective_wait_status = wait_status
     if wait_status == "unknown_after_wait" and artifact_elapsed["matched"]:
         effective_wait_status = "completed_by_artifact_delta"
@@ -2318,6 +2394,8 @@ def classify_wait_step_ledger(
         "before_clock_or_turn": before_clock,
         "after_clock_or_turn": after_clock,
         "artifact_elapsed_evidence": artifact_elapsed,
+        "exact_artifact_meridiem_ambiguity_opt_in": allow_exact_artifact_meridiem_ambiguity,
+        "meridiem_ambiguity_confirmed": meridiem_ambiguity_confirmed,
         "elapsed": elapsed,
         "finish_or_interrupt_status": effective_wait_status,
         "issues": issues,
@@ -2326,7 +2404,9 @@ def classify_wait_step_ledger(
             "Artifact matches alone do not make this wait step green. Green normally requires readable wait-menu OCR, "
             "either a parsed before/after clock or turn delta or all configured post-wait cadence artifacts, "
             "and either a finish signal, classified interruption, or completed-by-artifact delta. A scenario may explicitly "
-            "defer noisy wait-menu OCR to bounded choice-key plus matched post-wait cadence artifacts."
+            "defer noisy wait-menu OCR to bounded choice-key plus matched post-wait cadence artifacts. A separate explicit "
+            "opt-in accepts a bare after-clock meridiem ambiguity only when the exact choice, completed status, newly captured "
+            "artifact bytes, all configured patterns, and exact scheduler_hour/now_minutes endpoints agree."
         ),
     }
 
@@ -3178,6 +3258,9 @@ def execute_long_wait_action(
         artifact_after_wait=report["artifact_after_wait"],
         allow_artifact_elapsed_without_menu_ocr=bool(
             step.get("allow_artifact_elapsed_without_menu_ocr", False)
+        ),
+        allow_exact_artifact_meridiem_ambiguity=bool(
+            step.get("allow_exact_artifact_meridiem_ambiguity", False)
         ),
     )
     if report.get("status") == "stopped_by_contaminating_interruption":
