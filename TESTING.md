@@ -693,8 +693,23 @@ stays unused, no second lead or `player@...` memory appears, and save/load is ex
 passes 1/113, both no-radar controls 2/193, adjacent autonomous proof 4/1,891, and full live-world
 163/37,879 at seed `830204929`; the 82,213,352-byte binary SHA-256 is
 `7bfaf8ba7fab325cce0a7078f859714b80da2f0d259a33f424182bcca5fd26e4`. External
-`phase4-20260804/avatar-relocation-control/MANIFEST.md` records the commands and boundary. Decoy and
-empty signal-investigation honesty is next.
+`phase4-20260804/avatar-relocation-control/MANIFEST.md` records the commands and boundary.
+
+Decoy/empty signal honesty is green at `0e8c531d95`. Returned smoke/light/sound leads can be planned
+only by the bounded routine path; expired clues fail closed, while an urgent prepass admits at most
+eight earliest-expiry signals inside the existing 16-considered/8-route/2-start budgets and advances
+the normal cursor only for normal slots. Both factions prove honest empty arrival without clearing
+the no-candidate streak, and prove that exact matching typed support prevents false emptiness and
+refreshes the lead only after physical home return. Generic terrain matching and the exported
+site-dispatch planner reject signal-only leads. At seed `830204929`, focused proof passes 2/619,
+scheduler 11/27,867, full live-world 165/38,502, handoff/save 12/331, and save-size 1/10. The final
+82,349,400-byte test binary SHA-256 is
+`590997596c8c27613a0512673dd3151350155beb28645a561c00f16e15531e2e`. Fresh read-only review found
+the original reachability, support-matching, alternate-planner, urgent-order, and no-candidate-streak
+defects; each is repaired in the checkpoint. External
+`phase4-20260804/decoy-signal-control/MANIFEST.md` records commands and the bounded burst caveat:
+more than eight simultaneous urgent signals may expire honestly. Local communication range and
+dead-scout private evidence after materialized separation are next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

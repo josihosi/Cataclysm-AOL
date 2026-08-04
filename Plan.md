@@ -260,7 +260,15 @@ zero terrain-scan budget; legitimate static terrain priors remain allowed. Avata
 single-writer stability are green at `531f626c6c`: a returned lead stays byte-identical at the old
 OMT while the real avatar moves between two former-radar positions. Focused 1/113, combined no-radar
 2/193, adjacent autonomous 4/1,891, and full live-world 163/37,879 are green. Decoy/empty signal
-investigations are next. The
+honesty is green at `0e8c531d95`: returned smoke/light/sound leads are bounded routine candidates,
+expired clues cannot dispatch, and a production scheduler lane admits at most eight earliest-expiry
+signals inside the existing 16-considered/8-route/2-start budgets without skipping the normal
+cursor. Arrival with no matching typed evidence records an empty investigation without clearing the
+routine no-candidate streak; matching private/shared evidence prevents false emptiness and refreshes
+the camp lead only after physical return. Generic terrain matching and the exported site planner
+reject these signal-only leads. Focused 2/619, scheduler 11/27,867, full live-world 165/38,502,
+handoff/save 12/331, and save-size 1/10 are green. Local communication range and dead-scout private
+evidence after materialized separation are next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
