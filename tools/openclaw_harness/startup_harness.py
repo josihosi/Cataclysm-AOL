@@ -30,7 +30,7 @@ import time
 from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
 
@@ -1924,6 +1924,21 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
+    shadow_warning_markers = [
+        marker
+        for marker in (
+            "burning cities lighting up the horizon",
+            "automatic gunfire winding down into single shots",
+            "vague feeling of being watched",
+            "something rustles",
+            "withered and blackened vegetation",
+            "night feels longer than usual",
+            "yearn for a beautiful sunrise",
+            "wind faintly cries into the night",
+            "darkness makes you nervous",
+        )
+        if marker in lowered
+    ]
     lifeless_grass_markers = [
         marker
         for marker in (
@@ -1933,22 +1948,6 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
-    if len(lifeless_grass_markers) >= 2 and not semantic_safe_mode_markers:
-        return {
-            **base,
-            "status": "known_prompt",
-            "classification": "lifeless_grass_wilderness_flavor_popup",
-            "response_key": "space",
-            "matched_markers": lifeless_grass_markers,
-        }
-    if lifeless_grass_markers and not semantic_safe_mode_markers:
-        return {
-            **base,
-            "status": "unknown_prompt",
-            "classification": "partial_lifeless_grass_wilderness_flavor_popup",
-            "matched_markers": lifeless_grass_markers,
-        }
-
     safe_mode_markers = [
         marker
         for marker in (
@@ -1968,23 +1967,6 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         "waiting" in lowered and "to interrupt" in lowered and wait_progress_percentage
     )
     if (
-        (contiguous_wait_activity or fragmented_wait_activity)
-        and not semantic_safe_mode_markers
-    ):
-        wait_activity_markers = (
-            ["interrupt waiting"]
-            if contiguous_wait_activity
-            else ["waiting", "to interrupt"]
-        )
-        if wait_progress_percentage:
-            wait_activity_markers.append("progress percentage")
-        return {
-            **base,
-            "status": "clear",
-            "classification": "wait_activity_in_progress",
-            "matched_markers": wait_activity_markers,
-        }
-    if (
         ("press ' to turn it off" in safe_mode_markers and "ignore monster" in safe_mode_markers)
         or ("off, press" in safe_mode_markers and "ignore monster" in safe_mode_markers)
         or all(marker in safe_mode_markers for marker in ("safe mode", "press", "tiles"))
@@ -1996,7 +1978,9 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "response_key": "'",
             "matched_markers": safe_mode_markers,
         }
-    if safe_mode_markers:
+    if safe_mode_markers and (
+        semantic_safe_mode_markers or not ( contiguous_wait_activity or fragmented_wait_activity )
+    ):
         return {
             **base,
             "status": "unknown_prompt",
@@ -2077,6 +2061,45 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "status": "unknown_prompt",
             "classification": "unhandled_blocking_menu",
             "matched_markers": unknown_markers,
+        }
+
+    if shadow_warning_markers:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "shadow_warning_wilderness_flavor_popup",
+            "response_key": "space",
+            "matched_markers": shadow_warning_markers,
+        }
+    if len(lifeless_grass_markers) >= 2:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "shadow_warning_wilderness_flavor_popup",
+            "response_key": "space",
+            "matched_markers": lifeless_grass_markers,
+        }
+    if lifeless_grass_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_lifeless_grass_wilderness_flavor_popup",
+            "matched_markers": lifeless_grass_markers,
+        }
+
+    if contiguous_wait_activity or fragmented_wait_activity:
+        wait_activity_markers = (
+            ["interrupt waiting"]
+            if contiguous_wait_activity
+            else ["waiting", "to interrupt"]
+        )
+        if wait_progress_percentage:
+            wait_activity_markers.append("progress percentage")
+        return {
+            **base,
+            "status": "clear",
+            "classification": "wait_activity_in_progress",
+            "matched_markers": wait_activity_markers,
         }
 
     return {
@@ -2164,6 +2187,15 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
         minute = int( match.group( 2 ) )
         second = int( match.group( 3 ) or 0 )
         meridiem = str( match.group( 4 ) or "" ).lower()
+        if not meridiem and 1 <= hour <= 12:
+            split_meridiem = re.match(
+                r"\s*(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*,?\s*)?"
+                r"(am|pm)\b",
+                text[match.end():],
+                flags=re.IGNORECASE,
+            )
+            if split_meridiem:
+                meridiem = split_meridiem.group( 1 ).lower()
         if meridiem and 1 <= hour <= 12:
             hour = hour % 12 + ( 12 if meridiem == "pm" else 0 )
         if hour <= 23:
@@ -2371,10 +2403,19 @@ def poll_wait_artifact_completion(
     timeout_seconds: float,
     poll_seconds: float,
     filter_debug_noise: bool,
+    interruption_handler: Optional[Callable[[], Dict[str, Any]]] = None,
+    continue_after_contaminating: bool = False,
 ) -> Dict[str, Any]:
     poll_started = time.monotonic()
     poll_attempts = 0
     poll_report: Dict[str, Any] = {}
+    interruption_reports: List[Dict[str, Any]] = []
+    acknowledgement_count = 0
+    response_keys: List[str] = []
+    release_blocking = False
+    contaminating = False
+    aborted = False
+    abort_reason = ""
     while True:
         poll_attempts += 1
         poll_report = capture_wait_artifact_delta(
@@ -2389,19 +2430,71 @@ def poll_wait_artifact_completion(
         poll_match = artifact_delta_matches_all_patterns( poll_report )
         if poll_match["matched"]:
             break
+        if interruption_handler is not None:
+            interruption = interruption_handler()
+            interruption_reports.append( interruption )
+            acknowledgements = interruption.get( "acknowledgements", [] )
+            if isinstance( acknowledgements, list ):
+                for acknowledgement in acknowledgements:
+                    if not isinstance( acknowledgement, dict ):
+                        continue
+                    response_key = str( acknowledgement.get( "response_key", "" ) )
+                    if response_key:
+                        response_keys.append( response_key )
+            acknowledgement_count += int(
+                interruption.get( "acknowledgement_count", len( acknowledgements ) ) or 0
+            )
+            release_blocking = release_blocking or bool(
+                interruption.get( "release_blocking", False )
+            )
+            contaminating = contaminating or bool(
+                interruption.get( "contaminating", False )
+            )
+            interruption_status = str( interruption.get( "status", "unobservable" ) )
+            if release_blocking:
+                aborted = True
+                abort_reason = "release_blocking_interruption"
+            elif contaminating and not continue_after_contaminating:
+                aborted = True
+                abort_reason = "contaminating_interruption"
+            elif interruption_status.startswith( "blocked_" ):
+                aborted = True
+                abort_reason = interruption_status
+            if aborted:
+                break
         elapsed_seconds = time.monotonic() - poll_started
         if elapsed_seconds >= timeout_seconds:
             break
         time.sleep( min( max( poll_seconds, 0.05 ), timeout_seconds - elapsed_seconds ) )
     elapsed_seconds = round( time.monotonic() - poll_started, 3 )
+    if aborted:
+        status = "aborted_interruption"
+    elif poll_match["matched"]:
+        status = "matched"
+    else:
+        status = "timed_out"
     return {
-        "status": "matched" if poll_match["matched"] else "timed_out",
+        "status": status,
+        "aborted": aborted,
+        "abort_reason": abort_reason,
         "attempts": poll_attempts,
         "elapsed_seconds": elapsed_seconds,
         "timeout_seconds": timeout_seconds,
         "poll_seconds": poll_seconds,
         "start_size": start_size,
         "match": poll_match,
+        "interruption_handling": {
+            "status": (
+                "aborted_interruption"
+                if aborted
+                else ( "recovered_known_interruptions" if acknowledgement_count else "clear" )
+            ),
+            "acknowledgement_count": acknowledgement_count,
+            "response_keys": response_keys,
+            "release_blocking": release_blocking,
+            "contaminating": contaminating,
+            "reports": interruption_reports,
+        },
     }
 
 
@@ -2726,6 +2819,11 @@ def execute_long_wait_action(
             "to interrupt",
         ])
     )
+    configured_interrupt_response_key = str(
+        step.get("interrupt_response_key", "") or ""
+    ).strip()
+    max_interrupt_responses = int(step.get("max_interrupt_responses", 6) or 0)
+    auto_acknowledge_interruptions = bool(step.get("auto_acknowledge_interruptions", True))
     report: Dict[str, Any] = {
         "wait_key": wait_key,
         "choice_key": choice_key,
@@ -2814,7 +2912,40 @@ def execute_long_wait_action(
     if completion_wait_seconds > 0:
         time.sleep(completion_wait_seconds)
     completion_poll_timed_out = False
+    completion_poll_aborted = False
     if completion_artifact_timeout_seconds > 0 and state_patterns and artifact_log is not None:
+        poll_acknowledgement_count = 0
+        poll_scan_count = 0
+        poll_shadow_warning_acknowledged = False
+
+        def handle_poll_interruption() -> Dict[str, Any]:
+            nonlocal poll_acknowledgement_count, poll_scan_count
+            nonlocal poll_shadow_warning_acknowledged
+            poll_scan_count += 1
+            remaining_acknowledgements = max(
+                0, max_interrupt_responses - poll_acknowledgement_count
+            )
+            interruption = acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                f"{label}.completion_poll_interrupt_{poll_scan_count:02d}",
+                max_acknowledgements=remaining_acknowledgements,
+                delay_ms=delay_ms,
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+                suppress_retained_shadow_warning=poll_shadow_warning_acknowledged,
+            )
+            poll_acknowledgement_count += int(
+                interruption.get("acknowledgement_count", 0) or 0
+            )
+            poll_shadow_warning_acknowledged = poll_shadow_warning_acknowledged or any(
+                str(acknowledgement.get("classification", {}).get("classification", ""))
+                == "shadow_warning_wilderness_flavor_popup"
+                for acknowledgement in interruption.get("acknowledgements", [])
+                if isinstance(acknowledgement, dict)
+            )
+            return interruption
+
         report["completion_artifact_poll"] = poll_wait_artifact_completion(
             artifact_log,
             run_dir,
@@ -2824,9 +2955,17 @@ def execute_long_wait_action(
             timeout_seconds=completion_artifact_timeout_seconds,
             poll_seconds=completion_artifact_poll_seconds,
             filter_debug_noise=filter_debug_noise,
+            interruption_handler=(
+                handle_poll_interruption
+                if auto_acknowledge_interruptions and max_interrupt_responses > 0
+                else None
+            ),
+            continue_after_contaminating=portal_storm_allowed,
         )
         completion_poll_timed_out = report["completion_artifact_poll"]["status"] == "timed_out"
-        if not completion_poll_timed_out and completion_artifact_settle_seconds > 0:
+        completion_poll_aborted = report["completion_artifact_poll"]["status"] == "aborted_interruption"
+        if report["completion_artifact_poll"]["status"] == "matched" and \
+                completion_artifact_settle_seconds > 0:
             time.sleep( completion_artifact_settle_seconds )
     after_capture = capture_screenshot(pid, run_dir, f"{label}.after")
     report["screen_after"] = after_capture.get("screen_summary", {})
@@ -2846,30 +2985,47 @@ def execute_long_wait_action(
         classification_text, complete_patterns, interrupt_patterns
     )
 
-    configured_interrupt_response_key = str(
-        step.get("interrupt_response_key", "") or ""
-    ).strip()
-    max_interrupt_responses = int(step.get("max_interrupt_responses", 6) or 0)
-    auto_acknowledge_interruptions = bool(step.get("auto_acknowledge_interruptions", True))
     if configured_interrupt_response_key:
         report["configured_interrupt_response_key_ignored"] = configured_interrupt_response_key
         report["interrupt_response_policy"] = (
             "response keys are selected only by the strict live-screen classifier"
         )
 
-    if auto_acknowledge_interruptions and max_interrupt_responses > 0:
+    if not completion_poll_aborted and auto_acknowledge_interruptions:
         responses: List[Dict[str, Any]] = []
         interruption_reports: List[Dict[str, Any]] = []
         response_count = 0
-        while response_count < max_interrupt_responses:
+        mid_poll_acknowledgement_count = int(
+            report.get("completion_artifact_poll", {}).get(
+                "interruption_handling", {}
+            ).get("acknowledgement_count", 0) or 0
+        )
+        first_boundary_scan = True
+        while first_boundary_scan or \
+                response_count + mid_poll_acknowledgement_count < max_interrupt_responses:
+            first_boundary_scan = False
+            mid_poll_shadow_warning_acknowledged = any(
+                str(acknowledgement.get("classification", {}).get("classification", ""))
+                == "shadow_warning_wilderness_flavor_popup"
+                for handler in report.get("completion_artifact_poll", {}).get(
+                    "interruption_handling", {}
+                ).get("reports", [])
+                for acknowledgement in handler.get("acknowledgements", [])
+                if isinstance(handler, dict) and isinstance(acknowledgement, dict)
+            )
             interruption = acknowledge_blocking_interruptions(
                 pid,
                 run_dir,
                 f"{label}.interrupt_handler_{len(interruption_reports) + 1:02d}",
-                max_acknowledgements=max_interrupt_responses - response_count,
+                max_acknowledgements=(
+                    max_interrupt_responses
+                    - mid_poll_acknowledgement_count
+                    - response_count
+                ),
                 delay_ms=delay_ms,
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
+                suppress_retained_shadow_warning=mid_poll_shadow_warning_acknowledged,
             )
             interruption_reports.append(interruption)
             acknowledged = int(interruption.get("acknowledgement_count", 0) or 0)
@@ -2949,23 +3105,51 @@ def execute_long_wait_action(
                 break
 
         report["interrupt_responses"] = responses
+        mid_poll_handling = report.get("completion_artifact_poll", {}).get(
+            "interruption_handling", {}
+        )
+        mid_poll_reports = mid_poll_handling.get("reports", [])
+        if not isinstance(mid_poll_reports, list):
+            mid_poll_reports = []
+        mid_poll_response_keys = mid_poll_handling.get("response_keys", [])
+        if not isinstance(mid_poll_response_keys, list):
+            mid_poll_response_keys = []
+        total_acknowledgement_count = (
+            int(mid_poll_handling.get("acknowledgement_count", 0) or 0)
+            + response_count
+        )
+        final_interruption_status = (
+            str(interruption_reports[-1].get("status", "clear"))
+            if interruption_reports
+            else str(mid_poll_handling.get("status", "clear"))
+        )
+        if total_acknowledgement_count and final_interruption_status == "clear":
+            final_interruption_status = "recovered_known_interruptions"
         report["interruption_handling"] = {
-            "status": (
-                str(interruption_reports[-1].get("status", "clear"))
-                if interruption_reports
-                else "clear"
-            ),
-            "acknowledgement_count": response_count,
-            "release_blocking": any(
+            "status": final_interruption_status,
+            "acknowledgement_count": total_acknowledgement_count,
+            "response_keys": mid_poll_response_keys + [
+                str(acknowledgement.get("response_key", ""))
+                for handler in interruption_reports
+                for acknowledgement in handler.get("acknowledgements", [])
+                if isinstance(acknowledgement, dict)
+                and str(acknowledgement.get("response_key", ""))
+            ],
+            "release_blocking": bool(mid_poll_handling.get("release_blocking", False)) or any(
                 bool(handler.get("release_blocking", False))
                 for handler in interruption_reports
             ),
-            "contaminating": any(
+            "contaminating": bool(mid_poll_handling.get("contaminating", False)) or any(
                 bool(handler.get("contaminating", False))
                 for handler in interruption_reports
             ),
-            "reports": interruption_reports,
+            "reports": mid_poll_reports + interruption_reports,
         }
+
+    if "interruption_handling" not in report and "completion_artifact_poll" in report:
+        report["interruption_handling"] = report["completion_artifact_poll"].get(
+            "interruption_handling", {}
+        )
 
     report["wait_step_ledger"] = classify_wait_step_ledger(
         label=label,
@@ -2997,7 +3181,17 @@ def execute_long_wait_action(
         report["abort_reason"] = str(
             step.get("abort_reason", "wait action was interrupted or showed a prompt")
         )
-    if completion_poll_timed_out:
+    if completion_poll_aborted:
+        report["abort"] = {
+            "guard": "completion_artifact_interruption",
+            "status": "blocked_wait_completion_interruption",
+            "verdict": "red_wait_mid_poll_interruption",
+            "reason": report["completion_artifact_poll"].get(
+                "abort_reason", "unsafe or unrecognized interruption during wait completion poll"
+            ),
+        }
+        report["stop_after_step"] = True
+    elif completion_poll_timed_out:
         report["abort"] = {
             "guard": "completion_artifact_timeout",
             "status": "blocked_wait_completion_timeout",
@@ -7204,12 +7398,14 @@ def acknowledge_blocking_interruptions(
     stop_on_unknown: bool = False,
     continue_after_contaminating: bool = False,
     persist_clear_scan: bool = False,
+    suppress_retained_shadow_warning: bool = False,
 ) -> Dict[str, Any]:
     acknowledgements: List[Dict[str, Any]] = []
     scan_count = 0
     release_blocking = False
     contaminating = False
     suppress_retained_portal_notice_once = False
+    suppress_retained_shadow_warning_once = suppress_retained_shadow_warning
     portal_notice_family = {"portal_storm_notice", "partial_portal_storm_notice"}
 
     while True:
@@ -7221,6 +7417,19 @@ def acknowledge_blocking_interruptions(
             classification = classify_blocking_interruption(screen_text)
             status = str(classification.get("status", "unobservable"))
             classification_name = str(classification.get("classification", ""))
+            if suppress_retained_shadow_warning_once and \
+                    classification_name == "shadow_warning_wilderness_flavor_popup":
+                classification = {
+                    **classification,
+                    "status": "clear",
+                    "classification": "acknowledged_prompt_text_retained_on_hud",
+                    "response_key": "",
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "suppressed_classification": classification_name,
+                }
+                status = "clear"
+                suppress_retained_shadow_warning_once = False
             if suppress_retained_portal_notice_once and classification_name in portal_notice_family:
                 classification = {
                     **classification,
@@ -7291,6 +7500,8 @@ def acknowledge_blocking_interruptions(
                 }
             if current_contaminating and classification_name == "portal_storm_notice":
                 suppress_retained_portal_notice_once = True
+            if classification_name == "shadow_warning_wilderness_flavor_popup":
+                suppress_retained_shadow_warning_once = True
             continue
 
         blocked = status in {"unsafe_prompt", "unknown_prompt"} and stop_on_unknown

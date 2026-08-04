@@ -42,6 +42,7 @@ RELEASE_GATE_SCENARIOS = (
 
 from startup_harness import (  # noqa: E402
     StartupPlan,
+    acknowledge_blocking_interruptions,
     audit_saved_bandit_live_world_state,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
@@ -52,6 +53,8 @@ from startup_harness import (  # noqa: E402
     apply_remove_overmap_npcs_transform,
     classify_blocking_interruption,
     classify_wait_step_ledger,
+    extract_clock_or_turn_evidence,
+    execute_long_wait_action,
     execute_probe_steps,
     launch_game,
     load_profile_config,
@@ -156,7 +159,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(result["status"], "known_prompt")
         self.assertEqual(
             result["classification"],
-            "lifeless_grass_wilderness_flavor_popup",
+            "shadow_warning_wilderness_flavor_popup",
         )
         self.assertEqual(result["response_key"], "space")
         self.assertFalse(result["release_blocking"])
@@ -192,6 +195,102 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             "partial_safe_mode_spotted_hostile_prompt",
         )
         self.assertEqual(result["response_key"], "")
+
+    def test_all_early_shadow_warning_snippets_are_known_flavor_popups(self) -> None:
+        snippets = (
+            (
+                "Even out here you can still see the burning cities lighting up the horizon.  What scares you most is not the gunshots "
+                "you sometimes hear in the far distance, but the idea of what people keep shooting at.  Tonight you hear automatic "
+                "gunfire winding down into single shots.\n\nJust what could make them shoot that much, all the way out here?"
+            ),
+            (
+                "You suddenly realize this area seems almost devoid of life.  The few bits of blackened grass you can see are barely "
+                "recognizable as grass, even discounting the night.  Sure the zombies might be tearing people apart, but what happened "
+                "to the grass?  What, is the grass coming to life to eat people too?\nYou snort at the idea, but it doesn't feel safe out here."
+            ),
+            "You have a vague feeling of being watched.",
+            (
+                "Your ears perk up as something rustles, but it just turns out to be unnaturally withered and blackened vegetation you "
+                "stepped on.  Wait, this can not have happened on its own."
+            ),
+            "The night feels longer than usual.",
+            "You suddenly yearn for a beautiful sunrise.",
+            "The wind faintly cries into the night.",
+            "The darkness makes you nervous.",
+        )
+
+        for snippet in snippets:
+            with self.subTest(snippet=snippet):
+                result = classify_blocking_interruption({"ok": True, "text": snippet})
+
+                self.assertEqual(result["status"], "known_prompt")
+                self.assertEqual(
+                    result["classification"],
+                    "shadow_warning_wilderness_flavor_popup",
+                )
+                self.assertEqual(result["response_key"], "space")
+                self.assertFalse(result["release_blocking"])
+                self.assertFalse(result["contaminating"])
+
+    def test_observed_shadow_warning_variants_override_wait_progress_only(self) -> None:
+        for warning in (
+            "The wind faintly cries into the night.",
+            "The darkness makes you nervous.",
+        ):
+            with self.subTest(warning=warning):
+                result = classify_blocking_interruption({
+                    "ok": True,
+                    "text": f"{warning}\nWaiting 25%\nPress | to interrupt waiting",
+                })
+
+                self.assertEqual(result["status"], "known_prompt")
+                self.assertEqual(
+                    result["classification"],
+                    "shadow_warning_wilderness_flavor_popup",
+                )
+                self.assertEqual(result["response_key"], "space")
+
+    def test_shadow_warning_text_cannot_override_safe_mode_prompt(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "The darkness makes you nervous. Spotted hostile while waiting.",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(
+            result["classification"],
+            "partial_safe_mode_spotted_hostile_prompt",
+        )
+        self.assertEqual(result["response_key"], "")
+
+    def test_shadow_warning_text_cannot_override_unknown_confirmation(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "The darkness makes you nervous.\nApply changes? (y/n)",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(result["classification"], "unhandled_blocking_menu")
+        self.assertEqual(result["response_key"], "")
+
+    def test_shadow_warning_text_cannot_override_portal_storm_notice(self) -> None:
+        full = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "The darkness makes you nervous.\n"
+                "There is a buzzing in your senses. A tiny cataclysm has begun."
+            ),
+        })
+        partial = classify_blocking_interruption({
+            "ok": True,
+            "text": "The darkness makes you nervous.\nThere is a buzzing in your senses.",
+        })
+
+        self.assertEqual(full["classification"], "portal_storm_notice")
+        self.assertTrue(full["contaminating"])
+        self.assertEqual(partial["classification"], "partial_portal_storm_notice")
+        self.assertEqual(partial["status"], "unknown_prompt")
+        self.assertTrue(partial["contaminating"])
 
 
 class WaitStepLedgerContractTest(unittest.TestCase):
@@ -229,6 +328,25 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(report["elapsed"]["delta_seconds"], 6 * 60 * 60)
         self.assertEqual(report["verdict"], "green_wait_step_proven")
 
+    def test_accepts_split_hud_meridiem_after_weekday(self) -> None:
+        before = "4:00:00\nThursday,\nPM\nMay 20"
+        after = "10:00:00\nThursday,\nPM\nMay 20"
+
+        parsed_before = extract_clock_or_turn_evidence({"text": before})
+        parsed_24_hour = extract_clock_or_turn_evidence({"text": "Time: 16:00:00"})
+        report = self.classify("8", "6h", before, after)
+
+        self.assertEqual(
+            parsed_before["clock_matches"][0]["seconds_since_midnight"],
+            16 * 60 * 60,
+        )
+        self.assertEqual(
+            parsed_24_hour["clock_matches"][0]["seconds_since_midnight"],
+            16 * 60 * 60,
+        )
+        self.assertEqual(report["elapsed"]["delta_seconds"], 6 * 60 * 60)
+        self.assertEqual(report["verdict"], "green_wait_step_proven")
+
     def test_rejects_incorrect_turn_delta(self) -> None:
         report = self.classify("4", "30m", "turn 100", "turn 101")
 
@@ -255,6 +373,304 @@ class WaitStepLedgerContractTest(unittest.TestCase):
 
         self.assertEqual(report["status"], "timed_out")
         self.assertEqual(report["match"]["missing_patterns"], ["endpoint"])
+
+    def test_poll_recovers_shadow_then_activity_prompt_before_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            start_size = artifact_log.stat().st_size
+            screens = iter((
+                {
+                    "ok": True,
+                    "text": (
+                        "The darkness makes you nervous.\n"
+                        "Waiting 25%\nPress | to interrupt waiting"
+                    ),
+                },
+                {
+                    "ok": True,
+                    "text": (
+                        "Stop waiting? (Case Sensitive)\n"
+                        "Open [M]anager\n[I]gnore this distraction and continue"
+                    ),
+                },
+                {
+                    "ok": True,
+                    "text": (
+                        "The darkness makes you nervous.\n"
+                        "Waiting 31%\nPress | to interrupt waiting"
+                    ),
+                },
+                {
+                    "ok": True,
+                    "text": (
+                        "The darkness makes you nervous.\n"
+                        "Waiting 43%\nPress | to interrupt waiting"
+                    ),
+                },
+            ))
+            handler_calls = 0
+            shadow_warning_acknowledged = False
+
+            def handle_interruption() -> Dict[str, Any]:
+                nonlocal handler_calls, shadow_warning_acknowledged
+                handler_calls += 1
+                report = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.interruption",
+                    stop_on_unknown=True,
+                    suppress_retained_shadow_warning=shadow_warning_acknowledged,
+                )
+                shadow_warning_acknowledged = shadow_warning_acknowledged or any(
+                    str(entry.get("classification", {}).get("classification", ""))
+                    == "shadow_warning_wilderness_flavor_popup"
+                    for entry in report.get("acknowledgements", [])
+                )
+                if handler_calls == 2:
+                    with artifact_log.open("a", encoding="utf-8") as stream:
+                        stream.write("endpoint\n")
+                return report
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=lambda *_args, **_kwargs: next(screens)),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = poll_wait_artifact_completion(
+                    artifact_log,
+                    run_dir,
+                    "wait_contract",
+                    start_size,
+                    ["endpoint"],
+                    timeout_seconds=1.0,
+                    poll_seconds=0.001,
+                    filter_debug_noise=False,
+                    interruption_handler=handle_interruption,
+                )
+
+        self.assertEqual(result["status"], "matched")
+        self.assertFalse(result["aborted"])
+        self.assertEqual(result["interruption_handling"]["response_keys"], ["space", "I"])
+        self.assertEqual(result["interruption_handling"]["acknowledgement_count"], 2)
+        self.assertEqual([call.args[1] for call in press.call_args_list], [["space"], ["I"]])
+
+    def test_poll_aborts_unknown_interruption_without_response_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            start_size = artifact_log.stat().st_size
+            def handle_interruption() -> Dict[str, Any]:
+                return acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.interruption",
+                    stop_on_unknown=True,
+                )
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "Apply changes? (y/n)"},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = poll_wait_artifact_completion(
+                    artifact_log,
+                    run_dir,
+                    "wait_contract",
+                    start_size,
+                    ["endpoint"],
+                    timeout_seconds=1.0,
+                    poll_seconds=0.001,
+                    filter_debug_noise=False,
+                    interruption_handler=handle_interruption,
+                )
+
+        self.assertEqual(result["status"], "aborted_interruption")
+        self.assertTrue(result["aborted"])
+        self.assertEqual(result["abort_reason"], "blocked_unknown_prompt")
+        self.assertEqual(result["interruption_handling"]["response_keys"], [])
+        self.assertEqual(result["interruption_handling"]["acknowledgement_count"], 0)
+        press.assert_not_called()
+
+    def test_execute_long_wait_aggregates_mid_poll_recovery_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            mid_poll_report = {
+                "status": "matched",
+                "aborted": False,
+                "abort_reason": "",
+                "match": {"matched": True, "missing_patterns": []},
+                "interruption_handling": {
+                    "status": "recovered_known_interruptions",
+                    "acknowledgement_count": 2,
+                    "response_keys": ["space", "I"],
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "reports": [{"status": "clear", "acknowledgement_count": 2}],
+                },
+            }
+            clear_interruption = {
+                "status": "clear",
+                "acknowledgement_count": 0,
+                "acknowledgements": [],
+                "release_blocking": False,
+                "contaminating": False,
+            }
+
+            def screen_text(_run_dir: Path, label: str, _capture: Dict[str, Any], **_kwargs: Any) -> Dict[str, Any]:
+                if label.endswith(".wait_menu"):
+                    return {"ok": True, "text": "Wait a while: 6 hours"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": "Time: 4:00:00PM"}
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence"),
+                mock.patch("startup_harness.time.sleep"),
+                mock.patch(
+                    "startup_harness.poll_wait_artifact_completion",
+                    return_value=mid_poll_report,
+                ),
+                mock.patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=clear_interruption,
+                ),
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "8",
+                        "expected_duration": "6h",
+                        "completion_artifact_timeout_seconds": 1.0,
+                        "artifact_state_patterns": ["endpoint"],
+                    },
+                    artifact_log=artifact_log,
+                )
+
+        self.assertEqual(report["interruption_handling"]["status"], "recovered_known_interruptions")
+        self.assertEqual(report["interruption_handling"]["acknowledgement_count"], 2)
+        self.assertEqual(report["interruption_handling"]["response_keys"], ["space", "I"])
+        self.assertFalse(report["stop_after_step"] if "stop_after_step" in report else False)
+
+    def test_execute_real_poll_aborts_unknown_without_response_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+
+            def screen_text(scan_dir: Path, label: str, _capture: Dict[str, Any], **_kwargs: Any) -> Dict[str, Any]:
+                if "interrupt-scan-" in str(scan_dir):
+                    return {"ok": True, "text": "Apply changes? (y/n)"}
+                if label.endswith(".wait_menu"):
+                    return {"ok": True, "text": "Wait a while: 1 hour"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": "Time: 10:00:00PM"}
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "5",
+                        "expected_duration": "1h",
+                        "pre_menu_choice_key": "w",
+                        "completion_wait_seconds": 0.01,
+                        "completion_artifact_timeout_seconds": 1.0,
+                        "artifact_state_patterns": ["endpoint"],
+                    },
+                    artifact_log=artifact_log,
+                )
+
+        self.assertTrue(report["stop_after_step"])
+        self.assertEqual(report["abort"]["guard"], "completion_artifact_interruption")
+        self.assertEqual(report["completion_artifact_poll"]["abort_reason"], "blocked_unknown_prompt")
+        self.assertEqual([call.args[1] for call in press.call_args_list], [["|"], ["w"], ["5"]])
+
+    def test_endpoint_always_gets_fail_closed_scan_after_ack_budget_is_exhausted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            mid_poll_report = {
+                "status": "matched",
+                "aborted": False,
+                "abort_reason": "",
+                "match": {"matched": True, "missing_patterns": []},
+                "interruption_handling": {
+                    "status": "recovered_known_interruptions",
+                    "acknowledgement_count": 6,
+                    "response_keys": ["space", "I", "space", "I", "space", "I"],
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "reports": [],
+                },
+            }
+            blocked_boundary = {
+                "status": "blocked_acknowledgement_limit",
+                "acknowledgement_count": 0,
+                "acknowledgements": [],
+                "release_blocking": False,
+                "contaminating": False,
+            }
+
+            def screen_text(_run_dir: Path, label: str, _capture: Dict[str, Any], **_kwargs: Any) -> Dict[str, Any]:
+                if label.endswith(".wait_menu"):
+                    return {"ok": True, "text": "Wait a while: 6 hours"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": "Time: 4:00:00PM"}
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence"),
+                mock.patch("startup_harness.time.sleep"),
+                mock.patch(
+                    "startup_harness.poll_wait_artifact_completion",
+                    return_value=mid_poll_report,
+                ),
+                mock.patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=blocked_boundary,
+                ) as boundary_scan,
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "8",
+                        "expected_duration": "6h",
+                        "completion_artifact_timeout_seconds": 1.0,
+                        "artifact_state_patterns": ["endpoint"],
+                        "max_interrupt_responses": 6,
+                    },
+                    artifact_log=artifact_log,
+                )
+
+        boundary_scan.assert_called_once()
+        self.assertEqual(boundary_scan.call_args.kwargs["max_acknowledgements"], 0)
+        self.assertTrue(report["stop_after_step"])
+        self.assertEqual(report["abort"]["status"], "blocked_acknowledgement_limit")
 
     def test_real_poll_timeout_excludes_menu_artifact_and_prevents_second_wait(self) -> None:
         steps = [
