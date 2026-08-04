@@ -1268,6 +1268,55 @@ def require_peekaboo_permissions() -> Dict[str, Any]:
     }
 
 
+def peekaboo_switch_app_for_pid(pid: int) -> Dict[str, Any]:
+    list_cmd = peekaboo_command(["app", "list", "--json"], channel="input")
+    report: Dict[str, Any] = {
+        "pid": pid,
+        "list_command": list_cmd,
+        "switch_command": [],
+        "app_name": "",
+        "ok": False,
+    }
+    try:
+        before = run_json(list_cmd, timeout_seconds=5.0)
+        apps = before.get("data", {}).get("apps", [])
+        target = next(
+            (
+                app for app in apps
+                if isinstance(app, dict) and int(app.get("pid", -1)) == pid
+            ),
+            None,
+        )
+        if not isinstance(target, dict):
+            report["error"] = "target pid was not present in Peekaboo app list"
+            return report
+        app_name = str(target.get("name", "") or "").strip()
+        if not app_name:
+            report["error"] = "target pid had no Peekaboo application name"
+            return report
+        switch_cmd = peekaboo_command(
+            ["app", "switch", "--to", app_name, "--json"],
+            channel="input",
+        )
+        report["app_name"] = app_name
+        report["switch_command"] = switch_cmd
+        report["switch_result"] = run_json(switch_cmd, timeout_seconds=5.0)
+        time.sleep(0.1)
+        after = run_json(list_cmd, timeout_seconds=5.0)
+        after_apps = after.get("data", {}).get("apps", [])
+        report["ok"] = any(
+            isinstance(app, dict)
+            and int(app.get("pid", -1)) == pid
+            and bool(app.get("is_active", False))
+            for app in after_apps
+        )
+        if not report["ok"]:
+            report["error"] = "Peekaboo app switch returned without making the target pid active"
+    except (RuntimeError, TypeError, ValueError) as exc:
+        report["error"] = str(exc)
+    return report
+
+
 def peekaboo_focus_pid(pid: int) -> Dict[str, Any]:
     cmd = peekaboo_command(
         ["window", "focus", "--pid", str(pid), "--verify"],
@@ -1288,13 +1337,45 @@ def peekaboo_focus_pid(pid: int) -> Dict[str, Any]:
             stdout=subprocess_output_text(exc.stdout),
             stderr=subprocess_output_text(exc.stderr) + "\npeekaboo focus timed out",
         )
-    return {
+    report = {
         "command": cmd,
         "returncode": proc.returncode,
         "ok": proc.returncode == 0,
         "stdout": proc.stdout.strip(),
         "stderr": proc.stderr.strip(),
     }
+    if report["ok"]:
+        return report
+    app_switch = peekaboo_switch_app_for_pid(pid)
+    report["app_switch_fallback"] = app_switch
+    if app_switch.get("ok"):
+        report["returncode"] = 0
+        report["ok"] = True
+        report["stdout"] = "Peekaboo app switch verified target pid active"
+    return report
+
+
+def peekaboo_focus_pid_with_retry(
+    pid: int,
+    *,
+    max_attempts: int = 2,
+    retry_delay_seconds: float = 0.25,
+) -> Dict[str, Any]:
+    attempts: List[Dict[str, Any]] = []
+    for attempt_index in range(max(1, max_attempts)):
+        if attempt_index > 0 and retry_delay_seconds > 0:
+            time.sleep(retry_delay_seconds)
+        result = peekaboo_focus_pid(pid)
+        attempts.append(result)
+        if result.get("ok"):
+            report = dict(result)
+            report["attempt_count"] = len(attempts)
+            report["attempts"] = attempts
+            return report
+    report = dict(attempts[-1])
+    report["attempt_count"] = len(attempts)
+    report["attempts"] = attempts
+    return report
 
 
 def run_peekaboo_interaction(
@@ -4706,15 +4787,18 @@ def summarize_bandit_active_outing(site: Dict[str, Any]) -> Dict[str, Any]:
 def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     intelligence_map = site.get("intelligence_map")
     leads = []
+    lead_entries_valid = False
     if isinstance(intelligence_map, dict):
         raw_leads = intelligence_map.get("leads", [])
         if isinstance(raw_leads, list):
+            lead_entries_valid = all(isinstance(lead, dict) for lead in raw_leads)
             for lead in raw_leads:
                 if not isinstance(lead, dict):
                     continue
                 leads.append({
                     "lead_id": lead.get("lead_id", ""),
                     "kind": lead.get("kind", ""),
+                    "origin": lead.get("origin", ""),
                     "status": lead.get("status", ""),
                     "target_id": lead.get("target_id", ""),
                     "omt": lead.get("omt", []),
@@ -4815,6 +4899,7 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "remembered_pressure": site.get("remembered_pressure", ""),
         "known_recent_marks": known_recent_marks,
         "known_recent_mark_count": len(known_recent_marks),
+        "lead_entries_valid": lead_entries_valid,
         "lead_count": len(leads),
         "leads": leads,
     }
@@ -4857,8 +4942,11 @@ def audit_saved_bandit_live_world_state(
     required_remembered_target_or_mark_prefix: str = "",
     required_remembered_pressure: str = "",
     required_min_leads: Optional[int] = None,
+    required_max_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
     required_lead_kind: str = "",
+    required_lead_origin: str = "",
+    required_all_lead_origin: str = "",
     required_lead_target_id: str = "",
     required_lead_target_id_prefix: str = "",
     required_lead_bounty: Optional[int] = None,
@@ -5031,6 +5119,8 @@ def audit_saved_bandit_live_world_state(
     required_remembered_pressure = str(required_remembered_pressure or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
     required_lead_kind = str(required_lead_kind or "").strip()
+    required_lead_origin = str(required_lead_origin or "").strip()
+    required_all_lead_origin = str(required_all_lead_origin or "").strip()
     required_lead_target_id = str(required_lead_target_id or "").strip()
     required_lead_target_id_prefix = str(required_lead_target_id_prefix or "").strip()
     required_lead_status = str(required_lead_status or "").strip()
@@ -5120,11 +5210,41 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_remembered_pressure and str(site.get("remembered_pressure", "")) != required_remembered_pressure:
             return False
+        lead_entries_required = any([
+            required_min_leads is not None,
+            required_max_leads is not None,
+            required_all_lead_origin,
+            required_lead_source_contains,
+            required_lead_kind,
+            required_lead_origin,
+            required_lead_target_id,
+            required_lead_target_id_prefix,
+            required_lead_bounty is not None,
+            required_lead_threat is not None,
+            required_lead_times_harvested is not None,
+            required_lead_last_checked_minutes_min is not None,
+            required_lead_status,
+            required_lead_last_outcome,
+            required_lead_confidence is not None,
+        ])
+        if lead_entries_required and not bool(site.get("lead_entries_valid", False)):
+            return False
         if required_min_leads is not None and int(site.get("lead_count", 0) or 0) < required_min_leads:
             return False
+        if required_max_leads is not None and int(site.get("lead_count", 0) or 0) > required_max_leads:
+            return False
+        if required_all_lead_origin:
+            leads = site.get("leads", [])
+            if not isinstance(leads, list) or not leads or any(
+                not isinstance(lead, dict)
+                or str(lead.get("origin", "")) != required_all_lead_origin
+                for lead in leads
+            ):
+                return False
         lead_requirements_present = any([
             required_lead_source_contains,
             required_lead_kind,
+            required_lead_origin,
             required_lead_target_id,
             required_lead_target_id_prefix,
             required_lead_bounty is not None,
@@ -5146,6 +5266,8 @@ def audit_saved_bandit_live_world_state(
                 ):
                     return False
                 if required_lead_kind and str(lead.get("kind", "")) != required_lead_kind:
+                    return False
+                if required_lead_origin and str(lead.get("origin", "")) != required_lead_origin:
                     return False
                 if required_lead_target_id and str(lead.get("target_id", "")) != required_lead_target_id:
                     return False
@@ -5213,8 +5335,11 @@ def audit_saved_bandit_live_world_state(
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_remembered_pressure": required_remembered_pressure,
         "required_min_leads": required_min_leads,
+        "required_max_leads": required_max_leads,
         "required_lead_source_contains": required_lead_source_contains,
         "required_lead_kind": required_lead_kind,
+        "required_lead_origin": required_lead_origin,
+        "required_all_lead_origin": required_all_lead_origin,
         "required_lead_target_id": required_lead_target_id,
         "required_lead_target_id_prefix": required_lead_target_id_prefix,
         "required_lead_bounty": required_lead_bounty,
@@ -8496,6 +8621,24 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_clear_site_evidence":
+            site_id = str(raw.get("site_id", "") or "").strip()
+            if not site_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_clear_site_evidence needs exact site_id in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "site_id": site_id,
+                "clear_remembered_target_or_mark": bool(
+                    raw.get("clear_remembered_target_or_mark", True)
+                ),
+                "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
+                "clear_known_recent_marks": bool(raw.get("clear_known_recent_marks", True)),
+            })
+            continue
+
         if kind == "bandit_clone_site":
             source_site_id = str(raw.get("source_site_id", raw.get("site_id", "")) or "").strip()
             new_site_id = str(raw.get("new_site_id", "") or "").strip()
@@ -8587,7 +8730,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
-            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
+            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clear_site_evidence, "
+            "bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
 
@@ -11202,6 +11346,113 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     }
 
 
+def apply_bandit_clear_site_evidence_transform(
+    world_dir: Path,
+    transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit clear-site-evidence transform target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    if not isinstance(overmapbuffer, dict):
+        raise SystemExit(f"Fixture dimension data lacks overmapbuffer object: {dimension_path}")
+    live_world = overmapbuffer.get("bandit_live_world", {})
+    if not isinstance(live_world, dict):
+        raise SystemExit(f"Fixture dimension data lacks bandit_live_world object: {dimension_path}")
+    sites = live_world.get("sites", [])
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    site_id = str(transform.get("site_id", "") or "").strip()
+    if not site_id:
+        raise SystemExit("Fixture bandit clear-site-evidence transform needs exact site_id")
+    matching_sites = [
+        site for site in sites
+        if isinstance(site, dict) and str(site.get("site_id", "")) == site_id
+    ]
+    if not matching_sites:
+        raise SystemExit(
+            f"Fixture bandit clear-site-evidence transform found no site exactly matching {site_id}"
+        )
+    if len(matching_sites) != 1:
+        raise SystemExit(
+            f"Fixture bandit clear-site-evidence transform found {len(matching_sites)} sites exactly matching {site_id}"
+        )
+    selected_site = matching_sites[0]
+    old_intelligence_map = selected_site.get("intelligence_map", {})
+    old_leads = old_intelligence_map.get("leads", []) if isinstance(old_intelligence_map, dict) else []
+    previous_lead_count = len(old_leads) if isinstance(old_leads, list) else 0
+    previous_remembered_target_or_mark = str(
+        selected_site.get("remembered_target_or_mark", "") or ""
+    )
+    previous_remembered_pressure = str(selected_site.get("remembered_pressure", "") or "")
+    previous_known_recent_marks = selected_site.get("known_recent_marks", [])
+    if not isinstance(previous_known_recent_marks, list):
+        previous_known_recent_marks = []
+
+    selected_site["intelligence_map"] = {
+        "schema_version": 5,
+        "last_daily_cleanup_minutes": -1,
+        "next_near_tick_minutes": -1,
+        "next_mid_tick_minutes": -1,
+        "next_far_tick_minutes": -1,
+        "next_frontier_tick_minutes": -1,
+        "known_radius_omt": 0,
+        "terrain_scan_cursor": 0,
+        "last_routine_target_lead_id": "",
+        "previous_routine_target_lead_id": "",
+        "frontier_radius_omt": 0,
+        "frontier_sector_cursor": 0,
+        "frontier_last_resolved_minutes": [-1] * 8,
+        "leads": [],
+    }
+    clear_remembered_target = bool(transform.get("clear_remembered_target_or_mark", True))
+    clear_remembered_pressure = bool(transform.get("clear_remembered_pressure", True))
+    clear_known_recent_marks = bool(transform.get("clear_known_recent_marks", True))
+    if clear_remembered_target:
+        selected_site["remembered_target_or_mark"] = ""
+    if clear_remembered_pressure:
+        selected_site["remembered_pressure"] = ""
+    if clear_known_recent_marks:
+        selected_site["known_recent_marks"] = []
+
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_clear_site_evidence",
+        "world": world_dir.name,
+        "site_id": site_id,
+        "previous_lead_count": previous_lead_count,
+        "lead_count": 0,
+        "previous_remembered_target_or_mark": previous_remembered_target_or_mark,
+        "previous_remembered_pressure": previous_remembered_pressure,
+        "previous_known_recent_mark_count": len(previous_known_recent_marks),
+        "clear_remembered_target_or_mark": clear_remembered_target,
+        "clear_remembered_pressure": clear_remembered_pressure,
+        "clear_known_recent_marks": clear_known_recent_marks,
+        "preserved_site_identity": {
+            "site_id": site_id,
+            "source_id": selected_site.get("source_id", ""),
+            "source_kind": selected_site.get("source_kind", ""),
+            "site_kind": selected_site.get("site_kind", ""),
+            "hostile_profile": selected_site.get("hostile_profile", selected_site.get("profile", "")),
+            "anchor": selected_site.get("anchor", []),
+        },
+        "preserved_member_count": len(selected_site.get("members", []))
+        if isinstance(selected_site.get("members"), list) else 0,
+    }
+
+
 def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     dimension_path = world_dir / "dimension_data.gsav"
     if not dimension_path.exists():
@@ -11471,6 +11722,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
+            continue
+        if kind == "bandit_clear_site_evidence":
+            reports.append(apply_bandit_clear_site_evidence_transform(world_dir, transform))
             continue
         if kind == "bandit_clone_site":
             reports.append(apply_bandit_clone_site_transform(world_dir, transform))
@@ -12310,6 +12564,7 @@ def execute_probe_steps(
                 required_min_leads = None
             else:
                 required_min_leads = int(raw_required_min_leads)
+            required_max_leads = optional_step_int("required_max_leads")
             raw_required_lead_confidence = step.get("required_lead_confidence")
             required_lead_confidence: Optional[int]
             if raw_required_lead_confidence is None or str(raw_required_lead_confidence).strip() == "":
@@ -12381,8 +12636,13 @@ def execute_probe_steps(
                     ).strip(),
                     required_remembered_pressure=str(step.get("required_remembered_pressure", "") or "").strip(),
                     required_min_leads=required_min_leads,
+                    required_max_leads=required_max_leads,
                     required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
                     required_lead_kind=str(step.get("required_lead_kind", "") or "").strip(),
+                    required_lead_origin=str(step.get("required_lead_origin", "") or "").strip(),
+                    required_all_lead_origin=str(
+                        step.get("required_all_lead_origin", "") or ""
+                    ).strip(),
                     required_lead_target_id=str(step.get("required_lead_target_id", "") or "").strip(),
                     required_lead_target_id_prefix=str(step.get("required_lead_target_id_prefix", "") or "").strip(),
                     required_lead_bounty=required_lead_bounty,
@@ -12429,7 +12689,12 @@ def execute_probe_steps(
                     "required_active_member_max_abs_offset_ms": required_max_offset,
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
+                    "required_max_leads": required_max_leads,
                     "required_lead_kind": str(step.get("required_lead_kind", "") or "").strip(),
+                    "required_lead_origin": str(step.get("required_lead_origin", "") or "").strip(),
+                    "required_all_lead_origin": str(
+                        step.get("required_all_lead_origin", "") or ""
+                    ).strip(),
                     "required_lead_target_id": str(step.get("required_lead_target_id", "") or "").strip(),
                     "required_lead_target_id_prefix": str(step.get("required_lead_target_id_prefix", "") or "").strip(),
                     "required_lead_bounty": required_lead_bounty,
@@ -14159,7 +14424,7 @@ def run_startup(args: argparse.Namespace) -> int:
 
     startup_cfg = config["startup"]
     time.sleep(float(startup_cfg["initial_wait_seconds"]))
-    focus_result = peekaboo_focus_pid(proc.pid)
+    focus_result = peekaboo_focus_pid_with_retry(proc.pid)
     if plan.strategy == "play_now_default":
         peekaboo_press_sequence(proc.pid, list(startup_cfg["play_now_default_sequence"]))
         time.sleep(float(startup_cfg["post_input_wait_seconds"]))
@@ -14258,7 +14523,7 @@ def run_startup(args: argparse.Namespace) -> int:
             post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
-            focus_result = peekaboo_focus_pid(proc.pid)
+            focus_result = peekaboo_focus_pid_with_retry(proc.pid)
             post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
             if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
                 peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])

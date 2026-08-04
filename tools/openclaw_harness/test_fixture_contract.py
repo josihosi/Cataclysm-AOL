@@ -43,7 +43,9 @@ RELEASE_GATE_SCENARIOS = (
 from startup_harness import (  # noqa: E402
     StartupPlan,
     audit_saved_bandit_live_world_state,
+    apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
+    apply_fixture_save_transforms,
     apply_game_turn_to_payload,
     apply_option_overrides_to_file,
     apply_repair_basecamp_npc_assignments_transform,
@@ -52,6 +54,8 @@ from startup_harness import (  # noqa: E402
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
+    peekaboo_focus_pid_with_retry,
+    peekaboo_switch_app_for_pid,
     provision_llm_api_key_environment,
     read_secure_llm_credential,
     resolve_configured_python_command,
@@ -76,6 +80,51 @@ class SaveValidationError(RuntimeError):
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
+    def test_app_switch_focus_fallback_verifies_target_pid_is_active(self) -> None:
+        before = {
+            "data": {
+                "apps": [{"name": "cataclysm-tiles", "pid": 42, "is_active": False}],
+            },
+        }
+        switched = {"success": True}
+        after = {
+            "data": {
+                "apps": [{"name": "cataclysm-tiles", "pid": 42, "is_active": True}],
+            },
+        }
+        with (
+            mock.patch("startup_harness.run_json", side_effect=[before, switched, after]),
+            mock.patch("startup_harness.peekaboo_command", side_effect=lambda args, **_: list(args)),
+            mock.patch("startup_harness.time.sleep") as sleep,
+        ):
+            result = peekaboo_switch_app_for_pid(42)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["app_name"], "cataclysm-tiles")
+        self.assertEqual(
+            result["switch_command"],
+            ["app", "switch", "--to", "cataclysm-tiles", "--json"],
+        )
+        sleep.assert_called_once_with(0.1)
+
+    def test_startup_focus_retry_preserves_failed_attempt_before_green_result(self) -> None:
+        failed = {"ok": False, "returncode": 1, "stderr": "verification failed"}
+        green = {"ok": True, "returncode": 0, "stderr": ""}
+        with (
+            mock.patch(
+                "startup_harness.peekaboo_focus_pid",
+                side_effect=[failed, green],
+            ) as focus,
+            mock.patch("startup_harness.time.sleep") as sleep,
+        ):
+            result = peekaboo_focus_pid_with_retry(42, retry_delay_seconds=0.25)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["attempt_count"], 2)
+        self.assertEqual(result["attempts"], [failed, green])
+        self.assertEqual(focus.call_count, 2)
+        sleep.assert_called_once_with(0.25)
+
     def test_foreign_absolute_python_path_does_not_block_platform_fallback(self) -> None:
         with mock.patch("startup_harness.os.name", "posix"):
             mac_result = resolve_configured_python_command(
@@ -712,6 +761,101 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         self.assertTrue(handoff["pair_contract_valid"])
         self.assertTrue(outing["pair_contract_valid"])
 
+    def test_lead_summary_and_audit_expose_persisted_origin(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["intelligence_map"] = {
+                "leads": [{
+                    "lead_id": "signal:smoke:1",
+                    "kind": "camp_signal",
+                    "origin": "autonomous_signal",
+                }],
+            }
+            self.write_world(world_dir, site)
+
+            matching = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_lead_origin="autonomous_signal",
+            )
+            missing = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_lead_origin="fixture_seed",
+            )
+
+        self.assertEqual(
+            summarize_bandit_live_world_site(site)["leads"][0]["origin"],
+            "autonomous_signal",
+        )
+        self.assertEqual(matching["status"], "required_state_present")
+        self.assertEqual(matching["required_fields"]["required_lead_origin"], "autonomous_signal")
+        self.assertEqual(missing["status"], "required_state_missing")
+
+    def test_required_max_leads_accepts_zero_and_rejects_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["intelligence_map"] = {"leads": []}
+            self.write_world(world_dir, site)
+            empty = audit_saved_bandit_live_world_state(world_dir, required_max_leads=0)
+
+            site["intelligence_map"]["leads"] = [{"lead_id": "unexpected"}]
+            self.write_world(world_dir, site)
+            nonzero = audit_saved_bandit_live_world_state(world_dir, required_max_leads=0)
+
+        self.assertEqual(empty["status"], "required_state_present")
+        self.assertEqual(empty["required_fields"]["required_max_leads"], 0)
+        self.assertEqual(nonzero["status"], "required_state_missing")
+
+    def test_required_all_lead_origin_rejects_one_foreign_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["intelligence_map"] = {
+                "leads": [
+                    {"lead_id": "terrain-a", "origin": "structural_routine"},
+                    {"lead_id": "terrain-b", "origin": "structural_routine"},
+                ],
+            }
+            self.write_world(world_dir, site)
+            green = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_all_lead_origin="structural_routine",
+            )
+
+            site["intelligence_map"]["leads"][1]["origin"] = "legacy_radar"
+            self.write_world(world_dir, site)
+            foreign = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_all_lead_origin="structural_routine",
+            )
+
+        self.assertEqual(green["status"], "required_state_present")
+        self.assertEqual(
+            green["required_fields"]["required_all_lead_origin"],
+            "structural_routine",
+        )
+        self.assertEqual(foreign["status"], "required_state_missing")
+
+    def test_required_all_lead_origin_rejects_malformed_lead(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["intelligence_map"] = {
+                "leads": [
+                    {"lead_id": "terrain-a", "origin": "structural_routine"},
+                    "malformed-lead",
+                ],
+            }
+            self.write_world(world_dir, site)
+
+            result = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_all_lead_origin="structural_routine",
+            )
+
+        self.assertEqual(result["status"], "required_state_missing")
+
     def test_current_pair_requirements_reject_malformed_handoff_without_legacy_bypass(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)
@@ -833,6 +977,119 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
             self.assertEqual(result["new_hostile_profile"], "cannibal_camp")
             self.assertEqual(cloned["site_kind"], "cannibal_camp")
             self.assertEqual(cloned["hostile_profile"], "cannibal_camp")
+
+
+class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
+    def test_clears_only_exact_site_evidence_and_preserves_identity_and_roster(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            selected = {
+                "site_id": "camp-selected",
+                "source_id": "overmap-special-7",
+                "source_kind": "overmap_special",
+                "site_kind": "bandit_camp",
+                "hostile_profile": "bandit_camp",
+                "anchor": [140, 51, 0],
+                "headcount": 2,
+                "members": [
+                    {"npc_id": 101, "state": "at_home"},
+                    {"npc_id": 102, "state": "outbound"},
+                ],
+                "remembered_target_or_mark": "smoke:149,51,0",
+                "remembered_pressure": "investigate",
+                "known_recent_marks": ["smoke:149,51,0"],
+                "intelligence_map": {
+                    "schema_version": 5,
+                    "leads": [{"lead_id": "smoke:149,51,0", "origin": "autonomous_signal"}],
+                },
+            }
+            untouched = {
+                "site_id": "camp-untouched",
+                "members": [{"npc_id": 201, "state": "at_home"}],
+                "remembered_target_or_mark": "sound:10,10,0",
+                "remembered_pressure": "watch",
+                "known_recent_marks": ["sound:10,10,0"],
+                "intelligence_map": {"leads": [{"lead_id": "sound:10,10,0"}]},
+            }
+            selected_identity_and_roster = {
+                key: json.loads(json.dumps(selected[key]))
+                for key in (
+                    "site_id",
+                    "source_id",
+                    "source_kind",
+                    "site_kind",
+                    "hostile_profile",
+                    "anchor",
+                    "headcount",
+                    "members",
+                )
+            }
+            untouched_before = json.loads(json.dumps(untouched))
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {"sites": [selected, untouched]},
+                    },
+                }),
+                encoding="utf-8",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_clear_site_evidence",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            reports = apply_fixture_save_transforms(world_dir, normalized)
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            updated_selected, updated_untouched = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+
+        self.assertEqual(reports[0]["kind"], "bandit_clear_site_evidence")
+        self.assertEqual(reports[0]["previous_lead_count"], 1)
+        self.assertEqual(reports[0]["lead_count"], 0)
+        self.assertEqual(updated_selected["intelligence_map"], {
+            "schema_version": 5,
+            "last_daily_cleanup_minutes": -1,
+            "next_near_tick_minutes": -1,
+            "next_mid_tick_minutes": -1,
+            "next_far_tick_minutes": -1,
+            "next_frontier_tick_minutes": -1,
+            "known_radius_omt": 0,
+            "terrain_scan_cursor": 0,
+            "last_routine_target_lead_id": "",
+            "previous_routine_target_lead_id": "",
+            "frontier_radius_omt": 0,
+            "frontier_sector_cursor": 0,
+            "frontier_last_resolved_minutes": [-1] * 8,
+            "leads": [],
+        })
+        self.assertEqual(updated_selected["remembered_target_or_mark"], "")
+        self.assertEqual(updated_selected["remembered_pressure"], "")
+        self.assertEqual(updated_selected["known_recent_marks"], [])
+        for key, expected in selected_identity_and_roster.items():
+            self.assertEqual(updated_selected[key], expected)
+        self.assertEqual(updated_untouched, untouched_before)
+
+    def test_requires_one_exact_site_match(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            (world_dir / "dimension_data.gsav").write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {"sites": [{"site_id": "camp-present"}]},
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "no site exactly matching camp-missing"):
+                apply_bandit_clear_site_evidence_transform(
+                    world_dir,
+                    {"site_id": "camp-missing"},
+                )
 
 
 def _rotate_left_64(value: int, count: int) -> int:

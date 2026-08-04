@@ -1,0 +1,28 @@
+{
+  "name": "bandit_phase4_quiet_former_radar_v0_2026-08-04",
+  "description": "Disposable Phase-4 live no-radar footing. A real five-member bandit camp remains populated while the player is placed six OMT east, inside the deleted ten-OMT radar radius. Camp evidence and scalar pressure are cleared so only same-run legitimate structural terrain priors may appear.",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [6, 0, 0]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "clear_spawn_tile_headcount": true,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0
+    },
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0"
+    }
+  ]
+}

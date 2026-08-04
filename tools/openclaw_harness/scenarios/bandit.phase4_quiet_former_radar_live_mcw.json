@@ -1,0 +1,161 @@
+{
+  "name": "bandit.phase4_quiet_former_radar_live_mcw",
+  "description": "Phase-4 live proof that a populated bandit camp six OMT from the real player does not create a radar/player lead or outing. Three hours of real cadence may add bounded structural terrain priors, but every saved lead must remain structural_routine and the camp must remain idle.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_quiet_former_radar_v0_2026-08-04",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2"
+    }
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world structural maintenance:",
+    "dispatches_applied=0",
+    "bandit_live_world evidence debug:",
+    "origin=structural_routine",
+    "bandit_live_world signal scan: signal_packet=no"
+  ],
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_quiet_former_radar_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_quiet_only_structural_origins",
+      "expected_visible_fact": "the populated quiet-camp fixture loads with the player six OMT east; this screen is startup footing and final proof comes from the saved-state audit",
+      "failure_rule": "If the game does not load, no quiet no-radar proof can be credited."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_saved_quiet_zero_evidence",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 10,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_max_leads": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_quiet_former_radar_fixture",
+      "abort_reason": "the fixture did not begin with one populated idle camp and zero evidence",
+      "expected_immediate_state": "the selected camp has five ready members, only the matching five-member transitional scalar headcount, no inherited spawn-tile heads, no active outing, and zero leads before live cadence",
+      "failure_rule": "A pre-existing lead, outing, or inherited spawn-tile headcount would make later origin claims ambiguous."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_3_hours_inside_former_radar_radius",
+      "choice_key": "7",
+      "expected_duration": "3h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the three-hour duration",
+      "completion_wait_seconds": 45.0,
+      "artifact_state_patterns": [
+        "bandit_live_world structural maintenance:",
+        "bandit_live_world evidence debug:",
+        "origin=structural_routine",
+        "bandit_live_world signal scan: signal_packet=no"
+      ],
+      "expected_visible_fact": "three real in-game hours exercise repeated old-radar cadence windows; elapsed credit depends on same-run maintenance/evidence artifacts",
+      "failure_rule": "If the wait does not reach repeated cadence or its evidence artifacts are absent, the live control is inconclusive."
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_after_quiet_cadence",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_quiet_only_structural_origins",
+      "expected_visible_fact": "save/quit is requested after the quiet cadence window",
+      "failure_rule": "Final saved-state proof must fail if save/quit input did not produce persisted cadence state."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit_after_quiet_cadence",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_quiet_only_structural_origins",
+      "expected_visible_fact": "save/quit completes after the quiet cadence window",
+      "failure_rule": "Final saved-state proof must fail if cadence state was not written."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_quiet_only_structural_origins",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 5,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_min_leads": 1,
+      "required_max_leads": 8,
+      "required_all_lead_origin": "structural_routine",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_saved_quiet_origin_or_outing_mismatch",
+      "abort_reason": "saved state gained a non-structural lead, exceeded the bounded lead window, or created an outing near the player",
+      "expected_immediate_state": "the camp remains fully home and idle; all bounded same-run leads are legitimate structural terrain priors",
+      "failure_rule": "Any radar/signal/observer/returned-report origin, active target, outside member, or unbounded lead growth makes the no-radar proof red."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_quiet_structural_only_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world structural maintenance:",
+          "dispatches_applied=0",
+          "active_outings=0"
+        ],
+        [
+          "bandit_live_world evidence debug:"
+        ],
+        [
+          " lead id=",
+          "origin=structural_routine",
+          "source_key=terrain_opportunity:"
+        ],
+        [
+          "bandit_live_world signal scan: signal_packet=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_quiet_structural_only_artifact_missing",
+      "abort_reason": "same-run artifact did not show idle structural maintenance, bounded structural provenance, and no physical field signal",
+      "failure_rule": "The saved result is insufficient without same-run cadence and provenance output."
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_no_radar_or_player_writer_artifact",
+      "forbidden_line_patterns": [
+        ["player@"],
+        ["origin=legacy_radar"],
+        ["origin=observer"],
+        ["origin=signal"],
+        ["origin=returned_report"],
+        ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0"],
+        ["bandit_live_world local_handoff committed", "site=overmap_special:bandit_camp@140,51,0"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_forbidden_radar_or_outing_artifact_present",
+      "abort_reason": "same-run artifact exposed a player-coordinate writer, non-structural origin, dispatch, or handoff",
+      "failure_rule": "Any forbidden provenance or outing transition makes the no-radar control red."
+    }
+  ],
+  "recommended_test_command": "/usr/bin/python3 tools/openclaw_harness/startup_harness.py probe bandit.phase4_quiet_former_radar_live_mcw",
+  "evidence_contract": {
+    "claim": "a real five-member bandit camp six OMT from the player stays idle across three live hours without player-coordinate or radar discovery; legitimate bounded structural terrain priors remain allowed and are proven as the only saved lead origin",
+    "load_only_verdict": "load proof only / inconclusive for no-radar behavior",
+    "failure_rule": "No Phase-4 quiet live credit unless exact fixture zero-evidence footing, elapsed live cadence, saved all-structural provenance, no active outing, same-run evidence diagnostics, and forbidden-writer absence are all green."
+  }
+}
