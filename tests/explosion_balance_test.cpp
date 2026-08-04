@@ -30,6 +30,7 @@
 #include "point.h"
 #include "projectile.h"
 #include "rng.h"
+#include "sounds.h"
 #include "test_statistics.h"
 #include "type_id.h"
 #include "units.h"
@@ -226,6 +227,30 @@ static void check_vehicle_damage( const itype_id &explosive_id, const std::strin
     INFO( vehicle_id );
     CHECK( after_hp_total >= floor( before_hp_total * damage_lower_bound ) );
     CHECK( after_hp_total <= ceil( before_hp_total * damage_upper_bound ) );
+}
+
+TEST_CASE( "edge_explosion_keeps_absolute_significant_sound_source",
+           "[explosion][sound][hostile_ecology]" )
+{
+    clear_map_and_put_player_underground();
+    sounds::reset_sounds();
+    const tripoint_bub_ms source( MAPSIZE_X - 1, HALF_MAPSIZE_Y, 0 );
+    const tripoint_abs_omt expected_source = coords::project_to<coords::omt>(
+                get_map().get_abs( source ) );
+
+    explosion_handler::explosion( nullptr, source, 30.0f, 0.8f, false, 0, 0.0f );
+    explosion_handler::process_explosions();
+
+    std::vector<tripoint_abs_omt> significant_sources;
+    sounds::consume_significant_sounds( [&significant_sources](
+    const tripoint_abs_omt & source_omt, int, sounds::significant_sound_t kind, int ) {
+        if( kind == sounds::significant_sound_t::explosion ) {
+            significant_sources.push_back( source_omt );
+        }
+    } );
+    REQUIRE( significant_sources.size() == 1 );
+    CHECK( significant_sources.front() == expected_source );
+    sounds::reset_sounds();
 }
 
 TEST_CASE( "grenade_lethality_scaling_with_size", "[grenade] [explosion] [balance]" )

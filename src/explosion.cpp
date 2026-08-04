@@ -577,6 +577,10 @@ void _make_explosion( map *m, const Creature *source, const tripoint_bub_ms &p,
         int noise = ex.power * ( ex.fire ? 2 : 10 );
         noise = ( noise > ex.max_noise ) ? ex.max_noise : noise;
 
+        // Sounds use reality-bubble coordinates.  Edge explosions may be processed with a
+        // temporary current map, so keep coordinate ownership aligned while the sound queue
+        // converts the bubble-relative point back to an absolute semantic source.
+        swap_map sound_map( bubble_map );
         if( noise >= 30 ) {
             sounds::sound( bubble_pos, noise, sounds::sound_t::combat, _( "a huge explosion!" ), false,
                            "explosion",

@@ -64,6 +64,7 @@ from startup_harness import (  # noqa: E402
     load_scenario,
     normalize_fixture_save_transforms,
     peekaboo_focus_pid_with_retry,
+    peekaboo_press_sequence,
     peekaboo_switch_app_for_pid,
     poll_wait_artifact_completion,
     provision_llm_api_key_environment,
@@ -87,6 +88,81 @@ from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E
 
 class SaveValidationError(RuntimeError):
     """A stable, user-facing reason a player save cannot be trusted."""
+
+
+class PeekabooPressSequenceContractTest(unittest.TestCase):
+    def test_batches_consecutive_special_keys_in_one_press_command(self) -> None:
+        command = mock.Mock(side_effect=lambda args, **_: list(args))
+        interaction = mock.Mock()
+        with (
+            mock.patch("startup_harness.peekaboo_command", command),
+            mock.patch("startup_harness.run_peekaboo_interaction", interaction),
+        ):
+            peekaboo_press_sequence(42, ["right"] * 60, delay_ms=123)
+
+        expected_command = [
+            "press",
+            *(["right"] * 60),
+            "--pid",
+            "42",
+            "--delay",
+            "123",
+        ]
+        command.assert_called_once_with(expected_command, channel="input")
+        interaction.assert_called_once_with(42, expected_command)
+
+    def test_preserves_mixed_text_hotkey_and_special_key_order(self) -> None:
+        command = mock.Mock(side_effect=lambda args, **_: list(args))
+        interaction = mock.Mock()
+        type_text = mock.Mock()
+        hotkey = mock.Mock()
+        ordered_calls = mock.Mock()
+        ordered_calls.attach_mock(interaction, "interaction")
+        ordered_calls.attach_mock(type_text, "type_text")
+        ordered_calls.attach_mock(hotkey, "hotkey")
+        with (
+            mock.patch("startup_harness.peekaboo_command", command),
+            mock.patch("startup_harness.run_peekaboo_interaction", interaction),
+            mock.patch("startup_harness.peekaboo_type_text", type_text),
+            mock.patch("startup_harness.peekaboo_hotkey", hotkey),
+        ):
+            peekaboo_press_sequence(
+                42,
+                ["a", "b", "right", "down", "C", "!", "x", "enter", "left"],
+                delay_ms=123,
+            )
+
+        self.assertEqual(
+            ordered_calls.mock_calls,
+            [
+                mock.call.type_text(42, "ab", delay_ms=123),
+                mock.call.interaction(
+                    42,
+                    ["press", "right", "down", "--pid", "42", "--delay", "123"],
+                ),
+                mock.call.hotkey(42, "shift,c", hold_ms=123),
+                mock.call.hotkey(42, "shift,1", hold_ms=123),
+                mock.call.type_text(42, "x", delay_ms=123),
+                mock.call.interaction(
+                    42,
+                    ["press", "return", "left", "--pid", "42", "--delay", "123"],
+                ),
+            ],
+        )
+
+    def test_empty_sequence_does_not_issue_input(self) -> None:
+        with (
+            mock.patch("startup_harness.peekaboo_command") as command,
+            mock.patch("startup_harness.run_peekaboo_interaction") as interaction,
+            mock.patch("startup_harness.peekaboo_type_text") as type_text,
+            mock.patch("startup_harness.peekaboo_hotkey") as hotkey,
+        ):
+            peekaboo_press_sequence(42, [])
+
+        command.assert_not_called()
+        interaction.assert_not_called()
+        type_text.assert_not_called()
+        hotkey.assert_not_called()
 
 
 class BlockingInterruptionClassifierContractTest(unittest.TestCase):

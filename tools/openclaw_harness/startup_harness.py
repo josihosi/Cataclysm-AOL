@@ -1475,6 +1475,7 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
     if not keys:
         return
     text_buffer: List[str] = []
+    special_key_buffer: List[str] = []
 
     def flush_text_buffer() -> None:
         if not text_buffer:
@@ -1482,23 +1483,32 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
         peekaboo_type_text(pid, "".join(text_buffer), delay_ms=max(10, min(delay_ms, 200)))
         text_buffer.clear()
 
+    def flush_special_key_buffer() -> None:
+        if not special_key_buffer:
+            return
+        cmd = peekaboo_command(
+            ["press", *special_key_buffer, "--pid", str(pid), "--delay", str(delay_ms)],
+            channel="input",
+        )
+        run_peekaboo_interaction(pid, cmd)
+        special_key_buffer.clear()
+
     for raw_key in keys:
         key = normalize_peekaboo_key(raw_key)
         hotkey = peekaboo_physical_hotkey_for_key(key)
         if hotkey:
             flush_text_buffer()
+            flush_special_key_buffer()
             peekaboo_hotkey(pid, hotkey, hold_ms=max(30, min(delay_ms, 200)))
             continue
         if is_printable_text_key(key):
+            flush_special_key_buffer()
             text_buffer.append(key)
             continue
         flush_text_buffer()
-        cmd = peekaboo_command(
-            ["press", key, "--pid", str(pid), "--delay", str(delay_ms)],
-            channel="input",
-        )
-        run_peekaboo_interaction(pid, cmd)
+        special_key_buffer.append(key)
     flush_text_buffer()
+    flush_special_key_buffer()
 
 
 def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:

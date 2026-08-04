@@ -208,6 +208,7 @@
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
       ],
       "delay_ms": 45,
@@ -215,7 +216,7 @@
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 50 calibrated screen-right editor actions from the centered player origin on target OMT ten minutes before the hourly scan with its engine countdown running",
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 60 calibrated screen-right editor actions from centered abs_ms (3204,1236,0) onto target OMT 136 ten minutes before the hourly scan with its engine countdown running",
       "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
     },
     {
@@ -271,6 +272,7 @@
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
         "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
       ],
       "delay_ms": 45,
@@ -278,7 +280,7 @@
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed 50 calibrated screen-right editor actions from the centered player origin on target OMT minutes before the hourly scan; production projects both physical smoke and light from that source",
+      "expected_visible_fact": "one real intense fd_fire field is placed 60 calibrated screen-right editor actions from centered abs_ms (3204,1236,0) onto target OMT 136 minutes before the hourly scan; production projects both physical smoke and light from that source",
       "proof_deferred_to_label": "audit_exact_phase4_structural_smoke_light_sound_matrix"
     },
     {
