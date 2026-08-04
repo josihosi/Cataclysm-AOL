@@ -283,7 +283,14 @@ tokens cannot inject lines, and completed site sweeps advance independent inner 
 entries cannot starve. The pure renderer is byte-read-only and adds no persisted debug state.
 Focused 1/34, adjacent Phase-4 8/739, full live-world 169/38,852, handoff/save 12/331, and save-size
 1/10 are green after clean read-only review under external
-`phase4-20260804/evidence-debug/MANIFEST.md`. The remaining Phase-4 live/harness matrix is next. The
+`phase4-20260804/evidence-debug/MANIFEST.md`. The first live no-radar slice is green at
+`5cfcf94e90`: a clean five-member bandit camp starts with zero evidence while the real player is six
+OMT away, then remains idle across three live hours. The saved result contains exactly three
+bounded terrain priors, all `structural_routine`, with no player/radar/observer/signal/
+returned-report writer, active target, dispatch, or handoff. Harness contracts pass 71/71 and the
+corrected run is 9/9 green under external `phase4-20260804/quiet-live-no-radar/MANIFEST.md`. This
+field-footing proof does not claim exact evac-shelter terrain, cannibal parity, or the remaining
+visibility/signal matrix; live day/dusk/night/weather/optics is the next slice. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

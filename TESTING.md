@@ -739,8 +739,23 @@ The final 82,500,104-byte test binary SHA-256 is
 found and drove repairs for scheduler-cursor site starvation, false unbounded signal-lead labels,
 an unreachable schema-1 unbounded fixture, first-eight entry starvation, and outer/inner phase
 locking; its final pass is clean. External `phase4-20260804/evidence-debug/MANIFEST.md` records the
-commands and deterministic/live claim boundary. The remaining Phase-4 live/harness matrix is next;
+commands and deterministic/live claim boundary. The Phase-4 live/harness matrix follows;
 startup/load images alone are not feature-path proof.
+
+The first live no-radar slice is green at `5cfcf94e90`. Runtime
+`a9d8ec4ff6+SDL3` (57,670,144 bytes, SHA-256
+`221c6d02e7b35f78bb7473cbf41e8942a0fe33f17eb054b998388f1e08b77f5b`) loaded a disposable
+five-member bandit camp with the real player six OMT away. The corrected fixture preflight proves
+zero spawn-tile heads, zero leads, five ready members, and no outing; three real hours later the
+saved camp still has all five members home, no target/outing, and exactly three leads whose complete
+origin set is `structural_routine`. The same-run 174-line delta contains no player, legacy-radar,
+observer, signal, returned-report, dispatch, or handoff trace. Harness contracts pass 71/71; the
+live row is 9/9 green with clean debug guard and no portal storm. Fresh read-only review found and
+closed inherited spawn-head fixture contamination and a malformed-lead fail-open edge, then passed
+clean. External `phase4-20260804/quiet-live-no-radar/MANIFEST.md` preserves the corrected report,
+audits, screenshots, build log, and non-credit structural-pair attempt. This proves only the quiet
+bandit/field footing; exact evac terrain, cannibals, day/dusk/night/weather/optics, and
+smoke/light/sound remain open.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
