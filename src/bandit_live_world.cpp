@@ -3837,6 +3837,13 @@ bool scout_phase_requires_homeward_only( const scout_phase phase )
            phase == scout_phase::returning_home || phase == scout_phase::lost;
 }
 
+bool active_outing_requires_homeward_routing( const active_outing_state &outing )
+{
+    return ( outing.kind == outing_kind::scout_sortie ||
+             outing.kind == outing_kind::structural_sortie ) &&
+           scout_phase_requires_homeward_only( outing.phase );
+}
+
 static void record_scout_phase_transition_event( const active_outing_state &outing,
         const scout_phase previous_phase, const scout_phase next_phase,
         const std::string_view reason, const int current_minutes )

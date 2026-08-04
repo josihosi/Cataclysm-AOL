@@ -1395,6 +1395,7 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
+bool active_outing_requires_homeward_routing( const active_outing_state &outing );
 scout_phase_transition_result transition_active_scout_phase( site_record &site,
         const simulation_advance_cursor &expected_cursor, scout_phase expected_phase,
         scout_phase next_phase, int current_minutes,

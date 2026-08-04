@@ -1333,8 +1333,8 @@ bool note_live_bandit_aftermath()
             continue;
         }
 
-        if( scout_phase_outing && bandit_live_world::scout_phase_requires_homeward_only(
-                site.active_outing.phase ) ) {
+        if( bandit_live_world::active_outing_requires_homeward_routing(
+                site.active_outing ) ) {
             for( const character_id &member_id : site.active_outing.member_ids ) {
                 if( site.active_outing.member_is_resolved( member_id ) ) {
                     continue;

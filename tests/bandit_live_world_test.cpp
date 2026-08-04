@@ -3037,6 +3037,23 @@ TEST_CASE( "bandit_live_world_scout_phase_transitions_are_one_way_and_atomic",
     CHECK_FALSE( bandit_live_world::scout_phase_requires_homeward_only(
                      scout_phase::observing ) );
 
+    bandit_live_world::active_outing_state homeward_outing;
+    homeward_outing.phase = scout_phase::returning_home;
+    for( const bandit_live_world::outing_kind kind : {
+             bandit_live_world::outing_kind::scout_sortie,
+             bandit_live_world::outing_kind::structural_sortie } ) {
+        homeward_outing.kind = kind;
+        CHECK( bandit_live_world::active_outing_requires_homeward_routing(
+                   homeward_outing ) );
+    }
+    homeward_outing.kind = bandit_live_world::outing_kind::hostile_operation;
+    CHECK_FALSE( bandit_live_world::active_outing_requires_homeward_routing(
+                     homeward_outing ) );
+    homeward_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    homeward_outing.phase = scout_phase::observing;
+    CHECK_FALSE( bandit_live_world::active_outing_requires_homeward_routing(
+                     homeward_outing ) );
+
     bandit_live_world::world_state world;
     add_bandit_camp_member( world, 0, 45100 );
     bandit_live_world::site_record &site = world.sites.front();
