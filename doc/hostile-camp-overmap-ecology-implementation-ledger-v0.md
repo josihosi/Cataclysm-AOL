@@ -8,16 +8,19 @@ Active phase: **Phase 4**
 
 Current execution row: **Run the Phase-4 day/dusk/night/weather/optics live/harness slice.**
 
-Latest checkpoint (quiet live no-radar `5cfcf94e90`, 2026-08-04): `dev` on the
-isolated Mac worktree; production `port/cdda-master` remains
-`660057ff728bdf77531f607b1bd42a175f027a5f` and untouched. A corrected disposable fixture places
-the real player six OMT from a populated bandit camp, clears inherited evidence/spawn heads, and
-starts with exactly five ready members and no outing. Three live hours leave all five home and
-produce only three bounded `structural_routine` terrain priors; no player/radar/observer/signal/
-returned-report origin, active target, dispatch, or handoff appears. Harness contracts pass 71/71
-and corrected run `20260804_103631` is 9/9 green. Fresh read-only review is clean; external evidence
-is under `phase4-20260804/quiet-live-no-radar/MANIFEST.md`. Exact evac terrain, cannibal parity, and
-the remaining visibility/signal matrix stay open.
+Latest checkpoint (autonomous exact-pair handoff prerequisite `bfabeed571`, 2026-08-04): `dev` on
+the isolated Mac worktree; production `port/cdda-master` remains
+`660057ff728bdf77531f607b1bd42a175f027a5f` and untouched. Behavior checkpoint `69fc2a6ceb`
+gives an incomplete locally owned structural pair exact staging priority over generic hostile-NPC
+movement, with site-wide ownership preflight before any NPC or site mutation. Corrected live run
+`20260804_123313` starts with five idle members and zero leads/spawn heads, dispatches an exact pair
+from an autonomous structural road lead, and saves epoch-1 local ownership with the same two members,
+valid distinct staging, shared route, and no same-run dematerialization. The feature-path ledger is
+11/11 green, the focused C++ test passes 332 assertions, and harness contracts pass 78/78 after
+clean read-only review. External evidence is under
+`phase4-20260804/autonomous-pair-handoff/MANIFEST.md`. Ordinary hostility can move a staged member
+after assembly, so the pair may reacquire rendezvous on later maintenance; the day/dusk/night/
+weather/optics row, exact evac terrain, and cannibal parity stay open.
 
 Production target: `port/cdda-master`
 
@@ -878,6 +881,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [x] Add debug rendering/logging of last-known position, evidence provenance, age, and expiry. _Checkpoint `4cbd85c57e`: hourly structural maintenance emits a pure capped report for eight evidence sites, eight leads, and eight active/report observations per site. Stable ordering plus hourly site rotation and completed-sweep inner rotation prevent starvation without persisted debug state; 96-byte token sanitization blocks line/field injection. Lead rows show exact writer/source/last-known OMT/age and real three-hour sound or six-hour smoke/light expiry; observation rows show scope/source/observer/sense/share/age/expiry, including reachable legacy-unbounded state. Focused 1/34, adjacent 8/739, full live-world 169/38,852, handoff/save 12/331, and save-size 1/10 are green; final read-only review is clean._
 - [ ] Run live/harness proof in this phase for quiet-evac no-radar, day/dusk/night/weather/optics, smoke/light/sound, target relocation, and decoy/empty leads.
   - [x] Quiet former-radar player-proximity control on live bandit/field footing. _Checkpoint `5cfcf94e90`: corrected run `20260804_103631` begins with five ready members, zero spawn heads and zero evidence while the real player is six OMT away. Three live hours end with all five home, no target/outing, and exactly three bounded `structural_routine` terrain priors; forbidden writer/dispatch/handoff traces are absent across the same-run 174-line delta. Harness contracts pass 71/71 and the step ledger is 9/9 green. This is not exact evac terrain or cannibal parity._
+  - [x] Autonomous exact-pair dispatch and local-handoff prerequisite on live bandit/field footing. _Behavior checkpoint `69fc2a6ceb`, final probe checkpoint `bfabeed571`, and run `20260804_123313`: an initially idle five-member camp autonomously records the full deterministic road lead, dispatches exactly members 4/5, binds epoch-1 local ownership, and saves the same pair with a shared route, valid owner cursor, distinct staging, and no same-run dematerialization. The feature ledger is 11/11 green, focused C++ coverage is 1/332, and harness contracts are 78/78. Site-wide ownership preflight is atomic. Ordinary hostility can move an assembled member and make later maintenance reacquire rendezvous; this prerequisite does not claim the visibility matrix._
   - [ ] Day/dusk/night/weather/optics live matrix.
   - [ ] Smoke/light/sound live matrix.
   - [ ] Live target-relocation control.
@@ -894,7 +898,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; quiet proximity `f80c33996b`; avatar relocation `531f626c6c`; decoy signal honesty `0e8c531d95`; local communication/dead evidence `429385ec26`; bounded evidence diagnostics `4cbd85c57e`; quiet live no-radar `5cfcf94e90`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery,quiet-radar-control,avatar-relocation-control,decoy-signal-control,local-communication-control,evidence-debug,quiet-live-no-radar}/MANIFEST.md`.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; quiet proximity `f80c33996b`; avatar relocation `531f626c6c`; decoy signal honesty `0e8c531d95`; local communication/dead evidence `429385ec26`; bounded evidence diagnostics `4cbd85c57e`; quiet live no-radar `5cfcf94e90`; structural pair ownership `69fc2a6ceb`; autonomous pair handoff probe `bfabeed571`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery,quiet-radar-control,avatar-relocation-control,decoy-signal-control,local-communication-control,evidence-debug,quiet-live-no-radar,autonomous-pair-handoff}/MANIFEST.md`.
 - No-radar control: exact-player code is deleted; deterministic quiet proximity/relocation and one live quiet bandit/field control are green. Exact evac-terrain and cannibal live parity remain open.
 - Visibility matrix:
 - Evidence/save benchmark:

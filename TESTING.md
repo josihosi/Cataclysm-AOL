@@ -757,6 +757,19 @@ audits, screenshots, build log, and non-credit structural-pair attempt. This pro
 bandit/field footing; exact evac terrain, cannibals, day/dusk/night/weather/optics, and
 smoke/light/sound remain open.
 
+The autonomous exact-pair handoff prerequisite is green at `bfabeed571` over behavior checkpoint
+`69fc2a6ceb`. Matching SDL3 runtime `bfabeed571+SDL3` (59,975,936 bytes, SHA-256
+`a353077128b5170307a7b550d9d593e89f998f11c4d1de1cc9abf854071e9e78`) produced credited run
+`20260804_123313`: zero initial leads/spawn heads, deterministic autonomous road dispatch, exact
+epoch-1 local ownership, incomplete-to-assembled cohesion, the same saved two-member pair with a
+shared route and distinct staging, and no same-run dematerialization. All 11 feature steps are green;
+the focused C++ handoff test passes 332 assertions and harness contracts pass 78/78. Site-wide
+ownership is preflighted before any NPC or site mutation. Ordinary hostility may move an assembled
+member, after which maintenance can honestly reacquire rendezvous. External
+`phase4-20260804/autonomous-pair-handoff/MANIFEST.md` preserves the report, audits, screenshots,
+build logs, and rejected non-credit attempts. This is staging/handoff proof, not the open day/dusk/
+night/weather/optics matrix.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

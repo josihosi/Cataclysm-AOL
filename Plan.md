@@ -290,7 +290,15 @@ bounded terrain priors, all `structural_routine`, with no player/radar/observer/
 returned-report writer, active target, dispatch, or handoff. Harness contracts pass 71/71 and the
 corrected run is 9/9 green under external `phase4-20260804/quiet-live-no-radar/MANIFEST.md`. This
 field-footing proof does not claim exact evac-shelter terrain, cannibal parity, or the remaining
-visibility/signal matrix; live day/dusk/night/weather/optics is the next slice. The
+visibility/signal matrix. The autonomous exact-pair handoff prerequisite is green at behavior
+checkpoint `69fc2a6ceb` and final probe checkpoint `bfabeed571`: corrected run `20260804_123313`
+dispatches two members from the full deterministic road lead, binds epoch-1 local ownership, and
+saves the same pair with a shared route, distinct staging, valid owner cursor, and no same-run
+dematerialization. The feature ledger is 11/11 green, focused C++ coverage passes 332 assertions,
+and harness contracts pass 78/78 under external
+`phase4-20260804/autonomous-pair-handoff/MANIFEST.md`. Ownership preflight is atomic across the
+site. Ordinary hostility can move an assembled member and require later rendezvous reacquisition;
+live day/dusk/night/weather/optics is the next slice. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

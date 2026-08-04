@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
 
-Status: ACTIVE / PHASE 4 QUIET LIVE NO-RADAR GREEN / VISIBILITY LIVE NEXT
+Status: ACTIVE / PHASE 4 AUTONOMOUS PAIR HANDOFF GREEN / VISIBILITY LIVE NEXT
 
 Canonical contract and detailed cross-off evidence:
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
