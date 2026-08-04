@@ -1964,7 +1964,10 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
     wait_progress_percentage = bool(re.search(r"\b\d{1,3}\s*%", lowered))
     contiguous_wait_activity = "interrupt waiting" in lowered
     fragmented_wait_activity = (
-        "waiting" in lowered and "to interrupt" in lowered and wait_progress_percentage
+        "press" in lowered
+        and "waiting" in lowered
+        and "interrupt" in lowered
+        and wait_progress_percentage
     )
     if (
         ("press ' to turn it off" in safe_mode_markers and "ignore monster" in safe_mode_markers)
