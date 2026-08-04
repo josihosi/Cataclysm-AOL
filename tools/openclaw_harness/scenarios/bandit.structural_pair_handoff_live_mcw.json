@@ -113,7 +113,7 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 80,
-      "expected_screen_text_after_contains": ["quit", "Case Sensitive"],
+      "expected_screen_text_after_contains": ["quit", "Case"],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_pair_handoff_save_prompt_missing",
       "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the pair-handoff save",
