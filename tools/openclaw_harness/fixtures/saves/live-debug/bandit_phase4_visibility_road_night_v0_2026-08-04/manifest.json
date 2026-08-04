@@ -1,0 +1,14 @@
+{
+  "name": "bandit_phase4_visibility_road_night_v0_2026-08-04",
+  "source_fixture": "bandit_phase4_visibility_road_horde_common_v0_2026-08-04",
+  "source_profile": "live-debug",
+  "description": "Clear-night child of the shared road/horde footing, pinned to the established local-midnight turn. The production observer must derive the one-point ordinary night budget and may only see the one-OMT forward road target.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5270400,
+      "shift_queued_eocs": true
+    }
+  ]
+}

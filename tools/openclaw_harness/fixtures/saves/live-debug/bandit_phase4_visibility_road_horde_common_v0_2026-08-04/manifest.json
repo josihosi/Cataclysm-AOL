@@ -1,0 +1,68 @@
+{
+  "name": "bandit_phase4_visibility_road_horde_common_v0_2026-08-04",
+  "source_fixture": "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+  "source_profile": "live-debug",
+  "description": "Shared Phase-4 road-visibility footing. It keeps the real player twelve OMT south of the camp, replaces the old forest lead with one four-OMT-west road lead, and places three concrete hostile zombie entities on that exact target OMT. Child fixtures set the calendar turn; production still owns dispatch, routing, observer selection, visibility, and evidence.",
+  "save_transforms": [
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0"
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_kind": "structural_bounty",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0",
+      "status": "scout_confirmed",
+      "target_id": "road",
+      "target_omt": [136, 51, 0],
+      "radius_omt": 0,
+      "source_key": "fixture_phase4_visibility_road_horde",
+      "source_summary": "fixture-known road bounty used only to put a real abstract pair on a committed route toward a concrete horde target",
+      "first_seen_minutes": -720,
+      "last_seen_minutes": -720,
+      "last_checked_minutes": -720,
+      "last_scouted_minutes": -720,
+      "bounty": 8,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "generated_by_this_camp_routine": true,
+      "last_outcome": "phase4_visibility_road_horde_fixture",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [-96, 288, 0],
+      "destination_offset_ms": [-96, 288, 0],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [-95, 288, 0],
+      "destination_offset_ms": [-95, 288, 0],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [-94, 288, 0],
+      "destination_offset_ms": [-94, 288, 0],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    }
+  ]
+}
