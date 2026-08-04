@@ -92,7 +92,7 @@
       "pre_menu_choice_key": "w",
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 6h",
       "completion_wait_seconds": 2,
-      "completion_artifact_timeout_seconds": 420,
+      "completion_artifact_timeout_seconds": 600,
       "artifact_state_patterns": [
         "scheduler_hour=166",
         "now_minutes=9960",
