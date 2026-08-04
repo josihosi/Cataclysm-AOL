@@ -50,6 +50,7 @@ from startup_harness import (  # noqa: E402
     apply_option_overrides_to_file,
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
+    classify_blocking_interruption,
     launch_game,
     load_profile_config,
     load_scenario,
@@ -77,6 +78,117 @@ from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E
 
 class SaveValidationError(RuntimeError):
     """A stable, user-facing reason a player save cannot be trusted."""
+
+
+class BlockingInterruptionClassifierContractTest(unittest.TestCase):
+    def test_activity_distraction_prompt_accepts_observed_shortcut_ocr(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "Hostile survivor spotted! Stop waiting? (Case Sensitive)\n"
+                "Open [M]anager\n[I]gnore this distraction and continue"
+            ),
+        })
+
+        self.assertEqual(result["status"], "known_prompt")
+        self.assertEqual(result["classification"], "activity_distraction_prompt")
+        self.assertEqual(result["response_key"], "I")
+
+        observed_ocr = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "Hostilel survivor spotted! Stop waiting? (Case Sensitivel\n"
+                "Open [Mlanager\n[llgnore this distraction and continue"
+            ),
+        })
+        self.assertEqual(observed_ocr["status"], "known_prompt")
+        self.assertEqual(observed_ocr["classification"], "activity_distraction_prompt")
+        self.assertEqual(observed_ocr["response_key"], "I")
+
+    def test_in_progress_wait_overlay_is_clear_across_ocr_layouts(self) -> None:
+        cases = (
+            "Waiting 42%\nPress | to interrupt waiting\nTiles",
+            "Press . to interrupt waiting",
+            "Press\nwaiting:\nor 5 to interrupt\n25%",
+        )
+        for body in cases:
+            with self.subTest(body=body):
+                result = classify_blocking_interruption({"ok": True, "text": body})
+
+                self.assertEqual(result["status"], "clear")
+                self.assertEqual(result["classification"], "wait_activity_in_progress")
+                self.assertEqual(result["response_key"], "")
+
+    def test_genuine_safe_mode_prompts_remain_fail_closed(self) -> None:
+        cases = (
+            (
+                "Safe mode\nPress a key\nTiles",
+                "known_prompt",
+                "safe_mode_spotted_hostile_prompt",
+            ),
+            (
+                "Spotted hostile while waiting\nPress | to interrupt waiting",
+                "unknown_prompt",
+                "partial_safe_mode_spotted_hostile_prompt",
+            ),
+        )
+        for body, expected_status, expected_classification in cases:
+            with self.subTest(body=body):
+                result = classify_blocking_interruption({"ok": True, "text": body})
+
+                self.assertEqual(result["status"], expected_status)
+                self.assertEqual(result["classification"], expected_classification)
+
+    def test_lifeless_grass_wilderness_flavor_popup_is_known(self) -> None:
+        body = (
+            "You suddenly realize this area seems almost devoid of life. The few bits of "
+            "blackened grass you can see are barely recognizable as grass, even discounting "
+            "the night. Sure the zombies might be tearing people apart, but what happened to "
+            "the grass? What is the grass coming to life to eat people too? You snort at the "
+            "idea, but it doesn't feel safe out here."
+        )
+
+        result = classify_blocking_interruption({"ok": True, "text": body})
+
+        self.assertEqual(result["status"], "known_prompt")
+        self.assertEqual(
+            result["classification"],
+            "lifeless_grass_wilderness_flavor_popup",
+        )
+        self.assertEqual(result["response_key"], "space")
+        self.assertFalse(result["release_blocking"])
+        self.assertFalse(result["contaminating"])
+
+    def test_partial_lifeless_grass_wilderness_flavor_remains_unknown(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "You suddenly realize this area seems almost devoid of life.",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(
+            result["classification"],
+            "partial_lifeless_grass_wilderness_flavor_popup",
+        )
+        self.assertEqual(result["response_key"], "")
+        self.assertFalse(result["release_blocking"])
+        self.assertFalse(result["contaminating"])
+
+    def test_lifeless_grass_text_cannot_override_safe_mode_prompt(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "This area seems almost devoid of life. What happened to the grass? "
+                "Is the grass coming to life to eat people too? Spotted hostile."
+            ),
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(
+            result["classification"],
+            "partial_safe_mode_spotted_hostile_prompt",
+        )
+        self.assertEqual(result["response_key"], "")
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
@@ -977,6 +1089,50 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
             self.assertEqual(result["new_hostile_profile"], "cannibal_camp")
             self.assertEqual(cloned["site_kind"], "cannibal_camp")
             self.assertEqual(cloned["hostile_profile"], "cannibal_camp")
+
+
+class BanditRosterShapeTransformContractTest(unittest.TestCase):
+    def test_can_clear_inherited_spawn_heads_without_inflating_roster(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [{
+                                "site_id": "camp-selected",
+                                "headcount": 12,
+                                "spawn_tiles": [{"headcount": 7}],
+                                "members": [
+                                    {"npc_id": 101, "state": "at_home"},
+                                    {"npc_id": 102, "state": "at_home"},
+                                    {"npc_id": 103, "state": "at_home"},
+                                ],
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_site_roster_shape",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                    "living_member_count": 3,
+                    "clear_spawn_tile_headcount": True,
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            reports = apply_fixture_save_transforms(world_dir, normalized)
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            updated = payload["overmapbuffer"]["bandit_live_world"]["sites"][0]
+
+        self.assertEqual(updated["headcount"], 3)
+        self.assertEqual(len(updated["members"]), 3)
+        self.assertEqual(updated["spawn_tiles"][0]["headcount"], 0)
 
 
 class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):

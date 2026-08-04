@@ -1889,11 +1889,14 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "matched_markers": debug_markers,
         }
 
-    activity_markers = [
-        marker
-        for marker in ("ignore this distraction and continue", "open manager")
-        if marker in lowered
-    ]
+    activity_markers = []
+    if (
+        "ignore this distraction and continue" in lowered
+        or re.search(r"\S{0,4}gnore this distraction and continue", lowered)
+    ):
+        activity_markers.append("ignore this distraction and continue")
+    if "open manager" in lowered or re.search(r"open\s+\S{0,4}anager", lowered):
+        activity_markers.append("open manager")
     if len(activity_markers) == 2:
         return {
             **base,
@@ -1910,6 +1913,42 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "matched_markers": activity_markers,
         }
 
+    semantic_safe_mode_markers = [
+        marker
+        for marker in (
+            "safe mode",
+            "spotted",
+            "press ' to turn it off",
+            "off, press",
+            "ignore monster",
+        )
+        if marker in lowered
+    ]
+    lifeless_grass_markers = [
+        marker
+        for marker in (
+            "almost devoid of life",
+            "what happened to the grass",
+            "grass coming to life to eat people",
+        )
+        if marker in lowered
+    ]
+    if len(lifeless_grass_markers) >= 2 and not semantic_safe_mode_markers:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "lifeless_grass_wilderness_flavor_popup",
+            "response_key": "space",
+            "matched_markers": lifeless_grass_markers,
+        }
+    if lifeless_grass_markers and not semantic_safe_mode_markers:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_lifeless_grass_wilderness_flavor_popup",
+            "matched_markers": lifeless_grass_markers,
+        }
+
     safe_mode_markers = [
         marker
         for marker in (
@@ -1923,6 +1962,28 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
+    wait_progress_percentage = bool(re.search(r"\b\d{1,3}\s*%", lowered))
+    contiguous_wait_activity = "interrupt waiting" in lowered
+    fragmented_wait_activity = (
+        "waiting" in lowered and "to interrupt" in lowered and wait_progress_percentage
+    )
+    if (
+        (contiguous_wait_activity or fragmented_wait_activity)
+        and not semantic_safe_mode_markers
+    ):
+        wait_activity_markers = (
+            ["interrupt waiting"]
+            if contiguous_wait_activity
+            else ["waiting", "to interrupt"]
+        )
+        if wait_progress_percentage:
+            wait_activity_markers.append("progress percentage")
+        return {
+            **base,
+            "status": "clear",
+            "classification": "wait_activity_in_progress",
+            "matched_markers": wait_activity_markers,
+        }
     if (
         ("press ' to turn it off" in safe_mode_markers and "ignore monster" in safe_mode_markers)
         or ("off, press" in safe_mode_markers and "ignore monster" in safe_mode_markers)

@@ -1,6 +1,6 @@
 {
   "name": "bandit.structural_pair_handoff_live_mcw",
-  "description": "Current-schema live proof that a real idle camp dispatches a stable two-person structural outing, commits the complete pair into local ownership at a route-facing OMT, and maintains the pair's cohesion without duplicate ownership.",
+  "description": "Current-schema daylight proof that a real idle camp reaches its deterministic 11-hour routine window, dispatches a stable two-person structural outing, commits the complete pair into local ownership with the player staged five OMT west on its route-facing approach, and maintains the pair's cohesion without duplicate ownership.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_structural_pair_handoff_v0_2026-08-03",
@@ -16,7 +16,7 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-    "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0",
+    "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
     "bandit_live_world local_handoff committed",
     "members=2",
     "bandit_live_world local_cohesion",
@@ -41,43 +41,66 @@
       "required_ready_at_home_count": 5,
       "required_wounded_or_unready_count": 0,
       "required_active_outside_count": 0,
+      "required_home_side_signal_count": 10,
       "required_active_group_id_exact": "",
       "required_active_target_id_exact": "",
-      "required_min_leads": 1,
-      "required_lead_kind": "structural_bounty",
-      "required_lead_target_id": "forest",
-      "required_lead_source_contains": "fixture_structural_pair_handoff",
-      "required_lead_status": "scout_confirmed",
-      "required_lead_bounty": 3,
-      "required_lead_threat": 0,
-      "required_lead_times_harvested": 0,
-      "required_lead_last_outcome": "structural_pair_handoff_fixture",
+      "required_max_leads": 0,
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_pair_handoff_fixture",
-      "abort_reason": "saved state did not contain the idle five-member camp and untouched structural pair-handoff target",
-      "expected_immediate_state": "the camp has five ready members, no active outing, and one untouched fixture target before live cadence begins",
-      "failure_rule": "If the camp is already active or the target is absent, later handoff logs cannot be credited."
+      "abort_reason": "saved state did not contain the idle five-member camp with zero inherited leads",
+      "expected_immediate_state": "the camp has five ready members, no inherited spawn heads, zero leads, and no active outing before live cadence begins",
+      "failure_rule": "If the camp is already active or inherited roster/evidence state can suppress or preselect dispatch, later handoff logs cannot be credited."
     },
     {
       "kind": "long_wait",
-      "label": "wait_6_hours_for_pair_dispatch_and_local_handoff",
+      "label": "wait_first_6_hours_toward_11_hour_routine_window",
       "choice_key": "8",
       "expected_duration": "6h",
       "allow_artifact_elapsed_without_menu_ocr": true,
       "pre_menu_choice_key": "w",
-      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 3-hour duration menu",
-      "completion_wait_seconds": 45.0,
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
+      "completion_wait_seconds": 60.0,
+      "artifact_state_patterns": [
+        "scheduler_hour=131",
+        "now_minutes=7860"
+      ],
+      "expected_visible_fact": "six real game hours pass while production owns legacy migration and initializes the exact camp's routine activation clock",
+      "failure_rule": "If the first bounded wait does not complete, the deterministic 11-hour dispatch window is not reached."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_second_6_hours_for_pair_dispatch",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
+      "completion_wait_seconds": 90.0,
       "artifact_state_patterns": [
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-        "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0",
+        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
+      ],
+      "expected_visible_fact": "the real hourly structural cadence crosses this camp's deterministic 11-hour due boundary and dispatches an autonomous pair toward the discovered road target",
+      "failure_rule": "If the bounded wait ends without the exact autonomous road dispatch, the probe is inconclusive/red."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_5_minutes_for_route_waypoint_handoff_and_cohesion",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 5-minute duration menu",
+      "completion_wait_seconds": 60.0,
+      "artifact_state_patterns": [
         "bandit_live_world local_handoff committed",
         "members=2",
         "bandit_live_world local_cohesion",
         "assembled=yes",
         "abort=no"
       ],
-      "expected_visible_fact": "the real hourly structural cadence dispatches a pair whose route-facing approach enters the loaded map; proof depends on same-run owner-last handoff and cohesion logs",
-      "failure_rule": "If the bounded wait ends without dispatch, a two-member local handoff, and assembled cohesion, the probe is inconclusive/red."
+      "expected_visible_fact": "five more real game minutes carry the dispatched pair through its first route waypoint, commit both members into local ownership inside the route-facing reality bubble, and leave a subsequent local turn for assembled cohesion",
+      "failure_rule": "If the bounded wait ends without a two-member local handoff and a later assembled cohesion pass, the route-waypoint proof is inconclusive/red."
     },
     {
       "kind": "press",
@@ -113,8 +136,8 @@
       "required_local_handoff_state": "local",
       "required_local_handoff_exact_pair": true,
       "required_local_handoff_pair_contract": true,
-      "required_active_target_id_exact": "forest",
-      "required_active_job_type": "scavenge",
+      "required_active_target_id_exact": "road",
+      "required_active_job_type": "scout",
       "required_min_active_member_ids": 2,
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_saved_current_pair_handoff_missing",
@@ -128,7 +151,7 @@
       "required_line_patterns": [
         [
           "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-          "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@149,51,0"
+          "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
         ],
         [
           "bandit_live_world local_handoff committed",
@@ -165,8 +188,8 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.structural_pair_handoff_live_mcw",
   "evidence_contract": {
-    "claim": "an idle camp dispatches one stable two-person structural outing, commits both persisted NPCs into local ownership at a route-facing waypoint, assembles them coherently, and saves one matching current-schema owner/cursor/handoff without same-run dematerialization",
+    "claim": "an idle zero-lead camp autonomously discovers a road target, dispatches one stable two-person structural outing, commits both persisted NPCs into local ownership at a route-facing waypoint, assembles them coherently, and saves one matching current-schema owner/cursor/handoff without same-run dematerialization",
     "load_only_verdict": "load proof only / inconclusive for pair materialization",
-    "failure_rule": "No Phase-3 live pair credit unless startup, idle preflight, elapsed cadence, dispatch, one complete handoff, assembled cohesion, clean save, nested saved-state audit, and no-dematerialization control are all green."
+    "failure_rule": "No Phase-4 live pair credit unless startup, idle preflight, elapsed cadence, dispatch, one complete handoff, assembled cohesion, clean save, nested saved-state audit, and no-dematerialization control are all green."
   }
 }
