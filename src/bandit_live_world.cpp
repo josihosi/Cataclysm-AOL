@@ -2736,37 +2736,6 @@ std::string to_string( camp_lead_origin origin )
     return "legacy_radar";
 }
 
-live_discovery_permissions live_discovery_permissions_for( const live_discovery_mode mode )
-{
-    live_discovery_permissions permissions;
-    switch( mode ) {
-        case live_discovery_mode::observer_signal_only:
-            permissions.typed_observer = true;
-            break;
-        case live_discovery_mode::legacy_radar_only:
-            permissions.legacy_camp_refresh = true;
-            permissions.legacy_player_dispatch = true;
-            break;
-    }
-    return permissions;
-}
-
-bool live_discovery_origin_is_allowed( const live_discovery_mode mode,
-                                       const camp_lead_origin origin )
-{
-    switch( origin ) {
-        case camp_lead_origin::observer:
-            return mode == live_discovery_mode::observer_signal_only;
-        case camp_lead_origin::legacy_radar:
-        case camp_lead_origin::signal:
-            return mode == live_discovery_mode::legacy_radar_only;
-        case camp_lead_origin::returned_report:
-        case camp_lead_origin::structural_routine:
-            return true;
-    }
-    return false;
-}
-
 std::string to_string( camp_lead_status status )
 {
     switch( status ) {
@@ -9742,6 +9711,89 @@ bool apply_returned_structural_threat_observation( site_record &site,
     advance_camp_map_lead_revision( site, lead );
     return true;
 }
+
+int apply_returned_structural_signal_observations( site_record &site, const int now_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    std::vector<camp_map_lead> learned_leads;
+    for( const sortie_observation &observation : outing.observations ) {
+        const std::string sense_name = structural_signal_sense_name( observation.sense );
+        const member_record *observer = site.find_member( observation.observer_id );
+        const bool private_observer_returned =
+            observation.share_state == sortie_observation_share_state::observer_private &&
+            observer != nullptr && observer->state == member_state::outbound &&
+            !outing.member_is_resolved( observation.observer_id ) &&
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(),
+                       observation.observer_id ) == outing.casualty_ids.end();
+        if( observation.record_schema_version != 1 || sense_name.empty() ||
+            observation.fact_key.rfind( "structural-signal:", 0 ) != 0 ||
+            ( observation.share_state != sortie_observation_share_state::shared &&
+              !private_observer_returned ) ||
+            observation.target_revision <= 0 ||
+            observation.target_revision > outing.target_lead_revision ||
+            observation.observed_minutes < 0 || observation.observed_minutes > now_minutes ||
+            observation.expiry_minutes < now_minutes || observation.source_id.empty() ||
+            std::find( outing.member_ids.begin(), outing.member_ids.end(), observation.observer_id ) ==
+            outing.member_ids.end() ||
+            std::find( outing.shared_route.begin(), outing.shared_route.end(),
+                       observation.source_omt ) == outing.shared_route.end() ||
+            std::find( outing.shared_route.begin(), outing.shared_route.end(),
+                       observation.receiver_omt ) == outing.shared_route.end() ) {
+            continue;
+        }
+
+        camp_map_lead learned;
+        learned.kind = signal_kind_to_camp_lead_kind( sense_name );
+        learned.origin = camp_lead_origin::returned_report;
+        learned.status = camp_lead_status::suspected;
+        learned.target_id = observation.source_id;
+        learned.omt = observation.source_omt;
+        learned.radius_omt = observation.uncertainty_radius_omt;
+        learned.source_key = observation.fact_key;
+        learned.source_summary = observation.summary;
+        learned.first_seen_minutes = observation.observed_minutes;
+        learned.last_seen_minutes = observation.observed_minutes;
+        learned.last_scouted_minutes = observation.observed_minutes;
+        learned.confidence = std::clamp( ( observation.confidence + 24 ) / 25, 1, 4 );
+        learned.generated_by_this_camp_routine = true;
+        learned.last_outcome = "returned_structural_" + sense_name + "_report";
+        learned.lead_id = camp_lead_id_for( site.site_id, learned.kind, learned.target_id,
+                                           learned.omt );
+        learned_leads.push_back( std::move( learned ) );
+    }
+    if( learned_leads.empty() ) {
+        return 0;
+    }
+
+    std::sort( learned_leads.begin(), learned_leads.end(), []( const camp_map_lead &lhs,
+    const camp_map_lead &rhs ) {
+        if( lhs.lead_id != rhs.lead_id ) {
+            return lhs.lead_id < rhs.lead_id;
+        }
+        return std::tie( lhs.last_seen_minutes, lhs.confidence, lhs.source_key ) >
+               std::tie( rhs.last_seen_minutes, rhs.confidence, rhs.source_key );
+    } );
+    learned_leads.erase( std::unique( learned_leads.begin(), learned_leads.end(),
+    []( const camp_map_lead &lhs, const camp_map_lead &rhs ) {
+        return lhs.lead_id == rhs.lead_id;
+    } ), learned_leads.end() );
+    site_record transaction = site;
+    for( const camp_map_lead &learned : learned_leads ) {
+        if( !upsert_camp_map_lead( transaction, learned ) ) {
+            return 0;
+        }
+    }
+    for( const camp_map_lead &learned : learned_leads ) {
+        const camp_map_lead *retained = transaction.intelligence_map.find_lead( learned.lead_id );
+        if( retained == nullptr || retained->origin != camp_lead_origin::returned_report ||
+            retained->target_id != learned.target_id || retained->omt != learned.omt ||
+            retained->source_key != learned.source_key ) {
+            return 0;
+        }
+    }
+    site = std::move( transaction );
+    return static_cast<int>( learned_leads.size() );
+}
 } // namespace
 
 abstract_threat_resolution resolve_structural_abstract_threat( site_record &site,
@@ -10009,7 +10061,7 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
 namespace
 {
 structural_outing_plan plan_frontier_outing_impl( const site_record &site,
-        const int now_minutes, const bool solve_route )
+        const int now_minutes, const bool solve_route, const bool require_exact_pair = true )
 {
     structural_outing_plan plan;
     plan.site_id = site.site_id;
@@ -10105,12 +10157,14 @@ structural_outing_plan plan_frontier_outing_impl( const site_record &site,
 
     const routine_scout_policy_result routine_policy = routine_scout_policy( site );
     const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
-    if( !routine_policy.eligible || !pair_selection.eligible ) {
+    if( !routine_policy.eligible || ( require_exact_pair && !pair_selection.eligible ) ) {
         plan.notes.push_back( "frontier outing blocked: exact routine pair is ineligible" );
         return plan;
     }
     plan.job = bandit_dry_run::job_template::scout;
-    plan.member_ids = pair_selection.member_ids;
+    if( require_exact_pair ) {
+        plan.member_ids = pair_selection.member_ids;
+    }
     plan.expected_stalking_minutes = minutes_after_saturated(
                                         now_minutes,
                                         structural_stalking_delay_minutes( site.anchor, plan.target_omt ) );
@@ -10131,7 +10185,8 @@ structural_outing_plan plan_frontier_outing_impl( const site_record &site,
 }
 
 structural_outing_plan plan_structural_bounty_outing_impl( const site_record &site,
-        const camp_map_lead &lead, const int now_minutes, const bool solve_route )
+        const camp_map_lead &lead, const int now_minutes, const bool solve_route,
+        const bool require_exact_pair = true )
 {
     structural_outing_plan plan;
     plan.site_id = site.site_id;
@@ -10235,11 +10290,13 @@ structural_outing_plan plan_structural_bounty_outing_impl( const site_record &si
                bandit_dry_run::job_template::scavenge :
                bandit_dry_run::job_template::scout;
     const routine_scout_pair_selection_result pair_selection = select_routine_scout_pair( site );
-    if( !pair_selection.eligible ) {
+    if( require_exact_pair && !pair_selection.eligible ) {
         plan.notes.push_back( "structural outing blocked: " + pair_selection.rejection_reason );
         return plan;
     }
-    plan.member_ids = pair_selection.member_ids;
+    if( require_exact_pair ) {
+        plan.member_ids = pair_selection.member_ids;
+    }
     plan.expected_stalking_minutes = now_minutes >= 0 ?
                                      minutes_after_saturated( now_minutes,
                                              structural_outing_stalking_delay_minutes( site, lead ) ) : -1;
@@ -10285,12 +10342,12 @@ bool cheap_plan_precedes( const structural_outing_plan &lhs, const structural_ou
 }
 
 std::vector<structural_outing_plan> cheap_structural_outing_candidates(
-    const site_record &site, const int now_minutes )
+    const site_record &site, const int now_minutes, const bool require_exact_pair = true )
 {
     std::vector<structural_outing_plan> candidates;
     for( const camp_map_lead &lead : site.intelligence_map.leads ) {
         structural_outing_plan candidate = plan_structural_bounty_outing_impl(
-                site, lead, now_minutes, false );
+                site, lead, now_minutes, false, require_exact_pair );
         if( candidate.valid ) {
             candidates.push_back( std::move( candidate ) );
         }
@@ -11147,6 +11204,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 if( !credit_structural_return_cargo( candidate, now_minutes ) ) {
                     continue;
                 }
+                const int returned_signal_leads =
+                    apply_returned_structural_signal_observations( candidate, now_minutes );
                 const std::optional<int> returned = release_structural_outing_reservation(
                         candidate, expected_activity_id, expected_generation,
                         "structural outing completed its shared route home" );
@@ -11154,6 +11213,10 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     site = std::move( candidate );
                     result.members_returned += *returned;
                     result.notes.push_back( "structural outing returned home lead=" + lead_id );
+                    if( returned_signal_leads > 0 ) {
+                        result.notes.push_back( "structural outing returned signal leads=" +
+                                                std::to_string( returned_signal_leads ) );
+                    }
                 }
             } else {
                 site = std::move( candidate );
@@ -11288,7 +11351,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 const structural_threat_observer_request & )> &abstract_threat_lookup,
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
-                const structural_threat_observer_request & )> &signal_lookup )
+                const structural_threat_observer_request & )> &signal_lookup,
+        const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_maintenance );
@@ -11389,6 +11453,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     };
     std::vector<routine_dispatch_candidate> dispatch_candidates;
     dispatch_candidates.reserve( static_cast<std::size_t>( sites_to_consider ) );
+    const bool defer_exact_pair = static_cast<bool>( materialize_for_dispatch );
     for( int offset = 0; offset < sites_to_consider; ++offset ) {
         const int eligible_index = ( result.scheduler_cursor_before + offset ) %
                                    static_cast<int>( routine_site_indices.size() );
@@ -11417,7 +11482,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         if( site.has_active_outside_pressure() ||
             !camp_decision_allows_dispatch( site.camp_decision,
                                             bandit_dry_run::job_template::scout ) ||
-            !routine_policy.eligible || !pair_selection.eligible ) {
+            !routine_policy.eligible || ( !defer_exact_pair && !pair_selection.eligible ) ) {
             continue;
         }
         const bool has_structural_candidate_source = std::any_of(
@@ -11430,9 +11495,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             continue;
         }
         std::vector<structural_outing_plan> cheap_plans =
-            cheap_structural_outing_candidates( site, now_minutes );
+            cheap_structural_outing_candidates( site, now_minutes, !defer_exact_pair );
         if( frontier_due ) {
-            structural_outing_plan frontier = plan_frontier_outing_impl( site, now_minutes, false );
+            structural_outing_plan frontier = plan_frontier_outing_impl(
+                    site, now_minutes, false, !defer_exact_pair );
             if( frontier.valid ) {
                 cheap_plans.push_back( std::move( frontier ) );
             }
@@ -11519,11 +11585,13 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             result.full_route_solves++;
             structural_outing_plan routed;
             if( cheap.frontier_sector >= 0 ) {
-                routed = plan_frontier_outing_impl( site, now_minutes, true );
+                routed = plan_frontier_outing_impl(
+                             site, now_minutes, true, !defer_exact_pair );
             } else {
                 const camp_map_lead *lead = site.intelligence_map.find_lead( cheap.lead_id );
                 if( lead != nullptr ) {
-                    routed = plan_structural_bounty_outing_impl( site, *lead, now_minutes, true );
+                    routed = plan_structural_bounty_outing_impl(
+                                 site, *lead, now_minutes, true, !defer_exact_pair );
                 }
             }
             if( routed.valid ) {
@@ -11584,18 +11652,67 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             result.dispatch_cap_reached = true;
             break;
         }
+        structural_outing_plan dispatch_plan = contender.plan;
+        if( defer_exact_pair ) {
+            const routine_scout_pair_selection_result existing_pair =
+                select_routine_scout_pair( state.sites[contender.site_index] );
+            if( !existing_pair.eligible ) {
+                if( result.materialization_attempts >= result.dispatch_cap ) {
+                    result.dispatches_blocked++;
+                    result.notes.push_back(
+                        "structural maintenance materialization cap blocked site=" +
+                        state.sites[contender.site_index].site_id );
+                    continue;
+                }
+                result.materialization_attempts++;
+                result.members_materialized += std::max(
+                                                   0, materialize_for_dispatch( state,
+                                                           contender.site_index ) );
+            }
+
+            site_record &materialized_site = state.sites[contender.site_index];
+            structural_outing_plan exact_plan;
+            if( contender.plan.frontier_sector >= 0 ) {
+                exact_plan = plan_frontier_outing_impl(
+                                 materialized_site, now_minutes, true, true );
+            } else if( const camp_map_lead *lead =
+                       materialized_site.intelligence_map.find_lead( contender.plan.lead_id ) ) {
+                exact_plan = plan_structural_bounty_outing_impl(
+                                 materialized_site, *lead, now_minutes, true, true );
+            }
+            const structural_route_read cached_route{
+                true, contender.plan.full_route_cost, contender.plan.max_route_segment_risk,
+                "scheduler-owned route retained across exact-pair materialization"
+            };
+            if( exact_plan.valid && !apply_structural_route_read(
+                    materialized_site, now_minutes, cached_route, exact_plan ) ) {
+                exact_plan.valid = false;
+            }
+            if( !exact_plan.valid || exact_plan.lead_id != contender.plan.lead_id ||
+                exact_plan.lead_revision != contender.plan.lead_revision ||
+                exact_plan.target_omt != contender.plan.target_omt ||
+                exact_plan.frontier_sector != contender.plan.frontier_sector ) {
+                result.dispatches_blocked++;
+                result.notes.push_back(
+                    "structural maintenance exact-pair materialization blocked site=" +
+                    materialized_site.site_id );
+                continue;
+            }
+            dispatch_plan = std::move( exact_plan );
+        }
+
         site_record &site = state.sites[contender.site_index];
-        for( const std::string &note : contender.plan.notes ) {
+        for( const std::string &note : dispatch_plan.notes ) {
             result.notes.push_back( note );
         }
-        if( apply_structural_bounty_outing_plan( site, contender.plan, now_minutes ) ) {
+        if( apply_structural_bounty_outing_plan( site, dispatch_plan, now_minutes ) ) {
             result.dispatches_applied++;
             result.notes.push_back( "structural maintenance dispatched site=" + site.site_id +
-                                    " lead=" + contender.plan.lead_id );
+                                    " lead=" + dispatch_plan.lead_id );
         } else {
             result.dispatches_blocked++;
             result.notes.push_back( "structural maintenance dispatch apply blocked site=" + site.site_id +
-                                    " lead=" + contender.plan.lead_id );
+                                    " lead=" + dispatch_plan.lead_id );
         }
     }
 
@@ -11632,6 +11749,8 @@ std::string render_structural_bounty_maintenance_report(
         << " dispatch_cap=" << result.dispatch_cap
         << " dispatches_planned=" << result.dispatches_planned
         << " dispatches_applied=" << result.dispatches_applied
+        << " materialization_attempts=" << result.materialization_attempts
+        << " members_materialized=" << result.members_materialized
         << " dispatch_cap_reached=" << ( result.dispatch_cap_reached ? "yes" : "no" )
         << " active_outings=" << result.outing.active_outings_considered
         << " stalking_checks=" << result.outing.stalking_checks_processed
@@ -13079,71 +13198,6 @@ bool mark_shakedown_reopen_used( site_record &site )
     }
     site.shakedown_reopen_used = true;
     site.shakedown_reopen_available = false;
-    return true;
-}
-
-bool record_live_signal_mark( site_record &site, const live_signal_mark &mark,
-                              const live_discovery_mode mode )
-{
-    const live_discovery_permissions permissions = live_discovery_permissions_for( mode );
-    if( !permissions.legacy_camp_refresh ||
-        !live_discovery_origin_is_allowed( mode, camp_lead_origin::signal ) ||
-        site.retired_empty_site || mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
-        return false;
-    }
-    const std::string mark_id = mark.mark_id.substr( 0, max_live_signal_mark_length );
-    site_record candidate = site;
-
-    bool changed = candidate.remembered_target_or_mark != mark_id;
-    candidate.remembered_target_or_mark = mark_id;
-    const int old_bounty = candidate.remembered_bounty_estimate;
-    const int old_threat = candidate.remembered_threat_estimate;
-    candidate.remembered_bounty_estimate = std::max( candidate.remembered_bounty_estimate,
-                                           mark.bounty_add );
-    candidate.remembered_threat_estimate = std::max( candidate.remembered_threat_estimate,
-                                           mark.threat_add );
-    changed |= candidate.remembered_bounty_estimate != old_bounty;
-    changed |= candidate.remembered_threat_estimate != old_threat;
-
-    if( std::find( candidate.known_recent_marks.begin(), candidate.known_recent_marks.end(), mark_id ) ==
-        candidate.known_recent_marks.end() ) {
-        if( candidate.known_recent_marks.size() >= max_live_signal_marks ) {
-            candidate.known_recent_marks.erase( candidate.known_recent_marks.begin() );
-        }
-        candidate.known_recent_marks.push_back( mark_id );
-        changed = true;
-    }
-
-    camp_map_lead lead;
-    lead.kind = signal_kind_to_camp_lead_kind( mark.kind );
-    lead.origin = camp_lead_origin::signal;
-    lead.status = camp_lead_status::suspected;
-    lead.target_id = mark_id;
-    lead.omt = mark.source_omt;
-    lead.radius_omt = mark.range_cap_omt;
-    lead.source_key = mark_id;
-    lead.source_summary = "live " + mark.kind + " signal mark";
-    if( mark.kind == "smoke" ) {
-        lead.source_summary += " (obscured/uncertain lead)";
-    }
-    lead.last_seen_minutes = -1;
-    lead.bounty = std::max( 0, mark.bounty_add );
-    lead.threat = std::max( 0, mark.threat_add );
-    lead.confidence = std::max( 1, mark.confidence );
-    lead.threat_confirmed = lead.threat > 0;
-    lead.generated_by_this_camp_routine = true;
-    lead.last_outcome = "live_signal";
-    lead.lead_id = camp_lead_id_for( candidate.site_id, lead.kind, lead.target_id, lead.omt );
-    const camp_map_lead *old_lead = candidate.intelligence_map.find_lead( lead.lead_id );
-    changed |= old_lead == nullptr || old_lead->bounty != lead.bounty ||
-               old_lead->threat != lead.threat || old_lead->confidence != lead.confidence ||
-               old_lead->radius_omt != lead.radius_omt ||
-               old_lead->source_summary != lead.source_summary;
-    if( !upsert_camp_map_lead( candidate, std::move( lead ) ) || !changed ) {
-        return false;
-    }
-
-    site = std::move( candidate );
     return true;
 }
 

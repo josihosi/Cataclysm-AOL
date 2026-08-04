@@ -151,28 +151,6 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 
 namespace
 {
-static constexpr bandit_live_world::live_discovery_mode live_bandit_production_discovery_mode =
-    bandit_live_world::live_discovery_mode::observer_signal_only;
-
-std::string live_bandit_player_target_id( const tripoint_abs_omt &player_omt )
-{
-    std::ostringstream out;
-    out << "player@" << player_omt.x() << ',' << player_omt.y() << ',' << player_omt.z();
-    return out.str();
-}
-
-std::string join_live_bandit_notes( const std::vector<std::string> &notes )
-{
-    std::ostringstream out;
-    for( size_t i = 0; i < notes.size(); ++i ) {
-        if( i > 0 ) {
-            out << " | ";
-        }
-        out << notes[i];
-    }
-    return out.str();
-}
-
 bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
 {
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
@@ -305,17 +283,6 @@ std::string live_bandit_omt_token( const tripoint_abs_omt &omt )
 {
     std::ostringstream out;
     out << omt.x() << ',' << omt.y() << ',' << omt.z();
-    return out.str();
-}
-
-std::string live_bandit_gate_summary( const bandit_live_world::dispatch_plan &plan,
-                                      const bandit_live_world::local_gate_decision &decision,
-                                      const tripoint_abs_omt &dispatch_goal )
-{
-    std::ostringstream out;
-    out << "dispatch " << bandit_live_world::to_string( decision.posture )
-        << " toward " << plan.target_id
-        << " via goal@" << live_bandit_omt_token( dispatch_goal );
     return out.str();
 }
 
@@ -571,16 +538,6 @@ bool live_bandit_shakedown_already_opened( const bandit_live_world::site_record 
         const bandit_live_world::member_record *member = site.find_member( member_id );
         if( member != nullptr && member->last_writeback_summary.find( "shakedown_surface" ) !=
             std::string::npos ) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool live_bandit_shakedown_was_paid( const bandit_live_world::site_record &site )
-{
-    for( const bandit_live_world::member_record &member : site.members ) {
-        if( member.last_writeback_summary.find( "shakedown_surface paid" ) != std::string::npos ) {
             return true;
         }
     }
@@ -1463,12 +1420,6 @@ bool note_live_bandit_aftermath()
     return changed;
 }
 
-bool has_active_player_pressure( const bandit_live_world::site_record &site )
-{
-    return site.active_outing.is_active() && !site.active_outing.member_ids.empty() &&
-           string_starts_with( site.active_outing.target_id, "player@" );
-}
-
 struct live_bandit_signal_observation {
     bandit_live_world::live_signal_mark mark;
     bandit_mark_generation::signal_input signal;
@@ -1488,18 +1439,7 @@ struct live_bandit_sound_observation {
     int emitted_minutes = -1;
 };
 
-struct live_bandit_dispatch_candidate {
-    int distance = 0;
-    size_t site_index = 0;
-    const live_bandit_signal_observation *signal = nullptr;
-    std::string remembered_lead_id;
-    std::string reason;
-    int signal_distance = 0;
-    int cap = 0;
-};
-
 static constexpr int live_bandit_system_envelope_omt = 40;
-static constexpr int live_bandit_direct_player_range_omt = 10;
 static constexpr int live_bandit_local_source_scan_radius_ms = 60;
 
 struct live_bandit_local_source_reading {
@@ -1571,7 +1511,7 @@ void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state
     }
 }
 
-int live_bandit_materialize_abstract_members_for_dispatch(
+int live_bandit_materialize_abstract_members_for_routine(
     bandit_live_world::world_state &state, bandit_live_world::site_record &site )
 {
     if( site.source_kind != bandit_live_world::anchor_source_kind::overmap_special ||
@@ -2529,7 +2469,6 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
     const bandit_mark_generation::smoke_weather_band weather_band = live_bandit_smoke_weather_band();
     const bandit_mark_generation::light_time_band light_time = live_bandit_light_time_band();
     const bandit_mark_generation::light_weather_band light_weather = live_bandit_light_weather_band();
-    const tripoint_abs_omt player_omt = u.pos_abs_omt();
     const weather_manager &weather = get_weather_const();
     for( const std::pair<const tripoint_abs_omt, live_bandit_local_source_reading> &entry : readings ) {
         const tripoint_abs_omt &source_omt = entry.first;
@@ -2537,9 +2476,9 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         bandit_mark_generation::local_field_signal_reading adapter_reading;
         adapter_reading.smoke_id = live_bandit_source_mark_id( "smoke", source_omt );
         adapter_reading.light_id = live_bandit_source_mark_id( "light", source_omt );
-        adapter_reading.envelope_id = live_bandit_player_target_id( player_omt );
+        adapter_reading.envelope_id = "local_field@" + live_bandit_omt_token( source_omt );
         adapter_reading.region_id = live_bandit_omt_token( source_omt );
-        adapter_reading.observed_range_omt = rl_dist( player_omt, source_omt );
+        adapter_reading.observed_range_omt = 0;
         adapter_reading.fire_intensity = reading.fire_intensity;
         adapter_reading.smoke_intensity = reading.smoke_intensity;
         adapter_reading.light_intensity = reading.light_intensity;
@@ -2685,92 +2624,6 @@ int bootstrap_live_bandit_abstract_sites_near_player()
                                    << " total_sites=" << state.sites.size() << '\n';
     }
     return result.created_sites;
-}
-
-int refresh_live_bandit_signal_marks(
-    const std::vector<live_bandit_signal_observation> &signals,
-    const bandit_live_world::live_discovery_mode discovery_mode )
-{
-    const bandit_live_world::live_discovery_permissions permissions =
-        bandit_live_world::live_discovery_permissions_for( discovery_mode );
-    if( !permissions.legacy_camp_refresh || signals.empty() ) {
-        return 0;
-    }
-
-    avatar &u = get_avatar();
-    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
-    if( state.sites.empty() ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal maintenance skipped: "
-                                   << "reason=empty_ownership_state signal_packet=yes packets="
-                                   << signals.size() << '\n';
-        return 0;
-    }
-
-    int matched_sites = 0;
-    int refreshed_sites = 0;
-    int matched_smoke_sites = 0;
-    int matched_light_sites = 0;
-    int rejected_by_system_range = 0;
-    int rejected_by_signal_range = 0;
-    int rejected_retired_empty_site = 0;
-    for( bandit_live_world::site_record &site : state.sites ) {
-        if( site.retired_empty_site ) {
-            rejected_retired_empty_site++;
-            continue;
-        }
-        if( rl_dist( site.anchor, u.pos_abs_omt() ) > live_bandit_system_envelope_omt ) {
-            rejected_by_system_range++;
-            continue;
-        }
-
-        std::vector<const live_bandit_signal_observation *> matching_signals;
-        bool smoke_signal_matched = false;
-        bool light_signal_matched = false;
-        for( const live_bandit_signal_observation &signal : signals ) {
-            const int signal_distance = rl_dist( site.anchor, signal.source_omt );
-            if( signal_distance > signal.range_cap_omt ) {
-                continue;
-            }
-            matching_signals.push_back( &signal );
-            if( signal.mark.kind == "light" || signal.mark.kind == "searchlight" ) {
-                light_signal_matched = true;
-            } else if( signal.mark.kind == "smoke" ) {
-                smoke_signal_matched = true;
-            }
-        }
-
-        if( matching_signals.empty() ) {
-            rejected_by_signal_range++;
-            continue;
-        }
-
-        matched_sites++;
-        if( light_signal_matched ) {
-            matched_light_sites++;
-        }
-        if( smoke_signal_matched ) {
-            matched_smoke_sites++;
-        }
-        bool site_refreshed = false;
-        for( const live_bandit_signal_observation *signal : matching_signals ) {
-            site_refreshed |= bandit_live_world::record_live_signal_mark(
-                                  site, signal->mark, discovery_mode );
-        }
-        if( site_refreshed ) {
-            refreshed_sites++;
-        }
-    }
-
-    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal maintenance: signal_packet=yes packets="
-                               << signals.size() << " matched_sites=" << matched_sites
-                               << " refreshed_sites=" << refreshed_sites
-                               << " matched_smoke_sites=" << matched_smoke_sites
-                               << " matched_light_sites=" << matched_light_sites
-                               << " rejected_by_system_range=" << rejected_by_system_range
-                               << " rejected_by_signal_range=" << rejected_by_signal_range
-                               << " rejected_retired_empty_site=" << rejected_retired_empty_site
-                               << " scan_radius_omt=" << live_bandit_system_envelope_omt << '\n';
-    return refreshed_sites;
 }
 
 int signal_live_hordes_from_light_observations(
@@ -3628,6 +3481,12 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                     const bandit_live_world::structural_threat_observer_request & request ) {
                     return live_bandit_structural_signal_reads( live_signals, live_sounds,
                             site, outing, request );
+                }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
+                    if( site_index >= world.sites.size() ) {
+                        return 0;
+                    }
+                    return live_bandit_materialize_abstract_members_for_routine(
+                               world, world.sites[site_index] );
                 } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     return result;
@@ -3649,291 +3508,6 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
     } );
 }
 
-bandit_live_world::camp_map_dispatch_pressure live_bandit_camp_map_dispatch_pressure(
-    const bandit_live_world::camp_map_lead &lead )
-{
-    bandit_live_world::camp_map_dispatch_pressure pressure;
-    pressure.opening_available = lead.status != bandit_live_world::camp_lead_status::active;
-    pressure.opening_state = pressure.opening_available ? "opening_present_or_not_required" :
-                             "no_opening_after_bounded_stalk_window";
-    return pressure;
-}
-
-void note_live_bandit_no_opening_result( bandit_live_world::camp_map_lead &lead )
-{
-    if( lead.status != bandit_live_world::camp_lead_status::active ) {
-        return;
-    }
-    lead.status = bandit_live_world::camp_lead_status::stale;
-    lead.confidence = std::max( 0, lead.confidence - 1 );
-    lead.last_checked_minutes = live_bandit_current_minutes();
-    lead.last_outcome = "no_opening_return_hold_decay";
-}
-
-bool steer_live_bandit_dispatch_toward_player(
-    const std::vector<live_bandit_signal_observation> &signals,
-    const bandit_live_world::live_discovery_mode discovery_mode )
-{
-    const bandit_live_world::live_discovery_permissions permissions =
-        bandit_live_world::live_discovery_permissions_for( discovery_mode );
-    if( !permissions.legacy_player_dispatch ) {
-        return false;
-    }
-    avatar &u = get_avatar();
-    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
-    if( state.sites.empty() ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: empty ownership state\n";
-        return false;
-    }
-
-    std::vector<live_bandit_dispatch_candidate> candidate_sites;
-    candidate_sites.reserve( state.sites.size() );
-    int active_player_pressure = 0;
-    int rejected_by_range = 0;
-    int rejected_no_signal = 0;
-    int rejected_retired_empty_site = 0;
-    for( size_t i = 0; i < state.sites.size(); ++i ) {
-        const bandit_live_world::site_record &site = state.sites[i];
-        if( site.retired_empty_site ) {
-            rejected_retired_empty_site++;
-            continue;
-        }
-        if( has_active_player_pressure( site ) ) {
-            active_player_pressure++;
-        }
-        const int distance = rl_dist( site.anchor, u.pos_abs_omt() );
-        if( distance > live_bandit_system_envelope_omt ) {
-            rejected_by_range++;
-            continue;
-        }
-        if( distance <= live_bandit_direct_player_range_omt ) {
-            live_bandit_dispatch_candidate candidate;
-            candidate.distance = distance;
-            candidate.site_index = i;
-            candidate.reason = "direct_player_range";
-            candidate.cap = live_bandit_direct_player_range_omt;
-            candidate_sites.push_back( candidate );
-            continue;
-        }
-
-        const live_bandit_signal_observation *best_signal = nullptr;
-        int best_signal_distance = 0;
-        for( const live_bandit_signal_observation &signal : signals ) {
-            const int signal_distance = rl_dist( site.anchor, signal.source_omt );
-            if( signal_distance > signal.range_cap_omt ) {
-                continue;
-            }
-            if( best_signal == nullptr || signal_distance < best_signal_distance ) {
-                best_signal = &signal;
-                best_signal_distance = signal_distance;
-            }
-        }
-        if( best_signal != nullptr ) {
-            live_bandit_dispatch_candidate candidate;
-            candidate.distance = distance;
-            candidate.site_index = i;
-            candidate.signal = best_signal;
-            candidate.reason = "live_signal";
-            candidate.signal_distance = best_signal_distance;
-            candidate.cap = best_signal->range_cap_omt;
-            candidate_sites.push_back( candidate );
-        } else if( const bandit_live_world::camp_map_lead *remembered_lead =
-                   bandit_live_world::find_camp_map_dispatch_lead_for_target( site, u.pos_abs_omt(),
-                           live_bandit_player_target_id( u.pos_abs_omt() ) ) ) {
-            live_bandit_dispatch_candidate candidate;
-            candidate.distance = rl_dist( site.anchor, remembered_lead->omt );
-            candidate.site_index = i;
-            candidate.remembered_lead_id = remembered_lead->lead_id;
-            candidate.reason = "remembered_camp_map_lead";
-            candidate.cap = std::max( 2, remembered_lead->radius_omt );
-            candidate_sites.push_back( candidate );
-        } else if( signals.empty() ) {
-            rejected_no_signal++;
-        } else {
-            rejected_by_range++;
-        }
-    }
-
-    if( candidate_sites.empty() ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: sites=" << state.sites.size()
-                                   << " candidates=0 scan_radius_omt=" << live_bandit_system_envelope_omt
-                                   << " signal_packet=" << ( signals.empty() ? "no" : "yes" )
-                                   << " rejected_no_signal=" << rejected_no_signal
-                                   << " rejected_by_range=" << rejected_by_range
-                                   << " rejected_retired_empty_site=" << rejected_retired_empty_site
-                                   << " direct_cap=" << live_bandit_direct_player_range_omt
-                                   << " player=" << u.pos_abs_omt().to_string() << '\n';
-        return false;
-    }
-
-    static constexpr int max_simultaneous_player_pressure = 2;
-    if( active_player_pressure >= max_simultaneous_player_pressure ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: active_player_pressure="
-                                   << active_player_pressure << " cap=" << max_simultaneous_player_pressure
-                                   << " candidates=" << candidate_sites.size() << '\n';
-        return false;
-    }
-
-    std::sort( candidate_sites.begin(), candidate_sites.end(),
-    []( const live_bandit_dispatch_candidate & lhs, const live_bandit_dispatch_candidate & rhs ) {
-        return std::tie( lhs.distance, lhs.site_index ) < std::tie( rhs.distance, rhs.site_index );
-    } );
-    const std::string target_id = live_bandit_player_target_id( u.pos_abs_omt() );
-    bool dispatched_any = false;
-    for( const live_bandit_dispatch_candidate &candidate_site : candidate_sites ) {
-        if( active_player_pressure >= max_simultaneous_player_pressure ) {
-            break;
-        }
-
-        bandit_live_world::site_record &site = state.sites[candidate_site.site_index];
-        if( candidate_site.signal != nullptr ) {
-            bandit_live_world::record_live_signal_mark( site, candidate_site.signal->mark,
-                    discovery_mode );
-        }
-        if( live_bandit_shakedown_was_paid( site ) ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
-                                       << " distance=" << candidate_site.distance
-                                       << " candidate_reason=" << candidate_site.reason
-                                       << " reason=paid_shakedown_cooldown\n";
-            continue;
-        }
-        live_bandit_materialize_abstract_members_for_dispatch( state, site );
-        bandit_live_world::camp_map_lead *remembered_lead = candidate_site.remembered_lead_id.empty() ?
-                nullptr : site.intelligence_map.find_lead( candidate_site.remembered_lead_id );
-        const bandit_live_world::camp_map_dispatch_pressure camp_map_pressure = remembered_lead != nullptr ?
-                live_bandit_camp_map_dispatch_pressure( *remembered_lead ) :
-                bandit_live_world::camp_map_dispatch_pressure();
-        const bandit_live_world::dispatch_plan plan = remembered_lead != nullptr ?
-                bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *remembered_lead,
-                        camp_map_pressure ) :
-                bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
-        if( !plan.valid ) {
-            if( remembered_lead != nullptr && !camp_map_pressure.opening_available ) {
-                note_live_bandit_no_opening_result( *remembered_lead );
-            }
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
-                                       << " distance=" << candidate_site.distance
-                                       << " candidate_reason=" << candidate_site.reason
-                                       << " signal_packet=" << ( candidate_site.signal != nullptr ?
-                                               candidate_site.signal->mark.mark_id : "none" )
-                                       << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
-                                               "none" : candidate_site.remembered_lead_id )
-                                       << " opening_state=" << camp_map_pressure.opening_state
-                                       << " opening_available=" << ( camp_map_pressure.opening_available ? "yes" : "no" )
-                                       << " cap=" << candidate_site.cap
-                                       << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
-            continue;
-        }
-
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch plan: site=" << site.site_id
-                                   << " target=" << plan.target_id
-                                   << " candidate_reason=" << candidate_site.reason
-                                   << " job=" << bandit_dry_run::to_string( plan.entry.job_type )
-                                   << " selected_members=" << plan.member_ids.size()
-                                   << " signal_packet=" << ( candidate_site.signal != nullptr ?
-                                           candidate_site.signal->mark.mark_id : "none" )
-                                   << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
-                                           "none" : candidate_site.remembered_lead_id )
-                                   << " opening_state=" << camp_map_pressure.opening_state
-                                   << " opening_available=" << ( camp_map_pressure.opening_available ? "yes" : "no" )
-                                   << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
-
-        std::vector<shared_ptr_fast<npc>> dispatched_npcs;
-        dispatched_npcs.reserve( plan.member_ids.size() );
-        bool missing_member = false;
-        for( const character_id &member_id : plan.member_ids ) {
-            shared_ptr_fast<npc> bandit = overmap_buffer.find_npc( member_id );
-            if( !bandit ) {
-                missing_member = true;
-                break;
-            }
-            dispatched_npcs.push_back( bandit );
-        }
-        if( missing_member || dispatched_npcs.empty() ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
-                                       << " distance=" << candidate_site.distance
-                                       << " candidate_reason=" << candidate_site.reason
-                                       << " signal_packet=" << ( candidate_site.signal != nullptr ?
-                                               candidate_site.signal->mark.mark_id : "none" )
-                                       << " reason=missing_concrete_member\n";
-            continue;
-        }
-
-        bandit_live_world::site_record gate_site = site;
-        if( !bandit_live_world::apply_dispatch_plan( gate_site, plan ) ) {
-            continue;
-        }
-        bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( gate_site, u );
-        bandit_live_world::local_gate_decision gate_decision =
-            bandit_live_world::choose_local_gate_posture( gate_site, gate_input );
-
-        tripoint_abs_omt dispatch_goal = plan.target_omt;
-        if( gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
-            dispatch_goal = bandit_live_world::choose_hold_off_standoff_goal( gate_site.anchor,
-                            plan.target_omt, 2 );
-            gate_input.standoff_distance = rl_dist( dispatch_goal, plan.target_omt );
-        }
-
-        std::vector<std::vector<tripoint_abs_omt>> dispatch_paths;
-        dispatch_paths.reserve( dispatched_npcs.size() );
-        bool route_missing = false;
-        for( const shared_ptr_fast<npc> &bandit : dispatched_npcs ) {
-            std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( bandit->pos_abs_omt(),
-                                               dispatch_goal, overmap_path_params::for_npc() ).points;
-            if( path.empty() ) {
-                route_missing = true;
-                break;
-            }
-            dispatch_paths.push_back( std::move( path ) );
-        }
-        if( route_missing ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
-                                       << " distance=" << candidate_site.distance
-                                       << " candidate_reason=" << candidate_site.reason
-                                       << " signal_packet=" << ( candidate_site.signal != nullptr ?
-                                               candidate_site.signal->mark.mark_id : "none" )
-                                       << " reason=route_missing\n";
-            continue;
-        }
-
-        if( !bandit_live_world::apply_dispatch_plan( site, plan ) ) {
-            continue;
-        }
-        if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
-            bandit_live_world::current_external_simulation_cursor( site ) ) {
-            bandit_live_world::note_active_sortie_started(
-                site, *cursor, live_bandit_current_minutes() );
-        }
-
-        const std::string gate_summary = live_bandit_gate_summary( plan, gate_decision, dispatch_goal );
-        for( const character_id &member_id : plan.member_ids ) {
-            bandit_live_world::update_member_state( site, member_id,
-                                                    bandit_live_world::member_state::outbound, gate_summary );
-        }
-        DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
-                                   gate_decision ) << "- live_dispatch_goal=" << live_bandit_omt_token( dispatch_goal )
-                                   << "\n- live_candidate reason=" << candidate_site.reason
-                                   << " distance=" << candidate_site.distance
-                                   << " cap=" << candidate_site.cap
-                                   << " signal_packet=" << ( candidate_site.signal != nullptr ?
-                                           candidate_site.signal->mark.mark_id : "none" )
-                                   << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
-                                           "none" : candidate_site.remembered_lead_id )
-                                   << " signal_distance=" << candidate_site.signal_distance
-                                   << '\n';
-
-        for( size_t i = 0; i < dispatched_npcs.size(); ++i ) {
-            const shared_ptr_fast<npc> &bandit = dispatched_npcs[i];
-            bandit->goal = dispatch_goal;
-            bandit->omt_path = std::move( dispatch_paths[i] );
-            bandit->set_mission( NPC_MISSION_TRAVELLING );
-        }
-        active_player_pressure++;
-        dispatched_any = true;
-    }
-
-    return dispatched_any;
-}
 } // namespace
 
 namespace bandit_live_world
@@ -4206,9 +3780,7 @@ void monmove()
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
     maintain_live_bandit_local_pair_cohesion();
-    const bandit_live_world::live_discovery_permissions discovery_permissions =
-        bandit_live_world::live_discovery_permissions_for( live_bandit_production_discovery_mode );
-    if( discovery_permissions.typed_observer && calendar::once_every( 1_minutes ) ) {
+    if( calendar::once_every( 1_minutes ) ) {
         const int local_zombie_observations = record_live_bandit_local_zombie_observations();
         if( local_zombie_observations > 0 ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
@@ -4280,8 +3852,6 @@ void overmap_npc_move()
     const bool dispatch_cadence_due = calendar::once_every( 30_minutes );
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
     const bool structural_cadence_due = calendar::once_every( 60_minutes );
-    const bandit_live_world::live_discovery_permissions discovery_permissions =
-        bandit_live_world::live_discovery_permissions_for( live_bandit_production_discovery_mode );
     std::vector<live_bandit_signal_observation> live_signals;
     std::vector<live_bandit_sound_observation> live_sounds;
     sounds::consume_significant_sounds( [&live_sounds]( const tripoint_abs_omt &source_omt,
@@ -4294,9 +3864,6 @@ void overmap_npc_move()
     }
     if( signal_cadence_due ) {
         live_signals = observe_live_bandit_field_signals_near_player();
-        if( discovery_permissions.legacy_camp_refresh ) {
-            refresh_live_bandit_signal_marks( live_signals, live_bandit_production_discovery_mode );
-        }
         signal_live_hordes_from_light_observations( live_signals );
         signal_live_zombie_riders_from_light_observations( live_signals );
     }
@@ -4304,22 +3871,9 @@ void overmap_npc_move()
     if( dispatch_cadence_due || structural_cadence_due ) {
         refresh_live_bandit_member_readiness( bandit_state );
     }
-    if( discovery_permissions.legacy_player_dispatch ) {
-        if( dispatch_cadence_due ) {
-            steer_live_bandit_dispatch_toward_player( live_signals,
-                    live_bandit_production_discovery_mode );
-        } else if( signal_cadence_due ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: "
-                                       << "reason=30_minute_throttle"
-                                       << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
-                                       << " sites=" << bandit_state.sites.size()
-                                       << " dispatch_interval=30_minutes"
-                                       << " signal_interval=5_minutes\n";
-        }
-    }
-    if( discovery_permissions.typed_observer && structural_cadence_due ) {
+    if( structural_cadence_due ) {
         maintain_live_bandit_structural_bounty( live_signals, live_sounds );
-    } else if( discovery_permissions.typed_observer && !live_sounds.empty() ) {
+    } else if( !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =
             record_live_bandit_structural_sounds( bandit_state, live_sounds );
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_observation sites="
