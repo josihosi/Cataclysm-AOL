@@ -2058,6 +2058,60 @@ class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
                     {"site_id": "camp-missing"},
                 )
 
+    def test_can_seed_bounded_routine_history_while_clearing_evidence(self) -> None:
+        last_target = "camp-selected:terrain_opportunity:136,51,0:road"
+        previous_target = "camp-selected:terrain_opportunity:145,52,0:field"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [{
+                                "site_id": "camp-selected",
+                                "members": [],
+                                "intelligence_map": {"schema_version": 5, "leads": []},
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_clear_site_evidence",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                    "last_routine_target_lead_id": last_target,
+                    "previous_routine_target_lead_id": previous_target,
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            reports = apply_fixture_save_transforms(world_dir, normalized)
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            intelligence = payload["overmapbuffer"]["bandit_live_world"]["sites"][0][
+                "intelligence_map"
+            ]
+
+        self.assertEqual(intelligence["last_routine_target_lead_id"], last_target)
+        self.assertEqual(intelligence["previous_routine_target_lead_id"], previous_target)
+        self.assertEqual(reports[0]["last_routine_target_lead_id"], last_target)
+        self.assertEqual(reports[0]["previous_routine_target_lead_id"], previous_target)
+
+    def test_rejects_oversized_seeded_routine_history(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "at most 192 characters"):
+            normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_clear_site_evidence",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                    "last_routine_target_lead_id": "x" * 193,
+                }],
+                manifest_path=Path("manifest.json"),
+            )
+
 
 def _rotate_left_64(value: int, count: int) -> int:
     mask = (1 << 64) - 1
