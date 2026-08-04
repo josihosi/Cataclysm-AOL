@@ -341,6 +341,77 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 )
                 self.assertEqual(result["response_key"], "space")
 
+    def test_observed_garbled_vague_watched_prompt_overrides_wait_progress(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "ur hove a veuee vod ny ur ueiny satcheu\n"
+                "Waiting 25%\nPress | to interrupt waiting\nTiles"
+            ),
+        })
+
+        self.assertEqual(result["status"], "known_prompt")
+        self.assertEqual(
+            result["classification"],
+            "shadow_warning_wilderness_flavor_popup",
+        )
+        self.assertEqual(result["response_key"], "space")
+        self.assertEqual(
+            result["matched_markers"],
+            ["garbled vague feeling of being watched"],
+        )
+
+    def test_garbled_shadow_warning_cannot_override_safety_prompts(self) -> None:
+        cases = (
+            (
+                "ur hove a veuee vod ny ur ueiny satcheu\nSafe mode\nPress a key\nTiles",
+                "known_prompt",
+                "safe_mode_spotted_hostile_prompt",
+                False,
+                "'",
+            ),
+            (
+                "ur hove a veuee vod ny ur ueiny satcheu\nSpotted hostile while waiting.",
+                "unknown_prompt",
+                "partial_safe_mode_spotted_hostile_prompt",
+                False,
+                "",
+            ),
+            (
+                "ur hove a veuee vod ny ur ueiny satcheu\n"
+                "There is a buzzing in your senses. A tiny cataclysm has begun.",
+                "known_prompt",
+                "portal_storm_notice",
+                True,
+                "space",
+            ),
+            (
+                "ur hove a veuee vod ny ur ueiny satcheu\nApply changes? (y/n)",
+                "unknown_prompt",
+                "unhandled_blocking_menu",
+                False,
+                "",
+            ),
+        )
+        for body, expected_status, expected_classification, contaminating, response_key in cases:
+            with self.subTest(body=body):
+                result = classify_blocking_interruption({"ok": True, "text": body})
+
+                self.assertEqual(result["status"], expected_status)
+                self.assertEqual(result["classification"], expected_classification)
+                self.assertEqual(result["contaminating"], contaminating)
+                self.assertEqual(result["response_key"], response_key)
+
+    def test_partial_garbled_warning_does_not_override_wait_text(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "ur hove a veuee\nWaiting 25%\nPress | to interrupt waiting\nTiles",
+        })
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["classification"], "wait_activity_in_progress")
+        self.assertEqual(result["response_key"], "")
+
     def test_shadow_warning_text_cannot_override_safe_mode_prompt(self) -> None:
         result = classify_blocking_interruption({
             "ok": True,

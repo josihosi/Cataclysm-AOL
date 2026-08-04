@@ -1835,6 +1835,7 @@ def screen_text_body( screen_text_report: Dict[str, Any] ) -> str:
 def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[str, Any]:
     body = screen_text_body(screen_text_report).strip()
     lowered = body.lower()
+    normalized_ocr_body = re.sub(r"[^a-z0-9]+", " ", lowered).strip()
     lines = [line.strip() for line in body.splitlines() if line.strip()]
     base = {
         "text": body,
@@ -1949,6 +1950,12 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
+    garbled_vague_watched_marker = "garbled vague feeling of being watched"
+    if re.search(
+        r"\bur hove a veuee(?: [a-z0-9]{1,8}){1,4} ueiny satcheu\b",
+        normalized_ocr_body,
+    ):
+        shadow_warning_markers.append(garbled_vague_watched_marker)
     lifeless_grass_markers = [
         marker
         for marker in (
