@@ -1748,13 +1748,30 @@ int record_live_bandit_local_zombie_observations()
     return recorded;
 }
 
-bool maintain_live_bandit_local_pair_cohesion()
+std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     map &here = get_map();
-    bool changed = false;
+    std::map<character_id, tripoint_abs_ms> assembly_orders;
+    const auto append_assembly_orders = [&assembly_orders](
+    const bandit_live_world::active_outing_state & outing ) {
+        for( const std::pair<const character_id, tripoint_abs_ms> &order :
+             bandit_live_world::local_pair_assembly_orders( outing ) ) {
+            assembly_orders.emplace( order );
+        }
+    };
+    struct pending_cohesion {
+        bandit_live_world::site_record *site = nullptr;
+        bandit_live_world::local_cohesion_plan plan;
+    };
+    std::vector<pending_cohesion> pending;
+    std::set<character_id> claimed_members;
+    bool ownership_preflight_failed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
+            ownership_preflight_failed = true;
+        }
         if( site.retired_empty_site || !outing.is_active() ||
             outing.kind != bandit_live_world::outing_kind::structural_sortie ||
             outing.schema_version < 7 ||
@@ -1791,7 +1808,15 @@ bool maintain_live_bandit_local_pair_cohesion()
         if( !plan.valid ) {
             continue;
         }
+        pending.push_back( { &site, plan } );
+    }
+    if( ownership_preflight_failed ) {
+        return {};
+    }
 
+    for( pending_cohesion &work : pending ) {
+        bandit_live_world::site_record &site = *work.site;
+        const bandit_live_world::local_cohesion_plan &plan = work.plan;
         struct order_backup {
             npc *member = nullptr;
             std::optional<tripoint_abs_ms> ordered_position;
@@ -1828,10 +1853,15 @@ bool maintain_live_bandit_local_pair_cohesion()
                 }
                 backup.member->path = backup.path;
             }
+            // A same-minute cohesion re-read has no persisted delta, but the local owner
+            // must retain motor priority for the rest of that minute.  Any attempted route
+            // that fails to commit instead remains fail-closed.
+            if( !route_attempted && plan.movement_orders.empty() ) {
+                append_assembly_orders( site.active_outing );
+            }
             continue;
         }
 
-        changed = true;
         for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
              site.active_outing.local_handoff.members ) {
             npc *member = g->find_npc( snapshot.npc_id );
@@ -1859,8 +1889,9 @@ bool maintain_live_bandit_local_pair_cohesion()
                                    << " abort=" <<
                                    ( site.active_outing.local_handoff.cohesion_abort_return ? "yes" : "no" )
                                    << '\n';
+        append_assembly_orders( site.active_outing );
     }
-    return changed;
+    return assembly_orders;
 }
 
 bool dematerialize_live_bandit_structural_handoffs()
@@ -3742,14 +3773,15 @@ void monmove()
 
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
-    maintain_live_bandit_local_pair_cohesion();
+    std::map<character_id, tripoint_abs_ms> pair_assembly_orders =
+        maintain_live_bandit_local_pair_cohesion();
     if( calendar::once_every( 1_minutes ) ) {
         const int local_zombie_observations = record_live_bandit_local_zombie_observations();
         if( local_zombie_observations > 0 ) {
             // The first cohesion pass owns safety movement.  Re-read exact positions after
             // recording so an assembled pair can communicate the new fact before either NPC
             // moves or dies later in this turn.
-            maintain_live_bandit_local_pair_cohesion();
+            pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
                                        << local_zombie_observations << '\n';
         }
@@ -3770,7 +3802,19 @@ void monmove()
                guy.get_moves() > 0 && turns < 10 ) {
             const int moves = guy.get_moves();
             const bool has_destination = guy.has_destination_activity();
-            guy.move();
+            const auto assembly_order = pair_assembly_orders.find( guy.getID() );
+            if( assembly_order == pair_assembly_orders.end() ) {
+                guy.move();
+            } else if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
+                       !m.inbounds( assembly_order->second ) ||
+                       rl_dist( guy.pos_abs(), assembly_order->second ) <= 1 ) {
+                guy.move_pause();
+            } else if( guy.update_path( m.get_bub( assembly_order->second ), false, false ) ) {
+                guy.move_to_next();
+            } else {
+                guy.path.clear();
+                guy.move_pause();
+            }
             if( moves == guy.get_moves() ) {
                 // Count every time we exit npc::move() without spending any moves.
                 real_count++;

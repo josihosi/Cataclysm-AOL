@@ -7824,6 +7824,88 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( serialize_world( round_trip_world( world ) ) == assembled );
     }
 
+    SECTION( "incomplete local ownership pins both staging motor orders" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_handoff_plan handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *cursor, 100, make_reads( site ) );
+        REQUIRE( handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     site, handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+
+        const std::map<character_id, tripoint_abs_ms> orders =
+            bandit_live_world::local_pair_assembly_orders( site.active_outing );
+        REQUIRE( orders.size() == 2 );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            REQUIRE( orders.count( member.npc_id ) == 1 );
+            CHECK( orders.at( member.npc_id ) == member.staging_position );
+        }
+
+        site.active_outing.local_handoff.cohesion_assembled = true;
+        CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).empty() );
+        site.active_outing.local_handoff.cohesion_assembled = false;
+        site.active_outing.local_handoff.cohesion_abort_return = true;
+        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
+        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+        CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).empty() );
+    }
+
+    SECTION( "duplicate local ownership fails before either site can act" ) {
+        bandit_live_world::world_state first = make_world( false );
+        bandit_live_world::world_state second = make_world( false );
+        bandit_live_world::site_record &first_site = first.sites.front();
+        bandit_live_world::site_record &second_site = second.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> first_cursor =
+            bandit_live_world::current_external_simulation_cursor( first_site );
+        const std::optional<bandit_live_world::simulation_advance_cursor> second_cursor =
+            bandit_live_world::current_external_simulation_cursor( second_site );
+        REQUIRE( first_cursor );
+        REQUIRE( second_cursor );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     first_site, bandit_live_world::plan_local_pair_handoff(
+                         first_site, *first_cursor, 100, make_reads( first_site ) ),
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     second_site, bandit_live_world::plan_local_pair_handoff(
+                         second_site, *second_cursor, 100, make_reads( second_site ) ),
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+
+        std::set<character_id> claimed_members;
+        REQUIRE( bandit_live_world::claim_local_pair_site_ownership(
+                     first_site, claimed_members ) );
+        const std::set<character_id> first_claim = claimed_members;
+        CHECK_FALSE( bandit_live_world::claim_local_pair_site_ownership(
+                         second_site, claimed_members ) );
+        CHECK( claimed_members == first_claim );
+
+        std::set<character_id> malformed_claim;
+        second_site.active_outing.local_handoff.members.pop_back();
+        CHECK_FALSE( bandit_live_world::claim_local_pair_site_ownership(
+                         second_site, malformed_claim ) );
+        CHECK( malformed_claim.empty() );
+
+        second_site.active_outing.local_handoff = first_site.active_outing.local_handoff;
+        second_site.retired_empty_site = true;
+        CHECK_FALSE( bandit_live_world::claim_local_pair_site_ownership(
+                         second_site, malformed_claim ) );
+        CHECK( malformed_claim.empty() );
+    }
+
     SECTION( "separation has a fresh timeout and two failed routes abort coherently" ) {
         bandit_live_world::world_state world = make_world( true );
         bandit_live_world::site_record &site = world.sites.front();

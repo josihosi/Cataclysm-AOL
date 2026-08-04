@@ -1388,6 +1388,10 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         const std::vector<local_cohesion_member_read> &member_reads );
 bool commit_local_pair_cohesion( site_record &site, const local_cohesion_plan &plan,
                                  bool route_attempted, bool route_failed );
+bool claim_local_pair_site_ownership( const site_record &site,
+                                      std::set<character_id> &claimed_members );
+std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
+    const active_outing_state &outing );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );

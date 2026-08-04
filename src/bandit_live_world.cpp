@@ -3770,6 +3770,59 @@ bool commit_local_pair_cohesion( site_record &site, const local_cohesion_plan &p
     return true;
 }
 
+bool claim_local_pair_site_ownership( const site_record &site,
+                                      std::set<character_id> &claimed_members )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local ) {
+        return true;
+    }
+    if( site.retired_empty_site || outing.schema_version < 7 ||
+        !simulation_owner_state_is_consistent( outing ) ||
+        !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
+        outing.member_ids.size() != 2 ) {
+        return false;
+    }
+
+    std::set<character_id> candidate_members;
+    for( const local_handoff_member_snapshot &snapshot : outing.local_handoff.members ) {
+        if( !candidate_members.emplace( snapshot.npc_id ).second ||
+            claimed_members.count( snapshot.npc_id ) > 0 ) {
+            return false;
+        }
+    }
+    claimed_members.insert( candidate_members.begin(), candidate_members.end() );
+    return true;
+}
+
+std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
+    const active_outing_state &outing )
+{
+    std::map<character_id, tripoint_abs_ms> result;
+    if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
+        outing.schema_version < 7 || outing.owner != simulation_owner::local ||
+        !simulation_owner_state_is_consistent( outing ) ||
+        !outing.local_handoff.is_active() || outing.local_handoff.cohesion_assembled ||
+        outing.local_handoff.cohesion_abort_return ||
+        outing.local_handoff.members.size() != 2 || outing.member_ids.size() != 2 ) {
+        return result;
+    }
+    for( const local_handoff_member_snapshot &snapshot : outing.local_handoff.members ) {
+        if( snapshot.dead || outing.member_is_resolved( snapshot.npc_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(),
+                       snapshot.npc_id ) != outing.casualty_ids.end() ||
+            std::find( outing.member_ids.begin(), outing.member_ids.end(),
+                       snapshot.npc_id ) == outing.member_ids.end() ) {
+            continue;
+        }
+        if( !result.emplace( snapshot.npc_id, snapshot.staging_position ).second ) {
+            return {};
+        }
+    }
+    return result;
+}
+
 scout_phase scout_phase_after_burned_evacuation( const bool concealed_rally_reached )
 {
     return concealed_rally_reached ? scout_phase::returning_report :
