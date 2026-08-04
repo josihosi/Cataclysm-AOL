@@ -257,7 +257,10 @@ cooldown, or no-candidate paths. Natural NPC insertion remains compile-path rath
 the quiet former-radar control is green at `f80c33996b` for both factions with 1/80 focused and
 3/1,778 adjacent autonomous assertions. It deliberately isolates the deleted proximity path with
 zero terrain-scan budget; legitimate static terrain priors remain allowed. Avatar relocation and
-the no-second-writer control are next. The
+single-writer stability are green at `531f626c6c`: a returned lead stays byte-identical at the old
+OMT while the real avatar moves between two former-radar positions. Focused 1/113, combined no-radar
+2/193, adjacent autonomous 4/1,891, and full live-world 163/37,879 are green. Decoy/empty signal
+investigations are next. The
 compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

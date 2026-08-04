@@ -6,7 +6,7 @@ Status: **ACTIVE - Phase 4 autonomous discovery and radar removal**
 
 Active phase: **Phase 4**
 
-Current deterministic execution row: **Prove avatar relocation cannot drag a stationary lead or recreate a second writer.**
+Current deterministic execution row: **Prove decoy signals can resolve stale or empty without magical correction.**
 
 Latest checkpoint (behavior `f28450a2a6`, harness retirement `641ea0884b`, 2026-08-04): `dev` on
 the isolated Mac worktree; production `port/cdda-master` remains
@@ -20,7 +20,9 @@ tests are green at seed `830204929`; exact evidence is under external
 members/two starts and zero replay/cooldown/no-candidate materialization. Natural real-NPC insertion
 is production compile-path rather than live proof. Quiet proximity is green at `f80c33996b`: both
 factions remain ignorant of the real avatar six OMT away when every legitimate input is absent,
-including across save/load. Avatar relocation and no-second-writer proof are next.
+including across save/load. Relocation is green at `531f626c6c`: the real avatar moves between two
+former-radar positions without moving or duplicating a returned-report lead. Decoy/empty signal
+investigation honesty is next.
 
 Production target: `port/cdda-master`
 
@@ -875,7 +877,7 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [x] Introduce a temporary, test-visible single-writer cutover: observer/signal discovery may write while legacy radar is disabled; a legacy-only control may run separately, but both paths may never write the same live target revision. _Checkpoint `dda62833fc`: one closed production mode keeps typed structural/local observers active and disables both legacy camp-facing writers; the separate legacy-only control disables typed observers, and candidate-copy mode/cross-origin rejection is byte-identical. Focused 1/24, live-signal 4/63, full live-world 162/36,051, and handoff/save 12/331 are green under external `phase4-20260804/single-writer/MANIFEST.md`._
 - [x] Prove autonomous observer/signal discovery for both factions, then remove exact `direct_player_range` targeting and active-player-OMT matching rather than leaving a permanent dual path. _Checkpoint `f28450a2a6`: bounded scheduler finalists materialize exact pairs for both factions, typed smoke/light facts become camp leads only on physical return, repeated facts select the newest report, and the returned batch is atomic. Exact-avatar targeting/matching, camp signal writes, comparison mode, and player envelope are deleted. Focused 2/1,698, scheduler 9/27,248, full live-world 161/37,686, handoff/save 12/331, save-size 1/10, and harness 63/63 are green; `641ea0884b` marks 18 deleted-path scenarios blocked._
 - [x] A quiet evac shelter inside the former radar radius remains undiscovered without a route, signal, or legitimate line of sight. _Checkpoint `f80c33996b`: bandit and cannibal camps six OMT from the real avatar call none of the terrain/threat/route/observer/signal/materialization seams and create no lead, outing, report, decision, hostile operation, or `player@...` memory across exact save/load. Focused 1/80 and adjacent autonomous 3/1,778 are green. The zero terrain-scan budget isolates forbidden proximity and deliberately leaves the established static shelter prior intact._
-- [ ] Moving the player does not drag a stationary camp lead to the new avatar OMT.
+- [x] Moving the player does not drag a stationary camp lead to the new avatar OMT. _Checkpoint `531f626c6c`: for both factions, a validated returned-report lead stays byte-identical at the old OMT/origin/revision while the real avatar moves twelve OMT and remains six OMT from the camp at both positions. The new OMT cannot match it; all legitimate discovery/materialization callbacks stay unused, no second lead or `player@...` memory appears, and save/load is exact. Focused 1/113, both no-radar controls 2/193, adjacent autonomous 4/1,891, and full live-world 163/37,879 are green._
 - [ ] False/decoy smoke, light, and sound can produce stale/empty investigations rather than magical correction.
 - [ ] Scouts share observations only while within party communication range; a dead scout's private unshared evidence does not return home. _The state/report boundary is green at `600685c1c2`; the production remote writer at `e7c3da73e7` shares only a forward fact held by both unresolved outbound pair members, keeps overlap private, and proves dead-observer ignorance. A later local-distance case must still prove the same rule after pair separation/materialization._
 - [ ] Add debug rendering/logging of last-known position, evidence provenance, age, and expiry.
@@ -892,8 +894,8 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 Evidence:
 
-- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; quiet proximity `f80c33996b`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery,quiet-radar-control}/MANIFEST.md`.
-- No-radar control: exact-player code is deleted, returned observer reports and quiet proximity are green; relocation and live proof remain open.
+- Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; quiet proximity `f80c33996b`; avatar relocation `531f626c6c`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery,quiet-radar-control,avatar-relocation-control}/MANIFEST.md`.
+- No-radar control: exact-player code is deleted, returned observer reports, quiet proximity, and stationary relocation are green; live proof remains open.
 - Visibility matrix:
 - Evidence/save benchmark:
 

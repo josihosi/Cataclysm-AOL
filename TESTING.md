@@ -682,7 +682,19 @@ decision, hostile operation, or `player@...` state across exact save/load. Focus
 test binary SHA-256 is `7d878652bc131d6696550788e612afe2d37f7e15ec3236b7f48a66bcf64549eb`.
 External `phase4-20260804/quiet-radar-control/MANIFEST.md` records commands and the deliberate
 boundary: this isolates proximity with zero terrain-scan budget and does not forbid the established
-static zero-bounty shelter prior. Avatar relocation/no-second-writer is next.
+static zero-bounty shelter prior. The relocation control below completes the deterministic no-radar
+pair.
+
+Avatar relocation/single-writer stability is green at `531f626c6c`: a returned-report lead is
+upserted at the real avatar's old OMT, the avatar moves twelve OMT while the camp remains six OMT
+from both positions, and zero-budget production maintenance leaves the lead byte-identical at its
+old OMT/origin/revision. The new OMT does not match, every legitimate discovery/materialization seam
+stays unused, no second lead or `player@...` memory appears, and save/load is exact. Focused proof
+passes 1/113, both no-radar controls 2/193, adjacent autonomous proof 4/1,891, and full live-world
+163/37,879 at seed `830204929`; the 82,213,352-byte binary SHA-256 is
+`7bfaf8ba7fab325cce0a7078f859714b80da2f0d259a33f424182bcca5fd26e4`. External
+`phase4-20260804/avatar-relocation-control/MANIFEST.md` records the commands and boundary. Decoy and
+empty signal-investigation honesty is next.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
