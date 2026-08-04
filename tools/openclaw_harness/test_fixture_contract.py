@@ -117,6 +117,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             "Press . to interrupt waiting",
             "Press\nwaiting:\nor 5 to interrupt\n25%",
             "Press\nwaiting:\nor\n62%\nARM\nto\nHEAD\ninterrupt\nTiles",
+            "Press\nwaiting:\nor\n882\nARM\nto\ninterrupt\nTiles",
         )
         for body in cases:
             with self.subTest(body=body):
@@ -145,6 +146,15 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
 
                 self.assertEqual(result["status"], expected_status)
                 self.assertEqual(result["classification"], expected_classification)
+
+    def test_scattered_wait_words_remain_fail_closed(self) -> None:
+        body = "Press any key.\n" + ( "unrelated status text " * 12 ) + "\nwaiting for changes to interrupt"
+
+        result = classify_blocking_interruption({"ok": True, "text": body})
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(result["classification"], "partial_safe_mode_spotted_hostile_prompt")
+        self.assertEqual(result["response_key"], "")
 
     def test_lifeless_grass_wilderness_flavor_popup_is_known(self) -> None:
         body = (
