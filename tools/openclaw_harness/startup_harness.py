@@ -2155,10 +2155,17 @@ def wait_menu_expected_duration_patterns( expected_duration: str ) -> List[str]:
 def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict[str, Any]:
     text = screen_text_body( screen_text_report )
     clock_matches: List[Dict[str, Any]] = []
-    for match in re.finditer( r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?\b", text ):
+    for match in re.finditer(
+        r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?\s*([ap]m)?\b",
+        text,
+        flags=re.IGNORECASE,
+    ):
         hour = int( match.group( 1 ) )
         minute = int( match.group( 2 ) )
         second = int( match.group( 3 ) or 0 )
+        meridiem = str( match.group( 4 ) or "" ).lower()
+        if meridiem and 1 <= hour <= 12:
+            hour = hour % 12 + ( 12 if meridiem == "pm" else 0 )
         if hour <= 23:
             clock_matches.append( {
                 "text": match.group( 0 ),
@@ -2187,6 +2194,8 @@ def classify_wait_step_ledger(
     allow_artifact_elapsed_without_menu_ocr: bool = False,
 ) -> Dict[str, Any]:
     expected_seconds = wait_duration_seconds( expected_duration )
+    selected_duration = LONG_WAIT_MENU_CHOICES.get( choice_key, "" )
+    selected_seconds = wait_duration_seconds( selected_duration )
     duration_patterns = wait_menu_expected_duration_patterns( expected_duration )
     menu_body = screen_text_body( menu_text ).lower()
     menu_expected_matches = [pattern for pattern in duration_patterns if pattern.lower() in menu_body]
@@ -2222,12 +2231,20 @@ def classify_wait_step_ledger(
         allow_artifact_elapsed_without_menu_ocr and artifact_elapsed["matched"] and expected_seconds is not None
     )
     issues: List[str] = []
+    if expected_seconds is not None and selected_seconds != expected_seconds:
+        issues.append( "choice_key_does_not_match_expected_duration" )
     if not menu_has_wait_prompt and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_prompt" )
     if expected_seconds is not None and not menu_expected_matches and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_expected_duration" )
     if elapsed["status"] == "not_parsed":
         issues.append( "before_after_clock_or_turn_not_parsed" )
+    elif elapsed["status"] == "turn_delta_parsed" and expected_seconds is not None and \
+            elapsed.get( "delta_turns" ) != expected_seconds:
+        issues.append( "turn_delta_does_not_match_expected_duration" )
+    elif elapsed["status"] == "clock_delta_parsed" and expected_seconds is not None and \
+            elapsed.get( "delta_seconds" ) != expected_seconds:
+        issues.append( "clock_delta_does_not_match_expected_duration" )
     if effective_wait_status == "interrupted_or_prompt_visible":
         verdict = "blocked_wait_interrupted_or_prompt_visible"
     elif effective_wait_status not in {"completed", "completed_by_artifact_delta"}:
@@ -2241,6 +2258,8 @@ def classify_wait_step_ledger(
     return {
         "label": label,
         "choice_key": choice_key,
+        "selected_duration": selected_duration,
+        "selected_seconds": selected_seconds,
         "expected_duration": expected_duration,
         "expected_seconds": expected_seconds,
         "wait_menu_artifact": f"{label}.wait_menu.png / {label}.wait_menu.screen_text.json",
@@ -2339,6 +2358,50 @@ def capture_wait_artifact_delta(
         "matches_by_pattern": matches_by_pattern,
         "matched_lines": matched_lines,
         "path": str(out_path) if text else "",
+    }
+
+
+def poll_wait_artifact_completion(
+    artifact_log: Path,
+    run_dir: Path,
+    label: str,
+    start_size: int,
+    patterns: List[str],
+    *,
+    timeout_seconds: float,
+    poll_seconds: float,
+    filter_debug_noise: bool,
+) -> Dict[str, Any]:
+    poll_started = time.monotonic()
+    poll_attempts = 0
+    poll_report: Dict[str, Any] = {}
+    while True:
+        poll_attempts += 1
+        poll_report = capture_wait_artifact_delta(
+            artifact_log,
+            run_dir,
+            label,
+            "completion_poll",
+            start_size,
+            patterns,
+            filter_debug_noise=filter_debug_noise,
+        )
+        poll_match = artifact_delta_matches_all_patterns( poll_report )
+        if poll_match["matched"]:
+            break
+        elapsed_seconds = time.monotonic() - poll_started
+        if elapsed_seconds >= timeout_seconds:
+            break
+        time.sleep( min( max( poll_seconds, 0.05 ), timeout_seconds - elapsed_seconds ) )
+    elapsed_seconds = round( time.monotonic() - poll_started, 3 )
+    return {
+        "status": "matched" if poll_match["matched"] else "timed_out",
+        "attempts": poll_attempts,
+        "elapsed_seconds": elapsed_seconds,
+        "timeout_seconds": timeout_seconds,
+        "poll_seconds": poll_seconds,
+        "start_size": start_size,
+        "match": poll_match,
     }
 
 
@@ -2631,6 +2694,15 @@ def execute_long_wait_action(
     pre_menu_settle_seconds = float(step.get("pre_menu_settle_seconds", 0.5) or 0.5)
     after_choice_settle_seconds = float(step.get("after_choice_settle_seconds", 0.5) or 0.5)
     completion_wait_seconds = float(step.get("completion_wait_seconds", 8.0) or 8.0)
+    completion_artifact_timeout_seconds = float(
+        step.get("completion_artifact_timeout_seconds", 0.0) or 0.0
+    )
+    completion_artifact_poll_seconds = float(
+        step.get("completion_artifact_poll_seconds", 2.0) or 2.0
+    )
+    completion_artifact_settle_seconds = float(
+        step.get("completion_artifact_settle_seconds", 1.0) or 0.0
+    )
     tail_lines = int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 32)) or 32)
     complete_patterns = normalize_screen_text_patterns(
         step.get("wait_complete_text_contains", ["You finish waiting."])
@@ -2651,6 +2723,7 @@ def execute_long_wait_action(
             "continue",
             "interrupted",
             "You stop waiting",
+            "to interrupt",
         ])
     )
     report: Dict[str, Any] = {
@@ -2663,6 +2736,9 @@ def execute_long_wait_action(
         "pre_menu_settle_seconds": pre_menu_settle_seconds,
         "after_choice_settle_seconds": after_choice_settle_seconds,
         "completion_wait_seconds": completion_wait_seconds,
+        "completion_artifact_timeout_seconds": completion_artifact_timeout_seconds,
+        "completion_artifact_poll_seconds": completion_artifact_poll_seconds,
+        "completion_artifact_settle_seconds": completion_artifact_settle_seconds,
         "proof_rule": (
             "captures before/initial-menu/duration-menu/after screens plus before/after artifact deltas; "
             "does not type through prompts; interruptions remain evidence and must not be classified green by default"
@@ -2694,6 +2770,17 @@ def execute_long_wait_action(
     report["screen_before"] = before_capture.get("screen_summary", {})
     before_text = capture_screen_text_artifact(run_dir, f"{label}.before", before_capture, tail_lines=tail_lines)
     report["screen_before_text"] = before_text
+    pre_wait_screen_classification = classify_blocking_interruption( before_text )
+    report["pre_wait_screen_classification"] = pre_wait_screen_classification
+    if pre_wait_screen_classification.get( "classification" ) == "wait_activity_in_progress":
+        report["abort"] = {
+            "guard": "pre_wait_activity",
+            "status": "blocked_preexisting_wait_activity",
+            "verdict": "red_wait_preexisting_activity",
+            "reason": "a new bounded wait cannot start while an earlier wait activity is still running",
+        }
+        report["stop_after_step"] = True
+        return report
 
     peekaboo_press_sequence(pid, [wait_key], delay_ms=delay_ms)
     if menu_settle_seconds > 0:
@@ -2715,11 +2802,32 @@ def execute_long_wait_action(
     menu_text = capture_screen_text_artifact(run_dir, f"{label}.wait_menu", menu_capture, tail_lines=tail_lines)
     report["screen_wait_menu_text"] = menu_text
 
+    completion_start_size = (
+        artifact_log.stat().st_size
+        if artifact_log is not None and artifact_log.exists()
+        else wait_start_size
+    )
+    report["completion_artifact_start_size"] = completion_start_size
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
         time.sleep(after_choice_settle_seconds)
     if completion_wait_seconds > 0:
         time.sleep(completion_wait_seconds)
+    completion_poll_timed_out = False
+    if completion_artifact_timeout_seconds > 0 and state_patterns and artifact_log is not None:
+        report["completion_artifact_poll"] = poll_wait_artifact_completion(
+            artifact_log,
+            run_dir,
+            label,
+            completion_start_size,
+            state_patterns,
+            timeout_seconds=completion_artifact_timeout_seconds,
+            poll_seconds=completion_artifact_poll_seconds,
+            filter_debug_noise=filter_debug_noise,
+        )
+        completion_poll_timed_out = report["completion_artifact_poll"]["status"] == "timed_out"
+        if not completion_poll_timed_out and completion_artifact_settle_seconds > 0:
+            time.sleep( completion_artifact_settle_seconds )
     after_capture = capture_screenshot(pid, run_dir, f"{label}.after")
     report["screen_after"] = after_capture.get("screen_summary", {})
     after_text = capture_screen_text_artifact(run_dir, f"{label}.after", after_capture, tail_lines=tail_lines)
@@ -2729,7 +2837,7 @@ def execute_long_wait_action(
         run_dir,
         label,
         "after_wait",
-        wait_start_size,
+        completion_start_size,
         state_patterns,
         filter_debug_noise=filter_debug_noise,
     )
@@ -2817,7 +2925,7 @@ def execute_long_wait_action(
                 run_dir,
                 label,
                 f"after_interrupt_response_{response_count}",
-                wait_start_size,
+                completion_start_size,
                 state_patterns,
                 filter_debug_noise=filter_debug_noise,
             )
@@ -2889,6 +2997,17 @@ def execute_long_wait_action(
         report["abort_reason"] = str(
             step.get("abort_reason", "wait action was interrupted or showed a prompt")
         )
+    if completion_poll_timed_out:
+        report["abort"] = {
+            "guard": "completion_artifact_timeout",
+            "status": "blocked_wait_completion_timeout",
+            "verdict": "red_wait_completion_artifact_timeout",
+            "reason": "the bounded wait did not reach its exact post-choice endpoint before timeout",
+            "missing_patterns": report["completion_artifact_poll"]["match"].get(
+                "missing_patterns", []
+            ),
+        }
+        report["stop_after_step"] = True
     return report
 
 

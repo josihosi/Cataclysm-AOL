@@ -51,12 +51,15 @@ from startup_harness import (  # noqa: E402
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
     classify_blocking_interruption,
+    classify_wait_step_ledger,
+    execute_probe_steps,
     launch_game,
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
     peekaboo_focus_pid_with_retry,
     peekaboo_switch_app_for_pid,
+    poll_wait_artifact_completion,
     provision_llm_api_key_environment,
     read_secure_llm_credential,
     resolve_configured_python_command,
@@ -189,6 +192,155 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             "partial_safe_mode_spotted_hostile_prompt",
         )
         self.assertEqual(result["response_key"], "")
+
+
+class WaitStepLedgerContractTest(unittest.TestCase):
+    @staticmethod
+    def artifact_report() -> Dict[str, Any]:
+        return {
+            "patterns": ["endpoint"],
+            "matches_by_pattern": [{"pattern": "endpoint", "lines": ["endpoint"]}],
+            "path": "endpoint.log",
+        }
+
+    def classify(self, choice_key: str, expected_duration: str, before: str, after: str) -> Dict[str, Any]:
+        return classify_wait_step_ledger(
+            label="wait_contract",
+            choice_key=choice_key,
+            expected_duration=expected_duration,
+            before_text={"text": before},
+            menu_text={"text": "Wait a while: 5 minutes, 1 hour, 6 hours"},
+            after_text={"text": after},
+            wait_classification={"status": "completed"},
+            artifact_after_wait=self.artifact_report(),
+            allow_artifact_elapsed_without_menu_ocr=True,
+        )
+
+    def test_rejects_choice_key_and_elapsed_duration_mismatch(self) -> None:
+        report = self.classify("3", "1h", "Time: 10:00:00PM", "Time: 10:05:00PM")
+
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+        self.assertIn("choice_key_does_not_match_expected_duration", report["issues"])
+        self.assertIn("clock_delta_does_not_match_expected_duration", report["issues"])
+
+    def test_accepts_six_hours_across_midnight_in_twelve_hour_clock(self) -> None:
+        report = self.classify("8", "6h", "Time: 10:00:00PM", "Time: 4:00:00AM")
+
+        self.assertEqual(report["elapsed"]["delta_seconds"], 6 * 60 * 60)
+        self.assertEqual(report["verdict"], "green_wait_step_proven")
+
+    def test_rejects_incorrect_turn_delta(self) -> None:
+        report = self.classify("4", "30m", "turn 100", "turn 101")
+
+        self.assertEqual(report["verdict"], "yellow_wait_elapsed_or_menu_not_fully_proven")
+        self.assertIn("turn_delta_does_not_match_expected_duration", report["issues"])
+
+    def test_poll_excludes_artifacts_before_post_choice_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("endpoint\n", encoding="utf-8")
+            post_choice_baseline = artifact_log.stat().st_size
+
+            report = poll_wait_artifact_completion(
+                artifact_log,
+                run_dir,
+                "wait_contract",
+                post_choice_baseline,
+                ["endpoint"],
+                timeout_seconds=0.01,
+                poll_seconds=0.001,
+                filter_debug_noise=False,
+            )
+
+        self.assertEqual(report["status"], "timed_out")
+        self.assertEqual(report["match"]["missing_patterns"], ["endpoint"])
+
+    def test_real_poll_timeout_excludes_menu_artifact_and_prevents_second_wait(self) -> None:
+        steps = [
+            {
+                "kind": "long_wait",
+                "label": "first",
+                "choice_key": "5",
+                "expected_duration": "1h",
+                "pre_menu_choice_key": "w",
+                "completion_wait_seconds": 0.01,
+                "completion_artifact_timeout_seconds": 1.0,
+                "artifact_state_patterns": ["endpoint"],
+            },
+            {"kind": "long_wait", "label": "second", "choice_key": "5"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+
+            def screen_text(_run_dir: Path, label: str, _capture: Dict[str, Any], **_kwargs: Any) -> Dict[str, Any]:
+                if label.endswith(".wait_menu"):
+                    with artifact_log.open("a", encoding="utf-8") as stream:
+                        stream.write("endpoint emitted before duration choice\n")
+                    return {"ok": True, "text": "Wait a while: 1 hour"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": "Time: 10:00:00PM"}
+
+            timed_out_poll = {
+                "status": "timed_out",
+                "attempts": 1,
+                "elapsed_seconds": 1.0,
+                "timeout_seconds": 1.0,
+                "poll_seconds": 2.0,
+                "start_size": 0,
+                "match": {
+                    "matched": False,
+                    "patterns": ["endpoint"],
+                    "matched_patterns": [],
+                    "missing_patterns": ["endpoint"],
+                    "artifact_path": "",
+                    "source_log": str(artifact_log),
+                },
+            }
+            clear_interruption = {
+                "status": "clear",
+                "acknowledgement_count": 0,
+                "release_blocking": False,
+                "contaminating": False,
+            }
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                mock.patch("startup_harness.time.sleep"),
+                mock.patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=clear_interruption,
+                ),
+                mock.patch(
+                    "startup_harness.poll_wait_artifact_completion",
+                    return_value=timed_out_poll,
+                ) as poll,
+            ):
+                reports = execute_probe_steps(
+                    42,
+                    run_dir,
+                    steps,
+                    profile="dev-harness",
+                    world="McWilliams",
+                    artifact_log=artifact_log,
+                )
+
+            completion_start_size = poll.call_args.args[3]
+            post_menu_size = artifact_log.stat().st_size
+
+        self.assertEqual(completion_start_size, post_menu_size)
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0]["label"], "first")
+        self.assertTrue(reports[0]["stop_after_step"])
+        self.assertEqual(reports[0]["abort"]["guard"], "completion_artifact_timeout")
+        self.assertEqual(
+            [call.args[1] for call in press.call_args_list],
+            [["|"], ["w"], ["5"]],
+        )
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
