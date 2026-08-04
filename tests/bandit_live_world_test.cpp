@@ -13908,6 +13908,153 @@ TEST_CASE( "hostile_camp_quiet_shelter_inside_former_radar_radius_stays_undiscov
     }
 }
 
+TEST_CASE( "hostile_camp_avatar_relocation_does_not_drag_returned_report_lead",
+           "[bandit][live_world][phase4_avatar_relocation_control][save]" )
+{
+    constexpr int now_minutes = 18 * 60;
+    const tripoint_abs_ms original_avatar_position = get_avatar().pos_abs();
+    on_out_of_scope restore_avatar( [original_avatar_position]() {
+        get_avatar().setpos( original_avatar_position, false );
+    } );
+    const tripoint_abs_omt old_avatar_omt = get_avatar().pos_abs_omt();
+    const tripoint_abs_omt new_avatar_omt = old_avatar_omt + tripoint( 12, 0, 0 );
+    get_avatar().setpos( project_to<coords::ms>( old_avatar_omt ), false );
+    REQUIRE( get_avatar().pos_abs_omt() == old_avatar_omt );
+
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, cannibal ? 6 : 5, cannibal,
+                                 cannibal ? 722000 : 721000 );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.anchor = old_avatar_omt + tripoint( 6, 0, 0 );
+        site.footprint.assign( 1, site.anchor );
+        site.members.clear();
+        site.spawn_tiles.clear();
+        site.routine_activated_minutes = 0;
+        site.supply_units = 0;
+        site.supply_last_update_minutes = 0;
+        site.intelligence_map.frontier_last_resolved_minutes.assign( 8, now_minutes );
+
+        bandit_live_world::camp_map_lead returned_report;
+        returned_report.lead_id = site.site_id + "#lead:returned-basecamp:stationary";
+        returned_report.revision = 9;
+        returned_report.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+        returned_report.origin = bandit_live_world::camp_lead_origin::returned_report;
+        returned_report.status = bandit_live_world::camp_lead_status::scout_confirmed;
+        returned_report.target_id = "stationary-returned-basecamp";
+        returned_report.omt = old_avatar_omt;
+        returned_report.radius_omt = 1;
+        returned_report.source_key = "returned-report:outing-42:stationary-basecamp";
+        returned_report.source_summary =
+            "returning scouts physically observed a stationary basecamp";
+        returned_report.first_seen_minutes = now_minutes - 120;
+        returned_report.last_seen_minutes = now_minutes - 60;
+        returned_report.last_scouted_minutes = now_minutes - 60;
+        returned_report.bounty = 4;
+        returned_report.threat = 2;
+        returned_report.confidence = 4;
+        returned_report.threat_confirmed = true;
+        returned_report.scout_seen = true;
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( site, returned_report ) );
+        REQUIRE( site.intelligence_map.leads.size() == 1 );
+        const std::string lead_before_relocation = serialize_camp_map_lead(
+                    site.intelligence_map.leads.front() );
+
+        get_avatar().setpos( project_to<coords::ms>( new_avatar_omt ), false );
+        REQUIRE( get_avatar().pos_abs_omt() == new_avatar_omt );
+        CHECK( rl_dist( site.anchor, old_avatar_omt ) == 6 );
+        CHECK( rl_dist( site.anchor, new_avatar_omt ) == 6 );
+        CHECK( rl_dist( old_avatar_omt, new_avatar_omt ) > returned_report.radius_omt );
+
+        int terrain_calls = 0;
+        int threat_calls = 0;
+        int route_calls = 0;
+        int abstract_observer_calls = 0;
+        int signal_calls = 0;
+        int materialization_calls = 0;
+        const bandit_live_world::structural_bounty_maintenance_result result =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, now_minutes, 0, 1,
+        [&terrain_calls]( const tripoint_abs_omt & ) -> std::optional<std::string> {
+            terrain_calls++;
+            return std::nullopt;
+        }, [&threat_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::camp_map_lead & ) {
+            threat_calls++;
+            return bandit_live_world::structural_threat_read{};
+        }, [&route_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::structural_outing_plan & ) {
+            route_calls++;
+            return bandit_live_world::structural_route_read{
+                true, 8, 0, "avatar relocation control should not request a route"
+            };
+        }, [&abstract_observer_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & ) {
+            abstract_observer_calls++;
+            return bandit_live_world::abstract_threat_read{};
+        }, [&signal_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & ) {
+            signal_calls++;
+            return std::vector<bandit_live_world::structural_signal_read>{};
+        }, [&materialization_calls]( bandit_live_world::world_state &, std::size_t ) {
+            materialization_calls++;
+            return 3;
+        } );
+
+        CHECK( result.materialization_attempts == 0 );
+        CHECK( result.members_materialized == 0 );
+        CHECK( result.dispatches_planned == 0 );
+        CHECK( result.dispatches_applied == 0 );
+        CHECK( result.outing.active_outings_considered == 0 );
+        CHECK( terrain_calls == 0 );
+        CHECK( threat_calls == 0 );
+        CHECK( route_calls == 0 );
+        CHECK( abstract_observer_calls == 0 );
+        CHECK( signal_calls == 0 );
+        CHECK( materialization_calls == 0 );
+
+        const auto check_stationary_single_writer = [&lead_before_relocation, &old_avatar_omt,
+        &new_avatar_omt]( const bandit_live_world::site_record & checked_site ) {
+            REQUIRE( checked_site.intelligence_map.leads.size() == 1 );
+            const bandit_live_world::camp_map_lead &lead =
+                checked_site.intelligence_map.leads.front();
+            CHECK( serialize_camp_map_lead( lead ) == lead_before_relocation );
+            CHECK( lead.omt == old_avatar_omt );
+            CHECK( lead.omt != new_avatar_omt );
+            CHECK( lead.origin == bandit_live_world::camp_lead_origin::returned_report );
+            CHECK( lead.revision == 9 );
+            CHECK( bandit_live_world::find_camp_map_dispatch_lead_for_target(
+                       checked_site, new_avatar_omt, "moved-avatar" ) == nullptr );
+            CHECK( checked_site.active_outing.kind == bandit_live_world::outing_kind::none );
+            CHECK( checked_site.active_outing.shared_route.empty() );
+            CHECK( checked_site.active_outing.target_id.empty() );
+            CHECK_FALSE( checked_site.current_scout_report.is_present() );
+            CHECK( checked_site.camp_decision.target_id.empty() );
+            CHECK( checked_site.camp_decision.target_omt != new_avatar_omt );
+            CHECK_FALSE( checked_site.active_hostile_operation.is_active() );
+            CHECK( checked_site.remembered_target_or_mark.empty() );
+            CHECK( checked_site.remembered_threat_estimate == 0 );
+            CHECK( checked_site.remembered_bounty_estimate == 0 );
+            CHECK( std::none_of( checked_site.known_recent_marks.begin(),
+                                checked_site.known_recent_marks.end(),
+            []( const std::string & mark ) {
+                return mark.find( "player@" ) != std::string::npos;
+            } ) );
+        };
+        check_stationary_single_writer( world.sites.front() );
+        CHECK( serialize_world( world ).find( "player@" ) == std::string::npos );
+
+        const std::string before_round_trip = serialize_world( world );
+        world = round_trip_world( world );
+        CHECK( serialize_world( world ) == before_round_trip );
+        check_stationary_single_writer( world.sites.front() );
+        CHECK( serialize_world( world ).find( "player@" ) == std::string::npos );
+    }
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch]" )
 {
