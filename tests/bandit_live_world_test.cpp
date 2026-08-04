@@ -7874,6 +7874,15 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
         site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
         CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).empty() );
+        const std::set<character_id> homeward_ids =
+            bandit_live_world::local_pair_homeward_travel_ids( world );
+        CHECK( homeward_ids.size() == 2 );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            CHECK( homeward_ids.count( member.npc_id ) == 1 );
+        }
+        site.active_outing.phase = bandit_live_world::scout_phase::observing;
+        CHECK( bandit_live_world::local_pair_homeward_travel_ids( world ).empty() );
     }
 
     SECTION( "duplicate local ownership fails before either site can act" ) {

@@ -3823,6 +3823,38 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     return result;
 }
 
+std::set<character_id> local_pair_homeward_travel_ids( const world_state &state )
+{
+    std::set<character_id> claimed_members;
+    for( const site_record &site : state.sites ) {
+        if( !claim_local_pair_site_ownership( site, claimed_members ) ) {
+            return {};
+        }
+    }
+
+    std::set<character_id> result;
+    for( const site_record &site : state.sites ) {
+        const active_outing_state &outing = site.active_outing;
+        if( site.retired_empty_site || !outing.is_active() ||
+            outing.kind != outing_kind::structural_sortie ||
+            outing.owner != simulation_owner::local ||
+            !simulation_owner_state_is_consistent( outing ) ||
+            !outing.local_handoff.is_active() ||
+            !scout_phase_requires_homeward_only( outing.phase ) ) {
+            continue;
+        }
+        for( const local_handoff_member_snapshot &snapshot : outing.local_handoff.members ) {
+            if( snapshot.dead || outing.member_is_resolved( snapshot.npc_id ) ||
+                std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(),
+                           snapshot.npc_id ) != outing.casualty_ids.end() ) {
+                continue;
+            }
+            result.insert( snapshot.npc_id );
+        }
+    }
+    return result;
+}
+
 scout_phase scout_phase_after_burned_evacuation( const bool concealed_rally_reached )
 {
     return concealed_rally_reached ? scout_phase::returning_report :

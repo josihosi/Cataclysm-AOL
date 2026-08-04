@@ -3887,6 +3887,9 @@ void monmove()
                                        << local_zombie_observations << '\n';
         }
     }
+    const std::set<character_id> pair_homeward_travel_ids =
+        bandit_live_world::local_pair_homeward_travel_ids(
+            overmap_buffer.global_state.bandit_live_world );
     for( npc &guy : g->all_npcs() ) {
         int turns = 0;
         int real_count = 0;
@@ -3904,17 +3907,23 @@ void monmove()
             const int moves = guy.get_moves();
             const bool has_destination = guy.has_destination_activity();
             const auto assembly_order = pair_assembly_orders.find( guy.getID() );
-            if( assembly_order == pair_assembly_orders.end() ) {
-                guy.move();
-            } else if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
-                       !m.inbounds( assembly_order->second ) ||
-                       rl_dist( guy.pos_abs(), assembly_order->second ) <= 1 ) {
-                guy.move_pause();
-            } else if( guy.update_path( m.get_bub( assembly_order->second ), false, false ) ) {
-                guy.move_to_next();
+            if( assembly_order != pair_assembly_orders.end() ) {
+                if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
+                    !m.inbounds( assembly_order->second ) ||
+                    rl_dist( guy.pos_abs(), assembly_order->second ) <= 1 ) {
+                    guy.move_pause();
+                } else if( guy.update_path( m.get_bub( assembly_order->second ), false, false ) ) {
+                    guy.move_to_next();
+                } else {
+                    guy.path.clear();
+                    guy.move_pause();
+                }
+            } else if( pair_homeward_travel_ids.count( guy.getID() ) > 0 &&
+                       guy.is_travelling() && guy.has_omt_destination() &&
+                       !guy.has_flag( json_flag_CANNOT_MOVE ) ) {
+                guy.go_to_omt_destination();
             } else {
-                guy.path.clear();
-                guy.move_pause();
+                guy.move();
             }
             if( moves == guy.get_moves() ) {
                 // Count every time we exit npc::move() without spending any moves.

@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -1392,6 +1393,7 @@ bool claim_local_pair_site_ownership( const site_record &site,
                                       std::set<character_id> &claimed_members );
 std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const active_outing_state &outing );
+std::set<character_id> local_pair_homeward_travel_ids( const world_state &state );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
