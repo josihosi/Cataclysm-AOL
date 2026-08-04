@@ -1962,7 +1962,7 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         if marker in lowered
     ]
     wait_progress_percentage = bool(re.search(r"\b\d{1,3}\s*%", lowered))
-    contiguous_wait_activity = "interrupt waiting" in lowered
+    contiguous_wait_activity = bool( re.search( r"\binterrupt\s+waiting\b", lowered ) )
     bounded_fragmented_wait_banner = bool( re.search(
         r"press(?=[\s\S]{0,160}interrupt)[\s\S]{0,64}waiting"
         r"[\s\S]{0,64}\bto\b[\s\S]{0,64}interrupt",

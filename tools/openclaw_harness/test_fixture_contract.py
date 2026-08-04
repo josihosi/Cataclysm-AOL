@@ -118,6 +118,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             "Press\nwaiting:\nor 5 to interrupt\n25%",
             "Press\nwaiting:\nor\n62%\nARM\nto\nHEAD\ninterrupt\nTiles",
             "Press\nwaiting:\nor\n882\nARM\nto\ninterrupt\nTiles",
+            "Press . or 5 to interrupt\nwaiting:\n632",
         )
         for body in cases:
             with self.subTest(body=body):
