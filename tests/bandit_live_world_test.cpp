@@ -7623,11 +7623,20 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
     };
     const auto make_reads = []( const bandit_live_world::site_record &site ) {
         std::vector<bandit_live_world::local_handoff_member_read> reads;
-        const tripoint_abs_omt route_position = site.active_outing.shared_route[
-                    static_cast<std::size_t>( site.active_outing.waypoint_index )];
+        const tripoint_abs_omt route_position =
+            site.active_outing.local_handoff.is_abstract_resume() ?
+            site.active_outing.local_handoff.route_position :
+            site.active_outing.shared_route[
+                static_cast<std::size_t>( site.active_outing.waypoint_index )];
         const tripoint_abs_ms origin = project_to<coords::ms>( route_position );
         for( std::size_t index = 0; index < site.active_outing.member_ids.size(); ++index ) {
             const character_id member_id = site.active_outing.member_ids[index];
+            if( site.active_outing.member_is_resolved( member_id ) ||
+                std::find( site.active_outing.casualty_ids.begin(),
+                           site.active_outing.casualty_ids.end(), member_id ) !=
+                site.active_outing.casualty_ids.end() ) {
+                continue;
+            }
             const bandit_live_world::member_record *member = site.find_member( member_id );
             REQUIRE( member != nullptr );
             bandit_live_world::local_handoff_member_read read;
@@ -8089,10 +8098,22 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK_FALSE( site.find_member( reads[0].npc_id )->wounded_or_unready );
         CHECK( site.find_member( reads[1].npc_id )->wounded_or_unready );
 
+        const std::optional<bandit_live_world::simulation_advance_cursor> receipt_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( receipt_cursor );
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         site, *receipt_cursor, 101, make_reads( site ) ).valid );
+
         const std::string resumed_bytes = serialize_world( world );
         bandit_live_world::world_state loaded = round_trip_world( world );
         CHECK( serialize_world( loaded ) == resumed_bytes );
         bandit_live_world::site_record &loaded_site = loaded.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> loaded_receipt_cursor =
+            bandit_live_world::current_external_simulation_cursor( loaded_site );
+        REQUIRE( loaded_receipt_cursor );
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         loaded_site, *loaded_receipt_cursor, 101,
+                         make_reads( loaded_site ) ).valid );
         CHECK( bandit_live_world::commit_local_pair_dematerialization(
                    loaded_site, dematerialization,
         [&quiesce_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
@@ -8103,6 +8124,31 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         } ) == bandit_live_world::local_handoff_commit_result::unchanged );
         CHECK( quiesce_calls == 2 );
         CHECK( rollback_calls == 0 );
+
+        bandit_live_world::world_state observed_loaded = loaded;
+        bandit_live_world::site_record &observed_site = observed_loaded.sites.front();
+        const bandit_live_world::sortie_observation observation =
+            make_typed_visual_observation(
+                observed_site.active_outing.leader_id,
+                observed_site.active_outing.target_lead_revision, 102,
+                "post-dematerialization-observation",
+                bandit_live_world::sortie_observation_share_state::shared );
+        const bandit_live_world::sortie_observation_effect observation_effect =
+            bandit_live_world::record_active_typed_observations(
+                observed_site, require_current_simulation_cursor( observed_site ),
+                observed_site.active_outing.leader_id,
+                observed_site.active_outing.target_lead_revision, { observation }, 102 );
+        REQUIRE( observation_effect.valid );
+        CHECK( observed_site.active_outing.last_advanced_minutes == 102 );
+        CHECK_FALSE( observed_site.active_outing.local_handoff.is_abstract_resume() );
+        CHECK( observed_site.active_outing.local_handoff.activity_id.empty() );
+        const std::optional<bandit_live_world::simulation_advance_cursor> observed_cursor =
+            bandit_live_world::current_external_simulation_cursor( observed_site );
+        REQUIRE( observed_cursor );
+        CHECK( bandit_live_world::plan_local_pair_handoff(
+                   observed_site, *observed_cursor, 102, make_reads( observed_site ) ).valid );
+        CHECK( serialize_world( round_trip_world( observed_loaded ) ) ==
+               serialize_world( observed_loaded ) );
 
         CHECK( bandit_live_world::advance_structural_bounty_outings(
                    loaded, 101, {} ).active_outings_considered == 1 );
@@ -8116,6 +8162,233 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const std::string advanced_once = serialize_world( loaded );
         bandit_live_world::advance_structural_bounty_outings( loaded, 102, {} );
         CHECK( serialize_world( loaded ) == advanced_once );
+    }
+
+    SECTION( "a homeward pair can snapshot its exact exit beyond the handoff OMT" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.active_outing.waypoint_index =
+            static_cast<int>( site.active_outing.shared_route.size() ) - 2;
+        const std::optional<bandit_live_world::simulation_advance_cursor> abstract_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( abstract_cursor );
+        const bandit_live_world::local_handoff_plan handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *abstract_cursor, 100, make_reads( site ) );
+        REQUIRE( handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     site, handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        assemble_pair( site, 100 );
+        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
+
+        const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( local_cursor );
+        std::vector<bandit_live_world::local_dematerialization_member_read> reads;
+        const tripoint_abs_omt route_position =
+            site.active_outing.local_handoff.route_position;
+        const tripoint_abs_omt next_omt = site.anchor;
+        CHECK( std::abs( next_omt.x() - route_position.x() ) > 1 );
+        const tripoint_abs_ms next_omt_origin = project_to<coords::ms>( next_omt );
+        for( std::size_t index = 0; index < site.active_outing.local_handoff.members.size(); ++index ) {
+            bandit_live_world::local_dematerialization_member_read read;
+            read.npc_id = site.active_outing.local_handoff.members[index].npc_id;
+            read.readable = true;
+            read.homeward_route_confirmed = true;
+            read.hp_percent = 80;
+            read.current_position = tripoint_abs_ms(
+                                        next_omt_origin.x() + static_cast<int>( index ),
+                                        next_omt_origin.y(), next_omt_origin.z() );
+            reads.push_back( read );
+        }
+        bandit_live_world::local_dematerialization_plan dematerialization =
+            bandit_live_world::plan_local_pair_dematerialization(
+                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        REQUIRE( dematerialization.valid );
+        CHECK( dematerialization.resume_snapshot.members[0].exit_position ==
+               reads[0].current_position );
+        CHECK( dematerialization.resume_snapshot.route_position == next_omt );
+        CHECK( dematerialization.resume_snapshot.approach_from == route_position );
+        CHECK( dematerialization.resume_snapshot.egress_omt ==
+               site.active_outing.shared_route.back() );
+
+        std::vector<bandit_live_world::local_cohesion_member_read> homeward_reads;
+        for( const bandit_live_world::local_dematerialization_member_read &read : reads ) {
+            bandit_live_world::local_cohesion_member_read cohesion_read;
+            cohesion_read.npc_id = read.npc_id;
+            cohesion_read.present = true;
+            cohesion_read.current_position = read.current_position;
+            homeward_reads.push_back( cohesion_read );
+        }
+        const bandit_live_world::local_cohesion_plan released_cohesion =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *local_cursor, 101, homeward_reads );
+        REQUIRE( released_cohesion.valid );
+        CHECK( released_cohesion.snapshot.cohesion_assembled );
+        CHECK_FALSE( released_cohesion.reroute_needed );
+        CHECK( released_cohesion.movement_orders.empty() );
+        CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).empty() );
+
+        reads[1].current_position = tripoint_abs_ms( next_omt_origin.x() + 10,
+                                    next_omt_origin.y(), next_omt_origin.z() );
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        REQUIRE( dematerialization.valid );
+        CHECK( dematerialization.resume_snapshot.route_position == next_omt );
+        const tripoint_abs_omt split_exit_omt( next_omt.x() - 1, next_omt.y(), next_omt.z() );
+        const tripoint_abs_ms split_exit_origin = project_to<coords::ms>( split_exit_omt );
+        reads[1].current_position = split_exit_origin;
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        CHECK_FALSE( dematerialization.valid );
+        reads[1].current_position = tripoint_abs_ms( next_omt_origin.x() + 1,
+                                    next_omt_origin.y(), next_omt_origin.z() );
+
+        site.active_outing.phase = bandit_live_world::scout_phase::observing;
+        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::observing;
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        CHECK_FALSE( dematerialization.valid );
+
+        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
+        reads[0].homeward_route_confirmed = false;
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        CHECK_FALSE( dematerialization.valid );
+
+        reads[0].homeward_route_confirmed = true;
+        site.active_outing.local_handoff.cohesion_assembled = false;
+        site.active_outing.local_handoff.cohesion_abort_return = true;
+        reads[1].current_position = tripoint_abs_ms( next_omt_origin.x() + 10,
+                                    next_omt_origin.y(), next_omt_origin.z() );
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        REQUIRE( dematerialization.valid );
+        CHECK( dematerialization.resume_snapshot.route_position == next_omt );
+
+        site.active_outing.local_handoff.cohesion_assembled = true;
+        site.active_outing.local_handoff.cohesion_abort_return = false;
+        reads[1].current_position = tripoint_abs_ms( next_omt_origin.x() + 1,
+                                    next_omt_origin.y(), next_omt_origin.z() );
+        dematerialization = bandit_live_world::plan_local_pair_dematerialization(
+                                site, *local_cursor, 101, reads, site.active_outing.cargo );
+        REQUIRE( dematerialization.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     site, dematerialization,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        const std::string committed = serialize_world( world );
+        CHECK( serialize_world( round_trip_world( world ) ) == committed );
+        const int expected_return_minutes = site.active_outing.expected_return_minutes;
+        bandit_live_world::world_state guarded_offcamp_world = world;
+        bandit_live_world::site_record &guarded_offcamp_site =
+            guarded_offcamp_world.sites.front();
+        guarded_offcamp_site.active_outing.local_handoff.route_position = split_exit_omt;
+        guarded_offcamp_site.active_outing.local_handoff.approach_from = route_position;
+        for( std::size_t index = 0;
+             index < guarded_offcamp_site.active_outing.local_handoff.members.size(); ++index ) {
+            guarded_offcamp_site.active_outing.local_handoff.members[index].exit_position =
+                tripoint_abs_ms( split_exit_origin.x() + static_cast<int>( index ),
+                                 split_exit_origin.y(), split_exit_origin.z() );
+        }
+        const bandit_live_world::structural_outing_result blocked_offcamp_return =
+            bandit_live_world::advance_structural_bounty_outings(
+                guarded_offcamp_world, expected_return_minutes, {} );
+        CHECK( blocked_offcamp_return.members_returned == 0 );
+        CHECK( guarded_offcamp_site.active_outing.is_active() );
+        CHECK( guarded_offcamp_site.active_outing.local_handoff.is_abstract_resume() );
+        bandit_live_world::world_state contradictory_exit_world = world;
+        bandit_live_world::site_record &contradictory_exit_site =
+            contradictory_exit_world.sites.front();
+        for( std::size_t index = 0;
+             index < contradictory_exit_site.active_outing.local_handoff.members.size(); ++index ) {
+            contradictory_exit_site.active_outing.local_handoff.members[index].exit_position =
+                tripoint_abs_ms( split_exit_origin.x() + static_cast<int>( index ),
+                                 split_exit_origin.y(), split_exit_origin.z() );
+        }
+        CHECK_FALSE( bandit_live_world::current_external_simulation_cursor(
+                         contradictory_exit_site ) );
+        const bandit_live_world::structural_outing_result guarded_advance =
+            bandit_live_world::advance_structural_bounty_outings( world, 102, {} );
+        CHECK( guarded_advance.active_outings_considered == 1 );
+        CHECK( site.active_outing.is_active() );
+        CHECK( site.active_outing.local_handoff.is_abstract_resume() );
+        CHECK( site.active_outing.local_handoff.route_position == next_omt );
+        const std::optional<bandit_live_world::simulation_advance_cursor> guarded_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( guarded_cursor );
+        const bandit_live_world::local_handoff_plan resumed_handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *guarded_cursor, 102, make_reads( site ) );
+        REQUIRE( resumed_handoff.valid );
+        CHECK( resumed_handoff.snapshot.route_position == next_omt );
+        CHECK( resumed_handoff.snapshot.egress_omt ==
+               site.active_outing.shared_route.back() );
+        bandit_live_world::world_state followed_world = round_trip_world( world );
+        bandit_live_world::site_record &followed_site = followed_world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> followed_cursor =
+            bandit_live_world::current_external_simulation_cursor( followed_site );
+        REQUIRE( followed_cursor );
+        const bandit_live_world::local_handoff_plan followed_handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                followed_site, *followed_cursor, 102, make_reads( followed_site ) );
+        REQUIRE( followed_handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     followed_site, followed_handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( followed_site.active_outing.owner ==
+               bandit_live_world::simulation_owner::local );
+        CHECK( followed_site.active_outing.local_handoff.route_position == next_omt );
+        CHECK( bandit_live_world::local_pair_assembly_orders(
+                   followed_site.active_outing ).size() == 2 );
+        assemble_pair( followed_site, 103 );
+        CHECK( bandit_live_world::local_pair_assembly_orders(
+                   followed_site.active_outing ).empty() );
+
+        const tripoint_abs_omt second_next_omt(
+            next_omt.x() - 3, next_omt.y(), next_omt.z() );
+        const tripoint_abs_ms second_next_origin = project_to<coords::ms>( second_next_omt );
+        std::vector<bandit_live_world::local_dematerialization_member_read> second_exit_reads;
+        for( std::size_t index = 0;
+             index < followed_site.active_outing.local_handoff.members.size(); ++index ) {
+            bandit_live_world::local_dematerialization_member_read read;
+            read.npc_id = followed_site.active_outing.local_handoff.members[index].npc_id;
+            read.readable = true;
+            read.homeward_route_confirmed = true;
+            read.hp_percent = 80;
+            read.current_position = tripoint_abs_ms(
+                                        second_next_origin.x() + static_cast<int>( index ),
+                                        second_next_origin.y(), second_next_origin.z() );
+            second_exit_reads.push_back( read );
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> second_local_cursor =
+            bandit_live_world::current_external_simulation_cursor( followed_site );
+        REQUIRE( second_local_cursor );
+        const bandit_live_world::local_dematerialization_plan second_dematerialization =
+            bandit_live_world::plan_local_pair_dematerialization(
+                followed_site, *second_local_cursor, 104, second_exit_reads,
+                followed_site.active_outing.cargo );
+        CHECK_FALSE( second_dematerialization.valid );
+        CHECK( serialize_world( round_trip_world( followed_world ) ) ==
+               serialize_world( followed_world ) );
+
+        const bandit_live_world::structural_outing_result returned =
+            bandit_live_world::advance_structural_bounty_outings(
+                world, expected_return_minutes, {} );
+        CHECK( returned.members_returned == 2 );
+        CHECK_FALSE( site.active_outing.is_active() );
+        CHECK( site.active_outing.local_handoff.activity_id.empty() );
     }
 
     SECTION( "partial reads and partial quiesce leave the local owner byte identical" ) {
@@ -8180,6 +8453,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
     SECTION( "physical death and cargo are written once before abstract ownership" ) {
         bandit_live_world::world_state world = make_world( true );
         bandit_live_world::site_record &site = world.sites.front();
+        site.active_outing.waypoint_index =
+            static_cast<int>( site.active_outing.shared_route.size() ) - 2;
         const int living_before = site.living_total;
         const std::optional<bandit_live_world::simulation_advance_cursor> abstract_cursor =
             bandit_live_world::current_external_simulation_cursor( site );
@@ -8209,9 +8484,13 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( site.active_outing.leader_id == surviving_member_id );
         CHECK( site.active_outing.local_handoff.cohesion_leader_id == surviving_member_id );
         assemble_pair( site, 101 );
+        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
         const std::optional<bandit_live_world::simulation_advance_cursor> post_death_cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( post_death_cursor );
+        const tripoint_abs_omt survivor_exit_omt = site.anchor;
+        const tripoint_abs_ms survivor_exit_origin = project_to<coords::ms>( survivor_exit_omt );
         std::vector<bandit_live_world::local_dematerialization_member_read> reads;
         for( std::size_t index = 0; index < site.active_outing.local_handoff.members.size(); ++index ) {
             const bandit_live_world::local_handoff_member_snapshot &member =
@@ -8220,8 +8499,9 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             read.npc_id = member.npc_id;
             read.readable = true;
             read.dead = member.dead;
+            read.homeward_route_confirmed = !read.dead;
             read.hp_percent = read.dead ? 0 : 75;
-            read.current_position = member.dead ? member.exit_position : member.staging_position;
+            read.current_position = member.dead ? member.exit_position : survivor_exit_origin;
             reads.push_back( read );
         }
         bandit_live_world::sortie_cargo cargo;
@@ -8241,8 +8521,41 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( site.find_member( dead_member_id )->state ==
                bandit_live_world::member_state::dead );
         CHECK( site.active_outing.cargo.supply_units == 2 );
+        CHECK( site.active_outing.local_handoff.route_position == survivor_exit_omt );
         const std::string committed = serialize_world( world );
         CHECK( serialize_world( round_trip_world( world ) ) == committed );
+
+        const bandit_live_world::structural_outing_result advanced =
+            bandit_live_world::advance_structural_bounty_outings( world, 103, {} );
+        CHECK( advanced.active_outings_considered == 1 );
+        const std::optional<bandit_live_world::simulation_advance_cursor> survivor_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( survivor_cursor );
+        const bandit_live_world::local_handoff_plan survivor_handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *survivor_cursor, 103, make_reads( site ) );
+        REQUIRE( survivor_handoff.valid );
+        REQUIRE( survivor_handoff.snapshot.members.size() == 2 );
+        const auto dead_snapshot = std::find_if(
+                survivor_handoff.snapshot.members.begin(), survivor_handoff.snapshot.members.end(),
+        [&dead_member_id]( const bandit_live_world::local_handoff_member_snapshot & member ) {
+            return member.npc_id == dead_member_id;
+        } );
+        REQUIRE( dead_snapshot != survivor_handoff.snapshot.members.end() );
+        CHECK( dead_snapshot->dead );
+        CHECK( dead_snapshot->exit_position == death_position );
+        int survivor_bind_calls = 0;
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     site, survivor_handoff,
+        [&survivor_bind_calls]( const bandit_live_world::local_handoff_member_snapshot & ) {
+            survivor_bind_calls++;
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( survivor_bind_calls == 2 );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( site.active_outing.local_handoff.route_position == survivor_exit_omt );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
 }
 

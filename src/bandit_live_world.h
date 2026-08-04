@@ -457,6 +457,7 @@ struct local_dematerialization_member_read {
     character_id npc_id;
     bool readable = false;
     bool dead = false;
+    bool homeward_route_confirmed = false;
     int hp_percent = 0;
     tripoint_abs_ms current_position;
 };
