@@ -27,6 +27,7 @@
     {
       "kind": "audit_log_contains", "label": "audit_phase4_visibility_forest_optic_day_artifact",
       "required_line_patterns": [
+        ["bandit_live_world structural maintenance:", "candidates_sampled=0", "leads_seeded=0", "scheduler_hour=154", "dispatches_applied=1"],
         ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@138,52,0"],
         ["bandit_live_world structural_visibility:", "site=overmap_special:bandit_camp@140,51,0", "current_omt=(139,51,0)", "weather=clear", "optic=yes", "sight_points=6", "forward_candidates=1", "first_forward_omt=(138,52,0)", "first_forward_distance=1", "first_forward_acquired=yes", "outcome=observed", "threat_omt=(138,52,0)"]
       ],

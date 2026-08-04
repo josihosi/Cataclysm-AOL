@@ -9121,24 +9121,19 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_clear_site_evidence needs exact site_id in {manifest_path}"
                 )
-            last_routine_target_lead_id = str(
-                raw.get("last_routine_target_lead_id", "") or ""
-            ).strip()
-            previous_routine_target_lead_id = str(
-                raw.get("previous_routine_target_lead_id", "") or ""
-            ).strip()
-            if len(last_routine_target_lead_id) > 192 or \
-                    len(previous_routine_target_lead_id) > 192:
+            next_near_tick_minutes = raw.get("next_near_tick_minutes", -1)
+            if isinstance(next_near_tick_minutes, bool) or \
+                    not isinstance(next_near_tick_minutes, int) or \
+                    next_near_tick_minutes < -1 or next_near_tick_minutes > 2147483647:
                 raise SystemExit(
-                    f"Fixture save_transforms[{index}] bandit_clear_site_evidence routine target IDs "
-                    f"must be at most 192 characters in {manifest_path}"
+                    f"Fixture save_transforms[{index}] bandit_clear_site_evidence next_near_tick_minutes "
+                    f"must be an integer from -1 through 2147483647 in {manifest_path}"
                 )
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "site_id": site_id,
-                "last_routine_target_lead_id": last_routine_target_lead_id,
-                "previous_routine_target_lead_id": previous_routine_target_lead_id,
+                "next_near_tick_minutes": next_near_tick_minutes,
                 "clear_remembered_target_or_mark": bool(
                     raw.get("clear_remembered_target_or_mark", True)
                 ),
@@ -11908,18 +11903,14 @@ def apply_bandit_clear_site_evidence_transform(
     selected_site["intelligence_map"] = {
         "schema_version": 5,
         "last_daily_cleanup_minutes": -1,
-        "next_near_tick_minutes": -1,
+        "next_near_tick_minutes": int(transform.get("next_near_tick_minutes", -1)),
         "next_mid_tick_minutes": -1,
         "next_far_tick_minutes": -1,
         "next_frontier_tick_minutes": -1,
         "known_radius_omt": 0,
         "terrain_scan_cursor": 0,
-        "last_routine_target_lead_id": str(
-            transform.get("last_routine_target_lead_id", "") or ""
-        ),
-        "previous_routine_target_lead_id": str(
-            transform.get("previous_routine_target_lead_id", "") or ""
-        ),
+        "last_routine_target_lead_id": "",
+        "previous_routine_target_lead_id": "",
         "frontier_radius_omt": 0,
         "frontier_sector_cursor": 0,
         "frontier_last_resolved_minutes": [-1] * 8,
@@ -11948,12 +11939,7 @@ def apply_bandit_clear_site_evidence_transform(
         "previous_remembered_target_or_mark": previous_remembered_target_or_mark,
         "previous_remembered_pressure": previous_remembered_pressure,
         "previous_known_recent_mark_count": len(previous_known_recent_marks),
-        "last_routine_target_lead_id": selected_site["intelligence_map"][
-            "last_routine_target_lead_id"
-        ],
-        "previous_routine_target_lead_id": selected_site["intelligence_map"][
-            "previous_routine_target_lead_id"
-        ],
+        "next_near_tick_minutes": selected_site["intelligence_map"]["next_near_tick_minutes"],
         "clear_remembered_target_or_mark": clear_remembered_target,
         "clear_remembered_pressure": clear_remembered_pressure,
         "clear_known_recent_marks": clear_known_recent_marks,

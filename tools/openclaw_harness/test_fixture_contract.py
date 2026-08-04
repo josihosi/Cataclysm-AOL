@@ -2059,9 +2059,7 @@ class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
                     {"site_id": "camp-missing"},
                 )
 
-    def test_can_seed_bounded_routine_history_while_clearing_evidence(self) -> None:
-        last_target = "camp-selected:terrain_opportunity:136,51,0:road"
-        previous_target = "camp-selected:terrain_opportunity:145,52,0:field"
+    def test_can_defer_next_near_tick_while_clearing_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)
             dimension_path = world_dir / "dimension_data.gsav"
@@ -2084,8 +2082,7 @@ class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
                     "kind": "bandit_clear_site_evidence",
                     "player_save": "survivor.sav",
                     "site_id": "camp-selected",
-                    "last_routine_target_lead_id": last_target,
-                    "previous_routine_target_lead_id": previous_target,
+                    "next_near_tick_minutes": 10861,
                 }],
                 manifest_path=world_dir / "manifest.json",
             )
@@ -2096,22 +2093,24 @@ class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
                 "intelligence_map"
             ]
 
-        self.assertEqual(intelligence["last_routine_target_lead_id"], last_target)
-        self.assertEqual(intelligence["previous_routine_target_lead_id"], previous_target)
-        self.assertEqual(reports[0]["last_routine_target_lead_id"], last_target)
-        self.assertEqual(reports[0]["previous_routine_target_lead_id"], previous_target)
+        self.assertEqual(intelligence["next_near_tick_minutes"], 10861)
+        self.assertEqual(intelligence["last_routine_target_lead_id"], "")
+        self.assertEqual(intelligence["previous_routine_target_lead_id"], "")
+        self.assertEqual(reports[0]["next_near_tick_minutes"], 10861)
 
-    def test_rejects_oversized_seeded_routine_history(self) -> None:
-        with self.assertRaisesRegex(SystemExit, "at most 192 characters"):
-            normalize_fixture_save_transforms(
-                [{
-                    "kind": "bandit_clear_site_evidence",
-                    "player_save": "survivor.sav",
-                    "site_id": "camp-selected",
-                    "last_routine_target_lead_id": "x" * 193,
-                }],
-                manifest_path=Path("manifest.json"),
-            )
+    def test_rejects_invalid_next_near_tick(self) -> None:
+        for invalid_value in (-2, 2147483648, True, "10861"):
+            with self.subTest(invalid_value=invalid_value), self.assertRaisesRegex(
+                    SystemExit, "must be an integer from -1 through 2147483647"):
+                normalize_fixture_save_transforms(
+                    [{
+                        "kind": "bandit_clear_site_evidence",
+                        "player_save": "survivor.sav",
+                        "site_id": "camp-selected",
+                        "next_near_tick_minutes": invalid_value,
+                    }],
+                    manifest_path=Path("manifest.json"),
+                )
 
 
 def _rotate_left_64(value: int, count: int) -> int:
