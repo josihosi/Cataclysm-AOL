@@ -340,8 +340,12 @@ observer query work. Exact Mac tiles compilation passes, `[ecology_debug]` passe
 paired in run `20260805_055304`: the current binary visibly selects natural abstract bandit camp
 `BC-E75C82` at `(140,51,0)`, and the exact 1,893-byte JSON reports the same ID/state with 1
 considered/1 emitted and no truncation. The launch-only detached process exited without diagnostics,
-so the pair comes from one direct launch of its exact reported command; O0 byte/knowledge neutrality
-is still open.
+so the pair comes from one direct launch of its exact reported command. Two meaningfully different
+O0 save-byte probes are preserved in the same run: the first was invalidated by first-save rewrite
+and debug-console contamination; a matched gate-off/gate-on overmap navigation still produced
+serializer/lazy-overmap variance after normalizing the intentional mutation. The row remains open
+without another canonicalizer retry and is deferred to O4's existing performance/save-growth
+harness. O3 authoritative horde/stalker read adapters are the next implementation row.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

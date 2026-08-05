@@ -844,6 +844,19 @@ records `DEBUG_CLAIRVOYANCE` newly added. The launch-only detached process exite
 one direct launch of its exact binary/userdir/world command supplied the pair. Save/knowledge
 neutrality and Windows/Linux runtime remain uncredited.
 
+Observer O0 save/knowledge neutrality remains uncredited after two bounded live attempts in run
+`20260805_055304`. A raw transformed-fixture/pre-save comparison was invalid because the first save
+rewrote the fixture layout and the JSON-copy path enabled separate debug-console state. A second
+matched comparison loaded the source gate-off fixture and derived gate-on fixture, opened the same
+normal overmap, panned seven OMTs, closed, and saved at the same turn without the console. Gate-off
+correctly showed no observer and gate-on showed the selected camp, but non-character aggregates,
+dimension data, and character JSON still differed after removing `DEBUG_CLAIRVOYANCE` from all
+three player trait/mutation locations. Exact hashes and screenshots are in
+`ecology_observer_neutrality_attempt.json`. This is classified as serializer/lazy-overmap variance,
+not green or a proven source defect. The deterministic gate-closed test still proves zero callbacks,
+zero query time, and byte-identical authoritative live-world serialization. Per the two-attempt cap,
+retry only through O4's existing save-growth/performance harness.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

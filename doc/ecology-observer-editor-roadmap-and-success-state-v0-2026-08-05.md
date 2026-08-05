@@ -119,7 +119,9 @@ natural while retaining causal linkage to the intervention ledger.
   `DEBUG_CLAIRVOYANCE`, reports before/after/added/already-present state, and the launch-only dry-run
   is plan-only. System-Python fixture contract: 125 tests green._
 - [ ] Prove observer off/on changes no map knowledge or save bytes beyond the intentional harness
-  mutation.
+  mutation. _Two live strategies in run `20260805_055304` remain inconclusive because first-save
+  rewrite and matched lazy-overmap/serializer variance survive mutation normalization. Exact hashes
+  are preserved; retry only through the existing O4 performance/save-growth harness._
 
 ### O1 - shared read-only camp/dispatch view
 
