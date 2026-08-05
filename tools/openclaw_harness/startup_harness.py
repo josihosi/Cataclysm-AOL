@@ -9185,18 +9185,20 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "player_save": player_save,
                 "site_id": str(raw.get("site_id", "") or "").strip(),
                 "lead_id": str(raw.get("lead_id", "") or "").strip(),
+                "revision": int(raw.get("revision", 1) or 1),
                 "kind_value": str(raw.get("lead_kind", raw.get("kind_value", "basecamp_activity")) or "basecamp_activity").strip(),
+                "origin": str(raw.get("origin", "") or "").strip(),
                 "status": str(raw.get("status", "scout_confirmed") or "scout_confirmed").strip(),
                 "target_id": str(raw.get("target_id", "") or "").strip(),
                 "target_omt": raw.get("target_omt"),
-                "radius_omt": int(raw.get("radius_omt", 2) or 2),
+                "radius_omt": int(2 if raw.get("radius_omt") is None else raw.get("radius_omt")),
                 "source_key": str(raw.get("source_key", "fixture_scout_return") or "fixture_scout_return").strip(),
                 "source_summary": str(raw.get("source_summary", "fixture-backed vanished-signal remembered scout lead") or "").strip(),
                 "first_seen_minutes": int(raw.get("first_seen_minutes", 0) or 0),
                 "last_seen_minutes": int(raw.get("last_seen_minutes", 0) or 0),
                 "last_checked_minutes": int(raw.get("last_checked_minutes", 0) or 0),
                 "last_scouted_minutes": int(raw.get("last_scouted_minutes", 0) or 0),
-                "bounty": int(raw.get("bounty", 8) or 8),
+                "bounty": int(8 if raw.get("bounty") is None else raw.get("bounty")),
                 "threat": int(1 if raw.get("threat") is None or str(raw.get("threat")).strip() == "" else raw.get("threat")),
                 "confidence": int(raw.get("confidence", 3) or 3),
                 "threat_confirmed": bool(raw.get("threat_confirmed", True)),
@@ -11906,18 +11908,19 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         lead_id = f"{site_id}#lead:{lead_kind}:{target_id}@{target_omt[0]},{target_omt[1]},{target_omt[2]}"
     lead = {
         "lead_id": lead_id,
+        "revision": int(transform.get("revision", 1) or 1),
         "kind": lead_kind,
         "status": str(transform.get("status", "scout_confirmed") or "scout_confirmed").strip(),
         "target_id": target_id,
         "omt": target_omt,
-        "radius_omt": int(transform.get("radius_omt", 2) or 2),
+        "radius_omt": int(2 if transform.get("radius_omt") is None else transform.get("radius_omt")),
         "source_key": str(transform.get("source_key", "fixture_scout_return") or "fixture_scout_return").strip(),
         "source_summary": str(transform.get("source_summary", "") or "").strip(),
         "first_seen_minutes": int(transform.get("first_seen_minutes", 0) or 0),
         "last_seen_minutes": int(transform.get("last_seen_minutes", 0) or 0),
         "last_checked_minutes": int(transform.get("last_checked_minutes", 0) or 0),
         "last_scouted_minutes": int(transform.get("last_scouted_minutes", 0) or 0),
-        "bounty": int(transform.get("bounty", 8) or 8),
+        "bounty": int(8 if transform.get("bounty") is None else transform.get("bounty")),
         "threat": int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat")),
         "confidence": int(transform.get("confidence", 3) or 3),
         "threat_confirmed": bool(transform.get("threat_confirmed", True)),
@@ -11930,6 +11933,9 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "times_harvested": int(transform.get("times_harvested", 0) or 0),
         "last_outcome": str(transform.get("last_outcome", "still_valid") or "still_valid").strip(),
     }
+    origin = str(transform.get("origin", "") or "").strip()
+    if origin:
+        lead["origin"] = origin
     leads[:] = [existing for existing in leads if not (
         isinstance(existing, dict) and str(existing.get("lead_id", "")) == lead_id
     )]

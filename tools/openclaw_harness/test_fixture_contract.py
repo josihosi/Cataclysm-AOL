@@ -3498,6 +3498,85 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["observer_artifact_requirement"],
         )
 
+    def test_phase4_decoy_fixture_preserves_zero_value_returned_signal_fields(self) -> None:
+        resolved = resolve_fixture_payload(
+            "bandit_phase4_decoy_empty_signal_v0_2026-08-05",
+            "live-debug",
+        )
+        signal = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "bandit_camp_map_lead"
+        )
+
+        self.assertEqual(signal["revision"], 1)
+        self.assertEqual(signal["kind_value"], "smoke_signal")
+        self.assertEqual(signal["origin"], "returned_report")
+        self.assertEqual(signal["radius_omt"], 2)
+        self.assertEqual(signal["bounty"], 0)
+        self.assertEqual(signal["threat"], 0)
+        self.assertEqual(signal["target_omt"], [136, 51, 0])
+        self.assertEqual(
+            signal["source_key"],
+            "structural-signal:structural-smoke@(136,51,0)",
+        )
+        self.assertEqual(resolved["save_transforms"][-1]["kind"], "player_mutations")
+        self.assertEqual(
+            resolved["save_transforms"][-1]["mutations"],
+            ["DEBUG_CLAIRVOYANCE"],
+        )
+
+    def test_phase4_decoy_scenario_uses_real_empty_arrival_and_owner_audit(self) -> None:
+        scenario = load_scenario("bandit.phase4_decoy_empty_signal_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+        exact_target = "structural-smoke@(136,51,0)"
+        exact_source = "structural-signal:structural-smoke@(136,51,0)"
+
+        self.assertEqual(
+            scenario["fixture"],
+            "bandit_phase4_decoy_empty_signal_v0_2026-08-05",
+        )
+        preflight = steps[labels.index("preflight_fresh_returned_smoke_decoy")]
+        postflight = steps[labels.index("audit_saved_decoy_lead_stale_and_pair_home")]
+        self.assertEqual(preflight["required_lead_target_id"], exact_target)
+        self.assertEqual(postflight["required_lead_target_id"], exact_target)
+        self.assertEqual(preflight["required_lead_source_contains"], exact_source)
+        self.assertEqual(postflight["required_lead_source_contains"], exact_source)
+        self.assertEqual(preflight["required_lead_status"], "suspected")
+        self.assertEqual(postflight["required_lead_status"], "stale")
+        self.assertEqual(postflight["required_lead_confidence"], 0)
+        self.assertEqual(postflight["required_lead_last_outcome"], "signal_investigation_empty")
+
+        waits = [step for step in steps if step["kind"] == "long_wait"]
+        self.assertEqual(len(waits), 4)
+        self.assertTrue(all(step["expected_duration"] == "1h" for step in waits))
+        self.assertTrue(all(step["auto_acknowledge_interruptions"] is False for step in waits))
+        self.assertLess(
+            labels.index("audit_exact_decoy_dispatch"),
+            labels.index("audit_decoy_empty_transition"),
+        )
+        self.assertLess(
+            labels.index("audit_decoy_empty_transition"),
+            labels.index("record_decoy_empty_incident"),
+        )
+        self.assertLess(
+            labels.index("record_decoy_empty_incident"),
+            labels.index("audit_saved_decoy_lead_stale_and_pair_home"),
+        )
+        press_keys = [
+            key
+            for step in steps if step["kind"] == "press"
+            for key in step["keys"]
+        ]
+        self.assertNotIn("I", press_keys)
+        self.assertNotIn("P", press_keys)
+        self.assertEqual(press_keys.count("A"), 1)
+        self.assertEqual(press_keys.count("R"), 1)
+        self.assertIn(
+            "empty intervention ledger",
+            scenario["evidence_contract"]["observer_artifact_requirement"],
+        )
+
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):
             with self.subTest(clone_follower_template=clone_follower_template):
