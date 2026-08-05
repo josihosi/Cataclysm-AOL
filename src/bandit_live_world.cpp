@@ -13341,6 +13341,50 @@ watch_selection_result select_exact_watch_ring_candidate(
             result.omt = candidate.omt;
             result.footprint_distance = *distance;
             result.route_cost = candidate.route_cost;
+            result.outcome = watch_selection_outcome::selected_exact;
+        }
+    }
+    return result;
+}
+
+watch_selection_result select_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates )
+{
+    watch_selection_result result;
+    if( target_footprint.empty() ) {
+        result.outcome = watch_selection_outcome::abandoned_empty_target_footprint;
+        return result;
+    }
+
+    result = select_exact_watch_ring_candidate( target_footprint, candidates );
+    if( result.valid ) {
+        return result;
+    }
+
+    constexpr int minimum_fallback_distance = 4;
+    constexpr int maximum_fallback_distance = 5;
+    for( const watch_selection_candidate &candidate : candidates ) {
+        if( !candidate.reachable || !candidate.concealed ||
+            !candidate.two_intervening_omts_clear || candidate.route_cost < 0 ) {
+            continue;
+        }
+        const std::optional<int> distance = target_footprint_watch_distance(
+                candidate.omt, target_footprint );
+        if( !distance || *distance < minimum_fallback_distance ||
+            *distance > maximum_fallback_distance ) {
+            continue;
+        }
+        if( !result.valid ||
+            std::make_tuple( *distance, candidate.route_cost, candidate.omt.z(),
+                             candidate.omt.y(), candidate.omt.x() ) <
+            std::make_tuple( result.footprint_distance, result.route_cost, result.omt.z(),
+                             result.omt.y(), result.omt.x() ) ) {
+            result.valid = true;
+            result.omt = candidate.omt;
+            result.footprint_distance = *distance;
+            result.route_cost = candidate.route_cost;
+            result.outcome = watch_selection_outcome::selected_fallback;
         }
     }
     return result;

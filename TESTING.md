@@ -1062,6 +1062,16 @@ interior/near/far controls pass. It performs no terrain scan, persistence, fallb
 mutation; Mac compile/unit only. Next evidence class is an explicit bounded farther-or-abandon
 outcome when the exact ring is impossible.
 
+Phase-5 bounded watch fallback is green on Mac. Pure `select_watch_ring_candidate(...)` prioritizes
+any qualified exact distance-3 candidate, otherwise permits only distance 4-5 and ranks by distance,
+route cost, then stable z/y/x; closer and 6+ candidates reject. Typed outcomes distinguish exact,
+fallback, empty footprint, and no-safe-candidate abandonment. Root review caught and fixed one valid
+exact result that initially retained the default abandoned outcome. Exact requested link passes;
+delegated and coordinator runs pass fallback 1/24 plus adjacent exact selection 1/26, and
+`git diff --check` is clean. Pure policy only, with no terrain enumeration, pathfinding, persistence,
+live adapter, or production mutation; Mac compile/unit only. Next evidence class is authoritative
+pair cohesion plus distinct observer/cover staging slots inside the selected watch OMT.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

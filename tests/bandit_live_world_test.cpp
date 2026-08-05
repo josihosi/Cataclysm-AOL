@@ -13876,6 +13876,7 @@ TEST_CASE( "bandit_live_world_watch_selection_uses_only_the_exact_clear_conceale
         CHECK( straight.omt == tripoint_abs_omt( 14, 10, 0 ) );
         CHECK( straight.footprint_distance == 3 );
         CHECK( straight.route_cost == 0 );
+        CHECK( straight.outcome == bandit_live_world::watch_selection_outcome::selected_exact );
 
         const watch_selection_result diagonal = select( {
             { tripoint_abs_omt( 14, 13, 0 ), true, true, true, 9 },
@@ -13960,6 +13961,109 @@ TEST_CASE( "bandit_live_world_watch_selection_uses_only_the_exact_clear_conceale
             { tripoint_abs_omt( 15, 10, 0 ), true, true, true, 1 },
         } ).valid );
         CHECK_FALSE( select( {} ).valid );
+    }
+}
+
+TEST_CASE( "bandit_live_world_watch_fallback_prefers_exact_then_bounded_farther_candidates",
+           "[bandit][live_world][watch_fallback]" )
+{
+    using bandit_live_world::watch_selection_candidate;
+    using bandit_live_world::watch_selection_outcome;
+    using bandit_live_world::watch_selection_result;
+
+    const std::vector<tripoint_abs_omt> footprint = {
+        tripoint_abs_omt( 10, 10, 0 ),
+    };
+    const auto select = [&footprint]( const std::vector<watch_selection_candidate> &candidates ) {
+        return bandit_live_world::select_watch_ring_candidate( footprint, candidates );
+    };
+
+    SECTION( "an eligible exact candidate wins before a cheaper farther candidate" ) {
+        const watch_selection_result result = select( {
+            { tripoint_abs_omt( 13, 10, 0 ), true, true, true, 20 },
+            { tripoint_abs_omt( 14, 10, 0 ), true, true, true, 1 },
+        } );
+
+        REQUIRE( result.valid );
+        CHECK( result.omt == tripoint_abs_omt( 13, 10, 0 ) );
+        CHECK( result.footprint_distance == 3 );
+        CHECK( result.route_cost == 20 );
+        CHECK( result.outcome == watch_selection_outcome::selected_exact );
+    }
+
+    SECTION( "distance four wins before a cheaper distance five candidate" ) {
+        const watch_selection_result result = select( {
+            { tripoint_abs_omt( 15, 10, 0 ), true, true, true, 1 },
+            { tripoint_abs_omt( 14, 10, 0 ), true, true, true, 20 },
+        } );
+
+        REQUIRE( result.valid );
+        CHECK( result.omt == tripoint_abs_omt( 14, 10, 0 ) );
+        CHECK( result.footprint_distance == 4 );
+        CHECK( result.route_cost == 20 );
+        CHECK( result.outcome == watch_selection_outcome::selected_fallback );
+    }
+
+    SECTION( "fallback ordering uses route cost then stable z y x OMT order" ) {
+        const std::vector<tripoint_abs_omt> layered_footprint = {
+            tripoint_abs_omt( 10, 10, 0 ),
+            tripoint_abs_omt( 10, 10, 1 ),
+        };
+        const std::vector<watch_selection_candidate> candidates = {
+            { tripoint_abs_omt( 14, 10, 1 ), true, true, true, 2 },
+            { tripoint_abs_omt( 10, 14, 0 ), true, true, true, 2 },
+            { tripoint_abs_omt( 14, 10, 0 ), true, true, true, 3 },
+        };
+        const watch_selection_result cheapest =
+            bandit_live_world::select_watch_ring_candidate( layered_footprint, candidates );
+        REQUIRE( cheapest.valid );
+        CHECK( cheapest.omt == tripoint_abs_omt( 10, 14, 0 ) );
+
+        const watch_selection_result reordered =
+            bandit_live_world::select_watch_ring_candidate( layered_footprint,
+                    { candidates[1], candidates[0] } );
+        REQUIRE( reordered.valid );
+        CHECK( reordered.omt == cheapest.omt );
+        CHECK( reordered.route_cost == cheapest.route_cost );
+        CHECK( reordered.outcome == watch_selection_outcome::selected_fallback );
+    }
+
+    SECTION( "every caller-owned eligibility gate remains mandatory" ) {
+        const std::vector<watch_selection_candidate> rejected = {
+            { tripoint_abs_omt( 14, 10, 0 ), false, true, true, 1 },
+            { tripoint_abs_omt( 10, 14, 0 ), true, false, true, 1 },
+            { tripoint_abs_omt( 6, 10, 0 ), true, true, false, 1 },
+            { tripoint_abs_omt( 10, 6, 0 ), true, true, true, -1 },
+            { tripoint_abs_omt( 14, 10, 1 ), true, true, true, 1 },
+        };
+        const watch_selection_result result = select( rejected );
+
+        CHECK_FALSE( result.valid );
+        CHECK( result.outcome == watch_selection_outcome::abandoned_no_safe_candidate );
+    }
+
+    SECTION( "empty target and no safe candidate have explicit distinct abandon outcomes" ) {
+        const watch_selection_result empty = bandit_live_world::select_watch_ring_candidate( {}, {
+            { tripoint_abs_omt( 14, 10, 0 ), true, true, true, 1 },
+        } );
+        CHECK_FALSE( empty.valid );
+        CHECK( empty.outcome == watch_selection_outcome::abandoned_empty_target_footprint );
+
+        const watch_selection_result no_safe = select( {} );
+        CHECK_FALSE( no_safe.valid );
+        CHECK( no_safe.outcome == watch_selection_outcome::abandoned_no_safe_candidate );
+    }
+
+    SECTION( "interior near and beyond-ceiling distances never select" ) {
+        const watch_selection_result result = select( {
+            { tripoint_abs_omt( 10, 10, 0 ), true, true, true, 1 },
+            { tripoint_abs_omt( 11, 10, 0 ), true, true, true, 1 },
+            { tripoint_abs_omt( 12, 10, 0 ), true, true, true, 1 },
+            { tripoint_abs_omt( 16, 10, 0 ), true, true, true, 1 },
+        } );
+
+        CHECK_FALSE( result.valid );
+        CHECK( result.outcome == watch_selection_outcome::abandoned_no_safe_candidate );
     }
 }
 

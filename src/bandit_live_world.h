@@ -1150,11 +1150,19 @@ struct watch_selection_candidate {
     int route_cost = -1;
 };
 
+enum class watch_selection_outcome {
+    selected_exact,
+    selected_fallback,
+    abandoned_empty_target_footprint,
+    abandoned_no_safe_candidate,
+};
+
 struct watch_selection_result {
     bool valid = false;
     tripoint_abs_omt omt;
     int footprint_distance = -1;
     int route_cost = -1;
+    watch_selection_outcome outcome = watch_selection_outcome::abandoned_no_safe_candidate;
 };
 
 struct shakedown_goods_pool {
@@ -1362,6 +1370,9 @@ std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
 watch_selection_result select_exact_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates );
+watch_selection_result select_watch_ring_candidate(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );
 int ordinary_scout_watch_standoff_omt();
