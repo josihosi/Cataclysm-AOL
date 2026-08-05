@@ -22,9 +22,9 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Define and test the Phase-5 watch-ring metric, including diagonals, from the nearest OMT in the
-   actual target footprint/perimeter. Do not use avatar position, an arbitrary site anchor, or the
-   dead player-relative hold-off helper as the source of truth.
+1. Select and test a reachable/concealed watch OMT on the exact distance-3 target-footprint ring so
+   the approach line has two intervening empty OMTs when geography permits. Preserve deterministic
+   ordering and explicit farther/abandon outcomes; do not collapse to the target window.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

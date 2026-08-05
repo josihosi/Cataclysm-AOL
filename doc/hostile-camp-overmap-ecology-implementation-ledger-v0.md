@@ -943,7 +943,7 @@ Same-target cooldowns (`next_target_stalk_eligible_at`): successful normal 48h; 
 
 Primary anchors: `live_bandit_make_gate_input`, ordinary standoff helper, local sight-avoid evaluator, `npc::move`, `npc::set_attitude`, faction hostility.
 
-- [ ] Define and test the watch-ring metric explicitly (including diagonals) from the nearest OMT in the actual target camp footprint/perimeter, not an avatar position or arbitrary anchor.
+- [x] Define and test the watch-ring metric explicitly (including diagonals) from the nearest OMT in the actual target camp footprint/perimeter, not an avatar position or arbitrary anchor. _Checkpoint behavior adds pure `target_footprint_watch_distance(...)`: minimum same-z 2D Chebyshev distance across actual footprint cells, explicit `nullopt` for empty/no-same-z input, and deterministic order/duplicate behavior. Straight and diagonal distance-3, interior zero, multi-cell nearest-cell, z-level, empty, and two-intervening-OMT interpretation coverage pass 1/12 on the exact Mac test link. It changes no route, persistence, selection, or old player-relative helper._
 - [ ] Select a reachable/concealed watch OMT on the distance-3 ring so the chosen approach line contains two intervening empty OMTs when geography permits.
 - [ ] If an exact ring position is impossible, choose a justified farther watch point or abandon; never collapse to the target window.
 - [ ] Keep pair cohesion and plausible observer/cover slots within the watch OMT.

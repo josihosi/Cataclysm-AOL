@@ -1343,6 +1343,9 @@ std::string render_evidence_debug_report( const world_state &state, int current_
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
+std::optional<int> target_footprint_watch_distance(
+    const tripoint_abs_omt &observer_omt,
+    const std::vector<tripoint_abs_omt> &target_footprint );
 int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,

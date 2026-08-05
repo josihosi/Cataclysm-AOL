@@ -13785,6 +13785,75 @@ TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",
     CHECK( bandit_live_world::choose_hold_off_standoff_goal( player, player, 2 ) == player );
 }
 
+TEST_CASE( "bandit_live_world_watch_distance_uses_nearest_same_z_footprint_cell",
+           "[bandit][live_world][watch_ring]" )
+{
+    const tripoint_abs_omt observer( 10, 10, 0 );
+
+    SECTION( "straight and diagonal offsets use Chebyshev distance" ) {
+        CHECK( bandit_live_world::target_footprint_watch_distance(
+                   observer, { tripoint_abs_omt( 13, 10, 0 ) } ) == 3 );
+        CHECK( bandit_live_world::target_footprint_watch_distance(
+                   observer, { tripoint_abs_omt( 13, 13, 0 ) } ) == 3 );
+    }
+
+    SECTION( "the observer may occupy an interior footprint cell" ) {
+        const std::vector<tripoint_abs_omt> footprint = {
+            tripoint_abs_omt( 9, 9, 0 ),
+            observer,
+            tripoint_abs_omt( 11, 11, 0 ),
+        };
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, footprint ) == 0 );
+    }
+
+    SECTION( "multi-cell targets measure the nearest actual cell" ) {
+        const std::vector<tripoint_abs_omt> footprint = {
+            tripoint_abs_omt( 25, 25, 0 ),
+            tripoint_abs_omt( 12, 11, 0 ),
+            tripoint_abs_omt( 18, 10, 0 ),
+        };
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, footprint ) == 2 );
+    }
+
+    SECTION( "other z-levels do not contribute" ) {
+        const std::vector<tripoint_abs_omt> mixed_z = {
+            tripoint_abs_omt( 10, 10, 1 ),
+            tripoint_abs_omt( 14, 10, 0 ),
+            tripoint_abs_omt( 11, 10, -1 ),
+        };
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, mixed_z ) == 4 );
+        CHECK_FALSE( bandit_live_world::target_footprint_watch_distance(
+                         observer, { tripoint_abs_omt( 10, 10, 1 ) } ).has_value() );
+    }
+
+    SECTION( "empty footprints have no watch distance" ) {
+        CHECK_FALSE( bandit_live_world::target_footprint_watch_distance( observer, {} ).has_value() );
+    }
+
+    SECTION( "ordering and duplicates do not change the result" ) {
+        const std::vector<tripoint_abs_omt> first = {
+            tripoint_abs_omt( 14, 14, 0 ),
+            tripoint_abs_omt( 12, 10, 0 ),
+            tripoint_abs_omt( 14, 14, 0 ),
+        };
+        const std::vector<tripoint_abs_omt> reordered = {
+            tripoint_abs_omt( 12, 10, 0 ),
+            tripoint_abs_omt( 14, 14, 0 ),
+        };
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, first ) == 2 );
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, reordered ) == 2 );
+    }
+
+    SECTION( "distance three leaves two intervening OMTs on a straight watch line" ) {
+        const tripoint_abs_omt target( 13, 10, 0 );
+        CHECK( bandit_live_world::target_footprint_watch_distance(
+                   observer, { tripoint_abs_omt( 11, 10, 0 ) } ) == 1 );
+        CHECK( bandit_live_world::target_footprint_watch_distance(
+                   observer, { tripoint_abs_omt( 12, 10, 0 ) } ) == 2 );
+        CHECK( bandit_live_world::target_footprint_watch_distance( observer, { target } ) == 3 );
+    }
+}
+
 TEST_CASE( "bandit_live_world_sight_avoid_uses_only_bounded_local_reposition_candidates",
            "[bandit][live_world][sight_avoid]" )
 {

@@ -13301,6 +13301,23 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     return decision;
 }
 
+std::optional<int> target_footprint_watch_distance(
+    const tripoint_abs_omt &observer_omt,
+    const std::vector<tripoint_abs_omt> &target_footprint )
+{
+    std::optional<int> nearest_distance;
+    for( const tripoint_abs_omt &target_omt : target_footprint ) {
+        if( target_omt.z() != observer_omt.z() ) {
+            continue;
+        }
+        const int distance = omt_chebyshev_distance( observer_omt, target_omt );
+        if( !nearest_distance || distance < *nearest_distance ) {
+            nearest_distance = distance;
+        }
+    }
+    return nearest_distance;
+}
+
 int ordinary_scout_watch_standoff_omt()
 {
     return 5;

@@ -1044,7 +1044,16 @@ player-dispatcher-read and dual-writer/legacy-radar exit rows. The signal-discov
 because its live smoke/light/sound attempts are non-credit; stale/contradictory honesty remains open
 because the live decoy attempts are non-credit. Deterministic evidence for both remains strong but
 is not promoted to live. Phase 4 stays held for Josef's later disposable playtest packet without
-another agent retry. Next evidence class is the Phase-5 target-footprint watch-ring metric.
+another agent retry.
+
+Phase-5 watch-ring metric footing is green on Mac: exact requested object/test link passes and
+`[bandit][live_world][watch_ring]` passes 1 case / 12 assertions under coordinator rerun. The pure
+helper returns minimum same-z 2D Chebyshev distance across real footprint cells, so straight and
+diagonal distance-3 points share one ring; empty/no-same-z returns no value, and order/duplicates do
+not matter. Tests also cover footprint interior zero, a multi-cell nearest point that differs from
+an arbitrary anchor, mixed z-levels, and the two-intervening-OMT distance interpretation. No route,
+selection, persistence, avatar coordinate, or production behavior is changed; Mac compile/unit only.
+Next evidence class is reachable/concealed distance-3 watch-point selection.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
