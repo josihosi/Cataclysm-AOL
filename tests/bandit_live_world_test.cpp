@@ -339,7 +339,7 @@ bandit_live_world::world_state make_structural_local_zombie_test_world( const bo
         return true;
     }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
              bandit_live_world::local_handoff_commit_result::applied );
-    REQUIRE( site.active_outing.schema_version == 8 );
+    REQUIRE( site.active_outing.schema_version == 9 );
     REQUIRE( site.active_outing.owner == bandit_live_world::simulation_owner::local );
     REQUIRE( site.active_outing.local_handoff.is_active() );
     return world;
@@ -7461,7 +7461,7 @@ TEST_CASE( "bandit_live_world_reserves_members_and_mission_slot_under_one_genera
     REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan(
                  site, fresh_structural_plan, 100 ) );
     REQUIRE( site.roster().valid );
-    CHECK( site.active_outing.schema_version == 8 );
+    CHECK( site.active_outing.schema_version == 9 );
     CHECK( site.active_outing.activity_id == fresh_structural_plan.activity_id );
     CHECK( site.active_outing.generation == fresh_structural_plan.generation );
     CHECK( site.active_outing.member_ids == fresh_structural_plan.member_ids );
@@ -7618,7 +7618,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
         REQUIRE( plan.valid );
         REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
-        REQUIRE( site.active_outing.schema_version == 8 );
+        REQUIRE( site.active_outing.schema_version == 9 );
         return world;
     };
     const auto make_reads = []( const bandit_live_world::site_record &site ) {
@@ -14064,6 +14064,169 @@ TEST_CASE( "bandit_live_world_watch_fallback_prefers_exact_then_bounded_farther_
 
         CHECK_FALSE( result.valid );
         CHECK( result.outcome == watch_selection_outcome::abandoned_no_safe_candidate );
+    }
+}
+
+TEST_CASE( "bandit_live_world_structural_watch_route_is_one_canonical_persisted_owner",
+           "[bandit][live_world][watch_persistence][save]" )
+{
+    using bandit_live_world::structural_watch_kind;
+    using bandit_live_world::structural_watch_route_apply_result;
+    using bandit_live_world::watch_selection_candidate;
+    using bandit_live_world::watch_selection_result;
+
+    const auto make_world = []() {
+        return make_abstract_threat_test_world( false, 55200 );
+    };
+    const auto replace_once = []( std::string &bytes, const std::string &before,
+                                  const std::string &after ) {
+        const std::size_t position = bytes.find( before );
+        REQUIRE( position != std::string::npos );
+        bytes.replace( position, before.size(), after );
+    };
+
+    SECTION( "exact selection normalizes once and exact replay is byte stable" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        REQUIRE( site.active_outing.schema_version == 9 );
+        const tripoint_abs_omt target = site.active_outing.target_omt;
+        const std::vector<tripoint_abs_omt> footprint = {
+            tripoint_abs_omt( target.x(), target.y() + 1, target.z() ),
+            target,
+            tripoint_abs_omt( target.x(), target.y() + 1, target.z() ),
+        };
+        const std::vector<watch_selection_candidate> candidates = {
+            watch_selection_candidate {
+                tripoint_abs_omt( target.x() + 3, target.y(), target.z() ),
+                true, true, true, 7
+            },
+        };
+        const watch_selection_result selection =
+            bandit_live_world::select_watch_ring_candidate( footprint, candidates );
+        REQUIRE( selection.valid );
+        const bandit_live_world::simulation_advance_cursor cursor =
+            require_current_simulation_cursor( site );
+
+        CHECK( bandit_live_world::apply_structural_watch_route_selection(
+                   site, cursor, footprint, candidates ) ==
+               structural_watch_route_apply_result::applied );
+        CHECK( site.active_outing.target_footprint ==
+               std::vector<tripoint_abs_omt> { target,
+            tripoint_abs_omt( target.x(), target.y() + 1, target.z() )
+        } );
+        CHECK( site.active_outing.selected_watch_kind == structural_watch_kind::exact );
+        CHECK( site.active_outing.selected_watch_omt == selection.omt );
+        CHECK( site.active_outing.selected_watch_route_cost == 7 );
+
+        const std::string selected_bytes = serialize_world( world );
+        CHECK( bandit_live_world::apply_structural_watch_route_selection(
+                   site, cursor, { target,
+                       tripoint_abs_omt( target.x(), target.y() + 1, target.z() )
+                   }, candidates ) == structural_watch_route_apply_result::unchanged );
+        CHECK( serialize_world( world ) == selected_bytes );
+        const bandit_live_world::world_state loaded = round_trip_world( world );
+        CHECK( serialize_world( loaded ) == selected_bytes );
+
+        std::vector<watch_selection_candidate> conflicting = candidates;
+        conflicting.front().route_cost++;
+        CHECK( bandit_live_world::apply_structural_watch_route_selection(
+                   site, cursor, footprint, conflicting ) ==
+               structural_watch_route_apply_result::rejected );
+        CHECK( serialize_world( world ) == selected_bytes );
+    }
+
+    SECTION( "fallback selection and stale identity fail closed" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt target = site.active_outing.target_omt;
+        const std::vector<tripoint_abs_omt> footprint = { target };
+        const std::vector<watch_selection_candidate> candidates = {
+            watch_selection_candidate {
+                tripoint_abs_omt( target.x() + 4, target.y(), target.z() ),
+                true, true, true, 11
+            },
+        };
+        const watch_selection_result fallback =
+            bandit_live_world::select_watch_ring_candidate( footprint, candidates );
+        REQUIRE( fallback.valid );
+        const bandit_live_world::simulation_advance_cursor cursor =
+            require_current_simulation_cursor( site );
+        bandit_live_world::simulation_advance_cursor stale = cursor;
+        stale.generation++;
+        const std::string before = serialize_world( world );
+
+        CHECK( bandit_live_world::apply_structural_watch_route_selection(
+                   site, stale, footprint, candidates ) ==
+               structural_watch_route_apply_result::rejected );
+        CHECK( serialize_world( world ) == before );
+        CHECK( bandit_live_world::apply_structural_watch_route_selection(
+                   site, cursor, footprint, candidates ) ==
+               structural_watch_route_apply_result::applied );
+        CHECK( site.active_outing.selected_watch_kind == structural_watch_kind::fallback );
+    }
+
+    SECTION( "schema eight migrates to an unselected singleton target footprint" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::active_outing_state &legacy_outing =
+            world.sites.front().active_outing;
+        const tripoint_abs_omt target = legacy_outing.target_omt;
+        legacy_outing.schema_version = 8;
+        legacy_outing.target_footprint.clear();
+        const std::string legacy_bytes = serialize_world( world );
+        JsonValue legacy_json = json_loader::from_string( legacy_bytes );
+        bandit_live_world::world_state migrated;
+        migrated.deserialize( legacy_json.get_object() );
+
+        REQUIRE( migrated.sites.size() == 1 );
+        const bandit_live_world::active_outing_state &outing =
+            migrated.sites.front().active_outing;
+        CHECK( outing.schema_version == 9 );
+        CHECK( outing.target_footprint == std::vector<tripoint_abs_omt> { target } );
+        CHECK( outing.selected_watch_kind == structural_watch_kind::none );
+        CHECK( outing.selected_watch_route_cost == -1 );
+        CHECK( serialize_world( round_trip_world( migrated ) ) == serialize_world( migrated ) );
+    }
+
+    SECTION( "malformed current watch metadata cannot partially replace a valid world" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt target = site.active_outing.target_omt;
+        const std::vector<watch_selection_candidate> candidates = {
+            watch_selection_candidate {
+                tripoint_abs_omt( target.x() + 3, target.y(), target.z() ),
+                true, true, true, 5
+            },
+        };
+        const watch_selection_result selection =
+            bandit_live_world::select_watch_ring_candidate( { target }, candidates );
+        REQUIRE( selection.valid );
+        REQUIRE( bandit_live_world::apply_structural_watch_route_selection(
+                     site, require_current_simulation_cursor( site ), { target }, candidates ) ==
+                 structural_watch_route_apply_result::applied );
+        const std::string protected_bytes = serialize_world( world );
+        std::string malformed_bytes = protected_bytes;
+        replace_once( malformed_bytes, "\"selected_watch_kind\": \"exact\"",
+                      "\"selected_watch_kind\": \"fallback\"" );
+        JsonValue malformed_json = json_loader::from_string( malformed_bytes );
+
+        CHECK_THROWS( world.deserialize( malformed_json.get_object() ) );
+        CHECK( serialize_world( world ) == protected_bytes );
+
+        std::string missing_bytes = protected_bytes;
+        erase_pretty_json_member_line( missing_bytes, "selected_watch_kind" );
+        JsonValue missing_json = json_loader::from_string( missing_bytes );
+        CHECK_THROWS( world.deserialize( missing_json.get_object() ) );
+        CHECK( serialize_world( world ) == protected_bytes );
+
+        bandit_live_world::world_state oversized = world;
+        oversized.sites.front().active_outing.target_footprint.clear();
+        for( int index = 0; index < 65; ++index ) {
+            oversized.sites.front().active_outing.target_footprint.emplace_back(
+                target.x() + index, target.y(), target.z() );
+        }
+        JsonValue oversized_json = json_loader::from_string( serialize_world( oversized ) );
+        CHECK_THROWS( world.deserialize( oversized_json.get_object() ) );
+        CHECK( serialize_world( world ) == protected_bytes );
     }
 }
 

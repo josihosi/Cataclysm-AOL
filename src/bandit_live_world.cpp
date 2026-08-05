@@ -42,6 +42,8 @@ using bandit_live_world::sortie_observation_kind;
 using bandit_live_world::sortie_observation_sense;
 using bandit_live_world::sortie_observation_share_state;
 using bandit_live_world::structural_signal_read;
+using bandit_live_world::structural_watch_kind;
+using bandit_live_world::target_footprint_watch_distance;
 
 constexpr std::size_t max_active_outing_members = 16;
 constexpr std::size_t max_active_outing_route_steps = 256;
@@ -49,6 +51,8 @@ constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
+constexpr std::size_t max_structural_target_footprint_omts = 64;
+constexpr std::size_t max_structural_watch_candidates = 256;
 constexpr std::size_t max_abstract_threat_ids = 16;
 constexpr std::size_t max_abstract_threat_id_length = 128;
 constexpr std::size_t max_structural_signal_reads = 4;
@@ -1006,6 +1010,21 @@ std::optional<outing_kind> outing_kind_from_string( const std::string &value )
     }
     if( value == "none" ) {
         return outing_kind::none;
+    }
+    return std::nullopt;
+}
+
+std::optional<structural_watch_kind> structural_watch_kind_from_string(
+    const std::string &value )
+{
+    if( value == "none" ) {
+        return structural_watch_kind::none;
+    }
+    if( value == "exact" ) {
+        return structural_watch_kind::exact;
+    }
+    if( value == "fallback" ) {
+        return structural_watch_kind::fallback;
     }
     return std::nullopt;
 }
@@ -2468,6 +2487,63 @@ bool local_handoff_snapshots_equal(
     return true;
 }
 
+bool structural_watch_omt_precedes( const tripoint_abs_omt &lhs,
+                                    const tripoint_abs_omt &rhs )
+{
+    return std::make_tuple( lhs.z(), lhs.y(), lhs.x() ) <
+           std::make_tuple( rhs.z(), rhs.y(), rhs.x() );
+}
+
+std::vector<tripoint_abs_omt> canonical_structural_target_footprint(
+    std::vector<tripoint_abs_omt> footprint )
+{
+    std::sort( footprint.begin(), footprint.end(), structural_watch_omt_precedes );
+    footprint.erase( std::unique( footprint.begin(), footprint.end() ), footprint.end() );
+    return footprint;
+}
+
+bool structural_watch_route_state_is_consistent(
+    const bandit_live_world::active_outing_state &outing )
+{
+    const bool empty_watch_state = outing.target_footprint.empty() &&
+                                   outing.selected_watch_kind == structural_watch_kind::none &&
+                                   outing.selected_watch_omt == tripoint_abs_omt() &&
+                                   outing.selected_watch_route_cost == -1;
+    if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 9 ) {
+        return empty_watch_state;
+    }
+    if( outing.schema_version != 9 || outing.target_footprint.empty() ||
+        outing.target_footprint.size() > max_structural_target_footprint_omts ||
+        canonical_structural_target_footprint( outing.target_footprint ) !=
+        outing.target_footprint ||
+        std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
+                   outing.target_omt ) == outing.target_footprint.end() ||
+        std::any_of( outing.target_footprint.begin(), outing.target_footprint.end(),
+    [&outing]( const tripoint_abs_omt & omt ) {
+        return omt.z() != outing.target_omt.z();
+    } ) ) {
+        return false;
+    }
+    if( outing.selected_watch_kind == structural_watch_kind::none ) {
+        return outing.selected_watch_omt == tripoint_abs_omt() &&
+               outing.selected_watch_route_cost == -1;
+    }
+    if( outing.selected_watch_route_cost < 0 ) {
+        return false;
+    }
+    const std::optional<int> distance = target_footprint_watch_distance(
+                                            outing.selected_watch_omt,
+                                            outing.target_footprint );
+    if( !distance ) {
+        return false;
+    }
+    if( outing.selected_watch_kind == structural_watch_kind::exact ) {
+        return *distance == 3;
+    }
+    return outing.selected_watch_kind == structural_watch_kind::fallback &&
+           *distance >= 4 && *distance <= 5;
+}
+
 bool simulation_owner_state_is_consistent(
     const bandit_live_world::active_outing_state &outing )
 {
@@ -2478,7 +2554,8 @@ bool simulation_owner_state_is_consistent(
             outing.local_contact_minutes, outing.last_progress_minutes } );
     return outing.handoff_epoch >= 0 && owner_matches_epoch &&
            outing.last_advanced_minutes >= minimum_advanced_minutes &&
-           local_handoff_snapshot_matches_outing( outing );
+           local_handoff_snapshot_matches_outing( outing ) &&
+           structural_watch_route_state_is_consistent( outing );
 }
 
 bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
@@ -2515,7 +2592,7 @@ bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
         ( owner == "local" && handoff_epoch % 2 == 1 );
     const bool supported_schema = schema_version == 5 ||
                                   ( ( schema_version == 6 || schema_version == 7 ||
-                                      schema_version == 8 ) &&
+                                      schema_version == 8 || schema_version == 9 ) &&
                                     kind == "structural_sortie" );
     const bool complete_structural_route = schema_version < 6 ||
             ( owner_json.has_member( "shared_route" ) &&
@@ -2524,13 +2601,18 @@ bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
               owner_json.has_member( "missing_deadline_minutes" ) );
     const bool complete_local_handoff = schema_version < 7 ||
                                         owner_json.has_member( "local_handoff" );
-    const bool complete_abstract_encounter = schema_version != 8 ||
+    const bool complete_abstract_encounter = schema_version < 8 ||
             ( owner_json.has_member( "abstract_encounter" ) &&
               owner_json.has_member( "abstract_detour_attempts" ) &&
               owner_json.has_member( "has_withdrawal_detour" ) &&
               owner_json.has_member( "withdrawal_detour_omt" ) );
+    const bool complete_watch_route = schema_version < 9 ||
+            ( owner_json.has_member( "target_footprint" ) &&
+              owner_json.has_member( "selected_watch_kind" ) &&
+              owner_json.has_member( "selected_watch_omt" ) &&
+              owner_json.has_member( "selected_watch_route_cost" ) );
     return supported_schema && complete_structural_route && complete_local_handoff &&
-           complete_abstract_encounter &&
+           complete_abstract_encounter && complete_watch_route &&
            handoff_epoch >= 0 && owner_matches_epoch &&
            last_advanced_minutes >= std::max( { started_minutes, local_contact_minutes,
                    last_progress_minutes } );
@@ -2802,6 +2884,20 @@ std::string to_string( outing_kind kind )
             return "hostile_operation";
         case outing_kind::structural_sortie:
             return "structural_sortie";
+    }
+
+    return "none";
+}
+
+std::string to_string( structural_watch_kind kind )
+{
+    switch( kind ) {
+        case structural_watch_kind::none:
+            return "none";
+        case structural_watch_kind::exact:
+            return "exact";
+        case structural_watch_kind::fallback:
+            return "fallback";
     }
 
     return "none";
@@ -3242,7 +3338,7 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
 
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
-    next.schema_version = 8;
+    next.schema_version = std::max( next.schema_version, 8 );
     next.owner = simulation_owner::local;
     next.handoff_epoch = plan.snapshot.handoff_epoch;
     next.last_advanced_minutes = plan.snapshot.committed_minutes;
@@ -5665,6 +5761,12 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "has_withdrawal_detour", has_withdrawal_detour );
         json.member( "withdrawal_detour_omt", withdrawal_detour_omt );
     }
+    if( schema_version >= 9 ) {
+        json.member( "target_footprint", target_footprint );
+        json.member( "selected_watch_kind", to_string( selected_watch_kind ) );
+        json.member( "selected_watch_omt", selected_watch_omt );
+        json.member( "selected_watch_route_cost", selected_watch_route_cost );
+    }
     json.end_object();
 }
 
@@ -5692,7 +5794,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
     candidate.leader_id.deserialize( raw_leader_id );
     jo.read( "shared_route", candidate.shared_route );
     jo.read( "waypoint_index", candidate.waypoint_index );
-    if( loaded_schema_version >= 6 && loaded_schema_version <= 8 &&
+    if( loaded_schema_version >= 6 && loaded_schema_version <= 9 &&
         ( candidate.kind != outing_kind::structural_sortie ||
           candidate.shared_route.size() < 3 || candidate.shared_route.size() > 5 ||
           candidate.waypoint_index < 0 ||
@@ -5794,6 +5896,32 @@ void active_outing_state::deserialize( const JsonObject &jo )
         ( candidate.has_withdrawal_detour && candidate.abstract_detour_attempts <= 0 ) ) {
         jo.throw_error( "current structural outing has malformed abstract detour state" );
     }
+    if( loaded_schema_version >= 9 ) {
+        if( !jo.has_member( "target_footprint" ) ||
+            !jo.has_member( "selected_watch_kind" ) ||
+            !jo.has_member( "selected_watch_omt" ) ||
+            !jo.has_member( "selected_watch_route_cost" ) ) {
+            jo.throw_error( "schema-v9 structural outing is missing watch route state" );
+        }
+        jo.read( "target_footprint", candidate.target_footprint );
+        std::string watch_kind_string;
+        jo.read( "selected_watch_kind", watch_kind_string );
+        const std::optional<structural_watch_kind> watch_kind =
+            structural_watch_kind_from_string( watch_kind_string );
+        if( !watch_kind ) {
+            jo.throw_error( "schema-v9 structural outing has invalid watch route kind" );
+        }
+        candidate.selected_watch_kind = *watch_kind;
+        jo.read( "selected_watch_omt", candidate.selected_watch_omt );
+        jo.read( "selected_watch_route_cost", candidate.selected_watch_route_cost );
+    } else if( loaded_schema_version == 8 &&
+               candidate.kind == outing_kind::structural_sortie ) {
+        candidate.target_footprint = { candidate.target_omt };
+        candidate.schema_version = 9;
+    }
+    if( !structural_watch_route_state_is_consistent( candidate ) ) {
+        jo.throw_error( "current structural outing has malformed watch route state" );
+    }
     if( candidate.activity_id.empty() || candidate.kind == outing_kind::none ||
         candidate.generation <= 0 ) {
         std::vector<character_id> reserved_member_ids = std::move( candidate.member_ids );
@@ -5821,7 +5949,8 @@ void active_outing_state::deserialize( const JsonObject &jo )
             candidate.report_application_key = expected_report_key;
             candidate.cargo_application_key = expected_cargo_key;
         } else if( ( loaded_schema_version != 5 && loaded_schema_version != 6 &&
-                     loaded_schema_version != 7 && loaded_schema_version != 8 ) ||
+                     loaded_schema_version != 7 && loaded_schema_version != 8 &&
+                     loaded_schema_version != 9 ) ||
                    ( loaded_schema_version >= 6 &&
                      candidate.kind != outing_kind::structural_sortie ) ||
                    candidate.return_application_key != expected_return_key ||
@@ -5829,7 +5958,8 @@ void active_outing_state::deserialize( const JsonObject &jo )
                    candidate.cargo_application_key != expected_cargo_key ) {
             jo.throw_error( "active outing has non-canonical component application keys" );
         }
-        candidate.schema_version = loaded_schema_version >= 6 ? loaded_schema_version : 5;
+        candidate.schema_version = loaded_schema_version == 8 ? 9 :
+                                   loaded_schema_version >= 6 ? loaded_schema_version : 5;
     }
     *this = std::move( candidate );
 }
@@ -6655,16 +6785,16 @@ void site_record::deserialize( const JsonObject &jo )
         ( ( active_outing.phase == scout_phase::outbound &&
             active_outing.local_contact_minutes == -1 &&
             ( active_outing.waypoint_index == 0 ||
-              ( active_outing.schema_version == 8 && active_outing.waypoint_index == 1 ) ) ) ||
+              ( active_outing.schema_version >= 8 && active_outing.waypoint_index == 1 ) ) ) ||
           ( active_outing.phase == scout_phase::observing &&
             active_outing.local_contact_minutes >= active_outing.started_minutes &&
             ( active_outing.waypoint_index == 1 ||
-              ( active_outing.schema_version == 8 &&
+              ( active_outing.schema_version >= 8 &&
                 active_outing.waypoint_index == structural_target_waypoint ) ) ) ||
           ( active_outing.phase == scout_phase::returning_home &&
             ( active_outing.waypoint_index == 0 || active_outing.waypoint_index == 1 ||
               active_outing.waypoint_index == structural_target_waypoint ) ) ||
-          ( active_outing.schema_version == 8 && active_outing.phase == scout_phase::lost &&
+          ( active_outing.schema_version >= 8 && active_outing.phase == scout_phase::lost &&
             active_outing.casualty_ids.size() == active_outing.member_ids.size() &&
             active_outing.resolved_member_ids.size() == active_outing.member_ids.size() ) );
     const bool structural_identity_is_consistent =
@@ -6673,7 +6803,7 @@ void site_record::deserialize( const JsonObject &jo )
           ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
           active_outing.member_ids.size() == 2 &&
           ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
-            active_outing.schema_version == 8 ) &&
+            active_outing.schema_version == 8 || active_outing.schema_version == 9 ) &&
           active_outing.started_minutes >= 0 &&
           active_outing.target_id == active_outing.target_lead_id &&
           active_outing.target_lead_revision > 0 && structural_lead != nullptr &&
@@ -6696,7 +6826,7 @@ void site_record::deserialize( const JsonObject &jo )
     const bool active_outing_schema_is_consistent =
         active_outing.kind == outing_kind::structural_sortie ?
         ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
-          active_outing.schema_version == 8 ) :
+          active_outing.schema_version == 8 || active_outing.schema_version == 9 ) :
         active_outing.schema_version == 5;
     bool active_outing_is_consistent = active_outing.is_active() &&
                                        active_outing.kind != outing_kind::hostile_operation &&
@@ -9953,7 +10083,7 @@ bool structural_local_zombie_read_is_valid( const site_record &site,
     const member_record *observer = site.find_member( read.observer_id );
     const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
     return now_minutes >= 0 && now_minutes > expected_cursor.last_advanced_minutes &&
-           outing.kind == outing_kind::structural_sortie && outing.schema_version == 8 &&
+           outing.kind == outing_kind::structural_sortie && outing.schema_version >= 8 &&
            outing.owner == simulation_owner::local &&
            simulation_owner_state_is_consistent( outing ) &&
            simulation_cursor_matches( outing, expected_cursor ) &&
@@ -10210,7 +10340,7 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
 {
     abstract_threat_resolution result;
     const active_outing_state &current = site.active_outing;
-    if( current.kind != outing_kind::structural_sortie || current.schema_version != 8 ||
+    if( current.kind != outing_kind::structural_sortie || current.schema_version < 8 ||
         current.owner != simulation_owner::abstract || !current.is_active() ||
         now_minutes < 0 || current.last_advanced_minutes != now_minutes ||
         current.shared_route.empty() || current.waypoint_index < 0 ||
@@ -11034,7 +11164,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         }
     }
     candidate.active_outing.clear();
-    candidate.active_outing.schema_version = 8;
+    candidate.active_outing.schema_version = 9;
     candidate.active_outing.kind = outing_kind::structural_sortie;
     candidate.active_outing.activity_id = plan.activity_id;
     candidate.active_outing.camp_id = candidate.site_id;
@@ -11049,6 +11179,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     candidate.active_outing.last_advanced_minutes = now_minutes;
     candidate.active_outing.target_id = plan.lead_id;
     candidate.active_outing.target_omt = plan.target_omt;
+    candidate.active_outing.target_footprint = { plan.target_omt };
     candidate.active_outing.target_lead_id = plan.lead_id;
     candidate.active_outing.target_lead_revision = plan.lead_revision;
     candidate.active_outing.job_type = bandit_dry_run::to_string( plan.job );
@@ -11196,7 +11327,7 @@ bool make_static_structural_observer_request( const site_record &site,
         structural_threat_observer_request &request )
 {
     const active_outing_state &outing = site.active_outing;
-    if( outing.kind != outing_kind::structural_sortie || outing.schema_version != 8 ||
+    if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 8 ||
         outing.activity_id != site.site_id + "#structural" || outing.target_id.empty() ||
         outing.target_id != outing.target_lead_id || outing.target_lead_revision <= 0 ||
         outing.member_ids.size() != 2 ||
@@ -11322,7 +11453,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( site.active_outing.kind != outing_kind::structural_sortie ||
             ( site.active_outing.schema_version != 6 &&
               site.active_outing.schema_version != 7 &&
-              site.active_outing.schema_version != 8 ) ||
+              site.active_outing.schema_version != 8 &&
+              site.active_outing.schema_version != 9 ) ||
             site.active_outing.activity_id != site.site_id + "#structural" ||
             site.active_outing.target_id.empty() ||
             site.active_outing.target_id != site.active_outing.target_lead_id ||
@@ -11412,7 +11544,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
 
         active_outing_state &pre_advance_outing = candidate.active_outing;
-        pre_advance_outing.schema_version = 8;
+        pre_advance_outing.schema_version = std::max( pre_advance_outing.schema_version, 8 );
         bool simulation_advance_consumed = false;
         bool waypoint_progressed = false;
         std::optional<std::pair<structural_threat_observer_request, abstract_threat_read>>
@@ -13388,6 +13520,77 @@ watch_selection_result select_watch_ring_candidate(
         }
     }
     return result;
+}
+
+structural_watch_route_apply_result apply_structural_watch_route_selection(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates )
+{
+    const active_outing_state &current = site.active_outing;
+    if( current.kind != outing_kind::structural_sortie || current.schema_version < 8 ||
+        current.schema_version > 9 || !simulation_cursor_matches( current, expected_cursor ) ||
+        ( current.phase != scout_phase::outbound && current.phase != scout_phase::searching ) ||
+        target_footprint.empty() ||
+        target_footprint.size() > max_structural_target_footprint_omts || candidates.empty() ||
+        candidates.size() > max_structural_watch_candidates ) {
+        return structural_watch_route_apply_result::rejected;
+    }
+
+    const std::vector<tripoint_abs_omt> canonical_footprint =
+        canonical_structural_target_footprint( target_footprint );
+    if( canonical_footprint.empty() ||
+        std::find( canonical_footprint.begin(), canonical_footprint.end(),
+                   current.target_omt ) == canonical_footprint.end() ||
+        std::any_of( canonical_footprint.begin(), canonical_footprint.end(),
+    [&current]( const tripoint_abs_omt & omt ) {
+        return omt.z() != current.target_omt.z();
+    } ) ) {
+        return structural_watch_route_apply_result::rejected;
+    }
+    const watch_selection_result selection = select_watch_ring_candidate(
+                canonical_footprint, candidates );
+    if( !selection.valid || selection.route_cost < 0 ||
+        ( selection.outcome != watch_selection_outcome::selected_exact &&
+          selection.outcome != watch_selection_outcome::selected_fallback ) ) {
+        return structural_watch_route_apply_result::rejected;
+    }
+    const std::optional<int> footprint_distance = target_footprint_watch_distance(
+                selection.omt, canonical_footprint );
+    const structural_watch_kind selected_kind =
+        selection.outcome == watch_selection_outcome::selected_exact ?
+        structural_watch_kind::exact : structural_watch_kind::fallback;
+    const bool distance_matches_kind = footprint_distance &&
+                                       selection.footprint_distance == *footprint_distance &&
+            ( ( selected_kind == structural_watch_kind::exact && *footprint_distance == 3 ) ||
+              ( selected_kind == structural_watch_kind::fallback &&
+                *footprint_distance >= 4 && *footprint_distance <= 5 ) );
+    if( !distance_matches_kind ) {
+        return structural_watch_route_apply_result::rejected;
+    }
+
+    if( current.schema_version == 9 &&
+        current.selected_watch_kind != structural_watch_kind::none ) {
+        return current.target_footprint == canonical_footprint &&
+               current.selected_watch_kind == selected_kind &&
+               current.selected_watch_omt == selection.omt &&
+               current.selected_watch_route_cost == selection.route_cost ?
+               structural_watch_route_apply_result::unchanged :
+               structural_watch_route_apply_result::rejected;
+    }
+
+    site_record candidate = site;
+    active_outing_state &next = candidate.active_outing;
+    next.schema_version = 9;
+    next.target_footprint = canonical_footprint;
+    next.selected_watch_kind = selected_kind;
+    next.selected_watch_omt = selection.omt;
+    next.selected_watch_route_cost = selection.route_cost;
+    if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+        return structural_watch_route_apply_result::rejected;
+    }
+    site = std::move( candidate );
+    return structural_watch_route_apply_result::applied;
 }
 
 int ordinary_scout_watch_standoff_omt()

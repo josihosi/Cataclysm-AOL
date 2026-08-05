@@ -127,6 +127,12 @@ enum class outing_kind {
     structural_sortie,
 };
 
+enum class structural_watch_kind {
+    none,
+    exact,
+    fallback,
+};
+
 enum class simulation_owner {
     abstract,
     local,
@@ -590,6 +596,10 @@ struct active_outing_state {
     int abstract_detour_attempts = 0;
     bool has_withdrawal_detour = false;
     tripoint_abs_omt withdrawal_detour_omt;
+    std::vector<tripoint_abs_omt> target_footprint;
+    structural_watch_kind selected_watch_kind = structural_watch_kind::none;
+    tripoint_abs_omt selected_watch_omt;
+    int selected_watch_route_cost = -1;
 
     void clear();
     bool is_active() const;
@@ -1157,6 +1167,12 @@ enum class watch_selection_outcome {
     abandoned_no_safe_candidate,
 };
 
+enum class structural_watch_route_apply_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
 struct watch_selection_result {
     bool valid = false;
     tripoint_abs_omt omt;
@@ -1373,6 +1389,10 @@ watch_selection_result select_exact_watch_ring_candidate(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );
 watch_selection_result select_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates );
+structural_watch_route_apply_result apply_structural_watch_route_selection(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );
 int ordinary_scout_watch_standoff_omt();
