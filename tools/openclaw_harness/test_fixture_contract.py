@@ -3440,6 +3440,55 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
 
+    def test_phase4_target_relocation_observes_same_authoritative_dispatch(self) -> None:
+        scenario = load_scenario("bandit.phase4_target_relocation_observer_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+        exact_target = (
+            "overmap_special:bandit_camp@140,51,0:"
+            "terrain_opportunity:136,51,0:road"
+        )
+
+        self.assertEqual(
+            scenario["fixture"],
+            "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+        )
+        preflight = steps[labels.index("preflight_authoritative_relocation_dispatch")]
+        postflight = steps[labels.index("audit_authoritative_target_after_player_relocation")]
+        self.assertEqual(preflight["required_active_target_id_exact"], exact_target)
+        self.assertEqual(postflight["required_active_target_id_exact"], exact_target)
+        self.assertEqual(preflight["required_active_outing_generation"], 1)
+        self.assertEqual(postflight["required_active_outing_generation"], 1)
+        self.assertEqual(preflight["required_active_outing_simulation_owner"], "local")
+        self.assertNotIn("required_active_outing_simulation_owner", postflight)
+
+        presses = [step for step in steps if step["kind"] == "press"]
+        all_keys = [key for step in presses for key in step["keys"]]
+        self.assertNotIn("I", all_keys)
+        self.assertNotIn("P", all_keys)
+        self.assertEqual(all_keys.count("R"), 2)
+        self.assertEqual(all_keys.count("."), 1)
+        self.assertEqual(
+            steps[labels.index("open_debug_long_teleport")]["keys"],
+            ["}", "t", "l"],
+        )
+        teleport_keys = steps[labels.index("teleport_player_twelve_omt_south")]["keys"]
+        self.assertEqual(teleport_keys, ["down"] * 12 + ["enter"])
+        reselect_keys = steps[labels.index("reselect_post_relocation_dispatch")]["keys"]
+        self.assertEqual(reselect_keys, ["up"] * 12 + ["right", "right", "["])
+        self.assertLess(
+            labels.index("record_pre_relocation_incident"),
+            labels.index("teleport_player_twelve_omt_south"),
+        )
+        self.assertLess(
+            labels.index("teleport_player_twelve_omt_south"),
+            labels.index("record_post_relocation_incident"),
+        )
+        self.assertIn(
+            "empty intervention ledger",
+            scenario["evidence_contract"]["observer_artifact_requirement"],
+        )
+
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):
             with self.subTest(clone_follower_template=clone_follower_template):

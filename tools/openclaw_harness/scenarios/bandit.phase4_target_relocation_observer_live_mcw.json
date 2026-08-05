@@ -1,0 +1,242 @@
+{
+  "name": "bandit.phase4_target_relocation_observer_live_mcw",
+  "description": "Phase-4 live target-relocation control on a captured authoritative structural dispatch. The observer records the same dispatch before and after an explicit long-range debug player teleport; the camp-owned target must remain fixed and no ecology entity is edited.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2"
+    }
+  },
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "settle_target_relocation_fixture",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "the captured natural local-dispatch footing reaches normal gameplay"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_authoritative_relocation_dispatch",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 3,
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_activity_id_contains": "#structural",
+      "required_active_outing_generation": 1,
+      "required_active_outing_simulation_owner": "local",
+      "required_active_outing_handoff_epoch": 1,
+      "required_active_outing_phase": "observing",
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "required_local_handoff_state": "local",
+      "required_local_handoff_exact_pair": true,
+      "required_local_handoff_pair_contract": true,
+      "required_active_target_id_exact": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
+      "required_active_job_type": "scout",
+      "required_min_active_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_phase4_relocation_dispatch",
+      "abort_reason": "fixture did not contain the exact generation-1 local structural pair and stationary road target",
+      "expected_immediate_state": "the authoritative owner starts with the exact pair pinned to the road lead before player relocation"
+    },
+    {
+      "kind": "press",
+      "label": "open_pre_relocation_ecology_overmap",
+      "keys": ["m"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the normal overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay"
+    },
+    {
+      "kind": "press",
+      "label": "select_pre_relocation_dispatch",
+      "keys": ["right", "right", "["],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "capture_after": true,
+      "expected_visible_fact": "the dispatch at OMT 137,51,0 is selected with its stable ID and road destination before relocation"
+    },
+    {
+      "kind": "press",
+      "label": "close_pre_relocation_overmap",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the overmap closes without moving the avatar"
+    },
+    {
+      "kind": "press",
+      "label": "open_pre_relocation_ecology_console",
+      "keys": ["}", "C"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the existing debug console opens on the selected natural dispatch"
+    },
+    {
+      "kind": "press",
+      "label": "record_pre_relocation_incident",
+      "keys": ["R"],
+      "delay_ms": 200,
+      "settle_seconds": 3,
+      "capture_after": true,
+      "expected_visible_fact": "the first atomic incident pair records player OMT 135,51,0 and the selected natural dispatch"
+    },
+    {
+      "kind": "press",
+      "label": "close_pre_relocation_ecology_console",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the console closes before the explicit player relocation"
+    },
+    {
+      "kind": "press",
+      "label": "open_debug_long_teleport",
+      "keys": ["}", "t", "l"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "Debug Functions opens Teleport then the ordinary long-range overmap destination picker"
+    },
+    {
+      "kind": "press",
+      "label": "teleport_player_twelve_omt_south",
+      "keys": ["down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "enter"],
+      "delay_ms": 150,
+      "settle_seconds": 4,
+      "capture_after": true,
+      "expected_visible_fact": "the avatar is deliberately relocated twelve OMT south while the ecology entity is untouched",
+      "failure_rule": "This debug player relocation is explicit test footing, not a natural ecology transition and not an entity intervention."
+    },
+    {
+      "kind": "press",
+      "label": "advance_one_turn_after_player_relocation",
+      "keys": ["."],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "one ordinary turn gives the second incident a distinct turn identity and lets normal owner load-transfer run"
+    },
+    {
+      "kind": "press",
+      "label": "open_post_relocation_ecology_overmap",
+      "keys": ["m"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the observer reopens around the relocated avatar"
+    },
+    {
+      "kind": "press",
+      "label": "reselect_post_relocation_dispatch",
+      "keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "right", "right", "["],
+      "delay_ms": 150,
+      "settle_seconds": 2,
+      "capture_after": true,
+      "expected_visible_fact": "the same canonical dispatch is reselected at OMT 137,51,0 after player relocation, including any honest local-to-abstract owner transfer"
+    },
+    {
+      "kind": "press",
+      "label": "close_post_relocation_overmap",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the post-relocation overmap closes with the dispatch reselected"
+    },
+    {
+      "kind": "press",
+      "label": "open_post_relocation_ecology_console",
+      "keys": ["}", "C"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the existing console opens for the reselected authoritative dispatch"
+    },
+    {
+      "kind": "press",
+      "label": "record_post_relocation_incident",
+      "keys": ["R"],
+      "delay_ms": 200,
+      "settle_seconds": 3,
+      "capture_after": true,
+      "expected_visible_fact": "the second atomic incident pair records the changed player OMT and unchanged dispatch identity, position, and destination"
+    },
+    {
+      "kind": "press",
+      "label": "close_post_relocation_ecology_console",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the console closes before authoritative save/writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_relocation_save",
+      "expected_visible_fact": "the saved-player mtime baseline is recorded before final writeback"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_target_relocation",
+      "keys": ["S"],
+      "delay_ms": 250,
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": ["quit", "Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_phase4_relocation_save_prompt",
+      "abort_reason": "save-and-quit prompt was not visibly proven after player relocation",
+      "expected_visible_fact": "the case-sensitive save-and-quit prompt is open"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_target_relocation",
+      "keys": ["Y"],
+      "delay_ms": 250,
+      "settle_seconds": 5,
+      "capture_after": false,
+      "expected_visible_fact": "uppercase Y confirms the proven save prompt"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_relocation_save",
+      "changed_since_label": "audit_player_save_mtime_before_relocation_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_phase4_relocation_writeback",
+      "abort_reason": "saved-player mtime did not advance after the relocation control",
+      "expected_visible_fact": "same-run relocated player and authoritative camp state were written to disk"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_authoritative_target_after_player_relocation",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 3,
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_activity_id_contains": "#structural",
+      "required_active_outing_generation": 1,
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "required_active_target_id_exact": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road",
+      "required_active_job_type": "scout",
+      "required_min_active_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase4_target_dragged_by_player_relocation",
+      "abort_reason": "the saved authoritative outing identity or road target changed after moving only the player",
+      "expected_immediate_state": "the exact generation-1 pair still targets the same camp-owned road lead; owner may legitimately transfer across load boundaries"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_target_relocation_observer_live_mcw",
+  "evidence_contract": {
+    "claim": "moving the real avatar twelve OMT through an explicit debug teleport does not drag the authoritative generation-1 structural dispatch, its current OMT, or its camp-owned road destination",
+    "setup_boundary": "the captured natural producer supplies the real local dispatch and DEBUG_CLAIRVOYANCE is the only fixture-added mutation; the same-run player teleport is explicit debug footing, not natural movement or an ecology entity intervention",
+    "observer_artifact_requirement": "Coordinator inspection must compare the two ecology_incident JSON/PNG pairs: player_omt changes, while selected canonical ID, selected OMT, destination, route, member IDs, and empty intervention ledger remain stable except for an honest owner/load transfer.",
+    "failure_rule": "No relocation credit without the exact pre/post saved target audit and both compact incident pairs; a missing/stale selection, changed target, player@ target, or ecology intervention is red."
+  }
+}
