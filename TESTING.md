@@ -1090,6 +1090,23 @@ reports no accepted/actionable finding with 0.90 correctness confidence. `astyle
 this Mac, so no astyle-diff claim is made. The checkpoint performs no live terrain/path query and
 does not close either selection row; the next evidence class is the bounded production adapter.
 
+Phase-5 live watch geography is green at `ef962e6e88`. The production reader resolves a verified
+basecamp footprint even when the lead targets an expansion, otherwise uses the structural target
+singleton; real OMT see cost, explicit Chebyshev approach clearance, and NPC pathfinding with the
+whole target footprint excluded feed schema 9. Terrain work is capped at 128/64/64 candidates per
+exact/distance-4/distance-5 ring, while one maintenance pass shares eight actual watch path solves;
+source-aware shortlisting prevents coordinate-side starvation. Scheduler scoring, exact-pair
+materialization, atomic apply, save/load, replay, fallback, abandon, expansion-safe routing, and one
+real excluded-OMT detour are covered. Review found five correctness defects across coordinate bias,
+footprint crossing/detour, expansion targets, and global solve accounting; all were fixed before
+checkpoint. Exact Mac build includes `obj/overmapbuffer.o`, `obj/bandit_live_world.o`, `obj/do_turn.o`,
+the focused test object, and `tests`; adapter passes 1/50 and full structural passes 51/6,780 with
+fixed seed 1. One earlier focused run printed 48/48 pass before exit-time 139; the immediate
+fixed-seed rerun exited 0, and the final 50-assertion detour packet exits 0. `git diff --check` is
+clean. `astyle` remains unavailable, and no Linux/Windows runtime is claimed. Physical movement
+still follows the ordinary structural target route, so both watch-selection gameplay rows stay open;
+the next evidence class is shared-route travel to persisted `selected_watch_omt`.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

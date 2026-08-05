@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH ADAPTER NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH TRAVEL NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -454,16 +454,22 @@ coverage, without avatar or arbitrary-anchor input. A pure exact-ring selector n
 verified reachability, concealment, a clear two-OMT approach, and nonnegative route cost, then picks
 by route cost and stable OMT order. If exact distance 3 is unavailable, a bounded selector now
 chooses distance 4 before 5, then route cost/stable OMT, or returns a typed abandon outcome; closer
-and more remote candidates never qualify. These are evaluator footing only: no production route
-consumes authoritative geography yet, so the two selection rows remain open. A direct route-read
+and more remote candidates never qualify. These began as evaluator footing only. A direct route-read
 attempt was backed out cleanly after apply-time replay proved that ephemeral watch metadata cannot
 satisfy the existing canonical route/save contract. Structural schema 9 is checkpointed at
 `dfb19de3aa`: the existing outing owner now persists a canonical 64-OMT target footprint and one
 immutable exact/fallback watch selection from at most 256 candidates, migrates schema 8 to an
 unselected singleton footprint, and rejects stale/conflicting/malformed replay atomically. Focused
-Mac persistence 1/71, full structural 51/6,780, handoff 5/237, and final AutoReview are green. This
-does not claim authoritative terrain/path reads or live route behavior. Next: wire one bounded
-production geography adapter through this owner and abandon honestly when no safe candidate exists.
+Mac persistence 1/71, full structural 51/6,780, handoff 5/237, and final AutoReview are green.
+Production adapter checkpoint `ef962e6e88` now derives the full verified basecamp footprint or a
+singleton structural target, reads real OMT concealment/approach terrain, searches NPC routes around
+the target footprint, and commits exact/fallback selection through schema 9 or abandons. Work is
+bounded to 256 terrain reads per routed contender and eight watch path solves per maintenance pass;
+source-aware shortlisting avoids one-sided coordinate sampling. Exact Mac object/test link,
+adapter 1/50, and structural 51/6,780 are green after review found and fixed five concrete geography
+and budget defects. The two gameplay rows remain open because ordinary movement still follows the
+old structural target route. Next: make the existing shared route and pair movement consume the
+persisted selected watch OMT without adding a second owner.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
