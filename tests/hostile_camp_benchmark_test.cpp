@@ -29,6 +29,7 @@
 #include "bandit_live_world_probe.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "ecology_debug_view.h"
 #include "game.h"
 #include "json.h"
 #include "json_loader.h"
@@ -75,6 +76,29 @@ struct whole_save_metrics {
     std::uint64_t directory_file_count_after = 0;
     std::int64_t save_wall_time_ns = 0;
     std::int64_t load_wall_time_ns = 0;
+};
+
+struct observer_metrics {
+    bool applicable = false;
+    bool enabled = false;
+    std::uint64_t query_count = 0;
+    std::uint64_t candidate_count_total = 0;
+    std::uint64_t considered_count_total = 0;
+    std::uint64_t emitted_count_total = 0;
+    std::uint64_t dropped_count_total = 0;
+    std::uint64_t maximum_candidate_count = 0;
+    std::uint64_t maximum_considered_count = 0;
+    std::uint64_t maximum_emitted_count = 0;
+    std::uint64_t truncated_query_count = 0;
+    std::uint64_t query_microseconds_total = 0;
+    std::uint64_t maximum_query_microseconds = 0;
+    std::uint64_t member_loaded_callback_count = 0;
+    std::uint64_t selected_detail_callback_count = 0;
+    std::uint64_t mobile_callback_count = 0;
+    std::size_t candidate_limit = ecology_debug::candidate_cap;
+    std::size_t marker_limit = ecology_debug::marker_cap;
+    std::size_t event_limit = ecology_debug::delta_cap;
+    bool terminal_state_unchanged = false;
 };
 
 struct scheduler_wait_record {
@@ -413,7 +437,7 @@ void add_legacy_saturated_leads( bandit_live_world::site_record &site )
 }
 
 bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count,
-        const bool saturate_existing_leads )
+        const bool saturate_existing_leads, const bool normalize_supply = false )
 {
     bandit_live_world::world_state world;
     world.owner_id = "hostile_camp_benchmark_legacy_v1";
@@ -432,6 +456,9 @@ bandit_live_world::world_state make_legacy_fixture( const std::size_t site_count
                        bandit_live_world::hostile_site_profile::cannibal_camp;
         site.source_id = structural_camp ? "bandit_camp" : "cannibal_camp";
         site.living_total = legacy_loaded_roster_members;
+        if( normalize_supply ) {
+            site.supply_accounted_living_total = legacy_loaded_roster_members;
+        }
         site.anchor = tripoint_abs_omt( static_cast<int>( site_index * 20 ),
                                        static_cast<int>( site_index * 20 ), 0 );
         site.footprint.push_back( site.anchor );
@@ -691,6 +718,36 @@ void write_whole_save_metrics( JsonOut &json, const whole_save_metrics &metrics 
     json.end_object();
 }
 
+void write_observer_metrics( JsonOut &json, const observer_metrics &metrics )
+{
+    json.start_object();
+    json.member( "enabled", metrics.enabled );
+    json.member( "query_count", metrics.query_count );
+    json.member( "candidate_count_total", metrics.candidate_count_total );
+    json.member( "considered_count_total", metrics.considered_count_total );
+    json.member( "emitted_count_total", metrics.emitted_count_total );
+    json.member( "dropped_count_total", metrics.dropped_count_total );
+    json.member( "maximum_candidate_count", metrics.maximum_candidate_count );
+    json.member( "maximum_considered_count", metrics.maximum_considered_count );
+    json.member( "maximum_emitted_count", metrics.maximum_emitted_count );
+    json.member( "candidate_limit", metrics.candidate_limit );
+    json.member( "marker_limit", metrics.marker_limit );
+    json.member( "event_limit", metrics.event_limit );
+    json.member( "truncated_query_count", metrics.truncated_query_count );
+    json.member( "query_microseconds_total", metrics.query_microseconds_total );
+    json.member( "maximum_query_microseconds", metrics.maximum_query_microseconds );
+    json.member( "member_loaded_callback_count", metrics.member_loaded_callback_count );
+    json.member( "selected_detail_callback_count", metrics.selected_detail_callback_count );
+    json.member( "mobile_callback_count", metrics.mobile_callback_count );
+    json.member( "closed_zero_callback_evidence",
+                 !metrics.enabled && metrics.member_loaded_callback_count == 0 &&
+                 metrics.selected_detail_callback_count == 0 &&
+                 metrics.mobile_callback_count == 0 );
+    json.member( "selected_rich_detail_requested", false );
+    json.member( "terminal_state_unchanged", metrics.terminal_state_unchanged );
+    json.end_object();
+}
+
 const bandit_live_world_probe::site_service_record *find_site_service(
     const bandit_live_world_probe::snapshot &probe, const std::string &site_id )
 {
@@ -913,6 +970,86 @@ void run_workload_update( const std::string &workload, bandit_live_world::world_
     } );
 }
 
+bool observer_workload( const std::string &workload )
+{
+    return workload == "observer_closed" || workload == "observer_open" ||
+           workload == "observer_save_closed" || workload == "observer_save_open";
+}
+
+bool observer_save_workload( const std::string &workload )
+{
+    return workload == "observer_save_closed" || workload == "observer_save_open";
+}
+
+bool observer_enabled( const std::string &workload )
+{
+    return workload == "observer_open" || workload == "observer_save_open";
+}
+
+void run_observer_query( const bandit_live_world::world_state &world, observer_metrics &metrics )
+{
+    ecology_debug::query_request request;
+    request.enabled = metrics.enabled;
+    request.member_is_loaded = [&metrics]( character_id ) {
+        metrics.member_loaded_callback_count++;
+        return false;
+    };
+    request.read_selected_member = [&metrics]( character_id ) {
+        metrics.selected_detail_callback_count++;
+        return std::optional<ecology_debug::runtime_member_read>();
+    };
+    request.read_mobile_entities = [&metrics]( const ecology_debug::query_region &,
+    std::string_view, std::size_t ) {
+        metrics.mobile_callback_count++;
+        return std::vector<ecology_debug::mobile_entity_read>();
+    };
+
+    const ecology_debug::view_snapshot snapshot = ecology_debug::query_bandit_ecology( world,
+            request );
+    if( snapshot.metadata.query_microseconds < 0 ) {
+        throw std::runtime_error( "observer query reported negative elapsed time" );
+    }
+    metrics.query_count++;
+    metrics.candidate_count_total += snapshot.metadata.candidate_count;
+    metrics.considered_count_total += snapshot.metadata.considered_count;
+    metrics.emitted_count_total += snapshot.metadata.emitted_count;
+    metrics.dropped_count_total += snapshot.metadata.dropped_count;
+    metrics.maximum_candidate_count = std::max<std::uint64_t>(
+                                          metrics.maximum_candidate_count,
+                                          snapshot.metadata.candidate_count );
+    metrics.maximum_considered_count = std::max<std::uint64_t>(
+                                           metrics.maximum_considered_count,
+                                           snapshot.metadata.considered_count );
+    metrics.maximum_emitted_count = std::max<std::uint64_t>( metrics.maximum_emitted_count,
+                                      snapshot.metadata.emitted_count );
+    metrics.truncated_query_count += snapshot.metadata.truncated ? 1 : 0;
+    const std::uint64_t elapsed = static_cast<std::uint64_t>(
+                                      snapshot.metadata.query_microseconds );
+    metrics.query_microseconds_total += elapsed;
+    metrics.maximum_query_microseconds = std::max( metrics.maximum_query_microseconds, elapsed );
+
+    if( snapshot.metadata.candidate_limit != metrics.candidate_limit ||
+        snapshot.metadata.marker_limit != metrics.marker_limit ||
+        snapshot.metadata.event_limit != metrics.event_limit ) {
+        throw std::runtime_error( "observer query cap metadata changed during benchmark" );
+    }
+    if( snapshot.selected ) {
+        throw std::runtime_error( "observer benchmark unexpectedly requested selected detail" );
+    }
+    if( !metrics.enabled && ( !snapshot.entities.empty() ||
+                              snapshot.metadata.candidate_count != 0 ||
+                              snapshot.metadata.considered_count != 0 ||
+                              snapshot.metadata.emitted_count != 0 ||
+                              snapshot.metadata.dropped_count != 0 ||
+                              snapshot.metadata.truncated ||
+                              snapshot.metadata.query_microseconds != 0 ||
+                              metrics.member_loaded_callback_count != 0 ||
+                              metrics.selected_detail_callback_count != 0 ||
+                              metrics.mobile_callback_count != 0 ) ) {
+        throw std::runtime_error( "disabled observer performed work" );
+    }
+}
+
 void run_whole_save_round_trip( bandit_live_world::world_state &world,
                                 whole_save_metrics &metrics )
 {
@@ -973,6 +1110,7 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
                               const scheduler_wait_tracker &wait_tracker,
                               const std::vector<process_memory_snapshot> &memory_samples,
                               const whole_save_metrics &whole_save,
+                              const observer_metrics &observer,
                               const std::string &initial_serialized,
                               const std::string &terminal_serialized,
                               const cardinality &initial_cardinality,
@@ -1024,6 +1162,11 @@ std::string make_result_json( const std::string &fixture, const std::string &wor
 
     json.member( "probe" );
     write_probe_result( json, timing_probe );
+
+    if( observer.applicable ) {
+        json.member( "observer" );
+        write_observer_metrics( json, observer );
+    }
 
     json.member( "serialization" );
     json.start_object();
@@ -1112,6 +1255,30 @@ void emit_result( const std::string &output_path, const std::string &result )
     if( !output ) {
         throw std::runtime_error( "cannot write CAOL_HOSTILE_BENCHMARK_OUTPUT" );
     }
+}
+
+void require_identical_serialized( const std::string &actual, const std::string &expected,
+                                   const std::string_view context )
+{
+    if( actual == expected ) {
+        return;
+    }
+    const auto mismatch = std::mismatch( actual.begin(), actual.end(), expected.begin(), expected.end() );
+    const std::size_t offset = static_cast<std::size_t>(
+                                   std::distance( actual.begin(), mismatch.first ) );
+    std::ostringstream message;
+    message << context << " serialized state differs: actual_bytes=" << actual.size() <<
+            " expected_bytes=" << expected.size() << " actual_sha256=" << sha256( actual ) <<
+            " expected_sha256=" << sha256( expected ) << " first_difference=" << offset;
+    if( mismatch.first != actual.end() ) {
+        message << " actual_byte=" << static_cast<unsigned int>(
+                    static_cast<unsigned char>( *mismatch.first ) );
+    }
+    if( mismatch.second != expected.end() ) {
+        message << " expected_byte=" << static_cast<unsigned int>(
+                    static_cast<unsigned char>( *mismatch.second ) );
+    }
+    throw std::runtime_error( message.str() );
 }
 } // namespace
 
@@ -1254,12 +1421,13 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
              "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" );
     const bool supported_workload = workload == "idle" || workload == "structural" ||
                                     workload == "lead_saturated" || workload == "serialize" ||
-                                    workload == "dispatch_return" || workload == "whole_save";
+                                    workload == "dispatch_return" || workload == "whole_save" ||
+                                    observer_workload( workload );
     REQUIRE( supported_workload );
     REQUIRE( site_count <= 1000 );
     REQUIRE( updates > 0 );
     REQUIRE( updates <= 1000000 );
-    if( workload == "whole_save" ) {
+    if( workload == "whole_save" || observer_save_workload( workload ) ) {
         REQUIRE( updates == 1 );
     }
     REQUIRE( clock_floor_samples > 0 );
@@ -1285,7 +1453,7 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     memory_samples.reserve( 12 );
     record_process_memory( memory_samples, "before_fixture_construction" );
     bandit_live_world::world_state world = make_legacy_fixture( site_count,
-            saturate_existing_leads );
+            saturate_existing_leads, observer_workload( workload ) );
     record_process_memory( memory_samples, "after_fixture_construction" );
     const cardinality initial_cardinality = measure_cardinality( world );
     const std::size_t expected_initial_leads = saturate_existing_leads ?
@@ -1309,6 +1477,9 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     bandit_live_world_probe::snapshot timing_probe_result;
     std::int64_t wall_time_ns = 0;
     whole_save_metrics whole_save;
+    observer_metrics observer;
+    observer.applicable = observer_workload( workload );
+    observer.enabled = observer_enabled( workload );
 
     apply_benchmark_calendar( calendar_configuration );
     rng_set_engine_seed( effective_seed );
@@ -1319,7 +1490,14 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
         const benchmark_clock::time_point wall_started = benchmark_clock::now();
         for( std::size_t update = 0; update < updates; ++update ) {
             const benchmark_clock::time_point update_started = benchmark_clock::now();
-            if( workload == "whole_save" ) {
+            if( observer.applicable ) {
+                run_observer_query( world, observer );
+                if( observer_save_workload( workload ) ) {
+                    require_identical_serialized( serialize_world( world ), initial_serialized,
+                                                  "observer pre-save" );
+                    run_whole_save_round_trip( world, whole_save );
+                }
+            } else if( workload == "whole_save" ) {
                 run_whole_save_round_trip( world, whole_save );
             } else {
                 run_workload_update( workload, world, update, last_serialized,
@@ -1344,7 +1522,7 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     apply_benchmark_calendar( calendar_configuration );
     record_process_memory( memory_samples, "before_fairness_fixture_construction" );
     bandit_live_world::world_state fairness_world = make_legacy_fixture( site_count,
-            saturate_existing_leads );
+            saturate_existing_leads, observer_workload( workload ) );
     record_process_memory( memory_samples, "after_fairness_fixture_construction" );
     bandit_live_world_probe::snapshot fairness_probe_result;
     scheduler_wait_tracker wait_tracker( fairness_world, workload == "structural" );
@@ -1354,7 +1532,8 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
         bandit_live_world_probe::session fairness_session(
             bandit_live_world_probe::collection_mode::site_services, 0, site_count );
         std::string fairness_last_serialized;
-        if( workload != "serialize" && workload != "whole_save" ) {
+        if( workload != "serialize" && workload != "whole_save" &&
+            !observer_workload( workload ) ) {
             for( std::size_t update = 0; update < updates; ++update ) {
                 run_workload_update( workload, fairness_world, update, fairness_last_serialized,
                                      workload == "structural" );
@@ -1379,13 +1558,46 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     REQUIRE_FALSE( initial_serialized.empty() );
     REQUIRE_FALSE( terminal_serialized.empty() );
     if( workload == "serialize" ) {
-        REQUIRE( last_serialized == terminal_serialized );
+        require_identical_serialized( last_serialized, terminal_serialized,
+                                      "serialize workload terminal" );
     }
-    if( workload == "whole_save" ) {
+    if( workload == "whole_save" || observer_save_workload( workload ) ) {
         REQUIRE( whole_save.performed );
         REQUIRE( whole_save.save_succeeded );
         REQUIRE( whole_save.load_succeeded );
         REQUIRE( whole_save.directory_measurement_complete );
+    }
+    if( observer.applicable ) {
+        observer.terminal_state_unchanged = terminal_serialized == initial_serialized;
+        REQUIRE( observer.query_count == updates );
+        REQUIRE( observer.candidate_limit == ecology_debug::candidate_cap );
+        REQUIRE( observer.marker_limit == ecology_debug::marker_cap );
+        REQUIRE( observer.event_limit == ecology_debug::delta_cap );
+        REQUIRE( observer.terminal_state_unchanged );
+        REQUIRE( observer.maximum_candidate_count == ( observer.enabled ? site_count : 0 ) );
+        REQUIRE( observer.maximum_considered_count ==
+                 ( observer.enabled ? std::min( site_count, ecology_debug::candidate_cap ) : 0 ) );
+        REQUIRE( observer.maximum_emitted_count ==
+                 ( observer.enabled ? std::min( site_count, ecology_debug::marker_cap ) : 0 ) );
+        REQUIRE( observer.candidate_count_total ==
+                 observer.maximum_candidate_count * updates );
+        REQUIRE( observer.considered_count_total ==
+                 observer.maximum_considered_count * updates );
+        REQUIRE( observer.emitted_count_total == observer.maximum_emitted_count * updates );
+        REQUIRE( observer.dropped_count_total ==
+                 ( observer.maximum_candidate_count - observer.maximum_emitted_count ) * updates );
+        REQUIRE( observer.truncated_query_count ==
+                 ( observer.enabled && site_count > ecology_debug::marker_cap ? updates : 0 ) );
+        REQUIRE( observer.selected_detail_callback_count == 0 );
+        REQUIRE( observer.mobile_callback_count == 0 );
+        if( observer.enabled ) {
+            REQUIRE( observer.member_loaded_callback_count ==
+                     site_count * legacy_loaded_roster_members * updates );
+        } else {
+            REQUIRE( observer.member_loaded_callback_count == 0 );
+            REQUIRE( observer.query_microseconds_total == 0 );
+            REQUIRE( observer.maximum_query_microseconds == 0 );
+        }
     }
     REQUIRE_FALSE( timing_probe_result.stack_overflow );
     REQUIRE_FALSE( fairness_probe_result.stack_overflow );
@@ -1393,13 +1605,14 @@ TEST_CASE( "hostile camp deterministic benchmark driver",
     REQUIRE_FALSE( timing_probe_result.site_services_collected );
     REQUIRE_FALSE( fairness_probe_result.timings_collected );
     REQUIRE( fairness_probe_result.site_services_collected );
-    REQUIRE( fairness_terminal_serialized == terminal_serialized );
+    require_identical_serialized( fairness_terminal_serialized, terminal_serialized,
+                                  "fairness replay terminal" );
 
     emit_result( output_path, make_result_json( fixture, workload, fixture_sha256, repetition,
                  variant, effective_seed, calendar_configuration, updates, clock_floor_samples, update_latency,
                  clock_floor,
                  wall_time_ns, world, timing_probe_result, fairness_probe_result, wait_tracker,
-                 memory_samples, whole_save,
+                 memory_samples, whole_save, observer,
                  initial_serialized, terminal_serialized, initial_cardinality,
                  terminal_cardinality ) );
 }

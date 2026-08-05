@@ -1,0 +1,41 @@
+{
+  "schema": "caol-hostile-camp-benchmark-matrix-v1",
+  "description": "Phase-4 ecology observer open/closed query cost and real whole-save neutrality on identical mixed bandit/cannibal fixtures.",
+  "fixture_hash_kind": "serialized_state_sha256",
+  "require_equivalent_terminal_state": true,
+  "isolated_user_dir_argument": "--user-dir",
+  "cases": [
+    {
+      "id": "ecology-observer-closed-sites-100",
+      "fixture": "legacy_observer_closed_sites_100_v1",
+      "fixture_sha256": "915f0265641cc3bce7e1114f0f069274188c8b2e243d955f32aa27877d7ed0d5",
+      "workload": "observer_closed",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "ecology-observer-open-sites-100",
+      "fixture": "legacy_observer_open_sites_100_v1",
+      "fixture_sha256": "915f0265641cc3bce7e1114f0f069274188c8b2e243d955f32aa27877d7ed0d5",
+      "workload": "observer_open",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1000", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "ecology-observer-save-closed-sites-10",
+      "fixture": "legacy_observer_save_closed_sites_10_v1",
+      "fixture_sha256": "fe1d0b55f9bfaa551224c4672f7b472fbdf79a65d662418f3180a5726cd92600",
+      "workload": "observer_save_closed",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "ecology-observer-save-open-sites-10",
+      "fixture": "legacy_observer_save_open_sites_10_v1",
+      "fixture_sha256": "fe1d0b55f9bfaa551224c4672f7b472fbdf79a65d662418f3180a5726cd92600",
+      "workload": "observer_save_open",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    }
+  ]
+}

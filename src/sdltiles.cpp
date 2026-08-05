@@ -6555,9 +6555,15 @@ void rescale_tileset( int size )
 {
     // zoom is calculated as powers of 2 so need to convert swap zoom between 4 and 64
     if( size <= pow( 2, get_option<int>( "SWAP_ZOOM" ) + 1 ) && use_far_tiles ) {
+        if( !fartilecontext ) {
+            return;
+        }
         tilecontext = fartilecontext;
         g->mark_main_ui_adaptor_resize();
     } else {
+        if( !closetilecontext ) {
+            return;
+        }
         tilecontext = closetilecontext;
         g->mark_main_ui_adaptor_resize();
     }
