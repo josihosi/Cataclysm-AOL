@@ -96,7 +96,11 @@ void write_selected( JsonOut &json, const selected_projection &projection )
     json.member( "last_transition_minutes", detail.last_transition_minutes );
     json.member( "last_transition_reason", detail.last_transition_reason );
     json.member( "blocked_reason", detail.blocked_reason );
+    json.member( "evidence_id", detail.evidence_id );
+    json.member( "evidence_kind", detail.evidence_kind );
+    json.member( "evidence_state", detail.evidence_state );
     json.member( "evidence_reason", detail.evidence_reason );
+    json.member( "evidence_observed_minutes", detail.evidence_observed_minutes );
     json.member( "evidence_age_minutes", detail.evidence_age_minutes );
     json.member( "next_deadline_minutes", detail.next_deadline_minutes );
     json.member( "destination" );
@@ -229,6 +233,7 @@ std::string build_payload( const incident_identity &identity,
                            const delta_ring &deltas,
                            const std::optional<std::string> &note,
                            const std::vector<incident_intervention> &interventions,
+                           const std::optional<incident_watch_state> &watch,
                            size_t intervention_input_count,
                            size_t payload_bytes )
 {
@@ -236,7 +241,7 @@ std::string build_payload( const incident_identity &identity,
     JsonOut json( output, false );
     json.start_object();
     json.member( "schema", "c-aol.ecology.incident" );
-    json.member( "version", 1 );
+    json.member( "version", 2 );
     json.member( "identity" );
     json.start_object();
     json.member( "turn", identity.turn );
@@ -270,6 +275,12 @@ std::string build_payload( const incident_identity &identity,
     write_selected( json, selected );
     json.member( "deltas" );
     write_deltas( json, deltas );
+    json.member( "watch" );
+    if( watch ) {
+        write_watch_json( json, watch->spec, watch->input, watch->result );
+    } else {
+        json.write_null();
+    }
     json.member( "interventions" );
     json.start_array();
     for( const incident_intervention &intervention : interventions ) {
@@ -347,7 +358,8 @@ incident_bundle_result serialize_incident_bundle(
     const std::optional<selected_projection> &selected,
     const delta_ring &deltas,
     const std::optional<std::string> &human_note,
-    const std::vector<incident_intervention> &interventions )
+    const std::vector<incident_intervention> &interventions,
+    const std::optional<incident_watch_state> &watch )
 {
     incident_bundle_result result;
     result.error = validate( identity, selected, deltas, interventions );
@@ -369,7 +381,7 @@ incident_bundle_result serialize_incident_bundle(
 
     size_t payload_bytes = 0;
     for( int attempt = 0; attempt < 8; ++attempt ) {
-        result.payload = build_payload( identity, *selected, deltas, human_note, retained,
+        result.payload = build_payload( identity, *selected, deltas, human_note, retained, watch,
                                         interventions.size(), payload_bytes );
         if( result.payload.size() == payload_bytes ) {
             break;

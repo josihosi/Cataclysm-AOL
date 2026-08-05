@@ -34,7 +34,11 @@ ecology_debug::selected_projection make_projection()
     detail.phase = "returning";
     detail.last_transition_minutes = 90;
     detail.last_transition_reason = "casualty_recorded";
+    detail.evidence_id = "casualty@10,20,-1";
+    detail.evidence_kind = "casualty";
+    detail.evidence_state = "confirmed";
     detail.evidence_reason = "physical_signal_return";
+    detail.evidence_observed_minutes = 78;
     detail.evidence_age_minutes = 12;
     detail.next_deadline_minutes = 150;
     detail.destination = tripoint_abs_omt( 2, 3, -1 );
@@ -94,11 +98,25 @@ TEST_CASE( "ecology_debug_incident_is_deterministic_and_preserves_provenance",
         make_intervention( 2 ), make_intervention( 1 )
     };
     const std::string deltas_before = deltas.serialize_compact_json();
+    ecology_debug::incident_watch_state watch;
+    watch.spec.preset = ecology_debug::watch_preset::casualty;
+    watch.spec.disposition = ecology_debug::trigger_disposition::pause;
+    watch.spec.absolute_deadline_minutes = 160;
+    watch.input.prior = selected;
+    watch.input.current = selected;
+    watch.input.now_minutes = 120;
+    watch.input.armed_minutes = 100;
+    watch.input.last_progress_minutes = 120;
+    watch.result.status = ecology_debug::watch_status::triggered;
+    watch.result.disposition = ecology_debug::trigger_disposition::pause;
+    watch.result.newly_triggered = true;
+    watch.result.meaningful_progress = true;
+    watch.result.reason = "casualty";
 
     const ecology_debug::incident_bundle_result first = ecology_debug::serialize_incident_bundle(
-                identity, selected, deltas, std::string( "Scout casualty" ), interventions );
+                identity, selected, deltas, std::string( "Scout casualty" ), interventions, watch );
     const ecology_debug::incident_bundle_result second = ecology_debug::serialize_incident_bundle(
-                identity, selected, deltas, std::string( "Scout casualty" ), interventions );
+                identity, selected, deltas, std::string( "Scout casualty" ), interventions, watch );
 
     REQUIRE( first.valid );
     CHECK( first.payload == second.payload );
@@ -110,7 +128,7 @@ TEST_CASE( "ecology_debug_incident_is_deterministic_and_preserves_provenance",
     const JsonObject root = json_loader::from_string( first.payload ).get_object();
     root.allow_omitted_members();
     CHECK( root.get_string( "schema" ) == "c-aol.ecology.incident" );
-    CHECK( root.get_int( "version" ) == 1 );
+    CHECK( root.get_int( "version" ) == 2 );
     const JsonObject metadata = root.get_object( "metadata" );
     metadata.allow_omitted_members();
     CHECK( metadata.get_int( "payload_bytes" ) == static_cast<int>( first.payload.size() ) );
@@ -120,6 +138,10 @@ TEST_CASE( "ecology_debug_incident_is_deterministic_and_preserves_provenance",
     const JsonObject token = serialized_selected.get_object( "token" );
     token.allow_omitted_members();
     CHECK( token.get_string( "authority_token" ) == "site/4:outing/1" );
+    const JsonObject detail = serialized_selected.get_object( "details" );
+    detail.allow_omitted_members();
+    CHECK( detail.get_string( "evidence_kind" ) == "casualty" );
+    CHECK( detail.get_int( "evidence_observed_minutes" ) == 78 );
     const JsonObject delta_block = root.get_object( "deltas" );
     delta_block.allow_omitted_members();
     const JsonArray records = delta_block.get_array( "records" );
@@ -127,6 +149,11 @@ TEST_CASE( "ecology_debug_incident_is_deterministic_and_preserves_provenance",
     const JsonObject delta = records.get_object( 0 );
     delta.allow_omitted_members();
     CHECK( delta.get_string( "provenance" ) == "natural" );
+    const JsonObject serialized_watch = root.get_object( "watch" );
+    serialized_watch.allow_omitted_members();
+    CHECK( serialized_watch.get_string( "preset" ) == "casualty" );
+    CHECK( serialized_watch.get_string( "status" ) == "triggered" );
+    CHECK( serialized_watch.get_string( "reason" ) == "casualty" );
     const JsonArray serialized_interventions = root.get_array( "interventions" );
     REQUIRE( serialized_interventions.size() == 2 );
     JsonObject intervention = serialized_interventions.get_object( 0 );
@@ -171,6 +198,39 @@ TEST_CASE( "ecology_debug_incident_applies_exact_note_and_intervention_caps",
     JsonObject first = serialized.get_object( 0 );
     first.allow_omitted_members();
     CHECK( first.get_int( "sequence" ) == 4 );
+}
+
+TEST_CASE( "ecology_debug_incident_retains_deadline_watch_without_a_delta",
+           "[ecology_debug][incident][phase4]" )
+{
+    const ecology_debug::selected_projection selected = make_projection();
+    ecology_debug::incident_watch_state watch;
+    watch.spec.preset = ecology_debug::watch_preset::no_progress_by_deadline;
+    watch.spec.absolute_deadline_minutes = 460;
+    watch.input.prior = selected;
+    watch.input.current = selected;
+    watch.input.now_minutes = 460;
+    watch.input.armed_minutes = 100;
+    watch.input.last_progress_minutes = 100;
+    watch.result.status = ecology_debug::watch_status::timed_out;
+    watch.result.newly_triggered = true;
+    watch.result.reason = "no_progress_deadline_reached";
+
+    const ecology_debug::delta_ring deltas;
+    const ecology_debug::incident_bundle_result result =
+        ecology_debug::serialize_incident_bundle( make_identity(), selected, deltas,
+                std::nullopt, {}, watch );
+
+    REQUIRE( result.valid );
+    const JsonObject root = json_loader::from_string( result.payload ).get_object();
+    root.allow_omitted_members();
+    const JsonObject serialized_watch = root.get_object( "watch" );
+    serialized_watch.allow_omitted_members();
+    CHECK( serialized_watch.get_string( "status" ) == "timed_out" );
+    CHECK( serialized_watch.get_string( "reason" ) == "no_progress_deadline_reached" );
+    const JsonObject serialized_deltas = root.get_object( "deltas" );
+    serialized_deltas.allow_omitted_members();
+    CHECK( serialized_deltas.get_array( "records" ).size() == 0 );
 }
 
 TEST_CASE( "ecology_debug_incident_rejects_invalid_identity_selection_and_provenance",

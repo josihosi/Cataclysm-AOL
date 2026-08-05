@@ -32,6 +32,11 @@ delta_entity_summary make_summary( const selected_projection &projection )
     if( !detail.phase.empty() ) {
         result.phase = detail.phase;
     }
+    result.evidence_id = detail.evidence_id;
+    result.evidence_kind = detail.evidence_kind;
+    result.evidence_state = detail.evidence_state;
+    result.evidence_reason = detail.evidence_reason;
+    result.evidence_observed_minutes = detail.evidence_observed_minutes;
     result.population = detail.population;
     result.interest = detail.interest;
     result.target = detail.target;
@@ -94,6 +99,30 @@ bool hp_equal( const delta_entity_summary &lhs, const delta_entity_summary &rhs 
     return true;
 }
 
+bool terminal_member( const member_detail &member )
+{
+    return member.status == "dead" ||
+           ( member.hp_percent && *member.hp_percent <= 0 );
+}
+
+std::optional<delta_kind> terminal_disappearance_kind( const selected_projection &projection )
+{
+    if( projection.detail && !projection.detail->members.empty() &&
+        std::all_of( projection.detail->members.begin(), projection.detail->members.end(),
+    []( const member_detail & member ) {
+        return terminal_member( member );
+    } ) ) {
+        return delta_kind::died;
+    }
+    const std::string phase = projection.detail && !projection.detail->phase.empty() ?
+                              projection.detail->phase : projection.marker.state;
+    if( phase == "returning_report" || phase == "returning_home" ||
+        phase == "returning_exposed" || phase == "burned_withdrawal" ) {
+        return delta_kind::completed;
+    }
+    return std::nullopt;
+}
+
 void write_omt( JsonOut &json, const tripoint_abs_omt &omt )
 {
     json.start_array();
@@ -124,6 +153,11 @@ void write_summary( JsonOut &json, const delta_entity_summary &summary )
     json.member( "owner", summary.owner );
     json.member( "loaded", summary.loaded );
     json.member( "phase", summary.phase );
+    json.member( "evidence_id", summary.evidence_id );
+    json.member( "evidence_kind", summary.evidence_kind );
+    json.member( "evidence_state", summary.evidence_state );
+    json.member( "evidence_reason", summary.evidence_reason );
+    json.member( "evidence_observed_minutes", summary.evidence_observed_minutes );
     json.member( "generation", summary.generation );
     write_optional_int( json, "population", summary.population );
     write_optional_int( json, "interest", summary.interest );
@@ -247,7 +281,22 @@ delta_observation_result delta_ring::observe(
         return result;
     }
     if( prior && !current ) {
-        append_anomaly( prior, current, "selected_entity_missing" );
+        const std::optional<delta_kind> terminal = terminal_disappearance_kind( *prior );
+        if( !terminal ) {
+            append_anomaly( prior, current, "selected_entity_missing" );
+            return result;
+        }
+        delta_record record;
+        record.kind = *terminal;
+        record.turn = context.turn;
+        record.timestamp = context.timestamp;
+        record.entity_id = prior->marker.id;
+        record.provenance = prior->marker.provenance;
+        record.disposition = context.disposition;
+        record.before = make_summary( *prior );
+        append( std::move( record ) );
+        result.emitted = 1;
+        result.disposition = context.disposition;
         return result;
     }
     if( prior && current && !same_token( prior->token, current->token ) ) {
@@ -286,6 +335,14 @@ delta_observation_result delta_ring::observe(
     }
     if( before.phase != after.phase ) {
         append_change( delta_kind::phase_changed, after.id, before, after );
+    }
+    if( ( !after.evidence_id.empty() || !after.evidence_kind.empty() ||
+          !after.evidence_state.empty() || !after.evidence_reason.empty() ) &&
+        std::tie( before.evidence_id, before.evidence_kind, before.evidence_state,
+                  before.evidence_reason, before.evidence_observed_minutes ) !=
+        std::tie( after.evidence_id, after.evidence_kind, after.evidence_state,
+                  after.evidence_reason, after.evidence_observed_minutes ) ) {
+        append_change( delta_kind::evidence_acquired, after.id, before, after );
     }
     if( !hp_equal( before, after ) ) {
         append_change( delta_kind::hp_changed, after.id, before, after );
@@ -348,8 +405,14 @@ std::string to_string( delta_kind kind )
             return "moved";
         case delta_kind::phase_changed:
             return "phase_changed";
+        case delta_kind::evidence_acquired:
+            return "evidence_acquired";
         case delta_kind::hp_changed:
             return "hp_changed";
+        case delta_kind::completed:
+            return "completed";
+        case delta_kind::died:
+            return "died";
         case delta_kind::anomaly:
             return "anomaly";
     }

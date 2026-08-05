@@ -20,7 +20,10 @@ enum class delta_kind {
     appeared,
     moved,
     phase_changed,
+    evidence_acquired,
     hp_changed,
+    completed,
+    died,
     anomaly,
 };
 
@@ -59,6 +62,11 @@ struct delta_entity_summary {
     std::string owner;
     bool loaded = false;
     std::string phase;
+    std::string evidence_id;
+    std::string evidence_kind;
+    std::string evidence_state;
+    std::string evidence_reason;
+    int evidence_observed_minutes = -1;
     int generation = 0;
     std::optional<int> population;
     std::optional<int> interest;

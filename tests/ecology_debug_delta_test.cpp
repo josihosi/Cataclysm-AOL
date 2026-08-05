@@ -72,6 +72,33 @@ TEST_CASE( "ecology_debug_delta_records_only_selected_transitions",
     CHECK( unchanged.emitted == 0 );
     CHECK( ring.records().size() == prior_size );
 
+    ecology_debug::selected_projection evidence = before;
+    evidence.detail->evidence_id = "burn@10,20,0";
+    evidence.detail->evidence_kind = "burn";
+    evidence.detail->evidence_state = "burned";
+    evidence.detail->evidence_reason = "route burned";
+    evidence.detail->evidence_observed_minutes = 1234;
+    const ecology_debug::delta_observation_result acquired = ring.observe(
+                before, evidence, context() );
+    REQUIRE( acquired.emitted == 1 );
+    CHECK( ring.records().back().kind == ecology_debug::delta_kind::evidence_acquired );
+    const size_t after_evidence_size = ring.records().size();
+    evidence.detail->evidence_age_minutes = 10;
+    CHECK( ring.observe( evidence, evidence, context() ).emitted == 0 );
+    CHECK( ring.records().size() == after_evidence_size );
+
+    ecology_debug::selected_projection typed_only = evidence;
+    typed_only.detail->evidence_id = "casualty@10,20,0";
+    typed_only.detail->evidence_kind = "casualty";
+    typed_only.detail->evidence_state = "confirmed";
+    typed_only.detail->evidence_reason.clear();
+    typed_only.detail->evidence_observed_minutes = 1235;
+    const ecology_debug::delta_observation_result typed_acquired = ring.observe(
+                evidence, typed_only, context() );
+    REQUIRE( typed_acquired.emitted == 1 );
+    CHECK( ring.records().back().kind == ecology_debug::delta_kind::evidence_acquired );
+    const size_t after_typed_evidence_size = ring.records().size();
+
     ecology_debug::selected_projection status_only = before;
     status_only.detail->members.front().status = "missing";
     ecology_debug::member_detail newcomer;
@@ -82,7 +109,7 @@ TEST_CASE( "ecology_debug_delta_records_only_selected_transitions",
     const ecology_debug::delta_observation_result non_hp_change = ring.observe( before,
             status_only, context() );
     CHECK( non_hp_change.emitted == 0 );
-    CHECK( ring.records().size() == prior_size );
+    CHECK( ring.records().size() == after_typed_evidence_size );
 
     ecology_debug::selected_projection unloaded = before;
     unloaded.marker.loaded = false;
@@ -94,7 +121,7 @@ TEST_CASE( "ecology_debug_delta_records_only_selected_transitions",
     const ecology_debug::delta_observation_result hp_visible = ring.observe( unloaded, before,
             context() );
     CHECK( hp_visible.emitted == 0 );
-    CHECK( ring.records().size() == prior_size );
+    CHECK( ring.records().size() == after_typed_evidence_size );
 
     ecology_debug::selected_projection after = before;
     after.marker.omt = tripoint_abs_omt( 11, 21, -1 );
@@ -109,11 +136,13 @@ TEST_CASE( "ecology_debug_delta_records_only_selected_transitions",
 
     REQUIRE( changed.emitted == 3 );
     CHECK( changed.disposition == ecology_debug::trigger_disposition::pause );
-    REQUIRE( ring.records().size() == prior_size + 3 );
-    CHECK( ring.records()[prior_size].kind == ecology_debug::delta_kind::moved );
-    CHECK( ring.records()[prior_size + 1].kind == ecology_debug::delta_kind::phase_changed );
-    CHECK( ring.records()[prior_size + 2].kind == ecology_debug::delta_kind::hp_changed );
-    for( size_t index = prior_size; index < ring.records().size(); ++index ) {
+    REQUIRE( ring.records().size() == after_typed_evidence_size + 3 );
+    CHECK( ring.records()[after_typed_evidence_size].kind == ecology_debug::delta_kind::moved );
+    CHECK( ring.records()[after_typed_evidence_size + 1].kind ==
+           ecology_debug::delta_kind::phase_changed );
+    CHECK( ring.records()[after_typed_evidence_size + 2].kind ==
+           ecology_debug::delta_kind::hp_changed );
+    for( size_t index = after_typed_evidence_size; index < ring.records().size(); ++index ) {
         CHECK( ring.records()[index].provenance ==
                ecology_debug::entity_provenance::debug_intervention );
         CHECK( ring.records()[index].turn == 1234 );
@@ -121,8 +150,10 @@ TEST_CASE( "ecology_debug_delta_records_only_selected_transitions",
         REQUIRE( ring.records()[index].before );
         REQUIRE( ring.records()[index].after );
     }
-    CHECK( ring.records()[prior_size + 2].before->members.front().hp_percent == 100 );
-    CHECK( ring.records()[prior_size + 2].after->members.front().hp_percent == 61 );
+    CHECK( ring.records()[after_typed_evidence_size + 2].before->members.front().hp_percent ==
+           100 );
+    CHECK( ring.records()[after_typed_evidence_size + 2].after->members.front().hp_percent ==
+           61 );
 }
 
 TEST_CASE( "ecology_debug_delta_fails_closed_on_missing_or_changed_authority",
@@ -175,6 +206,33 @@ TEST_CASE( "ecology_debug_delta_fails_closed_on_missing_or_changed_authority",
     REQUIRE( owner_mismatch.emitted == 1 );
     CHECK( owner_mismatch.anomaly );
     CHECK( ring.records().back().anomaly_reason == "entity_token_mismatch" );
+
+    ecology_debug::selected_projection returning = before;
+    returning.marker.state = "returning_home";
+    returning.detail->phase = "returning_home";
+    const ecology_debug::delta_observation_result completed = ring.observe(
+                returning, std::nullopt, context() );
+    REQUIRE( completed.emitted == 1 );
+    CHECK_FALSE( completed.anomaly );
+    CHECK( ring.records().back().kind == ecology_debug::delta_kind::completed );
+
+    ecology_debug::selected_projection dead = before;
+    dead.detail->members.front().hp_percent = 0;
+    dead.detail->members.front().status = "dead";
+    const ecology_debug::delta_observation_result died = ring.observe(
+                dead, std::nullopt, context() );
+    REQUIRE( died.emitted == 1 );
+    CHECK_FALSE( died.anomaly );
+    CHECK( ring.records().back().kind == ecology_debug::delta_kind::died );
+
+    ecology_debug::selected_projection all_missing = before;
+    all_missing.detail->members.front().hp_percent.reset();
+    all_missing.detail->members.front().status = "missing";
+    const ecology_debug::delta_observation_result unresolved = ring.observe(
+                all_missing, std::nullopt, context() );
+    REQUIRE( unresolved.emitted == 1 );
+    CHECK( unresolved.anomaly );
+    CHECK( ring.records().back().anomaly_reason == "selected_entity_missing" );
 }
 
 TEST_CASE( "ecology_debug_delta_cap_and_json_are_exact_and_deterministic",

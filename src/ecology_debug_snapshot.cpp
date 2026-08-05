@@ -312,7 +312,11 @@ void write_selected( JsonOut &json, const std::optional<selected_detail> &select
     json.member( "last_transition_minutes", selected->last_transition_minutes );
     json.member( "last_transition_reason", selected->last_transition_reason );
     json.member( "blocked_reason", selected->blocked_reason );
+    json.member( "evidence_id", selected->evidence_id );
+    json.member( "evidence_kind", selected->evidence_kind );
+    json.member( "evidence_state", selected->evidence_state );
     json.member( "evidence_reason", selected->evidence_reason );
+    json.member( "evidence_observed_minutes", selected->evidence_observed_minutes );
     if( include_volatile ) {
         json.member( "evidence_age_minutes", selected->evidence_age_minutes );
     }

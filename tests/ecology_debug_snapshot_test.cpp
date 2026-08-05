@@ -28,7 +28,11 @@ ecology_debug::view_snapshot make_snapshot()
     selected.last_transition_minutes = 120;
     selected.last_transition_reason = "casualty_recorded";
     selected.blocked_reason = "awaiting_local_cohesion";
+    selected.evidence_id = "casualty@4,5,-1";
+    selected.evidence_kind = "casualty";
+    selected.evidence_state = "confirmed";
     selected.evidence_reason = "physical_signal_return";
+    selected.evidence_observed_minutes = 108;
     selected.evidence_age_minutes = 12;
     selected.next_deadline_minutes = 180;
     selected.destination = tripoint_abs_omt( 2, 3, -1 );
@@ -104,6 +108,11 @@ TEST_CASE( "ecology_debug_snapshot_is_byte_deterministic_and_preserves_order",
     CHECK( metadata.get_int( "render_us" ) == 11 );
     CHECK( metadata.get_int( "trace_bytes" ) == 4096 );
     CHECK_FALSE( metadata.get_bool( "identity_truncated" ) );
+    const JsonObject selected = root.get_object( "selected" );
+    selected.allow_omitted_members();
+    CHECK( selected.get_string( "evidence_id" ) == "casualty@4,5,-1" );
+    CHECK( selected.get_string( "evidence_kind" ) == "casualty" );
+    CHECK( selected.get_int( "evidence_observed_minutes" ) == 108 );
 }
 
 TEST_CASE( "ecology_debug_snapshot_serializes_selected_mobile_owner_details",

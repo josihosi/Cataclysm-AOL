@@ -340,6 +340,9 @@ TEST_CASE( "ecology_debug_view_sorts_co_located_z_levels_and_reads_selected_deta
         world.sites.front().members.front().npc_id, tripoint_abs_ms(), tripoint_abs_ms(),
         tripoint_abs_ms(), tripoint_abs_ms(), 55, false
     } );
+    selected_outing.observations.emplace_back(
+        "burn@140,51,1", "route burned", 80, 140, true,
+        bandit_live_world::sortie_observation_kind::burn, "burned" );
     const std::string selected_id = dispatch_id( world.sites.front() );
     int detail_reads = 0;
     ecology_debug::query_request request;
@@ -370,6 +373,11 @@ TEST_CASE( "ecology_debug_view_sorts_co_located_z_levels_and_reads_selected_deta
     CHECK( view.selected->last_transition_minutes == 120 );
     CHECK( view.selected->next_deadline_minutes == 300 );
     CHECK( view.selected->blocked_reason == "awaiting_local_cohesion" );
+    CHECK( view.selected->evidence_id == "burn@140,51,1" );
+    CHECK( view.selected->evidence_kind == "burn" );
+    CHECK( view.selected->evidence_state == "burned" );
+    CHECK( view.selected->evidence_observed_minutes == 140 );
+    CHECK( view.selected->evidence_age_minutes == 10 );
     REQUIRE( view.selected->members.size() == 1 );
     CHECK( view.selected->members.front().name == "Selected cannibal" );
     CHECK( view.selected->members.front().hp_percent == 73 );

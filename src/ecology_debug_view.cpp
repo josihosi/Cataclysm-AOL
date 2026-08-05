@@ -362,7 +362,11 @@ selected_detail make_selected_detail( const candidate_read &candidate,
                     latest = &observation;
                 }
             }
+            detail.evidence_id = latest->fact_key;
+            detail.evidence_kind = bandit_live_world::to_string( latest->kind );
+            detail.evidence_state = latest->state_key;
             detail.evidence_reason = latest->summary;
+            detail.evidence_observed_minutes = latest->observed_minutes;
             if( request.now_minutes >= 0 && latest->observed_minutes >= 0 ) {
                 detail.evidence_age_minutes = std::max( 0,
                                               request.now_minutes - latest->observed_minutes );

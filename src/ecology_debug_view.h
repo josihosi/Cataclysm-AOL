@@ -130,7 +130,11 @@ struct selected_detail {
     int last_transition_minutes = -1;
     std::string last_transition_reason;
     std::string blocked_reason;
+    std::string evidence_id;
+    std::string evidence_kind;
+    std::string evidence_state;
     std::string evidence_reason;
+    int evidence_observed_minutes = -1;
     int evidence_age_minutes = -1;
     int next_deadline_minutes = -1;
     tripoint_abs_omt destination;

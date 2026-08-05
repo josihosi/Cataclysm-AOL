@@ -10,6 +10,7 @@
 
 #include "coordinates.h"
 #include "ecology_debug_delta.h"
+#include "ecology_debug_watch.h"
 
 namespace ecology_debug
 {
@@ -48,12 +49,19 @@ struct incident_bundle_result {
     size_t intervention_dropped_count = 0;
 };
 
+struct incident_watch_state {
+    watch_spec spec;
+    watch_input input;
+    watch_result result;
+};
+
 incident_bundle_result serialize_incident_bundle(
     const incident_identity &identity,
     const std::optional<selected_projection> &selected,
     const delta_ring &deltas,
     const std::optional<std::string> &human_note,
-    const std::vector<incident_intervention> &interventions );
+    const std::vector<incident_intervention> &interventions,
+    const std::optional<incident_watch_state> &watch = std::nullopt );
 
 } // namespace ecology_debug
 

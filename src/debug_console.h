@@ -279,6 +279,8 @@ class tab_trace_view : public console_tab_view
         int monitor_mode_idx = 1;
         std::string monitor_label;
         int ecology_watch_mode = 0;
+        int ecology_watch_preset = 0;
+        int ecology_watch_deadline_hours = 6;
         std::string ecology_incident_note;
         pimpl<ecology_watch_session> ecology_watch;
 
@@ -391,6 +393,7 @@ class debug_console : public cataimgui::window
         void defer_eoc( effect_on_condition_id eoc_id );
         void defer_ecology_edit();
         void defer_ecology_incident();
+        void start_ecology_play();
         void request_tab_switch( std::string_view tab_id );
 
         // Button label + tooltip read from the action table.
