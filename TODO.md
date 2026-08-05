@@ -22,11 +22,9 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Detect legitimate mutual exposure once for the exact observing schema-10 pair, then commit one
-   atomic owner update before generic NPC hostility/movement: capture observer perception and burn
-   origin, append evidence/alert once, leave `observing`, persist egress plus rally, and enter
-   `burned_withdrawal`. Retain the narrow covert disposition during exfil; do not add direct state
-   setters, avatar-radar reads, or adjacent corrective movement.
+1. Score a bounded set of reachable egress/rally choices against legitimately observed threats and
+   concealment, with hard danger exclusion and soft danger cost. Keep the exact outing owner and
+   persisted burn origin; do not add avatar-radar reads, full-world scans, or per-turn replanning.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

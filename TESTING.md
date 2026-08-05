@@ -1146,6 +1146,19 @@ asynchronous home arrivals, and local-handoff phase synchronization. `git diff -
 legitimate exposure/burning processed once before generic hostility/movement with persisted egress
 and rally ownership.
 
+Phase-5 physical burn is green at `339aa54c4d`. Reciprocal ordinary visibility explicitly excludes
+debug clairvoyance, both egress paths preflight, and one cursor-checked owner transaction records the
+typed burn fact plus outing/local-handoff phase before assigning the persisted egress route. A final
+review fix batches physical death and deadline-missing writeback before the survivor egress latch.
+Redirected Mac test build and tiles link exit 0; `[covert_burn]` passes 2/68,
+`[covert_disposition]` 2/97, `[npc][npc_ai]` 3/69, `[local_handoff]` 1/651, and
+`[structural_bounty]` 51/6,785. `git diff --check` is clean. Final
+`python3 /Users/josefhorvath/.codex/skills/autoreview/scripts/autoreview --mode local` exits 0 with
+no accepted/actionable findings after the accepted casualty-wedge repair. `astyle` 3.1 is
+unavailable; no live GUI or Linux/Windows runtime is claimed. Next evidence is bounded
+threat/concealment-scored egress; the current persisted return approach is only reachable,
+target-excluding route footing.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

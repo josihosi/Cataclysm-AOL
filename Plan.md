@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 COVERT DISPOSITION NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 EGRESS SCORING NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -484,9 +484,14 @@ loaded reciprocal visibility. Player/allied attacks, successful hostile spell ef
 propagation, and avatar-attributed manual turrets exit through authoritative hostility; selection,
 jams, failed spells, and automatic synthetic turrets do not. Exact Mac build/link plus covert 2/97,
 NPC-AI 3/69, magic 11/189, turret 1/2,328, and local-handoff 1/651 are green; final autoreview is
-clean. No astyle, live GUI, Linux, or Windows proof is claimed. Next is legitimate exposure/burning
-captured once in an atomic party update before generic hostility/movement, with persisted egress and
-rally ownership rather than a corrective step.
+clean. Burn checkpoint `339aa54c4d` now requires reciprocal ordinary sight with debug clairvoyance
+excluded, preflights both routes, commits one typed burn fact plus outing/handoff transition before
+generic movement, and routes the whole surviving party toward the persisted egress/rally. Dead and
+deadline-missing members reconcile through the same structural owner before the survivor gate, so
+loss cannot wedge exfil. Exact Mac build/link plus burn 2/68, covert 2/97, NPC-AI 3/69,
+local-handoff 1/651, and structural 51/6,785 are green; final autoreview is clean. No astyle, live
+GUI, Linux, or Windows proof is claimed. Next is reachable exit scoring against observed threats and
+concealment; the current persisted return approach is deliberately not claimed as that scorer.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
