@@ -22,9 +22,10 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Keep the exact pair cohesive at the schema-10 watch destination and assign plausible distinct
-   observer/cover slots through the existing local-handoff owner. Preserve stable member identity,
-   save/replay, and authoritative loaded/unloaded ownership; do not add a second formation registry.
+1. Apply an actor-specific covert non-combat relationship only to the exact schema-10 pair during
+   searching/observing and the later withdrawal/report escape envelope. Suppress generic hostile
+   targeting/anger for that relationship without changing faction-wide hostility; player attack,
+   shakedown refusal, or committed raid must still end the exception immediately.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

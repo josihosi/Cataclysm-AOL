@@ -1118,6 +1118,17 @@ second arrival. Exact Mac compile/link passes; adapter is 1/72, structural 51/6,
 or Windows runtime is claimed. The next evidence class is distinct cohesive observer/cover staging
 inside the watch OMT through the existing local-handoff owner.
 
+Phase-5 watch pair staging is green at `62e26812d6`. Observing schema-10 materialization derives the
+nearest same-z target-footprint OMT deterministically, then reuses the local-handoff tile selector on
+that target-facing watch edge; two stable members retain distinct passable staging tiles, the normal
+rendezvous/guard-position path, and exact reload identity. Both living entry and staging pairs are
+validated inside the existing six-tile cohesion radius at plan and load time, while returning pairs
+retain ordinary egress-facing staging. The schema-8-only local-zombie adapter gate was also corrected
+to admit later compatible structural schemas. Exact Mac build/link passes; adapter 1/91, local
+handoff 1/651, watch geometry 1/15, structural 51/6,785, and local-zombie observation 4/389 pass at
+seed 1. `git diff --check` is clean. No GUI/live materialization screenshot or Linux/Windows runtime
+is claimed. The next evidence class is the actor-specific covert non-combat relationship.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.
