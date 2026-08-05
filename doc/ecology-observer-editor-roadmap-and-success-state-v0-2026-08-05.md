@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4+E1 GREEN / SMOKE-LIGHT-SOUND LIVE NEXT
+Status: ACTIVE / O4+E1 GREEN / TARGET-RELOCATION LIVE NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -313,6 +313,14 @@ Before speculative polish, the tool must be used in the next real Phase-4 row. J
 
 The first target live row is the existing smoke/light/sound matrix. Its pre-fix run
 `20260804_214456` remains red/inconclusive; it is not observer proof.
+
+Corrected scenario support is checkpointed at `927251fc70`, but the two permitted live attempts
+remain non-credit. Run `20260805_121516` proved three carried facts and logged the atomic
+three-lead return, but opened Mutations rather than the overmap, so it produced no observer pair.
+Run `20260805_122335` proved an exact five-minute wait, then safely aborted before signal setup
+after the handler acknowledged ordinary shadow-warning flavor and created an Unknown-command
+popup. No incident pair exists to credit. Per the anti-churn cap, the row stays open while work
+advances to live target relocation; use the corrected `m` overmap path there when possible.
 
 ## Explicit deferrals
 

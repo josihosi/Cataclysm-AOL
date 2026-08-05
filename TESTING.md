@@ -981,6 +981,19 @@ or stalker markers, foreign-platform compilation, or a persisted identity migrat
 upstream `7f6b236556` owners expose no identity that survives movement plus concrete/abstract
 transfer, so position hashes and creature-tracker temporaries are explicitly rejected.
 
+Observer-backed smoke/light/sound support is checkpointed at `927251fc70`; the exact system-Python
+scenario contract and JSON parse pass, the Mac tiles runtime reports that clean commit, and the
+two bounded live attempts are non-credit. Run `20260805_121516` reached the natural three-fact
+state and physical return with `structural outing returned signal leads=3`, but `O` opened the
+profile's Mutations menu, leaving no selected observer or incident. The corrected scenario uses
+the actual `m` overmap binding and relies on its exact post-save owner audits rather than requiring
+all three leads in one eight-row rotating diagnostic window. Run `20260805_122335` completed its
+five-minute wait with exact 300-second clock delta and matched cadence artifact, then the handler
+acknowledged ordinary `vague feeling of being watched` flavor as a prompt, sent Space, created an
+Unknown-command popup, and safely aborted before signal setup. Permissions were green and OCR was
+not the gameplay proof. Per the two-attempt cap, do not retry or expand prompt heuristics; the row
+remains open and live target relocation is next.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

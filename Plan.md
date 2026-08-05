@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / SMOKE-LIGHT-SOUND LIVE NEXT
+**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / TARGET-RELOCATION LIVE NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -409,7 +409,17 @@ returns through save/reload, roster cleanup, wound retention, and 72-78 hour cas
 Confirmed physical deaths close promptly; merely missing members retain their deadline. Exact Mac
 local-handoff 1/646, structural-bounty 51/6,772, intervention 2/60, tiles/non-tiles compile, and
 fresh review are green. This is owner reconciliation proof; the earlier field run supplies GUI /
-`npc::die` evidence. The next named row is observer-backed smoke/light/sound live proof.
+`npc::die` evidence. Observer-backed smoke/light/sound scenario support is checkpointed at
+`927251fc70`, but neither bounded live attempt earns the row. Run `20260805_121516` completed the
+three-fact and physical-return path far enough to log the atomic three-lead return, but `O` opened
+the profile's Mutations menu instead of the overmap and the intentionally capped diagnostic hid
+two exact lead rows before the authoritative save audits. The contract now uses the real `m`
+binding and leaves exact smoke/light/sound persistence to the existing post-save owner audits.
+Run `20260805_122335` then completed its exact five-minute wait, but the interruption handler
+mistook ordinary wilderness "being watched" flavor for a modal prompt, sent Space, created a real
+Unknown-command popup, and safely aborted before signal setup. Per the two-attempt cap, do not tune
+OCR or rerun this row now. It remains open and non-credit; the next unblocked named row is live
+target relocation, which should use the corrected observer path if its real state permits.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
