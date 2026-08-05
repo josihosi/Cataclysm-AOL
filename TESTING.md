@@ -1039,7 +1039,12 @@ saves in 364 ms, loads in 6.925 s, grows the disposable whole-save directory by 
 and preserves the exact aged owner serialization after reload. These absolute values are below the
 Phase-0 observed maxima; no paired save/load regression or Linux/Windows runtime is claimed.
 External manifest: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase4-20260805/evidence-aging/MANIFEST.md`.
-Next evidence class is a fresh Phase-4 exit review; do not rerun the two capped live rows.
+Fresh read-only Phase-4 exit review at `0f7f7bbc63` found no code defect. It closes only the exact
+player-dispatcher-read and dual-writer/legacy-radar exit rows. The signal-discovery row remains open
+because its live smoke/light/sound attempts are non-credit; stale/contradictory honesty remains open
+because the live decoy attempts are non-credit. Deterministic evidence for both remains strong but
+is not promoted to live. Phase 4 stays held for Josef's later disposable playtest packet without
+another agent retry. Next evidence class is the Phase-5 target-footprint watch-ring metric.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -900,8 +900,8 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 
 ### Phase 4 exit
 
-- [ ] No live dispatcher reads precise player location without an observation boundary.
-- [ ] Lead-origin instrumentation shows no dual write or legacy-radar contribution in the production path.
+- [x] No live dispatcher reads precise player location without an observation boundary. _Fresh exit review at `0f7f7bbc63`: the exact-avatar dispatcher and camp-facing signal writer are deleted; production dispatch is camp-authored structural maintenance, and remaining avatar reads are bootstrap or real local/contact perception. Quiet live run `20260804_103631` and observer-backed relocation `20260805_124207` preserve that boundary._
+- [x] Lead-origin instrumentation shows no dual write or legacy-radar contribution in the production path. _Fresh exit review at `0f7f7bbc63`: origin-atomic upsert plus structural scheduler consumers admit only structural/frontier/physically returned signal leads. `legacy_radar` remains save-compat migration/serialization vocabulary and generic legacy test/API footing, with no live production caller._
 - [ ] Day/dusk/night/weather/signal tests prove bounded discovery.
 - [ ] Stale and contradictory evidence remains honest.
 - [x] Evidence aging/pruning benchmark and two-year save soak remain bounded. _Checkpoint `ed47145504`: one bounded scan ages returned sound at exactly three hours and smoke/light at six hours, protects every active exact lead reference, and prunes only unreferenced stale/invalidated leads at exactly 30 days. The accepted one-pair Mac matrix applies one 730-day jump at 0/1/10/50/100 camps plus a real 10-camp save/load row: 100 saturated camps take 608 us and shrink 6,400 -> 2,400 leads / 3,171,377 -> 1,646,857 bytes; the aged owner is identical after reload. Raw/summary SHA-256 `5eb83b7f...` / `ca8de252...`. This is a saturated cadence-avalanche/soak result under the 20 ms gate, not a claim against the legacy scoped-maintenance microbench ceilings or foreign-platform runtime._
