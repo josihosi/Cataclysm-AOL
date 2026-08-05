@@ -149,8 +149,10 @@ natural while retaining causal linkage to the intervention ledger.
   the Trace export and selected monitor serialize that same query contract. Exact Mac tiles build,
   20/176 ecology assertions, 9/1,116 console assertions, keybinding JSON, diff check, and final
   AutoReview are green._
-- [ ] Capture one current-build screenshot paired with the exact compact snapshot that describes
-  the selected hostile party.
+- [x] Capture one current-build screenshot paired with the exact compact snapshot that describes
+  the selected hostile party. _Run `20260805_055304` pairs a 2,560x2,880 overmap screenshot with
+  the exact 1,893-byte Trace export for natural camp `BC-E75C82`; hashes and the detached-launch
+  caveat are recorded in `ecology_observer_live_receipt.json`._
 
 ### O3 - horde and stalker adapters
 

@@ -835,8 +835,14 @@ process-local reopen state, full Trace export, stable selected-only monitor outp
 serialization, exact payload bytes, and an authority-index selected query that fails closed on a
 stale index. Normal overmap presentation is the only active UI route; specialized overmaps and fast
 travel skip observer queries. Final `autoreview --mode local` reports no accepted/actionable
-finding with 0.93 correctness confidence. This remains Mac compile/unit evidence: no screenshot,
-live overlay behavior, save/knowledge neutrality, or Windows/Linux runtime claim is credited yet.
+finding with 0.93 correctness confidence. Live run `20260805_055304` adds the current-build
+2,560x2,880 selected-camp screenshot (SHA-256 `65ed44da...`) and exact compact JSON snapshot
+(payload 1,893 bytes; artifact SHA-256 `65d87153...`). Both identify natural abstract/unloaded
+bandit camp `BC-E75C82` at `(140,51,0)`; JSON reports player `(133,51,0)`, all filters, five at-home
+members, 1 considered/1 emitted, no truncation, 7 us query, and 20 us render. The transform report
+records `DEBUG_CLAIRVOYANCE` newly added. The launch-only detached process exited with empty logs;
+one direct launch of its exact binary/userdir/world command supplied the pair. Save/knowledge
+neutrality and Windows/Linux runtime remain uncredited.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

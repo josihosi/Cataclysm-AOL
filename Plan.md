@@ -336,9 +336,12 @@ the single `DEBUG_CLAIRVOYANCE` gate. Process-local controls never enter the sav
 monitor uses a bounded authority-index lookup, while a deliberate Trace-tab export uses the exact
 active filters and deterministic compact JSON. Fast travel and closed/specialized overmaps do no
 observer query work. Exact Mac tiles compilation passes, `[ecology_debug]` passes 20/176,
-`[debug_console]` passes 9/1,116, keybindings parse, and final AutoReview is clean. The remaining O2
-exit is a current-build screenshot paired with its exact snapshot; O0 byte/knowledge neutrality is
-also still open.
+`[debug_console]` passes 9/1,116, keybindings parse, and final AutoReview is clean. O2 live proof is
+paired in run `20260805_055304`: the current binary visibly selects natural abstract bandit camp
+`BC-E75C82` at `(140,51,0)`, and the exact 1,893-byte JSON reports the same ID/state with 1
+considered/1 emitted and no truncation. The launch-only detached process exited without diagnostics,
+so the pair comes from one direct launch of its exact reported command; O0 byte/knowledge neutrality
+is still open.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
