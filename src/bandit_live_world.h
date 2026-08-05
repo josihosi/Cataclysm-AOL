@@ -998,17 +998,20 @@ struct structural_route_read {
     bool watch_geography_supplied = false;
     std::vector<tripoint_abs_omt> target_footprint;
     std::vector<watch_selection_candidate> watch_candidates;
+    std::vector<tripoint_abs_omt> watch_shared_route;
 
     structural_route_read() = default;
     structural_route_read( bool reachable_, int complete_route_cost_, int max_segment_risk_,
                            std::string summary_, bool watch_geography_supplied_ = false,
                            std::vector<tripoint_abs_omt> target_footprint_ = {},
-                           std::vector<watch_selection_candidate> watch_candidates_ = {} ) :
+                           std::vector<watch_selection_candidate> watch_candidates_ = {},
+                           std::vector<tripoint_abs_omt> watch_shared_route_ = {} ) :
         reachable( reachable_ ), complete_route_cost( complete_route_cost_ ),
         max_segment_risk( max_segment_risk_ ), summary( std::move( summary_ ) ),
         watch_geography_supplied( watch_geography_supplied_ ),
         target_footprint( std::move( target_footprint_ ) ),
-        watch_candidates( std::move( watch_candidates_ ) ) {}
+        watch_candidates( std::move( watch_candidates_ ) ),
+        watch_shared_route( std::move( watch_shared_route_ ) ) {}
 };
 
 struct routine_dispatch_evaluation {
@@ -1440,6 +1443,14 @@ watch_selection_result select_watch_ring_candidate(
     const std::vector<watch_selection_candidate> &candidates );
 bool structural_watch_route_avoids_target_footprint(
     const std::vector<tripoint_abs_omt> &route,
+    const std::vector<tripoint_abs_omt> &target_footprint );
+std::vector<tripoint_abs_omt> make_structural_watch_shared_route(
+    const tripoint_abs_omt &anchor, const tripoint_abs_omt &watch_omt,
+    const std::vector<tripoint_abs_omt> &reverse_path,
+    const std::vector<tripoint_abs_omt> &target_footprint );
+bool structural_watch_shared_route_is_canonical(
+    const std::vector<tripoint_abs_omt> &route,
+    const tripoint_abs_omt &anchor, const tripoint_abs_omt &watch_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
 structural_watch_geography_read read_structural_watch_geography(
     const std::vector<tripoint_abs_omt> &target_footprint,

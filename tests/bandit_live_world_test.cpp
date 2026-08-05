@@ -14325,6 +14325,29 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK( bandit_live_world::structural_watch_route_avoids_target_footprint(
                    { tripoint_abs_omt( 40, 43, 2 ), tripoint_abs_omt( 40, 42, 2 ) },
                    { target } ) );
+
+        const tripoint_abs_omt route_anchor( 30, 40, 2 );
+        const tripoint_abs_omt route_watch( 37, 40, 2 );
+        const std::vector<tripoint_abs_omt> reverse_path = {
+            route_watch, tripoint_abs_omt( 36, 40, 2 ),
+            tripoint_abs_omt( 35, 40, 2 ), route_anchor
+        };
+        const std::vector<tripoint_abs_omt> shared_route =
+            bandit_live_world::make_structural_watch_shared_route(
+                route_anchor, route_watch, reverse_path, { target } );
+        REQUIRE( shared_route == std::vector<tripoint_abs_omt> {
+            route_anchor, tripoint_abs_omt( 36, 40, 2 ), route_watch,
+            tripoint_abs_omt( 36, 40, 2 ), route_anchor
+        } );
+        CHECK( bandit_live_world::structural_watch_shared_route_is_canonical(
+                   shared_route, route_anchor, route_watch, { target } ) );
+        CHECK_FALSE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                         { route_anchor, tripoint_abs_omt( 34, 40, 2 ), route_watch,
+                           tripoint_abs_omt( 34, 40, 2 ), route_anchor },
+                         route_anchor, route_watch, { target } ) );
+        CHECK( bandit_live_world::make_structural_watch_shared_route(
+                   route_anchor, route_watch,
+                   { route_watch, target, route_anchor }, { target } ).empty() );
     }
 
     SECTION( "candidate cap and order are deterministic for a multi-cell footprint" ) {
@@ -14408,9 +14431,18 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         site.intelligence_map.frontier_last_resolved_minutes.assign( 8, now_minutes );
         const tripoint_abs_omt target( site.anchor.x() + 4,
                                        site.anchor.y(), site.anchor.z() );
-        REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
-                     site, target,
-                     bandit_live_world::classify_structural_bounty_terrain( "forest" ), 0 ) );
+        bandit_live_world::camp_map_lead terrain_lead;
+        terrain_lead.lead_id = "watch-travel-terrain-opportunity";
+        terrain_lead.revision = 1;
+        terrain_lead.kind = bandit_live_world::camp_lead_kind::terrain_opportunity;
+        terrain_lead.origin = bandit_live_world::camp_lead_origin::structural_routine;
+        terrain_lead.status = bandit_live_world::camp_lead_status::suspected;
+        terrain_lead.target_id = "watch-travel-target";
+        terrain_lead.omt = target;
+        terrain_lead.source_key = "watch-travel:terrain_fit:open";
+        terrain_lead.first_seen_minutes = 0;
+        terrain_lead.last_seen_minutes = 0;
+        site.intelligence_map.leads.push_back( terrain_lead );
 
         std::vector<bandit_live_world::watch_selection_candidate> committed_candidates;
         const auto route_lookup = [&committed_candidates](
@@ -14427,13 +14459,19 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
             []( const tripoint_abs_omt &, const std::vector<tripoint_abs_omt> & ) {
                 return structural_watch_terrain_read{ true, true };
             }, []( const tripoint_abs_omt & candidate ) {
-                return structural_watch_route_read{ true,
-                        std::abs( candidate.x() ) + std::abs( candidate.y() ) };
+                static_cast<void>( candidate );
+                return structural_watch_route_read{ true, 3 };
             } );
             committed_candidates = watch.routed_candidates;
+            const tripoint_abs_omt approach( watch.selection.omt.x(),
+                                             watch.selection.omt.y() - 1,
+                                             watch.selection.omt.z() );
+            const std::vector<tripoint_abs_omt> shared_route = {
+                route_site.anchor, approach, watch.selection.omt, approach, route_site.anchor
+            };
             return bandit_live_world::structural_route_read{
-                true, 8, 0, "production watch adapter contract", true,
-                watch.target_footprint, watch.routed_candidates
+                true, watch.selection.route_cost, 0, "production watch adapter contract", true,
+                watch.target_footprint, watch.routed_candidates, shared_route
             };
         };
         const auto terrain_lookup = []( const tripoint_abs_omt & ) -> std::optional<std::string> {
@@ -14447,10 +14485,13 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
             bandit_live_world::advance_structural_bounty_maintenance(
                 world, now_minutes, 0, 1, terrain_lookup, threat_lookup, route_lookup );
         REQUIRE( result.dispatches_applied == 1 );
-        REQUIRE( site.active_outing.schema_version == 9 );
+        REQUIRE( site.active_outing.schema_version == 10 );
         CHECK( site.active_outing.selected_watch_kind == structural_watch_kind::exact );
         CHECK( site.active_outing.target_footprint.size() == 2 );
         CHECK( site.active_outing.selected_watch_route_cost >= 0 );
+        CHECK( site.active_outing.shared_route[2] == site.active_outing.selected_watch_omt );
+        CHECK( site.active_outing.shared_route[1] == site.active_outing.shared_route[3] );
+        CHECK( site.active_outing.target_omt == target );
         const std::string committed = serialize_world( world );
         const bandit_live_world::simulation_advance_cursor cursor =
             require_current_simulation_cursor( site );
@@ -14466,6 +14507,48 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
                    committed_candidates ) == structural_watch_route_apply_result::rejected );
         CHECK( serialize_world( world ) == committed );
         CHECK( serialize_world( round_trip_world( world ) ) == committed );
+
+        bandit_live_world::world_state progressed = round_trip_world( world );
+        bandit_live_world::advance_structural_bounty_outings(
+            progressed, now_minutes + 4 * 60, threat_lookup );
+        REQUIRE( progressed.sites.front().active_outing.phase ==
+                 bandit_live_world::scout_phase::observing );
+        CHECK( progressed.sites.front().active_outing.waypoint_index == 1 );
+        CHECK( progressed.sites.front().active_outing.shared_route[1] ==
+               progressed.sites.front().active_outing.shared_route[3] );
+        const bandit_live_world::structural_outing_result watch_arrival =
+            bandit_live_world::advance_structural_bounty_outings(
+                progressed, now_minutes + 5 * 60, threat_lookup );
+        CHECK( watch_arrival.arrivals_processed == 1 );
+        const bandit_live_world::active_outing_state &arrived =
+            progressed.sites.front().active_outing;
+        REQUIRE( arrived.phase == bandit_live_world::scout_phase::observing );
+        CHECK( arrived.waypoint_index == 2 );
+        CHECK( arrived.shared_route[static_cast<std::size_t>( arrived.waypoint_index )] ==
+               arrived.selected_watch_omt );
+        CHECK( arrived.target_omt == target );
+        CHECK( std::find( arrived.target_footprint.begin(), arrived.target_footprint.end(),
+                          arrived.shared_route[static_cast<std::size_t>( arrived.waypoint_index )] ) ==
+               arrived.target_footprint.end() );
+        const bandit_live_world::camp_map_lead *arrived_lead =
+            progressed.sites.front().intelligence_map.find_lead( arrived.target_id );
+        REQUIRE( arrived_lead != nullptr );
+        const std::string arrived_target_id = arrived.target_id;
+        const int arrived_lead_revision = arrived_lead->revision;
+        const int arrived_last_progress_minutes = arrived.last_progress_minutes;
+        const bandit_live_world::structural_outing_result continued_observation =
+            bandit_live_world::advance_structural_bounty_outings(
+                progressed, now_minutes + 6 * 60, threat_lookup );
+        CHECK( continued_observation.arrivals_processed == 0 );
+        CHECK( progressed.sites.front().active_outing.phase ==
+               bandit_live_world::scout_phase::observing );
+        CHECK( progressed.sites.front().active_outing.waypoint_index == 2 );
+        CHECK( progressed.sites.front().active_outing.last_progress_minutes ==
+               arrived_last_progress_minutes );
+        const bandit_live_world::camp_map_lead *continued_lead =
+            progressed.sites.front().intelligence_map.find_lead( arrived_target_id );
+        REQUIRE( continued_lead != nullptr );
+        CHECK( continued_lead->revision == arrived_lead_revision );
     }
 }
 

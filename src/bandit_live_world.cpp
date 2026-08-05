@@ -398,6 +398,43 @@ bool structural_route_is_canonical_for_lead( const std::vector<tripoint_abs_omt>
            structural_route_is_canonical( route, anchor, lead.omt );
 }
 
+bool structural_outing_uses_watch_route(
+    const bandit_live_world::active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie && outing.schema_version >= 10 &&
+           outing.selected_watch_kind != structural_watch_kind::none;
+}
+
+int structural_outing_destination_waypoint(
+    const bandit_live_world::active_outing_state &outing )
+{
+    if( outing.shared_route.size() < 3 ) {
+        return -1;
+    }
+    return structural_outing_uses_watch_route( outing ) ? 2 :
+           static_cast<int>( outing.shared_route.size() ) - 2;
+}
+
+tripoint_abs_omt structural_outing_travel_destination(
+    const bandit_live_world::active_outing_state &outing )
+{
+    return structural_outing_uses_watch_route( outing ) ?
+           outing.selected_watch_omt : outing.target_omt;
+}
+
+bool structural_route_is_canonical_for_outing(
+        const bandit_live_world::active_outing_state &outing,
+        const tripoint_abs_omt &anchor, const camp_map_lead &lead )
+{
+    if( !structural_outing_uses_watch_route( outing ) ) {
+        return structural_route_is_canonical_for_lead( outing.shared_route, anchor, lead );
+    }
+    return !frontier_sector_from_lead( lead ) &&
+           bandit_live_world::structural_watch_shared_route_is_canonical(
+               outing.shared_route, anchor, outing.selected_watch_omt,
+               outing.target_footprint );
+}
+
 int structural_stalking_delay_minutes( const tripoint_abs_omt &anchor,
                                        const tripoint_abs_omt &target )
 {
@@ -2518,7 +2555,7 @@ bool structural_watch_route_state_is_consistent(
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 9 ) {
         return empty_watch_state;
     }
-    if( outing.schema_version != 9 || outing.target_footprint.empty() ||
+    if( outing.schema_version > 10 || outing.target_footprint.empty() ||
         outing.target_footprint.size() > max_structural_target_footprint_omts ||
         canonical_structural_target_footprint( outing.target_footprint ) !=
         outing.target_footprint ||
@@ -2598,7 +2635,8 @@ bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
         ( owner == "local" && handoff_epoch % 2 == 1 );
     const bool supported_schema = schema_version == 5 ||
                                   ( ( schema_version == 6 || schema_version == 7 ||
-                                      schema_version == 8 || schema_version == 9 ) &&
+                                      schema_version == 8 || schema_version == 9 ||
+                                      schema_version == 10 ) &&
                                     kind == "structural_sortie" );
     const bool complete_structural_route = schema_version < 6 ||
             ( owner_json.has_member( "shared_route" ) &&
@@ -5800,7 +5838,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
     candidate.leader_id.deserialize( raw_leader_id );
     jo.read( "shared_route", candidate.shared_route );
     jo.read( "waypoint_index", candidate.waypoint_index );
-    if( loaded_schema_version >= 6 && loaded_schema_version <= 9 &&
+    if( loaded_schema_version >= 6 && loaded_schema_version <= 10 &&
         ( candidate.kind != outing_kind::structural_sortie ||
           candidate.shared_route.size() < 3 || candidate.shared_route.size() > 5 ||
           candidate.waypoint_index < 0 ||
@@ -5956,7 +5994,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
             candidate.cargo_application_key = expected_cargo_key;
         } else if( ( loaded_schema_version != 5 && loaded_schema_version != 6 &&
                      loaded_schema_version != 7 && loaded_schema_version != 8 &&
-                     loaded_schema_version != 9 ) ||
+                     loaded_schema_version != 9 && loaded_schema_version != 10 ) ||
                    ( loaded_schema_version >= 6 &&
                      candidate.kind != outing_kind::structural_sortie ) ||
                    candidate.return_application_key != expected_return_key ||
@@ -6784,8 +6822,8 @@ void site_record::deserialize( const JsonObject &jo )
                                                active_outing.target_lead_id ) : nullptr;
     const std::optional<int> structural_frontier_sector = structural_lead != nullptr ?
             frontier_sector_from_lead( *structural_lead ) : std::nullopt;
-    const int structural_target_waypoint = active_outing.shared_route.size() >= 2 ?
-            static_cast<int>( active_outing.shared_route.size() ) - 2 : -1;
+    const int structural_target_waypoint = structural_outing_destination_waypoint(
+            active_outing );
     const bool structural_phase_is_consistent =
         active_outing.kind != outing_kind::structural_sortie ||
         ( ( active_outing.phase == scout_phase::outbound &&
@@ -6799,7 +6837,9 @@ void site_record::deserialize( const JsonObject &jo )
                 active_outing.waypoint_index == structural_target_waypoint ) ) ) ||
           ( active_outing.phase == scout_phase::returning_home &&
             ( active_outing.waypoint_index == 0 || active_outing.waypoint_index == 1 ||
-              active_outing.waypoint_index == structural_target_waypoint ) ) ||
+              active_outing.waypoint_index == structural_target_waypoint ||
+              ( structural_outing_uses_watch_route( active_outing ) &&
+                active_outing.waypoint_index == structural_target_waypoint + 1 ) ) ) ||
           ( active_outing.schema_version >= 8 && active_outing.phase == scout_phase::lost &&
             active_outing.casualty_ids.size() == active_outing.member_ids.size() &&
             active_outing.resolved_member_ids.size() == active_outing.member_ids.size() ) );
@@ -6809,7 +6849,8 @@ void site_record::deserialize( const JsonObject &jo )
           ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
           active_outing.member_ids.size() == 2 &&
           ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
-            active_outing.schema_version == 8 || active_outing.schema_version == 9 ) &&
+            active_outing.schema_version == 8 || active_outing.schema_version == 9 ||
+            active_outing.schema_version == 10 ) &&
           active_outing.started_minutes >= 0 &&
           active_outing.target_id == active_outing.target_lead_id &&
           active_outing.target_lead_revision > 0 && structural_lead != nullptr &&
@@ -6822,17 +6863,19 @@ void site_record::deserialize( const JsonObject &jo )
               active_outing.job_type == "scout" ) ||
             ( structural_frontier_sector && active_outing.job_type == "scout" ) ) &&
           structural_lead->omt == active_outing.target_omt &&
-          structural_route_is_canonical_for_lead( active_outing.shared_route, anchor,
+          structural_route_is_canonical_for_outing( active_outing, anchor,
                   *structural_lead ) &&
           active_outing.expected_return_minutes == structural_expected_return_minutes(
-              active_outing.started_minutes, anchor, active_outing.target_omt ) &&
+              active_outing.started_minutes, anchor,
+              structural_outing_travel_destination( active_outing ) ) &&
           active_outing.missing_deadline_minutes == minutes_after_saturated(
               active_outing.expected_return_minutes, scout_missing_grace_minutes ) &&
           structural_phase_is_consistent );
     const bool active_outing_schema_is_consistent =
         active_outing.kind == outing_kind::structural_sortie ?
         ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
-          active_outing.schema_version == 8 || active_outing.schema_version == 9 ) :
+          active_outing.schema_version == 8 || active_outing.schema_version == 9 ||
+          active_outing.schema_version == 10 ) :
         active_outing.schema_version == 5;
     bool active_outing_is_consistent = active_outing.is_active() &&
                                        active_outing.kind != outing_kind::hostile_operation &&
@@ -9257,6 +9300,18 @@ int structural_outing_arrival_delay_minutes( const site_record &site, const camp
     return structural_arrival_delay_minutes( site.anchor, lead.omt );
 }
 
+int active_structural_outing_stalking_delay_minutes( const site_record &site )
+{
+    return structural_stalking_delay_minutes(
+               site.anchor, structural_outing_travel_destination( site.active_outing ) );
+}
+
+int active_structural_outing_arrival_delay_minutes( const site_record &site )
+{
+    return structural_arrival_delay_minutes(
+               site.anchor, structural_outing_travel_destination( site.active_outing ) );
+}
+
 int structural_known_threat_for_interest( const camp_map_lead &lead )
 {
     return lead.threat_confirmed ? std::max( 0, lead.threat ) : 0;
@@ -10923,6 +10978,7 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
         return false;
     }
 
+    std::optional<tripoint_abs_omt> watch_destination;
     if( read.watch_geography_supplied ) {
         const std::vector<tripoint_abs_omt> canonical_footprint =
             canonical_structural_target_footprint( read.target_footprint );
@@ -10935,13 +10991,21 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
             canonical_footprint != read.target_footprint ||
             std::find( canonical_footprint.begin(), canonical_footprint.end(),
                        plan.target_omt ) == canonical_footprint.end() ||
-            !watch_selection.valid ) {
+            !watch_selection.valid ||
+            !structural_watch_shared_route_is_canonical(
+                read.watch_shared_route, site.anchor, watch_selection.omt,
+                canonical_footprint ) ) {
             return false;
         }
         plan.watch_geography_supplied = true;
         plan.target_footprint = canonical_footprint;
         plan.watch_candidates = read.watch_candidates;
+        plan.shared_route = read.watch_shared_route;
+        watch_destination = watch_selection.omt;
     } else {
+        if( !read.watch_shared_route.empty() ) {
+            return false;
+        }
         plan.watch_geography_supplied = false;
         plan.target_footprint.clear();
         plan.watch_candidates.clear();
@@ -10971,6 +11035,17 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
     plan.final_route_quality = structural_candidate_route_quality( plan.full_route_cost );
     plan.final_score = structural_candidate_score( site, scoring_lead, now_minutes,
                        plan.final_route_quality, plan.terrain_fit, plan.static_risk );
+    const tripoint_abs_omt travel_destination = watch_destination.value_or( plan.target_omt );
+    plan.expected_stalking_minutes = minutes_after_saturated(
+                                        now_minutes,
+                                        structural_stalking_delay_minutes(
+                                            site.anchor, travel_destination ) );
+    plan.expected_arrival_minutes = minutes_after_saturated(
+                                       now_minutes,
+                                       structural_arrival_delay_minutes(
+                                           site.anchor, travel_destination ) );
+    plan.expected_return_minutes = structural_expected_return_minutes(
+                                       now_minutes, site.anchor, travel_destination );
     if( !read.summary.empty() ) {
         plan.notes.push_back( read.summary );
     }
@@ -11040,11 +11115,20 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         const int now_minutes )
 {
     const bool frontier_plan = plan.frontier_sector >= 0;
+    const watch_selection_result watch_selection = plan.watch_geography_supplied ?
+            select_watch_ring_candidate( plan.target_footprint, plan.watch_candidates ) :
+            watch_selection_result();
+    const bool has_watch_route = plan.watch_geography_supplied && watch_selection.valid;
     const bool route_is_canonical = frontier_plan ?
-                                    frontier_route_is_canonical( plan.shared_route, site.anchor,
-                                            plan.frontier_sector ) :
+                                    !has_watch_route && frontier_route_is_canonical(
+                                        plan.shared_route, site.anchor, plan.frontier_sector ) :
+                                    has_watch_route ? structural_watch_shared_route_is_canonical(
+                                        plan.shared_route, site.anchor, watch_selection.omt,
+                                        plan.target_footprint ) :
                                     structural_route_is_canonical( plan.shared_route, site.anchor,
                                             plan.target_omt );
+    const tripoint_abs_omt travel_destination = has_watch_route ?
+            watch_selection.omt : plan.target_omt;
     const bool route_risk_is_valid = hostile_camp_routine_route_risk_eligible(
                                          plan.static_risk, plan.max_route_segment_risk );
     if( now_minutes < 0 || !plan.valid || !plan.route_solved ||
@@ -11062,13 +11146,14 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         plan.lead_revision <= 0 || plan.member_ids.empty() ||
         plan.member_ids.size() > max_active_outing_members ||
         !route_is_canonical ||
-        plan.target_omt != plan.shared_route[plan.shared_route.size() - 2] ||
+        ( !has_watch_route &&
+          plan.target_omt != plan.shared_route[plan.shared_route.size() - 2] ) ||
         plan.expected_stalking_minutes != minutes_after_saturated(
-            now_minutes, structural_stalking_delay_minutes( site.anchor, plan.target_omt ) ) ||
+            now_minutes, structural_stalking_delay_minutes( site.anchor, travel_destination ) ) ||
         plan.expected_arrival_minutes != minutes_after_saturated(
-            now_minutes, structural_arrival_delay_minutes( site.anchor, plan.target_omt ) ) ||
+            now_minutes, structural_arrival_delay_minutes( site.anchor, travel_destination ) ) ||
         plan.expected_return_minutes != structural_expected_return_minutes(
-            now_minutes, site.anchor, plan.target_omt ) ) {
+            now_minutes, site.anchor, travel_destination ) ) {
         return false;
     }
     if( site.has_active_outside_pressure() ) {
@@ -11083,7 +11168,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         structural_outing_plan expected = plan_frontier_outing_impl( site, now_minutes, true );
         const structural_route_read persisted_route{ true, plan.full_route_cost,
                 plan.max_route_segment_risk, "", plan.watch_geography_supplied,
-                plan.target_footprint, plan.watch_candidates };
+                plan.target_footprint, plan.watch_candidates,
+                plan.watch_geography_supplied ? plan.shared_route :
+                std::vector<tripoint_abs_omt>() };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11128,7 +11215,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                     site, *lead, now_minutes, true );
         const structural_route_read persisted_route{ true, plan.full_route_cost,
                 plan.max_route_segment_risk, "", plan.watch_geography_supplied,
-                plan.target_footprint, plan.watch_candidates };
+                plan.target_footprint, plan.watch_candidates,
+                plan.watch_geography_supplied ? plan.shared_route :
+                std::vector<tripoint_abs_omt>() };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11244,6 +11333,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                 plan.watch_candidates ) != structural_watch_route_apply_result::applied ) {
             return false;
         }
+        candidate.active_outing.schema_version = 10;
     }
     if( candidate.intelligence_map.last_routine_target_lead_id != plan.lead_id ) {
         candidate.intelligence_map.previous_routine_target_lead_id =
@@ -11327,7 +11417,7 @@ std::optional<structural_resource_arrival_receipt> apply_structural_resource_arr
 
     active_outing_state &claimed_outing = claimed_site.active_outing;
     claimed_outing.cargo.supply_units = 2 * claim.claimed_units;
-    claimed_outing.waypoint_index = static_cast<int>( claimed_outing.shared_route.size() ) - 2;
+    claimed_outing.waypoint_index = structural_outing_destination_waypoint( claimed_outing );
     claimed_outing.phase = scout_phase::returning_home;
     claimed_outing.last_progress_minutes = now_minutes;
     camp_map_lead *updated_lead = claimed_site.intelligence_map.find_lead(
@@ -11391,14 +11481,14 @@ bool make_static_structural_observer_request( const site_record &site,
           lead->kind != camp_lead_kind::terrain_opportunity &&
           !returned_structural_signal_lead( *lead ) && !frontier_sector ) ||
         lead->revision != outing.target_lead_revision ||
-        !structural_route_is_canonical_for_lead( outing.shared_route, site.anchor, *lead ) ) {
+        !structural_route_is_canonical_for_outing( outing, site.anchor, *lead ) ) {
         return false;
     }
 
     request.current_omt = outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
     request.observation_window_start_minutes = outing.last_advanced_minutes;
     request.party_power = structural_outing_party_power( site );
-    const int target_index = static_cast<int>( outing.shared_route.size() ) - 2;
+    const int target_index = structural_outing_destination_waypoint( outing );
     for( int index = outing.waypoint_index + 1;
          index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
         request.visible_forward_omts.push_back(
@@ -11501,7 +11591,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             ( site.active_outing.schema_version != 6 &&
               site.active_outing.schema_version != 7 &&
               site.active_outing.schema_version != 8 &&
-              site.active_outing.schema_version != 9 ) ||
+              site.active_outing.schema_version != 9 &&
+              site.active_outing.schema_version != 10 ) ||
             site.active_outing.activity_id != site.site_id + "#structural" ||
             site.active_outing.target_id.empty() ||
             site.active_outing.target_id != site.active_outing.target_lead_id ||
@@ -11509,7 +11600,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             site.active_outing.started_minutes < 0 ||
             site.active_outing.expected_return_minutes != structural_expected_return_minutes(
                 site.active_outing.started_minutes, site.anchor,
-                site.active_outing.target_omt ) ) {
+                structural_outing_travel_destination( site.active_outing ) ) ) {
             continue;
         }
         const camp_map_lead *current_lead = site.intelligence_map.find_lead(
@@ -11533,7 +11624,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( current_lead_kind_is_supported &&
             ( !current_job_is_consistent ||
               current_lead->omt != site.active_outing.target_omt ||
-              !structural_route_is_canonical_for_lead( site.active_outing.shared_route,
+              !structural_route_is_canonical_for_outing( site.active_outing,
                       site.anchor, *current_lead ) ||
               ( current_frontier_sector &&
                 !frontier_memory_is_valid( site.intelligence_map ) ) ) ) {
@@ -11602,7 +11693,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             if( pre_advance_outing.phase == scout_phase::outbound &&
                 pre_advance_outing.waypoint_index == 0 &&
                 now_minutes - pre_advance_outing.started_minutes >=
-                structural_outing_stalking_delay_minutes( candidate, *lead ) &&
+                active_structural_outing_stalking_delay_minutes( candidate ) &&
                 pre_advance_outing.shared_route.size() >= 3 ) {
                 pre_advance_outing.waypoint_index = 1;
                 waypoint_progressed = true;
@@ -11610,9 +11701,11 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             if( pre_advance_outing.phase == scout_phase::observing &&
                 pre_advance_outing.local_contact_minutes >= 0 &&
                 now_minutes - pre_advance_outing.started_minutes >=
-                structural_outing_arrival_delay_minutes( candidate, *lead ) ) {
+                active_structural_outing_arrival_delay_minutes( candidate ) &&
+                pre_advance_outing.waypoint_index !=
+                structural_outing_destination_waypoint( pre_advance_outing ) ) {
                 pre_advance_outing.waypoint_index =
-                    static_cast<int>( pre_advance_outing.shared_route.size() ) - 2;
+                    structural_outing_destination_waypoint( pre_advance_outing );
                 waypoint_progressed = true;
             }
             structural_threat_observer_request request;
@@ -11621,7 +11714,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             request.observation_window_start_minutes = waypoint_progressed ? now_minutes :
                     expected_cursor->last_advanced_minutes;
             request.party_power = structural_outing_party_power( candidate );
-            const int target_index = static_cast<int>( pre_advance_outing.shared_route.size() ) - 2;
+            const int target_index = structural_outing_destination_waypoint(
+                                         pre_advance_outing );
             for( int index = pre_advance_outing.waypoint_index + 1;
                  index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
                 request.visible_forward_omts.push_back(
@@ -11849,7 +11943,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
 
         const int elapsed = now_minutes - outing.started_minutes;
         if( outing.phase == scout_phase::outbound && outing.local_contact_minutes < 0 &&
-            elapsed >= structural_outing_stalking_delay_minutes( candidate, *lead ) ) {
+            elapsed >= active_structural_outing_stalking_delay_minutes( candidate ) ) {
             structural_threat_read threat;
             if( threat_lookup ) {
                 threat = threat_lookup( candidate, *lead );
@@ -11895,8 +11989,25 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
 
         if( outing.phase == scout_phase::observing && outing.local_contact_minutes >= 0 &&
-            elapsed >= structural_outing_arrival_delay_minutes( candidate, *lead ) ) {
+            elapsed >= active_structural_outing_arrival_delay_minutes( candidate ) ) {
             const std::string lead_id = lead->lead_id;
+            if( structural_outing_uses_watch_route( outing ) ) {
+                const int destination_waypoint = structural_outing_destination_waypoint( outing );
+                const bool newly_arrived = waypoint_progressed ||
+                                           outing.waypoint_index != destination_waypoint;
+                outing.waypoint_index = destination_waypoint;
+                if( newly_arrived && !waypoint_progressed ) {
+                    outing.last_progress_minutes = now_minutes;
+                }
+                site = std::move( candidate );
+                if( newly_arrived ) {
+                    result.arrivals_processed++;
+                    result.notes.push_back(
+                        "structural outing reached selected watch without resolving remote lead=" +
+                        lead_id );
+                }
+                continue;
+            }
             const bool terrain_opportunity_arrival =
                 lead->kind == camp_lead_kind::terrain_opportunity;
             const bool returned_signal_arrival = returned_structural_signal_lead( *lead );
@@ -11962,7 +12073,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 continue;
             }
             advance_camp_map_lead_revision( candidate, *lead );
-            outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
+            outing.waypoint_index = structural_outing_destination_waypoint( outing );
             outing.phase = scout_phase::returning_home;
             outing.last_progress_minutes = now_minutes;
             site = std::move( candidate );
@@ -12455,7 +12566,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 true, contender.plan.full_route_cost, contender.plan.max_route_segment_risk,
                 "scheduler-owned route retained across exact-pair materialization",
                 contender.plan.watch_geography_supplied, contender.plan.target_footprint,
-                contender.plan.watch_candidates
+                contender.plan.watch_candidates,
+                contender.plan.watch_geography_supplied ? contender.plan.shared_route :
+                std::vector<tripoint_abs_omt>()
             };
             if( exact_plan.valid && !apply_structural_route_read(
                     materialized_site, now_minutes, cached_route, exact_plan ) ) {
@@ -13583,6 +13696,45 @@ bool structural_watch_route_avoids_target_footprint(
     } );
 }
 
+bool structural_watch_shared_route_is_canonical(
+    const std::vector<tripoint_abs_omt> &route,
+    const tripoint_abs_omt &anchor, const tripoint_abs_omt &watch_omt,
+    const std::vector<tripoint_abs_omt> &target_footprint )
+{
+    if( route.size() != 5 || route.front() != anchor || route.back() != anchor ||
+        route[2] != watch_omt || route[1] != route[3] ||
+        omt_chebyshev_distance( route[1], watch_omt ) != 1 ||
+        watch_omt == anchor || target_footprint.empty() ||
+        !structural_watch_route_avoids_target_footprint( route, target_footprint ) ) {
+        return false;
+    }
+    for( std::size_t index = 1; index < route.size(); ++index ) {
+        if( route[index] == route[index - 1] || route[index].z() != anchor.z() ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<tripoint_abs_omt> make_structural_watch_shared_route(
+    const tripoint_abs_omt &anchor, const tripoint_abs_omt &watch_omt,
+    const std::vector<tripoint_abs_omt> &reverse_path,
+    const std::vector<tripoint_abs_omt> &target_footprint )
+{
+    if( reverse_path.size() < 3 || reverse_path.front() != watch_omt ||
+        reverse_path.back() != anchor ||
+        !structural_watch_route_avoids_target_footprint( reverse_path, target_footprint ) ) {
+        return {};
+    }
+    const tripoint_abs_omt &approach_omt = reverse_path[1];
+    std::vector<tripoint_abs_omt> route = {
+        anchor, approach_omt, watch_omt, approach_omt, anchor
+    };
+    return structural_watch_shared_route_is_canonical(
+               route, anchor, watch_omt, target_footprint ) ? route :
+           std::vector<tripoint_abs_omt>();
+}
+
 structural_watch_geography_read read_structural_watch_geography(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const tripoint_abs_omt &route_origin,
@@ -13732,7 +13884,7 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
 {
     const active_outing_state &current = site.active_outing;
     if( current.kind != outing_kind::structural_sortie || current.schema_version < 8 ||
-        current.schema_version > 9 || !simulation_cursor_matches( current, expected_cursor ) ||
+        current.schema_version > 10 || !simulation_cursor_matches( current, expected_cursor ) ||
         ( current.phase != scout_phase::outbound && current.phase != scout_phase::searching ) ||
         target_footprint.empty() ||
         target_footprint.size() > max_structural_target_footprint_omts || candidates.empty() ||
@@ -13772,7 +13924,7 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
         return structural_watch_route_apply_result::rejected;
     }
 
-    if( current.schema_version == 9 &&
+    if( current.schema_version >= 9 &&
         current.selected_watch_kind != structural_watch_kind::none ) {
         return current.target_footprint == canonical_footprint &&
                current.selected_watch_kind == selected_kind &&
@@ -13784,7 +13936,7 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
 
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
-    next.schema_version = 9;
+    next.schema_version = std::max( next.schema_version, 9 );
     next.target_footprint = canonical_footprint;
     next.selected_watch_kind = selected_kind;
     next.selected_watch_omt = selection.omt;

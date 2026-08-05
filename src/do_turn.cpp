@@ -3381,6 +3381,12 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     if( !read.reachable ) {
         return read;
     }
+    const bandit_live_world::camp_map_lead *lead =
+        site.intelligence_map.find_lead( plan.lead_id );
+    if( plan.frontier_sector >= 0 || lead == nullptr ||
+        lead->kind == bandit_live_world::camp_lead_kind::structural_bounty ) {
+        return read;
+    }
 
     std::vector<tripoint_abs_omt> target_footprint = { plan.target_omt };
     if( const std::optional<basecamp *> camp = overmap_buffer.find_camp(
@@ -3403,6 +3409,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const overmap_path_params npc_route = overmap_path_params::for_npc();
     const std::unordered_set<tripoint_abs_omt> target_footprint_exclusions(
         target_footprint.begin(), target_footprint.end() );
+    std::vector<std::pair<tripoint_abs_omt, std::vector<tripoint_abs_omt>>> watch_paths;
     const auto terrain_lookup = [&npc_route]( const tripoint_abs_omt &candidate,
     const std::vector<tripoint_abs_omt> &footprint ) {
         bandit_live_world::structural_watch_terrain_read terrain;
@@ -3434,7 +3441,8 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     };
     const auto watch_route_lookup = [&site, &npc_route, &target_footprint,
                                     &target_footprint_exclusions,
-                                    &watch_path_budget]( const tripoint_abs_omt &candidate ) {
+                                    &watch_path_budget,
+                                    &watch_paths]( const tripoint_abs_omt &candidate ) {
         bandit_live_world::structural_watch_route_read route;
         if( watch_path_budget <= 0 ) {
             return route;
@@ -3453,6 +3461,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         route.route_cost = static_cast<int>( std::min<long long>(
                                std::numeric_limits<int>::max(), one_way_watch_cost * 2 ) );
         route.reachable = route.route_cost <= 18;
+        watch_paths.emplace_back( candidate, watch_path.points );
         return route;
     };
     const bandit_live_world::structural_watch_geography_read watch =
@@ -3465,6 +3474,24 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         read.reachable = false;
         read.summary = "live structural route abandoned: no bounded safe watch geography";
     } else {
+        const auto selected_path = std::find_if( watch_paths.begin(), watch_paths.end(),
+        [&watch]( const auto & entry ) {
+            return entry.first == watch.selection.omt;
+        } );
+        if( selected_path == watch_paths.end() ) {
+            read.reachable = false;
+            read.summary = "live structural route abandoned: selected watch path was not retained";
+            return read;
+        }
+        read.watch_shared_route = bandit_live_world::make_structural_watch_shared_route(
+                                      site.anchor, watch.selection.omt, selected_path->second,
+                                      watch.target_footprint );
+        if( read.watch_shared_route.empty() ) {
+            read.reachable = false;
+            read.summary = "live structural route abandoned: watch shared route was malformed";
+            return read;
+        }
+        read.complete_route_cost = watch.selection.route_cost;
         read.summary += "; watch geography selected " +
                         watch.selection.omt.to_string() + " route_reads=" +
                         std::to_string( watch.route_reads );
