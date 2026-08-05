@@ -22,9 +22,10 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Keep the exact pair cohesive with distinct plausible observer/cover staging slots inside the
-   selected watch OMT. Reuse the authoritative local-handoff snapshot/preflight and its rollback;
-   do not create a second local-position owner or persist duplicate slot state.
+1. Wire the Phase-5 watch selector to one bounded production route-planning adapter using real
+   target-footprint terrain, concealment, occupancy, and route reads. Commit the chosen watch OMT
+   through the existing structural outing route owner or abandon; never create a parallel target,
+   route, or slot registry.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
