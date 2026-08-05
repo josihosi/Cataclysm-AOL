@@ -22,8 +22,9 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Build the Phase-4 evidence aging/pruning benchmark and two-year save soak against the existing
-   authoritative camp owner, preserving deterministic caps and byte-stable reload checks.
+1. Run a fresh read-only Phase-4 exit review against the implementation, exact checkpoint commits,
+   and accepted artifacts. Cross off only criteria actually proved; preserve smoke/light/sound and
+   decoy/empty as capped non-credit live rows, then select the next unblocked ledger row.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

@@ -1022,7 +1022,24 @@ clue at `(136,51,0)` with bounty/threat `0` and confidence `3`, stages scheduler
 `8280/3960`, and adds only `DEBUG_CLAIRVOYANCE`. The two exact contracts pass 2/2, the full fixture
 suite passes 130/130, JSON/dry-run are green, and an isolated install reports 3 -> 0 -> 1 leads with
 the exact scheduler fields and newly added mutation. No third live run is allowed; the row stays
-open. The next unblocked evidence class is Phase-4 aging/pruning plus the two-year save soak.
+open.
+
+Phase-4 evidence aging/pruning is green at exact checkpoint `ed47145504`. Exact Mac tests pass:
+focused aging 1/113, same-day scheduler regression 1/10, benchmark fixture 1/64, broader
+`[structural_bounty]` 51/6,780, and the exact-identity `tests` rebuild. The independently validated
+six-case serial packet is accepted with zero failures: raw/summary SHA-256 `5eb83b7f...` /
+`ca8de252...`. One direct 730-day jump ages/prunes 0/24/240/1,200/2,400 returned signals and
+prunes 0/40/400/2,000/4,000 total leads at 0/1/10/50/100 camps, leaving the exact 24-per-camp
+harvested/dangerous set. At 100 camps the saturated pass is 608 us, 6,400 -> 2,400 leads, and
+3,171,377 -> 1,646,857 authoritative bytes; post-floor 50/100 scaling is 4.96x/10.33x from the
+10-camp case. This is below the 20 ms cadence-avalanche gate but is not compared to the tighter
+legacy scoped-maintenance ceilings. Non-save timing-replay RSS deltas are 0-0.31 MiB (0.19 MiB at
+100); the real-save case's 77.2 MiB load-path rise stays below the 128 MiB stress cap. That row
+saves in 364 ms, loads in 6.925 s, grows the disposable whole-save directory by 1,124,837 bytes,
+and preserves the exact aged owner serialization after reload. These absolute values are below the
+Phase-0 observed maxima; no paired save/load regression or Linux/Windows runtime is claimed.
+External manifest: `/Users/josefhorvath/codexbulk/C-AOL-hostile-ecology-artifacts/phase4-20260805/evidence-aging/MANIFEST.md`.
+Next evidence class is a fresh Phase-4 exit review; do not rerun the two capped live rows.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

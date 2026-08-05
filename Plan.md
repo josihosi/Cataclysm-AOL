@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / PHASE-4 SOAK NEXT
+**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / PHASE-4 EXIT REVIEW NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -439,8 +439,14 @@ credited quiet run `20260804_103631`; its derived transform explicitly removes t
 terrain priors, adds one zero-bounty/zero-threat returned smoke clue, stages only eligible routine
 clocks, and adds `DEBUG_CLAIRVOYANCE`. Exact 2/2 contracts, the full 130/130 fixture suite, dry-run,
 and an isolated install are green. The live decoy row remains open under its two-attempt cap; do
-not rerun it now. The next unblocked Phase-4 target is the evidence aging/pruning benchmark and
-two-year save soak.
+not rerun it now. Evidence aging/pruning is checkpointed at `ed47145504`: exact three-hour sound,
+six-hour smoke/light, and 30-day unreferenced terminal pruning share one bounded 64-lead scan,
+while active references are protected. The accepted six-case Mac packet applies one 730-day jump,
+shrinks 6,400 leads to 2,400 at 100 camps in 608 us, and round-trips the aged 10-camp owner through
+the real save/load path without changing its authoritative bytes. This specialized saturated burst
+is credited against the 20 ms cadence-avalanche gate, not the tighter legacy maintenance
+microbenchmark ceilings. Next: run a fresh Phase-4 exit review and reconcile the two capped
+non-credit live rows without rerunning them.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

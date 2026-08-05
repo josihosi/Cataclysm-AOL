@@ -904,15 +904,19 @@ owners from the legacy consumer, and prove no dual writer before broader observa
 - [ ] Lead-origin instrumentation shows no dual write or legacy-radar contribution in the production path.
 - [ ] Day/dusk/night/weather/signal tests prove bounded discovery.
 - [ ] Stale and contradictory evidence remains honest.
-- [ ] Evidence aging/pruning benchmark and two-year save soak remain bounded.
-- [ ] Behavior + tests form a checkpoint commit.
+- [x] Evidence aging/pruning benchmark and two-year save soak remain bounded. _Checkpoint `ed47145504`: one bounded scan ages returned sound at exactly three hours and smoke/light at six hours, protects every active exact lead reference, and prunes only unreferenced stale/invalidated leads at exactly 30 days. The accepted one-pair Mac matrix applies one 730-day jump at 0/1/10/50/100 camps plus a real 10-camp save/load row: 100 saturated camps take 608 us and shrink 6,400 -> 2,400 leads / 3,171,377 -> 1,646,857 bytes; the aged owner is identical after reload. Raw/summary SHA-256 `5eb83b7f...` / `ca8de252...`. This is a saturated cadence-avalanche/soak result under the 20 ms gate, not a claim against the legacy scoped-maintenance microbench ceilings or foreign-platform runtime._
+- [x] Behavior + tests form a checkpoint commit. _Behavior/test/benchmark/Tome commit `ed47145504`; focused aging 1/113, exact scheduler regression 1/10, benchmark fixture 1/64, broader structural 51/6,780, exact-identity Mac test link, accepted 6/6 serial matrix, and clean follow-up review._
 
 Evidence:
 
 - Commit: lead-origin/single-writer footing `d801058e79`; typed physical-observation envelope `600685c1c2`; structural observer/physical-return writer `e7c3da73e7`; legitimate visibility envelope `1738cf5ca2`; acquire/retain `b7a2333f7f`; bounded smoke/light `190fab0de5`; bounded significant sound `1541b351fa`; honest local-zombie evidence `8828bcdbfd`; temporary single-writer cutover `dda62833fc`; autonomous discovery/radar deletion `f28450a2a6`; harness retirement `641ea0884b`; quiet proximity `f80c33996b`; avatar relocation `531f626c6c`; decoy signal honesty `0e8c531d95`; local communication/dead evidence `429385ec26`; bounded evidence diagnostics `4cbd85c57e`; quiet live no-radar `5cfcf94e90`; structural pair ownership `69fc2a6ceb`; autonomous pair handoff probe `bfabeed571`; physical signal return `92aadee446d9`; ecology watch/run-until `13cbeeb072`; observer save/performance neutrality `117857f551`; ecology casualty matrix `1e6a0924e7`; external evidence under `phase4-20260803/{lead-origin,typed-observation,observer-writer,visibility-envelope,acquire-retain,smoke-light,significant-sound,local-zombie}/MANIFEST.md` and `phase4-20260804/{single-writer,autonomous-discovery,quiet-radar-control,avatar-relocation-control,decoy-signal-control,local-communication-control,evidence-debug,quiet-live-no-radar,autonomous-pair-handoff}/MANIFEST.md`.
 - No-radar control: exact-player code is deleted; deterministic quiet proximity/relocation and one live quiet bandit/field control are green. Exact evac-terrain and cannibal live parity remain open.
 - Visibility matrix: runtime `98707f2da0`; final contract `8afe569474`; clear twilight/day/cloudy-neutral night road runs `20260804_143110` / `20260804_152858` / `20260804_145631`; clear/fog optical forest runs `20260804_151754` / `20260804_152015`; all 9/9 green under external `phase4-20260804/structural-visibility-matrix/MANIFEST.md`.
-- Evidence/save benchmark:
+- Evidence/save benchmark: external `phase4-20260805/evidence-aging/MANIFEST.md`; exact checkpoint
+  `ed47145504`; raw/summary SHA-256 `5eb83b7f...` / `ca8de252...`. Non-save timing-replay RSS deltas
+  are 0-0.31 MiB (0.19 MiB at 100 camps); the real-save row adds 77.2 MiB through load, below the
+  128 MiB stress cap. Save 364 ms, load 6.925 s, and 1,124,837-byte directory growth are below the
+  Phase-0 observed maxima, without claiming a paired save/load regression comparison.
 
 ## Phase 5 - stalking, being burned, covert disposition, and evacuation
 
