@@ -1435,6 +1435,9 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
 std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
+std::optional<tripoint_abs_omt> nearest_target_footprint_omt(
+    const tripoint_abs_omt &observer_omt,
+    const std::vector<tripoint_abs_omt> &target_footprint );
 watch_selection_result select_exact_watch_ring_candidate(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );

@@ -1632,7 +1632,7 @@ live_bandit_local_zombie_read_impl( const bandit_live_world::site_record &site )
     static constexpr std::size_t monster_scan_cap = 64;
     const bandit_live_world::active_outing_state &outing = site.active_outing;
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-        outing.schema_version != 8 ||
+        outing.schema_version < 8 ||
         outing.owner != bandit_live_world::simulation_owner::local ||
         !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
         outing.member_ids.size() != 2 ) {
@@ -2140,8 +2140,21 @@ bool materialize_live_bandit_structural_handoffs()
                                            static_cast<int>( outing.shared_route.size() ) ?
                                            outing.shared_route[static_cast<std::size_t>(
                                                    outing.waypoint_index + 1 )] : route_position;
+        tripoint_abs_omt staging_facing_omt = egress_omt;
+        if( !resumes_physical_homeward_cursor && outing.schema_version >= 10 &&
+            outing.phase == bandit_live_world::scout_phase::observing &&
+            outing.selected_watch_kind != bandit_live_world::structural_watch_kind::none &&
+            route_position == outing.selected_watch_omt ) {
+            const std::optional<tripoint_abs_omt> target_facing_omt =
+                bandit_live_world::nearest_target_footprint_omt(
+                    route_position, outing.target_footprint );
+            if( !target_facing_omt ) {
+                continue;
+            }
+            staging_facing_omt = *target_facing_omt;
+        }
         const std::vector<tripoint_abs_ms> staging_positions =
-            live_bandit_local_handoff_entry_positions( route_position, egress_omt,
+            live_bandit_local_handoff_entry_positions( route_position, staging_facing_omt,
                     surviving_member_ids.size(), entry_positions );
         if( entry_positions.size() != surviving_member_ids.size() ||
             staging_positions.size() != surviving_member_ids.size() ) {

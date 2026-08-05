@@ -2437,10 +2437,14 @@ bool local_handoff_snapshot_matches_outing(
     std::vector<character_id> snapshot_member_ids;
     std::vector<tripoint_abs_ms> entry_positions;
     std::vector<tripoint_abs_ms> staging_positions;
+    std::vector<tripoint_abs_ms> living_entry_positions;
+    std::vector<tripoint_abs_ms> living_staging_positions;
     std::vector<tripoint_abs_ms> living_exit_positions;
     snapshot_member_ids.reserve( snapshot.members.size() );
     entry_positions.reserve( snapshot.members.size() );
     staging_positions.reserve( snapshot.members.size() );
+    living_entry_positions.reserve( snapshot.members.size() );
+    living_staging_positions.reserve( snapshot.members.size() );
     living_exit_positions.reserve( snapshot.members.size() );
     for( const bandit_live_world::local_handoff_member_snapshot &member : snapshot.members ) {
         const bool health_is_valid = member.dead ? member.hp_percent == 0 :
@@ -2465,6 +2469,7 @@ bool local_handoff_snapshot_matches_outing(
                  physical_homeward_cursor ) ) ||
             std::find( staging_positions.begin(), staging_positions.end(),
                        member.staging_position ) != staging_positions.end() ||
+            ( !member.dead && member.staging_position == member.entry_position ) ||
             ( !member.dead &&
               project_to<coords::omt>( member.exit_position ) != snapshot.route_position ) ||
             ( !member.dead &&
@@ -2481,8 +2486,17 @@ bool local_handoff_snapshot_matches_outing(
         entry_positions.push_back( member.entry_position );
         staging_positions.push_back( member.staging_position );
         if( !member.dead ) {
+            living_entry_positions.push_back( member.entry_position );
+            living_staging_positions.push_back( member.staging_position );
             living_exit_positions.push_back( member.exit_position );
         }
+    }
+    if( living_entry_positions.size() == 2 &&
+        ( rl_dist( living_entry_positions[0], living_entry_positions[1] ) >
+          local_pair_cohesion_radius_ms ||
+          rl_dist( living_staging_positions[0], living_staging_positions[1] ) >
+          local_pair_cohesion_radius_ms ) ) {
+        return false;
     }
     if( snapshot_member_ids.size() != 2 || outing.member_ids.size() != 2 ) {
         return false;
@@ -3345,8 +3359,10 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         staging_positions.push_back( read_iter->staging_position );
     }
     if( entry_positions.size() == 2 &&
-        rl_dist( entry_positions[0], entry_positions[1] ) > local_pair_cohesion_radius_ms ) {
-        plan.notes.push_back( "local handoff blocked: pair entry is outside cohesion radius" );
+        ( rl_dist( entry_positions[0], entry_positions[1] ) > local_pair_cohesion_radius_ms ||
+          rl_dist( staging_positions[0], staging_positions[1] ) >
+          local_pair_cohesion_radius_ms ) ) {
+        plan.notes.push_back( "local handoff blocked: pair slots are outside cohesion radius" );
         return plan;
     }
     plan.snapshot = std::move( snapshot );
@@ -13610,6 +13626,26 @@ std::optional<int> target_footprint_watch_distance(
         }
     }
     return nearest_distance;
+}
+
+std::optional<tripoint_abs_omt> nearest_target_footprint_omt(
+    const tripoint_abs_omt &observer_omt,
+    const std::vector<tripoint_abs_omt> &target_footprint )
+{
+    std::optional<tripoint_abs_omt> nearest;
+    for( const tripoint_abs_omt &target_omt : target_footprint ) {
+        if( target_omt.z() != observer_omt.z() ) {
+            continue;
+        }
+        if( !nearest ||
+            std::make_tuple( omt_chebyshev_distance( observer_omt, target_omt ),
+                             target_omt.z(), target_omt.y(), target_omt.x() ) <
+            std::make_tuple( omt_chebyshev_distance( observer_omt, *nearest ),
+                             nearest->z(), nearest->y(), nearest->x() ) ) {
+            nearest = target_omt;
+        }
+    }
+    return nearest;
 }
 
 watch_selection_result select_exact_watch_ring_candidate(
