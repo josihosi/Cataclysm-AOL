@@ -139,10 +139,16 @@ natural while retaining causal linkage to the intervention ledger.
 
 ### O2 - overmap observer UX
 
-- [ ] Render stable markers, legend, filters, cursor details, selection cycling, and pin/follow in
-  the existing overmap UI under `DEBUG_CLAIRVOYANCE`.
-- [ ] Reuse the same view in curses/tiles paths where the existing overmap rendering split requires
-  it; do not create divergent truth.
+- [x] Render stable markers, legend, filters, cursor details, selection cycling, and pin/follow in
+  the existing overmap UI under `DEBUG_CLAIRVOYANCE`. _O2 code checkpoint `a7b844d100`: the normal
+  overmap owns the visible controls; category, faction, and loaded-only filters plus selection/pin
+  survive a reopen only in process memory and reset across worlds. Fast travel and specialized
+  overmaps do no observer queries._
+- [x] Reuse the same view in curses/tiles paths where the existing overmap rendering split requires
+  it; do not create divergent truth. _Both renderers consume the same bounded marker projection;
+  the Trace export and selected monitor serialize that same query contract. Exact Mac tiles build,
+  20/176 ecology assertions, 9/1,116 console assertions, keybinding JSON, diff check, and final
+  AutoReview are green._
 - [ ] Capture one current-build screenshot paired with the exact compact snapshot that describes
   the selected hostile party.
 

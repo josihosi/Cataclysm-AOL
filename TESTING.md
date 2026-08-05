@@ -793,13 +793,14 @@ clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the
 red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
 retry is justified before the observer exists.
 
-The current validation target is observer O0/O1 from
+The current validation target is observer O0/O2 from
 `doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: prove the harness adds
 only `DEBUG_CLAIRVOYANCE`; observer off/on leaves knowledge and save bytes unchanged beyond that
 mutation; the shared camp/dispatch view is deterministic at 2,048 considered / 256 emitted / 128
 deltas with explicit truncation; stale/dead/completed and co-located/z-level cases are honest; and
 closed observer work is zero. Smoke/light/sound is the first later live row that must preserve a
-screenshot plus the exact compact snapshot.
+screenshot plus the exact compact snapshot. O2 code is green; the immediate proof target is its
+current-build screenshot/snapshot pair plus the O0 save/knowledge-negative run.
 
 Observer O0 prepared handoff is green at the current checkpoint. Derived fixture
 `bandit_phase4_ecology_observer_handoff_v0_2026-08-05` preserves inherited `DEBUG_CLOAK` and its
@@ -824,6 +825,18 @@ terminal lost state, and unbounded sorting; all are fixed. Final command
 this Mac; Josef should apply astyle 3.1 if a formatting gate later reports drift. This is Mac
 compile/unit evidence only and does not claim the O2 overmap gate, JSON artifact, or foreign
 platforms.
+
+Observer O2 overmap/JSON code is green at checkpoint `a7b844d100`. The exact Mac release/tiles test
+link succeeds; `[ecology_debug]` passes 20 cases / 176 assertions and `[debug_console]` passes 9 /
+1,116. `jq empty data/raw/keybindings.json` and `git diff --check` pass. Tests cover distinct stable
+legend markers, orthographic/isometric viewport bounds, co-location, selection/pin behavior, exact
+cache regions, matching human/JSON category/faction/loaded filters, CDDA/CTLG binary identity,
+process-local reopen state, full Trace export, stable selected-only monitor output, deterministic
+serialization, exact payload bytes, and an authority-index selected query that fails closed on a
+stale index. Normal overmap presentation is the only active UI route; specialized overmaps and fast
+travel skip observer queries. Final `autoreview --mode local` reports no accepted/actionable
+finding with 0.93 correctness confidence. This remains Mac compile/unit evidence: no screenshot,
+live overlay behavior, save/knowledge neutrality, or Windows/Linux runtime claim is credited yet.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

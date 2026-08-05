@@ -329,7 +329,16 @@ unmaterialized camps, removes terminal/survivor-less dispatches, distinguishes a
 loaded state, and retains deterministic candidates in `O(N log 2048)` work before the 256-marker
 cap. Selected-only route/reason/deadline/member detail, z-level/co-location, exact save round-trip,
 and gate-closed byte neutrality pass 5 focused cases / 61 assertions. AutoReview found and closed
-five concrete adapter/cap defects; the final rerun is clean. Overmap UI and compact JSON remain O2.
+five concrete adapter/cap defects; the final rerun is clean. O2 code is now green at checkpoint
+`a7b844d100`: the normal overmap renders the same projection in curses and tiles, with stable
+markers, legend, category/faction/loaded filters, cursor details, selection, and pin/follow under
+the single `DEBUG_CLAIRVOYANCE` gate. Process-local controls never enter the save; the selected
+monitor uses a bounded authority-index lookup, while a deliberate Trace-tab export uses the exact
+active filters and deterministic compact JSON. Fast travel and closed/specialized overmaps do no
+observer query work. Exact Mac tiles compilation passes, `[ecology_debug]` passes 20/176,
+`[debug_console]` passes 9/1,116, keybindings parse, and final AutoReview is clean. The remaining O2
+exit is a current-build screenshot paired with its exact snapshot; O0 byte/knowledge neutrality is
+also still open.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
