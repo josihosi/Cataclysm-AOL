@@ -826,8 +826,26 @@ generation 1, local handoff epoch 1, living members 4/5, phase observing. It add
 `DEBUG_CLAIRVOYANCE` and explicitly retains the producer's `yellow_step_local_proof_incomplete`
 whole-probe caveat. Exact Mac tiles/non-tiles objects and tiles link pass; console 10/1,120,
 intervention 2/60, all ecology 33/697, staged fixture contracts 126/126, JSON/diff checks, and the
-launch-only dry-run pass. A fresh read-only review found no actionable defect. This is readiness
-footing only; no intervention or live incident is credited until the next handoff executes it.
+launch-only dry-run pass. A fresh read-only review found no actionable defect. This behavior-only
+checkpoint remained readiness footing until the credited field run below.
+
+The field gate is green at exact runtime `648a509cc9`, run `20260805_101713`. The documented
+handoff installed only `DEBUG_CLAIRVOYANCE`; its detached child exited silently, so the exact
+reported command ran attached in the same run directory. Overmap selection bound local/loaded
+dispatch `BD-374153` in phase `observing`; the console armed its watch, stepped one turn, and kept
+that watch alive while `I` confirmed authoritative kill of Giuseppe Bachman (NPC 4, HP 100 -> 0).
+Vance Gunderson (NPC 5) remained alive/loaded at HP 100. `R` published
+`ecology_incident_5249094.json` + `.png`; the 4,099-byte payload has natural `appeared` followed by
+`debug_intervention` `hp_changed`, one retained intervention, 2,047 trace bytes, no truncation, and
+exact `648a509cc9+SDL3`/scenario/run identity. The reopened overmap immediately showed debug
+provenance; 2 entities were considered/shown in 26 us. Permissions and all artifact hashes are in
+`ecology_field_gate_receipt.json`. Runs `20260805_095314` and `20260805_100813` remain non-credit:
+they isolated the shared SDL3_image bool-success bug. `f997bbd368` moves incident capture outside
+the ImGui callback; `648a509cc9` normalizes SDL2 zero-success versus SDL3 true-success. Exact Mac
+tiles/non-tiles compile, tiles links, console 10/1,120, intervention 2/60, all ecology 33/697,
+harness 126/126, and fresh read-only reviews are green. Live save-byte neutrality is still deferred
+to the O4 performance/save-growth row; unit coverage already proves gate-closed zero query work and
+unchanged authoritative serialization.
 
 Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
 contains run/turn/player/build/scenario identity, the exact selected projection/token, retained
@@ -839,7 +857,7 @@ failure. Probe and handoff children receive deterministic run/profile/world/scen
 metadata without inheriting stale scenario state. Exact Mac tests pass incident 5/71 and console
 9/1,116 at seed `240401`; all 126 harness fixture contracts, Python syntax, touched objects/tests
 link, current `cataclysm-tiles`, and `git diff --check` are green after one combined review/fix pass.
-No live incident is credited while the field-tool preflight remains blocked before watch arm.
+At that checkpoint no live incident was credited; run `20260805_101713` below supplies it.
 
 Observer O4a code is green at behavior checkpoint `759e0851bd`. The immutable world/ID/generation /
 owner/authority token feeds a 128-record FIFO with appeared, moved, phase, visible-authoritative HP,

@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / FIELD BRIDGE AND FIXTURE GREEN / LIVE DRY RUN NEXT
+Status: ACTIVE / FIELD GATE GREEN / O4 WATCHES AND SAVE-PERF NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -210,6 +210,15 @@ O4a the current row.
   producer's yellow whole-probe caveat. Exact Mac compile/link, console 10/1,120, intervention 2/60,
   all ecology 33/697, harness 126/126, dry-run, and fresh read-only review are green. Live use is not
   credited until the clean field run records the intervention/incident pair._
+- [x] Execute the complete field workflow and preserve one compact incident pair. _Runtime
+  `648a509cc9`, run `20260805_101713`: selected `BD-374153`, armed the watch, stepped one turn,
+  confirmed authoritative NPC 4 kill with NPC 5 surviving, captured natural appeared then
+  debug-intervention HP delta, published the 4,099-byte JSON/PNG pair, and immediately refreshed
+  the overmap provenance. Query 2/2/26 us, trace 2,047 bytes/no truncation, permissions, identities,
+  and exact hashes are in `ecology_field_gate_receipt.json`. Non-credit attempts `095314`/`100813`
+  isolated the shared SDL3_image success-contract defect; `f997bbd368` defers capture and
+  `648a509cc9` normalizes SDL2/SDL3 return values. Live save-byte neutrality remains the next O4
+  performance row, not a claim of this field run._
 - [ ] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
   closed cost, save-size neutrality, and byte-stability.
 

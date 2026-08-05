@@ -369,9 +369,10 @@ concrete NPC; kill reuses `npc::die` plus normal cleanup/casualty writeback; the
 receipt feeds same-turn overlay, monitor trace, and incident provenance. Exact Mac release tests
 pass intervention 2/60, all ecology 33/697, and console 9/1,116; the release tiles rebuild/link is
 green. The helper-based review was unavailable, so one bounded manual review/fix pass closed delayed
-natural-provenance mixing and missing failed-attempt receipts. Live field-tool use, casualty outcome
-matrix, and O0 neutrality proof remain open. Field attempt `20260805_091051` selected the natural
-camp and proved permissions/keyboard console entry, but the console's second global-debug toggle
+natural-provenance mixing and missing failed-attempt receipts. At that checkpoint, live field use,
+the casualty outcome matrix, and O0 neutrality proof were still open. Field attempt
+`20260805_091051` selected the natural camp and proved permissions/keyboard console entry, but the
+console's second global-debug toggle
 again blocked watch arm. Adapter checkpoint `15e01c1e64` now exposes only ecology snapshot/watch /
 incident plus Step/Play under `DEBUG_CLAIRVOYANCE`, with `A/P/./R` shortcuts and no global-debug
 side effect; exact Mac console 10/1,120 and release tiles link are green. The attempt receipt is
@@ -381,8 +382,19 @@ starts from a real schema-8 two-member local structural handoff, adds only `DEBU
 and preserves the source run's `yellow_step_local_proof_incomplete` whole-probe caveat. Exact Mac
 tiles/non-tiles compile, tiles link, console 10/1,120, intervention 2/60, all ecology 33/697,
 harness 126/126, byte-identical fixture hash, dry-run plan, and fresh no-findings review are green.
-The next clean handoff must still execute the whole field gate. O3 adapters resume only after an
-authoritative identity seam exists.
+O3 adapters resume only after an authoritative identity seam exists. The field gate is now green
+on exact runtime `648a509cc9`,
+run `20260805_101713`: selected local dispatch `BD-374153`, armed the existing watch, stepped one
+turn, confirmed authoritative kill of NPC 4, retained NPC 5 alive, captured natural `appeared` then
+`debug_intervention` `hp_changed`, published the exact 4,099-byte incident JSON/PNG pair, and
+immediately redrew the selected overmap marker with debug provenance. Field attempts `095314` and
+`100813` remain honest non-credit evidence that isolated an inverted SDL3_image `IMG_SavePNG`
+success check; fix `648a509cc9` normalizes SDL2/SDL3 contracts, while `f997bbd368` keeps capture/file
+I/O outside the active ImGui callback. Query evidence is 2 considered/2 shown/26 us, trace is 2,047
+bytes with no truncation, permissions are green, and the exact screenshot/payload hashes live in
+`ecology_field_gate_receipt.json`. Live save-byte neutrality remains in O4's performance/save-growth
+row. Next: finish bounded watch/run-until breadth and that neutrality row, then use the observer in
+the smoke/light/sound Phase-4 live row.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

@@ -7,26 +7,17 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-### Field-tool readiness gate - before any behavior ledger
+### O4 completion - before the next Phase-4 live behavior row
 
-Do not start or expand a Phase-4 behavior ledger merely because an O4 row exists.  First complete
-and execute one documented field-tool dry run against a naturally observed camp or dispatch:
-select it; use the existing step/play controller with a selected-operation watch until a meaningful
-transition, anomaly, or deadline; capture the exact selected snapshot, bounded deltas, and incident
-bundle automatically; make one explicitly confirmed authoritative member intervention; and verify
-immediate refresh plus query/trace/save-growth evidence.  Unit tests or a prose plan alone do not
-satisfy this gate.  If this loop exposes a missing honest capability, implement only its smallest
-adapter before the ledger.  Reuse the existing console/harness; do not add generic state setters,
-teleports, stimulus generators, scripting, or a second scenario framework.
+Field readiness is green at runtime `648a509cc9`, run `20260805_101713`; do not repeat it by ritual.
+The exact receipt is `ecology_field_gate_receipt.json`. The next queue is:
 
-1. Run `manual.phase4_ecology_dispatch_observer_mcw`; select its captured natural-producer
-   structural dispatch, arm the watch, use `I` without closing the console, confirm one member
-   intervention, press `R`, then capture the refreshed overmap plus compact incident. Retain
-   query/trace/save-growth evidence and the source fixture's yellow whole-probe caveat.
-2. Extend O4 through the remaining bounded watches/run-until behavior before the Phase-4
-   smoke/light/sound live row.
-3. Reuse O4's existing performance/save-growth harness for the deferred observer off/on
+1. Extend O4 through the remaining bounded watches/run-until behavior.
+2. Reuse the existing performance/save-growth footing for the deferred observer off/on
    knowledge/save-byte proof; do not grow a separate save canonicalizer.
+3. Prove E1 casualty follow-through: one-dead-one-survivor return, both-dead, and wounded survivor,
+   with a concrete faction-equivalence seam or separate bandit/cannibal evidence.
+4. Use the observer and preserve its screenshot/snapshot pair in the smoke/light/sound live row.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
