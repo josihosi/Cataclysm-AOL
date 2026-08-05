@@ -806,6 +806,16 @@ failed-attempt receipts. The next validation target is the real field dry run pl
 cannibal casualty outcome matrix. O0 save/knowledge neutrality retries only through O4's existing
 performance/save-growth harness.
 
+The smallest field adapter is green at `15e01c1e64`. Under `DEBUG_CLAIRVOYANCE` with global debug
+mode off, the console now renders only ecology snapshot/watch/incident and the existing Step/Play
+footer; keyboard `A/P/./R` removes the ImGui-click dependency without exposing other debug tabs.
+Exact Mac release compile/test passes `[debug_console]` 10/1,120 and the release tiles link. Field
+attempt `.userdata/dev-harness/harness_runs/20260805_091051/` selected natural camp `BC-E75C82` and
+confirmed Screen Recording, Accessibility, and Event Synthesizing, but is non-credit: its first
+half stopped at the now-removed second toggle, and its post-build relaunch entered a case-sensitive
+quit modal before adapter proof. `ecology_field_gate_attempt.json` records exact screenshot hashes
+and every missing artifact. Do not add more click/OCR retries; start one clean keyboard handoff.
+
 Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
 contains run/turn/player/build/scenario identity, the exact selected projection/token, retained
 deltas and metadata, an optional 256-byte note, at most 32 ordered intervention receipts, and exact

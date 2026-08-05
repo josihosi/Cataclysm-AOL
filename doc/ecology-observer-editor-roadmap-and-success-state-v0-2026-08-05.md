@@ -196,6 +196,12 @@ O4a the current row.
   revalidates the selected owner and atomically publishes exact-byte compact JSON plus the existing
   game screenshot into the harness run directory. Live field use remains uncredited until the
   readiness-gate loop reaches watch arm and intervention._
+- [x] Let the selected ecology watch/incident workflow operate without a second global-debug toggle.
+  _Adapter `15e01c1e64`: `DEBUG_CLAIRVOYANCE` renders only ecology snapshot/watch/incident plus the
+  existing Step/Play footer, with `A` arm, `P` play/pause, `.` step, and `R` incident. Other console
+  tabs/actions remain behind global debug mode. Exact Mac console 10/1,120 and release tiles link
+  are green. Field attempt `20260805_091051` identified the old toggle and remains non-credit; its
+  post-build relaunch hit a case-sensitive quit modal before adapter proof._
 - [ ] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
   closed cost, save-size neutrality, and byte-stability.
 

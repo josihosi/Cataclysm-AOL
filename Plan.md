@@ -370,8 +370,13 @@ receipt feeds same-turn overlay, monitor trace, and incident provenance. Exact M
 pass intervention 2/60, all ecology 33/697, and console 9/1,116; the release tiles rebuild/link is
 green. The helper-based review was unavailable, so one bounded manual review/fix pass closed delayed
 natural-provenance mixing and missing failed-attempt receipts. Live field-tool use, casualty outcome
-matrix, and O0 neutrality proof remain open. O3 adapters resume only after an authoritative
-identity seam exists.
+matrix, and O0 neutrality proof remain open. Field attempt `20260805_091051` selected the natural
+camp and proved permissions/keyboard console entry, but the console's second global-debug toggle
+again blocked watch arm. Adapter checkpoint `15e01c1e64` now exposes only ecology snapshot/watch /
+incident plus Step/Play under `DEBUG_CLAIRVOYANCE`, with `A/P/./R` shortcuts and no global-debug
+side effect; exact Mac console 10/1,120 and release tiles link are green. The attempt receipt is
+non-credit, and the next clean handoff must still execute the whole gate. O3 adapters resume only
+after an authoritative identity seam exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
