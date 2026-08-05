@@ -793,14 +793,26 @@ clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the
 red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
 retry is justified before the observer exists.
 
-The current validation target is O4a from
-`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: bind one selected
-camp/dispatch token, emit only bounded typed changes through the existing trace monitor, and reuse
-the existing step controller for capture-and-continue or pause. Filter/gate/world changes must
-cancel or stale the watch; an unresolved dispatch is an anomaly until its authoritative owner can
-prove completion or death. O0 save/knowledge neutrality retries only through O4's existing
-performance/save-growth harness. O3 production mobile adapters remain disabled until horde/group /
-monster ownership has stable movement/load-transfer identity.
+The current validation target is O4b from
+`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: record one ecology
+incident through existing screenshot/report/archive/export seams using the selected snapshot,
+bounded recent deltas, identity, intervention ledger, and truncation metadata. O0 save/knowledge
+neutrality retries only through O4's existing performance/save-growth harness. O3 production
+mobile adapters remain disabled until horde/group/monster ownership has stable movement/load-
+transfer identity.
+
+Observer O4a code is green at behavior checkpoint `759e0851bd`. The immutable world/ID/generation /
+owner/authority token feeds a 128-record FIFO with appeared, moved, phase, visible-authoritative HP,
+and anomaly transitions; mutable filters and selection bind a process-local revision; generic
+monitor removal/disablement reconciles instead of leaving a false armed state; unchanged fields
+advance the comparison baseline; and load/unload visibility is not an HP event. Exact Mac tests at
+seed `230059` pass delta 3/334, capture 9/34, console 9/1,116, and full ecology 26/566; touched release
+tiles objects, tests link, current `cataclysm-tiles`, and `git diff --check` are green after one
+review/fix pass. Run `20260805_074635` is a non-credit field preflight: it records the prepared
+handoff, current-binary natural selection of `BC-E75C82`, and green Screen Recording, Accessibility,
+and Event Synthesizing, but SDL helper window `22148` retained focus instead of render window `22114`,
+so the ImGui watch could not be armed. `ecology_watch_preflight_receipt.json` names every missing
+artifact; do not grow more click/OCR heuristics or call this watch proof.
 
 Observer O0 prepared handoff is green at the current checkpoint. Derived fixture
 `bandit_phase4_ecology_observer_handoff_v0_2026-08-05` preserves inherited `DEBUG_CLOAK` and its

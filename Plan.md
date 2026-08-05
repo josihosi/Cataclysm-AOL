@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY WATCH O4A NEXT
+**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY INCIDENT O4B NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -351,8 +351,15 @@ details. Exact Mac link plus `[ecology_debug]` 23/232 and `[debug_console]` 9/1,
 review/fix pass closed absent-source and canonical-ID collision defects. Neither current C-AOL nor
 fetched upstream `7f6b236556` has a durable horde/group/monster identity that survives movement and
 concrete/abstract transfer, so production mobile adapters remain disabled instead of inventing
-position IDs. Per the practical party-first stop condition, O4a selected phase-change watch is the
-next row; O3 adapters resume only after an authoritative identity seam exists.
+position IDs. O4a is checkpointed at `759e0851bd`: one immutable selected token feeds a 128-record
+transition-only ring through the existing monitor and Step/Play controller, with exact provenance,
+pause/capture disposition, stale control revision, and fail-closed anomaly handling. Exact Mac
+delta 3/334, capture 9/34, console 9/1,116, and full ecology 26/566 are green after one review/fix
+pass. Live preflight `20260805_074635` selected natural camp `BC-E75C82` but stopped before watch
+arming because the automation bridge focused SDL helper window `22148` rather than render window
+`22114`; permissions were green, so this is a non-credit focus-routing harness limitation. O4b
+incident capture is the next smallest adapter; the field-tool readiness gate and O0 neutrality
+proof remain open. O3 adapters resume only after an authoritative identity seam exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O3A MOBILE CONTRACT GREEN / O4A SELECTED WATCH NEXT
+Status: ACTIVE / O4A SELECTED WATCH CODE GREEN / FIELD-TOOL GATE OPEN
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -178,10 +178,14 @@ O4a the current row.
 
 ### O4 - compact deltas, watches, and incident bundle
 
-- [ ] Add O4a selected phase-change watch with an immutable world/ID/generation/owner token,
+- [x] Add O4a selected phase-change watch with an immutable world/ID/generation/owner token,
   transition-only `appeared`/`moved`/`phase_changed`/`hp_changed` records, exact 128-row retention,
   and capture-and-continue or existing-controller pause behavior. Ambiguous disappearance is an
-  anomaly, not invented death/completion.
+  anomaly, not invented death/completion. _Behavior `759e0851bd`; exact Mac delta 3/334, capture
+  9/34, console 9/1,116, and full ecology 26/566 after one review/fix pass. Live preflight
+  `20260805_074635` selected natural camp `BC-E75C82`, but the bridge focused SDL helper window
+  `22148` instead of render window `22114` and could not arm the ImGui watch. Permissions were
+  green; the bounded receipt is non-credit and the field-tool gate remains open._
 - [ ] Emit bounded deterministic snapshot+deltas to harness artifacts and expose a run-until
   operation equivalent to `observe selected-operation --until phase-change-or-anomaly --deadline
   6h --json`.
@@ -209,6 +213,19 @@ O4a the current row.
 - [ ] Add horde population reduce/remove and target adjust/clear only through the existing group
   owner; never invent group HP.
 - [ ] Extend intervention confirmation/provenance/stale-token tests across these owners.
+
+## Field-tool readiness gate - before any behavior ledger
+
+Do not begin or expand a Phase-4 behavior ledger merely because an O4 implementation row exists.
+First execute one documented field-tool dry run against a naturally observed camp or dispatch.  The
+operator must be able to select it, use the existing step/play controller with a selected-operation
+watch until a meaningful transition, anomaly, or deadline, automatically capture the exact selected
+snapshot plus bounded deltas and incident bundle, make one explicitly confirmed authoritative member
+intervention, and see the immediate refresh with query/trace/save-growth evidence.  A plan or unit
+test alone does not satisfy this gate.  If a step lacks an honest UI, harness, or authoritative-owner
+seam, implement only the smallest missing adapter before starting the ledger.  Reuse the existing
+console/harness; do not add generic state setters, teleports, stimulus generators, scripting, or a
+second scenario framework.
 
 ## Live-use stop condition
 
