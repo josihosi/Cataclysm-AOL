@@ -816,6 +816,19 @@ half stopped at the now-removed second toggle, and its post-build relaunch enter
 quit modal before adapter proof. `ecology_field_gate_attempt.json` records exact screenshot hashes
 and every missing artifact. Do not add more click/OCR retries; start one clean keyboard handoff.
 
+Field bridge behavior is green at `22004574a1`. `I` in the narrow ecology console now queues the
+same selected-overmap authoritative editor outside the ImGui frame, suspends console drawing while
+its blocking menus run, and returns to the same armed watch; incident capture immediately re-samples
+the edit without a fake turn. The paired launch-only fixture stores the byte-identical 81-file save
+payload from natural producer run `20260804_121729` (tree SHA-256
+`ab06d76de1045497fa2855c8f87e599aee588e0160a5075b81e363c865b7b8ce`): schema-8 structural sortie
+generation 1, local handoff epoch 1, living members 4/5, phase observing. It adds only
+`DEBUG_CLAIRVOYANCE` and explicitly retains the producer's `yellow_step_local_proof_incomplete`
+whole-probe caveat. Exact Mac tiles/non-tiles objects and tiles link pass; console 10/1,120,
+intervention 2/60, all ecology 33/697, staged fixture contracts 126/126, JSON/diff checks, and the
+launch-only dry-run pass. A fresh read-only review found no actionable defect. This is readiness
+footing only; no intervention or live incident is credited until the next handoff executes it.
+
 Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
 contains run/turn/player/build/scenario identity, the exact selected projection/token, retained
 deltas and metadata, an optional 256-byte note, at most 32 ordered intervention receipts, and exact

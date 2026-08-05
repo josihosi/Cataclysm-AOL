@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / E1 CODE GREEN / FIELD DRY RUN NEXT
+Status: ACTIVE / FIELD BRIDGE AND FIXTURE GREEN / LIVE DRY RUN NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -202,6 +202,14 @@ O4a the current row.
   tabs/actions remain behind global debug mode. Exact Mac console 10/1,120 and release tiles link
   are green. Field attempt `20260805_091051` identified the old toggle and remains non-credit; its
   post-build relaunch hit a case-sensitive quit modal before adapter proof._
+- [x] Keep the selected watch alive across one authoritative editor interaction and provide a real
+  dispatch-ready handoff. _Field bridge `22004574a1`: `I` queues the same selected-overmap editor
+  outside ImGui, suspends the console during blocking menus, and returns to the same watch. The new
+  launch-only fixture is byte-identical to natural producer run `20260804_121729`, contains a real
+  schema-8 two-member local structural handoff, adds only `DEBUG_CLAIRVOYANCE`, and preserves the
+  producer's yellow whole-probe caveat. Exact Mac compile/link, console 10/1,120, intervention 2/60,
+  all ecology 33/697, harness 126/126, dry-run, and fresh read-only review are green. Live use is not
+  credited until the clean field run records the intervention/incident pair._
 - [ ] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
   closed cost, save-size neutrality, and byte-stability.
 

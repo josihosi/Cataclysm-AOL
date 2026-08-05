@@ -19,9 +19,10 @@ satisfy this gate.  If this loop exposes a missing honest capability, implement 
 adapter before the ledger.  Reuse the existing console/harness; do not add generic state setters,
 teleports, stimulus generators, scripting, or a second scenario framework.
 
-1. Execute the field-tool dry run with E1: select a real structural dispatch, arm its watch,
-   confirm one member intervention, capture the refreshed snapshot/delta/incident pair, and retain
-   query/trace/save-growth evidence.
+1. Run `manual.phase4_ecology_dispatch_observer_mcw`; select its captured natural-producer
+   structural dispatch, arm the watch, use `I` without closing the console, confirm one member
+   intervention, press `R`, then capture the refreshed overmap plus compact incident. Retain
+   query/trace/save-growth evidence and the source fixture's yellow whole-probe caveat.
 2. Extend O4 through the remaining bounded watches/run-until behavior before the Phase-4
    smoke/light/sound live row.
 3. Reuse O4's existing performance/save-growth harness for the deferred observer off/on
