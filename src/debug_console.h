@@ -35,6 +35,7 @@ namespace debug_menu
 enum class debug_menu_index : int;
 
 class debug_console;
+class ecology_watch_session;
 class omnibox_state;
 class step_controller;
 
@@ -253,13 +254,13 @@ class tab_items_view : public console_tab_view
 class tab_trace_view : public console_tab_view
 {
     public:
-        tab_trace_view() {
-            log_category_mask.set();
-        }
+        tab_trace_view();
+        ~tab_trace_view() override;
         const char *label() const override;
         void draw_body( debug_console &host ) override;
         void load_state( const JsonObject &nested ) override;
         void save_state( JsonOut &jo ) const override;
+        bool take_ecology_pause_request();
 
     private:
         void draw_monitors_body( debug_console &host );
@@ -275,6 +276,8 @@ class tab_trace_view : public console_tab_view
         int monitor_target_type = 0;
         int monitor_mode_idx = 1;
         std::string monitor_label;
+        int ecology_watch_mode = 0;
+        pimpl<ecology_watch_session> ecology_watch;
 
         // Cached merged feed. Rebuilt only when feed_generation,
         // filter, toggle mask, or log-category mask change.
@@ -455,9 +458,10 @@ class debug_console : public cataimgui::window
         void draw_tab_views();
         std::vector<std::unique_ptr<console_tab_view>> tab_views;
 
-        // Typed back-pointer cached at construction for the only tab that
-        // currently receives cross-tab semantic verbs.
+        // Typed back-pointers cached at construction for tabs that receive
+        // cross-tab state or turn-controller handoff.
         tab_items_view *items_view_ = nullptr;
+        tab_trace_view *trace_view_ = nullptr;
 
         // Deferred operations -- queued by buttons during draw, drained one
         // per outer-loop iteration so each runs outside the ImGui frame.

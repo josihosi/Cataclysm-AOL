@@ -261,7 +261,8 @@ void debug_capture::push_debug_log( debugmode::debug_filter type, const std::str
         return;
     }
     const bool ring_on = p->settings.add_msg_debug_capture;
-    const bool file_on = p->settings.trace_file.wants( "log" );
+    const std::string source = type == debugmode::DF_MONITOR ? "monitors" : "log";
+    const bool file_on = p->settings.trace_file.wants( source );
     if( ring_on ) {
         const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
         p->log_ring.push_back( { turn, type, msg } );
@@ -271,7 +272,7 @@ void debug_capture::push_debug_log( debugmode::debug_filter type, const std::str
     if( file_on ) {
         const std::string payload = R"({"category":)" + json_quoted( debugmode::filter_name( type ) ) +
                                     R"(,"text":)" + json_quoted( msg ) + "}";
-        p->append_trace_file( "log", payload );
+        p->append_trace_file( source, payload );
     }
 }
 

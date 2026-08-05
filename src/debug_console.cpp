@@ -47,6 +47,7 @@
 #include "debug_console_snap.h"
 #include "debug_menu.h"
 #include "debug_monitor_targets.h"
+#include "ecology_debug_delta.h"
 #include "dialogue.h"
 #include "effect.h"
 #include "effect_on_condition.h"
@@ -77,6 +78,7 @@
 #include "npc.h"
 #include "npc_opinion.h"
 #include "output.h"
+#include "overmap_ui.h"
 #include "path_info.h"
 #include "pimpl.h"
 #include "player_activity.h"
@@ -551,6 +553,9 @@ debug_console::debug_console() : cataimgui::window( "Debug console" )
     if( auto idx = tab_idx_for_id( "items" ); idx.has_value() ) {
         items_view_ = dynamic_cast<tab_items_view *>( tab_views[*idx].get() );
     }
+    if( auto idx = tab_idx_for_id( "trace" ); idx.has_value() ) {
+        trace_view_ = dynamic_cast<tab_trace_view *>( tab_views[*idx].get() );
+    }
     selected_tab_idx_ = 0;
 }
 
@@ -593,6 +598,7 @@ class step_controller
 
         outcome tick( input_context &ctxt );
         void request_step();
+        void pause();
         void draw_footer();
         void load( const JsonObject &jo );
         void save( JsonOut &jo ) const;
@@ -605,6 +611,185 @@ class step_controller
         bool ff_stop_on_dbg_msg = false;
         bool ff_stop_on_dmg = true;
         int ff_hp_baseline = 0;
+};
+
+class ecology_watch_session
+{
+    public:
+        ~ecology_watch_session() {
+            stop();
+        }
+
+        bool arm( ecology_debug::trigger_disposition disposition ) {
+            stop();
+            const std::optional<ecology_debug::selected_projection> selected =
+                overmap_ui::ecology_observer_selected_projection();
+            if( !selected ) {
+                status_ = "No bound ecology selection; select a camp or dispatch on the overmap first.";
+                return false;
+            }
+            ring_.clear();
+            prior_ = selected;
+            observer_revision_ = overmap_ui::ecology_observer_control_revision();
+            disposition_ = disposition;
+            ecology_debug::delta_observation_context context;
+            context.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            context.timestamp = to_string( calendar::turn );
+            context.disposition = disposition_;
+            const ecology_debug::delta_observation_result initial = ring_.observe(
+                        std::nullopt, selected, context );
+            monitor_value_ = describe_recent( initial.emitted );
+            status_ = "Armed " + selected->marker.alias + " (" +
+                      ecology_debug::to_string( disposition_ ) + ")";
+            active_ = true;
+            pause_requested_ = false;
+            monitor_id_ = debug_capture::instance().add_monitor(
+                              "ecology:" + selected->marker.alias, [this]() {
+                return tick();
+            }, monitor_mode::on_change );
+            return true;
+        }
+
+        void stop() {
+            if( monitor_id_ >= 0 && debug_capture::is_initialized() ) {
+                debug_capture::instance().remove_monitor( monitor_id_ );
+            }
+            monitor_id_ = -1;
+            active_ = false;
+            pause_requested_ = false;
+            prior_.reset();
+            status_ = "Stopped";
+        }
+
+        bool synchronize_registration() {
+            if( monitor_id_ < 0 ) {
+                return false;
+            }
+            if( !debug_capture::is_initialized() ) {
+                monitor_id_ = -1;
+                active_ = false;
+                prior_.reset();
+                status_ = "Stopped: monitor registry unavailable.";
+                return false;
+            }
+            std::vector<monitor_entry> &monitors = debug_capture::instance().monitors();
+            const auto found = std::find_if( monitors.begin(), monitors.end(), [this](
+            const monitor_entry & entry ) {
+                return entry.id == monitor_id_;
+            } );
+            if( found == monitors.end() ) {
+                monitor_id_ = -1;
+                active_ = false;
+                prior_.reset();
+                status_ = "Stopped: ecology monitor was removed.";
+                return false;
+            }
+            if( !found->enabled ) {
+                const int disabled_id = monitor_id_;
+                monitor_id_ = -1;
+                active_ = false;
+                prior_.reset();
+                debug_capture::instance().remove_monitor( disabled_id );
+                status_ = "Stopped: ecology monitor was disabled; reselect to arm again.";
+                return false;
+            }
+            return true;
+        }
+
+        bool take_pause_request() {
+            const bool result = pause_requested_;
+            pause_requested_ = false;
+            return result;
+        }
+
+        const std::string &status() const {
+            return status_;
+        }
+
+        std::string serialize() const {
+            return ring_.serialize_compact_json();
+        }
+
+    private:
+        std::string describe_recent( size_t count ) const {
+            if( count == 0 || ring_.records().empty() ) {
+                return monitor_value_;
+            }
+            const size_t first = ring_.records().size() - std::min( count, ring_.records().size() );
+            const ecology_debug::delta_record &latest = ring_.records().back();
+            std::string kinds;
+            for( size_t index = first; index < ring_.records().size(); ++index ) {
+                if( !kinds.empty() ) {
+                    kinds += ',';
+                }
+                kinds += ecology_debug::to_string( ring_.records()[index].kind );
+            }
+            return string_format( "seq=%d turn=%d id=%s change=%s provenance=%s",
+                                  static_cast<int>( latest.sequence ), latest.turn,
+                                  latest.entity_id, kinds,
+                                  ecology_debug::to_string( latest.provenance ) );
+        }
+
+        std::string tick() {
+            if( !active_ || !prior_ ) {
+                return monitor_value_;
+            }
+            if( !overmap_ui::ecology_observer_gate_enabled() ) {
+                active_ = false;
+                status_ = "Stale: DEBUG_CLAIRVOYANCE was disabled; reselect to arm again.";
+                monitor_value_ = "ecology watch stale: observer gate disabled";
+                return monitor_value_;
+            }
+            if( overmap_ui::ecology_observer_world_identity() != prior_->token.world_identity ) {
+                active_ = false;
+                status_ = "Stale: world identity changed; reselect to arm again.";
+                monitor_value_ = "ecology watch stale: world identity changed";
+                return monitor_value_;
+            }
+            if( overmap_ui::ecology_observer_control_revision() != observer_revision_ ) {
+                active_ = false;
+                status_ = "Stale: overmap selection or filters changed; reselect to arm again.";
+                monitor_value_ = "ecology watch stale: observer controls changed";
+                return monitor_value_;
+            }
+
+            const std::optional<ecology_debug::selected_projection> current =
+                overmap_ui::ecology_observer_resolve_projection( prior_->token );
+            ecology_debug::delta_observation_context context;
+            context.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            context.timestamp = to_string( calendar::turn );
+            context.disposition = disposition_;
+            const ecology_debug::delta_observation_result observed = ring_.observe(
+                        prior_, current, context );
+            if( current && !observed.anomaly ) {
+                prior_ = current;
+            }
+            if( observed.emitted == 0 ) {
+                return monitor_value_;
+            }
+            monitor_value_ = describe_recent( observed.emitted );
+            if( observed.disposition != ecology_debug::trigger_disposition::continue_capture ) {
+                pause_requested_ = true;
+            }
+            if( observed.anomaly ) {
+                active_ = false;
+                status_ = "Failed closed: " + ring_.records().back().anomaly_reason;
+            } else {
+                status_ = "Captured " + monitor_value_;
+            }
+            return monitor_value_;
+        }
+
+        ecology_debug::delta_ring ring_;
+        std::optional<ecology_debug::selected_projection> prior_;
+        ecology_debug::trigger_disposition disposition_ =
+            ecology_debug::trigger_disposition::continue_capture;
+        int monitor_id_ = -1;
+        uint64_t observer_revision_ = 0;
+        bool active_ = false;
+        bool pause_requested_ = false;
+        std::string status_ = "Idle";
+        std::string monitor_value_ = "ecology watch idle";
 };
 
 step_controller::outcome step_controller::tick( input_context &ctxt )
@@ -657,6 +842,12 @@ void step_controller::request_step()
     // Sentinel: force the next tick() to fire immediately regardless of
     // the speed throttle.
     last_step_at = {};
+}
+
+void step_controller::pause()
+{
+    pending_steps = 0;
+    playing = false;
 }
 
 void step_controller::load( const JsonObject &jo )
@@ -830,7 +1021,11 @@ void debug_console::execute()
             continue;
         }
 
-        switch( stepper_->tick( ctxt ) ) {
+        const step_controller::outcome step_outcome = stepper_->tick( ctxt );
+        if( trace_view_ != nullptr && trace_view_->take_ecology_pause_request() ) {
+            stepper_->pause();
+        }
+        switch( step_outcome ) {
             case step_controller::outcome::quit:
                 return;
             case step_controller::outcome::busy:
@@ -5262,6 +5457,18 @@ void tab_data_view::draw_faction_browser()
 }
 
 
+tab_trace_view::tab_trace_view()
+{
+    log_category_mask.set();
+}
+
+tab_trace_view::~tab_trace_view() = default;
+
+bool tab_trace_view::take_ecology_pause_request()
+{
+    return ecology_watch->take_pause_request();
+}
+
 const char *tab_trace_view::label() const
 {
     return "Trace";
@@ -5754,6 +5961,39 @@ void tab_trace_view::draw_monitors_body( debug_console &host )
     },
     []() {
         return overmap_ui::ecology_observer_snapshot_json();
+    } );
+
+    ImGui::SeparatorText( "Selected ecology watch" );
+    const bool ecology_watch_registered = ecology_watch->synchronize_registration();
+    ImGui::TextWrapped( "%s", _(
+                            "Bind the current overmap selection, then reuse Step/Play until its real "
+                            "owner moves, changes phase/HP, or fails the immutable identity check." ) );
+    ImGui::RadioButton( "Capture and continue##ecology_watch", &ecology_watch_mode, 0 );
+    ImGui::SameLine();
+    ImGui::RadioButton( "Pause on change##ecology_watch", &ecology_watch_mode, 1 );
+    if( ImGui::Button( "Arm selected watch" ) ) {
+        ecology_watch->arm( ecology_watch_mode == 1 ?
+                            ecology_debug::trigger_disposition::pause :
+                            ecology_debug::trigger_disposition::continue_capture );
+    }
+    if( ImGui::IsItemHovered() ) {
+        ImGui::SetTooltip( "%s",
+                           "Select a camp or dispatch on the overmap first; the watch binds its exact owner" );
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled( !ecology_watch_registered );
+    if( ImGui::Button( "Stop watch" ) ) {
+        ecology_watch->stop();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextDisabled( "%s", ecology_watch->status().c_str() );
+    host.export_bar( "ecology deltas",
+    [this]() {
+        return "```json\n" + ecology_watch->serialize() + "\n```";
+    },
+    [this]() {
+        return ecology_watch->serialize();
     } );
 
     ImGui::SeparatorText( "Add monitor" );

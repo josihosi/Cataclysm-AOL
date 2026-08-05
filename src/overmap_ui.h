@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <climits>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,6 +17,7 @@
 #include "city.h"
 #include "color.h"
 #include "coordinates.h"
+#include "ecology_debug_delta.h"
 #include "ecology_debug_view.h"
 #include "map_scale_constants.h"
 #include "point.h"
@@ -225,6 +227,12 @@ std::string ecology_observer_binary_name( std::string_view translation_catalog,
         bool tiles_build );
 std::string ecology_observer_snapshot_json();
 std::string ecology_observer_monitor_json();
+bool ecology_observer_gate_enabled();
+std::string ecology_observer_world_identity();
+uint64_t ecology_observer_control_revision();
+std::optional<ecology_debug::selected_projection> ecology_observer_selected_projection();
+std::optional<ecology_debug::selected_projection> ecology_observer_resolve_projection(
+    const ecology_debug::immutable_entity_token &token );
 
 } // namespace overmap_ui
 #endif // CATA_SRC_OVERMAP_UI_H

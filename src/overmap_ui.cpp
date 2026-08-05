@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <chrono>
 #include <functional>
 #include <map>
@@ -255,6 +256,7 @@ struct ecology_observer_control_state {
     std::string selected_id;
     std::optional<size_t> selected_authority_index;
     bool pinned = false;
+    uint64_t revision = 0;
 };
 
 ecology_observer_control_state &ecology_observer_controls()
@@ -280,6 +282,7 @@ void reconcile_ecology_observer_world( ecology_observer_control_state &controls 
         controls.selected_id.clear();
         controls.selected_authority_index.reset();
         controls.pinned = false;
+        ++controls.revision;
     }
 }
 } // namespace
@@ -288,18 +291,27 @@ void overmap_ui::remember_ecology_observer_controls( const overmap_draw_data_t &
 {
     ecology_observer_control_state &controls = ecology_observer_controls();
     reconcile_ecology_observer_world( controls );
-    controls.filter = data.ecology_filter;
-    controls.faction_filter = data.ecology_faction_filter;
-    controls.loaded_only = data.ecology_loaded_only;
-    controls.selected_id = data.ecology_selected_id;
-    controls.selected_authority_index.reset();
+    std::optional<size_t> selected_authority_index;
     const auto selected = std::find_if( data.ecology_view.entities.begin(),
     data.ecology_view.entities.end(), [&data]( const ecology_debug::entity_marker & entity ) {
         return entity.id == data.ecology_selected_id;
     } );
     if( selected != data.ecology_view.entities.end() ) {
-        controls.selected_authority_index = selected->authority_index;
+        selected_authority_index = selected->authority_index;
     }
+    if( controls.filter != data.ecology_filter ||
+        controls.faction_filter != data.ecology_faction_filter ||
+        controls.loaded_only != data.ecology_loaded_only ||
+        controls.selected_id != data.ecology_selected_id ||
+        controls.selected_authority_index != selected_authority_index ||
+        controls.pinned != data.ecology_pinned ) {
+        ++controls.revision;
+    }
+    controls.filter = data.ecology_filter;
+    controls.faction_filter = data.ecology_faction_filter;
+    controls.loaded_only = data.ecology_loaded_only;
+    controls.selected_id = data.ecology_selected_id;
+    controls.selected_authority_index = selected_authority_index;
     controls.pinned = data.ecology_pinned;
 }
 
@@ -453,6 +465,99 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
     result.metadata.query_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - query_started ).count();
     return result;
+}
+
+static std::string ecology_authority_token( size_t authority_index )
+{
+    return "bandit_live_world/site/" + std::to_string( authority_index );
+}
+
+static std::optional<size_t> ecology_authority_index( std::string_view token )
+{
+    constexpr std::string_view prefix = "bandit_live_world/site/";
+    if( token.substr( 0, prefix.size() ) != prefix ) {
+        return std::nullopt;
+    }
+    size_t result = 0;
+    const std::string_view digits = token.substr( prefix.size() );
+    const std::from_chars_result parsed = std::from_chars( digits.data(),
+                                          digits.data() + digits.size(), result );
+    if( digits.empty() || parsed.ec != std::errc() || parsed.ptr != digits.data() + digits.size() ) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+static std::optional<ecology_debug::selected_projection> ecology_projection_from_view(
+    const ecology_debug::view_snapshot &view, const std::string &world_id,
+    size_t authority_index )
+{
+    if( world_id.empty() || view.entities.size() != 1 || !view.selected ||
+        view.entities.front().id != view.selected->entity_id ) {
+        return std::nullopt;
+    }
+    ecology_debug::selected_projection result;
+    result.marker = view.entities.front();
+    result.detail = view.selected;
+    result.token.world_identity = world_id;
+    result.token.canonical_id = result.marker.id;
+    result.token.generation = result.marker.generation;
+    result.token.owner = result.marker.owner;
+    result.token.authority_token = ecology_authority_token( authority_index );
+    return result;
+}
+
+bool overmap_ui::ecology_observer_gate_enabled()
+{
+    return get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE );
+}
+
+std::string overmap_ui::ecology_observer_world_identity()
+{
+    return current_ecology_world_id();
+}
+
+uint64_t overmap_ui::ecology_observer_control_revision()
+{
+    ecology_observer_control_state &controls = ecology_observer_controls();
+    reconcile_ecology_observer_world( controls );
+    return controls.revision;
+}
+
+std::optional<ecology_debug::selected_projection>
+overmap_ui::ecology_observer_selected_projection()
+{
+    ecology_observer_control_state &controls = ecology_observer_controls();
+    reconcile_ecology_observer_world( controls );
+    if( !ecology_observer_gate_enabled() || controls.world_id.empty() ||
+        controls.selected_id.empty() || !controls.selected_authority_index ) {
+        return std::nullopt;
+    }
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    request.selected_id = controls.selected_id;
+    const ecology_debug::view_snapshot view = query_live_ecology(
+                request, controls.selected_authority_index );
+    return ecology_projection_from_view( view, controls.world_id,
+                                         *controls.selected_authority_index );
+}
+
+std::optional<ecology_debug::selected_projection> overmap_ui::ecology_observer_resolve_projection(
+    const ecology_debug::immutable_entity_token &token )
+{
+    const std::string world_id = current_ecology_world_id();
+    const std::optional<size_t> authority_index = ecology_authority_index( token.authority_token );
+    if( !ecology_observer_gate_enabled() || world_id.empty() ||
+        world_id != token.world_identity || token.canonical_id.empty() || !authority_index ) {
+        return std::nullopt;
+    }
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    request.selected_id = token.canonical_id;
+    const ecology_debug::view_snapshot view = query_live_ecology( request, authority_index );
+    return ecology_projection_from_view( view, world_id, *authority_index );
 }
 
 std::string overmap_ui::ecology_observer_binary_name( std::string_view translation_catalog,

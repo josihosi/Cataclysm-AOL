@@ -96,6 +96,84 @@ TEST_CASE( "capture_monitor_basic", "[debug_capture]" )
     cap.clear_logs();
 }
 
+TEST_CASE( "capture_monitor_trace_uses_distinct_source", "[debug_capture]" )
+{
+    debug_menu::debug_capture &cap = debug_menu::debug_capture::instance();
+    cap.on_game_shutdown();
+    cap.settings().main_enabled = true;
+    cap.settings().add_msg_debug_capture = true;
+    cap.settings().trace_file.enabled = true;
+    cap.settings().trace_file.auto_flush = true;
+    cap.settings().trace_file.format = debug_menu::capture_format::jsonl;
+    cap.settings().trace_file.rotate_mib = 50;
+
+    SECTION( "monitors source captures monitor changes and excludes logs" ) {
+        const std::string path = "test_monitor_source.jsonl";
+        const int initial_remove = std::remove( path.c_str() );
+        ( void )initial_remove;
+        cap.settings().trace_file.path = path;
+        cap.settings().trace_file.sources = { "monitors" };
+        int value = 0;
+        const int id = cap.add_monitor( "ecology", [&value]() {
+            return std::to_string( value );
+        }, debug_menu::monitor_mode::on_change );
+        value = 1;
+        cap.tick_monitors();
+        cap.push_debug_log( debugmode::DF_GAME, "ordinary log excluded" );
+        cap.flush_trace_file();
+        cap.settings().trace_file.enabled = false;
+        cap.on_game_shutdown();
+        cap.remove_monitor( id );
+
+        std::ifstream input( path );
+        const std::string contents( ( std::istreambuf_iterator<char>( input ) ),
+                                    std::istreambuf_iterator<char>() );
+        CHECK( contents.find( R"("src":"monitors")" ) != std::string::npos );
+        CHECK( contents.find( "[ecology] 1" ) != std::string::npos );
+        CHECK( contents.find( "ordinary log excluded" ) == std::string::npos );
+        CHECK( contents.find( '\n' ) == contents.rfind( '\n' ) );
+        input.close();
+        const int remove_result = std::remove( path.c_str() );
+        ( void )remove_result;
+    }
+
+    SECTION( "log source excludes monitor changes" ) {
+        const std::string path = "test_monitor_excluded_from_log.jsonl";
+        const int initial_remove = std::remove( path.c_str() );
+        ( void )initial_remove;
+        cap.settings().trace_file.path = path;
+        cap.settings().trace_file.enabled = true;
+        cap.settings().trace_file.sources = { "log" };
+        int value = 0;
+        const int id = cap.add_monitor( "ecology", [&value]() {
+            return std::to_string( value );
+        }, debug_menu::monitor_mode::on_change );
+        value = 1;
+        cap.tick_monitors();
+        cap.push_debug_log( debugmode::DF_GAME, "ordinary log included" );
+        cap.flush_trace_file();
+        cap.settings().trace_file.enabled = false;
+        cap.on_game_shutdown();
+        cap.remove_monitor( id );
+
+        std::ifstream input( path );
+        const std::string contents( ( std::istreambuf_iterator<char>( input ) ),
+                                    std::istreambuf_iterator<char>() );
+        CHECK( contents.find( R"("src":"log")" ) != std::string::npos );
+        CHECK( contents.find( "ordinary log included" ) != std::string::npos );
+        CHECK( contents.find( "[ecology] 1" ) == std::string::npos );
+        CHECK( contents.find( R"("src":"monitors")" ) == std::string::npos );
+        CHECK( contents.find( '\n' ) == contents.rfind( '\n' ) );
+        input.close();
+        const int remove_result = std::remove( path.c_str() );
+        ( void )remove_result;
+    }
+
+    cap.settings().trace_file.enabled = false;
+    cap.settings().trace_file.sources = { "events", "eoc", "monitors", "log" };
+    cap.on_game_shutdown();
+}
+
 TEST_CASE( "capture_jsonl_byte_counter_rebase_on_existing_file", "[debug_capture]" )
 {
     // Write a placeholder file, then attach JSONL output to it -- the byte
