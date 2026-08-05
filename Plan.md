@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH ROUTE SCHEMA NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH ADAPTER NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -457,9 +457,13 @@ chooses distance 4 before 5, then route cost/stable OMT, or returns a typed aban
 and more remote candidates never qualify. These are evaluator footing only: no production route
 consumes authoritative geography yet, so the two selection rows remain open. A direct route-read
 attempt was backed out cleanly after apply-time replay proved that ephemeral watch metadata cannot
-satisfy the existing canonical route/save contract. Next: extend the serialized outing owner with
-bounded target-footprint + selected-watch metadata, migration, canonical replay/load validation,
-and exact save tests before wiring the live geography adapter.
+satisfy the existing canonical route/save contract. Structural schema 9 is checkpointed at
+`dfb19de3aa`: the existing outing owner now persists a canonical 64-OMT target footprint and one
+immutable exact/fallback watch selection from at most 256 candidates, migrates schema 8 to an
+unselected singleton footprint, and rejects stale/conflicting/malformed replay atomically. Focused
+Mac persistence 1/71, full structural 51/6,780, handoff 5/237, and final AutoReview are green. This
+does not claim authoritative terrain/path reads or live route behavior. Next: wire one bounded
+production geography adapter through this owner and abandon honestly when no safe candidate exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

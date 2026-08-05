@@ -1079,6 +1079,17 @@ ownership finding, not a red product defect. Next proof must persist bounded tar
 selected-watch metadata in the existing outing owner, migrate schema 8, and pass apply/replay/load
 before the live geography adapter is allowed to consume the pure selectors.
 
+Phase-5 watch-route ownership is green at `dfb19de3aa`. Structural schema 9 persists a sorted,
+deduplicated target footprint capped at 64 OMTs and one immutable exact/fallback watch OMT plus route
+cost; apply caps candidates at 256, recomputes the pure selector, compares the exact simulation
+cursor, treats exact replay as unchanged, and rejects stale/conflicting/malformed state atomically.
+Schema 8 migrates to an unselected singleton target footprint. Exact Mac build/link passes;
+`[watch_persistence]` passes 1/71, ring 1/12, exact selection 1/26, fallback 1/24, full
+`[structural_bounty]` 51/6,780, and `[handoff]` 5/237. `autoreview --mode local --thinking high`
+reports no accepted/actionable finding with 0.90 correctness confidence. `astyle` is unavailable on
+this Mac, so no astyle-diff claim is made. The checkpoint performs no live terrain/path query and
+does not close either selection row; the next evidence class is the bounded production adapter.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.
