@@ -16319,3 +16319,325 @@ TEST_CASE( "bandit_live_world_evidence_debug_report_is_bounded_deterministic_and
     CHECK( nested_rotated.find( "fact_key=07-fact" ) == std::string::npos );
     CHECK( nested_rotated.find( "fact_key=08-fact" ) == std::string::npos );
 }
+
+TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_stable",
+           "[bandit][live_world][phase4_evidence_aging]" )
+{
+    const auto make_signal_lead = []( const std::string &id,
+    const bandit_live_world::camp_lead_kind kind, const int seen_minutes ) {
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = id;
+        lead.revision = 3;
+        lead.kind = kind;
+        lead.origin = bandit_live_world::camp_lead_origin::returned_report;
+        lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+        lead.target_id = "fixed-signal-source";
+        lead.omt = tripoint_abs_omt( 17, 23, 1 );
+        lead.radius_omt = 2;
+        lead.source_key = "returned-physical-observation";
+        lead.source_summary = "uncertain physical signal carried home";
+        lead.first_seen_minutes = seen_minutes;
+        lead.last_seen_minutes = seen_minutes;
+        lead.confidence = 3;
+        lead.generated_by_this_camp_routine = true;
+        return lead;
+    };
+    const auto make_site = [&make_signal_lead]( const std::string &id,
+    const bandit_live_world::camp_lead_kind kind, const int seen_minutes ) {
+        bandit_live_world::site_record site;
+        site.site_id = id;
+        site.site_kind = bandit_live_world::owned_site_kind::bandit_camp;
+        site.profile = bandit_live_world::hostile_site_profile::camp_style;
+        site.anchor = tripoint_abs_omt( 10, 20, 1 );
+        site.intelligence_map.last_daily_cleanup_minutes = 0;
+        site.intelligence_map.leads.push_back( make_signal_lead( id + "-lead", kind,
+                                               seen_minutes ) );
+        return site;
+    };
+
+    SECTION( "sound expires at three hours and smoke and light expire at six" ) {
+        bandit_live_world::world_state world;
+        world.sites.push_back( make_site( "sound", bandit_live_world::camp_lead_kind::sound_signal,
+                                         24 * 60 - 3 * 60 ) );
+        world.sites.push_back( make_site( "smoke", bandit_live_world::camp_lead_kind::smoke_signal,
+                                         24 * 60 - 6 * 60 ) );
+        world.sites.push_back( make_site( "light", bandit_live_world::camp_lead_kind::light_signal,
+                                         24 * 60 - 6 * 60 ) );
+        const std::string before = serialize_world( world );
+        const bandit_live_world::camp_intelligence_aging_result before_boundary =
+            bandit_live_world::advance_camp_intelligence_aging( world, 24 * 60 - 1 );
+        CHECK( before_boundary.sites_cleaned == 0 );
+        CHECK( serialize_world( world ) == before );
+
+        const bandit_live_world::camp_intelligence_aging_result at_boundary =
+            bandit_live_world::advance_camp_intelligence_aging( world, 24 * 60 );
+        CHECK( at_boundary.sites_considered == 3 );
+        CHECK( at_boundary.sites_cleaned == 3 );
+        CHECK( at_boundary.leads_considered == 3 );
+        CHECK( at_boundary.leads_aged == 3 );
+        CHECK( at_boundary.leads_pruned == 0 );
+        for( const bandit_live_world::site_record &site : world.sites ) {
+            REQUIRE( site.intelligence_map.leads.size() == 1 );
+            const bandit_live_world::camp_map_lead &lead = site.intelligence_map.leads.front();
+            CHECK( lead.status == bandit_live_world::camp_lead_status::stale );
+            CHECK( lead.confidence == 0 );
+            CHECK( lead.revision == 4 );
+            CHECK( lead.target_id == "fixed-signal-source" );
+            CHECK( lead.omt == tripoint_abs_omt( 17, 23, 1 ) );
+            CHECK( lead.origin == bandit_live_world::camp_lead_origin::returned_report );
+            CHECK( lead.source_key == "returned-physical-observation" );
+            CHECK( lead.last_outcome == "returned signal evidence expired without new support" );
+        }
+        const std::string aged = serialize_world( world );
+        CHECK( aged.find( "avatar" ) == std::string::npos );
+        CHECK( aged.find( "player" ) == std::string::npos );
+    }
+
+    SECTION( "signal expiry remains exact inside one cleanup day" ) {
+        bandit_live_world::world_state world;
+        world.sites.push_back( make_site( "sound-midday",
+                                         bandit_live_world::camp_lead_kind::sound_signal, 0 ) );
+        world.sites.push_back( make_site( "smoke-midday",
+                                         bandit_live_world::camp_lead_kind::smoke_signal, 0 ) );
+        world.sites.push_back( make_site( "light-midday",
+                                         bandit_live_world::camp_lead_kind::light_signal, 0 ) );
+        const std::string initial = serialize_world( world );
+
+        const bandit_live_world::camp_intelligence_aging_result sound_before =
+            bandit_live_world::advance_camp_intelligence_aging( world, 3 * 60 - 1 );
+        CHECK( sound_before.leads_aged == 0 );
+        CHECK( serialize_world( world ) == initial );
+        const bandit_live_world::camp_intelligence_aging_result sound_exact =
+            bandit_live_world::advance_camp_intelligence_aging( world, 3 * 60 );
+        CHECK( sound_exact.leads_aged == 1 );
+        CHECK( world.sites[0].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::stale );
+        CHECK( world.sites[1].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::scout_confirmed );
+
+        const bandit_live_world::camp_intelligence_aging_result visual_before =
+            bandit_live_world::advance_camp_intelligence_aging( world, 6 * 60 - 1 );
+        CHECK( visual_before.leads_aged == 0 );
+        const bandit_live_world::camp_intelligence_aging_result visual_exact =
+            bandit_live_world::advance_camp_intelligence_aging( world, 6 * 60 );
+        CHECK( visual_exact.leads_aged == 2 );
+        CHECK( world.sites[1].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::stale );
+        CHECK( world.sites[2].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::stale );
+    }
+
+    SECTION( "each authoritative owner pins its lead until release" ) {
+        for( int owner = 0; owner < 5; ++owner ) {
+            INFO( "owner category=" << owner );
+            bandit_live_world::site_record site = make_site(
+                    "pinned-" + std::to_string( owner ),
+                    bandit_live_world::camp_lead_kind::sound_signal, 0 );
+            const std::string lead_id = site.intelligence_map.leads.front().lead_id;
+            const int revision = site.intelligence_map.leads.front().revision;
+            if( owner == 0 ) {
+                site.active_outing.kind = bandit_live_world::outing_kind::scout_sortie;
+                site.active_outing.activity_id = "active-scout";
+                site.active_outing.generation = 1;
+                site.active_outing.target_lead_id = lead_id;
+                site.active_outing.target_lead_revision = revision;
+            } else if( owner == 1 ) {
+                site.active_hostile_operation.operation_kind =
+                    bandit_live_world::hostile_operation_kind::shakedown;
+                site.active_hostile_operation.reservation.kind =
+                    bandit_live_world::outing_kind::hostile_operation;
+                site.active_hostile_operation.reservation.activity_id = "active-operation";
+                site.active_hostile_operation.reservation.generation = 1;
+                site.active_hostile_operation.reservation.target_lead_id = lead_id;
+                site.active_hostile_operation.reservation.target_lead_revision = revision;
+            } else if( owner == 2 ) {
+                site.current_scout_report.revision = 1;
+                site.current_scout_report.source_generation = 1;
+                site.current_scout_report.source_activity_id = "returned-scout";
+                site.current_scout_report.application_key = "returned-scout#report";
+                site.current_scout_report.target_lead_id = lead_id;
+                site.current_scout_report.target_lead_revision = revision;
+            } else {
+                site.camp_decision.state = owner == 3 ?
+                                           bandit_live_world::camp_decision_state::report_awaiting_assessment :
+                                           bandit_live_world::camp_decision_state::preparing_follow_on;
+                site.camp_decision.source_report_revision = 1;
+                site.camp_decision.source_report_generation = 1;
+                site.camp_decision.source_report_activity_id = "assessed-scout";
+                site.camp_decision.source_report_application_key = "assessed-scout#report";
+                site.camp_decision.target_lead_id = lead_id;
+                site.camp_decision.target_lead_revision = revision;
+            }
+
+            const bandit_live_world::camp_intelligence_aging_result pinned =
+                bandit_live_world::advance_camp_intelligence_aging( site, 24 * 60 );
+            CHECK( pinned.leads_aged == 0 );
+            REQUIRE( site.intelligence_map.leads.size() == 1 );
+            CHECK( site.intelligence_map.leads.front().status ==
+                   bandit_live_world::camp_lead_status::scout_confirmed );
+
+            site.active_outing.clear();
+            site.active_hostile_operation.clear();
+            site.current_scout_report.clear();
+            site.camp_decision.clear();
+            const bandit_live_world::camp_intelligence_aging_result released =
+                bandit_live_world::advance_camp_intelligence_aging( site, 2 * 24 * 60 );
+            CHECK( released.leads_aged == 1 );
+            REQUIRE( site.intelligence_map.leads.size() == 1 );
+            CHECK( site.intelligence_map.leads.front().status ==
+                   bandit_live_world::camp_lead_status::stale );
+        }
+    }
+
+    SECTION( "stale retention is exact and terminal evidence is preserved" ) {
+        bandit_live_world::site_record site;
+        site.site_id = "retention";
+        site.intelligence_map.last_daily_cleanup_minutes = 0;
+        for( const bandit_live_world::camp_lead_status status : {
+                 bandit_live_world::camp_lead_status::stale,
+                 bandit_live_world::camp_lead_status::invalidated,
+                 bandit_live_world::camp_lead_status::harvested,
+                 bandit_live_world::camp_lead_status::dangerous,
+                 bandit_live_world::camp_lead_status::active } ) {
+            bandit_live_world::camp_map_lead lead;
+            lead.lead_id = "retention-" + bandit_live_world::to_string( status );
+            lead.status = status;
+            lead.first_seen_minutes = 0;
+            lead.last_seen_minutes = 0;
+            site.intelligence_map.leads.push_back( lead );
+        }
+        const bandit_live_world::camp_intelligence_aging_result before =
+            bandit_live_world::advance_camp_intelligence_aging( site, 30 * 24 * 60 - 1 );
+        CHECK( before.leads_pruned == 0 );
+        REQUIRE( site.intelligence_map.leads.size() == 5 );
+        const bandit_live_world::camp_intelligence_aging_result exact =
+            bandit_live_world::advance_camp_intelligence_aging( site, 30 * 24 * 60 );
+        CHECK( exact.leads_pruned == 2 );
+        REQUIRE( site.intelligence_map.leads.size() == 3 );
+        CHECK( site.intelligence_map.find_lead( "retention-harvested" ) != nullptr );
+        CHECK( site.intelligence_map.find_lead( "retention-dangerous" ) != nullptr );
+        CHECK( site.intelligence_map.find_lead( "retention-active" ) != nullptr );
+
+        bandit_live_world::world_state stable_world;
+        stable_world.sites.push_back( site );
+        const std::string stable = serialize_world( stable_world );
+        for( const int replay : { 30 * 24 * 60, 29 * 24 * 60, -1 } ) {
+            const bandit_live_world::camp_intelligence_aging_result no_op =
+                bandit_live_world::advance_camp_intelligence_aging( stable_world, replay );
+            CHECK( no_op.sites_cleaned == 0 );
+            CHECK( serialize_world( stable_world ) == stable );
+        }
+        CHECK( serialize_world( stable_world ).find( "retention-harvested" ) != std::string::npos );
+
+        bandit_live_world::site_record midday;
+        midday.site_id = "midday-retention";
+        midday.intelligence_map.last_daily_cleanup_minutes = 0;
+        bandit_live_world::camp_map_lead midday_stale;
+        midday_stale.lead_id = "midday-stale";
+        midday_stale.status = bandit_live_world::camp_lead_status::stale;
+        midday_stale.first_seen_minutes = 60;
+        midday_stale.last_seen_minutes = 60;
+        midday.intelligence_map.leads.push_back( midday_stale );
+        const bandit_live_world::camp_intelligence_aging_result midday_before =
+            bandit_live_world::advance_camp_intelligence_aging(
+                midday, 60 + 30 * 24 * 60 - 1 );
+        CHECK( midday_before.leads_pruned == 0 );
+        REQUIRE( midday.intelligence_map.leads.size() == 1 );
+        const bandit_live_world::camp_intelligence_aging_result midday_exact =
+            bandit_live_world::advance_camp_intelligence_aging(
+                midday, 60 + 30 * 24 * 60 );
+        CHECK( midday_exact.leads_pruned == 1 );
+        CHECK( midday.intelligence_map.leads.empty() );
+    }
+
+    SECTION( "lead order does not change terminal state" ) {
+        bandit_live_world::world_state forward;
+        forward.sites.push_back( make_site( "order", bandit_live_world::camp_lead_kind::smoke_signal,
+                                           0 ) );
+        bandit_live_world::site_record &site = forward.sites.front();
+        site.intelligence_map.leads.clear();
+        for( int index = 0; index < 12; ++index ) {
+            site.intelligence_map.leads.push_back( make_signal_lead(
+                    "ordered-" + std::to_string( index ),
+                    index % 2 == 0 ? bandit_live_world::camp_lead_kind::sound_signal :
+                    bandit_live_world::camp_lead_kind::light_signal, 0 ) );
+        }
+        bandit_live_world::world_state reverse = forward;
+        std::reverse( reverse.sites.front().intelligence_map.leads.begin(),
+                      reverse.sites.front().intelligence_map.leads.end() );
+        bandit_live_world::advance_camp_intelligence_aging( forward, 24 * 60 );
+        bandit_live_world::advance_camp_intelligence_aging( reverse, 24 * 60 );
+        CHECK( serialize_world( forward ) == serialize_world( reverse ) );
+    }
+
+    SECTION( "a two year jump equals daily stepping and remains bounded" ) {
+        bandit_live_world::world_state base;
+        base.sites.push_back( make_site( "two-year", bandit_live_world::camp_lead_kind::smoke_signal,
+                                        0 ) );
+        base.sites.front().intelligence_map.leads.clear();
+        for( int index = 0; index < 64; ++index ) {
+            base.sites.front().intelligence_map.leads.push_back( make_signal_lead(
+                        "long-jump-" + std::to_string( index ),
+                        index % 3 == 0 ? bandit_live_world::camp_lead_kind::sound_signal :
+                        bandit_live_world::camp_lead_kind::smoke_signal, 0 ) );
+        }
+        base.sites.front().intelligence_map.last_daily_cleanup_minutes = -1;
+        bandit_live_world::normalize_camp_intelligence( base.sites.front() );
+        bandit_live_world::world_state daily = round_trip_world( base );
+        bandit_live_world::world_state jump = round_trip_world( base );
+        for( int day = 1; day <= 730; ++day ) {
+            bandit_live_world::advance_camp_intelligence_aging( daily, day * 24 * 60 );
+        }
+        const bandit_live_world::camp_intelligence_aging_result jumped =
+            bandit_live_world::advance_camp_intelligence_aging( jump, 730 * 24 * 60 );
+        CHECK( jumped.sites_considered == 1 );
+        CHECK( jumped.sites_cleaned == 1 );
+        CHECK( jumped.leads_considered == 64 );
+        CHECK( jumped.leads_aged == 64 );
+        CHECK( jumped.leads_pruned == 64 );
+        CHECK( serialize_world( jump ) == serialize_world( daily ) );
+        const bandit_live_world::world_state reloaded = round_trip_world( jump );
+        CHECK( serialize_world( reloaded ) == serialize_world( jump ) );
+        CHECK( serialize_world( round_trip_world( reloaded ) ) == serialize_world( reloaded ) );
+    }
+
+    SECTION( "maintenance ages bandit and cannibal owners without world callbacks" ) {
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, 0, false, 810000 );
+        add_scheduler_test_site( world, 1, true, 820000 );
+        for( bandit_live_world::site_record &site : world.sites ) {
+            site.intelligence_map.last_daily_cleanup_minutes = 0;
+            site.intelligence_map.leads.push_back( make_signal_lead(
+                    site.site_id + "-expired", bandit_live_world::camp_lead_kind::sound_signal, 0 ) );
+        }
+        int terrain_calls = 0;
+        int threat_calls = 0;
+        int materialization_calls = 0;
+        const bandit_live_world::structural_bounty_maintenance_result result =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, 24 * 60, 0, 0,
+        [&terrain_calls]( const tripoint_abs_omt & ) -> std::optional<std::string> {
+            terrain_calls++;
+            return std::nullopt;
+        }, [&threat_calls]( const bandit_live_world::site_record &,
+        const bandit_live_world::camp_map_lead & ) {
+            threat_calls++;
+            return bandit_live_world::structural_threat_read{};
+        }, {}, {}, {}, [&materialization_calls]( bandit_live_world::world_state &, std::size_t ) {
+            materialization_calls++;
+            return 0;
+        } );
+        CHECK( result.intelligence_aging.sites_considered == 2 );
+        CHECK( result.intelligence_aging.sites_cleaned == 2 );
+        CHECK( result.intelligence_aging.leads_aged == 2 );
+        CHECK( result.intelligence_aging.leads_pruned == 0 );
+        CHECK( terrain_calls == 0 );
+        CHECK( threat_calls == 0 );
+        CHECK( materialization_calls == 0 );
+        for( const bandit_live_world::site_record &site : world.sites ) {
+            REQUIRE( site.intelligence_map.leads.size() == 1 );
+            CHECK( site.intelligence_map.leads.front().status ==
+                   bandit_live_world::camp_lead_status::stale );
+        }
+    }
+}

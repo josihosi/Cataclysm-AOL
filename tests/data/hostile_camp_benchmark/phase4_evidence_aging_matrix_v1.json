@@ -1,0 +1,57 @@
+{
+  "schema": "caol-hostile-camp-benchmark-matrix-v1",
+  "description": "Phase-4 authoritative intelligence-aging matrix: mixed bandit/cannibal owners each begin with 64 normalized current-schema leads, receive one direct 730-day aging jump, and preserve only harvested/dangerous evidence. The save row follows the same jump with the existing whole-save round trip.",
+  "fixture_hash_kind": "serialized_state_sha256",
+  "require_equivalent_terminal_state": true,
+  "isolated_user_dir_argument": "--user-dir",
+  "cases": [
+    {
+      "id": "phase4-evidence-aging-sites-0",
+      "fixture": "phase4_evidence_aging_sites_0_v1",
+      "fixture_sha256": "d864c582e0de30c16fd33d0fbe1cc95cdaa15ae5d27de402369f5a90170a35f4",
+      "workload": "evidence_aging",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "0", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "phase4-evidence-aging-sites-1",
+      "fixture": "phase4_evidence_aging_sites_1_v1",
+      "fixture_sha256": "6f35e414353637f7b216a2577b390a5ddd98c2e2cea9cf0b5929cf9ffc4d43da",
+      "workload": "evidence_aging",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "1", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "phase4-evidence-aging-sites-10",
+      "fixture": "phase4_evidence_aging_sites_10_v1",
+      "fixture_sha256": "93111cd6c3f24259adfdd2af7b0b10a22109a86dcd0fe8c89ddf6734c7ba6296",
+      "workload": "evidence_aging",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "phase4-evidence-aging-sites-50",
+      "fixture": "phase4_evidence_aging_sites_50_v1",
+      "fixture_sha256": "ef25faf50d8e2146485a15846bf83ac1f029d846965db4db5b97b0832aa0beae",
+      "workload": "evidence_aging",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "50", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "phase4-evidence-aging-sites-100",
+      "fixture": "phase4_evidence_aging_sites_100_v1",
+      "fixture_sha256": "577b0aa81da46f4b83fd6f18075028606e82ad8d8f632acd80a70969d2282220",
+      "workload": "evidence_aging",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "100", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    },
+    {
+      "id": "phase4-evidence-aging-save-sites-10",
+      "fixture": "phase4_evidence_aging_save_sites_10_v1",
+      "fixture_sha256": "93111cd6c3f24259adfdd2af7b0b10a22109a86dcd0fe8c89ddf6734c7ba6296",
+      "workload": "evidence_aging_save",
+      "arguments": [ "[hostile_camp_benchmark]" ],
+      "env": { "CAOL_HOSTILE_BENCHMARK_SITE_COUNT": "10", "CAOL_HOSTILE_BENCHMARK_UPDATES": "1", "CAOL_HOSTILE_BENCHMARK_CLOCK_FLOOR_SAMPLES": "1000" }
+    }
+  ]
+}

@@ -4910,6 +4910,91 @@ void normalize_camp_intelligence( site_record &site )
     }
 }
 
+camp_intelligence_aging_result advance_camp_intelligence_aging( site_record &site,
+        const int now_minutes )
+{
+    camp_intelligence_aging_result result;
+    result.sites_considered = 1;
+    if( now_minutes < 0 ) {
+        return result;
+    }
+
+    constexpr int day_minutes = 24 * 60;
+    constexpr int stale_retention_minutes = 30 * day_minutes;
+    const int current_day_boundary = now_minutes - now_minutes % day_minutes;
+    if( site.intelligence_map.last_daily_cleanup_minutes > current_day_boundary ) {
+        return result;
+    }
+    const bool advanced_daily_cursor =
+        site.intelligence_map.last_daily_cleanup_minutes < current_day_boundary;
+    if( site.intelligence_map.last_daily_cleanup_minutes < 0 || advanced_daily_cursor ) {
+        site.intelligence_map.last_daily_cleanup_minutes = current_day_boundary;
+    }
+
+    for( camp_map_lead &lead : site.intelligence_map.leads ) {
+        result.leads_considered++;
+        if( camp_lead_reference_strength( site, lead ) > 0 ||
+            !returned_structural_signal_lead( lead ) || lead.last_seen_minutes < 0 ||
+            now_minutes < lead.last_seen_minutes ) {
+            continue;
+        }
+        const int expiry_minutes = lead.kind == camp_lead_kind::sound_signal ?
+                                   3 * 60 : 6 * 60;
+        const long long age_minutes = static_cast<long long>( now_minutes ) -
+                                      lead.last_seen_minutes;
+        const bool ageable_status = lead.status == camp_lead_status::active ||
+                                    lead.status == camp_lead_status::suspected ||
+                                    lead.status == camp_lead_status::scout_confirmed;
+        if( age_minutes < expiry_minutes || !ageable_status ||
+            !advance_camp_map_lead_revision( site, lead ) ) {
+            continue;
+        }
+        lead.status = camp_lead_status::stale;
+        lead.confidence = 0;
+        lead.last_outcome = "returned signal evidence expired without new support";
+        result.leads_aged++;
+    }
+
+    const auto prune = [&site, now_minutes]( const camp_map_lead & lead ) {
+        if( camp_lead_reference_strength( site, lead ) > 0 ||
+            ( lead.status != camp_lead_status::stale &&
+              lead.status != camp_lead_status::invalidated ) ) {
+            return false;
+        }
+        const int recency = camp_lead_recency( lead );
+        return recency >= 0 && now_minutes >= recency &&
+               static_cast<long long>( now_minutes ) - recency >= stale_retention_minutes;
+    };
+    const std::size_t before_prune = site.intelligence_map.leads.size();
+    site.intelligence_map.leads.erase( std::remove_if( site.intelligence_map.leads.begin(),
+                                       site.intelligence_map.leads.end(), prune ),
+                                       site.intelligence_map.leads.end() );
+    result.leads_pruned = static_cast<int>( before_prune -
+                                           site.intelligence_map.leads.size() );
+    if( result.leads_aged > 0 || result.leads_pruned > 0 ) {
+        normalize_camp_intelligence( site );
+    }
+    result.sites_cleaned = advanced_daily_cursor || result.leads_aged > 0 ||
+                           result.leads_pruned > 0 ? 1 : 0;
+    return result;
+}
+
+camp_intelligence_aging_result advance_camp_intelligence_aging( world_state &state,
+        const int now_minutes )
+{
+    camp_intelligence_aging_result result;
+    for( site_record &site : state.sites ) {
+        const camp_intelligence_aging_result site_result =
+            advance_camp_intelligence_aging( site, now_minutes );
+        result.sites_considered += site_result.sites_considered;
+        result.sites_cleaned += site_result.sites_cleaned;
+        result.leads_considered += site_result.leads_considered;
+        result.leads_aged += site_result.leads_aged;
+        result.leads_pruned += site_result.leads_pruned;
+    }
+    return result;
+}
+
 void sortie_observation::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -11748,6 +11833,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     result.scheduler_consider_cap = routine_scheduler_consider_cap;
     result.full_route_solve_cap = routine_scheduler_full_route_solve_cap;
     state.schema_version = 6;
+    result.intelligence_aging = advance_camp_intelligence_aging( state, now_minutes );
     advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
     result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup,
@@ -12234,6 +12320,11 @@ std::string render_structural_bounty_maintenance_report(
 {
     std::ostringstream out;
     out << "bandit_live_world structural maintenance:"
+        << " intelligence_sites_considered=" << result.intelligence_aging.sites_considered
+        << " intelligence_sites_cleaned=" << result.intelligence_aging.sites_cleaned
+        << " intelligence_leads_considered=" << result.intelligence_aging.leads_considered
+        << " intelligence_leads_aged=" << result.intelligence_aging.leads_aged
+        << " intelligence_leads_pruned=" << result.intelligence_aging.leads_pruned
         << " scan_budget=" << result.scan.scan_budget
         << " budget_used=" << result.scan.budget_used
         << " budget_exhausted=" << ( result.scan.budget_exhausted ? "yes" : "no" )

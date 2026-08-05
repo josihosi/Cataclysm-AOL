@@ -1066,7 +1066,16 @@ struct structural_outing_result {
     std::vector<std::string> notes;
 };
 
+struct camp_intelligence_aging_result {
+    int sites_considered = 0;
+    int sites_cleaned = 0;
+    int leads_considered = 0;
+    int leads_aged = 0;
+    int leads_pruned = 0;
+};
+
 struct structural_bounty_maintenance_result {
+    camp_intelligence_aging_result intelligence_aging;
     structural_outing_result outing;
     structural_bounty_scan_result scan;
     int scheduler_hour = -1;
@@ -1251,6 +1260,10 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         const tripoint_abs_omt &target_omt,
         const std::string &target_id );
 void normalize_camp_intelligence( site_record &site );
+camp_intelligence_aging_result advance_camp_intelligence_aging( site_record &site,
+        int now_minutes );
+camp_intelligence_aging_result advance_camp_intelligence_aging( world_state &state,
+        int now_minutes );
 structural_bounty_read classify_structural_bounty_terrain( const std::string &overmap_terrain_id );
 int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
