@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / DECOY-EMPTY LIVE NEXT
+**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / PHASE-4 SOAK NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -418,8 +418,8 @@ binding and leaves exact smoke/light/sound persistence to the existing post-save
 Run `20260805_122335` then completed its exact five-minute wait, but the interruption handler
 mistook ordinary wilderness "being watched" flavor for a modal prompt, sent Space, created a real
 Unknown-command popup, and safely aborted before signal setup. Per the two-attempt cap, do not tune
-OCR or rerun this row now. It remains open and non-credit; the next unblocked named row is live
-target relocation, which should use the corrected observer path if its real state permits.
+OCR or rerun this row now. It remains open and non-credit; target relocation was the next
+unblocked named row and used the corrected observer path.
 Observer-backed target relocation is green at scenario checkpoints `029363748c` / `9029d4e1a4`
 and run `20260805_124207`. The two game-authored incident pairs move only the player from
 `(135,51,0)` to `(135,63,0)` while natural dispatch `BD-374153` keeps its canonical ID,
@@ -430,8 +430,17 @@ The generic probe remains `yellow_step_local_proof_incomplete` because it does n
 unparsed key/capture steps; the bounded coordinator receipt credits only the paired incidents and
 green saved-owner audit. The first attempt `20260805_123855` is non-credit and isolated the missing
 watch arm plus noisy save-prompt OCR. Claim limits: explicit debug teleport, a captured producer
-with yellow whole-probe history, one bandit pair, Mac only. The next named row is live decoy/empty
-lead control.
+with yellow whole-probe history, one bandit pair, Mac only. Live decoy/empty lead control followed.
+The decoy scenario support is now checkpointed through `5cffecb404`. Its first live run
+`20260805_125925` proved the untouched legacy base only initialized its quiet routine clock; the
+second, `20260805_130217`, failed closed because scheduler state cannot be inserted into a pre-v12
+site. Neither earns gameplay credit. The replacement fixture is a captured schema-12 world from
+credited quiet run `20260804_103631`; its derived transform explicitly removes three natural
+terrain priors, adds one zero-bounty/zero-threat returned smoke clue, stages only eligible routine
+clocks, and adds `DEBUG_CLAIRVOYANCE`. Exact 2/2 contracts, the full 130/130 fixture suite, dry-run,
+and an isolated install are green. The live decoy row remains open under its two-attempt cap; do
+not rerun it now. The next unblocked Phase-4 target is the evidence aging/pruning benchmark and
+two-year save soak.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

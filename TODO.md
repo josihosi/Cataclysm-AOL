@@ -18,10 +18,12 @@ non-credit: `20260805_121516` used the wrong profile overmap key before that fix
 Unknown-command popup. Do not tune or repeat that row now.
 
 Target relocation is green at `9029d4e1a4`, run `20260805_124207`; do not repeat it by ritual. The
-next queue is:
+decoy control's current-schema fixture is green at `5cffecb404`, but live runs `20260805_125925`
+and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
+the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Build and run the smallest honest live decoy/empty-lead control, reusing authoritative saved
-   owner audits and the observer only when a real selectable entity exists.
+1. Build the Phase-4 evidence aging/pruning benchmark and two-year save soak against the existing
+   authoritative camp owner, preserving deterministic caps and byte-stable reload checks.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

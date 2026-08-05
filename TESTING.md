@@ -36,6 +36,8 @@ If startup/load is already green, and the missing proof is live behavior, then t
 If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
 Current debug-stack attempt rule for the same item/blocker:
+- current hostile-ecology live rows stop after two meaningfully different attempts; isolate the
+  gameplay/fixture defect or record the harness limitation, then continue another Phase-4 row
 - attempts 1-2 may be Andi solo retries, including multiple focused harness attempts in one cron run when each attempt changes setup, instrumentation, or evidence class
 - before attempt 3, consult Frau Knackal
 - attempts 3-4 are the final changed retries after consultation
@@ -992,7 +994,7 @@ five-minute wait with exact 300-second clock delta and matched cadence artifact,
 acknowledged ordinary `vague feeling of being watched` flavor as a prompt, sent Space, created an
 Unknown-command popup, and safely aborted before signal setup. Permissions were green and OCR was
 not the gameplay proof. Per the two-attempt cap, do not retry or expand prompt heuristics; the row
-remains open and live target relocation is next.
+remains open. Observer-backed target relocation followed and is green below.
 
 Observer-backed target relocation is green at scenario checkpoints `029363748c` / `9029d4e1a4`,
 credited run `20260805_124207`. The exact Mac tiles runtime reports `9029d4e1a4+SDL3`; the full
@@ -1008,7 +1010,19 @@ sizes/hashes in `ecology_target_relocation_receipt.json`. The generic harness st
 promoted; it had no abort. Narrow credit comes only from the game-authored payloads plus exact
 owner audit. First run `20260805_123855` is non-credit after isolating a missing watch arm and
 noisy save-prompt OCR. Claim limits: explicit debug teleport, captured producer with yellow
-whole-probe history, one bandit dispatch, Mac only. Live decoy/empty lead control is next.
+whole-probe history, one bandit dispatch, Mac only. Live decoy/empty lead control followed.
+
+Live decoy/empty support is checkpointed at `5cffecb404`. Run `20260805_125925` is non-credit:
+the legacy quiet fixture had never activated its routine scheduler, so the first hour initialized
+eligibility without dispatch. Run `20260805_130217` is also non-credit and failed before gameplay:
+the strict loader correctly rejected routine scheduler fields inserted into a pre-v12 site. The
+replacement base is the preserved schema-12 world from credited quiet run `20260804_103631`.
+Its derived transform removes the captured three terrain priors, adds exactly one returned smoke
+clue at `(136,51,0)` with bounty/threat `0` and confidence `3`, stages scheduler clocks at
+`8280/3960`, and adds only `DEBUG_CLAIRVOYANCE`. The two exact contracts pass 2/2, the full fixture
+suite passes 130/130, JSON/dry-run are green, and an isolated install reports 3 -> 0 -> 1 leads with
+the exact scheduler fields and newly added mutation. No third live run is allowed; the row stays
+open. The next unblocked evidence class is Phase-4 aging/pruning plus the two-year save soak.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
