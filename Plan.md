@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH TRAVEL NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH COHESION NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -467,9 +467,12 @@ the target footprint, and commits exact/fallback selection through schema 9 or a
 bounded to 256 terrain reads per routed contender and eight watch path solves per maintenance pass;
 source-aware shortlisting avoids one-sided coordinate sampling. Exact Mac object/test link,
 adapter 1/50, and structural 51/6,780 are green after review found and fixed five concrete geography
-and budget defects. The two gameplay rows remain open because ordinary movement still follows the
-old structural target route. Next: make the existing shared route and pair movement consume the
-persisted selected watch OMT without adding a second owner.
+and budget defects. Physical watch travel is checkpointed at `d4e6579aed`: schema 10 replaces the
+target-facing radial route with one symmetric home/approach/watch/approach/home route from the same
+authoritative path solve, keeps schema-9 saves on their old route, and holds the pair observing at
+the selected watch without consuming the remote lead. Exact Mac compile/link, adapter 1/72,
+structural 51/6,780, persistence 1/71, and handoff 14/343 are green. Exact and fallback selection
+now share this route consumer; next is cohesive local observer/cover staging within the watch OMT.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

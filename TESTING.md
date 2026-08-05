@@ -1107,6 +1107,17 @@ clean. `astyle` remains unavailable, and no Linux/Windows runtime is claimed. Ph
 still follows the ordinary structural target route, so both watch-selection gameplay rows stay open;
 the next evidence class is shared-route travel to persisted `selected_watch_omt`.
 
+Phase-5 physical watch travel is green at `d4e6579aed`. Structural schema 10 consumes the selected
+exact/fallback watch through the existing outing route owner as a canonical symmetric five-waypoint
+route; the pathfinder-owned approach must be adjacent, both the solved path and persisted waypoints
+exclude the target footprint, and target identity remains unchanged. Schema-9 saves retain their
+legacy target route. Arrival persists the pair at the selected watch in `observing` without falsely
+checking, harvesting, or revising the remote lead, and repeated maintenance does not fabricate a
+second arrival. Exact Mac compile/link passes; adapter is 1/72, structural 51/6,780, persistence
+1/71, and handoff 14/343 at seed 1. `git diff --check` is clean. `astyle` is unavailable; no Linux
+or Windows runtime is claimed. The next evidence class is distinct cohesive observer/cover staging
+inside the watch OMT through the existing local-handoff owner.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

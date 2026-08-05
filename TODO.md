@@ -22,10 +22,9 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Make the existing structural shared route and exact pair movement consume schema 9's persisted
-   `selected_watch_omt`. Preserve one route/owner, physical handoff, pair cohesion, and exact replay;
-   do not let travel enter the target footprint or claim selection complete before the pair can
-   actually arrive at the chosen watch OMT.
+1. Keep the exact pair cohesive at the schema-10 watch destination and assign plausible distinct
+   observer/cover slots through the existing local-handoff owner. Preserve stable member identity,
+   save/replay, and authoritative loaded/unloaded ownership; do not add a second formation registry.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
