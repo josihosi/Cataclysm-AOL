@@ -537,9 +537,34 @@ static bool touch_required_hit( Creature &caster,
     return caster.hit_roll() > target.dodge_roll();
 }
 
+static void break_covert_relationship_for_hostile_spell_targets(
+    const spell &sp, const Creature &caster, const std::set<tripoint_bub_ms> &targets )
+{
+    const Character *const caster_character = caster.as_character();
+    const bool player_camp_caster = caster.is_avatar() ||
+                                    ( caster.is_npc() && !caster.as_npc()->is_fake() &&
+                                      caster.as_npc()->is_player_ally() );
+    if( caster_character == nullptr || !player_camp_caster ||
+        !sp.is_valid_target( spell_target::hostile ) ) {
+        return;
+    }
+    creature_tracker &creatures = get_creature_tracker();
+    for( const tripoint_bub_ms &target : targets ) {
+        if( !sp.is_valid_target( caster, target ) ) {
+            continue;
+        }
+        npc *const target_npc = creatures.creature_at<npc>( target );
+        if( target_npc != nullptr &&
+            target_npc->has_ecology_covert_noncombat_relationship( *caster_character ) ) {
+            target_npc->on_attacked( caster );
+        }
+    }
+}
+
 static void damage_targets( const spell &sp, Creature &caster,
                             const std::set<tripoint_bub_ms> &targets )
 {
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, targets );
     map &here = get_map();
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &target : targets ) {
@@ -906,6 +931,8 @@ static void spell_move( const spell &sp, const Creature &caster,
         return;
     }
 
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, { from } );
+
     map &here = get_map();
 
     // Moving creatures
@@ -1116,6 +1143,7 @@ static void character_push_effects( Creature *caster, Character &guy, tripoint_b
 void spell_effect::directed_push( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     // this group of variables is for deferring movement of the avatar
     int pushed_distance = 0;
     tripoint_bub_ms push_to;
@@ -1514,6 +1542,7 @@ void spell_effect::noise( const spell &sp, Creature &caster, const tripoint_bub_
 void spell_effect::vomit( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &potential_target : area ) {
         if( !sp.is_valid_target( caster, potential_target ) ) {
@@ -1531,6 +1560,7 @@ void spell_effect::vomit( const spell &sp, Creature &caster, const tripoint_bub_
 void spell_effect::pull_to_caster( const spell &sp, Creature &caster,
                                    const tripoint_bub_ms &target )
 {
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, { target } );
     caster.longpull( sp.name(), target );
 }
 
@@ -1542,6 +1572,13 @@ void spell_effect::explosion( const spell &sp, Creature &caster, const tripoint_
 
 void spell_effect::flashbang( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
+    std::set<tripoint_bub_ms> affected_npc_positions;
+    for( const npc &guy : g->all_npcs() ) {
+        if( rl_dist( guy.pos_bub(), target ) <= sp.aoe( caster ) ) {
+            affected_npc_positions.insert( guy.pos_bub() );
+        }
+    }
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, affected_npc_positions );
     explosion_handler::flashbang( target, caster.is_avatar() &&
                                   !sp.is_valid_target( spell_target::self ), sp.aoe( caster ) );
 }
@@ -1549,6 +1586,7 @@ void spell_effect::flashbang( const spell &sp, Creature &caster, const tripoint_
 void spell_effect::mod_moves( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &potential_target : area ) {
         if( !sp.is_valid_target( caster, potential_target ) ) {
@@ -1577,6 +1615,7 @@ void spell_effect::map( const spell &sp, Creature &caster, const tripoint_bub_ms
 void spell_effect::morale( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     if( sp.effect_data().empty() ) {
         debugmsg( "ERROR: %s must have a valid morale_type as effect_str.  None specified.",
                   sp.id().c_str() );
@@ -1798,6 +1837,7 @@ void spell_effect::guilt( const spell &sp, Creature &caster, const tripoint_bub_
 void spell_effect::remove_effect( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &aoe : area ) {
         if( Creature *critter = creatures.creature_at( aoe ) ) {
@@ -1826,6 +1866,7 @@ void spell_effect::fungalize( const spell &sp, Creature &caster, const tripoint_
 void spell_effect::mutate( const spell &sp, Creature &caster, const tripoint_bub_ms &target )
 {
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &potential_target : area ) {
         if( !sp.is_valid_target( caster, potential_target ) ) {
@@ -2022,6 +2063,7 @@ void spell_effect::effect_on_condition( const spell &sp, Creature &caster,
     ::map &here = get_map();
 
     const std::set<tripoint_bub_ms> area = spell_effect_area( sp, target, caster );
+    break_covert_relationship_for_hostile_spell_targets( sp, caster, area );
 
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint_bub_ms &potential_target : area ) {

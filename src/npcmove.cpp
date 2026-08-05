@@ -1446,7 +1446,8 @@ void npc::assess_danger() {
                 name, mem_combat.assess_ally);
 
   if (sees_player) {
-    const bool player_is_hostile = is_enemy() || guaranteed_hostile();
+    const bool player_is_hostile =
+        attitude_to( player_character ) == Attitude::HOSTILE || guaranteed_hostile();
     // Mod for the player's danger level, weight it higher if player is very
     // close When the player is almost adjacent, it can exceed max danger
     // ratings, so the NPC will try hard not to break and run while in

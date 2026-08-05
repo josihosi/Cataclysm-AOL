@@ -948,6 +948,7 @@ public:
   void unload_camp_map();
   void set_owner(faction_id new_owner);
   faction_id get_owner();
+  bool is_player_owned() const;
 
 private:
   friend class basecamp_action_components;

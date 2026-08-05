@@ -7125,7 +7125,9 @@ Creature::Attitude Character::attitude_to( const Creature &other ) const
 
     const npc *p = dynamic_cast<const npc *>( &other );
     if( p != nullptr ) {
-        if( p->is_enemy() ) {
+        if( p->has_ecology_covert_noncombat_relationship( *this ) ) {
+            return Attitude::NEUTRAL;
+        } else if( p->is_enemy() ) {
             return Attitude::HOSTILE;
         } else if( p->is_player_ally() ) {
             return Attitude::FRIENDLY;

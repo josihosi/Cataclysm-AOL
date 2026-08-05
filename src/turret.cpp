@@ -486,7 +486,8 @@ void turret_data::post_fire( map *here, Character &you, int shots )
     veh->drain( here, fuel_type_battery, units::to_kilojoule( mode->get_gun_energy_drain() * shots ) );
 }
 
-int turret_data::fire( Character &c, map *here, const tripoint_bub_ms &target )
+int turret_data::fire( Character &c, map *here, const tripoint_bub_ms &target,
+                       const Character *attack_controller )
 {
     if( !veh || !part ) {
         return 0;
@@ -495,7 +496,7 @@ int turret_data::fire( Character &c, map *here, const tripoint_bub_ms &target )
     gun_mode mode = base()->gun_current_mode();
 
     prepare_fire( c );
-    shots = c.fire_gun( *here, target, mode.qty, *mode );
+    shots = c.fire_gun( *here, target, mode.qty, *mode, item_location(), attack_controller );
     post_fire( here, c, shots );
     return shots;
 }
@@ -570,7 +571,7 @@ int vehicle::turrets_aim_and_fire( std::vector<vehicle_part *> &turrets )
             if( has_target ) {
                 turret_data turret = turret_query( *t );
                 npc &cpu = t->get_targeting_npc( *this );
-                shots += turret.fire( cpu, &here, here.get_bub( t->target.second ) );
+                shots += turret.fire( cpu, &here, here.get_bub( t->target.second ), &get_avatar() );
                 t->reset_target( abs_part_pos( *t ) );
             }
         }

@@ -345,6 +345,7 @@ class overmapbuffer
         void add_camp( const basecamp &camp );
 
         std::optional<basecamp *> find_camp( const point_abs_omt &p );
+        bool is_player_camp_omt( const tripoint_abs_omt &p );
         // Remove all basecamps in the inbound overmap
         void clear_camps( const point_abs_omt &p );
         /**

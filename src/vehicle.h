@@ -704,11 +704,13 @@ class turret_data
 
         /**
          * Fire the turret's gun at a given target.
-         * @param p the player firing the turret, passed to pre_fire and post_fire calls.
+         * @param c the character firing the turret, passed to pre_fire and post_fire calls.
          * @param target coordinates that will be fired on.
+         * @param attack_controller optional character responsible for remotely aiming the turret.
          * @return the number of shots actually fired (may be zero).
          */
-        int fire( Character &c, map *here, const tripoint_bub_ms &target );
+        int fire( Character &c, map *here, const tripoint_bub_ms &target,
+                  const Character *attack_controller = nullptr );
 
         bool can_reload() const;
         bool can_unload() const;

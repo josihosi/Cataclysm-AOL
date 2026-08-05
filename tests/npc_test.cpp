@@ -16,6 +16,7 @@
 
 #include "activity_actor_definitions.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "basecamp.h"
 #include "behavior.h"
 #include "bodypart.h"
@@ -42,6 +43,7 @@
 #include "item_group.h"
 #include "item_location.h"
 #include "itype.h"
+#include "json.h"
 #include "list.h" // IWYU pragma: keep
 #include "map.h"
 #include "map_helpers.h"
@@ -1476,6 +1478,191 @@ TEST_CASE( "faction_hostile_npc_detects_player_threat", "[npc][npc_ai]" )
     // attitude enum flips to NPCATT_KILL.
     CHECK( bandit.get_ai_danger() > 0 );
     CHECK( bandit.current_target() == static_cast<Creature *>( &player_character ) );
+}
+
+TEST_CASE( "ecology_covert_scout_relationship_is_exact_and_actor_specific",
+           "[npc][npc_ai][bandit][covert_disposition]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    Character &player_character = get_player_character();
+    npc &scout = spawn_npc( player_character.pos_bub().xy() + point::south, "thug" );
+    npc &partner = spawn_npc( player_character.pos_bub().xy() + point::east, "thug" );
+    npc &bystander = spawn_npc( player_character.pos_bub().xy() + point::west, "thug" );
+    npc &defender = spawn_npc( player_character.pos_bub().xy() + point::north, "test_talker" );
+    defender.set_fac( faction_your_followers );
+    REQUIRE( defender.is_player_ally() );
+    REQUIRE( scout.get_attitude() == NPCATT_NULL );
+    REQUIRE( partner.get_attitude() == NPCATT_NULL );
+    REQUIRE( bystander.get_attitude() == NPCATT_NULL );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    live_state = bandit_live_world::world_state();
+
+    bandit_live_world::site_record site;
+    site.site_id = "covert-npc-test-site";
+    site.living_total = 2;
+    site.members.push_back( { scout.getID(), "thug", scout.pos_abs(),
+                              bandit_live_world::member_state::local_contact, false, "" } );
+    site.members.push_back( { partner.getID(), "thug", partner.pos_abs(),
+                              bandit_live_world::member_state::local_contact, false, "" } );
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    outing.schema_version = 10;
+    outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    outing.activity_id = "covert-npc-test-outing";
+    outing.camp_id = site.site_id;
+    outing.generation = 1;
+    outing.member_ids = { scout.getID(), partner.getID() };
+    outing.leader_id = scout.getID();
+    const tripoint_abs_omt watch_omt = scout.pos_abs_omt();
+    const tripoint_abs_omt approach_omt( watch_omt.x() - 1, watch_omt.y(), watch_omt.z() );
+    outing.shared_route = { approach_omt, approach_omt, watch_omt,
+                            approach_omt, approach_omt };
+    outing.waypoint_index = 2;
+    outing.target_omt = tripoint_abs_omt( watch_omt.x() + 3, watch_omt.y(), watch_omt.z() );
+    outing.phase = bandit_live_world::scout_phase::observing;
+    outing.owner = bandit_live_world::simulation_owner::local;
+    outing.handoff_epoch = 1;
+    outing.started_minutes = 0;
+    outing.local_contact_minutes = 1;
+    outing.last_progress_minutes = 1;
+    outing.last_advanced_minutes = 1;
+    outing.target_footprint = { outing.target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = watch_omt;
+    outing.selected_watch_route_cost = 1;
+    outing.local_handoff.activity_id = outing.activity_id;
+    outing.local_handoff.activity_generation = outing.generation;
+    outing.local_handoff.handoff_epoch = outing.handoff_epoch;
+    outing.local_handoff.waypoint_index = outing.waypoint_index;
+    outing.local_handoff.phase = outing.phase;
+    outing.local_handoff.route_position = watch_omt;
+    outing.local_handoff.approach_from = approach_omt;
+    outing.local_handoff.egress_omt = approach_omt;
+    outing.local_handoff.cohesion_leader_id = scout.getID();
+    outing.local_handoff.cohesion_assembled = true;
+    outing.local_handoff.committed_minutes = 1;
+    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+    const tripoint_abs_ms scout_entry( watch_origin.x() + 8, watch_origin.y() + 8,
+                                       watch_origin.z() );
+    const tripoint_abs_ms partner_entry( watch_origin.x() + 9, watch_origin.y() + 8,
+                                         watch_origin.z() );
+    outing.local_handoff.members = {
+        { scout.getID(), scout.pos_abs(), scout_entry,
+          tripoint_abs_ms( scout_entry.x(), scout_entry.y() + 1, scout_entry.z() ),
+          scout_entry, 100, false },
+        { partner.getID(), partner.pos_abs(), partner_entry,
+          tripoint_abs_ms( partner_entry.x(), partner_entry.y() + 1, partner_entry.z() ),
+          partner_entry, 100, false }
+    };
+    const tripoint_abs_omt target_camp_omt = outing.target_omt;
+    live_state.sites.push_back( std::move( site ) );
+
+    faction *scout_faction = scout.get_faction();
+    REQUIRE( scout_faction != nullptr );
+    const int previous_likes = scout_faction->likes_u;
+    const int previous_respects = scout_faction->respects_u;
+    const int previous_trusts = scout_faction->trusts_u;
+    on_out_of_scope restore_faction( [scout_faction, previous_likes, previous_respects,
+                                      previous_trusts]() {
+        scout_faction->likes_u = previous_likes;
+        scout_faction->respects_u = previous_respects;
+        scout_faction->trusts_u = previous_trusts;
+    } );
+
+    CHECK_FALSE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_camp_omt ) );
+    scout.on_attacked( player_character );
+    CHECK( scout.get_attitude() == NPCATT_NULL );
+    CHECK_FALSE( scout.hit_by_player );
+    CHECK( scout_faction->likes_u == previous_likes );
+    overmap_buffer.add_camp( basecamp( "covert target camp", target_camp_omt ) );
+    REQUIRE( overmap_buffer.has_camp( target_camp_omt ) );
+    on_out_of_scope remove_target_camp( [target_camp_omt]() {
+        overmap_buffer.remove_camp( target_camp_omt.xy() );
+    } );
+    const std::optional<basecamp *> target_camp = overmap_buffer.find_camp(
+                target_camp_omt.xy() );
+    REQUIRE( target_camp );
+    REQUIRE( *target_camp != nullptr );
+    ( *target_camp )->set_owner( faction_id( "free_merchants" ) );
+    CHECK_FALSE( ( *target_camp )->is_player_owned() );
+    CHECK_FALSE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    ( *target_camp )->set_owner( faction_id::NULL_ID() );
+    CHECK( ( *target_camp )->is_player_owned() );
+    const tripoint_abs_omt nearby_foreign_camp_omt( target_camp_omt.x() - 2,
+            target_camp_omt.y() - 2, target_camp_omt.z() );
+    basecamp nearby_foreign_camp( "nearby foreign camp", nearby_foreign_camp_omt );
+    nearby_foreign_camp.set_owner( faction_id( "free_merchants" ) );
+    overmap_buffer.add_camp( nearby_foreign_camp );
+    on_out_of_scope remove_nearby_foreign_camp( [nearby_foreign_camp_omt]() {
+        overmap_buffer.remove_camp( nearby_foreign_camp_omt.xy() );
+    } );
+    CHECK( overmap_buffer.is_player_camp_omt( target_camp_omt ) );
+
+    CHECK( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK_FALSE( bystander.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK_FALSE( scout.guaranteed_hostile() );
+    CHECK( scout.attitude_to( player_character ) == Creature::Attitude::NEUTRAL );
+    CHECK( player_character.attitude_to( scout ) == Creature::Attitude::NEUTRAL );
+    CHECK( scout.attitude_to( defender ) == Creature::Attitude::NEUTRAL );
+    CHECK( defender.attitude_to( scout ) == Creature::Attitude::NEUTRAL );
+    CHECK( scout.basic_symbol_color() == c_pink );
+    CHECK( bystander.guaranteed_hostile() );
+
+    scout.regen_ai_cache();
+    CHECK( scout.current_target() != static_cast<Creature *>( &player_character ) );
+    CHECK( scout.get_attitude() == NPCATT_NULL );
+    CHECK( scout_faction->likes_u == previous_likes );
+
+    // Harmful ranged acceptance invokes this persisted attack path before ballistics.
+    scout.on_attacked( player_character );
+    CHECK_FALSE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( scout.is_enemy() );
+    CHECK( scout.guaranteed_hostile() );
+    CHECK( player_character.attitude_to( scout ) == Creature::Attitude::HOSTILE );
+    CHECK( scout.basic_symbol_color() == c_red );
+    std::ostringstream saved_scout;
+    JsonOut scout_out( saved_scout );
+    scout.serialize( scout_out );
+    JsonValue scout_in = json_loader::from_string( saved_scout.str() );
+    npc loaded_scout;
+    loaded_scout.deserialize( scout_in.get_object() );
+    CHECK( loaded_scout.is_enemy() );
+    CHECK( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+
+    npc targeting_cpu;
+    targeting_cpu.set_body();
+    targeting_cpu.set_fake( true );
+    targeting_cpu.set_fac( faction_id( "free_merchants" ) );
+    targeting_cpu.setpos( here, player_character.pos_bub() + point( 8, 8 ) );
+    arm_shooter( targeting_cpu, itype_M24 );
+    targeting_cpu.recoil = MAX_RECOIL;
+    REQUIRE_FALSE( targeting_cpu.is_player_ally() );
+    partner.on_attacked( targeting_cpu );
+    CHECK( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( targeting_cpu.fire_gun( here, partner.pos_bub(), 1,
+                                     *targeting_cpu.get_wielded_item(), item_location(),
+                                     &player_character ) > 0 );
+    CHECK( partner.is_enemy() );
+
+    partner.set_attitude( NPCATT_NULL );
+    partner.hit_by_player = false;
+    CHECK( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+    partner.on_attacked( defender );
+    CHECK_FALSE( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( partner.hit_by_player );
+    CHECK( partner.is_enemy() );
 }
 
 TEST_CASE( "faction_hostile_tired_npc_fights_not_sleeps", "[npc][npc_ai][needs]" )

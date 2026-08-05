@@ -982,6 +982,8 @@ class npc : public Character
         // State checks
         // We want to kill/mug/etc the player
         bool is_enemy() const;
+        // Exact hostile-camp scouts temporarily avoid combat with their target camp.
+        bool has_ecology_covert_noncombat_relationship( const Character &other ) const;
         // Traveling w/ player (whether as a friend or a slave)
         bool is_following() const;
         bool is_obeying( const Character &p ) const override;
@@ -1562,6 +1564,7 @@ class npc : public Character
     private:
         npc_attitude attitude = NPCATT_NULL; // What we want to do to the player
         npc_attitude previous_attitude = NPCATT_NULL;
+        bool has_ecology_covert_player_camp_assignment() const;
         bool camp_patrol_order_active = false;
         bool known_to_u = false; // Does the player know this NPC?
         // Type of complaint->last time we complained about this type

@@ -3892,6 +3892,10 @@ void basecamp::set_owner(faction_id new_owner) {
 
 faction_id basecamp::get_owner() { return owner; }
 
+bool basecamp::is_player_owned() const {
+  return camp_effective_owner( owner ) == your_fac;
+}
+
 bool basecamp::has_locker_zone() const {
   const faction_id fac_id = camp_effective_owner( owner );
   tripoint_abs_ms origin = get_bb_pos_abs();

@@ -1271,12 +1271,67 @@ bool note_live_bandit_aftermath()
             }
         }
 
-        const bool party_returning_home = std::any_of( observations.begin(), observations.end(),
-        []( const bandit_live_world::active_member_observation & observation ) {
-            return observation.state ==
-                   bandit_live_world::active_member_observation_state::returning_home;
+        bool has_unresolved_member = false;
+        bool any_unresolved_member_returning_home = false;
+        bool every_unresolved_member_returning_home = true;
+        bool every_unresolved_member_returning_or_home = true;
+        std::vector<bandit_live_world::covert_scout_member_acquire_read> acquire_reads;
+        map &here = get_map();
+        for( const bandit_live_world::active_member_observation &observation : observations ) {
+            if( site.active_outing.member_is_resolved( observation.npc_id ) ) {
+                continue;
+            }
+            has_unresolved_member = true;
+            const bool returning_home = observation.state ==
+                                        bandit_live_world::active_member_observation_state::returning_home;
+            const bool already_home = observation.state ==
+                                      bandit_live_world::active_member_observation_state::home;
+            any_unresolved_member_returning_home |= returning_home;
+            every_unresolved_member_returning_home &= returning_home;
+            every_unresolved_member_returning_or_home &= returning_home || already_home;
+
+            bandit_live_world::covert_scout_member_acquire_read read;
+            read.npc_id = observation.npc_id;
+            read.returning_home = returning_home || already_home;
+            npc *member_npc = g->find_npc( observation.npc_id );
+            read.position_known = member_npc != nullptr && !member_npc->is_dead();
+            if( read.position_known ) {
+                read.position = member_npc->pos_abs_omt();
+                const bool locally_loaded = member_npc->is_active() &&
+                                            here.inbounds( member_npc->pos_bub( here ) );
+                if( locally_loaded ) {
+                    read.mutual_target_visibility = u.sees( here, *member_npc ) ||
+                                                    member_npc->sees( here, u );
+                    for( const npc &defender : g->all_npcs() ) {
+                        if( read.mutual_target_visibility || &defender == member_npc ||
+                            !defender.is_player_ally() ) {
+                            continue;
+                        }
+                        read.mutual_target_visibility = defender.sees( here, *member_npc ) ||
+                                                        member_npc->sees( here, defender );
+                    }
+                }
+            }
+            acquire_reads.push_back( read );
+        }
+        const bool targets_player_camp = std::any_of(
+            site.active_outing.target_footprint.begin(),
+            site.active_outing.target_footprint.end(), []( const tripoint_abs_omt & target_omt ) {
+            return overmap_buffer.is_player_camp_omt( target_omt );
         } );
-        if( party_returning_home &&
+        const bool covert_player_camp = targets_player_camp &&
+                                        site.active_outing.schema_version == 10;
+        const bool outside_target_acquire = !covert_player_camp ||
+                                            bandit_live_world::
+                                            covert_scout_party_cleared_target_acquire_range(
+                                                site.active_outing, acquire_reads );
+        const bool transition_party_returning_home = has_unresolved_member &&
+                ( covert_player_camp ? every_unresolved_member_returning_or_home &&
+                  outside_target_acquire : any_unresolved_member_returning_home );
+        const bool active_group_returning_home = has_unresolved_member &&
+                ( covert_player_camp ? every_unresolved_member_returning_or_home :
+                  every_unresolved_member_returning_home ) && outside_target_acquire;
+        if( transition_party_returning_home &&
             site.active_outing.phase != bandit_live_world::scout_phase::returning_home ) {
             if( scout_phase_outing ) {
                 if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -1303,6 +1358,12 @@ bool note_live_bandit_aftermath()
                         bandit_live_world::simulation_owner_transition_result::applied ) {
                         candidate.active_outing.phase =
                             bandit_live_world::scout_phase::returning_home;
+                        if( candidate.active_outing.kind ==
+                            bandit_live_world::outing_kind::structural_sortie &&
+                            candidate.active_outing.local_handoff.is_active() ) {
+                            candidate.active_outing.local_handoff.phase =
+                                bandit_live_world::scout_phase::returning_home;
+                        }
                         candidate.active_outing.last_progress_minutes = current_minutes;
                         site = std::move( candidate );
                         changed = true;
@@ -1311,20 +1372,16 @@ bool note_live_bandit_aftermath()
             }
         }
 
-        bool unresolved_member_returning_home = false;
-        bool active_group_returning_home = true;
-        for( const bandit_live_world::active_member_observation &observation : observations ) {
-            if( site.active_outing.member_is_resolved( observation.npc_id ) ) {
-                continue;
-            }
-            unresolved_member_returning_home = true;
-            if( observation.state !=
-                bandit_live_world::active_member_observation_state::returning_home ) {
-                active_group_returning_home = false;
-                break;
+        if( covert_player_camp && active_group_returning_home &&
+            site.active_outing.phase == bandit_live_world::scout_phase::returning_home &&
+            site.active_outing.local_handoff.cohesion_abort_return ) {
+            if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site ) ) {
+                changed |= bandit_live_world::release_covert_cohesion_abort_after_target_clear(
+                               site, *cursor, acquire_reads );
             }
         }
-        active_group_returning_home &= unresolved_member_returning_home;
+
         if( active_group_returning_home ) {
             DebugLog( D_INFO, DC_ALL )
                     << "bandit_live_world scout_sortie: returning_home -> local_gate skipped"

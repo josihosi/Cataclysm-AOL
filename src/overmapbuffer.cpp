@@ -1660,6 +1660,22 @@ std::optional<basecamp *> overmapbuffer::find_camp( const point_abs_omt &p )
     return std::nullopt;
 }
 
+bool overmapbuffer::is_player_camp_omt( const tripoint_abs_omt &p )
+{
+    static constexpr int camp_center_search_radius_omt = 4;
+    for( overmap *const om : get_overmaps_near(
+             project_to<coords::sm>( p ), omt_to_sm_copy( camp_center_search_radius_omt ) ) ) {
+        for( const auto &camp_entry : om->get_camps() ) {
+            const basecamp &camp = camp_entry.second;
+            if( camp.is_player_owned() &&
+                ( camp.camp_omt_pos() == p || camp.point_within_camp( p ) ) ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void overmapbuffer::clear_camps( const point_abs_omt &p )
 {
     const overmap_with_local_coords om_loc = get_existing_om_global( p );

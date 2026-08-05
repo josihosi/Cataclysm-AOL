@@ -3299,10 +3299,11 @@ class Character : public Creature, public visitable
          *  @param shots maximum number of shots to fire (less may be fired in some circumstances)
          *  @param gun item to fire (which does not necessary have to be in the players possession)
          *  @param ammo item_location of ammunition for RAS (reload after shot) weapon like arrows
+         *  @param attack_controller optional character responsible for a remotely aimed shot
          *  @return number of shots actually fired
          */
         int fire_gun( map &here, const tripoint_bub_ms &target, int shots, item &gun,
-                      item_location ammo = item_location() );
+                      item_location ammo = item_location(), const Character *attack_controller = nullptr );
         /** Execute a throw */
         dealt_projectile_attack throw_item( const tripoint_bub_ms &target, const item &to_throw,
                                             const std::optional<tripoint_bub_ms> &blind_throw_from_pos = std::nullopt );

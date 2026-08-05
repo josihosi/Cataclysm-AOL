@@ -365,6 +365,21 @@ static void do_blast( map *m, const Creature *source, const tripoint_bub_ms &p, 
             continue;
         }
 
+        const Creature *const attack_source = mutable_source != nullptr ? mutable_source : source;
+        const Character *const source_character = attack_source != nullptr ?
+                attack_source->as_character() : nullptr;
+        const bool player_camp_attacker = attack_source != nullptr &&
+                                          ( attack_source->is_avatar() ||
+                                            ( attack_source->is_npc() &&
+                                              !attack_source->as_npc()->is_fake() &&
+                                              attack_source->as_npc()->is_player_ally() ) );
+        if( source_character != nullptr && player_camp_attacker ) {
+            if( npc *const target_npc = critter->as_npc(); target_npc != nullptr &&
+                target_npc->has_ecology_covert_noncombat_relationship( *source_character ) ) {
+                target_npc->on_attacked( *attack_source );
+            }
+        }
+
         add_msg_debug( debugmode::DF_EXPLOSION, "Blast hits %s with force %.1f", critter->disp_name(),
                        force );
 

@@ -471,8 +471,8 @@ class target_ui
         void panel_turret_list( int &text_y );
 
         // On-selected-as-target checks that act as if they are on-hit checks.
-        // `harmful` is `false` if using a non-damaging spell
         void on_target_accepted( bool harmful ) const;
+        bool target_commit_is_harmful() const;
 };
 } // namespace
 
@@ -1103,7 +1103,7 @@ int Character::fire_gun( const tripoint_bub_ms &target, int shots )
 }
 
 int Character::fire_gun( map &here, const tripoint_bub_ms &target, int shots, item &gun,
-                         item_location ammo )
+                         item_location ammo, const Character *attack_controller )
 {
     if( !gun.is_gun() ) {
         debugmsg( "%s tried to fire non-gun (%s).", get_name(), gun.tname() );
@@ -1175,6 +1175,7 @@ int Character::fire_gun( map &here, const tripoint_bub_ms &target, int shots, it
     int curshot = 0;
     int hits = 0; // total shots on target
     int delay = 0; // delayed recoil that has yet to be applied
+    bool covert_target_notified = false;
     // Snapshot the gun slot. The wielded item can stop being a gun
     // mid-loop (recoil-induced unwield, fire transforms), and the
     // post-shot hurt_part / skill-practice blocks still need to read
@@ -1195,6 +1196,22 @@ int Character::fire_gun( map &here, const tripoint_bub_ms &target, int shots, it
         }
         if( !handle_gun_overheat( gun ) ) {
             break;
+        }
+
+        if( !covert_target_notified ) {
+            covert_target_notified = true;
+            const Character &relationship_attacker = attack_controller != nullptr ?
+                    *attack_controller : *this;
+            const bool player_camp_attacker = relationship_attacker.is_avatar() ||
+                                              ( relationship_attacker.is_npc() &&
+                                                !relationship_attacker.as_npc()->is_fake() &&
+                                                relationship_attacker.as_npc()->is_player_ally() );
+            if( player_camp_attacker && maybe_target != nullptr ) {
+                if( npc *const target_npc = maybe_target->as_npc(); target_npc != nullptr &&
+                    target_npc->has_ecology_covert_noncombat_relationship( relationship_attacker ) ) {
+                    target_npc->on_attacked( relationship_attacker );
+                }
+            }
         }
 
         // If this is a vehicle mounted turret, which vehicle is it mounted on?
@@ -3026,8 +3043,8 @@ target_handler::trajectory target_ui::run()
             if( status != Status::Good ) {
                 continue;
             }
-            bool can_skip_confirm = mode == TargetMode::Spell && ( casting->damage( player_character ) <= 0 ||
-                                    casting->effect() == "pickup" || casting->effect() == "summon" );
+            const bool can_skip_confirm = mode == TargetMode::Spell &&
+                                          !target_commit_is_harmful();
             if( !can_skip_confirm && !confirm_non_enemy_target() ) {
                 continue;
             }
@@ -3095,8 +3112,7 @@ target_handler::trajectory target_ui::run()
         }
         case ExitCode::Fire: {
             if( mode != TargetMode::SelectOnly ) {
-                bool harmful = !( mode == TargetMode::Spell && casting->damage( player_character ) <= 0 );
-                on_target_accepted( harmful );
+                on_target_accepted( target_commit_is_harmful() );
             }
             break;
         }
@@ -3594,6 +3610,25 @@ bool target_ui::confirm_non_enemy_target()
         return query_yn( _( "Really attack %s?" ), who->get_name().c_str() );
     }
     return true;
+}
+
+bool target_ui::target_commit_is_harmful() const
+{
+    if( mode != TargetMode::Spell ) {
+        return true;
+    }
+    if( casting->effect() == "pickup" || casting->effect() == "summon" ) {
+        return false;
+    }
+    if( dst_critter != nullptr && !casting->is_valid_target( *you, dst ) ) {
+        return false;
+    }
+    if( casting->damage( get_player_character() ) > 0 ) {
+        return true;
+    }
+    return dst_critter != nullptr &&
+           casting->is_valid_target( spell_target::hostile ) &&
+           dst_critter->attitude_to( *you ) != Creature::Attitude::FRIENDLY;
 }
 
 bool target_ui::prompt_friendlies_in_lof()
@@ -4561,7 +4596,15 @@ void target_ui::on_target_accepted( bool harmful ) const
     const auto lt_ptr = you->last_target.lock();
     if( npc *const guy = dynamic_cast<npc *>( lt_ptr.get() ) ) {
         if( harmful ) {
-            if( !guy->guaranteed_hostile() ) {
+            if( guy->has_ecology_covert_noncombat_relationship( *you ) ) {
+                const bool deferred_selection = mode == TargetMode::Fire ||
+                                                mode == TargetMode::TurretManual ||
+                                                mode == TargetMode::Turrets ||
+                                                mode == TargetMode::Spell;
+                if( !deferred_selection ) {
+                    guy->on_attacked( *you );
+                }
+            } else if( !guy->guaranteed_hostile() ) {
                 // TODO: get rid of this. Or combine it with effect_hit_by_player
                 guy->hit_by_player = true; // used for morale penalty
             }

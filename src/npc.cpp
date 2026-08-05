@@ -16,6 +16,7 @@
 #include "activity_type.h"
 #include "auto_pickup.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "basecamp.h"
 #include "bodypart.h"
 #include "catacharset.h"
@@ -114,6 +115,8 @@ static const efftype_id effect_riding( "riding" );
 static const efftype_id effect_sleep( "sleep" );
 
 static const faction_id faction_amf( "amf" );
+static const faction_id faction_cannibal_camp( "cannibal_camp" );
+static const faction_id faction_hells_raiders( "hells_raiders" );
 static const faction_id faction_no_faction( "no_faction" );
 static const faction_id faction_your_followers( "your_followers" );
 
@@ -2302,7 +2305,19 @@ void npc::on_attacked( const Creature &attacker )
 
     hallucination_die( &here, nullptr );
 
-    if( attacker.is_avatar() && !is_enemy() && !is_dead() && !guaranteed_hostile() ) {
+    const bool player_camp_attacker = attacker.is_avatar() ||
+                                      ( attacker.is_npc() &&
+                                        !attacker.as_npc()->is_fake() &&
+                                        attacker.as_npc()->is_player_ally() );
+    const bool active_covert_scout = player_camp_attacker &&
+                                     has_ecology_covert_player_camp_assignment();
+    // This callback represents a launched melee/projectile attack even when damage is avoided.
+    // Ranged shot commitment may already have set hit_by_player, so qualify the exact assignment
+    // without consulting that flag.  Player-allied defenders break the same relationship.
+    if( !is_dead() && active_covert_scout ) {
+        make_angry();
+        hit_by_player = true;
+    } else if( attacker.is_avatar() && !is_enemy() && !is_dead() && !guaranteed_hostile() ) {
         make_angry();
         hit_by_player = true;
     }
@@ -3281,8 +3296,13 @@ bool npc::is_minion() const
 
 bool npc::guaranteed_hostile() const
 {
-    return attitude_to( get_player_character() ) == Attitude::HOSTILE || is_enemy() ||
-           ( my_fac && my_fac->likes_u < -10 );
+    if( attitude_to( get_player_character() ) == Attitude::HOSTILE ) {
+        return true;
+    }
+    if( has_ecology_covert_noncombat_relationship( get_player_character() ) ) {
+        return false;
+    }
+    return is_enemy() || ( my_fac && my_fac->likes_u < -10 );
 }
 
 bool npc::is_walking_with() const
@@ -3333,6 +3353,33 @@ bool npc::is_enemy() const
     return attitude == NPCATT_KILL || attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP;
 }
 
+bool npc::has_ecology_covert_noncombat_relationship( const Character &other ) const
+{
+    if( hit_by_player || ( !other.is_avatar() &&
+                          !( other.is_npc() && other.as_npc()->is_player_ally() ) ) ) {
+        return false;
+    }
+    return has_ecology_covert_player_camp_assignment();
+}
+
+bool npc::has_ecology_covert_player_camp_assignment() const
+{
+    if( attitude != NPCATT_NULL || my_fac == nullptr ||
+        ( my_fac->id != faction_hells_raiders && my_fac->id != faction_cannibal_camp ) ) {
+        return false;
+    }
+    const std::optional<bandit_live_world::covert_scout_relationship_read> read =
+        bandit_live_world::read_active_covert_scout_member(
+            overmap_buffer.global_state.bandit_live_world, getID() );
+    if( !read ) {
+        return false;
+    }
+    return std::any_of( read->target_footprint.begin(), read->target_footprint.end(),
+    []( const tripoint_abs_omt & target_omt ) {
+        return overmap_buffer.is_player_camp_omt( target_omt );
+    } );
+}
+
 bool npc::is_stationary( bool include_guards ) const
 {
     if( include_guards && is_guarding() ) {
@@ -3372,6 +3419,15 @@ Creature::Attitude npc::attitude_to( const Creature &other ) const
             if( forced != nullptr && forced == &other ) {
                 return Creature::Attitude::HOSTILE;
             }
+        }
+    }
+
+    if( other.is_npc() || other.is_avatar() ) {
+        const Character &other_character = dynamic_cast<const Character &>( other );
+        if( has_ecology_covert_noncombat_relationship( other_character ) ||
+            ( other.is_npc() &&
+              other.as_npc()->has_ecology_covert_noncombat_relationship( *this ) ) ) {
+            return Creature::Attitude::NEUTRAL;
         }
     }
 
@@ -3547,7 +3603,9 @@ int npc::follow_distance() const
 
 nc_color npc::basic_symbol_color() const
 {
-    if( attitude == NPCATT_KILL ) { // NOLINT(bugprone-branch-clone)
+    if( has_ecology_covert_noncombat_relationship( get_player_character() ) ) {
+        return c_pink;
+    } else if( attitude == NPCATT_KILL ) { // NOLINT(bugprone-branch-clone)
         return c_red;
     } else if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ) {
         return c_light_red;

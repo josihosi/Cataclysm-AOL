@@ -14605,6 +14605,134 @@ bool is_active_shakedown_parley_member( const world_state &state, const characte
     return false;
 }
 
+std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
+    const world_state &state, const character_id npc_id )
+{
+    const auto covert_phase = []( const active_outing_state &outing ) {
+        return outing.phase == scout_phase::searching ||
+               outing.phase == scout_phase::observing ||
+               outing.phase == scout_phase::burned_withdrawal ||
+               outing.phase == scout_phase::returning_exposed ||
+               outing.phase == scout_phase::returning_report ||
+               ( outing.phase == scout_phase::returning_home &&
+                 outing.local_handoff.cohesion_abort_return );
+    };
+
+    std::optional<covert_scout_relationship_read> result;
+    for( const site_record &site : state.sites ) {
+        const active_outing_state &outing = site.active_outing;
+        if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
+            outing.owner != simulation_owner::local ||
+            std::find( outing.member_ids.begin(), outing.member_ids.end(), npc_id ) ==
+            outing.member_ids.end() ) {
+            continue;
+        }
+        // Stable member IDs are unique across sites at world load/claim time.  Still reject a
+        // malformed in-memory duplicate of this actor without preflighting every unrelated owner.
+        if( result ) {
+            return std::nullopt;
+        }
+        if( site.retired_empty_site || outing.schema_version != 10 ||
+            outing.member_ids.size() != 2 ||
+            !simulation_owner_state_is_consistent( outing ) ||
+            !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
+            outing.selected_watch_kind == structural_watch_kind::none ||
+            !covert_phase( outing ) || outing.local_handoff.phase != outing.phase ||
+            outing.member_is_resolved( npc_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), npc_id ) !=
+            outing.casualty_ids.end() ) {
+            return std::nullopt;
+        }
+        const member_record *member = site.find_member( npc_id );
+        if( member == nullptr ||
+            ( member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ) {
+            return std::nullopt;
+        }
+        const auto local_member = std::find_if(
+                                      outing.local_handoff.members.begin(),
+                                      outing.local_handoff.members.end(),
+        [npc_id]( const local_handoff_member_snapshot & candidate ) {
+            return candidate.npc_id == npc_id;
+        } );
+        if( local_member == outing.local_handoff.members.end() || local_member->dead ) {
+            return std::nullopt;
+        }
+        result = covert_scout_relationship_read{ outing.phase, outing.target_footprint };
+    }
+    return result;
+}
+
+bool is_active_covert_scout_member( const world_state &state, const character_id npc_id )
+{
+    return read_active_covert_scout_member( state, npc_id ).has_value();
+}
+
+bool covert_scout_party_cleared_target_acquire_range(
+    const active_outing_state &outing,
+    const std::vector<covert_scout_member_acquire_read> &member_reads )
+{
+    if( outing.kind != outing_kind::structural_sortie || outing.schema_version != 10 ||
+        outing.target_footprint.empty() || outing.member_ids.size() != 2 ) {
+        return false;
+    }
+
+    bool has_unresolved_survivor = false;
+    std::set<character_id> matched_reads;
+    for( const character_id member_id : outing.member_ids ) {
+        if( outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() ) {
+            continue;
+        }
+        has_unresolved_survivor = true;
+        const auto read = std::find_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_member_acquire_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } );
+        if( read == member_reads.end() || !matched_reads.emplace( member_id ).second ||
+            !read->position_known || !read->returning_home || read->mutual_target_visibility ||
+            std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
+                       read->position ) != outing.target_footprint.end() ) {
+            return false;
+        }
+        if( std::count_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_member_acquire_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } ) != 1 ) {
+            return false;
+        }
+    }
+    return has_unresolved_survivor;
+}
+
+bool release_covert_cohesion_abort_after_target_clear(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_member_acquire_read> &member_reads )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !simulation_cursor_matches( outing, expected_cursor ) ||
+        outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local ||
+        outing.phase != scout_phase::returning_home ||
+        !outing.local_handoff.cohesion_abort_return ||
+        !covert_scout_party_cleared_target_acquire_range( outing, member_reads ) ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    candidate.active_outing.local_handoff.cohesion_assembled = true;
+    candidate.active_outing.local_handoff.cohesion_abort_return = false;
+    candidate.active_outing.local_handoff.cohesion_deadline_minutes = -1;
+    candidate.active_outing.local_handoff.cohesion_reroutes_used = 0;
+    if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
+        !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
 shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome )
 {

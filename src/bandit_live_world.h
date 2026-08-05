@@ -1566,6 +1566,26 @@ shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_r
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
 bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
+struct covert_scout_relationship_read {
+    scout_phase phase = scout_phase::assembling;
+    std::vector<tripoint_abs_omt> target_footprint;
+};
+struct covert_scout_member_acquire_read {
+    character_id npc_id;
+    tripoint_abs_omt position;
+    bool position_known = false;
+    bool returning_home = false;
+    bool mutual_target_visibility = false;
+};
+std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
+    const world_state &state, character_id npc_id );
+bool is_active_covert_scout_member( const world_state &state, character_id npc_id );
+bool covert_scout_party_cleared_target_acquire_range(
+    const active_outing_state &outing,
+    const std::vector<covert_scout_member_acquire_read> &member_reads );
+bool release_covert_cohesion_abort_after_target_clear(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_member_acquire_read> &member_reads );
 std::string render_empty_site_retirement_report( const site_record &site );
 int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
