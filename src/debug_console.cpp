@@ -1162,6 +1162,8 @@ void debug_console::execute()
                             break;
                         }
                     }
+                } else if constexpr( std::is_same_v<T, deferred_ecology_edit> ) {
+                    overmap_ui::edit_selected_ecology_dispatch();
                 }
             }, op );
             continue;
@@ -1271,6 +1273,14 @@ void debug_console::defer_eoc( effect_on_condition_id eoc_id )
         return;
     }
     pending.emplace( deferred_eoc{ eoc_id } );
+}
+
+void debug_console::defer_ecology_edit()
+{
+    if( pending.size() >= 256 ) {
+        return;
+    }
+    pending.emplace( deferred_ecology_edit{} );
 }
 
 void debug_console::request_tab_switch( std::string_view tab_id )
@@ -1443,7 +1453,7 @@ void debug_console::draw_controls()
         ImGui::TextColored( ImVec4( 0.55f, 0.85f, 1.0f, 1.0f ), "%s",
                             "Ecology observer mode (DEBUG_CLAIRVOYANCE)" );
         ImGui::SameLine();
-        ImGui::TextDisabled( "%s", "A arm | P play/pause | . step | R record incident" );
+        ImGui::TextDisabled( "%s", "A arm | I inspect/edit | P play/pause | . step | R incident" );
         ImGui::Separator();
         if( trace_view_ != nullptr ) {
             trace_view_->draw_ecology_body( *this );
@@ -6160,6 +6170,9 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
                             ecology_debug::trigger_disposition::continue_capture );
         ecology_watch_registered = ecology_watch->synchronize_registration();
     }
+    if( shortcuts_available && ImGui::IsKeyPressed( ImGuiKey_I, false ) ) {
+        host.defer_ecology_edit();
+    }
     if( shortcuts_available && ecology_watch_registered &&
         ImGui::IsKeyPressed( ImGuiKey_R, false ) ) {
         ecology_watch->record_incident( ecology_incident_note );
@@ -6197,6 +6210,13 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::TextDisabled( "%s", ecology_watch->status().c_str() );
+    if( ImGui::Button( "Inspect / edit selected member" ) ) {
+        host.defer_ecology_edit();
+    }
+    if( ImGui::IsItemHovered() ) {
+        ImGui::SetTooltip( "%s",
+                           "Keep this watch armed while the selected overmap entity editor is open" );
+    }
     host.export_bar( "ecology deltas",
     [this]() {
         return "```json\n" + ecology_watch->serialize() + "\n```";

@@ -233,6 +233,9 @@ uint64_t ecology_observer_control_revision();
 std::optional<ecology_debug::selected_projection> ecology_observer_selected_projection();
 std::optional<ecology_debug::selected_projection> ecology_observer_resolve_projection(
     const ecology_debug::immutable_entity_token &token );
+// Open the authoritative editor for the process-local observer selection.
+// The caller must invoke this outside an ImGui frame because it owns blocking sub-UIs.
+void edit_selected_ecology_dispatch();
 
 } // namespace overmap_ui
 #endif // CATA_SRC_OVERMAP_UI_H

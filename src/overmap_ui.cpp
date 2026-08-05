@@ -2616,8 +2616,12 @@ static void modify_horde_func( tripoint_abs_omt &curs )
     }
 }
 
-static void edit_selected_ecology_dispatch( overmap_ui::overmap_draw_data_t &data )
+static void edit_selected_ecology_dispatch_impl( overmap_ui::overmap_draw_data_t *data )
 {
+    if( !overmap_ui::ecology_observer_gate_enabled() ) {
+        popup( _( "The ecology inspector requires DEBUG_CLAIRVOYANCE." ) );
+        return;
+    }
     const std::optional<ecology_debug::selected_projection> selected =
         overmap_ui::ecology_observer_selected_projection();
     if( !selected || !selected->detail ) {
@@ -2860,13 +2864,20 @@ static void edit_selected_ecology_dispatch( overmap_ui::overmap_draw_data_t &dat
     }
     DebugLog( D_INFO, DC_ALL ) << trace_message;
 
-    data.ecology_last_query_turn = -1;
-    refresh_ecology_view( data );
+    if( data != nullptr ) {
+        data->ecology_last_query_turn = -1;
+        refresh_ecology_view( *data );
+    }
     popup( string_format( _( "DEBUG intervention %s (sequence %d).\n%s\n%s" ),
                           authoritative_result ? _( "recorded" ) : _( "failed but was recorded" ),
                           static_cast<int>( intervention_sequence ),
                           "before: hp=" + std::to_string( guard.hp_percent ),
                           "after: hp=" + std::to_string( after_hp ) + " status=" + after_status ) );
+}
+
+void edit_selected_ecology_dispatch()
+{
+    edit_selected_ecology_dispatch_impl( nullptr );
 }
 
 static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt &dest,
@@ -3355,7 +3366,7 @@ static tripoint_abs_omt display()
                 overmap_ui::remember_ecology_observer_controls( data );
             }
         } else if( action == "ECOLOGY_EDIT" && data.ecology_enabled ) {
-            edit_selected_ecology_dispatch( data );
+            edit_selected_ecology_dispatch_impl( &data );
         } else if( action == "TOGGLE_CITY_LABELS" ) {
             uistate.overmap_show_city_labels = !uistate.overmap_show_city_labels;
         } else if( action == "TOGGLE_MAP_REVEALS" ) {

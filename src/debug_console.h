@@ -388,6 +388,7 @@ class debug_console : public cataimgui::window
 
         void defer_action( debug_menu_index action );
         void defer_eoc( effect_on_condition_id eoc_id );
+        void defer_ecology_edit();
         void request_tab_switch( std::string_view tab_id );
 
         // Button label + tooltip read from the action table.
@@ -476,7 +477,9 @@ class debug_console : public cataimgui::window
         struct deferred_eoc {
             effect_on_condition_id id;
         };
-        using deferred_op = std::variant<deferred_action, deferred_eoc>;
+        struct deferred_ecology_edit {
+        };
+        using deferred_op = std::variant<deferred_action, deferred_eoc, deferred_ecology_edit>;
         std::queue<deferred_op> pending;
 
         int disclaimer_idx = -1;

@@ -1,0 +1,43 @@
+{
+  "name": "manual.phase4_ecology_dispatch_observer_mcw",
+  "description": "One-command launch-only ecology observer/editor handoff from a captured natural bandit pair-handoff producer state. The saved world contains a schema-8 two-person structural sortie under local ownership; the originating whole probe remained yellow_step_local_proof_incomplete, so this scenario claims only the narrower authoritative saved state and launch footing, not fabricated success and not proof of editor behavior.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2"
+    }
+  },
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_phase4_ecology_dispatch_observer_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the captured authoritative local-dispatch footing reaches normal gameplay without scripted gameplay input"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py handoff manual.phase4_ecology_dispatch_observer_mcw --launch-only --compact-stdout",
+  "manual_playtest": {
+    "question": "Can the tester inspect and edit the captured authoritative local dispatch from one prepared observer handoff?",
+    "tester_notes": [
+      "Confirm the fixture-install transform report names DEBUG_CLAIRVOYANCE and preserves all existing player mutations.",
+      "Treat the captured structural sortie and local handoff as the narrow authority footing; the producer run's yellow whole-probe verdict remains a caveat.",
+      "This launch-only scenario sends no gameplay keys and does not itself prove observer rendering, intervention, casualty writeback, or incident capture."
+    ]
+  },
+  "evidence_contract": {
+    "claim": "the unchanged captured world starts from a real schema-8 structural_sortie generation 1 with local handoff epoch 1, living members 4 and 5, phase observing, and an install-time DEBUG_CLAIRVOYANCE observer gate",
+    "source_scenario": "bandit.structural_pair_handoff_live_mcw",
+    "source_overall_verdict": "yellow_step_local_proof_incomplete",
+    "narrow_authority_evidence": "saved local-owner outing plus same-run handoff committed and cohesion assembled transitions",
+    "load_only_verdict": "authoritative dispatch observer/editor footing only; no ecology-editor behavior proof is claimed"
+  }
+}

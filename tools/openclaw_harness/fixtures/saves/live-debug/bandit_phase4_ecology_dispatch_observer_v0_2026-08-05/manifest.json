@@ -1,0 +1,40 @@
+{
+  "name": "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+  "description": "Captured natural producer state from bandit.structural_pair_handoff_live_mcw with a real two-person structural sortie under local simulation ownership. The whole producer probe remained yellow_step_local_proof_incomplete, so this fixture claims only the narrower saved authority state recorded below; it does not fabricate success or prove the ecology editor. The original captured world bytes are stored unchanged, and installation preserves existing mutations while idempotently adding only DEBUG_CLAIRVOYANCE.",
+  "captured_source": {
+    "run_id": "20260804_121729",
+    "scenario": "bandit.structural_pair_handoff_live_mcw",
+    "overall_verdict": "yellow_step_local_proof_incomplete",
+    "payload_file_count": 81,
+    "payload_bytes": 2203890,
+    "payload_tree_sha256": "ab06d76de1045497fa2855c8f87e599aee588e0160a5075b81e363c865b7b8ce"
+  },
+  "authority_evidence": {
+    "scope": "narrow_green_authoritative_dispatch_state",
+    "site_schema_version": 12,
+    "active_outing_schema_version": 8,
+    "kind": "structural_sortie",
+    "generation": 1,
+    "simulation_owner": "local",
+    "local_handoff_schema_version": 3,
+    "handoff_epoch": 1,
+    "member_ids": [4, 5],
+    "phase": "observing",
+    "living_member_ids": [4, 5],
+    "both_members_living": true,
+    "handoff_committed": true,
+    "cohesion_assembled": true,
+    "cohesion_abort": false,
+    "transition_evidence": [
+      "bandit_live_world local_handoff committed members=2",
+      "bandit_live_world local_cohesion assembled=yes abort=no"
+    ]
+  },
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_CLAIRVOYANCE"]
+    }
+  ]
+}
