@@ -1071,8 +1071,13 @@ delegated and coordinator runs pass fallback 1/24 plus adjacent exact selection 
 `git diff --check` is clean. Pure policy only, with no terrain enumeration, pathfinding, persistence,
 live adapter, or production mutation; Mac compile/unit only. Root roadmap audit therefore keeps the
 exact/fallback behavior rows open: evaluator tests cannot impersonate a game route. Next evidence
-class is a bounded production adapter that supplies authoritative geography and commits the chosen
-watch OMT through the existing structural outing route owner, or abandons honestly.
+class is a schema-owned watch route. A bounded direct route-read experiment compiled after adding
+source-compatible read fields but correctly failed dispatch: apply-time replay reconstructed the
+ordinary target route, and current save/load canonicalization would reject an ephemeral watch route.
+The experiment and its test were removed with `apply_patch`; the tree returned clean. This is an
+ownership finding, not a red product defect. Next proof must persist bounded target-footprint /
+selected-watch metadata in the existing outing owner, migrate schema 8, and pass apply/replay/load
+before the live geography adapter is allowed to consume the pure selectors.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH ADAPTER NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH ROUTE SCHEMA NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -455,9 +455,11 @@ verified reachability, concealment, a clear two-OMT approach, and nonnegative ro
 by route cost and stable OMT order. If exact distance 3 is unavailable, a bounded selector now
 chooses distance 4 before 5, then route cost/stable OMT, or returns a typed abandon outcome; closer
 and more remote candidates never qualify. These are evaluator footing only: no production route
-consumes authoritative geography yet, so the two selection rows remain open. Next: wire one bounded
-production adapter that supplies real terrain/path reads, commits the selected watch OMT into the
-existing structural route owner, and abandons cleanly when no safe candidate exists.
+consumes authoritative geography yet, so the two selection rows remain open. A direct route-read
+attempt was backed out cleanly after apply-time replay proved that ephemeral watch metadata cannot
+satisfy the existing canonical route/save contract. Next: extend the serialized outing owner with
+bounded target-footprint + selected-watch metadata, migration, canonical replay/load validation,
+and exact save tests before wiring the live geography adapter.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
