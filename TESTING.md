@@ -793,12 +793,18 @@ clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the
 red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
 retry is justified before the observer exists.
 
-The current validation target is E1 from
-`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: select a real dispatch
-member by outing generation, NPC ID, owner, and location token; show before state; require explicit
-confirmation; and route wound/heal/kill through authoritative NPC and outing casualty/writeback
-ownership with immediate observer refresh and `debug_intervention=true`. O0 save/knowledge
-neutrality retries only through O4's existing performance/save-growth harness.
+E1 code is green at `1081f6f6a0`. The overmap inspector revalidates world/entity/generation/owner /
+authority, exact simulation cursor, NPC ID/OMT, loaded/alive state, and HP after confirmation.
+Wound/heal operate on the concrete NPC; kill calls `npc::die` plus `game::cleanup_dead` and requires
+the existing local-handoff casualty receipt before reporting success. A bounded unsaved receipt
+ledger supplies same-turn `debug_intervention` projection provenance, the existing monitor trace,
+and O4b incident input; failed/prevented attempts remain labelled receipts, while later natural
+changes remain natural. Exact Mac release build/tests pass intervention 2/60, all ecology 33/697,
+console 9/1,116, JSON/diff checks, and a full release tiles rebuild/link. The installed AutoReview
+launcher was absent; one bounded manual review/fix pass closed delayed-provenance mixing and missing
+failed-attempt receipts. The next validation target is the real field dry run plus the bandit /
+cannibal casualty outcome matrix. O0 save/knowledge neutrality retries only through O4's existing
+performance/save-growth harness.
 
 Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
 contains run/turn/player/build/scenario identity, the exact selected projection/token, retained

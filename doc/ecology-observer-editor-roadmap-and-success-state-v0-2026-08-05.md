@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4B INCIDENT CODE GREEN / E1 FIRST INTERVENTION NEXT
+Status: ACTIVE / E1 CODE GREEN / FIELD DRY RUN NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -201,13 +201,23 @@ O4a the current row.
 
 ### E1 - first authoritative intervention
 
-- [ ] Select a real dispatch member by stable outing generation + NPC ID + owner/location token;
-  show before state and require explicit confirmation.
-- [ ] Wound, heal, and kill one member through authoritative NPC/outings casualty/death/writeback /
+- [x] Select a real dispatch member by stable outing generation + NPC ID + owner/location token;
+  show before state and require explicit confirmation. _Behavior `1081f6f6a0`; `I` opens the
+  selected entity inspector, and mutation re-resolves world/entity/generation/owner/authority,
+  exact outing cursor, member ID/OMT, loaded/alive state, and HP after confirmation._
+- [x] Wound, heal, and kill one member through authoritative NPC/outings casualty/death/writeback /
   roster/report paths; never erase a marker or clear an outing as a substitute for death.
-- [ ] Emit concise before/after event and intervention artifact with
+  _Wound/heal operate on the concrete NPC. Kill calls normal `npc::die` then `game::cleanup_dead`,
+  and reports success only when existing local-handoff casualty writeback records the NPC. Abstract,
+  unloaded, non-structural, and non-local parties remain inspect-only._
+- [x] Emit concise before/after event and intervention artifact with
   `debug_intervention=true`, refresh immediately, and reject stale selection after move,
-  load/unload, completion, death, or generation change.
+  load/unload, completion, death, or generation change. _A bounded 32-row process-local receipt
+  feeds same-turn overlay provenance, existing monitor trace, and O4b incident serialization. A
+  prevented death/writeback failure is retained as a labelled failed intervention; delayed natural
+  changes are not relabelled debug. Exact Mac release build/tests: intervention 2/60, all ecology
+  33/697, console 9/1,116, release tiles link, JSON/diff checks. The installed AutoReview launcher
+  was absent; one manual review/fix pass found and closed the two provenance/receipt defects._
 - [ ] Prove one-dead-one-survivor return, both-dead, and wounded-survivor behavior for bandit and
   cannibal camps, or record the exact faction-equivalence seam.
 

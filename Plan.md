@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY INTERVENTION E1 NEXT
+**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / E1 CODE GREEN / FIELD DRY RUN NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -362,8 +362,15 @@ incident capture is checkpointed at `541932daa5`: one action revalidates the exa
 serializes the selected projection plus retained deltas and bounded intervention ledger, and stages
 an exact-byte JSON/existing-game screenshot pair into the harness run directory with JSON published
 last. Incident 5/71, console 9/1,116, harness 126/126, current Mac tiles runtime, and one combined
-review/fix pass are green. E1's first authoritative dispatch-member intervention is next; live
-field-tool use and O0 neutrality proof remain open. O3 adapters resume only after an authoritative
+review/fix pass are green. E1 code is checkpointed at `1081f6f6a0`: `I` on the selected overmap
+entity opens one inspector, while mutation is limited to a loaded structural local-handoff member
+whose entity/cursor/NPC/location/HP guard still matches after confirmation. Wound/heal use the
+concrete NPC; kill reuses `npc::die` plus normal cleanup/casualty writeback; the bounded process-local
+receipt feeds same-turn overlay, monitor trace, and incident provenance. Exact Mac release tests
+pass intervention 2/60, all ecology 33/697, and console 9/1,116; the release tiles rebuild/link is
+green. The helper-based review was unavailable, so one bounded manual review/fix pass closed delayed
+natural-provenance mixing and missing failed-attempt receipts. Live field-tool use, casualty outcome
+matrix, and O0 neutrality proof remain open. O3 adapters resume only after an authoritative
 identity seam exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
