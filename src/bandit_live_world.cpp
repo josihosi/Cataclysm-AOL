@@ -11472,18 +11472,30 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             }
         }
         if( outing.phase == scout_phase::lost ) {
-            if( now_minutes >= outing.missing_deadline_minutes ) {
+            const bool all_members_confirmed_dead = !outing.member_ids.empty() &&
+                    std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
+            [&candidate, &outing]( const character_id member_id ) {
+                const member_record *member = candidate.find_member( member_id );
+                return member != nullptr && member->state == member_state::dead &&
+                       outing.member_is_resolved( member_id ) &&
+                       std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+                       outing.casualty_ids.end();
+            } );
+            if( all_members_confirmed_dead || now_minutes >= outing.missing_deadline_minutes ) {
                 candidate.last_routine_resolved_minutes = now_minutes;
                 candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
                             now_minutes, routine_cooldown_delay_minutes(
                                 candidate.site_id, 72 * 60 ) );
                 const std::optional<int> released = release_structural_outing_reservation(
                         candidate, expected_activity_id, expected_generation,
+                        all_members_confirmed_dead ?
+                        "confirmed physical deaths closed a structural outing" :
                         "abstract threat encounter closed an all-missing structural outing" );
                 if( released ) {
                     site = std::move( candidate );
-                    result.notes.push_back(
-                        "all-missing structural outing closed after its missing deadline" );
+                    result.notes.push_back( all_members_confirmed_dead ?
+                                            "all-dead structural outing closed after physical confirmation" :
+                                            "all-missing structural outing closed after its missing deadline" );
                 }
             } else {
                 site = std::move( candidate );
