@@ -277,6 +277,7 @@ class tab_trace_view : public console_tab_view
         int monitor_mode_idx = 1;
         std::string monitor_label;
         int ecology_watch_mode = 0;
+        std::string ecology_incident_note;
         pimpl<ecology_watch_session> ecology_watch;
 
         // Cached merged feed. Rebuilt only when feed_generation,

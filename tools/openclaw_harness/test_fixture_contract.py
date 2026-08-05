@@ -1850,7 +1850,12 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
                 mock.patch("startup_harness.repo_root", return_value=Path("repo")),
                 mock.patch("startup_harness.subprocess.Popen") as popen,
             ):
-                launch_game("test-profile", "Test World", run_dir)
+                launch_game(
+                    "test-profile",
+                    "Test World",
+                    run_dir,
+                    scenario="manual.ecology",
+                )
                 child_environment = popen.call_args.kwargs["env"]
                 parent_contains_key = "CATA_API_KEY" in os.environ
                 popen.call_args.kwargs["stdout"].close()
@@ -1858,7 +1863,33 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
 
             self.assertEqual(child_environment["CATA_API_KEY"], "stored")
             self.assertEqual(child_environment["OPENCLAW_HARNESS_UI_TRACE"], "1")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_RUN_DIR"], str(run_dir.resolve()))
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_PROFILE"], "test-profile")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_WORLD"], "Test World")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_SCENARIO"], "manual.ecology")
             self.assertFalse(parent_contains_key)
+
+    def test_launch_game_clears_inherited_scenario_without_explicit_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            child_environment = {"OPENCLAW_HARNESS_SCENARIO": "stale.parent"}
+            with (
+                mock.patch("startup_harness.detect_executable", return_value=Path("game")),
+                mock.patch("startup_harness.repo_root", return_value=Path("repo")),
+                mock.patch("startup_harness.subprocess.Popen") as popen,
+            ):
+                launch_game(
+                    "test-profile",
+                    "Test World",
+                    run_dir,
+                    child_environment=child_environment,
+                )
+                launched_environment = popen.call_args.kwargs["env"]
+                popen.call_args.kwargs["stdout"].close()
+                popen.call_args.kwargs["stderr"].close()
+
+            self.assertNotIn("OPENCLAW_HARNESS_SCENARIO", launched_environment)
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_SCENARIO"], "stale.parent")
 
     def test_launch_game_refuses_missing_enabled_api_credential(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1971,6 +2002,10 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(
             start_command[start_command.index("--config-profile") + 1],
             "dev-harness",
+        )
+        self.assertEqual(
+            start_command[start_command.index("--scenario-identity") + 1],
+            "test.isolated_profile",
         )
         self.assertEqual(
             start_command[start_command.index("--profile-option") + 1],

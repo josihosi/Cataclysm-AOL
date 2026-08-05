@@ -9,8 +9,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <cstdlib>
 #include <deque>
 #include <exception>
+#include <filesystem>
 #include <functional>
 #include <list>
 #include <locale>
@@ -48,6 +50,7 @@
 #include "debug_menu.h"
 #include "debug_monitor_targets.h"
 #include "ecology_debug_delta.h"
+#include "ecology_debug_incident.h"
 #include "dialogue.h"
 #include "effect.h"
 #include "effect_on_condition.h"
@@ -57,6 +60,7 @@
 #include "filesystem.h"
 #include "flexbuffer_json.h"
 #include "game.h"
+#include "get_version.h"
 #include "global_vars.h"
 #include "input_context.h"
 #include "input_enums.h"
@@ -710,6 +714,144 @@ class ecology_watch_session
             return ring_.serialize_compact_json();
         }
 
+        bool record_incident( const std::string &note ) {
+            if( monitor_id_ < 0 || !active_ || !prior_ ) {
+                incident_status_ = "Arm a selected ecology watch before recording an incident.";
+                return false;
+            }
+            if( !overmap_ui::ecology_observer_gate_enabled() ||
+                overmap_ui::ecology_observer_world_identity() != prior_->token.world_identity ||
+                overmap_ui::ecology_observer_control_revision() != observer_revision_ ) {
+                incident_status_ = "Incident rejected: observer selection became stale.";
+                return false;
+            }
+            const std::optional<ecology_debug::selected_projection> current =
+                overmap_ui::ecology_observer_resolve_projection( prior_->token );
+            if( !current ) {
+                incident_status_ = "Incident rejected: authoritative selection no longer resolves.";
+                return false;
+            }
+
+            ecology_debug::delta_observation_context observation_context;
+            observation_context.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            observation_context.timestamp = to_string( calendar::turn );
+            observation_context.disposition = disposition_;
+            const ecology_debug::delta_observation_result observed = ring_.observe(
+                        prior_, current, observation_context );
+            if( observed.anomaly ) {
+                active_ = false;
+                incident_status_ = "Incident rejected: " + ring_.records().back().anomaly_reason;
+                return false;
+            }
+            prior_ = current;
+            if( observed.emitted > 0 ) {
+                monitor_value_ = describe_recent( observed.emitted );
+                status_ = "Captured " + monitor_value_;
+                if( observed.disposition != ecology_debug::trigger_disposition::continue_capture ) {
+                    pause_requested_ = true;
+                }
+            }
+
+            ecology_debug::incident_identity identity;
+            identity.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            identity.timestamp = to_string( calendar::turn );
+            identity.player_omt = get_avatar().pos_abs_omt();
+            const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+            identity.scenario = scenario != nullptr && scenario[0] != '\0' ? scenario : "manual";
+            identity.commit = getVersionString();
+#if defined(TILES)
+            constexpr bool tiles_build = true;
+#else
+            constexpr bool tiles_build = false;
+#endif
+            identity.binary = overmap_ui::ecology_observer_binary_name( PATH_INFO::lang_file(),
+                              tiles_build );
+
+            const char *run_directory = std::getenv( "OPENCLAW_HARNESS_RUN_DIR" );
+            std::filesystem::path artifact_directory;
+            if( run_directory != nullptr && run_directory[0] != '\0' ) {
+                artifact_directory = std::filesystem::u8path( run_directory );
+                identity.run_identity = artifact_directory.filename().generic_u8string();
+            } else {
+                artifact_directory = PATH_INFO::world_base_save_path().get_unrelative_path() /
+                                     "screenshots";
+                identity.run_identity = overmap_ui::ecology_observer_world_identity();
+            }
+
+            const ecology_debug::incident_bundle_result bundle =
+                ecology_debug::serialize_incident_bundle(
+                    identity, prior_, ring_, note.empty() ? std::nullopt :
+                    std::optional<std::string>( note ), interventions_ );
+            if( !bundle.valid ) {
+                incident_status_ = "Incident rejected: " + bundle.error;
+                return false;
+            }
+            if( !assure_dir_exist( artifact_directory ) ) {
+                incident_status_ = "Incident directory could not be created.";
+                return false;
+            }
+
+            std::string base_name = "ecology_incident_" + std::to_string( identity.turn );
+            for( int suffix = 0; suffix < 1000; ++suffix ) {
+                const std::string candidate = suffix == 0 ? base_name :
+                                              base_name + "_" + std::to_string( suffix );
+                const std::filesystem::path json_path = artifact_directory / ( candidate + ".json" );
+                const std::filesystem::path screenshot_path = artifact_directory /
+                        ( candidate + ".png" );
+                if( std::filesystem::exists( json_path ) ||
+                    std::filesystem::exists( screenshot_path ) ) {
+                    continue;
+                }
+                const std::filesystem::path temporary_json_path = artifact_directory /
+                        ( candidate + ".tmp.json" );
+                const std::filesystem::path temporary_screenshot_path = artifact_directory /
+                        ( candidate + ".tmp.png" );
+                remove_file( temporary_json_path );
+                remove_file( temporary_screenshot_path );
+                const bool json_written = write_to_file( temporary_json_path.generic_u8string(),
+                [&bundle]( std::ostream & output ) {
+                    output << bundle.payload;
+                }, "ecology incident" );
+                if( !json_written ) {
+                    incident_status_ = "Incident JSON write failed.";
+                    return false;
+                }
+                const bool screenshot_written = g->take_screenshot(
+                                                    temporary_screenshot_path.generic_u8string() );
+                if( !screenshot_written ) {
+                    remove_file( temporary_json_path );
+                    remove_file( temporary_screenshot_path );
+                    incident_status_ = "Incident rejected: screenshot failed; no pair was published.";
+                    return false;
+                }
+                if( !rename_file( temporary_screenshot_path, screenshot_path ) ) {
+                    remove_file( temporary_json_path );
+                    remove_file( temporary_screenshot_path );
+                    incident_status_ = "Incident screenshot publish failed.";
+                    return false;
+                }
+                if( !rename_file( temporary_json_path, json_path ) ) {
+                    remove_file( temporary_json_path );
+                    remove_file( screenshot_path );
+                    incident_status_ = "Incident JSON publish failed; pair was removed.";
+                    return false;
+                }
+                incident_payload_ = bundle.payload;
+                incident_status_ = "Recorded " + candidate + ".json + .png";
+                return true;
+            }
+            incident_status_ = "Incident filename cap reached for this turn.";
+            return false;
+        }
+
+        const std::string &incident_status() const {
+            return incident_status_;
+        }
+
+        const std::string &incident_payload() const {
+            return incident_payload_;
+        }
+
     private:
         std::string describe_recent( size_t count ) const {
             if( count == 0 || ring_.records().empty() ) {
@@ -790,6 +932,9 @@ class ecology_watch_session
         bool pause_requested_ = false;
         std::string status_ = "Idle";
         std::string monitor_value_ = "ecology watch idle";
+        std::vector<ecology_debug::incident_intervention> interventions_;
+        std::string incident_status_ = "No incident recorded.";
+        std::string incident_payload_;
 };
 
 step_controller::outcome step_controller::tick( input_context &ctxt )
@@ -5994,6 +6139,28 @@ void tab_trace_view::draw_monitors_body( debug_console &host )
     },
     [this]() {
         return ecology_watch->serialize();
+    } );
+
+    ImGui::InputTextWithHint( "##ecology_incident_note", "Optional incident note (256 bytes)",
+                              &ecology_incident_note );
+    ImGui::SameLine();
+    ImGui::BeginDisabled( !ecology_watch_registered );
+    if( ImGui::Button( "Record ecology incident" ) ) {
+        ecology_watch->record_incident( ecology_incident_note );
+    }
+    ImGui::EndDisabled();
+    if( ImGui::IsItemHovered() ) {
+        ImGui::SetTooltip( "%s",
+                           "Write compact selected snapshot + deltas and a paired existing-game screenshot" );
+    }
+    ImGui::TextDisabled( "%s", ecology_watch->incident_status().c_str() );
+    host.export_bar( "latest ecology incident",
+    [this]() {
+        return ecology_watch->incident_payload().empty() ? std::string() :
+               "```json\n" + ecology_watch->incident_payload() + "\n```";
+    },
+    [this]() {
+        return ecology_watch->incident_payload();
     } );
 
     ImGui::SeparatorText( "Add monitor" );

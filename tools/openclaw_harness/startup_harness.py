@@ -8379,12 +8379,19 @@ def launch_game(
     run_dir: Path,
     *,
     child_environment: Optional[Dict[str, str]] = None,
+    scenario: str = "",
 ) -> subprocess.Popen[str]:
     exe = detect_executable()
     cmd = [str(exe), "--userdir", f".userdata/{profile}/"]
     if target_world:
         cmd.extend(["--world", target_world])
-    env = child_environment or game_child_environment(profile)
+    env = dict(child_environment or game_child_environment(profile))
+    env["OPENCLAW_HARNESS_RUN_DIR"] = str(run_dir.resolve())
+    env["OPENCLAW_HARNESS_PROFILE"] = profile
+    env["OPENCLAW_HARNESS_WORLD"] = target_world
+    env.pop("OPENCLAW_HARNESS_SCENARIO", None)
+    if scenario:
+        env["OPENCLAW_HARNESS_SCENARIO"] = scenario
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
     return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True, env=env)
@@ -15071,6 +15078,7 @@ def run_startup(args: argparse.Namespace) -> int:
         plan.target_world,
         run_dir,
         child_environment=child_environment,
+        scenario=str(getattr(args, "scenario_identity", "") or ""),
     )
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
@@ -16039,7 +16047,7 @@ def run_launch_only_handoff(
             return 1
 
         ensure_dir(config_dir_for_profile(profile))
-        proc = launch_game(profile, plan.target_world, run_dir)
+        proc = launch_game(profile, plan.target_world, run_dir, scenario=scenario_name)
         process = {
             "pid": proc.pid,
             "command": [plan.executable, "--userdir", f".userdata/{profile}/", "--world", plan.target_world],
@@ -16164,6 +16172,7 @@ def run_launch_only_handoff(
 
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
+    scenario_name = str(scenario.get("name", args.scenario))
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
     config_profile = resolve_startup_config_profile(scenario, profile)
@@ -16305,6 +16314,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         profile,
         "--config-profile",
         config_profile,
+        "--scenario-identity",
+        scenario_name,
     ]
     if world:
         start_cmd.extend(["--world", world])
@@ -16860,6 +16871,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
+    start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")
