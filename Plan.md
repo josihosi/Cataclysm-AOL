@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY INCIDENT O4B NEXT
+**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY INTERVENTION E1 NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -358,8 +358,13 @@ delta 3/334, capture 9/34, console 9/1,116, and full ecology 26/566 are green af
 pass. Live preflight `20260805_074635` selected natural camp `BC-E75C82` but stopped before watch
 arming because the automation bridge focused SDL helper window `22148` rather than render window
 `22114`; permissions were green, so this is a non-credit focus-routing harness limitation. O4b
-incident capture is the next smallest adapter; the field-tool readiness gate and O0 neutrality
-proof remain open. O3 adapters resume only after an authoritative identity seam exists.
+incident capture is checkpointed at `541932daa5`: one action revalidates the exact live owner,
+serializes the selected projection plus retained deltas and bounded intervention ledger, and stages
+an exact-byte JSON/existing-game screenshot pair into the harness run directory with JSON published
+last. Incident 5/71, console 9/1,116, harness 126/126, current Mac tiles runtime, and one combined
+review/fix pass are green. E1's first authoritative dispatch-member intervention is next; live
+field-tool use and O0 neutrality proof remain open. O3 adapters resume only after an authoritative
+identity seam exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

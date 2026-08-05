@@ -19,9 +19,10 @@ satisfy this gate.  If this loop exposes a missing honest capability, implement 
 adapter before the ledger.  Reuse the existing console/harness; do not add generic state setters,
 teleports, stimulus generators, scripting, or a second scenario framework.
 
-1. Add O4b incident capture through the existing screenshot/report/archive/export seams.
-2. Extend O4 through the remaining bounded watches before the first casualty
-   intervention and Phase-4 smoke/light/sound live row.
+1. Add E1's first authoritative dispatch-member wound/heal/kill intervention with confirmation,
+   stale-token rejection, immediate refresh, and debug provenance.
+2. Extend O4 through the remaining bounded watches/run-until behavior before the Phase-4
+   smoke/light/sound live row.
 3. Reuse O4's existing performance/save-growth harness for the deferred observer off/on
    knowledge/save-byte proof; do not grow a separate save canonicalizer.
 

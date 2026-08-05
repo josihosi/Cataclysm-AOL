@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4A SELECTED WATCH CODE GREEN / FIELD-TOOL GATE OPEN
+Status: ACTIVE / O4B INCIDENT CODE GREEN / E1 FIRST INTERVENTION NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -190,7 +190,12 @@ O4a the current row.
   operation equivalent to `observe selected-operation --until phase-change-or-anomaly --deadline
   6h --json`.
 - [ ] Integrate the six watches with existing step/play controls and transition-only trace capture.
-- [ ] Add `Record ecology incident` through existing screenshot/report/archive/export seams.
+- [x] Add `Record ecology incident` through existing screenshot/report/archive/export seams.
+  _Behavior `541932daa5`; exact Mac incident 5/71, console 9/1,116, harness 126/126, runtime
+  link, and Python syntax are green after one combined review/fix pass. The action synchronously
+  revalidates the selected owner and atomically publishes exact-byte compact JSON plus the existing
+  game screenshot into the harness run directory. Live field use remains uncredited until the
+  readiness-gate loop reaches watch arm and intervention._
 - [ ] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
   closed cost, save-size neutrality, and byte-stability.
 

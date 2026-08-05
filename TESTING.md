@@ -793,13 +793,24 @@ clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the
 red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
 retry is justified before the observer exists.
 
-The current validation target is O4b from
-`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: record one ecology
-incident through existing screenshot/report/archive/export seams using the selected snapshot,
-bounded recent deltas, identity, intervention ledger, and truncation metadata. O0 save/knowledge
-neutrality retries only through O4's existing performance/save-growth harness. O3 production
-mobile adapters remain disabled until horde/group/monster ownership has stable movement/load-
-transfer identity.
+The current validation target is E1 from
+`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: select a real dispatch
+member by outing generation, NPC ID, owner, and location token; show before state; require explicit
+confirmation; and route wound/heal/kill through authoritative NPC and outing casualty/writeback
+ownership with immediate observer refresh and `debug_intervention=true`. O0 save/knowledge
+neutrality retries only through O4's existing performance/save-growth harness.
+
+Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
+contains run/turn/player/build/scenario identity, the exact selected projection/token, retained
+deltas and metadata, an optional 256-byte note, at most 32 ordered intervention receipts, and exact
+self-referential payload bytes. Invalid identity/token/delta provenance fails closed. The Trace
+action synchronously re-resolves the authority before capture, writes through temporary files,
+publishes the existing-game screenshot first and JSON last, and removes partial artifacts on any
+failure. Probe and handoff children receive deterministic run/profile/world/scenario environment
+metadata without inheriting stale scenario state. Exact Mac tests pass incident 5/71 and console
+9/1,116 at seed `240401`; all 126 harness fixture contracts, Python syntax, touched objects/tests
+link, current `cataclysm-tiles`, and `git diff --check` are green after one combined review/fix pass.
+No live incident is credited while the field-tool preflight remains blocked before watch arm.
 
 Observer O4a code is green at behavior checkpoint `759e0851bd`. The immutable world/ID/generation /
 owner/authority token feeds a 128-record FIFO with appeared, moved, phase, visible-authoritative HP,
