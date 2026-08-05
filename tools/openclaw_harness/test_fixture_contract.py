@@ -3466,6 +3466,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         all_keys = [key for step in presses for key in step["keys"]]
         self.assertNotIn("I", all_keys)
         self.assertNotIn("P", all_keys)
+        self.assertEqual(all_keys.count("A"), 2)
         self.assertEqual(all_keys.count("R"), 2)
         self.assertEqual(all_keys.count("."), 1)
         self.assertEqual(
@@ -3481,7 +3482,15 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("teleport_player_twelve_omt_south"),
         )
         self.assertLess(
+            labels.index("arm_pre_relocation_watch"),
+            labels.index("record_pre_relocation_incident"),
+        )
+        self.assertLess(
             labels.index("teleport_player_twelve_omt_south"),
+            labels.index("record_post_relocation_incident"),
+        )
+        self.assertLess(
+            labels.index("arm_post_relocation_watch"),
             labels.index("record_post_relocation_incident"),
         )
         self.assertIn(

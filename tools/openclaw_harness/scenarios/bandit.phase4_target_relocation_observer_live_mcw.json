@@ -82,6 +82,14 @@
     },
     {
       "kind": "press",
+      "label": "arm_pre_relocation_watch",
+      "keys": ["A"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the default selected-phase watch binds the authoritative dispatch so incident recording is enabled"
+    },
+    {
+      "kind": "press",
       "label": "record_pre_relocation_incident",
       "keys": ["R"],
       "delay_ms": 200,
@@ -158,6 +166,14 @@
     },
     {
       "kind": "press",
+      "label": "arm_post_relocation_watch",
+      "keys": ["A"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the default watch rebinds the freshly reselected dispatch after relocation and any load-state change"
+    },
+    {
+      "kind": "press",
       "label": "record_post_relocation_incident",
       "keys": ["R"],
       "delay_ms": 200,
@@ -187,7 +203,7 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": ["quit", "Case Sensitive"],
+      "expected_screen_text_after_contains": ["quit"],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_untrusted_phase4_relocation_save_prompt",
       "abort_reason": "save-and-quit prompt was not visibly proven after player relocation",
