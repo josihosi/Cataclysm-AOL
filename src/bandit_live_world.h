@@ -1142,6 +1142,21 @@ struct sight_avoid_decision {
     std::vector<std::string> notes;
 };
 
+struct watch_selection_candidate {
+    tripoint_abs_omt omt;
+    bool reachable = false;
+    bool concealed = false;
+    bool two_intervening_omts_clear = false;
+    int route_cost = -1;
+};
+
+struct watch_selection_result {
+    bool valid = false;
+    tripoint_abs_omt omt;
+    int footprint_distance = -1;
+    int route_cost = -1;
+};
+
 struct shakedown_goods_pool {
     int player_carried_value = 0;
     int companion_carried_value = 0;
@@ -1346,6 +1361,9 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
 std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
+watch_selection_result select_exact_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates );
 int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,

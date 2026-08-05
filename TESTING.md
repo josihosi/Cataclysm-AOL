@@ -1053,7 +1053,14 @@ diagonal distance-3 points share one ring; empty/no-same-z returns no value, and
 not matter. Tests also cover footprint interior zero, a multi-cell nearest point that differs from
 an arbitrary anchor, mixed z-levels, and the two-intervening-OMT distance interpretation. No route,
 selection, persistence, avatar coordinate, or production behavior is changed; Mac compile/unit only.
-Next evidence class is reachable/concealed distance-3 watch-point selection.
+Phase-5 exact-ring watch selection is green on Mac: exact requested object/test link passes and
+`[bandit][live_world][watch_selection]` passes 1 case / 25 assertions under both delegated and
+coordinator runs. The pure selector requires caller-verified reachable, concealed, clear-two-OMT,
+nonnegative-route-cost candidates at exact nearest-footprint distance three, then selects lowest
+route cost and stable z/y/x. Diagonal, multi-cell, order/duplicate, every gate, and empty/wrong-z /
+interior/near/far controls pass. It performs no terrain scan, persistence, fallback, or production
+mutation; Mac compile/unit only. Next evidence class is an explicit bounded farther-or-abandon
+outcome when the exact ring is impossible.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

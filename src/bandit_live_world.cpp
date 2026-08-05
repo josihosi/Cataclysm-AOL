@@ -13318,6 +13318,34 @@ std::optional<int> target_footprint_watch_distance(
     return nearest_distance;
 }
 
+watch_selection_result select_exact_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates )
+{
+    watch_selection_result result;
+    for( const watch_selection_candidate &candidate : candidates ) {
+        if( !candidate.reachable || !candidate.concealed ||
+            !candidate.two_intervening_omts_clear || candidate.route_cost < 0 ) {
+            continue;
+        }
+        const std::optional<int> distance = target_footprint_watch_distance(
+                candidate.omt, target_footprint );
+        if( !distance || *distance != 3 ) {
+            continue;
+        }
+        if( !result.valid ||
+            std::make_tuple( candidate.route_cost, candidate.omt.z(), candidate.omt.y(),
+                             candidate.omt.x() ) <
+            std::make_tuple( result.route_cost, result.omt.z(), result.omt.y(), result.omt.x() ) ) {
+            result.valid = true;
+            result.omt = candidate.omt;
+            result.footprint_distance = *distance;
+            result.route_cost = candidate.route_cost;
+        }
+    }
+    return result;
+}
+
 int ordinary_scout_watch_standoff_omt()
 {
     return 5;

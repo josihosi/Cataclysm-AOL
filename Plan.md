@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH SELECTION NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 WATCH FALLBACK NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -450,8 +450,10 @@ the no-player-dispatcher-read and single-writer rows. Phase 4 remains open becau
 smoke/light/sound and decoy attempts are non-credit; retain them for Josef's later disposable
 playtest packet without rerunning them now. Phase 5 watch distance now has an explicit same-z
 Chebyshev metric from the nearest actual target-footprint OMT, including diagonal and multi-cell
-coverage, without avatar or arbitrary-anchor input. Next: select a reachable/concealed point on
-that exact distance-3 ring with two intervening empty OMTs when geography permits.
+coverage, without avatar or arbitrary-anchor input. A pure exact-ring selector now requires caller-
+verified reachability, concealment, a clear two-OMT approach, and nonnegative route cost, then picks
+by route cost and stable OMT order. It changes no production behavior. Next: define the explicit
+farther-watch-or-abandon result when no exact distance-3 candidate is honest.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.
