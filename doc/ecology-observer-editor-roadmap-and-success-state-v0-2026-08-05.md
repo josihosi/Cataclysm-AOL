@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / FIELD GATE GREEN / O4 WATCHES AND SAVE-PERF NEXT
+Status: ACTIVE / FIELD GATE GREEN / O4 SAVE-PERF NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -186,10 +186,19 @@ O4a the current row.
   `20260805_074635` selected natural camp `BC-E75C82`, but the bridge focused SDL helper window
   `22148` instead of render window `22114` and could not arm the ImGui watch. Permissions were
   green; the bounded receipt is non-credit and the field-tool gate remains open._
-- [ ] Emit bounded deterministic snapshot+deltas to harness artifacts and expose a run-until
+- [x] Emit bounded deterministic snapshot+deltas to harness artifacts and expose a run-until
   operation equivalent to `observe selected-operation --until phase-change-or-anomaly --deadline
-  6h --json`.
-- [ ] Integrate the six watches with existing step/play controls and transition-only trace capture.
+  6h --json`. _Behavior `13cbeeb072`: one compact watch-session JSON combines the latched watch
+  result with the deterministic 128-row delta payload; default six-hour deadlines and terminal /
+  fatal outcomes remain machine-readable without OCR._
+- [x] Integrate the six watches with existing step/play controls and transition-only trace capture.
+  _The same checkpoint adds exactly six typed presets, capture/pause/fail policy, a bounded 1-72
+  hour deadline, and `Arm + play` through the existing controller. Typed evidence, status-only
+  casualty, completion/death, timeout, and structured stale results are retained; unchanged turns
+  add no trace. Incident schema 2 includes the latched watch result. Exact Mac watch 6/63, incident
+  6/80, ecology 40/792, console 10/1,120, tiles/non-tiles compile, tiles link, and the bounded
+  review/fix/recheck are green. Private console-session latching has compile/surrounding-suite proof
+  rather than a direct unit seam._
 - [x] Add `Record ecology incident` through existing screenshot/report/archive/export seams.
   _Behavior `541932daa5`; exact Mac incident 5/71, console 9/1,116, harness 126/126, runtime
   link, and Python syntax are green after one combined review/fix pass. The action synchronously

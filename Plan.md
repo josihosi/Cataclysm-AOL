@@ -392,9 +392,13 @@ immediately redrew the selected overmap marker with debug provenance. Field atte
 success check; fix `648a509cc9` normalizes SDL2/SDL3 contracts, while `f997bbd368` keeps capture/file
 I/O outside the active ImGui callback. Query evidence is 2 considered/2 shown/26 us, trace is 2,047
 bytes with no truncation, permissions are green, and the exact screenshot/payload hashes live in
-`ecology_field_gate_receipt.json`. Live save-byte neutrality remains in O4's performance/save-growth
-row. Next: finish bounded watch/run-until breadth and that neutrality row, then use the observer in
-the smoke/light/sound Phase-4 live row.
+`ecology_field_gate_receipt.json`. Bounded watch/run-until behavior is checkpointed at
+`13cbeeb072`: exactly six typed predicates, capture/pause/fail, a default six-hour deadline,
+one-action existing-controller play, terminal/fatal latching, typed evidence deltas, and schema-2
+incident watch state. Exact Mac watch 6/63, incident 6/80, ecology 40/792, console 10/1,120,
+tiles/non-tiles compile, tiles link, and the bounded review/fix/recheck are green. Live save-byte
+neutrality remains in O4's performance/save-growth row; that row is next, before the observer is
+used in the smoke/light/sound Phase-4 live row.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

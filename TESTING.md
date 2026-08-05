@@ -829,6 +829,21 @@ intervention 2/60, all ecology 33/697, staged fixture contracts 126/126, JSON/di
 launch-only dry-run pass. A fresh read-only review found no actionable defect. This behavior-only
 checkpoint remained readiness footing until the credited field run below.
 
+Observer O4 watch/run-until behavior is green at `13cbeeb072`. The shared selected projection now
+feeds exactly six typed predicates (phase, evidence, exposure/burn, casualty, return/completion,
+and no-progress deadline), capture/pause/fail policy, a default six-hour bounded deadline, and one
+`Arm + play` action through the existing controller. Typed evidence identity makes age-only ticks
+silent; movement and visible authoritative HP changes still reset no-progress. Completion/death is
+latched once, missing identity remains anomalous, and gate/world/control staleness produces a
+structured fatal result plus pause. Compact watch-session JSON combines the latched result and
+128-row transition ring; incident schema 2 retains that watch state even for a timeout or
+status-only casualty with no delta. Exact Mac watch passes 6/63, incident 6/80, all ecology 40/792,
+and console 10/1,120. Affected tiles and non-tiles objects compile, the tiles runtime links, diff
+checks pass, and the bounded read-only review found seven concrete defects which the targeted
+recheck confirms fixed. The private console-session latch has surrounding console/compile evidence,
+not a direct unit seam. This checkpoint does not claim the still-open observer save/performance
+neutrality row or foreign-platform runtime.
+
 The field gate is green at exact runtime `648a509cc9`, run `20260805_101713`. The documented
 handoff installed only `DEBUG_CLAIRVOYANCE`; its detached child exited silently, so the exact
 reported command ran attached in the same run directory. Overmap selection bound local/loaded
