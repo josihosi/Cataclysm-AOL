@@ -476,9 +476,17 @@ now share this route consumer. Watch staging checkpoint `62e26812d6` reuses the 
 to choose distinct target-facing observer/cover tiles inside the watch OMT, bounds both living entry
 and staging pairs by the existing six-tile cohesion radius, and preserves the slots through reload
 and assembly without changing homeward staging. Exact Mac build/link, adapter 1/91, handoff 1/651,
-watch geometry 1/15, structural 51/6,785, and local-zombie 4/389 are green. Next is the narrow
-actor-specific covert disposition during stalking/observation/withdrawal, without changing general
-faction hostility.
+watch geometry 1/15, structural 51/6,785, and local-zombie 4/389 are green. Covert-disposition
+checkpoint `c23e817132` derives a neutral relationship only for each exact living schema-10 scout
+against the exact player-camp target, keeps unrelated faction hostility intact, and clears only after
+the whole surviving pair is routing home/already home, outside the footprint, and outside ordinary
+loaded reciprocal visibility. Player/allied attacks, successful hostile spell effects, actual blast
+propagation, and avatar-attributed manual turrets exit through authoritative hostility; selection,
+jams, failed spells, and automatic synthetic turrets do not. Exact Mac build/link plus covert 2/97,
+NPC-AI 3/69, magic 11/189, turret 1/2,328, and local-handoff 1/651 are green; final autoreview is
+clean. No astyle, live GUI, Linux, or Windows proof is claimed. Next is legitimate exposure/burning
+captured once in an atomic party update before generic hostility/movement, with persisted egress and
+rally ownership rather than a corrective step.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

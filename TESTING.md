@@ -1129,6 +1129,23 @@ handoff 1/651, watch geometry 1/15, structural 51/6,785, and local-zombie observ
 seed 1. `git diff --check` is clean. No GUI/live materialization screenshot or Linux/Windows runtime
 is claimed. The next evidence class is the actor-specific covert non-combat relationship.
 
+Phase-5 covert disposition is green at `c23e817132`. The exact schema-10 local structural pair gets
+one derived, actor-specific neutral relationship only toward the exact effectively player-owned camp
+target; unrelated factions and malformed/duplicate/resolved ownership fail closed. Ordinary loaded
+reciprocal visibility plus authoritative off-bubble positions control party-wide return clearance,
+including asynchronous home arrivals and atomic outing/local-handoff phase synchronization. Player
+and allied attacks exit through `npc::on_attacked`; successful hostile spell effects, actual blast
+propagation, and avatar-attributed manual multi-turrets are covered without treating selection,
+jams, failed concentration, or automatic synthetic turrets as attacks. Exact Mac build/link passes;
+`[covert_disposition]` passes 2/97, `[npc][npc_ai]` 3/69, `[magic][spell]` 11/189,
+`[vehicle][gun][magazine]` 1/2,328, and `[local_handoff]` 1/651. The final command
+`python3 /Users/josefhorvath/.codex/skills/autoreview/scripts/autoreview --mode local` exits 0 with
+no accepted/actionable findings after accepted fixes for turret attribution, failed spells,
+asynchronous home arrivals, and local-handoff phase synchronization. `git diff --check` is clean.
+`astyle` is unavailable, and no live GUI, Linux, or Windows runtime claim is made. Next evidence is
+legitimate exposure/burning processed once before generic hostility/movement with persisted egress
+and rally ownership.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.
