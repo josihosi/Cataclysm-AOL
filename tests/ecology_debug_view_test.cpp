@@ -241,6 +241,56 @@ TEST_CASE( "ecology_debug_view_enforces_exact_caps_and_forces_selection",
     CHECK( view.selected->entity_id == selected_id );
 }
 
+TEST_CASE( "ecology_debug_view_keeps_selected_entity_outside_query_region",
+           "[ecology_debug][observer][phase4]" )
+{
+    bandit_live_world::world_state world;
+    world.sites.push_back( make_site( 80, false ) );
+    add_active_outing( world.sites.front() );
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.region.enabled = true;
+    request.region.minimum = tripoint_abs_omt( -5, -5, 0 );
+    request.region.maximum = tripoint_abs_omt( 5, 5, 0 );
+    request.selected_id = dispatch_id( world.sites.front() );
+
+    const ecology_debug::view_snapshot view = ecology_debug::query_bandit_ecology( world, request );
+
+    REQUIRE( view.entities.size() == 1 );
+    CHECK( view.entities.front().id == request.selected_id );
+    REQUIRE( view.selected );
+    CHECK( view.selected->entity_id == request.selected_id );
+}
+
+TEST_CASE( "ecology_debug_view_resolves_selected_entity_by_authority_index",
+           "[ecology_debug][observer][phase4]" )
+{
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 90; ++index ) {
+        world.sites.push_back( make_site( index, false ) );
+    }
+    add_active_outing( world.sites[80] );
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.selected_id = dispatch_id( world.sites[80] );
+
+    const ecology_debug::view_snapshot selected =
+        ecology_debug::query_selected_bandit_ecology( world, request, 80 );
+
+    REQUIRE( selected.entities.size() == 1 );
+    CHECK( selected.entities.front().id == request.selected_id );
+    CHECK( selected.entities.front().authority_index == 80 );
+    CHECK( selected.metadata.candidate_count == 1 );
+    CHECK( selected.metadata.considered_count == 1 );
+    REQUIRE( selected.selected );
+    CHECK( selected.selected->entity_id == request.selected_id );
+
+    const ecology_debug::view_snapshot stale =
+        ecology_debug::query_selected_bandit_ecology( world, request, 79 );
+    CHECK( stale.entities.empty() );
+    CHECK_FALSE( stale.selected );
+}
+
 TEST_CASE( "ecology_debug_view_uses_authoritative_camp_and_active_dispatch_members",
            "[ecology_debug][observer][phase4]" )
 {

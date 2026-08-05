@@ -9,12 +9,14 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "cata_imgui.h"
 #include "city.h"
 #include "color.h"
 #include "coordinates.h"
+#include "ecology_debug_view.h"
 #include "map_scale_constants.h"
 #include "point.h"
 #include "string_id.h"
@@ -125,6 +127,18 @@ void force_quit();
 
 namespace overmap_ui
 {
+enum class ecology_filter_mode {
+    all,
+    camps,
+    dispatches,
+};
+
+enum class ecology_faction_filter_mode {
+    all,
+    bandits,
+    cannibals,
+};
+
 // drawing relevant data, e.g. what to draw.
 struct overmap_draw_data_t {
     // draw editor.
@@ -155,10 +169,31 @@ struct overmap_draw_data_t {
     point_omt_ms origin_remainder = point_omt_ms( SEEX, SEEY );
     //UI view cursor position
     tripoint_abs_omt cursor_pos = tripoint_abs_omt( -1, -1, -1 );
+    // Process-local debug observer state. This is never serialized.
+    bool ecology_observer_controls = false;
+    bool ecology_enabled = false;
+    bool ecology_pinned = false;
+    ecology_filter_mode ecology_filter = ecology_filter_mode::all;
+    ecology_faction_filter_mode ecology_faction_filter = ecology_faction_filter_mode::all;
+    bool ecology_loaded_only = false;
+    std::string ecology_selected_id;
+    std::optional<size_t> ecology_selected_authority_index;
+    ecology_debug::view_snapshot ecology_view;
+    long long ecology_last_query_turn = -1;
+    tripoint_abs_omt ecology_last_query_cursor = tripoint_abs_omt::invalid;
+    ecology_debug::query_region ecology_last_query_region;
+    ecology_filter_mode ecology_last_query_filter = ecology_filter_mode::all;
+    ecology_faction_filter_mode ecology_last_query_faction_filter =
+        ecology_faction_filter_mode::all;
+    bool ecology_last_query_loaded_only = false;
+    std::string ecology_last_query_selected_id;
     //the UI adaptor for the overmap; this can keep the overmap displayed while turns are processed
     std::shared_ptr<ui_adaptor> ui;
 
     overmap_draw_data_t() = default;
+
+    bool ecology_cache_matches( long long current_turn, const tripoint_abs_omt &query_center,
+                                const ecology_debug::query_region &region ) const;
 };
 
 #if defined(TILES)
@@ -172,6 +207,24 @@ extern tiles_redraw_info redraw_info;
 weather_type_id get_weather_at_point( const tripoint_abs_omt &pos );
 std::tuple<char, nc_color, size_t> get_note_display_info( std::string_view note );
 bool is_generated_omt( const point_abs_omt &omp );
+std::pair<std::string, nc_color> ecology_marker_display( ecology_debug::entity_kind kind );
+ecology_debug::query_filters ecology_query_filters( ecology_filter_mode filter,
+        ecology_faction_filter_mode faction_filter = ecology_faction_filter_mode::all,
+        bool loaded_only = false );
+std::vector<std::string> ecology_filter_labels( ecology_filter_mode filter,
+        ecology_faction_filter_mode faction_filter = ecology_faction_filter_mode::all,
+        bool loaded_only = false );
+point ecology_viewport_tile_counts( const point &pixel_size, const point &tile_size,
+                                    bool isometric );
+const ecology_debug::entity_marker *ecology_marker_at( const overmap_draw_data_t &data,
+        const tripoint_abs_omt &omt );
+void reconcile_ecology_selection( overmap_draw_data_t &data );
+void remember_ecology_observer_controls( const overmap_draw_data_t &data );
+void restore_ecology_observer_controls( overmap_draw_data_t &data );
+std::string ecology_observer_binary_name( std::string_view translation_catalog,
+        bool tiles_build );
+std::string ecology_observer_snapshot_json();
+std::string ecology_observer_monitor_json();
 
 } // namespace overmap_ui
 #endif // CATA_SRC_OVERMAP_UI_H
@@ -189,6 +242,7 @@ class overmap_sidebar : public cataimgui::window
         void draw_quick_reference();
         void draw_layer_info();
         void draw_debug();
+        void draw_ecology();
     public:
         int width = 0;
         int x_pos = 0;

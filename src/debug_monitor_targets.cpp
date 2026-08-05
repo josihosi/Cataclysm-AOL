@@ -288,6 +288,13 @@ const std::vector<monitor_target_entry> &all_monitor_targets()
             }
         },
         {
+            "Ecology: selected operation", "", nullptr,
+            []( std::string_view )
+            {
+                return snap::ecology_observer();
+            }
+        },
+        {
             "Math expression (math_exp)", "math expression", nullptr,
             []( std::string_view input )
             {

@@ -5485,7 +5485,7 @@ void tab_trace_view::draw_body( debug_console &host )
                                            static_cast<int>( mon_count ) );
         ImGui::SetNextItemOpen( mon_count > 0, ImGuiCond_Once );
         if( ImGui::CollapsingHeader( mon_header.c_str() ) ) {
-            draw_monitors_body();
+            draw_monitors_body( host );
         }
         ImGui::Unindent();
         ImGui::PopID();
@@ -5742,11 +5742,19 @@ void tab_trace_view::draw_body( debug_console &host )
     }
 }
 
-void tab_trace_view::draw_monitors_body()
+void tab_trace_view::draw_monitors_body( debug_console &host )
 {
     ImGui::TextWrapped( "%s", _(
                             "Snapshots fire every turn / on change / manually and are written to the "
                             "Trace tab under the DF_MONITOR category (and JSONL when enabled)." ) );
+
+    host.export_bar( "ecology snapshot",
+    []() {
+        return "```json\n" + overmap_ui::ecology_observer_snapshot_json() + "\n```";
+    },
+    []() {
+        return overmap_ui::ecology_observer_snapshot_json();
+    } );
 
     ImGui::SeparatorText( "Add monitor" );
 

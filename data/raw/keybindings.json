@@ -1399,6 +1399,47 @@
   },
   {
     "type": "keybinding",
+    "id": "ECOLOGY_SELECT",
+    "category": "OVERMAP",
+    "name": "Cycle ecology entity at cursor",
+    "bindings": [ { "input_method": "keyboard_any", "key": "[" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "ECOLOGY_FILTER",
+    "category": "OVERMAP",
+    "name": "Cycle ecology observer filter",
+    "bindings": [ { "input_method": "keyboard_any", "key": "]" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "ECOLOGY_FACTION_FILTER",
+    "category": "OVERMAP",
+    "name": "Cycle ecology faction filter",
+    "bindings": [
+      { "input_method": "keyboard_char", "key": "F" },
+      { "input_method": "keyboard_code", "key": "f", "mod": [ "shift" ] }
+    ]
+  },
+  {
+    "type": "keybinding",
+    "id": "ECOLOGY_LOADED_FILTER",
+    "category": "OVERMAP",
+    "name": "Toggle ecology loaded-only filter",
+    "bindings": [
+      { "input_method": "keyboard_char", "key": "U" },
+      { "input_method": "keyboard_code", "key": "u", "mod": [ "shift" ] }
+    ]
+  },
+  {
+    "type": "keybinding",
+    "id": "ECOLOGY_FOLLOW",
+    "category": "OVERMAP",
+    "name": "Pin or unpin selected ecology entity",
+    "bindings": [ { "input_method": "keyboard_any", "key": "\\" } ]
+  },
+  {
+    "type": "keybinding",
     "id": "TOGGLE_OVERMAP_WEATHER",
     "category": "OVERMAP",
     "name": "Toggle visible weather",

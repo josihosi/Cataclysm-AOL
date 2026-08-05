@@ -394,6 +394,13 @@ std::function<std::string()> imgui_fps()
     };
 }
 
+std::function<std::string()> ecology_observer()
+{
+    return []() {
+        return overmap_ui::ecology_observer_monitor_json();
+    };
+}
+
 std::function<std::string()> skill( skill_id sid )
 {
     return [sid]() {

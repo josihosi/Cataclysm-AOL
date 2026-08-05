@@ -26,6 +26,7 @@ struct candidate_read {
     std::string id;
     bool has_loaded_read = false;
     bool loaded = false;
+    size_t authority_index = 0;
 };
 
 entity_faction faction_for( const bandit_live_world::site_record &site )
@@ -192,6 +193,7 @@ entity_marker make_marker( const candidate_read &candidate, const query_request 
                     candidate_is_loaded( candidate, request );
     marker.provenance = request.provenance_for_entity ?
                         request.provenance_for_entity( marker.id ) : entity_provenance::natural;
+    marker.authority_index = candidate.authority_index;
     if( candidate.outing == nullptr ) {
         marker.owner = "abstract";
         marker.state = bandit_live_world::to_string( candidate.site->origin );
@@ -404,7 +406,8 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
             retained_candidates.push( std::move( candidate ) );
         }
     };
-    for( const bandit_live_world::site_record &site : world.sites ) {
+    for( size_t authority_index = 0; authority_index < world.sites.size(); ++authority_index ) {
+        const bandit_live_world::site_record &site = world.sites[authority_index];
         if( !is_supported_camp( site ) ) {
             continue;
         }
@@ -417,7 +420,7 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
         const bandit_live_world::roster_view roster = site.roster();
         if( request.filters.camps && !site.retired_empty_site && roster.valid &&
             site.origin == bandit_live_world::origin_disposition::active_hostile &&
-            roster.living_total > 0 && point_in_region( site.anchor, request.region ) ) {
+            roster.living_total > 0 ) {
             candidate_read camp;
             camp.site = &site;
             camp.kind = faction == entity_faction::bandit ? entity_kind::bandit_camp :
@@ -425,22 +428,26 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
             camp.faction = faction;
             camp.omt = site.anchor;
             camp.id = camp_id( site );
-            retain_candidate( std::move( camp ) );
+            camp.authority_index = authority_index;
+            if( point_in_region( camp.omt, request.region ) || camp.id == request.selected_id ) {
+                retain_candidate( std::move( camp ) );
+            }
         }
         const bandit_live_world::active_outing_state *outing = site.active_external_outing();
         if( request.filters.dispatches && outing != nullptr && outing->is_active() &&
             !outing_is_terminal( site, *outing ) &&
             outing_has_unresolved_survivor( site, *outing ) ) {
             const tripoint_abs_omt omt = outing_position( *outing );
-            if( point_in_region( omt, request.region ) ) {
-                candidate_read dispatch;
-                dispatch.site = &site;
-                dispatch.outing = outing;
-                dispatch.kind = faction == entity_faction::bandit ?
-                                entity_kind::bandit_dispatch : entity_kind::cannibal_dispatch;
-                dispatch.faction = faction;
-                dispatch.omt = omt;
-                dispatch.id = dispatch_id( site, *outing );
+            candidate_read dispatch;
+            dispatch.site = &site;
+            dispatch.outing = outing;
+            dispatch.kind = faction == entity_faction::bandit ?
+                            entity_kind::bandit_dispatch : entity_kind::cannibal_dispatch;
+            dispatch.faction = faction;
+            dispatch.omt = omt;
+            dispatch.id = dispatch_id( site, *outing );
+            dispatch.authority_index = authority_index;
+            if( point_in_region( omt, request.region ) || dispatch.id == request.selected_id ) {
                 retain_candidate( std::move( dispatch ) );
             }
         }
@@ -533,6 +540,69 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
     result.metadata.truncated = result.metadata.dropped_count > 0;
     result.metadata.query_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - started ).count();
+    return result;
+}
+
+view_snapshot query_selected_bandit_ecology( const bandit_live_world::world_state &world,
+        const query_request &request, size_t authority_index )
+{
+    view_snapshot result;
+    if( !request.enabled || request.selected_id.empty() || authority_index >= world.sites.size() ) {
+        return result;
+    }
+
+    const bandit_live_world::site_record &site = world.sites[authority_index];
+    if( !is_supported_camp( site ) ) {
+        return result;
+    }
+    const entity_faction faction = faction_for( site );
+    const bool faction_enabled = faction == entity_faction::bandit ?
+                                 request.filters.bandits : request.filters.cannibals;
+    if( !faction_enabled ) {
+        return result;
+    }
+
+    std::optional<candidate_read> candidate;
+    const bandit_live_world::roster_view roster = site.roster();
+    if( request.filters.camps && request.selected_id == camp_id( site ) &&
+        !site.retired_empty_site && roster.valid &&
+        site.origin == bandit_live_world::origin_disposition::active_hostile &&
+        roster.living_total > 0 ) {
+        candidate.emplace();
+        candidate->site = &site;
+        candidate->kind = faction == entity_faction::bandit ? entity_kind::bandit_camp :
+                          entity_kind::cannibal_camp;
+        candidate->faction = faction;
+        candidate->omt = site.anchor;
+        candidate->id = camp_id( site );
+    } else if( request.filters.dispatches ) {
+        const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+        if( outing != nullptr && outing->is_active() && !outing_is_terminal( site, *outing ) &&
+            outing_has_unresolved_survivor( site, *outing ) &&
+            request.selected_id == dispatch_id( site, *outing ) ) {
+            candidate.emplace();
+            candidate->site = &site;
+            candidate->outing = outing;
+            candidate->kind = faction == entity_faction::bandit ?
+                              entity_kind::bandit_dispatch : entity_kind::cannibal_dispatch;
+            candidate->faction = faction;
+            candidate->omt = outing_position( *outing );
+            candidate->id = dispatch_id( site, *outing );
+        }
+    }
+    if( !candidate ) {
+        return result;
+    }
+
+    candidate->authority_index = authority_index;
+    if( request.filters.loaded_only && !candidate_is_loaded( *candidate, request ) ) {
+        return result;
+    }
+    result.entities.push_back( make_marker( *candidate, request ) );
+    result.selected = make_selected_detail( *candidate, request );
+    result.metadata.candidate_count = 1;
+    result.metadata.considered_count = 1;
+    result.metadata.emitted_count = 1;
     return result;
 }
 

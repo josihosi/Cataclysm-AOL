@@ -82,6 +82,8 @@ struct entity_marker {
     std::string state;
     entity_provenance provenance = entity_provenance::natural;
     int generation = 0;
+    // Process-local owner token. Never serialized or persisted.
+    std::optional<size_t> authority_index;
 };
 
 struct member_detail {
@@ -117,6 +119,7 @@ struct query_metadata {
     size_t event_limit = delta_cap;
     bool truncated = false;
     long long query_microseconds = 0;
+    long long render_microseconds = 0;
     size_t trace_bytes = 0;
 };
 
@@ -128,6 +131,9 @@ struct view_snapshot {
 
 view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
                                     const query_request &request );
+
+view_snapshot query_selected_bandit_ecology( const bandit_live_world::world_state &world,
+        const query_request &request, size_t authority_index );
 
 std::string to_string( entity_kind kind );
 std::string to_string( entity_faction faction );

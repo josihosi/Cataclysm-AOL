@@ -3238,6 +3238,23 @@ void cata_tiles::draw_om( const point &dest, const tripoint_abs_omt &center_abs_
         }
     }
 
+    if( g->overmap_data.ecology_enabled ) {
+        for( const ecology_debug::entity_marker &entity :
+             g->overmap_data.ecology_view.entities ) {
+            if( entity.omt.z() != center_pos.z() || !overmap_area.contains( entity.omt ) ||
+                overmap_ui::ecology_marker_at( g->overmap_data, entity.omt ) != &entity ) {
+                continue;
+            }
+            const std::pair<std::string, nc_color> display =
+                overmap_ui::ecology_marker_display( entity.kind );
+            const std::string note_id = "note_" + display.first + "_" +
+                                        string_from_color( display.second );
+            draw_from_id_string( note_id, TILE_CATEGORY::OVERMAP_NOTE, "overmap_note",
+                                 global_omt_to_draw_position( entity.omt ), 0, 0,
+                                 lit_level::LIT, false );
+        }
+    }
+
     if( uistate.place_terrain ) {
         const oter_str_id &terrain_id = uistate.place_terrain->id;
         const oter_t &terrain = *terrain_id;

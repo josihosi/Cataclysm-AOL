@@ -36,11 +36,13 @@
 #include "debug.h"
 #include "debug_menu.h"
 #include "display.h"
+#include "ecology_debug_snapshot.h"
 #include "enum_conversions.h"
 #include "game.h"
 #include "game_constants.h"
 #include "game_ui.h"
 #include "generic_factory.h"
+#include "get_version.h"
 #include "horde_entity.h"
 #include "horde_map.h"
 #include "imgui/imgui.h"
@@ -66,6 +68,7 @@
 #include "overmap.h"
 #include "overmap_debug.h"
 #include "overmap_types.h"
+#include "path_info.h"
 #include "overmapbuffer.h"
 #include "point.h"
 #include "regional_settings.h"
@@ -88,9 +91,11 @@
 #include "vpart_position.h"
 #include "weather_gen.h"
 #include "weather_type.h"
+#include "worldfactory.h"
 
 #ifdef TILES
 #include "cached_options.h"
+#include "cata_tiles.h"
 #endif // TILES
 
 enum class cube_direction : int;
@@ -125,6 +130,462 @@ static constexpr int max_note_display_length = 45;
 static const int npm_width = 3;
 /** Note preview map height without borders. Odd number. */
 static const int npm_height = 3;
+
+std::pair<std::string, nc_color> overmap_ui::ecology_marker_display(
+    ecology_debug::entity_kind kind )
+{
+    switch( kind ) {
+        case ecology_debug::entity_kind::bandit_camp:
+            return { "B", c_light_red };
+        case ecology_debug::entity_kind::cannibal_camp:
+            return { "C", c_red };
+        case ecology_debug::entity_kind::bandit_dispatch:
+            return { "b", c_yellow };
+        case ecology_debug::entity_kind::cannibal_dispatch:
+            return { "c", c_pink };
+    }
+    return { "?", c_white };
+}
+
+const ecology_debug::entity_marker *overmap_ui::ecology_marker_at(
+    const overmap_draw_data_t &data, const tripoint_abs_omt &omt )
+{
+    const ecology_debug::entity_marker *first = nullptr;
+    for( const ecology_debug::entity_marker &entity : data.ecology_view.entities ) {
+        if( entity.omt != omt ) {
+            continue;
+        }
+        if( first == nullptr ) {
+            first = &entity;
+        }
+        if( entity.id == data.ecology_selected_id ) {
+            return &entity;
+        }
+    }
+    return first;
+}
+
+void overmap_ui::reconcile_ecology_selection( overmap_draw_data_t &data )
+{
+    const auto selected = std::find_if( data.ecology_view.entities.begin(),
+    data.ecology_view.entities.end(), [&data]( const ecology_debug::entity_marker & entity ) {
+        return entity.id == data.ecology_selected_id;
+    } );
+    if( selected == data.ecology_view.entities.end() ||
+        ( !data.ecology_pinned && selected->omt != data.cursor_pos ) ) {
+        data.ecology_selected_id.clear();
+        data.ecology_pinned = false;
+    } else if( data.ecology_pinned && selected->omt != data.cursor_pos ) {
+        data.cursor_pos = selected->omt;
+    }
+}
+
+static std::string ecology_filter_name( overmap_ui::ecology_filter_mode filter )
+{
+    switch( filter ) {
+        case overmap_ui::ecology_filter_mode::all:
+            return _( "all" );
+        case overmap_ui::ecology_filter_mode::camps:
+            return _( "camps" );
+        case overmap_ui::ecology_filter_mode::dispatches:
+            return _( "dispatches" );
+    }
+    return _( "all" );
+}
+
+static std::string ecology_faction_filter_name(
+    overmap_ui::ecology_faction_filter_mode filter )
+{
+    switch( filter ) {
+        case overmap_ui::ecology_faction_filter_mode::all:
+            return _( "all factions" );
+        case overmap_ui::ecology_faction_filter_mode::bandits:
+            return _( "bandits" );
+        case overmap_ui::ecology_faction_filter_mode::cannibals:
+            return _( "cannibals" );
+    }
+    return _( "all factions" );
+}
+
+ecology_debug::query_filters overmap_ui::ecology_query_filters( ecology_filter_mode filter,
+        ecology_faction_filter_mode faction_filter, bool loaded_only )
+{
+    ecology_debug::query_filters filters;
+    filters.camps = filter != ecology_filter_mode::dispatches;
+    filters.dispatches = filter != ecology_filter_mode::camps;
+    filters.bandits = faction_filter != ecology_faction_filter_mode::cannibals;
+    filters.cannibals = faction_filter != ecology_faction_filter_mode::bandits;
+    filters.loaded_only = loaded_only;
+    return filters;
+}
+
+std::vector<std::string> overmap_ui::ecology_filter_labels( ecology_filter_mode filter,
+        ecology_faction_filter_mode faction_filter, bool loaded_only )
+{
+    std::vector<std::string> labels;
+    if( filter != ecology_filter_mode::dispatches ) {
+        labels.emplace_back( "camps" );
+    }
+    if( filter != ecology_filter_mode::camps ) {
+        labels.emplace_back( "dispatches" );
+    }
+    if( faction_filter != ecology_faction_filter_mode::cannibals ) {
+        labels.emplace_back( "bandits" );
+    }
+    if( faction_filter != ecology_faction_filter_mode::bandits ) {
+        labels.emplace_back( "cannibals" );
+    }
+    labels.emplace_back( loaded_only ? "loaded" : "loaded+unloaded" );
+    return labels;
+}
+
+namespace
+{
+struct ecology_observer_control_state {
+    overmap_ui::ecology_filter_mode filter = overmap_ui::ecology_filter_mode::all;
+    overmap_ui::ecology_faction_filter_mode faction_filter =
+        overmap_ui::ecology_faction_filter_mode::all;
+    bool loaded_only = false;
+    std::string world_id;
+    const WORLD *world_instance = nullptr;
+    std::string selected_id;
+    std::optional<size_t> selected_authority_index;
+    bool pinned = false;
+};
+
+ecology_observer_control_state &ecology_observer_controls()
+{
+    static ecology_observer_control_state controls;
+    return controls;
+}
+
+std::string current_ecology_world_id()
+{
+    return world_generator && world_generator->active_world ?
+           world_generator->active_world->world_name + "\n" +
+           world_generator->active_world->timestamp : std::string();
+}
+
+void reconcile_ecology_observer_world( ecology_observer_control_state &controls )
+{
+    const std::string current_world = current_ecology_world_id();
+    const WORLD *current_instance = world_generator ? world_generator->active_world : nullptr;
+    if( controls.world_instance != current_instance || controls.world_id != current_world ) {
+        controls.world_instance = current_instance;
+        controls.world_id = current_world;
+        controls.selected_id.clear();
+        controls.selected_authority_index.reset();
+        controls.pinned = false;
+    }
+}
+} // namespace
+
+void overmap_ui::remember_ecology_observer_controls( const overmap_draw_data_t &data )
+{
+    ecology_observer_control_state &controls = ecology_observer_controls();
+    reconcile_ecology_observer_world( controls );
+    controls.filter = data.ecology_filter;
+    controls.faction_filter = data.ecology_faction_filter;
+    controls.loaded_only = data.ecology_loaded_only;
+    controls.selected_id = data.ecology_selected_id;
+    controls.selected_authority_index.reset();
+    const auto selected = std::find_if( data.ecology_view.entities.begin(),
+    data.ecology_view.entities.end(), [&data]( const ecology_debug::entity_marker & entity ) {
+        return entity.id == data.ecology_selected_id;
+    } );
+    if( selected != data.ecology_view.entities.end() ) {
+        controls.selected_authority_index = selected->authority_index;
+    }
+    controls.pinned = data.ecology_pinned;
+}
+
+void overmap_ui::restore_ecology_observer_controls( overmap_draw_data_t &data )
+{
+    ecology_observer_control_state &controls = ecology_observer_controls();
+    reconcile_ecology_observer_world( controls );
+    data.ecology_filter = controls.filter;
+    data.ecology_faction_filter = controls.faction_filter;
+    data.ecology_loaded_only = controls.loaded_only;
+    data.ecology_selected_id = controls.selected_id;
+    data.ecology_selected_authority_index = controls.selected_authority_index;
+    data.ecology_pinned = controls.pinned;
+}
+
+point overmap_ui::ecology_viewport_tile_counts( const point &pixel_size,
+        const point &tile_size, bool isometric )
+{
+    const int tile_width = std::max( 1, tile_size.x );
+    const int tile_height = std::max( 1, tile_size.y );
+    if( isometric ) {
+        return point( ( pixel_size.x * 2 + tile_width - 1 ) / tile_width + 1,
+                      ( pixel_size.y * 4 + tile_width - 1 ) / tile_width + 1 );
+    }
+    return point( ( pixel_size.x + tile_width - 1 ) / tile_width,
+                  ( pixel_size.y + tile_height - 1 ) / tile_height );
+}
+
+static ecology_debug::query_region ecology_query_region( const tripoint_abs_omt &center )
+{
+    int visible_columns = OVERMAP_WINDOW_WIDTH;
+    int visible_rows = OVERMAP_WINDOW_HEIGHT;
+#if defined(TILES)
+    if( use_tiles && use_tiles_overmap && overmap_tilecontext ) {
+        const int pixel_width = OVERMAP_WINDOW_TERM_WIDTH * fontwidth;
+        const int pixel_height = OVERMAP_WINDOW_TERM_HEIGHT * fontheight;
+        const point visible = overmap_ui::ecology_viewport_tile_counts(
+                                  point( pixel_width, pixel_height ),
+                                  point( overmap_tilecontext->get_tile_width(),
+                                         overmap_tilecontext->get_tile_height() ),
+                                  overmap_tilecontext->is_isometric() );
+        visible_columns = visible.x;
+        visible_rows = visible.y;
+    }
+#endif
+    const int horizontal_radius = std::max( 1, visible_columns / 2 ) + 1;
+    const int vertical_radius = std::max( 1, visible_rows / 2 ) + 1;
+    ecology_debug::query_region region;
+    region.enabled = true;
+    region.minimum = tripoint_abs_omt( center.x() - horizontal_radius,
+                                      center.y() - vertical_radius, center.z() );
+    region.maximum = tripoint_abs_omt( center.x() + horizontal_radius,
+                                      center.y() + vertical_radius, center.z() );
+    return region;
+}
+
+static bool same_ecology_region( const ecology_debug::query_region &lhs,
+                                 const ecology_debug::query_region &rhs )
+{
+    return lhs.enabled == rhs.enabled && lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum;
+}
+
+static bool ecology_region_contains( const ecology_debug::query_region &region,
+                                     const tripoint_abs_omt &point )
+{
+    return !region.enabled ||
+           ( point.x() >= region.minimum.x() && point.x() <= region.maximum.x() &&
+             point.y() >= region.minimum.y() && point.y() <= region.maximum.y() &&
+             point.z() >= region.minimum.z() && point.z() <= region.maximum.z() );
+}
+
+static tripoint_abs_omt ecology_effective_query_center(
+    const overmap_ui::overmap_draw_data_t &data )
+{
+    if( data.fast_traveling ) {
+#if defined(TILES)
+        if( use_tiles && use_tiles_overmap ) {
+            return get_avatar().pos_abs_omt();
+        }
+#endif
+        if( !get_avatar().omt_path.empty() ) {
+            return get_avatar().omt_path.back();
+        }
+    }
+    return data.cursor_pos;
+}
+
+bool overmap_ui::overmap_draw_data_t::ecology_cache_matches(
+    long long current_turn, const tripoint_abs_omt &query_center,
+    const ecology_debug::query_region &region ) const
+{
+    return ecology_last_query_turn == current_turn && query_center == ecology_last_query_cursor &&
+           ecology_filter == ecology_last_query_filter &&
+           ecology_faction_filter == ecology_last_query_faction_filter &&
+           ecology_loaded_only == ecology_last_query_loaded_only &&
+           same_ecology_region( region, ecology_last_query_region ) &&
+           ecology_selected_id == ecology_last_query_selected_id;
+}
+
+static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_request request,
+        const std::optional<size_t> selected_authority_index = std::nullopt )
+{
+    const auto query_started = std::chrono::steady_clock::now();
+    if( selected_authority_index ) {
+        const auto find_loaded_npc = []( character_id npc_id ) {
+            npc *guy = g->find_npc( npc_id );
+            return guy != nullptr && guy->is_active() ? guy : nullptr;
+        };
+        request.member_is_loaded = [&find_loaded_npc]( character_id npc_id ) {
+            return find_loaded_npc( npc_id ) != nullptr;
+        };
+        request.read_selected_member = [&find_loaded_npc]( character_id npc_id ) {
+            const npc *guy = find_loaded_npc( npc_id );
+            if( guy == nullptr ) {
+                return std::optional<ecology_debug::runtime_member_read>();
+            }
+            return std::optional<ecology_debug::runtime_member_read>(
+                       ecology_debug::runtime_member_read {
+                           guy->get_name(), guy->hp_percentage(), true
+                       } );
+        };
+        ecology_debug::view_snapshot result = ecology_debug::query_selected_bandit_ecology(
+                overmap_buffer.global_state.bandit_live_world, request, *selected_authority_index );
+        result.metadata.query_microseconds =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - query_started ).count();
+        return result;
+    }
+
+    std::map<character_id, npc *> active_npcs;
+    for( npc &guy : g->all_npcs() ) {
+        active_npcs.emplace( guy.getID(), &guy );
+    }
+    const auto find_loaded_npc = [&active_npcs]( character_id npc_id ) {
+        const auto found = active_npcs.find( npc_id );
+        return found == active_npcs.end() ? nullptr : found->second;
+    };
+    request.member_is_loaded = [&find_loaded_npc]( character_id npc_id ) {
+        return find_loaded_npc( npc_id ) != nullptr;
+    };
+    request.read_selected_member = [&find_loaded_npc]( character_id npc_id ) {
+        const npc *guy = find_loaded_npc( npc_id );
+        if( guy == nullptr ) {
+            return std::optional<ecology_debug::runtime_member_read>();
+        }
+        return std::optional<ecology_debug::runtime_member_read>(
+                   ecology_debug::runtime_member_read { guy->get_name(), guy->hp_percentage(), true } );
+    };
+    ecology_debug::view_snapshot result = ecology_debug::query_bandit_ecology(
+            overmap_buffer.global_state.bandit_live_world, request );
+    result.metadata.query_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - query_started ).count();
+    return result;
+}
+
+std::string overmap_ui::ecology_observer_binary_name( std::string_view translation_catalog,
+        bool tiles_build )
+{
+    std::string result = translation_catalog.find( "cataclysm-tlg" ) != std::string_view::npos ?
+                         "cataclysm-tlg" : "cataclysm";
+    if( tiles_build ) {
+        result += "-tiles";
+    }
+    return result;
+}
+
+static std::string ecology_observer_json( bool monitor )
+{
+    const avatar &player_character = get_avatar();
+    const tripoint_abs_omt player_omt = player_character.pos_abs_omt();
+    ecology_debug::query_request request;
+    request.enabled = player_character.has_trait( trait_DEBUG_CLAIRVOYANCE );
+    request.now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    request.region.enabled = true;
+    request.region.minimum = tripoint_abs_omt( player_omt.x() - 60, player_omt.y() - 60,
+                             -OVERMAP_DEPTH );
+    request.region.maximum = tripoint_abs_omt( player_omt.x() + 60, player_omt.y() + 60,
+                             OVERMAP_HEIGHT );
+    overmap_ui::overmap_draw_data_t observer_data;
+    overmap_ui::restore_ecology_observer_controls( observer_data );
+    request.selected_id = observer_data.ecology_selected_id;
+    request.filters = overmap_ui::ecology_query_filters( observer_data.ecology_filter,
+                      observer_data.ecology_faction_filter, observer_data.ecology_loaded_only );
+
+    ecology_debug::view_snapshot view;
+    if( request.enabled && !monitor ) {
+        view = query_live_ecology( request );
+    } else if( request.enabled && !request.selected_id.empty() &&
+               observer_data.ecology_selected_authority_index ) {
+        view = query_live_ecology( request, observer_data.ecology_selected_authority_index );
+    }
+    ecology_debug::snapshot_context context;
+    context.commit = getVersionString();
+#if defined(TILES)
+    constexpr bool tiles_build = true;
+#else
+    constexpr bool tiles_build = false;
+#endif
+    context.binary = overmap_ui::ecology_observer_binary_name( PATH_INFO::lang_file(), tiles_build );
+    context.calendar_turn = std::to_string(
+                                to_turns<long long>( calendar::turn - calendar::turn_zero ) );
+    context.timestamp = to_string( calendar::turn );
+    context.player_omt = player_omt;
+    context.region = request.region;
+    const auto selected_marker = std::find_if( view.entities.begin(), view.entities.end(),
+    [&request]( const ecology_debug::entity_marker & entity ) {
+        return entity.id == request.selected_id;
+    } );
+    context.selected_outside_region_included = selected_marker != view.entities.end() &&
+            !ecology_region_contains( request.region, selected_marker->omt );
+    context.filters = request.filters;
+    context.filter_labels = overmap_ui::ecology_filter_labels( observer_data.ecology_filter,
+                            observer_data.ecology_faction_filter, observer_data.ecology_loaded_only );
+    context.selected_id = request.selected_id;
+    const ecology_debug::view_snapshot monitor_view = monitor ?
+            ecology_debug::selected_monitor_projection( view, request.selected_id ) :
+            ecology_debug::view_snapshot();
+    return monitor ? ecology_debug::serialize_monitor_snapshot( monitor_view, context ) :
+           ecology_debug::serialize_sized_snapshot( view, context );
+}
+
+std::string overmap_ui::ecology_observer_snapshot_json()
+{
+    return ecology_observer_json( false );
+}
+
+std::string overmap_ui::ecology_observer_monitor_json()
+{
+    return ecology_observer_json( true );
+}
+
+static void refresh_ecology_view( overmap_ui::overmap_draw_data_t &data )
+{
+    avatar &player_character = get_avatar();
+    const bool enabled = data.ecology_observer_controls && !data.fast_traveling &&
+                         player_character.has_trait( trait_DEBUG_CLAIRVOYANCE );
+    data.ecology_enabled = enabled;
+    if( !enabled ) {
+        data.ecology_view = ecology_debug::view_snapshot();
+        return;
+    }
+
+    tripoint_abs_omt query_center = ecology_effective_query_center( data );
+    const bool center_changed = query_center != data.ecology_last_query_cursor;
+    if( center_changed && !data.ecology_pinned ) {
+        data.ecology_selected_id.clear();
+    }
+
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    request.region = ecology_query_region( query_center );
+    request.filters = overmap_ui::ecology_query_filters( data.ecology_filter,
+                      data.ecology_faction_filter, data.ecology_loaded_only );
+    request.selected_id = data.ecology_selected_id;
+
+    const long long current_turn = to_turns<long long>( calendar::turn - calendar::turn_zero );
+    if( data.ecology_cache_matches( current_turn, query_center, request.region ) ) {
+        return;
+    }
+
+    data.ecology_view = query_live_ecology( request );
+    const tripoint_abs_omt previous_query_center = query_center;
+    overmap_ui::reconcile_ecology_selection( data );
+    query_center = ecology_effective_query_center( data );
+    if( query_center != previous_query_center ) {
+        request.region = ecology_query_region( query_center );
+        request.selected_id = data.ecology_selected_id;
+        data.ecology_view = query_live_ecology( request );
+        overmap_ui::reconcile_ecology_selection( data );
+    }
+    if( data.ecology_selected_id.empty() && !data.fast_traveling ) {
+        const ecology_debug::entity_marker *at_cursor = overmap_ui::ecology_marker_at(
+                    data, data.cursor_pos );
+        if( at_cursor != nullptr ) {
+            data.ecology_selected_id = at_cursor->id;
+            request.selected_id = data.ecology_selected_id;
+            data.ecology_view = query_live_ecology( request );
+        }
+    }
+
+    data.ecology_last_query_turn = current_turn;
+    data.ecology_last_query_cursor = query_center;
+    data.ecology_last_query_region = request.region;
+    data.ecology_last_query_filter = data.ecology_filter;
+    data.ecology_last_query_faction_filter = data.ecology_faction_filter;
+    data.ecology_last_query_loaded_only = data.ecology_loaded_only;
+    data.ecology_last_query_selected_id = data.ecology_selected_id;
+    overmap_ui::remember_ecology_observer_controls( data );
+}
 
 //forwards to cataimgui::draw_colored_text with automatic wrapping
 void overmap_sidebar::draw_sidebar_text( const std::string_view &original_text,
@@ -180,6 +641,10 @@ void overmap_sidebar::draw_controls()
         if( debug_info ) {
             draw_debug();
         }
+    }
+    if( draw_data.ecology_enabled ) {
+        ImGui::Separator();
+        draw_ecology();
     }
     ImGui::EndChild();
 }
@@ -406,6 +871,91 @@ void overmap_sidebar::draw_debug()
             }
             draw_sidebar_text( string_format( "Horde, population: %d", horde_size ), c_white );
         }
+    }
+}
+
+void overmap_sidebar::draw_ecology()
+{
+    draw_sidebar_text( _( "Ecology observer" ), c_white );
+    draw_sidebar_text( string_format( _( "Filter: %s / %s / %s" ),
+                                      ecology_filter_name( draw_data.ecology_filter ),
+                                      ecology_faction_filter_name( draw_data.ecology_faction_filter ),
+                                      draw_data.ecology_loaded_only ? _( "loaded" ) : _( "any load state" ) ),
+                       c_light_gray );
+    draw_sidebar_text( _( "B bandit camp" ), c_light_red );
+    draw_sidebar_text( _( "C cannibal camp" ), c_red );
+    draw_sidebar_text( _( "b bandit dispatch" ), c_yellow );
+    draw_sidebar_text( _( "c cannibal dispatch" ), c_pink );
+    print_hint( "ECOLOGY_FILTER", c_light_blue );
+    print_hint( "ECOLOGY_FACTION_FILTER", c_light_blue );
+    print_hint( "ECOLOGY_LOADED_FILTER", draw_data.ecology_loaded_only ? c_pink : c_light_blue );
+    print_hint( "ECOLOGY_SELECT", c_light_blue );
+    print_hint( "ECOLOGY_FOLLOW", draw_data.ecology_pinned ? c_pink : c_light_blue );
+
+    const ecology_debug::query_metadata &metadata = draw_data.ecology_view.metadata;
+    draw_sidebar_text( string_format( _( "Observer: %d considered, %d shown, %lld us" ),
+                                      static_cast<int>( metadata.considered_count ),
+                                      static_cast<int>( metadata.emitted_count ),
+                                      metadata.query_microseconds ),
+                       metadata.truncated ? c_yellow : c_dark_gray );
+    if( metadata.truncated ) {
+        draw_sidebar_text( string_format( _( "Truncated: %d dropped" ),
+                                          static_cast<int>( metadata.dropped_count ) ),
+                           c_yellow );
+    }
+
+    const auto selected_marker = std::find_if( draw_data.ecology_view.entities.begin(),
+    draw_data.ecology_view.entities.end(), [this]( const ecology_debug::entity_marker & entity ) {
+        return entity.id == draw_data.ecology_selected_id;
+    } );
+    if( selected_marker == draw_data.ecology_view.entities.end() ) {
+        draw_sidebar_text( _( "No ecology entity selected." ), c_dark_gray );
+        return;
+    }
+
+    draw_sidebar_text( string_format( "%s  %s", selected_marker->alias, selected_marker->id ),
+                       c_white );
+    draw_sidebar_text( string_format( _( "%s / %s / %s" ),
+                                      ecology_debug::to_string( selected_marker->kind ),
+                                      selected_marker->owner,
+                                      selected_marker->loaded ? _( "loaded" ) : _( "unloaded" ) ),
+                       c_light_gray );
+    draw_sidebar_text( string_format( _( "State: %s; provenance: %s" ), selected_marker->state,
+                                      ecology_debug::to_string( selected_marker->provenance ) ),
+                       c_light_gray );
+    if( !draw_data.ecology_view.selected ) {
+        return;
+    }
+    const ecology_debug::selected_detail &detail = *draw_data.ecology_view.selected;
+    draw_sidebar_text( string_format( _( "Source: %s" ), detail.source_camp_id ), c_light_gray );
+    draw_sidebar_text( string_format( _( "Phase: %s" ), detail.phase ), c_light_gray );
+    if( detail.last_transition_minutes >= 0 ) {
+        draw_sidebar_text( string_format( _( "Last transition: %d (%s)" ),
+                                          detail.last_transition_minutes,
+                                          detail.last_transition_reason ), c_light_gray );
+    }
+    if( !detail.blocked_reason.empty() ) {
+        draw_sidebar_text( string_format( _( "Blocked: %s" ), detail.blocked_reason ), c_yellow );
+    }
+    if( !detail.evidence_reason.empty() ) {
+        draw_sidebar_text( string_format( _( "Evidence: %s; age %d min" ), detail.evidence_reason,
+                                          detail.evidence_age_minutes ), c_light_gray );
+    }
+    if( detail.next_deadline_minutes >= 0 ) {
+        draw_sidebar_text( string_format( _( "Next deadline: %d" ), detail.next_deadline_minutes ),
+                           c_light_gray );
+    }
+    draw_sidebar_text( string_format( _( "Destination: %s; route %d OMTs" ),
+                                      detail.destination.to_string(),
+                                      static_cast<int>( detail.route.size() ) ),
+                       c_light_gray );
+    for( const ecology_debug::member_detail &member : detail.members ) {
+        const std::string name = member.name.empty() ?
+                                 string_format( "npc#%d", member.npc_id.get_value() ) : member.name;
+        const std::string hp = member.hp_percent ? std::to_string( *member.hp_percent ) + "%" : "?";
+        draw_sidebar_text( string_format( _( "- %s [%d] HP %s; %s%s" ), name,
+                                          member.npc_id.get_value(), hp, member.status,
+                                          member.loaded ? _( "; loaded" ) : "" ), c_light_gray );
     }
 }
 
@@ -1119,6 +1669,15 @@ static void draw_ascii( const catacurses::window &w, overmap_draw_data_t &data )
             oter_display_args oter_args( vision );
             std::tie( ter_sym, ter_color ) = oter_symbol_and_color( omp, oter_args, oter_opts, &lru_cache );
 
+            if( data.ecology_enabled && omp != player_character.pos_abs_omt() ) {
+                const ecology_debug::entity_marker *ecology_marker =
+                    overmap_ui::ecology_marker_at( data, omp );
+                if( ecology_marker != nullptr ) {
+                    std::tie( ter_sym, ter_color ) =
+                        overmap_ui::ecology_marker_display( ecology_marker->kind );
+                }
+            }
+
             // Are we debugging monster groups?
             if( blink && uistate.overmap_debug_mongroup ) {
                 // TODO Check if this tile is a target of the currently highlighted horde.
@@ -1321,6 +1880,7 @@ tiles_redraw_info redraw_info;
 static void draw( overmap_draw_data_t &data )
 {
     cata_assert( static_cast<bool>( data.ui ) );
+    refresh_ecology_view( data );
 #if defined( TILES )
     if( use_tiles && use_tiles_overmap ) {
         redraw_info = tiles_redraw_info { data.cursor_pos, uistate.overmap_show_overlays };
@@ -2114,6 +2674,11 @@ static tripoint_abs_omt display()
     if( select != tripoint_abs_omt( -1, -1, -1 ) ) {
         curs = select;
     }
+    if( data.ecology_observer_controls ) {
+        overmap_ui::restore_ecology_observer_controls( data );
+    }
+    data.ecology_enabled = data.ecology_observer_controls &&
+                           get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE );
     // Configure input context for navigating the map.
     ictxt.register_action( "ANY_INPUT" );
     ictxt.register_directions();
@@ -2155,6 +2720,13 @@ static tripoint_abs_omt display()
     ictxt.register_action( "EXPAND_OVERMAP_SIDEBAR_HEADERS" );
     ictxt.register_action( "TOGGLE_FAST_TRAVEL" );
     ictxt.register_action( "MISSIONS" );
+    if( data.ecology_enabled ) {
+        ictxt.register_action( "ECOLOGY_FILTER" );
+        ictxt.register_action( "ECOLOGY_FACTION_FILTER" );
+        ictxt.register_action( "ECOLOGY_LOADED_FILTER" );
+        ictxt.register_action( "ECOLOGY_SELECT" );
+        ictxt.register_action( "ECOLOGY_FOLLOW" );
+    }
 
     if( data.debug_editor ) {
         ictxt.register_action( "PLACE_TERRAIN" );
@@ -2347,6 +2919,65 @@ static tripoint_abs_omt display()
             uistate.overmap_show_map_notes = !uistate.overmap_show_map_notes;
         } else if( action == "TOGGLE_HORDES" ) {
             uistate.overmap_show_hordes = !uistate.overmap_show_hordes;
+        } else if( action == "ECOLOGY_FILTER" && data.ecology_enabled ) {
+            switch( data.ecology_filter ) {
+                case overmap_ui::ecology_filter_mode::all:
+                    data.ecology_filter = overmap_ui::ecology_filter_mode::camps;
+                    break;
+                case overmap_ui::ecology_filter_mode::camps:
+                    data.ecology_filter = overmap_ui::ecology_filter_mode::dispatches;
+                    break;
+                case overmap_ui::ecology_filter_mode::dispatches:
+                    data.ecology_filter = overmap_ui::ecology_filter_mode::all;
+                    break;
+            }
+            overmap_ui::remember_ecology_observer_controls( data );
+        } else if( action == "ECOLOGY_FACTION_FILTER" && data.ecology_enabled ) {
+            switch( data.ecology_faction_filter ) {
+                case overmap_ui::ecology_faction_filter_mode::all:
+                    data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::bandits;
+                    break;
+                case overmap_ui::ecology_faction_filter_mode::bandits:
+                    data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::cannibals;
+                    break;
+                case overmap_ui::ecology_faction_filter_mode::cannibals:
+                    data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::all;
+                    break;
+            }
+            overmap_ui::remember_ecology_observer_controls( data );
+        } else if( action == "ECOLOGY_LOADED_FILTER" && data.ecology_enabled ) {
+            data.ecology_loaded_only = !data.ecology_loaded_only;
+            overmap_ui::remember_ecology_observer_controls( data );
+        } else if( action == "ECOLOGY_SELECT" && data.ecology_enabled ) {
+            std::vector<const ecology_debug::entity_marker *> at_cursor;
+            for( const ecology_debug::entity_marker &entity : data.ecology_view.entities ) {
+                if( entity.omt == curs ) {
+                    at_cursor.push_back( &entity );
+                }
+            }
+            if( !at_cursor.empty() ) {
+                const auto current = std::find_if( at_cursor.begin(), at_cursor.end(),
+                [&data]( const ecology_debug::entity_marker * entity ) {
+                    return entity->id == data.ecology_selected_id;
+                } );
+                const size_t next = current == at_cursor.end() ? 0 :
+                                    ( static_cast<size_t>( std::distance( at_cursor.begin(), current ) ) + 1 ) %
+                                    at_cursor.size();
+                data.ecology_selected_id = at_cursor[next]->id;
+                overmap_ui::remember_ecology_observer_controls( data );
+            }
+        } else if( action == "ECOLOGY_FOLLOW" && data.ecology_enabled ) {
+            const auto selected_entity = std::find_if( data.ecology_view.entities.begin(),
+            data.ecology_view.entities.end(), [&data]( const ecology_debug::entity_marker & entity ) {
+                return entity.id == data.ecology_selected_id;
+            } );
+            if( selected_entity != data.ecology_view.entities.end() ) {
+                data.ecology_pinned = !data.ecology_pinned;
+                if( data.ecology_pinned ) {
+                    curs = selected_entity->omt;
+                }
+                overmap_ui::remember_ecology_observer_controls( data );
+            }
         } else if( action == "TOGGLE_CITY_LABELS" ) {
             uistate.overmap_show_city_labels = !uistate.overmap_show_city_labels;
         } else if( action == "TOGGLE_MAP_REVEALS" ) {
@@ -2401,6 +3032,9 @@ static tripoint_abs_omt display()
         ui::omap::force_quit();
     } else {
         data.fast_traveling = true;
+    }
+    if( data.ecology_observer_controls && !data.fast_traveling ) {
+        overmap_ui::remember_ecology_observer_controls( data );
     }
     if( overmap_buffer.distance_limit( g->overmap_data.distance, g->overmap_data.origin_pos, ret ) ) {
         return ret;
@@ -2696,6 +3330,7 @@ std::pair<std::string, nc_color> oter_symbol_and_color( const tripoint_abs_omt &
 void ui::omap::display()
 {
     g->overmap_data = overmap_ui::overmap_draw_data_t(); //reset data
+    g->overmap_data.ecology_observer_controls = true;
     g->overmap_data.origin_pos = get_player_character().pos_abs_omt();
     g->overmap_data.debug_editor = debug_mode; // always display debug editor if game is in debug mode
     overmap_ui::display();

@@ -262,7 +262,7 @@ class tab_trace_view : public console_tab_view
         void save_state( JsonOut &jo ) const override;
 
     private:
-        void draw_monitors_body();
+        void draw_monitors_body( debug_console &host );
 
         std::bitset<debugmode::DF_LAST> log_category_mask;
         bool trace_show_log = true;

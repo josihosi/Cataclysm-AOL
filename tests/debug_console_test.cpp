@@ -164,6 +164,9 @@ TEST_CASE( "all_monitor_targets_table_invariants", "[debug_console]" )
             CHECK( seen.insert( t.label ).second );
         }
     }
+    CHECK( std::any_of( targets.begin(), targets.end(), []( const auto & target ) {
+        return std::string_view( target.label ) == "Ecology: selected operation";
+    } ) );
 }
 
 // Per-tab persistence: load_state -> save_state shape preservation.
