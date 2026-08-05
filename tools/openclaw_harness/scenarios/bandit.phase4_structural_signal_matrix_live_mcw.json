@@ -1,9 +1,9 @@
 {
   "name": "bandit.phase4_structural_signal_matrix_live_mcw",
-  "description": "Phase-4 live smoke/light/sound matrix on one production-owned structural sortie. An idle five-member camp autonomously dispatches its exact pair toward a fixture-known road target. The passive player remains 60 map squares west; scenario setup places one real active explosive and one physical fire on the target at the loaded-bubble edge shortly before the pair reaches its hourly observation point. Production must retain three typed route facts and create three returned_report leads only after physical return.",
+  "description": "Phase-4 live smoke/light/sound matrix plus a comfort-first ecology-observer incident on one production-owned structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward a fixture-known road target. The passive player remains 60 map squares west; scenario setup places one real active explosive and one physical fire on the target at the loaded-bubble edge shortly before the pair reaches its hourly observation point. Production must retain three typed route facts and create three returned_report leads only after physical return.",
   "profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+  "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
@@ -332,6 +332,85 @@
       "expected_immediate_state": "no camp lead has been created from the pair's carried route facts"
     },
     {
+      "kind": "press",
+      "label": "open_natural_phase4_ecology_overmap",
+      "keys": ["O"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the ordinary overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay while the production-owned dispatch remains at OMT 137",
+      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
+    },
+    {
+      "kind": "press",
+      "label": "move_ecology_cursor_to_natural_dispatch",
+      "keys": ["right", "right"],
+      "delay_ms": 250,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the overmap cursor moves from player OMT 135 to the natural dispatch at OMT 137 without moving the avatar",
+      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
+    },
+    {
+      "kind": "press",
+      "label": "select_and_capture_natural_phase4_dispatch",
+      "keys": ["["],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "capture_after": true,
+      "expected_visible_fact": "the visible ecology details select the real bandit dispatch carrying three natural signal facts at OMT 137",
+      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
+    },
+    {
+      "kind": "press",
+      "label": "close_ecology_overmap_after_natural_selection",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the overmap closes while retaining the process-local ecology selection for the debug console"
+    },
+    {
+      "kind": "press",
+      "label": "open_debug_menu_for_natural_ecology_watch",
+      "keys": ["}"],
+      "delay_ms": 200,
+      "settle_seconds": 1,
+      "expected_visible_fact": "the ordinary debug menu opens without changing the selected ecology entity or signal state"
+    },
+    {
+      "kind": "press",
+      "label": "open_ecology_observer_console",
+      "keys": ["C"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the existing console opens in DEBUG_CLAIRVOYANCE ecology-observer mode with shared watch and incident controls"
+    },
+    {
+      "kind": "press",
+      "label": "arm_default_selected_phase_watch",
+      "keys": ["A"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the default capture-and-continue selected-phase watch binds the natural dispatch without advancing time or intervening",
+      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
+    },
+    {
+      "kind": "press",
+      "label": "record_natural_phase4_ecology_incident",
+      "keys": ["R"],
+      "delay_ms": 200,
+      "settle_seconds": 3,
+      "capture_after": true,
+      "expected_visible_fact": "the console records a same-run compact natural-provenance incident JSON and paired screenshot for the selected dispatch",
+      "failure_rule": "Coordinator artifact inspection must confirm the ecology_incident JSON and PNG pair; this scenario deliberately adds no OCR abort or duplicate payload parser."
+    },
+    {
+      "kind": "press",
+      "label": "close_ecology_console_before_signal_return",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the console closes and normal gameplay resumes with no debug intervention and the existing signal-return waits unchanged"
+    },
+    {
       "kind": "long_wait",
       "label": "wait_1_hour_with_three_carried_signal_facts",
       "choice_key": "5",
@@ -492,9 +571,10 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_structural_signal_matrix_live_mcw",
   "evidence_contract": {
-    "claim": "one autonomous abstract scout pair reads physical smoke, light, and a semantic explosion only along its committed route, retains typed facts without creating camp knowledge early, and creates three bounded returned_report leads only after physical return",
-    "setup_boundary": "passive debug-cloaked player relocation, the known road lead, one physical fire, and one real SPAWN_ACTIVE explosive are fixture/scenario footing; no typed observation, signal lead, camp report, observer route position, or return is injected",
+    "claim": "one autonomous abstract scout pair reads physical smoke, light, and a semantic explosion only along its committed route, appears in a same-run natural ecology-observer screenshot/incident pair before return, retains typed facts without creating camp knowledge early, and creates three bounded returned_report leads only after physical return",
+    "setup_boundary": "passive debug-cloaked player relocation, the known road lead, one physical fire, and one real SPAWN_ACTIVE explosive are inherited fixture/scenario footing; the derived fixture adds only DEBUG_CLAIRVOYANCE and its transform report must name that mutation; no typed observation, signal lead, camp report, observer route position, or return is injected",
     "load_only_verdict": "load/setup proof only / inconclusive for the structural signal matrix",
-    "failure_rule": "No Phase-4 matrix credit unless exact dispatch, bubble-edge source/abstract receiver observations, off-cadence semantic sound recording, pre-return no-lead state, physical return, and three exact persisted returned-report leads are separately green."
+    "observer_artifact_requirement": "The same harness run must contain a natural-provenance ecology_incident JSON and its atomic PNG pair plus the selected-dispatch overmap capture. File payload and pairing verification is coordinator artifact inspection, not a new harness parser.",
+    "failure_rule": "No Phase-4 matrix credit unless exact dispatch, bubble-edge source/abstract receiver observations, off-cadence semantic sound recording, pre-return no-lead state, the same-run natural observer screenshot/incident pair, physical return, and three exact persisted returned-report leads are separately green."
   }
 }
