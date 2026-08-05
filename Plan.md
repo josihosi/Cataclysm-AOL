@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / E1 CODE GREEN / FIELD DRY RUN NEXT
+**Status:** ACTIVE / GREEN / O4 OBSERVER FIELD+PERF GREEN / E1 CASUALTY MATRIX NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -396,9 +396,15 @@ bytes with no truncation, permissions are green, and the exact screenshot/payloa
 `13cbeeb072`: exactly six typed predicates, capture/pause/fail, a default six-hour deadline,
 one-action existing-controller play, terminal/fatal latching, typed evidence deltas, and schema-2
 incident watch state. Exact Mac watch 6/63, incident 6/80, ecology 40/792, console 10/1,120,
-tiles/non-tiles compile, tiles link, and the bounded review/fix/recheck are green. Live save-byte
-neutrality remains in O4's performance/save-growth row; that row is next, before the observer is
-used in the smoke/light/sound Phase-4 live row.
+tiles/non-tiles compile, tiles link, and the bounded review/fix/recheck are green. O4 performance /
+save neutrality is checkpointed at `117857f551`: the shared gate returns zero candidates,
+callbacks, and measured query work across 1,000 disabled calls; 1,000 enabled 100-camp marker
+queries max at 88 us on this Mac; real save/menu-load runs keep their normalized authoritative
+ecology bytes identical and stay inside the ratified Phase-0 save/load/growth envelope. Final raw
+and summary artifacts are SHA-256 `49836c50...` and `a04c0e52...`. The isolated save worlds have
+different RNG seeds, so this is not a claim of paired whole-directory byte identity or foreign-
+platform timing. The next named row is the E1 casualty return/both-dead/wounded matrix, followed by
+observer-backed smoke/light/sound live proof.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

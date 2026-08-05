@@ -841,8 +841,22 @@ status-only casualty with no delta. Exact Mac watch passes 6/63, incident 6/80, 
 and console 10/1,120. Affected tiles and non-tiles objects compile, the tiles runtime links, diff
 checks pass, and the bounded read-only review found seven concrete defects which the targeted
 recheck confirms fixed. The private console-session latch has surrounding console/compile evidence,
-not a direct unit seam. This checkpoint does not claim the still-open observer save/performance
-neutrality row or foreign-platform runtime.
+not a direct unit seam. Foreign-platform runtime remains unclaimed.
+
+Observer O4 save/performance neutrality is green at `117857f551`. The accepted final four-case Mac
+packet (`49836c5063215dfc...`; summary `a04c0e525d6b5273...`) runs the shared view 1,000 times closed
+with zero candidates/callbacks/measured query work and 1,000 times open against 100 camp markers
+with 88 us observed maximum, 100 considered/emitted, and no truncation. Closed/open 10-camp cases
+each execute real `game::save` plus menu-level `game::load`, retain exact normalized authoritative
+hash `fe1d0b55...`, and grow 865,589 / 1,079,260 bytes with 290/381 ms save and 7.67/7.51 s load,
+inside the ratified Phase-0 envelope. The existing exact-cap test covers 2,048/256/128; the field
+incident retains 2,047 trace bytes. Focused observer tests pass 9/118; TILES test link and non-TILES
+`game`/`game_io` compile pass with `-Werror`; matrix/raw/summary validation and diff checks are green.
+A fresh read-only review found no code defect. Limits: save cases use different seeded isolated
+worlds, so no paired whole-directory identity is claimed; 88 us covers camp markers without mobile
+providers or selected detail; timing is descriptive Mac evidence only. The headless TILES load path
+needed null-safe tileset zoom sync, and serialized mismatch diagnostics are now bounded instead of
+dumping whole worlds. Use astyle 3.1 if formatting is applied; it is unavailable on this Mac.
 
 The field gate is green at exact runtime `648a509cc9`, run `20260805_101713`. The documented
 handoff installed only `DEBUG_CLAIRVOYANCE`; its detached child exited silently, so the exact
@@ -858,9 +872,9 @@ provenance; 2 entities were considered/shown in 26 us. Permissions and all artif
 they isolated the shared SDL3_image bool-success bug. `f997bbd368` moves incident capture outside
 the ImGui callback; `648a509cc9` normalizes SDL2 zero-success versus SDL3 true-success. Exact Mac
 tiles/non-tiles compile, tiles links, console 10/1,120, intervention 2/60, all ecology 33/697,
-harness 126/126, and fresh read-only reviews are green. Live save-byte neutrality is still deferred
-to the O4 performance/save-growth row; unit coverage already proves gate-closed zero query work and
-unchanged authoritative serialization.
+harness 126/126, and fresh read-only reviews are green. O4's credited packet above now supplies the
+deferred authoritative-byte and bounded real-save/menu-load evidence; this live run itself still
+claims only field behavior.
 
 Observer O4b code is green at behavior checkpoint `541932daa5`. The schema-1 incident bundle
 contains run/turn/player/build/scenario identity, the exact selected projection/token, retained

@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / FIELD GATE GREEN / O4 SAVE-PERF NEXT
+Status: ACTIVE / O4 FIELD+SAVE-PERF GREEN / E1 CASUALTY MATRIX NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -118,14 +118,17 @@ natural while retaining causal linkage to the intervention ledger.
   checkpoint: derived fixture preserves inherited `DEBUG_CLOAK`, requests only
   `DEBUG_CLAIRVOYANCE`, reports before/after/added/already-present state, and the launch-only dry-run
   is plan-only. System-Python fixture contract: 125 tests green._
-- [ ] Prove observer off/on changes no map knowledge or save bytes beyond the intentional harness
-  mutation. _Two live strategies in run `20260805_055304` remain inconclusive because first-save
-  rewrite and matched lazy-overmap/serializer variance survive mutation normalization. Exact hashes
-  are preserved; retry only through the existing O4 performance/save-growth harness._
+- [x] Prove observer off/on changes no map knowledge or authoritative ecology save bytes beyond the
+  intentional harness mutation. _Checkpoint `117857f551`: the existing benchmark driver calls the
+  shared gate 1,000 times closed with zero candidates/callbacks/measured query work, exercises 1,000
+  open 100-camp marker queries, and runs real `game::save` plus menu-level `game::load` with the
+  observer closed and open. Each save case retains its exact normalized owner hash; the process-local
+  overlay has no serializer. Different seeded isolated worlds prevent a paired whole-directory byte
+  identity claim._
 
-Execution-order exception: this deferred serializer-variance proof and O3's missing identity seam
-do not justify a third bespoke retry or fake IDs. The practical party-first stop condition makes
-O4a the current row.
+Execution-order exception: O3's missing identity seam does not justify fake IDs. The practical
+party-first stop condition keeps those mobile adapters deferred while E1 casualty outcomes and the
+observer-backed smoke/light/sound row advance.
 
 ### O1 - shared read-only camp/dispatch view
 
@@ -226,10 +229,15 @@ O4a the current row.
   the overmap provenance. Query 2/2/26 us, trace 2,047 bytes/no truncation, permissions, identities,
   and exact hashes are in `ecology_field_gate_receipt.json`. Non-credit attempts `095314`/`100813`
   isolated the shared SDL3_image success-contract defect; `f997bbd368` defers capture and
-  `648a509cc9` normalizes SDL2/SDL3 return values. Live save-byte neutrality remains the next O4
-  performance row, not a claim of this field run._
-- [ ] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
-  closed cost, save-size neutrality, and byte-stability.
+  `648a509cc9` normalizes SDL2/SDL3 return values. This field run does not itself claim save-byte
+  neutrality; the O4 performance row below supplies that separate evidence._
+- [x] Prove query/render counts/timing, trace bytes, 2,048/256/128 truncation behavior, observer
+  closed cost, save-size neutrality, and byte-stability. _Checkpoint `117857f551`; accepted final
+  raw/summary SHA-256 `49836c50...` / `a04c0e52...`. Closed 100-camp calls are 1,000/zero-work;
+  open marker queries consider/emit 100 with 88 us observed max. Real save/menu-load cases preserve
+  exact authoritative hashes and grow 865,589 / 1,079,260 bytes, within Phase-0 envelopes. Separate
+  exact-cap tests cover 2,048/256/128 and the field incident retains 2,047 trace bytes. This is
+  descriptive Mac camp-marker evidence, not mobile/selected-detail or cross-platform timing._
 
 ### E1 - first authoritative intervention
 
@@ -273,6 +281,15 @@ test alone does not satisfy this gate.  If a step lacks an honest UI, harness, o
 seam, implement only the smallest missing adapter before starting the ledger.  Reuse the existing
 console/harness; do not add generic state setters, teleports, stimulus generators, scripting, or a
 second scenario framework.
+
+### O4 benchmark discipline
+
+The save/performance fixture must preserve real `game::save` plus `game::load`; a direct
+observer-query control is only component-cost/closed-work evidence, never a live UI claim.  On a
+serialized-state mismatch, record compact hashes, byte counts, and a bounded first difference rather
+than a whole-world string.  Make one root-cause repair and rerun the defined matrix; residual
+non-observer serializer variance is non-credit evidence, not a reason to grow another canonicalizer
+or repeat the row by ritual.
 
 ## Live-use stop condition
 
