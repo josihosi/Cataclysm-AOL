@@ -6,6 +6,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "character_id.h"
@@ -28,11 +29,19 @@ enum class entity_kind {
     cannibal_camp,
     bandit_dispatch,
     cannibal_dispatch,
+    zombie_horde,
+    writhing_stalker,
 };
 
 enum class entity_faction {
     bandit,
     cannibal,
+    zombie,
+};
+
+enum class entity_owner {
+    abstract,
+    concrete,
 };
 
 enum class entity_provenance {
@@ -51,6 +60,8 @@ struct query_filters {
     bool dispatches = true;
     bool bandits = true;
     bool cannibals = true;
+    bool hordes = false;
+    bool stalkers = false;
     bool loaded_only = false;
 };
 
@@ -58,6 +69,21 @@ struct runtime_member_read {
     std::string name;
     std::optional<int> hp_percent;
     bool loaded = false;
+};
+
+struct mobile_entity_read {
+    std::string id;
+    entity_kind kind = entity_kind::zombie_horde;
+    entity_faction faction = entity_faction::zombie;
+    tripoint_abs_omt omt;
+    entity_owner owner = entity_owner::abstract;
+    bool loaded = false;
+    std::string state;
+    int generation = 0;
+    std::optional<int> population;
+    std::optional<int> interest;
+    std::optional<tripoint_abs_omt> target;
+    std::optional<int> hp_percent;
 };
 
 struct query_request {
@@ -69,6 +95,9 @@ struct query_request {
     std::function<bool( character_id )> member_is_loaded;
     std::function<std::optional<runtime_member_read>( character_id )> read_selected_member;
     std::function<entity_provenance( const std::string & )> provenance_for_entity;
+    std::function<std::vector<mobile_entity_read>( const query_region &, std::string_view,
+            size_t )>
+    read_mobile_entities;
 };
 
 struct entity_marker {
@@ -107,6 +136,10 @@ struct selected_detail {
     tripoint_abs_omt destination;
     std::vector<tripoint_abs_omt> route;
     std::vector<member_detail> members;
+    std::optional<int> population;
+    std::optional<int> interest;
+    std::optional<tripoint_abs_omt> target;
+    std::optional<int> hp_percent;
 };
 
 struct query_metadata {
@@ -137,6 +170,7 @@ view_snapshot query_selected_bandit_ecology( const bandit_live_world::world_stat
 
 std::string to_string( entity_kind kind );
 std::string to_string( entity_faction faction );
+std::string to_string( entity_owner owner );
 std::string to_string( entity_provenance provenance );
 
 } // namespace ecology_debug

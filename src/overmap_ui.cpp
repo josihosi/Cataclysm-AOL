@@ -143,6 +143,10 @@ std::pair<std::string, nc_color> overmap_ui::ecology_marker_display(
             return { "b", c_yellow };
         case ecology_debug::entity_kind::cannibal_dispatch:
             return { "c", c_pink };
+        case ecology_debug::entity_kind::zombie_horde:
+            return { "H", c_light_green };
+        case ecology_debug::entity_kind::writhing_stalker:
+            return { "S", c_dark_gray };
     }
     return { "?", c_white };
 }

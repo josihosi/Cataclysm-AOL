@@ -89,19 +89,59 @@ TEST_CASE( "ecology_debug_snapshot_is_byte_deterministic_and_preserves_order",
     CHECK( first.find( "\"event_cap\":9" ) != std::string::npos );
     CHECK( first.find( "\"truncated\":true" ) != std::string::npos );
     CHECK( first.find( "\"cannibals\":true" ) != std::string::npos );
+    CHECK( first.find( "\"hordes\":false" ) != std::string::npos );
+    CHECK( first.find( "\"stalkers\":false" ) != std::string::npos );
     CHECK( first.find( "\"id\":\"camp/bandit-a\"" ) <
            first.find( "\"id\":\"dispatch/cannibal-b\"" ) );
 
     const JsonObject root = json_loader::from_string( first ).get_object();
     root.allow_omitted_members();
     CHECK( root.get_string( "schema" ) == "c-aol.ecology.observer" );
-    CHECK( root.get_int( "version" ) == 1 );
+    CHECK( root.get_int( "version" ) == 2 );
     const JsonObject metadata = root.get_object( "metadata" );
     metadata.allow_omitted_members();
     CHECK( metadata.get_int( "query_us" ) == 37 );
     CHECK( metadata.get_int( "render_us" ) == 11 );
     CHECK( metadata.get_int( "trace_bytes" ) == 4096 );
     CHECK_FALSE( metadata.get_bool( "identity_truncated" ) );
+}
+
+TEST_CASE( "ecology_debug_snapshot_serializes_selected_mobile_owner_details",
+           "[ecology_debug][snapshot][phase4]" )
+{
+    ecology_debug::view_snapshot view;
+    ecology_debug::entity_marker marker;
+    marker.id = "horde/stable-17";
+    marker.alias = "ZH-123456";
+    marker.kind = ecology_debug::entity_kind::zombie_horde;
+    marker.faction = ecology_debug::entity_faction::zombie;
+    marker.omt = tripoint_abs_omt( 7, 8, -1 );
+    marker.owner = "abstract";
+    marker.state = "roaming";
+    marker.generation = 4;
+    view.entities.push_back( marker );
+    ecology_debug::selected_detail selected;
+    selected.entity_id = marker.id;
+    selected.phase = marker.state;
+    selected.destination = tripoint_abs_omt( 9, 10, -1 );
+    selected.population = 23;
+    selected.interest = 71;
+    selected.target = selected.destination;
+    view.selected = selected;
+
+    const std::string output = ecology_debug::serialize_snapshot( view, make_context() );
+    const JsonObject root = json_loader::from_string( output ).get_object();
+    root.allow_omitted_members();
+    const JsonObject serialized_selected = root.get_object( "selected" );
+    serialized_selected.allow_omitted_members();
+    CHECK( serialized_selected.get_int( "population" ) == 23 );
+    CHECK( serialized_selected.get_int( "interest" ) == 71 );
+    JsonArray target = serialized_selected.get_array( "target" );
+    REQUIRE( target.size() == 3 );
+    CHECK( target.next_int() == 9 );
+    CHECK( target.next_int() == 10 );
+    CHECK( target.next_int() == -1 );
+    CHECK( serialized_selected.get_member( "hp_percent" ).test_null() );
 }
 
 TEST_CASE( "ecology_debug_snapshot_serializes_no_selection_and_bounds_context_identity",

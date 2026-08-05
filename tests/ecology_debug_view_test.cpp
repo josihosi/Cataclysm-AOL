@@ -112,6 +112,7 @@ TEST_CASE( "ecology_debug_view_is_gate_closed_and_side_effect_free",
     const std::string original_save = serialize_world( world );
     int loaded_reads = 0;
     int detail_reads = 0;
+    int mobile_reads = 0;
     ecology_debug::query_request request;
     request.member_is_loaded = [&loaded_reads]( character_id ) {
         loaded_reads++;
@@ -120,6 +121,11 @@ TEST_CASE( "ecology_debug_view_is_gate_closed_and_side_effect_free",
     request.read_selected_member = [&detail_reads]( character_id ) {
         detail_reads++;
         return std::optional<ecology_debug::runtime_member_read>();
+    };
+    request.read_mobile_entities = [&mobile_reads]( const ecology_debug::query_region &,
+    std::string_view, size_t ) {
+        mobile_reads++;
+        return std::vector<ecology_debug::mobile_entity_read>();
     };
 
     const ecology_debug::view_snapshot closed = ecology_debug::query_bandit_ecology( world,
@@ -131,10 +137,179 @@ TEST_CASE( "ecology_debug_view_is_gate_closed_and_side_effect_free",
     CHECK( closed.metadata.query_microseconds == 0 );
     CHECK( loaded_reads == 0 );
     CHECK( detail_reads == 0 );
+    CHECK( mobile_reads == 0 );
     CHECK( world.sites.front().active_outing.activity_id == original_activity );
     CHECK( world.sites.front().members.front().state ==
            bandit_live_world::member_state::outbound );
     CHECK( serialize_world( world ) == original_save );
+}
+
+TEST_CASE( "ecology_debug_view_merges_filtered_mobile_entities_deterministically",
+           "[ecology_debug][observer][phase4]" )
+{
+    ecology_debug::mobile_entity_read lower_horde;
+    lower_horde.id = "horde/lower";
+    lower_horde.kind = ecology_debug::entity_kind::zombie_horde;
+    lower_horde.faction = ecology_debug::entity_faction::zombie;
+    lower_horde.omt = tripoint_abs_omt( 4, 5, -1 );
+    lower_horde.owner = ecology_debug::entity_owner::abstract;
+    lower_horde.state = "roaming";
+    lower_horde.generation = 3;
+    lower_horde.population = 24;
+    lower_horde.interest = 61;
+    lower_horde.target = tripoint_abs_omt( 8, 9, -1 );
+    lower_horde.hp_percent = 9;
+
+    ecology_debug::mobile_entity_read lower_stalker;
+    lower_stalker.id = "stalker/lower";
+    lower_stalker.kind = ecology_debug::entity_kind::writhing_stalker;
+    lower_stalker.faction = ecology_debug::entity_faction::zombie;
+    lower_stalker.omt = lower_horde.omt;
+    lower_stalker.owner = ecology_debug::entity_owner::concrete;
+    lower_stalker.loaded = true;
+    lower_stalker.state = "tracking";
+    lower_stalker.generation = 7;
+    lower_stalker.population = 99;
+    lower_stalker.interest = 88;
+    lower_stalker.target = tripoint_abs_omt( 7, 7, -1 );
+    lower_stalker.hp_percent = 42;
+
+    ecology_debug::mobile_entity_read upper_horde = lower_horde;
+    upper_horde.id = "horde/upper";
+    upper_horde.omt = tripoint_abs_omt( 4, 5, 1 );
+    upper_horde.target = tripoint_abs_omt( 8, 9, 1 );
+
+    ecology_debug::mobile_entity_read missing_id = lower_horde;
+    missing_id.id.clear();
+    ecology_debug::mobile_entity_read mismatched_faction = lower_horde;
+    mismatched_faction.id = "horde/not-a-zombie";
+    mismatched_faction.faction = ecology_debug::entity_faction::bandit;
+    ecology_debug::mobile_entity_read unsupported_kind = lower_horde;
+    unsupported_kind.id = "camp/not-mobile";
+    unsupported_kind.kind = ecology_debug::entity_kind::bandit_camp;
+    unsupported_kind.faction = ecology_debug::entity_faction::bandit;
+
+    const std::vector<ecology_debug::mobile_entity_read> rows = {
+        upper_horde, lower_stalker, missing_id, lower_horde, mismatched_faction, unsupported_kind
+    };
+    int mobile_reads = 0;
+    ecology_debug::query_region callback_region;
+    std::string callback_selected_id;
+    size_t callback_cap = 0;
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.filters.hordes = true;
+    request.filters.stalkers = true;
+    request.region.enabled = true;
+    request.region.minimum = tripoint_abs_omt( -10, -10, -2 );
+    request.region.maximum = tripoint_abs_omt( 10, 10, 2 );
+    request.selected_id = lower_horde.id;
+    request.read_mobile_entities = [&rows, &mobile_reads, &callback_region,
+    &callback_selected_id, &callback_cap]( const ecology_debug::query_region & region,
+    std::string_view selected_id, size_t cap ) {
+        mobile_reads++;
+        callback_region = region;
+        callback_selected_id = selected_id;
+        callback_cap = cap;
+        return rows;
+    };
+
+    const bandit_live_world::world_state world;
+    const ecology_debug::view_snapshot view = ecology_debug::query_bandit_ecology( world,
+            request );
+
+    CHECK( mobile_reads == 1 );
+    CHECK( callback_region.enabled );
+    CHECK( callback_region.minimum == request.region.minimum );
+    CHECK( callback_region.maximum == request.region.maximum );
+    CHECK( callback_selected_id == request.selected_id );
+    CHECK( callback_cap == ecology_debug::candidate_cap );
+    REQUIRE( view.entities.size() == 3 );
+    CHECK( view.metadata.candidate_count == 3 );
+    CHECK( std::is_sorted( view.entities.begin(), view.entities.end(), entity_ordered ) );
+    CHECK( view.entities[0].id == lower_horde.id );
+    CHECK( view.entities[1].id == lower_stalker.id );
+    CHECK( view.entities[2].id == upper_horde.id );
+    CHECK( view.entities[0].owner == "abstract" );
+    CHECK( view.entities[1].owner == "concrete" );
+    CHECK( view.entities[1].loaded );
+    REQUIRE( view.selected );
+    CHECK( view.selected->phase == "roaming" );
+    CHECK( view.selected->population == 24 );
+    CHECK( view.selected->interest == 61 );
+    REQUIRE( view.selected->target );
+    CHECK( *view.selected->target == tripoint_abs_omt( 8, 9, -1 ) );
+    CHECK_FALSE( view.selected->hp_percent );
+
+    request.filters.hordes = false;
+    request.selected_id = lower_stalker.id;
+    const ecology_debug::view_snapshot stalkers = ecology_debug::query_bandit_ecology( world,
+            request );
+    REQUIRE( stalkers.entities.size() == 1 );
+    CHECK( stalkers.entities.front().kind == ecology_debug::entity_kind::writhing_stalker );
+    REQUIRE( stalkers.selected );
+    CHECK( stalkers.selected->hp_percent == 42 );
+    CHECK_FALSE( stalkers.selected->population );
+    CHECK_FALSE( stalkers.selected->interest );
+    CHECK_FALSE( stalkers.selected->target );
+    CHECK( stalkers.selected->destination == lower_stalker.omt );
+
+    request.filters.hordes = true;
+    request.filters.stalkers = false;
+    request.selected_id.clear();
+    const ecology_debug::view_snapshot hordes = ecology_debug::query_bandit_ecology( world,
+            request );
+    REQUIRE( hordes.entities.size() == 2 );
+    CHECK( std::all_of( hordes.entities.begin(), hordes.entities.end(), []( const auto & marker ) {
+        return marker.kind == ecology_debug::entity_kind::zombie_horde;
+    } ) );
+
+    request.filters.loaded_only = true;
+    const ecology_debug::view_snapshot loaded_hordes = ecology_debug::query_bandit_ecology( world,
+            request );
+    CHECK( loaded_hordes.entities.empty() );
+}
+
+TEST_CASE( "ecology_debug_view_rejects_ambiguous_canonical_ids",
+           "[ecology_debug][observer][phase4]" )
+{
+    bandit_live_world::world_state world;
+    world.sites.push_back( make_site( 1, false ) );
+
+    ecology_debug::mobile_entity_read first;
+    first.id = "mobile/duplicate";
+    first.kind = ecology_debug::entity_kind::zombie_horde;
+    first.faction = ecology_debug::entity_faction::zombie;
+    first.omt = tripoint_abs_omt( 2, 2, 0 );
+    ecology_debug::mobile_entity_read second = first;
+    second.omt = tripoint_abs_omt( 3, 3, 0 );
+    ecology_debug::mobile_entity_read camp_collision = first;
+    camp_collision.id = "camp/observer-site-1";
+    camp_collision.omt = world.sites.front().anchor;
+    ecology_debug::mobile_entity_read unique = first;
+    unique.id = "mobile/unique";
+    unique.omt = tripoint_abs_omt( 4, 4, 0 );
+
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.filters.hordes = true;
+    request.filters.stalkers = true;
+    request.selected_id = first.id;
+    request.read_mobile_entities = [first, second, camp_collision, unique](
+    const ecology_debug::query_region &, std::string_view, size_t ) {
+        return std::vector<ecology_debug::mobile_entity_read> {
+            first, second, camp_collision, unique
+        };
+    };
+
+    const ecology_debug::view_snapshot view = ecology_debug::query_bandit_ecology( world,
+            request );
+
+    REQUIRE( view.entities.size() == 1 );
+    CHECK( view.entities.front().id == unique.id );
+    CHECK_FALSE( view.selected );
+    CHECK( view.metadata.candidate_count == 1 );
+    CHECK_FALSE( view.metadata.truncated );
 }
 
 TEST_CASE( "ecology_debug_view_sorts_co_located_z_levels_and_reads_selected_detail_only",
@@ -143,6 +318,7 @@ TEST_CASE( "ecology_debug_view_sorts_co_located_z_levels_and_reads_selected_deta
     bandit_live_world::world_state world;
     world.sites.push_back( make_site( 4, true, 1 ) );
     world.sites.push_back( make_site( 4, false, 0 ) );
+    world.sites.back().site_id += "-bandit";
     for( bandit_live_world::site_record &site : world.sites ) {
         add_active_outing( site, site.profile ==
                            bandit_live_world::hostile_site_profile::cannibal_camp ? 2 : 1 );

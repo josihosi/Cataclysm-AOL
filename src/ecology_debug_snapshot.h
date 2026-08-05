@@ -19,7 +19,7 @@ inline constexpr size_t snapshot_identity_limit = 128;
 
 struct snapshot_context {
     std::string schema = "c-aol.ecology.observer";
-    int version = 1;
+    int version = 2;
     std::optional<std::string> commit;
     std::optional<std::string> binary;
     std::optional<std::string> scenario;

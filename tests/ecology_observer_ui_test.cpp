@@ -22,15 +22,23 @@ TEST_CASE( "ecology_observer_marker_legend_is_stable_and_distinct",
         overmap_ui::ecology_marker_display( ecology_debug::entity_kind::bandit_dispatch );
     const std::pair<std::string, nc_color> cannibal_dispatch =
         overmap_ui::ecology_marker_display( ecology_debug::entity_kind::cannibal_dispatch );
+    const std::pair<std::string, nc_color> zombie_horde =
+        overmap_ui::ecology_marker_display( ecology_debug::entity_kind::zombie_horde );
+    const std::pair<std::string, nc_color> writhing_stalker =
+        overmap_ui::ecology_marker_display( ecology_debug::entity_kind::writhing_stalker );
 
     CHECK( bandit_camp.first == "B" );
     CHECK( cannibal_camp.first == "C" );
     CHECK( bandit_dispatch.first == "b" );
     CHECK( cannibal_dispatch.first == "c" );
+    CHECK( zombie_horde.first == "H" );
+    CHECK( writhing_stalker.first == "S" );
     CHECK( bandit_camp.second == c_light_red );
     CHECK( cannibal_camp.second == c_red );
     CHECK( bandit_dispatch.second == c_yellow );
     CHECK( cannibal_dispatch.second == c_pink );
+    CHECK( zombie_horde.second == c_light_green );
+    CHECK( writhing_stalker.second == c_dark_gray );
 }
 
 TEST_CASE( "ecology_observer_viewport_counts_match_tiles_renderer_formula",
@@ -146,8 +154,12 @@ TEST_CASE( "ecology_observer_filter_contract_matches_human_and_json_views",
 
     CHECK( camps.camps );
     CHECK_FALSE( camps.dispatches );
+    CHECK_FALSE( camps.hordes );
+    CHECK_FALSE( camps.stalkers );
     CHECK_FALSE( dispatches.camps );
     CHECK( dispatches.dispatches );
+    CHECK_FALSE( dispatches.hordes );
+    CHECK_FALSE( dispatches.stalkers );
     CHECK_FALSE( loaded_cannibals.bandits );
     CHECK( loaded_cannibals.cannibals );
     CHECK( loaded_cannibals.loaded_only );

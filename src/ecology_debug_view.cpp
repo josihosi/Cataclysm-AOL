@@ -8,6 +8,7 @@
 #include <queue>
 #include <sstream>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 #include "bandit_live_world.h"
@@ -20,6 +21,7 @@ namespace
 struct candidate_read {
     const bandit_live_world::site_record *site = nullptr;
     const bandit_live_world::active_outing_state *outing = nullptr;
+    std::optional<mobile_entity_read> mobile;
     entity_kind kind = entity_kind::bandit_camp;
     entity_faction faction = entity_faction::bandit;
     tripoint_abs_omt omt;
@@ -120,6 +122,33 @@ bool marker_less( const entity_marker &lhs, const entity_marker &rhs )
            std::make_tuple( rhs.omt.z(), rhs.omt.y(), rhs.omt.x(), kind_rank( rhs.kind ), rhs.id );
 }
 
+bool mobile_kind_matches_faction( const mobile_entity_read &mobile )
+{
+    switch( mobile.kind ) {
+        case entity_kind::zombie_horde:
+            return mobile.faction == entity_faction::zombie;
+        case entity_kind::writhing_stalker:
+            return mobile.faction == entity_faction::zombie;
+        case entity_kind::bandit_camp:
+        case entity_kind::cannibal_camp:
+        case entity_kind::bandit_dispatch:
+        case entity_kind::cannibal_dispatch:
+            return false;
+    }
+    return false;
+}
+
+bool mobile_passes_filters( const mobile_entity_read &mobile, const query_filters &filters )
+{
+    if( mobile.id.empty() || !mobile_kind_matches_faction( mobile ) ) {
+        return false;
+    }
+    if( mobile.kind == entity_kind::zombie_horde ) {
+        return filters.hordes;
+    }
+    return filters.stalkers;
+}
+
 std::string camp_id( const bandit_live_world::site_record &site )
 {
     return "camp/" + site.site_id;
@@ -153,6 +182,12 @@ std::string short_alias( entity_kind kind, const std::string &id )
         case entity_kind::cannibal_dispatch:
             prefix = "CD";
             break;
+        case entity_kind::zombie_horde:
+            prefix = "ZH";
+            break;
+        case entity_kind::writhing_stalker:
+            prefix = "WS";
+            break;
     }
     std::ostringstream out;
     out << prefix << '-' << std::uppercase << std::hex << std::setw( 6 ) << std::setfill( '0' )
@@ -167,6 +202,9 @@ bool callback_loaded( const query_request &request, character_id member_id )
 
 bool candidate_is_loaded( const candidate_read &candidate, const query_request &request )
 {
+    if( candidate.mobile ) {
+        return candidate.mobile->loaded;
+    }
     if( candidate.outing != nullptr ) {
         return std::any_of( candidate.outing->member_ids.begin(), candidate.outing->member_ids.end(),
         [&candidate, &request]( const character_id & member_id ) {
@@ -193,6 +231,12 @@ entity_marker make_marker( const candidate_read &candidate, const query_request 
                     candidate_is_loaded( candidate, request );
     marker.provenance = request.provenance_for_entity ?
                         request.provenance_for_entity( marker.id ) : entity_provenance::natural;
+    if( candidate.mobile ) {
+        marker.owner = to_string( candidate.mobile->owner );
+        marker.state = candidate.mobile->state;
+        marker.generation = candidate.mobile->generation;
+        return marker;
+    }
     marker.authority_index = candidate.authority_index;
     if( candidate.outing == nullptr ) {
         marker.owner = "abstract";
@@ -269,6 +313,19 @@ selected_detail make_selected_detail( const candidate_read &candidate,
 {
     selected_detail detail;
     detail.entity_id = candidate.id;
+    if( candidate.mobile ) {
+        detail.phase = candidate.mobile->state;
+        detail.destination = candidate.mobile->omt;
+        if( candidate.kind == entity_kind::zombie_horde ) {
+            detail.population = candidate.mobile->population;
+            detail.interest = candidate.mobile->interest;
+            detail.target = candidate.mobile->target;
+            detail.destination = candidate.mobile->target.value_or( candidate.mobile->omt );
+        } else {
+            detail.hp_percent = candidate.mobile->hp_percent;
+        }
+        return detail;
+    }
     detail.source_camp_id = camp_id( *candidate.site );
     if( candidate.outing == nullptr ) {
         detail.phase = bandit_live_world::to_string( candidate.site->origin );
@@ -386,7 +443,7 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
     std::priority_queue<candidate_read, std::vector<candidate_read>, decltype( heap_compare )>
     retained_candidates( heap_compare );
     std::optional<candidate_read> selected_candidate;
-    size_t candidate_count = 0;
+    std::unordered_map<std::string, size_t> candidate_id_counts;
     auto retain_candidate = [&]( candidate_read candidate ) {
         if( request.filters.loaded_only ) {
             candidate.loaded = candidate_is_loaded( candidate, request );
@@ -395,7 +452,7 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
                 return;
             }
         }
-        candidate_count++;
+        candidate_id_counts[candidate.id]++;
         if( candidate.id == request.selected_id ) {
             selected_candidate = candidate;
         }
@@ -452,11 +509,42 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
             }
         }
     }
+    if( request.read_mobile_entities &&
+        ( request.filters.hordes || request.filters.stalkers ) ) {
+        std::vector<mobile_entity_read> mobile_entities =
+            request.read_mobile_entities( request.region, request.selected_id, candidate_cap );
+        for( mobile_entity_read &mobile : mobile_entities ) {
+            if( !mobile_passes_filters( mobile, request.filters ) ) {
+                continue;
+            }
+            candidate_read candidate;
+            candidate.kind = mobile.kind;
+            candidate.faction = mobile.faction;
+            candidate.omt = mobile.omt;
+            candidate.id = mobile.id;
+            candidate.mobile = std::move( mobile );
+            if( point_in_region( candidate.omt, request.region ) ||
+                candidate.id == request.selected_id ) {
+                retain_candidate( std::move( candidate ) );
+            }
+        }
+    }
     std::vector<candidate_read> candidates;
     candidates.reserve( retained_candidates.size() );
     while( !retained_candidates.empty() ) {
         candidates.push_back( std::move( retained_candidates.top() ) );
         retained_candidates.pop();
+    }
+    const auto id_is_ambiguous = [&candidate_id_counts]( const std::string &id ) {
+        const auto found = candidate_id_counts.find( id );
+        return found != candidate_id_counts.end() && found->second > 1;
+    };
+    candidates.erase( std::remove_if( candidates.begin(), candidates.end(),
+    [&id_is_ambiguous]( const candidate_read & candidate ) {
+        return id_is_ambiguous( candidate.id );
+    } ), candidates.end() );
+    if( selected_candidate && id_is_ambiguous( selected_candidate->id ) ) {
+        selected_candidate.reset();
     }
     std::sort( candidates.begin(), candidates.end(), candidate_less );
     if( selected_candidate &&
@@ -471,7 +559,10 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
         }
         std::sort( candidates.begin(), candidates.end(), candidate_less );
     }
-    result.metadata.candidate_count = candidate_count;
+    result.metadata.candidate_count = std::count_if( candidate_id_counts.begin(),
+    candidate_id_counts.end(), []( const auto & row ) {
+        return row.second == 1;
+    } );
 
     size_t selected_index = candidates.size();
     if( !request.selected_id.empty() ) {
@@ -617,13 +708,30 @@ std::string to_string( entity_kind kind )
             return "bandit_dispatch";
         case entity_kind::cannibal_dispatch:
             return "cannibal_dispatch";
+        case entity_kind::zombie_horde:
+            return "zombie_horde";
+        case entity_kind::writhing_stalker:
+            return "writhing_stalker";
     }
     return "bandit_camp";
 }
 
 std::string to_string( entity_faction faction )
 {
-    return faction == entity_faction::cannibal ? "cannibal" : "bandit";
+    switch( faction ) {
+        case entity_faction::bandit:
+            return "bandit";
+        case entity_faction::cannibal:
+            return "cannibal";
+        case entity_faction::zombie:
+            return "zombie";
+    }
+    return "zombie";
+}
+
+std::string to_string( entity_owner owner )
+{
+    return owner == entity_owner::concrete ? "concrete" : "abstract";
 }
 
 std::string to_string( entity_provenance provenance )
