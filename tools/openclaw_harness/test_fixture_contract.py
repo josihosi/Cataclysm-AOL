@@ -3515,8 +3515,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(signal["bounty"], 0)
         self.assertEqual(signal["threat"], 0)
         self.assertEqual(signal["routine_activated_minutes"], 0)
-        self.assertEqual(signal["next_routine_dispatch_eligible_minutes"], 8100)
-        self.assertEqual(signal["last_routine_resolved_minutes"], 3780)
+        self.assertEqual(signal["next_routine_dispatch_eligible_minutes"], 8280)
+        self.assertEqual(signal["last_routine_resolved_minutes"], 3960)
         self.assertEqual(signal["target_omt"], [136, 51, 0])
         self.assertEqual(
             signal["source_key"],
@@ -3527,6 +3527,18 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             resolved["save_transforms"][-1]["mutations"],
             ["DEBUG_CLAIRVOYANCE"],
         )
+        self.assertEqual(
+            resolved["source_chain"][-2:],
+            [
+                ("live-debug", "bandit_phase4_decoy_empty_signal_v0_2026-08-05"),
+                ("live-debug", "bandit_phase4_quiet_current_schema_v0_2026-08-05"),
+            ],
+        )
+        clear = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        self.assertEqual(clear["site_id"], "overmap_special:bandit_camp@140,51,0")
 
     def test_phase4_decoy_scenario_uses_real_empty_arrival_and_owner_audit(self) -> None:
         scenario = load_scenario("bandit.phase4_decoy_empty_signal_live_mcw")

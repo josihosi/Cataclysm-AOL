@@ -1,9 +1,14 @@
 {
   "name": "bandit_phase4_decoy_empty_signal_v0_2026-08-05",
-  "source_fixture": "bandit_phase4_quiet_former_radar_v0_2026-08-04",
+  "source_fixture": "bandit_phase4_quiet_current_schema_v0_2026-08-05",
   "source_profile": "live-debug",
   "description": "Disposable Phase-4 decoy investigation footing. It preserves the quiet five-member camp and player six OMT east, adds one fresh returned-report smoke lead at the fixed road OMT with no physical smoke or supporting observation, and adds only DEBUG_CLAIRVOYANCE for bounded observer inspection. Production owns dispatch, route, empty arrival, stale writeback, and return.",
   "save_transforms": [
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0"
+    },
     {
       "kind": "bandit_camp_map_lead",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
@@ -18,10 +23,10 @@
       "radius_omt": 2,
       "source_key": "structural-signal:structural-smoke@(136,51,0)",
       "source_summary": "fixture decoy returned smoke report with no surviving physical source",
-      "first_seen_minutes": 8100,
-      "last_seen_minutes": 8100,
-      "last_checked_minutes": 8100,
-      "last_scouted_minutes": 8100,
+      "first_seen_minutes": 8280,
+      "last_seen_minutes": 8280,
+      "last_checked_minutes": 8280,
+      "last_scouted_minutes": 8280,
       "bounty": 0,
       "threat": 0,
       "confidence": 3,
@@ -31,8 +36,8 @@
       "times_harvested": 0,
       "last_outcome": "returned_structural_smoke_report",
       "routine_activated_minutes": 0,
-      "next_routine_dispatch_eligible_minutes": 8100,
-      "last_routine_resolved_minutes": 3780,
+      "next_routine_dispatch_eligible_minutes": 8280,
+      "last_routine_resolved_minutes": 3960,
       "clear_active_pressure": true,
       "mark_cleared_active_members_unready": false
     },
