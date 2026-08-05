@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4+E1 GREEN / TARGET-RELOCATION LIVE NEXT
+Status: ACTIVE / O4+E1 GREEN / DECOY-EMPTY LIVE NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -321,6 +321,16 @@ Run `20260805_122335` proved an exact five-minute wait, then safely aborted befo
 after the handler acknowledged ordinary shadow-warning flavor and created an Unknown-command
 popup. No incident pair exists to credit. Per the anti-churn cap, the row stays open while work
 advances to live target relocation; use the corrected `m` overmap path there when possible.
+
+That later use is green at scenario checkpoints `029363748c` / `9029d4e1a4`, run
+`20260805_124207`. Two atomic incident pairs and their overmap frames follow natural dispatch
+`BD-374153` across an explicit twelve-OMT debug player teleport: player OMT changes, selected
+canonical ID/OMT/destination/route/generation/member IDs/HP stay fixed, and loaded presentation
+changes from true to false. Both selected snapshots say `provenance=natural` and both intervention
+ledgers are empty; the exact saved owner target remains present. The generic harness verdict stays
+yellow because ordinary press/capture rows lack automatic semantic promotion, so the narrow
+receipt does not relabel the whole probe. This satisfies practical later-row observer use, not the
+still-open smoke/light/sound pair.
 
 ## Explicit deferrals
 

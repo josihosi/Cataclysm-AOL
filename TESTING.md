@@ -994,6 +994,22 @@ Unknown-command popup, and safely aborted before signal setup. Permissions were 
 not the gameplay proof. Per the two-attempt cap, do not retry or expand prompt heuristics; the row
 remains open and live target relocation is next.
 
+Observer-backed target relocation is green at scenario checkpoints `029363748c` / `9029d4e1a4`,
+credited run `20260805_124207`. The exact Mac tiles runtime reports `9029d4e1a4+SDL3`; the full
+fixture contract passes 128/128. Game-authored incidents `5249093` and `5249094` move player OMT
+from `(135,51,0)` to `(135,63,0)` while selected natural `BD-374153` retains its canonical ID,
+`(137,51,0)` position, `(136,51,0)` destination, four-point route, generation 1, observing phase,
+member IDs `4/5`, and 100% HP. Loaded state changes true to false; both intervention lists are
+empty and trace metadata is bounded/untruncated. The final saved-owner audit is
+`required_state_present` for the exact road target, pair, activity ID, and generation with no
+missing fields. The two incident JSON/PNG pairs and pre/post overmap screenshots have verified
+sizes/hashes in `ecology_target_relocation_receipt.json`. The generic harness stays
+`yellow_step_local_proof_incomplete` because ordinary press/capture steps are not semantically
+promoted; it had no abort. Narrow credit comes only from the game-authored payloads plus exact
+owner audit. First run `20260805_123855` is non-credit after isolating a missing watch arm and
+noisy save-prompt OCR. Claim limits: explicit debug teleport, captured producer with yellow
+whole-probe history, one bandit dispatch, Mac only. Live decoy/empty lead control is next.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / TARGET-RELOCATION LIVE NEXT
+**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / DECOY-EMPTY LIVE NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -420,6 +420,18 @@ mistook ordinary wilderness "being watched" flavor for a modal prompt, sent Spac
 Unknown-command popup, and safely aborted before signal setup. Per the two-attempt cap, do not tune
 OCR or rerun this row now. It remains open and non-credit; the next unblocked named row is live
 target relocation, which should use the corrected observer path if its real state permits.
+Observer-backed target relocation is green at scenario checkpoints `029363748c` / `9029d4e1a4`
+and run `20260805_124207`. The two game-authored incident pairs move only the player from
+`(135,51,0)` to `(135,63,0)` while natural dispatch `BD-374153` keeps its canonical ID,
+`(137,51,0)` position, `(136,51,0)` destination, route, generation, phase, member IDs `4/5`, and
+full health. Loaded presentation honestly changes true to false; both ecology intervention ledgers
+remain empty. Final save/writeback retains the exact generation-1 camp-owned road target and pair.
+The generic probe remains `yellow_step_local_proof_incomplete` because it does not promote
+unparsed key/capture steps; the bounded coordinator receipt credits only the paired incidents and
+green saved-owner audit. The first attempt `20260805_123855` is non-credit and isolated the missing
+watch arm plus noisy save-prompt OCR. Claim limits: explicit debug teleport, a captured producer
+with yellow whole-probe history, one bandit pair, Mac only. The next named row is live decoy/empty
+lead control.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

@@ -15,10 +15,13 @@ The exact receipt is `ecology_field_gate_receipt.json`. O4 save/performance neut
 Smoke/light/sound scenario support is corrected at `927251fc70`, but its two bounded attempts are
 non-credit: `20260805_121516` used the wrong profile overmap key before that fix, and
 `20260805_122335` safely stopped when the handler turned ordinary shadow-warning flavor into an
-Unknown-command popup. Do not tune or repeat that row now. The next queue is:
+Unknown-command popup. Do not tune or repeat that row now.
 
-1. Build the smallest honest live target-relocation control and use the corrected observer path
-   when its authoritative state exposes a selectable party.
+Target relocation is green at `9029d4e1a4`, run `20260805_124207`; do not repeat it by ritual. The
+next queue is:
+
+1. Build and run the smallest honest live decoy/empty-lead control, reusing authoritative saved
+   owner audits and the observer only when a real selectable entity exists.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
