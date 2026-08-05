@@ -3382,7 +3382,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "record_natural_phase4_ecology_incident",
             "close_ecology_console_before_signal_return",
         ]
-        observer_keys = ["O", "right", "right", "[", "escape", "}", "C", "A", "R", "escape"]
+        observer_keys = ["m", "right", "right", "[", "escape", "}", "C", "A", "R", "escape"]
 
         self.assertEqual(
             scenario["fixture"],
@@ -3424,6 +3424,21 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "coordinator artifact inspection",
             scenario["evidence_contract"]["observer_artifact_requirement"],
         )
+        return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
+        self.assertEqual(
+            return_audit["required_line_patterns"],
+            [
+                ["structural outing returned home lead="],
+                ["structural outing returned signal leads=3"],
+                ["lead id=", "origin=returned_report"],
+            ],
+        )
+        for label in (
+            "audit_saved_returned_smoke_lead",
+            "audit_saved_returned_light_lead",
+            "audit_saved_returned_sound_lead",
+        ):
+            self.assertLess(labels.index(return_audit["label"]), labels.index(label))
 
     def test_resolved_fixture_rejects_remove_then_clone_across_manifest_chain(self) -> None:
         for clone_follower_template in (False, True):

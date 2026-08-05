@@ -334,7 +334,7 @@
     {
       "kind": "press",
       "label": "open_natural_phase4_ecology_overmap",
-      "keys": ["O"],
+      "keys": ["m"],
       "delay_ms": 200,
       "settle_seconds": 2,
       "expected_visible_fact": "the ordinary overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay while the production-owned dispatch remains at OMT 137",
@@ -446,14 +446,12 @@
       "required_line_patterns": [
         ["structural outing returned home lead="],
         ["structural outing returned signal leads=3"],
-        ["lead id=", "origin=returned_report", "source_key=structural-signal:structural-smoke@(136,51,0)"],
-        ["lead id=", "origin=returned_report", "source_key=structural-signal:structural-light@(136,51,0)"],
-        ["lead id=", "origin=returned_report", "source_key=structural-signal:structural-explosion@(136,51,0)"]
+        ["lead id=", "origin=returned_report"]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_structural_signal_physical_return_missing",
-      "abort_reason": "same-run maintenance/evidence did not show physical return plus all three returned-report leads",
-      "expected_immediate_state": "the reunited camp now knows three bounded signal leads sourced only from the returned pair"
+      "abort_reason": "same-run maintenance/evidence did not show physical return plus the atomic three-lead return transaction",
+      "expected_immediate_state": "the reunited camp completed the atomic three-lead return transaction; the exact post-save owner audits below prove each persisted lead outside the rotating diagnostic cap"
     },
     {
       "kind": "audit_log_not_contains",
