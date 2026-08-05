@@ -503,6 +503,17 @@ static bool majority_rule( const bool a_vote, const bool b_vote, const bool c_vo
 
 bool Creature::sees( const map &here, const Creature &critter ) const
 {
+    return sees_impl( here, critter, false );
+}
+
+bool Creature::sees_without_clairvoyance( const map &here, const Creature &critter ) const
+{
+    return sees_impl( here, critter, true );
+}
+
+bool Creature::sees_impl( const map &here, const Creature &critter,
+                          const bool without_clairvoyance ) const
+{
     const Character *ch = critter.as_character();
 
     const tripoint_bub_ms pos = pos_bub( here );
@@ -600,7 +611,10 @@ bool Creature::sees( const map &here, const Creature &critter ) const
     }
 
     // If we cannot see without any of the penalties below, bail now.
-    if( !sees( here, critter_pos, critter.is_avatar() ) ) {
+    const bool sees_location = without_clairvoyance ?
+                               Creature::sees( here, critter_pos, critter.is_avatar() ) :
+                               sees( here, critter_pos, critter.is_avatar() );
+    if( !sees_location ) {
         return false;
     }
 

@@ -44,6 +44,7 @@
 #include "item_location.h"
 #include "itype.h"
 #include "json.h"
+#include "json_loader.h"
 #include "list.h" // IWYU pragma: keep
 #include "map.h"
 #include "map_helpers.h"
@@ -156,6 +157,7 @@ static const ter_str_id ter_t_water_dispenser( "t_water_dispenser" );
 static const ter_str_id ter_t_water_sh( "t_water_sh" );
 
 static const trait_id trait_IGNORE_SOUND( "IGNORE_SOUND" );
+static const trait_id trait_DEBUG_CLAIRVOYANCE( "DEBUG_CLAIRVOYANCE" );
 static const trait_id trait_INTERCOM_OPERATOR( "INTERCOM_OPERATOR" );
 static const trait_id trait_RETURN_TO_START_POS( "RETURN_TO_START_POS" );
 static const trait_id trait_SAPROPHAGE( "SAPROPHAGE" );
@@ -1663,6 +1665,30 @@ TEST_CASE( "ecology_covert_scout_relationship_is_exact_and_actor_specific",
     CHECK_FALSE( partner.has_ecology_covert_noncombat_relationship( player_character ) );
     CHECK( partner.hit_by_player );
     CHECK( partner.is_enemy() );
+}
+
+TEST_CASE( "ordinary_creature_visibility_excludes_debug_clairvoyance",
+           "[npc][bandit][covert_burn]" )
+{
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    const tripoint_bub_ms target = player_character.pos_bub() + tripoint::east * 4;
+    npc &scout = spawn_npc( target.xy(), "thug" );
+    here.ter_set( player_character.pos_bub() + tripoint::east * 2, ter_t_wall );
+    here.build_map_cache( player_character.posz(), true );
+    player_character.set_mutation( trait_DEBUG_CLAIRVOYANCE );
+    player_character.recalc_sight_limits();
+    on_out_of_scope remove_clairvoyance( [&player_character]() {
+        player_character.unset_mutation( trait_DEBUG_CLAIRVOYANCE );
+        player_character.recalc_sight_limits();
+    } );
+
+    REQUIRE( player_character.sees( here, scout ) );
+    CHECK_FALSE( player_character.sees_without_clairvoyance( here, scout ) );
 }
 
 TEST_CASE( "faction_hostile_tired_npc_fights_not_sleeps", "[npc][npc_ai][needs]" )

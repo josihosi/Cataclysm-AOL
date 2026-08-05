@@ -406,6 +406,8 @@ class Creature : public viewer
         bool sees( const map &here, const Creature &critter ) const override;
         bool sees( const map &here, const tripoint_bub_ms &t, bool is_avatar = false,
                    int range_mod = 0 ) const override;
+        /** Creature visibility with ordinary senses, excluding Character clairvoyance. */
+        bool sees_without_clairvoyance( const map &here, const Creature &critter ) const;
         /*@}*/
 
         /**
@@ -1378,6 +1380,8 @@ class Creature : public viewer
         void load( const JsonObject &jsin );
 
     private:
+        bool sees_impl( const map &here, const Creature &critter,
+                        bool without_clairvoyance ) const;
         int pain;
         // calculate how well the projectile hits
         double accuracy_projectile_attack( const int &speed, const double &missed_by ) const;

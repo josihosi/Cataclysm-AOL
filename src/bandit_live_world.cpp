@@ -3703,53 +3703,74 @@ bool record_local_pair_member_death( site_record &site,
                                      const tripoint_abs_ms &death_position,
                                      const int current_minutes )
 {
+    return reconcile_local_pair_casualties( site, expected_cursor,
+    { { member_id, member_state::dead, death_position } }, current_minutes );
+}
+
+bool reconcile_local_pair_casualties( site_record &site,
+                                      const simulation_advance_cursor &expected_cursor,
+                                      const std::vector<local_pair_casualty_read> &reads,
+                                      const int current_minutes )
+{
     const active_outing_state &outing = site.active_outing;
     if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
         outing.schema_version < 7 || outing.owner != simulation_owner::local ||
         !simulation_cursor_matches( outing, expected_cursor ) ||
-        !outing.local_handoff.is_active() || current_minutes < 0 ||
+        !outing.local_handoff.is_active() || reads.empty() || current_minutes < 0 ||
         current_minutes < outing.last_advanced_minutes ) {
         return false;
     }
-    const auto snapshot_iter = std::find_if( outing.local_handoff.members.begin(),
-    outing.local_handoff.members.end(), [&member_id]( const local_handoff_member_snapshot & member ) {
-        return member.npc_id == member_id;
-    } );
-    if( snapshot_iter == outing.local_handoff.members.end() || snapshot_iter->dead ||
-        outing.member_is_resolved( member_id ) ||
-        std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
-        outing.casualty_ids.end() ) {
-        return false;
+
+    std::vector<character_id> read_ids;
+    read_ids.reserve( reads.size() );
+    for( const local_pair_casualty_read &read : reads ) {
+        const auto snapshot_iter = std::find_if( outing.local_handoff.members.begin(),
+        outing.local_handoff.members.end(), [&read]( const local_handoff_member_snapshot & member ) {
+            return member.npc_id == read.npc_id;
+        } );
+        if( ( read.state != member_state::dead && read.state != member_state::missing ) ||
+            std::find( read_ids.begin(), read_ids.end(), read.npc_id ) != read_ids.end() ||
+            snapshot_iter == outing.local_handoff.members.end() || snapshot_iter->dead ||
+            outing.member_is_resolved( read.npc_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), read.npc_id ) !=
+            outing.casualty_ids.end() ||
+            ( read.state == member_state::missing &&
+              ( outing.missing_deadline_minutes < 0 ||
+                current_minutes < outing.missing_deadline_minutes ) ) ) {
+            return false;
+        }
+        read_ids.push_back( read.npc_id );
     }
 
     site_record candidate = site;
     advance_camp_supply( candidate, current_minutes );
-    if( !update_member_state( candidate, member_id, member_state::dead,
-            "local handoff member died under physical simulation" ) ) {
-        return false;
-    }
     active_outing_state &next = candidate.active_outing;
-    next.casualty_ids.push_back( member_id );
-    next.resolved_member_ids.push_back( member_id );
+    for( const local_pair_casualty_read &read : reads ) {
+        const std::string summary = read.state == member_state::dead ?
+                                    "local handoff member died under physical simulation" :
+                                    "local handoff member missing beyond persisted grace";
+        if( !update_member_state( candidate, read.npc_id, read.state, summary ) ) {
+            return false;
+        }
+        next.casualty_ids.push_back( read.npc_id );
+        next.resolved_member_ids.push_back( read.npc_id );
+        auto death_snapshot = std::find_if( next.local_handoff.members.begin(),
+        next.local_handoff.members.end(), [&read]( const local_handoff_member_snapshot & member ) {
+            return member.npc_id == read.npc_id;
+        } );
+        if( death_snapshot == next.local_handoff.members.end() ) {
+            return false;
+        }
+        death_snapshot->exit_position = read.last_position;
+        death_snapshot->hp_percent = 0;
+        death_snapshot->dead = true;
+    }
     next.last_progress_minutes = std::max( next.last_progress_minutes, current_minutes );
     next.last_advanced_minutes = current_minutes;
     next.local_handoff.cargo = next.cargo;
     next.local_handoff.casualty_ids = next.casualty_ids;
     next.local_handoff.committed_minutes = current_minutes;
-    local_handoff_member_snapshot *death_snapshot = nullptr;
-    for( local_handoff_member_snapshot &member : next.local_handoff.members ) {
-        if( member.npc_id == member_id ) {
-            death_snapshot = &member;
-            break;
-        }
-    }
-    if( death_snapshot == nullptr ) {
-        return false;
-    }
-    death_snapshot->exit_position = death_position;
-    death_snapshot->hp_percent = 0;
-    death_snapshot->dead = true;
-    if( next.leader_id == member_id ) {
+    if( std::find( read_ids.begin(), read_ids.end(), next.leader_id ) != read_ids.end() ) {
         const auto replacement = std::find_if( next.member_ids.begin(), next.member_ids.end(),
         [&next]( const character_id candidate_id ) {
             return std::find( next.casualty_ids.begin(), next.casualty_ids.end(), candidate_id ) ==
@@ -6851,6 +6872,13 @@ void site_record::deserialize( const JsonObject &jo )
             ( active_outing.waypoint_index == 1 ||
               ( active_outing.schema_version >= 8 &&
                 active_outing.waypoint_index == structural_target_waypoint ) ) ) ||
+          ( active_outing.schema_version >= 10 &&
+            ( active_outing.phase == scout_phase::burned_withdrawal ||
+              active_outing.phase == scout_phase::returning_exposed ||
+              active_outing.phase == scout_phase::returning_report ) &&
+            active_outing.local_contact_minutes >= active_outing.started_minutes &&
+            ( active_outing.waypoint_index == structural_target_waypoint ||
+              active_outing.waypoint_index == structural_target_waypoint + 1 ) ) ||
           ( active_outing.phase == scout_phase::returning_home &&
             ( active_outing.waypoint_index == 0 || active_outing.waypoint_index == 1 ||
               active_outing.waypoint_index == structural_target_waypoint ||
@@ -14666,6 +14694,147 @@ std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
 bool is_active_covert_scout_member( const world_state &state, const character_id npc_id )
 {
     return read_active_covert_scout_member( state, npc_id ).has_value();
+}
+
+covert_scout_burn_effect apply_covert_scout_burn(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_burn_read> &member_reads, const int current_minutes )
+{
+    covert_scout_burn_effect effect;
+    const active_outing_state &outing = site.active_outing;
+    if( site.retired_empty_site || !simulation_cursor_matches( outing, expected_cursor ) ||
+        outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+        outing.local_handoff.phase != outing.phase || !outing.local_handoff.is_active() ||
+        !outing.local_handoff.cohesion_assembled ||
+        outing.local_handoff.cohesion_abort_return || outing.member_ids.size() != 2 ||
+        outing.local_handoff.members.size() != 2 || outing.target_footprint.empty() ||
+        outing.selected_watch_kind == structural_watch_kind::none ||
+        outing.waypoint_index != 2 || outing.local_handoff.waypoint_index != 2 ||
+        !structural_watch_shared_route_is_canonical(
+            outing.shared_route, site.anchor, outing.selected_watch_omt,
+            outing.target_footprint ) ||
+        outing.selected_watch_omt.is_invalid() || outing.local_handoff.egress_omt.is_invalid() ||
+        current_minutes < 0 || current_minutes < outing.last_advanced_minutes ||
+        outing.target_lead_revision <= 0 ||
+        std::any_of( outing.observations.begin(), outing.observations.end(),
+    []( const sortie_observation & observation ) {
+        return observation.kind == sortie_observation_kind::burn;
+    } ) ) {
+        return effect;
+    }
+
+    const covert_scout_burn_read *exposure = nullptr;
+    std::set<character_id> matched_reads;
+    for( const character_id member_id : outing.member_ids ) {
+        const member_record *member = site.find_member( member_id );
+        const auto handoff_member = std::find_if(
+                                        outing.local_handoff.members.begin(),
+                                        outing.local_handoff.members.end(),
+        [member_id]( const local_handoff_member_snapshot & candidate ) {
+            return candidate.npc_id == member_id;
+        } );
+        const auto read = std::find_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_burn_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } );
+        if( member == nullptr ||
+            ( member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ||
+            outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() || handoff_member == outing.local_handoff.members.end() ||
+            handoff_member->dead || read == member_reads.end() || !read->present ||
+            read->position != outing.selected_watch_omt || !matched_reads.emplace( member_id ).second ||
+            std::count_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_burn_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } ) != 1 ) {
+            return effect;
+        }
+        const bool reciprocal = read->target_saw_scout && read->scout_saw_target;
+        if( reciprocal ) {
+            if( exposure == nullptr && !read->target_observer_id.empty() &&
+                read->target_observer_id.size() <= max_sortie_source_id_length &&
+                !read->target_observer_position.is_invalid() ) {
+                exposure = &*read;
+            } else if( read->target_observer_id.empty() ||
+                       read->target_observer_id.size() > max_sortie_source_id_length ||
+                       read->target_observer_position.is_invalid() ) {
+                return effect;
+            }
+        }
+    }
+    if( member_reads.size() != matched_reads.size() ) {
+        return effect;
+    }
+    if( exposure == nullptr ) {
+        effect.result = covert_scout_burn_result::unchanged;
+        return effect;
+    }
+
+    sortie_observation burn;
+    burn.fact_key = "burn:" + std::to_string( exposure->npc_id.get_value() );
+    burn.summary = "scout cover broken by reciprocal ordinary visual contact";
+    burn.confidence = 100;
+    burn.observed_minutes = current_minutes;
+    burn.critical = true;
+    burn.kind = sortie_observation_kind::burn;
+    burn.state_key = "burned";
+    burn.record_schema_version = 1;
+    burn.source_id = exposure->target_observer_id;
+    burn.sense = sortie_observation_sense::visual;
+    burn.observer_id = exposure->npc_id;
+    burn.source_omt = exposure->target_observer_position;
+    burn.receiver_omt = exposure->position;
+    burn.bucket_start_minutes = current_minutes - current_minutes % 30;
+    burn.strength = 6;
+    burn.visual_quality = 3;
+    burn.simultaneity_start_minutes = current_minutes;
+    burn.simultaneity_end_minutes = current_minutes;
+    burn.observed_power_low = 1;
+    burn.observed_power_high = 1;
+    burn.target_revision = outing.target_lead_revision;
+    burn.expiry_minutes = minutes_after_saturated( current_minutes, 6 * 60 );
+    burn.share_state = sortie_observation_share_state::shared;
+    if( !typed_sortie_observation_is_valid( burn ) ) {
+        return effect;
+    }
+
+    site_record candidate = site;
+    std::vector<sortie_observation> observations = candidate.active_outing.observations;
+    observations.push_back( burn );
+    candidate.active_outing.observations = make_bounded_sortie_observations( observations );
+    const bool retained = std::any_of( candidate.active_outing.observations.begin(),
+                                      candidate.active_outing.observations.end(),
+    [&burn]( const sortie_observation & observation ) {
+        return sortie_observation_identity_matches( observation, burn ) &&
+               sortie_observations_equal( observation, burn );
+    } );
+    if( !retained ) {
+        return effect;
+    }
+    candidate.active_outing.phase = scout_phase::burned_withdrawal;
+    candidate.active_outing.local_handoff.phase = scout_phase::burned_withdrawal;
+    candidate.active_outing.last_progress_minutes = current_minutes;
+    candidate.active_outing.last_advanced_minutes = current_minutes;
+    consume_local_pair_resume_receipt( candidate.active_outing );
+    if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
+        !candidate.roster().valid ) {
+        return effect;
+    }
+
+    effect.result = covert_scout_burn_result::applied;
+    effect.observer_id = exposure->npc_id;
+    effect.target_observer_id = exposure->target_observer_id;
+    effect.burn_origin_omt = exposure->position;
+    effect.egress_omt = candidate.active_outing.local_handoff.egress_omt;
+    effect.rally_omt = candidate.active_outing.local_handoff.egress_omt;
+    site = std::move( candidate );
+    record_scout_phase_transition_event( site.active_outing, scout_phase::observing,
+                                         scout_phase::burned_withdrawal,
+                                         "reciprocal ordinary visual exposure", current_minutes );
+    return effect;
 }
 
 bool covert_scout_party_cleared_target_acquire_range(

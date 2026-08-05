@@ -452,6 +452,12 @@ struct local_handoff_member_read {
     tripoint_abs_ms staging_position;
 };
 
+struct local_pair_casualty_read {
+    character_id npc_id;
+    member_state state = member_state::dead;
+    tripoint_abs_ms last_position;
+};
+
 struct local_handoff_plan {
     bool valid = false;
     simulation_advance_cursor expected_cursor;
@@ -1520,6 +1526,10 @@ bool record_local_pair_member_death( site_record &site,
                                      character_id member_id,
                                      const tripoint_abs_ms &death_position,
                                      int current_minutes );
+bool reconcile_local_pair_casualties( site_record &site,
+                                      const simulation_advance_cursor &expected_cursor,
+                                      const std::vector<local_pair_casualty_read> &reads,
+                                      int current_minutes );
 local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         const simulation_advance_cursor &expected_cursor, int current_minutes,
         const std::vector<local_cohesion_member_read> &member_reads );
@@ -1577,9 +1587,34 @@ struct covert_scout_member_acquire_read {
     bool returning_home = false;
     bool mutual_target_visibility = false;
 };
+struct covert_scout_burn_read {
+    character_id npc_id;
+    tripoint_abs_omt position;
+    bool present = false;
+    std::string target_observer_id;
+    tripoint_abs_omt target_observer_position;
+    bool target_saw_scout = false;
+    bool scout_saw_target = false;
+};
+enum class covert_scout_burn_result {
+    rejected,
+    unchanged,
+    applied,
+};
+struct covert_scout_burn_effect {
+    covert_scout_burn_result result = covert_scout_burn_result::rejected;
+    character_id observer_id;
+    std::string target_observer_id;
+    tripoint_abs_omt burn_origin_omt;
+    tripoint_abs_omt egress_omt;
+    tripoint_abs_omt rally_omt;
+};
 std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
     const world_state &state, character_id npc_id );
 bool is_active_covert_scout_member( const world_state &state, character_id npc_id );
+covert_scout_burn_effect apply_covert_scout_burn(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_burn_read> &member_reads, int current_minutes );
 bool covert_scout_party_cleared_target_acquire_range(
     const active_outing_state &outing,
     const std::vector<covert_scout_member_acquire_read> &member_reads );

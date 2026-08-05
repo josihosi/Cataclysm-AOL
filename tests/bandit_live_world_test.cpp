@@ -14844,6 +14844,287 @@ TEST_CASE( "bandit_live_world_covert_disposition_is_an_exact_derived_member_view
                      duplicate_owner, first_id ) );
 }
 
+TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
+           "[bandit][live_world][covert_burn]" )
+{
+    const auto make_world = []() {
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, 0, false, 895000 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const character_id first_id = site.members[0].npc_id;
+        const character_id second_id = site.members[1].npc_id;
+        site.members[0].state = bandit_live_world::member_state::local_contact;
+        site.members[1].state = bandit_live_world::member_state::outbound;
+
+        bandit_live_world::active_outing_state &outing = site.active_outing;
+        outing.schema_version = 10;
+        outing.kind = bandit_live_world::outing_kind::structural_sortie;
+        outing.activity_id = site.site_id + "#structural";
+        outing.camp_id = site.site_id;
+        outing.generation = 4;
+        site.next_outing_generation = 5;
+        outing.member_ids = { first_id, second_id };
+        outing.leader_id = first_id;
+        outing.shared_route = {
+            tripoint_abs_omt( 0, 0, 0 ), tripoint_abs_omt( 1, 1, 0 ),
+            tripoint_abs_omt( 1, 0, 0 ), tripoint_abs_omt( 1, 1, 0 ),
+            tripoint_abs_omt( 0, 0, 0 )
+        };
+        outing.waypoint_index = 2;
+        outing.target_id = "covert-burn-lead";
+        outing.target_omt = tripoint_abs_omt( 4, 0, 0 );
+        outing.job_type = "scout";
+        outing.target_lead_id = outing.target_id;
+        outing.target_lead_revision = 3;
+        outing.phase = bandit_live_world::scout_phase::observing;
+        outing.owner = bandit_live_world::simulation_owner::local;
+        outing.handoff_epoch = 1;
+        outing.started_minutes = 0;
+        outing.local_contact_minutes = 1;
+        outing.last_progress_minutes = 1;
+        outing.last_advanced_minutes = 1;
+        outing.expected_return_minutes = 90;
+        outing.missing_deadline_minutes = 1530;
+        outing.return_application_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                outing.activity_id, outing.generation, "return" );
+        outing.report_application_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                outing.activity_id, outing.generation, "report" );
+        outing.cargo_application_key =
+            bandit_pursuit_handoff::make_operation_component_key(
+                outing.activity_id, outing.generation, "cargo" );
+        outing.target_footprint = { outing.target_omt };
+        outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+        outing.selected_watch_omt = outing.shared_route[2];
+        outing.selected_watch_route_cost = 1;
+        outing.local_handoff.activity_id = outing.activity_id;
+        outing.local_handoff.activity_generation = outing.generation;
+        outing.local_handoff.handoff_epoch = outing.handoff_epoch;
+        outing.local_handoff.waypoint_index = outing.waypoint_index;
+        outing.local_handoff.phase = outing.phase;
+        outing.local_handoff.route_position = outing.selected_watch_omt;
+        outing.local_handoff.approach_from = outing.shared_route[1];
+        outing.local_handoff.egress_omt = outing.shared_route[3];
+        outing.local_handoff.cohesion_leader_id = first_id;
+        outing.local_handoff.cohesion_assembled = true;
+        outing.local_handoff.committed_minutes = 1;
+        const tripoint_abs_ms watch_origin = project_to<coords::ms>( outing.selected_watch_omt );
+        const tripoint_abs_ms first_entry( watch_origin.x() + 8, watch_origin.y() + 8,
+                                           watch_origin.z() );
+        const tripoint_abs_ms second_entry( watch_origin.x() + 9, watch_origin.y() + 8,
+                                            watch_origin.z() );
+        outing.local_handoff.members = {
+            { first_id, site.members[0].home_spawn_tile, first_entry,
+              tripoint_abs_ms( first_entry.x(), first_entry.y() + 1, first_entry.z() ),
+              first_entry, 100, false },
+            { second_id, site.members[1].home_spawn_tile, second_entry,
+              tripoint_abs_ms( second_entry.x(), second_entry.y() + 1, second_entry.z() ),
+              second_entry, 70, false }
+        };
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = outing.target_lead_id;
+        lead.revision = outing.target_lead_revision;
+        lead.kind = bandit_live_world::camp_lead_kind::terrain_opportunity;
+        lead.origin = bandit_live_world::camp_lead_origin::structural_routine;
+        lead.status = bandit_live_world::camp_lead_status::active;
+        lead.target_id = "covert-burn-target";
+        lead.omt = outing.target_omt;
+        lead.source_key = "covert-burn:terrain_fit:open";
+        lead.source_summary = "covert burn round-trip fixture";
+        lead.first_seen_minutes = 0;
+        lead.last_seen_minutes = 0;
+        site.intelligence_map.leads.push_back( lead );
+        for( int index = 0; index < 16; ++index ) {
+            outing.observations.emplace_back(
+                "routine-" + std::to_string( index ), "bounded routine observation", 25,
+                0, false, bandit_live_world::sortie_observation_kind::routine, "quiet" );
+        }
+        return world;
+    };
+    const auto make_reads = []( const bandit_live_world::active_outing_state &outing ) {
+        return std::vector<bandit_live_world::covert_scout_burn_read> {
+            { outing.member_ids[1], outing.selected_watch_omt, true, "avatar",
+              outing.target_omt, true, true },
+            { outing.member_ids[0], outing.selected_watch_omt, true, "avatar",
+              outing.target_omt, true, true }
+        };
+    };
+
+    SECTION( "reciprocal ordinary sight burns the whole pair once" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::vector<character_id> member_ids = site.active_outing.member_ids;
+        const std::vector<tripoint_abs_omt> shared_route = site.active_outing.shared_route;
+        const std::vector<tripoint_abs_omt> target_footprint = site.active_outing.target_footprint;
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::vector<bandit_live_world::covert_scout_burn_read> reads =
+            make_reads( site.active_outing );
+
+        const bandit_live_world::covert_scout_burn_effect effect =
+            bandit_live_world::apply_covert_scout_burn( site, *cursor, reads, 1 );
+        REQUIRE( effect.result == bandit_live_world::covert_scout_burn_result::applied );
+        CHECK( effect.observer_id == member_ids[0] );
+        CHECK( effect.target_observer_id == "avatar" );
+        CHECK( effect.burn_origin_omt == shared_route[2] );
+        CHECK( effect.egress_omt == shared_route[3] );
+        CHECK( effect.rally_omt == shared_route[3] );
+        CHECK( site.active_outing.phase ==
+               bandit_live_world::scout_phase::burned_withdrawal );
+        CHECK( site.active_outing.local_handoff.phase ==
+               bandit_live_world::scout_phase::burned_withdrawal );
+        CHECK( site.active_outing.member_ids == member_ids );
+        CHECK( site.active_outing.shared_route == shared_route );
+        CHECK( site.active_outing.target_footprint == target_footprint );
+        CHECK( site.active_outing.last_progress_minutes == 1 );
+        CHECK( site.active_outing.last_advanced_minutes == 1 );
+        CHECK( site.active_outing.observations.size() == 16 );
+        const auto burn = std::find_if( site.active_outing.observations.begin(),
+                                       site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+        } );
+        REQUIRE( burn != site.active_outing.observations.end() );
+        CHECK( burn->observer_id == member_ids[0] );
+        CHECK( burn->source_id == "avatar" );
+        CHECK( burn->source_omt == site.active_outing.target_omt );
+        CHECK( burn->receiver_omt == site.active_outing.selected_watch_omt );
+        CHECK( burn->share_state ==
+               bandit_live_world::sortie_observation_share_state::shared );
+        CHECK( burn->critical );
+        CHECK( burn->observed_minutes == 1 );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+        CHECK( bandit_live_world::is_active_covert_scout_member( world, member_ids[0] ) );
+        CHECK( bandit_live_world::is_active_covert_scout_member( world, member_ids[1] ) );
+
+        const std::string committed = serialize_world( world );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == committed );
+    }
+
+    SECTION( "one-way sight and malformed snapshots cannot burn or mutate" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::covert_scout_burn_read> reads =
+            make_reads( site.active_outing );
+        reads[0].scout_saw_target = false;
+        reads[1].target_saw_scout = false;
+        const std::string before = serialize_world( world );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::unchanged );
+        CHECK( serialize_world( world ) == before );
+
+        reads = make_reads( site.active_outing );
+        reads.pop_back();
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == before );
+
+    }
+
+    SECTION( "ordinary reciprocal sight may cross a z-level" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::covert_scout_burn_read> reads =
+            make_reads( site.active_outing );
+        reads[1].target_observer_position = tripoint_abs_omt( 4, 0, 1 );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::applied );
+        const auto burn = std::find_if( site.active_outing.observations.begin(),
+                                       site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+        } );
+        REQUIRE( burn != site.active_outing.observations.end() );
+        CHECK( burn->source_omt.z() == 1 );
+    }
+
+    SECTION( "burned pair casualties resolve atomically before survivor egress" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     site, *cursor, make_reads( site.active_outing ), 1 ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+        const character_id dead_id = site.active_outing.member_ids.front();
+        const character_id survivor_id = site.active_outing.member_ids.back();
+        const tripoint_abs_ms death_position =
+            site.active_outing.local_handoff.members.front().entry_position;
+
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::reconcile_local_pair_casualties(
+                     site, *cursor, { { dead_id, bandit_live_world::member_state::dead,
+                                       death_position } }, 1 ) );
+        CHECK( site.active_outing.phase ==
+               bandit_live_world::scout_phase::burned_withdrawal );
+        CHECK( site.active_outing.local_handoff.phase ==
+               bandit_live_world::scout_phase::burned_withdrawal );
+        CHECK( site.active_outing.member_is_resolved( dead_id ) );
+        CHECK_FALSE( site.active_outing.member_is_resolved( survivor_id ) );
+        CHECK( site.active_outing.leader_id == survivor_id );
+        CHECK( site.active_outing.local_handoff.cohesion_leader_id == survivor_id );
+        CHECK( site.active_outing.local_handoff.casualty_ids ==
+               site.active_outing.casualty_ids );
+        CHECK( site.find_member( dead_id )->state == bandit_live_world::member_state::dead );
+        CHECK( site.find_member( survivor_id )->state != bandit_live_world::member_state::dead );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
+    SECTION( "dead and overdue-missing burned members reconcile in one transaction" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     site, *cursor, make_reads( site.active_outing ), 1 ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+        const character_id dead_id = site.active_outing.member_ids.front();
+        const character_id missing_id = site.active_outing.member_ids.back();
+        const tripoint_abs_ms death_position =
+            site.active_outing.local_handoff.members.front().entry_position;
+        const std::vector<bandit_live_world::local_pair_casualty_read> reads = {
+            { dead_id, bandit_live_world::member_state::dead, death_position },
+            { missing_id, bandit_live_world::member_state::missing, tripoint_abs_ms() }
+        };
+
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::string before_early_missing = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::reconcile_local_pair_casualties(
+                         site, *cursor, reads, site.active_outing.missing_deadline_minutes - 1 ) );
+        CHECK( serialize_world( world ) == before_early_missing );
+
+        REQUIRE( bandit_live_world::reconcile_local_pair_casualties(
+                     site, *cursor, reads, site.active_outing.missing_deadline_minutes ) );
+        CHECK( site.active_outing.phase == bandit_live_world::scout_phase::lost );
+        CHECK( site.active_outing.local_handoff.phase ==
+               bandit_live_world::scout_phase::lost );
+        CHECK( site.active_outing.resolved_member_ids.size() == 2 );
+        CHECK( site.active_outing.casualty_ids.size() == 2 );
+        CHECK( site.find_member( dead_id )->state == bandit_live_world::member_state::dead );
+        CHECK( site.find_member( missing_id )->state ==
+               bandit_live_world::member_state::missing );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+}
+
 TEST_CASE( "bandit_live_world_sight_avoid_uses_only_bounded_local_reposition_candidates",
            "[bandit][live_world][sight_avoid]" )
 {
