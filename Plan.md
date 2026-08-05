@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY OBSERVER O0 NEXT
+**Status:** ACTIVE / GREEN / PHASE 4 PHYSICAL RETURN GREEN / ECOLOGY WATCH O4A NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -345,7 +345,14 @@ O0 save-byte probes are preserved in the same run: the first was invalidated by 
 and debug-console contamination; a matched gate-off/gate-on overmap navigation still produced
 serializer/lazy-overmap variance after normalizing the intentional mutation. The row remains open
 without another canonicalizer retry and is deferred to O4's existing performance/save-growth
-harness. O3 authoritative horde/stalker read adapters are the next implementation row.
+harness. O3a is checkpointed at `a4e4cb5c22`: snapshot schema 2 now has one opt-in, bounded,
+fail-closed mobile-owner contract with distinct horde/stalker symbols and type-specific selected
+details. Exact Mac link plus `[ecology_debug]` 23/232 and `[debug_console]` 9/1,116 are green; one
+review/fix pass closed absent-source and canonical-ID collision defects. Neither current C-AOL nor
+fetched upstream `7f6b236556` has a durable horde/group/monster identity that survives movement and
+concrete/abstract transfer, so production mobile adapters remain disabled instead of inventing
+position IDs. Per the practical party-first stop condition, O4a selected phase-change watch is the
+next row; O3 adapters resume only after an authoritative identity seam exists.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

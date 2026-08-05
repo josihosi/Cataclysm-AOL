@@ -793,14 +793,14 @@ clean. This is Mac compile/unit evidence only. Run `20260804_214456` remains the
 red/inconclusive live artifact (`red_wait_completion_artifact_timeout`); no further OCR/wait-menu
 retry is justified before the observer exists.
 
-The current validation target is observer O0/O2 from
-`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: prove the harness adds
-only `DEBUG_CLAIRVOYANCE`; observer off/on leaves knowledge and save bytes unchanged beyond that
-mutation; the shared camp/dispatch view is deterministic at 2,048 considered / 256 emitted / 128
-deltas with explicit truncation; stale/dead/completed and co-located/z-level cases are honest; and
-closed observer work is zero. Smoke/light/sound is the first later live row that must preserve a
-screenshot plus the exact compact snapshot. O2 code is green; the immediate proof target is its
-current-build screenshot/snapshot pair plus the O0 save/knowledge-negative run.
+The current validation target is O4a from
+`doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`: bind one selected
+camp/dispatch token, emit only bounded typed changes through the existing trace monitor, and reuse
+the existing step controller for capture-and-continue or pause. Filter/gate/world changes must
+cancel or stale the watch; an unresolved dispatch is an anomaly until its authoritative owner can
+prove completion or death. O0 save/knowledge neutrality retries only through O4's existing
+performance/save-growth harness. O3 production mobile adapters remain disabled until horde/group /
+monster ownership has stable movement/load-transfer identity.
 
 Observer O0 prepared handoff is green at the current checkpoint. Derived fixture
 `bandit_phase4_ecology_observer_handoff_v0_2026-08-05` preserves inherited `DEBUG_CLOAK` and its
@@ -856,6 +856,18 @@ three player trait/mutation locations. Exact hashes and screenshots are in
 not green or a proven source defect. The deterministic gate-closed test still proves zero callbacks,
 zero query time, and byte-identical authoritative live-world serialization. Per the two-attempt cap,
 retry only through O4's existing save-growth/performance harness.
+
+Observer O3a shared mobile contract is green at checkpoint `a4e4cb5c22`. Snapshot schema 2 accepts
+mobile rows only through an installed provider that receives the exact region, selected ID, and
+2,048 cap. Horde detail is population/interest/target; stalker detail is HP; absent sources report
+disabled; wrong/empty identities and every canonical-ID collision fail closed before selection.
+Exact Mac link and `git diff --check` pass; `[ecology_debug]` passes 23 cases / 232 assertions at
+seed `2349632433`; the unchanged `[debug_console]` suite passes 9 / 1,116. One AutoReview pass found
+two P2 defects (false-enabled absent sources and ambiguous IDs); both were fixed and the targeted
+fixture was corrected to use genuinely distinct canonical site IDs. This does not claim live horde
+or stalker markers, foreign-platform compilation, or a persisted identity migration. Current and
+upstream `7f6b236556` owners expose no identity that survives movement plus concrete/abstract
+transfer, so position hashes and creature-tracker temporaries are explicitly rejected.
 
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must

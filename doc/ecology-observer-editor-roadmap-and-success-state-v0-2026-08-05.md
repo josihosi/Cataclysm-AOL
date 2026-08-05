@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / ROADMAP RATIFIED / READ-ONLY OBSERVER FIRST
+Status: ACTIVE / O3A MOBILE CONTRACT GREEN / O4A SELECTED WATCH NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -123,6 +123,10 @@ natural while retaining causal linkage to the intervention ledger.
   rewrite and matched lazy-overmap/serializer variance survive mutation normalization. Exact hashes
   are preserved; retry only through the existing O4 performance/save-growth harness._
 
+Execution-order exception: this deferred serializer-variance proof and O3's missing identity seam
+do not justify a third bespoke retry or fake IDs. The practical party-first stop condition makes
+O4a the current row.
+
 ### O1 - shared read-only camp/dispatch view
 
 - [x] Implement one side-effect-free view/query type with stable sort/cap/truncation/provenance and
@@ -158,13 +162,26 @@ natural while retaining causal linkage to the intervention ledger.
 
 ### O3 - horde and stalker adapters
 
+- [x] Add one opt-in bounded mobile-owner shape to the shared view and compact snapshot without
+  enabling unavailable sources. _Checkpoint `a4e4cb5c22`; schema 2 passes exact Mac link,
+  `[ecology_debug]` 23/232, `[debug_console]` 9/1,116, and `git diff --check`. The provider receives
+  region, selected ID, and cap; invalid or colliding IDs fail closed; absent providers report both
+  mobile filters false. One AutoReview pass found the absent-source and collision defects and both
+  were fixed._
 - [ ] Add authoritative horde markers/details and loaded/abstract writhing-stalker inspection,
-  including identity/load/unload/z-level/stale-removal tests.
+  including identity/load/unload/z-level/stale-removal tests. _Deferred: current C-AOL and fetched
+  upstream `7f6b236556` expose position-keyed horde/group owners and temporary loaded-monster
+  tracker identity, none of which survives movement plus concrete/abstract transfer._
 - [ ] Keep unsupported stalker ownership inspect-only with a concrete seam note; do not synthesize
-  identity or HP.
+  identity or HP. _The seam is recorded in `TechnicalTome.md`; mobile sources stay disabled until
+  an authoritative persisted identity exists._
 
 ### O4 - compact deltas, watches, and incident bundle
 
+- [ ] Add O4a selected phase-change watch with an immutable world/ID/generation/owner token,
+  transition-only `appeared`/`moved`/`phase_changed`/`hp_changed` records, exact 128-row retention,
+  and capture-and-continue or existing-controller pause behavior. Ambiguous disappearance is an
+  anomaly, not invented death/completion.
 - [ ] Emit bounded deterministic snapshot+deltas to harness artifacts and expose a run-until
   operation equivalent to `observe selected-operation --until phase-change-or-anomaly --deadline
   6h --json`.
