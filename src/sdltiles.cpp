@@ -6834,8 +6834,14 @@ bool save_screenshot( const std::string &file_path )
         return false;
     }
 
-    // Save screenshot as PNG file
-    if( printErrorIf( IMG_SavePNG( surface.get(), file_path.c_str() ) != 0,
+    // SDL3_image changed this API from SDL2's 0-on-success integer to a
+    // true-on-success bool. Normalize both contracts before reporting failure.
+#if SDL_MAJOR_VERSION >= 3
+    const bool png_save_failed = !IMG_SavePNG( surface.get(), file_path.c_str() );
+#else
+    const bool png_save_failed = IMG_SavePNG( surface.get(), file_path.c_str() ) != 0;
+#endif
+    if( printErrorIf( png_save_failed,
                       std::string( "save_screenshot: cannot save screenshot file: " + file_path ).c_str() ) ) {
         return false;
     }
