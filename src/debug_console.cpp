@@ -51,6 +51,7 @@
 #include "debug_monitor_targets.h"
 #include "ecology_debug_delta.h"
 #include "ecology_debug_incident.h"
+#include "ecology_debug_intervention.h"
 #include "dialogue.h"
 #include "effect.h"
 #include "effect_on_condition.h"
@@ -633,6 +634,9 @@ class ecology_watch_session
                 return false;
             }
             ring_.clear();
+            interventions_.clear();
+            last_intervention_sequence_ =
+                ecology_debug::process_intervention_ledger().latest_sequence();
             prior_ = selected;
             observer_revision_ = overmap_ui::ecology_observer_control_revision();
             disposition_ = disposition;
@@ -725,13 +729,14 @@ class ecology_watch_session
                 incident_status_ = "Incident rejected: observer selection became stale.";
                 return false;
             }
-            const std::optional<ecology_debug::selected_projection> current =
+            std::optional<ecology_debug::selected_projection> current =
                 overmap_ui::ecology_observer_resolve_projection( prior_->token );
             if( !current ) {
                 incident_status_ = "Incident rejected: authoritative selection no longer resolves.";
                 return false;
             }
 
+            synchronize_interventions( *current );
             ecology_debug::delta_observation_context observation_context;
             observation_context.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
             observation_context.timestamp = to_string( calendar::turn );
@@ -895,8 +900,11 @@ class ecology_watch_session
                 return monitor_value_;
             }
 
-            const std::optional<ecology_debug::selected_projection> current =
+            std::optional<ecology_debug::selected_projection> current =
                 overmap_ui::ecology_observer_resolve_projection( prior_->token );
+            if( current ) {
+                synchronize_interventions( *current );
+            }
             ecology_debug::delta_observation_context context;
             context.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
             context.timestamp = to_string( calendar::turn );
@@ -922,6 +930,25 @@ class ecology_watch_session
             return monitor_value_;
         }
 
+        void synchronize_interventions( ecology_debug::selected_projection &current ) {
+            const std::vector<ecology_debug::incident_intervention> additions =
+                ecology_debug::process_intervention_ledger().matching_after(
+                    current.token, last_intervention_sequence_ );
+            if( additions.empty() ) {
+                return;
+            }
+            interventions_.insert( interventions_.end(), additions.begin(), additions.end() );
+            if( interventions_.size() > ecology_debug::ecology_incident_intervention_cap ) {
+                interventions_.erase( interventions_.begin(),
+                                      interventions_.end() - ecology_debug::ecology_incident_intervention_cap );
+            }
+            last_intervention_sequence_ = additions.back().sequence;
+            const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            if( additions.back().turn == current_turn ) {
+                current.marker.provenance = ecology_debug::entity_provenance::debug_intervention;
+            }
+        }
+
         ecology_debug::delta_ring ring_;
         std::optional<ecology_debug::selected_projection> prior_;
         ecology_debug::trigger_disposition disposition_ =
@@ -933,6 +960,7 @@ class ecology_watch_session
         std::string status_ = "Idle";
         std::string monitor_value_ = "ecology watch idle";
         std::vector<ecology_debug::incident_intervention> interventions_;
+        uint64_t last_intervention_sequence_ = 0;
         std::string incident_status_ = "No incident recorded.";
         std::string incident_payload_;
 };

@@ -35,9 +35,11 @@
 #include "cuboid_rectangle.h"
 #include "cursesdef.h"
 #include "debug.h"
+#include "debug_capture.h"
 #include "debug_menu.h"
 #include "display.h"
 #include "ecology_debug_snapshot.h"
+#include "ecology_debug_intervention.h"
 #include "enum_conversions.h"
 #include "game.h"
 #include "game_constants.h"
@@ -415,6 +417,16 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
         const std::optional<size_t> selected_authority_index = std::nullopt )
 {
     const auto query_started = std::chrono::steady_clock::now();
+    if( !request.provenance_for_entity ) {
+        const std::string world_identity = current_ecology_world_id();
+        const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+        request.provenance_for_entity = [world_identity, current_turn]( const std::string & entity_id ) {
+            return ecology_debug::process_intervention_ledger().contains_at(
+                       world_identity, entity_id, current_turn ) ?
+                   ecology_debug::entity_provenance::debug_intervention :
+                   ecology_debug::entity_provenance::natural;
+        };
+    }
     if( selected_authority_index ) {
         const auto find_loaded_npc = []( character_id npc_id ) {
             npc *guy = g->find_npc( npc_id );
@@ -1000,6 +1012,7 @@ void overmap_sidebar::draw_ecology()
     print_hint( "ECOLOGY_LOADED_FILTER", draw_data.ecology_loaded_only ? c_pink : c_light_blue );
     print_hint( "ECOLOGY_SELECT", c_light_blue );
     print_hint( "ECOLOGY_FOLLOW", draw_data.ecology_pinned ? c_pink : c_light_blue );
+    print_hint( "ECOLOGY_EDIT", c_light_blue );
 
     const ecology_debug::query_metadata &metadata = draw_data.ecology_view.metadata;
     draw_sidebar_text( string_format( _( "Observer: %d considered, %d shown, %lld us" ),
@@ -2603,6 +2616,259 @@ static void modify_horde_func( tripoint_abs_omt &curs )
     }
 }
 
+static void edit_selected_ecology_dispatch( overmap_ui::overmap_draw_data_t &data )
+{
+    const std::optional<ecology_debug::selected_projection> selected =
+        overmap_ui::ecology_observer_selected_projection();
+    if( !selected || !selected->detail ) {
+        popup( _( "Select an ecology entity before opening the inspector." ) );
+        return;
+    }
+    if( selected->marker.kind != ecology_debug::entity_kind::bandit_dispatch &&
+        selected->marker.kind != ecology_debug::entity_kind::cannibal_dispatch ) {
+        popup( string_format( _( "%s (%s) is read-only.  V0 mutations apply only to loaded "
+                                  "members of structural local dispatches." ),
+                              selected->marker.alias, ecology_debug::to_string( selected->marker.kind ) ) );
+        return;
+    }
+
+    uilist member_menu;
+    member_menu.title = string_format( _( "Inspect %s members" ), selected->marker.alias );
+    for( size_t index = 0; index < selected->detail->members.size(); ++index ) {
+        const ecology_debug::member_detail &member = selected->detail->members[index];
+        const std::string name = member.name.empty() ? _( "unnamed" ) : member.name;
+        const std::string hp = member.hp_percent ? std::to_string( *member.hp_percent ) + "%" : "?";
+        member_menu.addentry( static_cast<int>( index ), true, MENU_AUTOASSIGN,
+                              string_format( "%s [npc:%d] hp=%s status=%s loaded=%s",
+                                             name, member.npc_id.get_value(), hp, member.status,
+                                             member.loaded ? "yes" : "no" ) );
+    }
+    member_menu.query();
+    if( member_menu.ret < 0 ||
+        static_cast<size_t>( member_menu.ret ) >= selected->detail->members.size() ) {
+        return;
+    }
+    const ecology_debug::member_detail &selected_member =
+        selected->detail->members[member_menu.ret];
+
+    uilist action_menu;
+    action_menu.title = string_format( _( "Ecology member npc:%d" ),
+                                       selected_member.npc_id.get_value() );
+    action_menu.addentry( 0, true, 'I', _( "Inspect only" ) );
+    action_menu.addentry( 1, selected_member.loaded, 'W', _( "Set HP percentage (wound)" ) );
+    action_menu.addentry( 2, selected_member.loaded, 'H', _( "Heal fully" ) );
+    action_menu.addentry( 3, selected_member.loaded, 'K',
+                          _( "Kill through NPC death and outing cleanup" ) );
+    action_menu.query();
+    if( action_menu.ret < 0 ) {
+        return;
+    }
+    if( action_menu.ret == 0 ) {
+        popup( string_format( "%s [npc:%d]\nHP: %s\nStatus: %s\nLoaded: %s\n"
+                              "Dispatch: %s\nGeneration: %d\nOwner: %s\nOMT: %s",
+                              selected_member.name.empty() ? _( "unnamed" ) : selected_member.name,
+                              selected_member.npc_id.get_value(),
+                              selected_member.hp_percent ?
+                              std::to_string( *selected_member.hp_percent ) + "%" : "?",
+                              selected_member.status, selected_member.loaded ? "yes" : "no",
+                              selected->token.canonical_id, selected->token.generation,
+                              selected->token.owner, selected->marker.omt.to_string() ) );
+        return;
+    }
+
+    const std::optional<size_t> authority_index =
+        ecology_authority_index( selected->token.authority_token );
+    bandit_live_world::world_state &world = overmap_buffer.global_state.bandit_live_world;
+    if( !authority_index || *authority_index >= world.sites.size() ) {
+        popup( _( "This dispatch selection no longer has an authoritative owner." ) );
+        return;
+    }
+    bandit_live_world::site_record &site = world.sites[*authority_index];
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    npc *member = g->find_npc( selected_member.npc_id );
+    const bool editable_outing = &site.active_outing == site.active_external_outing() &&
+                                 site.active_outing.kind ==
+                                 bandit_live_world::outing_kind::structural_sortie &&
+                                 site.active_outing.schema_version >= 7 &&
+                                 site.active_outing.owner == bandit_live_world::simulation_owner::local &&
+                                 site.active_outing.local_handoff.is_active();
+    if( !editable_outing || !cursor || member == nullptr || !member->is_active() ||
+        member->is_dead() ) {
+        popup( _( "This member is inspect-only: V0 requires a live loaded member of a structural "
+                  "local handoff." ) );
+        return;
+    }
+
+    ecology_debug::dispatch_member_edit_guard guard;
+    guard.entity = selected->token;
+    guard.member_id = selected_member.npc_id;
+    guard.entity_omt = selected->marker.omt;
+    guard.member_omt = member->pos_abs_omt();
+    guard.hp_percent = member->hp_percentage();
+    guard.cursor = *cursor;
+
+    ecology_debug::dispatch_member_edit_action edit_action =
+        ecology_debug::dispatch_member_edit_action::wound;
+    int target_hp = guard.hp_percent;
+    if( action_menu.ret == 1 ) {
+        target_hp = std::min( 50, guard.hp_percent - 1 );
+        if( target_hp < 1 || !query_int( target_hp, true,
+                                        _( "Set every body part to which HP percentage (1-99)?" ) ) ||
+            target_hp < 1 || target_hp > 99 || target_hp >= guard.hp_percent ) {
+            popup( _( "Wound cancelled: target HP must be from 1 to 99 and below current HP." ) );
+            return;
+        }
+    } else if( action_menu.ret == 2 ) {
+        edit_action = ecology_debug::dispatch_member_edit_action::heal;
+    } else if( action_menu.ret == 3 ) {
+        edit_action = ecology_debug::dispatch_member_edit_action::kill;
+    } else {
+        return;
+    }
+
+    const std::string member_name = member->get_name();
+    const std::string target_summary = edit_action ==
+                                       ecology_debug::dispatch_member_edit_action::wound ?
+                                       std::to_string( target_hp ) + "%" :
+                                       ecology_debug::to_string( edit_action );
+    const std::string confirmation = string_format(
+            _( "Confirm DEBUG intervention?\n\nDispatch: %s\nGeneration: %d\nMember: %s "
+               "[npc:%d]\nMember OMT: %s\nCurrent HP: %d%%\nAction: %s\n\n"
+               "This uses the authoritative NPC and outing cleanup path and cannot be undone." ),
+            guard.entity.canonical_id, guard.entity.generation, member_name,
+            guard.member_id.get_value(), guard.member_omt.to_string(), guard.hp_percent,
+            target_summary );
+    if( !query_yn( confirmation ) ) {
+        return;
+    }
+
+    const std::optional<ecology_debug::selected_projection> current_projection =
+        overmap_ui::ecology_observer_resolve_projection( guard.entity );
+    if( !current_projection ) {
+        popup( _( "Intervention rejected: the dispatch moved, completed, died, or changed identity." ) );
+        return;
+    }
+    bandit_live_world::site_record &current_site = world.sites[*authority_index];
+    const std::optional<bandit_live_world::simulation_advance_cursor> current_cursor =
+        bandit_live_world::current_external_simulation_cursor( current_site );
+    npc *current_member = g->find_npc( guard.member_id );
+    ecology_debug::authoritative_dispatch_member_read current;
+    current.entity = current_projection->token;
+    current.kind = current_projection->marker.kind;
+    current.entity_omt = current_projection->marker.omt;
+    current.structural_sortie = &current_site.active_outing ==
+                                current_site.active_external_outing() &&
+                                current_site.active_outing.kind ==
+                                bandit_live_world::outing_kind::structural_sortie &&
+                                current_site.active_outing.schema_version >= 7;
+    current.local_handoff_active = current_site.active_outing.owner ==
+                                   bandit_live_world::simulation_owner::local &&
+                                   current_site.active_outing.local_handoff.is_active();
+    if( current_cursor ) {
+        current.cursor = *current_cursor;
+    }
+    current.member_id = guard.member_id;
+    if( current_member != nullptr ) {
+        current.member_omt = current_member->pos_abs_omt();
+        current.hp_percent = current_member->hp_percentage();
+        current.loaded = current_member->is_active();
+        current.alive = !current_member->is_dead();
+    }
+    const std::string stale_reason = ecology_debug::validate_dispatch_member_edit( guard, current );
+    if( !stale_reason.empty() ) {
+        popup( string_format( _( "Intervention rejected; reselect the entity (%s)." ), stale_reason ) );
+        return;
+    }
+
+    if( edit_action == ecology_debug::dispatch_member_edit_action::wound ) {
+        for( const bodypart_id &part : current_member->get_all_body_parts() ) {
+            const int maximum = current_member->get_part_hp_max( part );
+            if( maximum > 0 ) {
+                current_member->set_part_hp_cur( part, std::max( 1, maximum * target_hp / 100 ) );
+            }
+        }
+    } else if( edit_action == ecology_debug::dispatch_member_edit_action::heal ) {
+        current_member->healall( 9999 );
+    } else {
+        map &here = get_map();
+        current_member->die( &here, nullptr );
+        g->cleanup_dead();
+    }
+
+    int after_hp = 0;
+    std::string after_status = "dead";
+    bool authoritative_result = true;
+    if( edit_action == ecology_debug::dispatch_member_edit_action::kill ) {
+        const bandit_live_world::site_record &after_site = world.sites[*authority_index];
+        if( std::find( after_site.active_outing.casualty_ids.begin(),
+                      after_site.active_outing.casualty_ids.end(), guard.member_id ) ==
+            after_site.active_outing.casualty_ids.end() ) {
+            authoritative_result = false;
+            npc *after_member = g->find_npc( guard.member_id );
+            if( after_member != nullptr ) {
+                after_hp = after_member->hp_percentage();
+                after_status = after_member->is_dead() ? "dead_without_writeback" :
+                               "death_prevented";
+            } else {
+                after_status = "missing_without_writeback";
+            }
+        }
+    } else {
+        npc *after_member = g->find_npc( guard.member_id );
+        if( after_member == nullptr || after_member->is_dead() ) {
+            authoritative_result = false;
+            after_status = "unavailable_after_edit";
+        } else {
+            after_hp = after_member->hp_percentage();
+            after_status = "alive";
+        }
+    }
+
+    ecology_debug::intervention_receipt receipt;
+    receipt.entity = guard.entity;
+    receipt.incident.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    receipt.incident.timestamp = to_string( calendar::turn );
+    receipt.incident.entity_id = guard.entity.canonical_id;
+    receipt.incident.action = ecology_debug::to_string( edit_action ) +
+                              " member=" + std::to_string( guard.member_id.get_value() );
+    if( edit_action == ecology_debug::dispatch_member_edit_action::wound ) {
+        receipt.incident.action += " target_hp=" + std::to_string( target_hp );
+    }
+    receipt.incident.action += authoritative_result ? " outcome=applied" : " outcome=failed";
+    receipt.incident.before_summary = "member=" + std::to_string( guard.member_id.get_value() ) +
+                                      " hp=" + std::to_string( guard.hp_percent ) +
+                                      " omt=" + guard.member_omt.to_string();
+    receipt.incident.after_summary = "member=" + std::to_string( guard.member_id.get_value() ) +
+                                     " hp=" + std::to_string( after_hp ) +
+                                     " status=" + after_status;
+    receipt.incident.debug_intervention = true;
+    const uint64_t intervention_sequence =
+        ecology_debug::process_intervention_ledger().append( std::move( receipt ) );
+    if( intervention_sequence == 0 ) {
+        popup( _( "Intervention applied, but its debug receipt was rejected.  Stop and preserve this save." ) );
+        return;
+    }
+    const std::string trace_message = string_format(
+            "ecology intervention seq=%d id=%s action=%s before_hp=%d after_hp=%d "
+            "debug_intervention=true", static_cast<int>( intervention_sequence ),
+            guard.entity.canonical_id, ecology_debug::to_string( edit_action ),
+            guard.hp_percent, after_hp );
+    if( debug_menu::debug_capture::is_initialized() ) {
+        debug_menu::debug_capture::instance().push_debug_log( debugmode::DF_MONITOR,
+                trace_message );
+    }
+    DebugLog( D_INFO, DC_ALL ) << trace_message;
+
+    data.ecology_last_query_turn = -1;
+    refresh_ecology_view( data );
+    popup( string_format( _( "DEBUG intervention %s (sequence %d).\n%s\n%s" ),
+                          authoritative_result ? _( "recorded" ) : _( "failed but was recorded" ),
+                          static_cast<int>( intervention_sequence ),
+                          "before: hp=" + std::to_string( guard.hp_percent ),
+                          "after: hp=" + std::to_string( after_hp ) + " status=" + after_status ) );
+}
+
 static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt &dest,
         bool driving, bool direct_travel = false )
 {
@@ -2835,6 +3101,7 @@ static tripoint_abs_omt display()
         ictxt.register_action( "ECOLOGY_LOADED_FILTER" );
         ictxt.register_action( "ECOLOGY_SELECT" );
         ictxt.register_action( "ECOLOGY_FOLLOW" );
+        ictxt.register_action( "ECOLOGY_EDIT" );
     }
 
     if( data.debug_editor ) {
@@ -3087,6 +3354,8 @@ static tripoint_abs_omt display()
                 }
                 overmap_ui::remember_ecology_observer_controls( data );
             }
+        } else if( action == "ECOLOGY_EDIT" && data.ecology_enabled ) {
+            edit_selected_ecology_dispatch( data );
         } else if( action == "TOGGLE_CITY_LABELS" ) {
             uistate.overmap_show_city_labels = !uistate.overmap_show_city_labels;
         } else if( action == "TOGGLE_MAP_REVEALS" ) {

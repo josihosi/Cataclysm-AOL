@@ -1440,6 +1440,16 @@
   },
   {
     "type": "keybinding",
+    "id": "ECOLOGY_EDIT",
+    "category": "OVERMAP",
+    "name": "Inspect or edit selected ecology entity",
+    "bindings": [
+      { "input_method": "keyboard_char", "key": "I" },
+      { "input_method": "keyboard_code", "key": "i", "mod": [ "shift" ] }
+    ]
+  },
+  {
+    "type": "keybinding",
     "id": "TOGGLE_OVERMAP_WEATHER",
     "category": "OVERMAP",
     "name": "Toggle visible weather",
