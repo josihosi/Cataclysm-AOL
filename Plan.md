@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / GREEN / O4 OBSERVER FIELD+PERF GREEN / E1 CASUALTY MATRIX NEXT
+**Status:** ACTIVE / GREEN / OBSERVER+E1 GREEN / SMOKE-LIGHT-SOUND LIVE NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -403,8 +403,13 @@ queries max at 88 us on this Mac; real save/menu-load runs keep their normalized
 ecology bytes identical and stay inside the ratified Phase-0 save/load/growth envelope. Final raw
 and summary artifacts are SHA-256 `49836c50...` and `a04c0e52...`. The isolated save worlds have
 different RNG seeds, so this is not a claim of paired whole-directory byte identity or foreign-
-platform timing. The next named row is the E1 casualty return/both-dead/wounded matrix, followed by
-observer-backed smoke/light/sound live proof.
+platform timing. E1 outcome reconciliation is checkpointed at `1e6a0924e7`: the shared structural
+owner now proves both factions across one-dead/one-survivor, both-confirmed-dead, and wounded-pair
+returns through save/reload, roster cleanup, wound retention, and 72-78 hour casualty cooldown.
+Confirmed physical deaths close promptly; merely missing members retain their deadline. Exact Mac
+local-handoff 1/646, structural-bounty 51/6,772, intervention 2/60, tiles/non-tiles compile, and
+fresh review are green. This is owner reconciliation proof; the earlier field run supplies GUI /
+`npc::die` evidence. The next named row is observer-backed smoke/light/sound live proof.
 The compound human-camp opportunity-recovery
 row remains sequenced after typed observations and later physical-report/outcome semantics. Terrain
 labels remain static priors, not perception of loot, residents, or mobile danger.

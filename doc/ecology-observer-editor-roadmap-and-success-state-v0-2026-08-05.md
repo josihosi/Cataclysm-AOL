@@ -2,7 +2,7 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4 FIELD+SAVE-PERF GREEN / E1 CASUALTY MATRIX NEXT
+Status: ACTIVE / O4+E1 GREEN / SMOKE-LIGHT-SOUND LIVE NEXT
 
 Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
 
@@ -258,8 +258,16 @@ observer-backed smoke/light/sound row advance.
   changes are not relabelled debug. Exact Mac release build/tests: intervention 2/60, all ecology
   33/697, console 9/1,116, release tiles link, JSON/diff checks. The installed AutoReview launcher
   was absent; one manual review/fix pass found and closed the two provenance/receipt defects._
-- [ ] Prove one-dead-one-survivor return, both-dead, and wounded-survivor behavior for bandit and
-  cannibal camps, or record the exact faction-equivalence seam.
+- [x] Prove one-dead-one-survivor return, both-dead, and wounded-survivor behavior for bandit and
+  cannibal camps, or record the exact faction-equivalence seam. _Checkpoint `1e6a0924e7`: both
+  factions traverse the same structural local-handoff owner across a 2x3 matrix. One dead returns
+  one healthy survivor; two confirmed physical deaths close promptly with no reservation; an HP-25
+  member returns wounded/unready with its healthy partner. Every case round-trips before terminal
+  advance, preserves exact roster state, and casualty cases receive the 72-78 hour cooldown.
+  All-missing retains its persisted deadline. Exact Mac local-handoff 1/646, structural-bounty
+  51/6,772, intervention 2/60, tiles/non-tiles compile, and fresh review are green. Directly staged
+  travel proves reconciliation, not GUI/natural movement; run `20260805_101713` supplies the real
+  confirmation and `npc::die`/cleanup evidence._
 
 ### E2 - type-aware breadth after the stop condition
 

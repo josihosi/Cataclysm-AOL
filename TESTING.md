@@ -858,6 +858,19 @@ providers or selected detail; timing is descriptive Mac evidence only. The headl
 needed null-safe tileset zoom sync, and serialized mismatch diagnostics are now bounded instead of
 dumping whole worlds. Use astyle 3.1 if formatting is applied; it is unavailable on this Mac.
 
+E1 casualty outcome reconciliation is green at `1e6a0924e7`. One focused 2x3 matrix sends bandit
+and cannibal structural parties through the shared authoritative local-handoff path for one dead /
+one healthy survivor, both confirmed dead, and one HP-25 wounded member plus healthy partner. Every
+case saves/reloads before terminal advance, validates returned count, clears the exact reservation,
+keeps the roster valid, preserves dead or wounded/unready state, and gives casualty outcomes the
+72-78 hour cooldown. Two confirmed physical deaths now close on the next structural advance only
+when every member is roster-dead, resolved, and casualty-recorded; all-missing/unknown still waits
+the persisted deadline. Exact Mac local-handoff passes 1/646, structural-bounty 51/6,772, and
+intervention guards 2/60; TILES link and non-TILES owner compile pass with `-Werror`; diff checks
+and fresh read-only review are green. The matrix directly stages terminal travel/callbacks and
+therefore proves reconciliation/persistence, not GUI confirmation or natural movement; field run
+`20260805_101713` separately proves the real `npc::die` plus cleanup path.
+
 The field gate is green at exact runtime `648a509cc9`, run `20260805_101713`. The documented
 handoff installed only `DEBUG_CLAIRVOYANCE`; its detached child exited silently, so the exact
 reported command ran attached in the same run directory. Overmap selection bound local/loaded
