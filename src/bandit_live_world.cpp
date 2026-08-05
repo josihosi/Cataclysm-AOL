@@ -53,6 +53,12 @@ constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_structural_target_footprint_omts = 64;
 constexpr std::size_t max_structural_watch_candidates = 256;
+constexpr std::size_t max_structural_watch_exact_terrain_reads = 128;
+constexpr std::size_t max_structural_watch_distance_four_terrain_reads = 64;
+constexpr std::size_t max_structural_watch_distance_five_terrain_reads = 64;
+constexpr int max_structural_watch_exact_route_reads = 4;
+constexpr int max_structural_watch_distance_four_route_reads = 2;
+constexpr int max_structural_watch_distance_five_route_reads = 2;
 constexpr std::size_t max_abstract_threat_ids = 16;
 constexpr std::size_t max_abstract_threat_id_length = 128;
 constexpr std::size_t max_structural_signal_reads = 4;
@@ -10917,6 +10923,30 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
         return false;
     }
 
+    if( read.watch_geography_supplied ) {
+        const std::vector<tripoint_abs_omt> canonical_footprint =
+            canonical_structural_target_footprint( read.target_footprint );
+        const watch_selection_result watch_selection = select_watch_ring_candidate(
+                    canonical_footprint, read.watch_candidates );
+        if( canonical_footprint.empty() ||
+            canonical_footprint.size() > max_structural_target_footprint_omts ||
+            read.watch_candidates.empty() ||
+            read.watch_candidates.size() > max_structural_watch_candidates ||
+            canonical_footprint != read.target_footprint ||
+            std::find( canonical_footprint.begin(), canonical_footprint.end(),
+                       plan.target_omt ) == canonical_footprint.end() ||
+            !watch_selection.valid ) {
+            return false;
+        }
+        plan.watch_geography_supplied = true;
+        plan.target_footprint = canonical_footprint;
+        plan.watch_candidates = read.watch_candidates;
+    } else {
+        plan.watch_geography_supplied = false;
+        plan.target_footprint.clear();
+        plan.watch_candidates.clear();
+    }
+
     camp_map_lead scoring_lead;
     const camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
     if( lead != nullptr ) {
@@ -11052,7 +11082,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     if( frontier_plan ) {
         structural_outing_plan expected = plan_frontier_outing_impl( site, now_minutes, true );
         const structural_route_read persisted_route{ true, plan.full_route_cost,
-                plan.max_route_segment_risk, "" };
+                plan.max_route_segment_risk, "", plan.watch_geography_supplied,
+                plan.target_footprint, plan.watch_candidates };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11070,6 +11101,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             plan.cheap_score != expected.cheap_score || plan.final_score != expected.final_score ||
             plan.static_risk != expected.static_risk || plan.terrain_fit != expected.terrain_fit ||
             plan.final_route_quality != expected.final_route_quality ||
+            plan.watch_geography_supplied != expected.watch_geography_supplied ||
+            plan.target_footprint != expected.target_footprint ||
+            plan.watch_candidates != expected.watch_candidates ||
             plan.expected_stalking_minutes != expected.expected_stalking_minutes ||
             plan.expected_arrival_minutes != expected.expected_arrival_minutes ||
             plan.expected_return_minutes != expected.expected_return_minutes ) {
@@ -11093,7 +11127,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         structural_outing_plan expected = plan_structural_bounty_outing_impl(
                     site, *lead, now_minutes, true );
         const structural_route_read persisted_route{ true, plan.full_route_cost,
-                plan.max_route_segment_risk, "" };
+                plan.max_route_segment_risk, "", plan.watch_geography_supplied,
+                plan.target_footprint, plan.watch_candidates };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11103,6 +11138,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             plan.cheap_score != expected.cheap_score || plan.final_score != expected.final_score ||
             plan.static_risk != expected.static_risk || plan.terrain_fit != expected.terrain_fit ||
             plan.final_route_quality != expected.final_route_quality ||
+            plan.watch_geography_supplied != expected.watch_geography_supplied ||
+            plan.target_footprint != expected.target_footprint ||
+            plan.watch_candidates != expected.watch_candidates ||
             plan.expected_stalking_minutes != expected.expected_stalking_minutes ||
             plan.expected_arrival_minutes != expected.expected_arrival_minutes ||
             plan.expected_return_minutes != expected.expected_return_minutes ||
@@ -11198,6 +11236,15 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     candidate.active_outing.cargo_application_key =
         bandit_pursuit_handoff::make_operation_component_key(
             candidate.active_outing.activity_id, candidate.active_outing.generation, "cargo" );
+    if( plan.watch_geography_supplied ) {
+        const std::optional<simulation_advance_cursor> watch_cursor =
+            current_external_simulation_cursor( candidate );
+        if( !watch_cursor || apply_structural_watch_route_selection(
+                candidate, *watch_cursor, plan.target_footprint,
+                plan.watch_candidates ) != structural_watch_route_apply_result::applied ) {
+            return false;
+        }
+    }
     if( candidate.intelligence_map.last_routine_target_lead_id != plan.lead_id ) {
         candidate.intelligence_map.previous_routine_target_lead_id =
             candidate.intelligence_map.last_routine_target_lead_id;
@@ -12406,7 +12453,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             }
             const structural_route_read cached_route{
                 true, contender.plan.full_route_cost, contender.plan.max_route_segment_risk,
-                "scheduler-owned route retained across exact-pair materialization"
+                "scheduler-owned route retained across exact-pair materialization",
+                contender.plan.watch_geography_supplied, contender.plan.target_footprint,
+                contender.plan.watch_candidates
             };
             if( exact_plan.valid && !apply_structural_route_read(
                     materialized_site, now_minutes, cached_route, exact_plan ) ) {
@@ -13520,6 +13569,160 @@ watch_selection_result select_watch_ring_candidate(
         }
     }
     return result;
+}
+
+bool structural_watch_route_avoids_target_footprint(
+    const std::vector<tripoint_abs_omt> &route,
+    const std::vector<tripoint_abs_omt> &target_footprint )
+{
+    return !route.empty() && !target_footprint.empty() &&
+           std::none_of( route.begin(), route.end(), [&target_footprint](
+    const tripoint_abs_omt & omt ) {
+        return std::find( target_footprint.begin(), target_footprint.end(), omt ) !=
+               target_footprint.end();
+    } );
+}
+
+structural_watch_geography_read read_structural_watch_geography(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const tripoint_abs_omt &route_origin,
+    const std::function<structural_watch_terrain_read( const tripoint_abs_omt &,
+            const std::vector<tripoint_abs_omt> & )> &terrain_lookup,
+    const std::function<structural_watch_route_read( const tripoint_abs_omt & )> &route_lookup )
+{
+    structural_watch_geography_read read;
+    if( target_footprint.empty() ||
+        target_footprint.size() > max_structural_target_footprint_omts ||
+        !terrain_lookup || !route_lookup ) {
+        read.selection.outcome = watch_selection_outcome::abandoned_empty_target_footprint;
+        return read;
+    }
+
+    read.target_footprint = canonical_structural_target_footprint( target_footprint );
+    if( read.target_footprint.empty() ||
+        std::any_of( read.target_footprint.begin(), read.target_footprint.end(),
+    [&read]( const tripoint_abs_omt & omt ) {
+        return omt.z() != read.target_footprint.front().z();
+    } ) ) {
+        read.target_footprint.clear();
+        read.selection.outcome = watch_selection_outcome::abandoned_empty_target_footprint;
+        return read;
+    }
+    read.valid_input = true;
+
+    std::vector<tripoint_abs_omt> candidate_omts;
+    candidate_omts.reserve( read.target_footprint.size() * 64 );
+    for( const tripoint_abs_omt &target : read.target_footprint ) {
+        for( int dy = -5; dy <= 5; ++dy ) {
+            for( int dx = -5; dx <= 5; ++dx ) {
+                candidate_omts.emplace_back( target.x() + dx, target.y() + dy, target.z() );
+            }
+        }
+    }
+    std::sort( candidate_omts.begin(), candidate_omts.end(), structural_watch_omt_precedes );
+    candidate_omts.erase( std::unique( candidate_omts.begin(), candidate_omts.end() ),
+                          candidate_omts.end() );
+    candidate_omts.erase( std::remove_if( candidate_omts.begin(), candidate_omts.end(),
+    [&read]( const tripoint_abs_omt & omt ) {
+        const std::optional<int> distance = target_footprint_watch_distance(
+                                                omt, read.target_footprint );
+        return !distance || *distance < 3 || *distance > 5;
+    } ), candidate_omts.end() );
+    std::stable_sort( candidate_omts.begin(), candidate_omts.end(),
+    [&read]( const tripoint_abs_omt & lhs, const tripoint_abs_omt & rhs ) {
+        const int lhs_distance = *target_footprint_watch_distance(
+                                     lhs, read.target_footprint );
+        const int rhs_distance = *target_footprint_watch_distance(
+                                     rhs, read.target_footprint );
+        return lhs_distance != rhs_distance ? lhs_distance < rhs_distance :
+               structural_watch_omt_precedes( lhs, rhs );
+    } );
+    const std::size_t unbounded_candidate_count = candidate_omts.size();
+    std::vector<tripoint_abs_omt> bounded_candidate_omts;
+    bounded_candidate_omts.reserve( max_structural_watch_candidates );
+    const auto append_distance_band = [&read, &candidate_omts, &bounded_candidate_omts](
+    const int distance, const std::size_t cap ) {
+        std::size_t appended = 0;
+        for( const tripoint_abs_omt &candidate : candidate_omts ) {
+            if( appended >= cap ) {
+                break;
+            }
+            if( target_footprint_watch_distance( candidate, read.target_footprint ) == distance ) {
+                bounded_candidate_omts.push_back( candidate );
+                appended++;
+            }
+        }
+    };
+    append_distance_band( 3, max_structural_watch_exact_terrain_reads );
+    append_distance_band( 4, max_structural_watch_distance_four_terrain_reads );
+    append_distance_band( 5, max_structural_watch_distance_five_terrain_reads );
+    candidate_omts = std::move( bounded_candidate_omts );
+    read.candidate_enumeration_truncated =
+        unbounded_candidate_count > candidate_omts.size();
+    read.candidate_omts_considered = static_cast<int>( candidate_omts.size() );
+
+    std::vector<std::pair<tripoint_abs_omt, structural_watch_terrain_read>> qualified;
+    qualified.reserve( candidate_omts.size() );
+    for( const tripoint_abs_omt &candidate : candidate_omts ) {
+        const structural_watch_terrain_read terrain = terrain_lookup(
+                    candidate, read.target_footprint );
+        read.terrain_reads++;
+        if( terrain.concealed && terrain.intervening_omts_clear ) {
+            qualified.emplace_back( candidate, terrain );
+        }
+    }
+
+    const auto route_distance_group = [&read, &qualified, &route_lookup, &route_origin](
+    const int distance, const int cap ) {
+        std::vector<const std::pair<tripoint_abs_omt, structural_watch_terrain_read> *> group;
+        for( const auto &entry : qualified ) {
+            if( target_footprint_watch_distance( entry.first, read.target_footprint ) == distance ) {
+                group.push_back( &entry );
+            }
+        }
+        std::sort( group.begin(), group.end(), [&route_origin]( const auto *lhs, const auto *rhs ) {
+            const auto origin_distance = [&route_origin]( const tripoint_abs_omt & omt ) {
+                return std::max( { std::abs( route_origin.x() - omt.x() ),
+                                   std::abs( route_origin.y() - omt.y() ),
+                                   std::abs( route_origin.z() - omt.z() ) } );
+            };
+            const int lhs_distance = origin_distance( lhs->first );
+            const int rhs_distance = origin_distance( rhs->first );
+            return lhs_distance != rhs_distance ? lhs_distance < rhs_distance :
+                   structural_watch_omt_precedes( lhs->first, rhs->first );
+        } );
+        int group_reads = 0;
+        for( const auto *entry : group ) {
+            if( group_reads >= cap ) {
+                break;
+            }
+            const structural_watch_route_read route = route_lookup( entry->first );
+            read.route_reads++;
+            group_reads++;
+            watch_selection_candidate candidate;
+            candidate.omt = entry->first;
+            candidate.reachable = route.reachable && route.route_cost >= 0;
+            candidate.concealed = entry->second.concealed;
+            candidate.two_intervening_omts_clear = entry->second.intervening_omts_clear;
+            candidate.route_cost = route.route_cost;
+            read.routed_candidates.push_back( candidate );
+        }
+    };
+
+    route_distance_group( 3, max_structural_watch_exact_route_reads );
+    read.selection = select_watch_ring_candidate(
+                         read.target_footprint, read.routed_candidates );
+    if( !read.selection.valid ) {
+        route_distance_group( 4, max_structural_watch_distance_four_route_reads );
+        read.selection = select_watch_ring_candidate(
+                             read.target_footprint, read.routed_candidates );
+    }
+    if( !read.selection.valid ) {
+        route_distance_group( 5, max_structural_watch_distance_five_route_reads );
+        read.selection = select_watch_ring_candidate(
+                             read.target_footprint, read.routed_candidates );
+    }
+    return read;
 }
 
 structural_watch_route_apply_result apply_structural_watch_route_selection(

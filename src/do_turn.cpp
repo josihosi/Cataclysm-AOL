@@ -3348,7 +3348,8 @@ bandit_live_world::abstract_threat_read live_bandit_structural_abstract_threat_r
 
 bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const bandit_live_world::site_record &site,
-    const bandit_live_world::structural_outing_plan &plan )
+    const bandit_live_world::structural_outing_plan &plan,
+    int &watch_path_budget )
 {
     bandit_live_world::structural_route_read read;
     const auto path = overmap_buffer.get_travel_path(
@@ -3377,6 +3378,97 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     read.reachable = read.complete_route_cost <= 18;
     read.summary = read.reachable ? "live structural route solve accepted" :
                    "live structural route solve exceeded complete-route cap";
+    if( !read.reachable ) {
+        return read;
+    }
+
+    std::vector<tripoint_abs_omt> target_footprint = { plan.target_omt };
+    if( const std::optional<basecamp *> camp = overmap_buffer.find_camp(
+                plan.target_omt.xy() ); camp && *camp != nullptr &&
+        ( ( *camp )->camp_omt_pos() == plan.target_omt ||
+          ( *camp )->point_within_camp( plan.target_omt ) ) ) {
+        target_footprint = { ( *camp )->camp_omt_pos() };
+        for( const point_rel_omt &direction : ( *camp )->directions ) {
+            const tripoint_abs_omt expansion_omt = ( *camp )->camp_omt_pos() + direction;
+            if( ( *camp )->point_within_camp( expansion_omt ) ) {
+                target_footprint.push_back( expansion_omt );
+            }
+        }
+        if( std::find( target_footprint.begin(), target_footprint.end(),
+                       plan.target_omt ) == target_footprint.end() ) {
+            target_footprint.push_back( plan.target_omt );
+        }
+    }
+
+    const overmap_path_params npc_route = overmap_path_params::for_npc();
+    const std::unordered_set<tripoint_abs_omt> target_footprint_exclusions(
+        target_footprint.begin(), target_footprint.end() );
+    const auto terrain_lookup = [&npc_route]( const tripoint_abs_omt &candidate,
+    const std::vector<tripoint_abs_omt> &footprint ) {
+        bandit_live_world::structural_watch_terrain_read terrain;
+        terrain.concealed = overmap_buffer.ter( candidate )->get_see_cost() > 0;
+        const auto nearest = std::min_element( footprint.begin(), footprint.end(),
+        [&candidate]( const tripoint_abs_omt & lhs, const tripoint_abs_omt & rhs ) {
+            const int lhs_distance = std::max( std::abs( candidate.x() - lhs.x() ),
+                                               std::abs( candidate.y() - lhs.y() ) );
+            const int rhs_distance = std::max( std::abs( candidate.x() - rhs.x() ),
+                                               std::abs( candidate.y() - rhs.y() ) );
+            return std::make_tuple( lhs_distance, lhs.z(), lhs.y(), lhs.x() ) <
+                   std::make_tuple( rhs_distance, rhs.z(), rhs.y(), rhs.x() );
+        } );
+        if( nearest == footprint.end() || nearest->z() != candidate.z() ) {
+            return terrain;
+        }
+        const std::vector<tripoint_abs_omt> approach = line_to( candidate, *nearest );
+        if( approach.size() < 3 ) {
+            return terrain;
+        }
+        terrain.intervening_omts_clear = std::all_of(
+                approach.begin(), std::prev( approach.end() ),
+        [&footprint, &npc_route]( const tripoint_abs_omt & omt ) {
+            return std::find( footprint.begin(), footprint.end(), omt ) == footprint.end() &&
+                   npc_route.get_cost(
+                       overmap_buffer.ter( omt )->get_travel_cost_type() ) >= 0;
+        } );
+        return terrain;
+    };
+    const auto watch_route_lookup = [&site, &npc_route, &target_footprint,
+                                    &target_footprint_exclusions,
+                                    &watch_path_budget]( const tripoint_abs_omt &candidate ) {
+        bandit_live_world::structural_watch_route_read route;
+        if( watch_path_budget <= 0 ) {
+            return route;
+        }
+        watch_path_budget--;
+        const auto watch_path = overmap_buffer.get_travel_path(
+                                    site.anchor, candidate, npc_route,
+                                    target_footprint_exclusions );
+        if( watch_path.cost < 0 ||
+            !bandit_live_world::structural_watch_route_avoids_target_footprint(
+                watch_path.points, target_footprint ) ) {
+            return route;
+        }
+        const long long one_way_watch_cost =
+            ( static_cast<long long>( watch_path.cost ) + 23 ) / 24;
+        route.route_cost = static_cast<int>( std::min<long long>(
+                               std::numeric_limits<int>::max(), one_way_watch_cost * 2 ) );
+        route.reachable = route.route_cost <= 18;
+        return route;
+    };
+    const bandit_live_world::structural_watch_geography_read watch =
+        bandit_live_world::read_structural_watch_geography(
+            target_footprint, site.anchor, terrain_lookup, watch_route_lookup );
+    read.watch_geography_supplied = true;
+    read.target_footprint = watch.target_footprint;
+    read.watch_candidates = watch.routed_candidates;
+    if( !watch.selection.valid ) {
+        read.reachable = false;
+        read.summary = "live structural route abandoned: no bounded safe watch geography";
+    } else {
+        read.summary += "; watch geography selected " +
+                        watch.selection.omt.to_string() + " route_reads=" +
+                        std::to_string( watch.route_reads );
+    }
     return read;
 }
 
@@ -3576,10 +3668,17 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
     const int current_minutes = live_bandit_current_minutes();
     static constexpr int structural_scan_budget = 12;
     static constexpr int structural_dispatch_cap = 2;
+    static constexpr int structural_watch_path_budget = 8;
+    int watch_paths_remaining = structural_watch_path_budget;
+    const auto route_lookup = [&watch_paths_remaining](
+    const bandit_live_world::site_record & site,
+    const bandit_live_world::structural_outing_plan & plan ) {
+        return live_bandit_structural_route_read( site, plan, watch_paths_remaining );
+    };
     bandit_live_world::structural_bounty_maintenance_result result =
         bandit_live_world::advance_structural_bounty_maintenance( state, current_minutes,
                 structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
-                live_bandit_structural_threat_read, live_bandit_structural_route_read,
+                live_bandit_structural_threat_read, route_lookup,
                 live_bandit_structural_abstract_threat_read,
                 [&live_signals, &live_sounds](
                     const bandit_live_world::site_record & site,

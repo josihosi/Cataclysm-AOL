@@ -895,6 +895,65 @@ struct structural_bounty_scan_result {
     std::vector<std::string> notes;
 };
 
+struct watch_selection_candidate {
+    tripoint_abs_omt omt;
+    bool reachable = false;
+    bool concealed = false;
+    bool two_intervening_omts_clear = false;
+    int route_cost = -1;
+
+    bool operator==( const watch_selection_candidate &rhs ) const {
+        return omt == rhs.omt && reachable == rhs.reachable && concealed == rhs.concealed &&
+               two_intervening_omts_clear == rhs.two_intervening_omts_clear &&
+               route_cost == rhs.route_cost;
+    }
+    bool operator!=( const watch_selection_candidate &rhs ) const {
+        return !( *this == rhs );
+    }
+};
+
+enum class watch_selection_outcome {
+    selected_exact,
+    selected_fallback,
+    abandoned_empty_target_footprint,
+    abandoned_no_safe_candidate,
+};
+
+enum class structural_watch_route_apply_result {
+    rejected,
+    unchanged,
+    applied,
+};
+
+struct watch_selection_result {
+    bool valid = false;
+    tripoint_abs_omt omt;
+    int footprint_distance = -1;
+    int route_cost = -1;
+    watch_selection_outcome outcome = watch_selection_outcome::abandoned_no_safe_candidate;
+};
+
+struct structural_watch_terrain_read {
+    bool concealed = false;
+    bool intervening_omts_clear = false;
+};
+
+struct structural_watch_route_read {
+    bool reachable = false;
+    int route_cost = -1;
+};
+
+struct structural_watch_geography_read {
+    bool valid_input = false;
+    bool candidate_enumeration_truncated = false;
+    int candidate_omts_considered = 0;
+    int terrain_reads = 0;
+    int route_reads = 0;
+    std::vector<tripoint_abs_omt> target_footprint;
+    std::vector<watch_selection_candidate> routed_candidates;
+    watch_selection_result selection;
+};
+
 struct structural_outing_plan {
     bool valid = false;
     std::string site_id;
@@ -922,6 +981,9 @@ struct structural_outing_plan {
     int cheap_score = 0;
     int final_score = 0;
     bool route_solved = false;
+    bool watch_geography_supplied = false;
+    std::vector<tripoint_abs_omt> target_footprint;
+    std::vector<watch_selection_candidate> watch_candidates;
     int expected_stalking_minutes = -1;
     int expected_arrival_minutes = -1;
     int expected_return_minutes = -1;
@@ -933,6 +995,20 @@ struct structural_route_read {
     int complete_route_cost = -1;
     int max_segment_risk = 0;
     std::string summary;
+    bool watch_geography_supplied = false;
+    std::vector<tripoint_abs_omt> target_footprint;
+    std::vector<watch_selection_candidate> watch_candidates;
+
+    structural_route_read() = default;
+    structural_route_read( bool reachable_, int complete_route_cost_, int max_segment_risk_,
+                           std::string summary_, bool watch_geography_supplied_ = false,
+                           std::vector<tripoint_abs_omt> target_footprint_ = {},
+                           std::vector<watch_selection_candidate> watch_candidates_ = {} ) :
+        reachable( reachable_ ), complete_route_cost( complete_route_cost_ ),
+        max_segment_risk( max_segment_risk_ ), summary( std::move( summary_ ) ),
+        watch_geography_supplied( watch_geography_supplied_ ),
+        target_footprint( std::move( target_footprint_ ) ),
+        watch_candidates( std::move( watch_candidates_ ) ) {}
 };
 
 struct routine_dispatch_evaluation {
@@ -1152,35 +1228,6 @@ struct sight_avoid_decision {
     std::vector<std::string> notes;
 };
 
-struct watch_selection_candidate {
-    tripoint_abs_omt omt;
-    bool reachable = false;
-    bool concealed = false;
-    bool two_intervening_omts_clear = false;
-    int route_cost = -1;
-};
-
-enum class watch_selection_outcome {
-    selected_exact,
-    selected_fallback,
-    abandoned_empty_target_footprint,
-    abandoned_no_safe_candidate,
-};
-
-enum class structural_watch_route_apply_result {
-    rejected,
-    unchanged,
-    applied,
-};
-
-struct watch_selection_result {
-    bool valid = false;
-    tripoint_abs_omt omt;
-    int footprint_distance = -1;
-    int route_cost = -1;
-    watch_selection_outcome outcome = watch_selection_outcome::abandoned_no_safe_candidate;
-};
-
 struct shakedown_goods_pool {
     int player_carried_value = 0;
     int companion_carried_value = 0;
@@ -1391,6 +1438,15 @@ watch_selection_result select_exact_watch_ring_candidate(
 watch_selection_result select_watch_ring_candidate(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );
+bool structural_watch_route_avoids_target_footprint(
+    const std::vector<tripoint_abs_omt> &route,
+    const std::vector<tripoint_abs_omt> &target_footprint );
+structural_watch_geography_read read_structural_watch_geography(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const tripoint_abs_omt &route_origin,
+    const std::function<structural_watch_terrain_read( const tripoint_abs_omt &,
+            const std::vector<tripoint_abs_omt> & )> &terrain_lookup,
+    const std::function<structural_watch_route_read( const tripoint_abs_omt & )> &route_lookup );
 structural_watch_route_apply_result apply_structural_watch_route_selection(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<tripoint_abs_omt> &target_footprint,

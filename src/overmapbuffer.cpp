@@ -1156,13 +1156,18 @@ static bool is_ramp( const tripoint_abs_omt &omt_pos )
 }
 
 pf::simple_path<tripoint_abs_omt> overmapbuffer::get_travel_path(
-    const tripoint_abs_omt &src, const tripoint_abs_omt &dest, const overmap_path_params &params )
+    const tripoint_abs_omt &src, const tripoint_abs_omt &dest,
+    const overmap_path_params &params,
+    const std::unordered_set<tripoint_abs_omt> &excluded_omts )
 {
     if( src.is_invalid() || dest.is_invalid() ) {
         return {};
     }
 
     const pf::omt_scoring_fn estimate = [&]( tripoint_abs_omt pos ) {
+        if( excluded_omts.count( pos ) > 0 ) {
+            return pf::omt_score::rejected;
+        }
         int cur_cost = get_terrain_cost( pos, params );
         if( cur_cost < 0 ) {
             if( pos == src ) {
