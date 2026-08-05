@@ -603,6 +603,7 @@ class step_controller
 
         outcome tick( input_context &ctxt );
         void request_step();
+        void toggle_play();
         void pause();
         void draw_footer();
         void load( const JsonObject &jo );
@@ -1017,6 +1018,16 @@ void step_controller::request_step()
     last_step_at = {};
 }
 
+void step_controller::toggle_play()
+{
+    playing = !playing;
+    pending_steps = 0;
+    if( playing ) {
+        ff_hp_baseline = get_avatar().get_hp();
+        last_step_at = {};
+    }
+}
+
 void step_controller::pause()
 {
     pending_steps = 0;
@@ -1327,6 +1338,8 @@ void debug_console::draw()
 
 void debug_console::draw_controls()
 {
+    const bool observer_gate_enabled = overmap_ui::ecology_observer_gate_enabled();
+    const bool ecology_only = !debug_mode && observer_gate_enabled;
     // Ctrl+1..9 / Ctrl+0 jump directly to a tab. ImGui input must be queried
     // inside a frame, so check here rather than in execute()'s outer loop.
     if( ImGui::GetIO().KeyCtrl ) {
@@ -1357,18 +1370,21 @@ void debug_console::draw_controls()
         if( ImGui::IsKeyPressed( ImGuiKey_Period, false ) ) {
             stepper_->request_step();
         }
+        if( ecology_only && ImGui::IsKeyPressed( ImGuiKey_P, false ) ) {
+            stepper_->toggle_play();
+        }
     }
 
-    // Reserve vertical space for shared footer (two rows + separator).
-    // Zero when debug_mode is off (footer hidden).
-    const float footer_h = debug_mode
+    // Reserve vertical space for the shared footer in full debug or narrow
+    // DEBUG_CLAIRVOYANCE ecology mode.
+    const float footer_h = ecology_console_access_allowed( debug_mode, observer_gate_enabled )
                            ? ImGui::GetFrameHeightWithSpacing() * 2.0f
                            + ImGui::GetStyle().ItemSpacing.y
                            + ImGui::GetStyle().FramePadding.y * 2.0f
                            : 0.0f;
 
     ImGui::BeginChild( "console_body", ImVec2( 0, -footer_h ), 0 );
-    if( !debug_mode ) {
+    if( !debug_mode && !ecology_only ) {
         // Picked once per off-state visit so it doesn't reroll every frame.
         // Reset to -1 by the Enable button so the next off-visit rerolls.
         static const char *const flavors[] = {
@@ -1423,6 +1439,15 @@ void debug_console::draw_controls()
             debug_mode = true;
             disclaimer_idx = -1;
         }
+    } else if( ecology_only ) {
+        ImGui::TextColored( ImVec4( 0.55f, 0.85f, 1.0f, 1.0f ), "%s",
+                            "Ecology observer mode (DEBUG_CLAIRVOYANCE)" );
+        ImGui::SameLine();
+        ImGui::TextDisabled( "%s", "A arm | P play/pause | . step | R record incident" );
+        ImGui::Separator();
+        if( trace_view_ != nullptr ) {
+            trace_view_->draw_ecology_body( *this );
+        }
     } else {
         // Right-aligned debug-mode toggle, kept away from the omnibox.
         omni_->draw( *this );
@@ -1448,9 +1473,9 @@ void debug_console::draw_controls()
     }
     ImGui::EndChild();
 
-    // Shared footer: step / fast-forward / pause indicator. Anchored at
-    // window bottom; hidden when debug_mode is off.
-    if( debug_mode ) {
+    // Shared footer: step / fast-forward / pause indicator, anchored at the
+    // window bottom for full debug and narrow ecology mode.
+    if( debug_mode || ecology_only ) {
         ImGui::Separator();
         stepper_->draw_footer();
     }
@@ -1489,11 +1514,7 @@ void step_controller::draw_footer()
     ImGui::SameLine();
     const char *play_label = playing ? "Pause" : "Play";
     if( ImGui::Button( play_label ) ) {
-        playing = !playing;
-        if( playing ) {
-            ff_hp_baseline = you.get_hp();
-            last_step_at = {};
-        }
+        toggle_play();
     }
     if( ImGui::IsItemHovered() ) {
         ImGui::SetTooltip( "%s",
@@ -6122,11 +6143,27 @@ void tab_trace_view::draw_body( debug_console &host )
     }
 }
 
-void tab_trace_view::draw_monitors_body( debug_console &host )
+void tab_trace_view::draw_ecology_body( debug_console &host )
 {
     ImGui::TextWrapped( "%s", _(
                             "Snapshots fire every turn / on change / manually and are written to the "
                             "Trace tab under the DF_MONITOR category (and JSONL when enabled)." ) );
+
+    bool ecology_watch_registered = ecology_watch->synchronize_registration();
+    const bool shortcuts_available = !ImGui::GetIO().WantTextInput &&
+                                     !ImGui::IsAnyItemActive() &&
+                                     !ImGui::IsPopupOpen( nullptr,
+                                             ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel );
+    if( shortcuts_available && ImGui::IsKeyPressed( ImGuiKey_A, false ) ) {
+        ecology_watch->arm( ecology_watch_mode == 1 ?
+                            ecology_debug::trigger_disposition::pause :
+                            ecology_debug::trigger_disposition::continue_capture );
+        ecology_watch_registered = ecology_watch->synchronize_registration();
+    }
+    if( shortcuts_available && ecology_watch_registered &&
+        ImGui::IsKeyPressed( ImGuiKey_R, false ) ) {
+        ecology_watch->record_incident( ecology_incident_note );
+    }
 
     host.export_bar( "ecology snapshot",
     []() {
@@ -6137,7 +6174,6 @@ void tab_trace_view::draw_monitors_body( debug_console &host )
     } );
 
     ImGui::SeparatorText( "Selected ecology watch" );
-    const bool ecology_watch_registered = ecology_watch->synchronize_registration();
     ImGui::TextWrapped( "%s", _(
                             "Bind the current overmap selection, then reuse Step/Play until its real "
                             "owner moves, changes phase/HP, or fails the immutable identity check." ) );
@@ -6190,6 +6226,11 @@ void tab_trace_view::draw_monitors_body( debug_console &host )
     [this]() {
         return ecology_watch->incident_payload();
     } );
+}
+
+void tab_trace_view::draw_monitors_body( debug_console &host )
+{
+    draw_ecology_body( host );
 
     ImGui::SeparatorText( "Add monitor" );
 
@@ -6320,6 +6361,11 @@ std::vector<tab_registry_view_entry> tab_registry_snapshot()
         out.push_back( { d.id_string, d.categories } );
     }
     return out;
+}
+
+bool ecology_console_access_allowed( bool debugger_enabled, bool observer_gate_enabled )
+{
+    return debugger_enabled || observer_gate_enabled;
 }
 
 void framed_section( const char *id, const char *label,

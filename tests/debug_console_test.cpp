@@ -45,6 +45,14 @@ TEST_CASE( "fuzzy_score_basics", "[debug_console]" )
     }
 }
 
+TEST_CASE( "ecology observer console does not require global debug mode", "[debug_console]" )
+{
+    CHECK_FALSE( debug_menu::ecology_console_access_allowed( false, false ) );
+    CHECK( debug_menu::ecology_console_access_allowed( true, false ) );
+    CHECK( debug_menu::ecology_console_access_allowed( false, true ) );
+    CHECK( debug_menu::ecology_console_access_allowed( true, true ) );
+}
+
 TEST_CASE( "all_actions_table_invariants", "[debug_console]" )
 {
     const auto &table = debug_menu::all_actions();

@@ -261,6 +261,7 @@ class tab_trace_view : public console_tab_view
         void load_state( const JsonObject &nested ) override;
         void save_state( JsonOut &jo ) const override;
         bool take_ecology_pause_request();
+        void draw_ecology_body( debug_console &host );
 
     private:
         void draw_monitors_body( debug_console &host );
@@ -376,6 +377,7 @@ struct tab_registry_view_entry {
     std::vector<std::string_view> categories;
 };
 std::vector<tab_registry_view_entry> tab_registry_snapshot();
+bool ecology_console_access_allowed( bool debugger_enabled, bool observer_gate_enabled );
 
 
 class debug_console : public cataimgui::window
