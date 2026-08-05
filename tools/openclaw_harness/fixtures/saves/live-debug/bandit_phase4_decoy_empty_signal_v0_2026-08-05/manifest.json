@@ -30,6 +30,9 @@
       "times_checked_empty": 0,
       "times_harvested": 0,
       "last_outcome": "returned_structural_smoke_report",
+      "routine_activated_minutes": 0,
+      "next_routine_dispatch_eligible_minutes": 8100,
+      "last_routine_resolved_minutes": 3780,
       "clear_active_pressure": true,
       "mark_cleared_active_members_unready": false
     },

@@ -3514,6 +3514,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(signal["radius_omt"], 2)
         self.assertEqual(signal["bounty"], 0)
         self.assertEqual(signal["threat"], 0)
+        self.assertEqual(signal["routine_activated_minutes"], 0)
+        self.assertEqual(signal["next_routine_dispatch_eligible_minutes"], 8100)
+        self.assertEqual(signal["last_routine_resolved_minutes"], 3780)
         self.assertEqual(signal["target_omt"], [136, 51, 0])
         self.assertEqual(
             signal["source_key"],

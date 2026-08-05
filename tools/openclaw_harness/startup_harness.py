@@ -9210,6 +9210,18 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "times_checked_empty": int(raw.get("times_checked_empty", 0) or 0),
                 "times_harvested": int(raw.get("times_harvested", 0) or 0),
                 "last_outcome": str(raw.get("last_outcome", "still_valid") or "still_valid").strip(),
+                "routine_activated_minutes": (
+                    None if raw.get("routine_activated_minutes") is None else
+                    int(raw.get("routine_activated_minutes"))
+                ),
+                "next_routine_dispatch_eligible_minutes": (
+                    None if raw.get("next_routine_dispatch_eligible_minutes") is None else
+                    int(raw.get("next_routine_dispatch_eligible_minutes"))
+                ),
+                "last_routine_resolved_minutes": (
+                    None if raw.get("last_routine_resolved_minutes") is None else
+                    int(raw.get("last_routine_resolved_minutes"))
+                ),
                 "clear_active_pressure": bool(raw.get("clear_active_pressure", True)),
                 "mark_cleared_active_members_unready": bool(raw.get("mark_cleared_active_members_unready", True)),
             })
@@ -11936,6 +11948,14 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     origin = str(transform.get("origin", "") or "").strip()
     if origin:
         lead["origin"] = origin
+    for field in (
+        "routine_activated_minutes",
+        "next_routine_dispatch_eligible_minutes",
+        "last_routine_resolved_minutes",
+    ):
+        value = transform.get(field)
+        if value is not None:
+            selected_site[field] = int(value)
     leads[:] = [existing for existing in leads if not (
         isinstance(existing, dict) and str(existing.get("lead_id", "")) == lead_id
     )]
@@ -11961,6 +11981,11 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "target_omt": target_omt,
         "lead_id": lead_id,
         "lead": lead,
+        "routine_activated_minutes": selected_site.get("routine_activated_minutes"),
+        "next_routine_dispatch_eligible_minutes": selected_site.get(
+            "next_routine_dispatch_eligible_minutes"
+        ),
+        "last_routine_resolved_minutes": selected_site.get("last_routine_resolved_minutes"),
         "clear_active_pressure": bool(transform.get("clear_active_pressure", True)),
     }
 
