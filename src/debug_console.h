@@ -262,6 +262,7 @@ class tab_trace_view : public console_tab_view
         void save_state( JsonOut &jo ) const override;
         bool take_ecology_pause_request();
         void draw_ecology_body( debug_console &host );
+        void record_ecology_incident();
 
     private:
         void draw_monitors_body( debug_console &host );
@@ -389,6 +390,7 @@ class debug_console : public cataimgui::window
         void defer_action( debug_menu_index action );
         void defer_eoc( effect_on_condition_id eoc_id );
         void defer_ecology_edit();
+        void defer_ecology_incident();
         void request_tab_switch( std::string_view tab_id );
 
         // Button label + tooltip read from the action table.
@@ -479,7 +481,10 @@ class debug_console : public cataimgui::window
         };
         struct deferred_ecology_edit {
         };
-        using deferred_op = std::variant<deferred_action, deferred_eoc, deferred_ecology_edit>;
+        struct deferred_ecology_incident {
+        };
+        using deferred_op = std::variant<deferred_action, deferred_eoc, deferred_ecology_edit,
+              deferred_ecology_incident>;
         std::queue<deferred_op> pending;
 
         int disclaimer_idx = -1;

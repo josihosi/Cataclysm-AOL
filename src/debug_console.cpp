@@ -1164,6 +1164,10 @@ void debug_console::execute()
                     }
                 } else if constexpr( std::is_same_v<T, deferred_ecology_edit> ) {
                     overmap_ui::edit_selected_ecology_dispatch();
+                } else if constexpr( std::is_same_v<T, deferred_ecology_incident> ) {
+                    if( trace_view_ != nullptr ) {
+                        trace_view_->record_ecology_incident();
+                    }
                 }
             }, op );
             continue;
@@ -1281,6 +1285,14 @@ void debug_console::defer_ecology_edit()
         return;
     }
     pending.emplace( deferred_ecology_edit{} );
+}
+
+void debug_console::defer_ecology_incident()
+{
+    if( pending.size() >= 256 ) {
+        return;
+    }
+    pending.emplace( deferred_ecology_incident{} );
 }
 
 void debug_console::request_tab_switch( std::string_view tab_id )
@@ -6175,7 +6187,7 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
     }
     if( shortcuts_available && ecology_watch_registered &&
         ImGui::IsKeyPressed( ImGuiKey_R, false ) ) {
-        ecology_watch->record_incident( ecology_incident_note );
+        host.defer_ecology_incident();
     }
 
     host.export_bar( "ecology snapshot",
@@ -6230,7 +6242,7 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
     ImGui::SameLine();
     ImGui::BeginDisabled( !ecology_watch_registered );
     if( ImGui::Button( "Record ecology incident" ) ) {
-        ecology_watch->record_incident( ecology_incident_note );
+        host.defer_ecology_incident();
     }
     ImGui::EndDisabled();
     if( ImGui::IsItemHovered() ) {
@@ -6246,6 +6258,11 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
     [this]() {
         return ecology_watch->incident_payload();
     } );
+}
+
+void tab_trace_view::record_ecology_incident()
+{
+    ecology_watch->record_incident( ecology_incident_note );
 }
 
 void tab_trace_view::draw_monitors_body( debug_console &host )
