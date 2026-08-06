@@ -601,6 +601,20 @@ struct scout_report_record {
     void deserialize( const JsonObject &jo );
 };
 
+struct scout_report_effective_state {
+    bool valid = false;
+    int age_minutes = -1;
+    int latest_contact_minutes = -1;
+    int contact_age_minutes = -1;
+    int certainty = 0;
+    bool assessment_ready = false;
+    int target_alert = 0;
+    bool attack_authorization_usable = false;
+};
+
+scout_report_effective_state evaluate_scout_report_at(
+    const scout_report_record &report, int current_minutes );
+
 struct acted_report_summary {
     std::string target_id;
     tripoint_abs_omt target_omt;

@@ -5305,9 +5305,12 @@ camp_decision_transition_result transition_camp_decision_state( site_record &sit
     }
     if( next_state == camp_decision_state::preparing_follow_on ) {
         const scout_report_record &report = site.current_scout_report;
+        const scout_report_effective_state effective_report =
+            evaluate_scout_report_at( report, current_minutes );
         if( site.active_outing.is_active() ||
             decision.report_policy != report_policy_for_profile( effective_profile( site ) ) ||
-            !report_matches_camp_decision( report, decision ) ) {
+            !report_matches_camp_decision( report, decision ) ||
+            !effective_report.valid || !effective_report.attack_authorization_usable ) {
             return camp_decision_transition_result::rejected;
         }
     }
@@ -15720,6 +15723,55 @@ bool scout_assessment_readiness_after_certainty(
     return false;
 }
 
+scout_report_effective_state evaluate_scout_report_at(
+    const scout_report_record &report, const int current_minutes )
+{
+    scout_report_effective_state result;
+    if( !report.is_present() || report.delivered_minutes < 0 ||
+        current_minutes < report.delivered_minutes ) {
+        return result;
+    }
+
+    result.valid = true;
+    result.age_minutes = current_minutes - report.delivered_minutes;
+    const int certainty_penalty = result.age_minutes >= 24 * 60 ? 20 :
+                                  result.age_minutes >= 12 * 60 ? 10 : 0;
+    result.certainty = std::max( 0, report.assessment.certainty - certainty_penalty );
+    result.attack_authorization_usable = result.age_minutes < 48 * 60;
+    result.assessment_ready = result.attack_authorization_usable &&
+                              report.assessment.readiness_latched &&
+                              scout_assessment_readiness_after_certainty(
+                                  report.assessment.threshold_class, true,
+                                  result.certainty );
+
+    result.target_alert = report.assessment.target_alert;
+    if( result.target_alert <= 0 ) {
+        return result;
+    }
+    result.latest_contact_minutes = report.assessment.burned_minutes >= 0 &&
+                                    report.assessment.burned_minutes <= report.delivered_minutes ?
+                                    report.assessment.burned_minutes : -1;
+    for( const sortie_observation &observation : report.observations ) {
+        if( observation.record_schema_version == 1 && observation.observed_minutes >= 0 &&
+            observation.observed_minutes <= report.delivered_minutes &&
+            ( observation.kind == sortie_observation_kind::burn ||
+              observation.kind == sortie_observation_kind::alert ) ) {
+            result.latest_contact_minutes = std::max(
+                                                result.latest_contact_minutes,
+                                                observation.observed_minutes );
+        }
+    }
+    if( result.latest_contact_minutes < 0 ) {
+        // Legacy assessment packets persisted alert strength before an explicit contact fact.
+        // Delivery is the latest conservative anchor they can prove without inventing history.
+        result.latest_contact_minutes = report.delivered_minutes;
+    }
+    result.contact_age_minutes = current_minutes - result.latest_contact_minutes;
+    const int decay_steps = result.contact_age_minutes / ( 12 * 60 );
+    result.target_alert = std::max( 0, result.target_alert - decay_steps * 10 );
+    return result;
+}
+
 namespace
 {
 
@@ -16728,6 +16780,7 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
     candidate.active_outing.assessment.last_progress_minutes = current_minutes;
     candidate.active_outing.assessment.burned_minutes = current_minutes;
     candidate.active_outing.assessment.burn_origin_omt = exposure->position;
+    candidate.active_outing.assessment.target_alert = 100;
     candidate.active_outing.assessment.certainty = std::min(
                 95, candidate.active_outing.assessment.certainty + 30 );
     const bool burned_readiness_latched =

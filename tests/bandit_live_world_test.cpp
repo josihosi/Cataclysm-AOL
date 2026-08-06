@@ -15913,6 +15913,129 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
            inconclusive_site.current_scout_report.assessment.next_eligible_minutes );
 }
 
+TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
+           "[bandit][live_world][scout_report_aging]" )
+{
+    constexpr int delivered_minutes = 1000;
+    bandit_live_world::scout_report_record report;
+    report.revision = 1;
+    report.action_policy = bandit_live_world::camp_report_policy::bandit_shakedown;
+    report.source_activity_id = "aging-scout";
+    report.source_generation = 1;
+    report.source_job_type = "scout";
+    report.target_id = "aging-target";
+    report.target_omt = tripoint_abs_omt( 5, 5, 0 );
+    report.target_lead_revision = 1;
+    report.application_key = "aging-scout:report:1";
+    report.delivered_minutes = delivered_minutes;
+    report.assessment.certainty = 80;
+    report.assessment.readiness_latched = true;
+    report.assessment.threshold_class =
+        bandit_live_world::scout_assessment_threshold_class::normal;
+    report.assessment.target_alert = 80;
+    report.assessment.burned_minutes = delivered_minutes;
+
+    const auto serialize_report = []( const bandit_live_world::scout_report_record &value ) {
+        std::ostringstream out;
+        JsonOut json( out );
+        value.serialize( json );
+        return out.str();
+    };
+
+    const auto evaluate = [&report]( const int elapsed_minutes ) {
+        return bandit_live_world::evaluate_scout_report_at(
+                   report, delivered_minutes + elapsed_minutes );
+    };
+    CHECK_FALSE( bandit_live_world::evaluate_scout_report_at(
+                     report, delivered_minutes - 1 ).valid );
+
+    struct boundary_expectation {
+        int elapsed_minutes;
+        int certainty;
+        int target_alert;
+        bool assessment_ready;
+        bool attack_authorization_usable;
+    };
+    const std::vector<boundary_expectation> boundaries = {
+        { 12 * 60 - 1, 80, 80, true, true },
+        { 12 * 60, 70, 70, true, true },
+        { 24 * 60 - 1, 70, 70, true, true },
+        { 24 * 60, 60, 60, true, true },
+        { 48 * 60 - 1, 60, 50, true, true },
+        { 48 * 60, 60, 40, false, false }
+    };
+    const std::string report_before_reads = serialize_report( report );
+    for( const boundary_expectation &expected : boundaries ) {
+        const bandit_live_world::scout_report_effective_state state =
+            evaluate( expected.elapsed_minutes );
+        CAPTURE( expected.elapsed_minutes );
+        CHECK( state.valid );
+        CHECK( state.age_minutes == expected.elapsed_minutes );
+        CHECK( state.latest_contact_minutes == delivered_minutes );
+        CHECK( state.contact_age_minutes == expected.elapsed_minutes );
+        CHECK( state.certainty == expected.certainty );
+        CHECK( state.target_alert == expected.target_alert );
+        CHECK( state.assessment_ready == expected.assessment_ready );
+        CHECK( state.attack_authorization_usable ==
+               expected.attack_authorization_usable );
+    }
+    CHECK( serialize_report( report ) == report_before_reads );
+
+    bandit_live_world::scout_report_effective_state stepped;
+    for( int elapsed = 0; elapsed <= 48 * 60; elapsed += 12 * 60 ) {
+        stepped = evaluate( elapsed );
+    }
+    const bandit_live_world::scout_report_effective_state jumped = evaluate( 48 * 60 );
+    CHECK( stepped.valid == jumped.valid );
+    CHECK( stepped.age_minutes == jumped.age_minutes );
+    CHECK( stepped.certainty == jumped.certainty );
+    CHECK( stepped.target_alert == jumped.target_alert );
+    CHECK( stepped.assessment_ready == jumped.assessment_ready );
+    CHECK( stepped.attack_authorization_usable == jumped.attack_authorization_usable );
+
+    bandit_live_world::sortie_observation later_contact;
+    later_contact.record_schema_version = 1;
+    later_contact.kind = bandit_live_world::sortie_observation_kind::alert;
+    later_contact.observed_minutes = delivered_minutes + 12 * 60;
+    report.delivered_minutes = delivered_minutes + 13 * 60;
+    report.observations.push_back( later_contact );
+    const bandit_live_world::scout_report_effective_state reset_alert =
+        bandit_live_world::evaluate_scout_report_at(
+            report, delivered_minutes + 24 * 60 );
+    REQUIRE( reset_alert.valid );
+    CHECK( reset_alert.latest_contact_minutes == delivered_minutes + 12 * 60 );
+    CHECK( reset_alert.contact_age_minutes == 12 * 60 );
+    CHECK( reset_alert.target_alert == 70 );
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 3; ++index ) {
+        add_bandit_camp_member( world, index, 895200 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    report.delivered_minutes = delivered_minutes;
+    report.observations.clear();
+    site.current_scout_report = report;
+    REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    bandit_live_world::world_state still_usable_world = world;
+    bandit_live_world::site_record &still_usable_site = still_usable_world.sites.front();
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               still_usable_site,
+               bandit_live_world::camp_decision_state::report_awaiting_assessment,
+               bandit_live_world::camp_decision_state::preparing_follow_on,
+               report.revision, report.source_generation,
+               delivered_minutes + 48 * 60 - 1, -1, "report remains fresh enough" ) ==
+           bandit_live_world::camp_decision_transition_result::applied );
+    const std::string stale_before = serialize_world( world );
+    CHECK( bandit_live_world::transition_camp_decision_state(
+               site, bandit_live_world::camp_decision_state::report_awaiting_assessment,
+               bandit_live_world::camp_decision_state::preparing_follow_on,
+               report.revision, report.source_generation,
+               delivered_minutes + 48 * 60, -1, "stale report must not authorize" ) ==
+           bandit_live_world::camp_decision_transition_result::rejected );
+    CHECK( serialize_world( world ) == stale_before );
+}
+
 TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
            "[bandit][live_world][covert_burn][simultaneous_watch_exit]" )
 {
@@ -16063,6 +16186,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         };
         CHECK( danger_count( site.active_outing ) == 1 );
         CHECK( burn_count( site.active_outing ) == 1 );
+        CHECK( site.active_outing.assessment.target_alert == 100 );
         const auto retained_danger = std::find_if(
                                          site.active_outing.observations.begin(),
                                          site.active_outing.observations.end(),
