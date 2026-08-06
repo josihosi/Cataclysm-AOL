@@ -1102,6 +1102,7 @@ struct structural_local_zombie_read {
 
 std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
     const site_record &site );
+bool fail_live_covert_scout_burned_egress( character_id member_id );
 bool structural_local_zombie_candidate_is_eligible( bool alive, bool hallucination,
         bool zombie_species, bool zombie_rider, bool hostile, bool visible,
         bool source_on_route );

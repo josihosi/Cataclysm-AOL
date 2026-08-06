@@ -2162,7 +2162,8 @@ bool note_live_bandit_aftermath()
                 return read.mutual_target_visibility;
             } );
             if( cursor && visible_survivor != acquire_reads.end() &&
-                live_bandit_fail_burned_egress( visible_survivor->npc_id ) ) {
+                bandit_live_world::fail_live_covert_scout_burned_egress(
+                    visible_survivor->npc_id ) ) {
                 changed = true;
                 continue;
             }
@@ -2251,7 +2252,8 @@ bool note_live_bandit_aftermath()
             if( immobile_member != site.active_outing.member_ids.end() ) {
                 if( site.active_outing.phase ==
                     bandit_live_world::scout_phase::burned_withdrawal ) {
-                    changed |= live_bandit_fail_burned_egress( *immobile_member );
+                    changed |= bandit_live_world::fail_live_covert_scout_burned_egress(
+                                   *immobile_member );
                 }
                 if( live_bandit_abandon_unreachable_return( *immobile_member ) ) {
                     changed = true;
@@ -4731,6 +4733,11 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
 
 namespace bandit_live_world
 {
+bool fail_live_covert_scout_burned_egress( const character_id member_id )
+{
+    return live_bandit_fail_burned_egress( member_id );
+}
+
 std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
     const site_record &site )
 {
@@ -5169,7 +5176,7 @@ void monmove()
                 } else if( guy.has_flag( json_flag_CANNOT_MOVE ) ) {
                     if( immediate_field_hazard && relationship->phase ==
                         bandit_live_world::scout_phase::burned_withdrawal ) {
-                        live_bandit_fail_burned_egress( guy.getID() );
+                        bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                     }
                     if( adjacent_non_camp_threat &&
                         !guy.has_flag( json_flag_CANNOT_ATTACK ) ) {
@@ -5195,7 +5202,7 @@ void monmove()
                     if( local_route_failed ) {
                         if( relationship->phase ==
                             bandit_live_world::scout_phase::burned_withdrawal ) {
-                            live_bandit_fail_burned_egress( guy.getID() );
+                            bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                         }
                     }
                 } else if( ( relationship->phase ==
@@ -5214,9 +5221,9 @@ void monmove()
                             choose_noninward_step( false );
                         if( survival_step ) {
                             guy.move_to( *survival_step, true, nullptr, true );
-                            live_bandit_fail_burned_egress( guy.getID() );
+                            bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                         } else {
-                            live_bandit_fail_burned_egress( guy.getID() );
+                            bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                             guy.move_pause();
                         }
                     }
@@ -5393,7 +5400,7 @@ void overmap_npc_move()
                         local_owner->active_outing.phase;
                     if( !live_bandit_route_member_to( *elem, *local_owner, elem->goal ) ) {
                         if( phase == bandit_live_world::scout_phase::burned_withdrawal ) {
-                            live_bandit_fail_burned_egress( elem->getID() );
+                            bandit_live_world::fail_live_covert_scout_burned_egress( elem->getID() );
                             if( live_bandit_member_routing_home( *elem, *local_owner ) ) {
                                 continue;
                             }
