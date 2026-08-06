@@ -25,8 +25,10 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Prove deterministic simultaneous-exit priority and one transition for burn+danger,
-   burn+survival hazard, legitimately observed revision-change+success, and empty+expiry.
+1. Add the reviewed ephemeral local-watch plan/commit transaction: ingest burn+danger once,
+   preflight and atomically bind both real NPC home routes, and let overwhelming hard danger choose
+   canonical `returning_home` before burn. Preserve one combined observing-to-closed fallback when
+   no home route exists; never publish two transitions or drop the legitimate facts.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

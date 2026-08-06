@@ -1413,3 +1413,13 @@ object/test link exits 0; fixed-seed `[scout_assessment]` passes 2/105, `[covert
 `[alternate_watch]` 2/151, and `[structural_bounty]` 51/6,785. `git diff --check` is clean. No
 astyle 3.1, live GUI, Linux, Windows, Phase-6 authorization, or not-yet-owned empty/danger outcome
 claim. Next: deterministic simultaneous-exit priority and one-transition ingestion.
+
+Phase-5 simultaneous loaded burn+danger ingestion footing is green at `3e460ddc15`. A fresh
+authoritative local-zombie read is validated and built inside the existing burn candidate; danger
+and burn pass through one bounded set and both byte-exact facts must survive before publication.
+Full-cap reversed input serializes identically, malformed danger is byte-inert, and phase/cursor
+guards prevent the later writer or replay from duplicating either fact. The requested redirected
+Mac tiles objects/test link exits 0; delegated broad `[covert_burn]` passes 6/841, root exact burn
+2/673, and root `[phase4_local_zombie_observation]` 4/389 at seed 424242. `git diff --check` is
+clean. This is ingestion footing, not hard-danger exit priority; paired route plan/commit and one
+combined no-route closure are next. No astyle 3.1, live GUI, Linux, or Windows claim.

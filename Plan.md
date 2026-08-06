@@ -410,6 +410,10 @@ at 70 and burned readiness at 60, retains them through 60 and 50 respectively, a
 point below. Production proof preserves exact 48-hour normal/burned and 12-hour inconclusive
 cooldowns. Next, prove deterministic priority and single-transition ingestion for simultaneous
 burn, danger, revision, success, empty, and expiry conditions.
+Atomic loaded burn+danger ingestion is green at `3e460ddc15`: the real local-zombie read and burn
+fact share one capped candidate transaction and both must survive exactly before the existing burn
+exit publishes. Next, add the reviewed route-preflighted local-watch plan/commit owner so hard
+danger can outrank burn without losing either fact or partially binding the two physical NPCs.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
