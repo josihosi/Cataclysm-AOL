@@ -3738,9 +3738,36 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "bandit_camp_map_lead",
             [transform["kind"] for transform in child_transforms],
         )
-        self.assertEqual(child_transforms[1]["offset_omt"], [20, -16, 0])
+        source_camp_anchor = [140, 51, 0]
+        player_offset = child_transforms[1]["offset_omt"]
+        player_omt = [
+            source_camp_anchor[index] + player_offset[index]
+            for index in range(3)
+        ]
+        self.assertEqual(player_offset, [24, -16, 0])
+        self.assertEqual(player_omt, [164, 35, 0])
         self.assertEqual(child_transforms[2]["offset_omt"], [0, 4, 0])
-        self.assertEqual(child_transforms[3]["new_anchor"], [160, 39, 0])
+        self.assertEqual(child_transforms[3]["new_anchor"], [164, 39, 0])
+        self.assertEqual(
+            child_transforms[3]["new_footprint"],
+            [[164, 39, 0], [165, 39, 0], [164, 40, 0], [165, 40, 0]],
+        )
+        sector_zero_outer_target = [
+            child_transforms[3]["new_anchor"][0],
+            child_transforms[3]["new_anchor"][1] - 9,
+            child_transforms[3]["new_anchor"][2],
+        ]
+        self.assertEqual(sector_zero_outer_target, [164, 30, 0])
+        self.assertEqual(
+            {
+                player_omt[0],
+                child_transforms[3]["new_anchor"][0],
+                sector_zero_outer_target[0],
+            },
+            {164},
+        )
+        self.assertLess(sector_zero_outer_target[1], player_omt[1])
+        self.assertLess(player_omt[1], child_transforms[3]["new_anchor"][1])
         self.assertTrue(child_transforms[3]["reset_shakedown_history"])
         child_transform = child_transforms[-1]
         self.assertEqual(
@@ -3763,7 +3790,22 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["fixture"],
             "bandit_scout_to_decision_observer_v0_2026-08-06",
         )
+        self.assertIn("(164,35,0)", scenario["description"])
+        self.assertIn("(164,30,0)", scenario["description"])
+        self.assertIn(
+            "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
+            scenario["artifact_patterns"],
+        )
+        self.assertIn(exact_target, scenario["artifact_patterns"])
+        self.assertIn(
+            "road-connected sector-0 outer target (164,30,0)",
+            scenario["evidence_contract"]["preconditions_and_interventions"],
+        )
         preflight = steps[labels.index("preflight_idle_zero_lead_camp")]
+        self.assertEqual(
+            preflight["required_site_id_contains"],
+            "overmap_special:bandit_camp@164,39,0",
+        )
         self.assertEqual(preflight["required_max_leads"], 0)
         self.assertEqual(preflight["required_active_group_id_exact"], "")
         self.assertEqual(preflight["required_active_target_id_exact"], "")

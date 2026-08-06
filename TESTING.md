@@ -63,12 +63,15 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
-- The canonical Mac SDL3 binary rebuilt successfully from `0d99500b33` plus the dirty harness-only
-  slice; existing deployment-target dylib warnings remain non-fatal. Its dirty title is not trusted
-  for future feature credit; rebuild from the clean checkpoint first.
+- The canonical Mac SDL3 binary rebuilt successfully as clean `9b435e1ee3+SDL3`; existing
+  deployment-target dylib warnings remain non-fatal.
 - The saved-state audit now exposes the authoritative final scout report, camp decision, and their
   exact revision/generation/activity/application/target identity match. Harness contract suite:
   139 tests green.
+- Checkpoint `9b435e1ee3` adds bounded route-rejection reasons without changing eligibility or
+  state. Mac `[routed_dispatch]`: 5 cases / 157 assertions; `git diff --check` green. Medium
+  autoreview found and the implementation corrected misleading summary reuse and rejection-order
+  taxonomy; deterministic tests closed the localized final wording fix.
 - Runtime identity remains strict: any dirty build title is untrusted because current worktree state
   cannot prove which paths were dirty at build time. A clean committed rebuild is required.
 - Run `20260806_232503` naturally discovered the road at the original open camp but reached
@@ -78,9 +81,13 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   and remained healthy but idle at drive `473` through `scheduler_hour=137`. The stable camp ID
   yields its first frontier deadline at hour `139`; the inherited 12-hour timeout was two hours
   short. Permissions, startup, wait elapsed time, and feature error guard were green.
-- These are the two bounded attempts for this obstacle. Do not rerun in this coordinator phase.
-  The corrected scenario now targets the code-derived hour-139 sector-0 frontier dispatch and is
-  explicitly pending live credit.
+- Runs `20260807_001847` and `20260807_004900` then reached hour `139` on the unchanged forest
+  footing. The clean diagnostic run proved `frontier_probe:0` exceeded the complete-route cap and
+  the remembered road lead's watch route was malformed. The old `(160,39,0)` footing has exhausted
+  its attempts and must not be rerun.
+- The replacement declared precondition moves only the camp/player footing onto the existing
+  x=164 route corridor: camp `(164,39,0)`, sector-0 inner waypoint/player `(164,35,0)`, and outer
+  target `(164,30,0)`. It still injects no lead, dispatch, observation, return, report, or decision.
 
 ### Capped non-credit probes
 
@@ -137,8 +144,9 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
   travels and observes, completes quietly, physically returns at least one survivor, creates a
   final non-provisional report, and enters the authoritative camp decision owner in one run.
 - Preconditions/interventions: derive from the existing McWilliams save; set deterministic time,
-  place one five-member camp at `(160,39,0)`, park the player on its sector-0 inner waypoint,
-  retire the empty original roster, clear inherited evidence/outings, and add
+  place one five-member camp at `(164,39,0)` on the existing x=164 route corridor, park the player
+  at its sector-0 inner waypoint `(164,35,0)`, retain outer target `(164,30,0)`, retire the empty
+  original roster, clear inherited evidence/outings, and add
   `DEBUG_CLAIRVOYANCE`. Each transform records a receipt. Do not inject a lead, dispatch,
   observation, casualty, return, report, or decision.
 - Causal boundary: the saved idle five-member camp with zero leads and no active outing before the
@@ -153,9 +161,9 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
   private evidence without a carrier cannot appear; stale identity, duplicate owner, or mismatched
   report generation is red.
 - Timeout: 14 game hours to the code-derived frontier deadline, five minutes for real local
-  handoff, then an initial bounded six-hour post-observation window. The two-attempt cap is already
-  exhausted; this corrected contract is pending a later phase/session, not another immediate run.
-- Pass/fail identities: record `0d99500b33` source plus the rebuilt binary identity, derived fixture
+  handoff, then an initial bounded six-hour post-observation window. The road-connected correction
+  is one new causal footing; stop and isolate the first concrete blocker if it fails.
+- Pass/fail identities: record `9b435e1ee3` binary identity plus the committed source/fixture
   manifest/hash, scenario name, run ID, saved-owner audit, same-run transition patterns, and compact
   incident JSON/PNG. Passing requires a surviving physical return, final report, and decision;
   startup, handoff, or schema validity alone is non-credit.
