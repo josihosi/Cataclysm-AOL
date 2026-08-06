@@ -27,6 +27,7 @@
 #include "activity_actor_definitions.h"
 #include "avatar.h"
 #include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 #include "basecamp.h"
 #include "behavior.h"
 #include "bionics.h"
@@ -4291,6 +4292,7 @@ bool npc::update_path(const tripoint_bub_ms &p, const bool no_bashing,
     }
   }
 
+  bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
   std::vector<tripoint_bub_ms> new_path =
       get_map().route(pos_bub(), pathfinding_target::point(p),
                       get_pathfinding_settings(no_bashing), get_path_avoid());
@@ -4337,6 +4339,7 @@ bool npc::is_valid_sleep_candidate( const tripoint_bub_ms &p ) const
     if( p == pos_bub() ) {
         return true;
     }
+    bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
     return !here.route( pos_bub(), pathfinding_target::point( p ),
                         get_pathfinding_settings( true ), get_path_avoid() ).empty();
 }
@@ -6956,6 +6959,7 @@ void npc::go_to_omt_destination( const std::function<bool(
   tripoint_bub_ms sm_tri =
       here.get_bub(project_to<coords::ms>(omt_path.back()));
   tripoint_bub_ms centre_sub = sm_tri + point(SEEX, SEEY);
+  bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
   path = here.route(*this, pathfinding_target::radius(centre_sub, 2));
   add_msg_debug(debugmode::DF_NPC, "%s going %s->%s", get_name(),
                 omt_pos.to_string_writable(), goal.to_string_writable());

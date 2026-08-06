@@ -9,6 +9,7 @@
 namespace
 {
 thread_local bandit_live_world_probe::session *active_session = nullptr;
+thread_local std::size_t loaded_covert_member_depth = 0;
 
 template<typename Enum>
 constexpr std::size_t enum_index( Enum value )
@@ -210,6 +211,31 @@ scoped_section::~scoped_section()
     }
 }
 
+scoped_loaded_covert_member::scoped_loaded_covert_member( const bool enabled ) noexcept :
+    enabled_( enabled )
+{
+    if( enabled_ ) {
+        ++loaded_covert_member_depth;
+    }
+}
+
+scoped_loaded_covert_member::~scoped_loaded_covert_member()
+{
+    if( enabled_ ) {
+        assert( loaded_covert_member_depth > 0 );
+        --loaded_covert_member_depth;
+    }
+}
+
+scoped_loaded_covert_local_path_solve::scoped_loaded_covert_local_path_solve() noexcept
+{
+    if( loaded_covert_member_depth == 0 ) {
+        return;
+    }
+    section_.emplace( section::loaded_covert_local_path_solve );
+    increment( counter::loaded_covert_local_path_solves );
+}
+
 void increment( const counter target, const std::uint64_t amount )
 {
     if( active_session == nullptr ) {
@@ -237,6 +263,16 @@ void record_site_service( const std::string &site_id, const site_service target,
         record_index = existing->second;
     }
     records[record_index].counts[enum_index( target )] += amount;
+}
+
+bool active() noexcept
+{
+    return active_session != nullptr;
+}
+
+bool loaded_covert_member_active() noexcept
+{
+    return loaded_covert_member_depth > 0;
 }
 
 bool transition_events_enabled() noexcept
@@ -289,6 +325,10 @@ std::string_view to_string( const section target )
         "live_dispatch_plan",
         "live_dispatch_apply",
         "live_return_apply",
+        "loaded_covert_prepass",
+        "loaded_covert_member_motor",
+        "loaded_covert_overmap_route_solve",
+        "loaded_covert_local_path_solve",
     };
     return names[enum_index( target )];
 }
@@ -307,6 +347,10 @@ std::string_view to_string( const counter target )
         "live_dispatch_plans",
         "live_dispatch_applies",
         "live_return_applies",
+        "loaded_covert_prepass_calls",
+        "loaded_covert_members_processed",
+        "loaded_covert_overmap_route_solves",
+        "loaded_covert_local_path_solves",
     };
     return names[enum_index( target )];
 }

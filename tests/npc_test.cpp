@@ -2533,6 +2533,179 @@ TEST_CASE( "live_covert_burn_yields_to_actor_visible_field_survival",
     CHECK( site.active_outing.target_omt == target_omt );
 }
 
+TEST_CASE( "loaded_covert_pair_movement_has_bounded_route_work",
+           "[npc][bandit][loaded_covert_movement_profile]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 10, 10, 0 ) );
+    npc &defender = spawn_npc( point_bub_ms( 54, 50 ), "test_talker" );
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const std::vector<character_id> generated_ids = {
+        defender.getID(), scout.getID(), partner.getID()
+    };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    const int scenario = GENERATE( 0, 1, 2, 3 );
+    CAPTURE( scenario );
+    if( scenario != 0 ) {
+        defender.set_fac( faction_your_followers );
+        REQUIRE( defender.is_player_ally() );
+    }
+    REQUIRE( ( scenario == 0 ||
+               ( defender.sees_without_clairvoyance( here, scout ) &&
+                 scout.sees_without_clairvoyance( here, defender ) ) ) );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    bandit_live_world::site_record &site = live_state.sites.front();
+    site.active_outing.local_handoff.members[0].staging_position = scout.pos_abs();
+    site.active_outing.local_handoff.members[1].staging_position = partner.pos_abs();
+    const tripoint_abs_omt target_omt = site.active_outing.target_omt;
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "loaded covert profile target camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+
+    if( scenario == 2 ) {
+        here.add_field( scout.pos_bub( here ), fd_acid, 3 );
+        REQUIRE( scout.sees_dangerous_field( scout.pos_bub( here ) ) );
+    }
+    for( npc *member : { &scout, &partner } ) {
+        member->goto_to_this_pos = std::nullopt;
+        member->clear_ai_guard_pos();
+        member->path.clear();
+        member->goal = npc::no_goal_point;
+        member->omt_path.clear();
+        member->set_mission( NPC_MISSION_GUARD );
+        member->set_moves( -1000 );
+    }
+    defender.set_moves( -1000 );
+
+    const std::string owner_before_probe =
+        serialize_live_world_for_optics_test( live_state );
+    {
+        bandit_live_world_probe::session inert_session(
+            bandit_live_world_probe::collection_mode::timings );
+        CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before_probe );
+        CHECK( inert_session.result().timings_collected );
+    }
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before_probe );
+
+    if( scenario == 3 ) {
+        process_monsters_and_npcs_turn_for_test();
+        REQUIRE( site.active_outing.phase ==
+                 bandit_live_world::scout_phase::burned_withdrawal );
+    }
+    scout.set_moves( 1 - scout.get_speed() );
+    partner.set_moves( 1 - partner.get_speed() );
+    defender.set_moves( -1000 );
+    const tripoint_abs_ms scout_before_profile = scout.pos_abs();
+    const tripoint_abs_ms partner_before_profile = partner.pos_abs();
+
+    bandit_live_world_probe::snapshot profile;
+    {
+        bandit_live_world_probe::session timing_session(
+            bandit_live_world_probe::collection_mode::timings );
+        process_monsters_and_npcs_turn_for_test();
+        profile = timing_session.result();
+    }
+    const auto count = [&profile]( const bandit_live_world_probe::counter target ) {
+        return profile.counters[static_cast<std::size_t>( target )];
+    };
+    const auto samples = [&profile]( const bandit_live_world_probe::section target )
+    -> const bandit_live_world_probe::latency_summary & {
+        return profile.sections[static_cast<std::size_t>( target )].inclusive;
+    };
+    const auto valid_histogram = []( const bandit_live_world_probe::latency_summary &summary ) {
+        return !summary.overflow && summary.count > 0 && summary.minimum_ns >= 0 &&
+               summary.minimum_ns <= summary.p50_ns && summary.p50_ns <= summary.p95_ns &&
+               summary.p95_ns <= summary.p99_ns && summary.p99_ns <= summary.maximum_ns &&
+               summary.total_ns >= static_cast<std::uint64_t>( summary.minimum_ns );
+    };
+
+    const std::uint64_t overmap_solves = count(
+            bandit_live_world_probe::counter::loaded_covert_overmap_route_solves );
+    const std::uint64_t local_path_solves = count(
+            bandit_live_world_probe::counter::loaded_covert_local_path_solves );
+    INFO( "loaded covert prepass ns=" << samples(
+              bandit_live_world_probe::section::loaded_covert_prepass ).total_ns );
+    INFO( "loaded covert member motor ns=" << samples(
+              bandit_live_world_probe::section::loaded_covert_member_motor ).total_ns );
+    INFO( "overmap solves=" << overmap_solves << " local path solves=" << local_path_solves );
+    CHECK_FALSE( profile.stack_overflow );
+    CHECK( count( bandit_live_world_probe::counter::loaded_covert_prepass_calls ) == 1 );
+    CHECK( count( bandit_live_world_probe::counter::loaded_covert_members_processed ) == 2 );
+    CHECK( samples( bandit_live_world_probe::section::loaded_covert_prepass ).count == 1 );
+    CHECK( samples( bandit_live_world_probe::section::loaded_covert_member_motor ).count == 2 );
+    CHECK( samples(
+               bandit_live_world_probe::section::loaded_covert_overmap_route_solve ).count ==
+           overmap_solves );
+    CHECK( samples(
+               bandit_live_world_probe::section::loaded_covert_local_path_solve ).count ==
+           local_path_solves );
+    CHECK( valid_histogram( samples(
+               bandit_live_world_probe::section::loaded_covert_prepass ) ) );
+    CHECK( valid_histogram( samples(
+               bandit_live_world_probe::section::loaded_covert_member_motor ) ) );
+    CHECK( overmap_solves <= 10 );
+    CHECK( local_path_solves <= 2 );
+    CHECK( site.active_outing.phase == ( scenario == 0 ?
+           bandit_live_world::scout_phase::observing :
+           bandit_live_world::scout_phase::burned_withdrawal ) );
+    if( overmap_solves > 0 ) {
+        CHECK( valid_histogram( samples(
+                   bandit_live_world_probe::section::loaded_covert_overmap_route_solve ) ) );
+    }
+    if( local_path_solves > 0 ) {
+        CHECK( valid_histogram( samples(
+                   bandit_live_world_probe::section::loaded_covert_local_path_solve ) ) );
+    }
+    if( scenario == 0 ) {
+        CHECK( overmap_solves == 0 );
+        CHECK( local_path_solves == 0 );
+        CHECK( scout.pos_abs() == scout_before_profile );
+        CHECK( partner.pos_abs() == partner_before_profile );
+    } else if( scenario == 1 ) {
+        CHECK( overmap_solves == 10 );
+        CHECK( local_path_solves == 2 );
+        CHECK( scout.pos_abs() != scout_before_profile );
+        CHECK( partner.pos_abs() != partner_before_profile );
+    } else if( scenario == 2 ) {
+        CHECK( overmap_solves == 10 );
+        CHECK( local_path_solves == 1 );
+        CHECK( scout.pos_abs() != scout_before_profile );
+    } else {
+        CHECK( overmap_solves == 0 );
+        CHECK( local_path_solves == 2 );
+        CHECK( scout.pos_abs() != scout_before_profile );
+        CHECK( partner.pos_abs() != partner_before_profile );
+    }
+}
+
 TEST_CASE( "faction_hostile_tired_npc_fights_not_sleeps", "[npc][npc_ai][needs]" )
 {
     g->faction_manager_ptr->create_if_needed();

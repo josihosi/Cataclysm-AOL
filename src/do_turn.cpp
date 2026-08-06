@@ -28,6 +28,7 @@
 #include "activity_type.h"
 #include "avatar.h"
 #include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 #include "bandit_mark_generation.h"
 #include "basecamp.h"
 #include "bionics.h"
@@ -861,6 +862,13 @@ bool live_bandit_route_respects_covert_ring(
     } );
 }
 
+bool live_bandit_update_local_path( npc &member_npc, const tripoint_bub_ms &destination )
+{
+    bandit_live_world_probe::scoped_loaded_covert_member member_scope(
+        bandit_live_world_probe::active() );
+    return member_npc.update_path( destination, false, false );
+}
+
 std::vector<tripoint_abs_omt> live_bandit_member_route_to(
     const npc &member_npc, const bandit_live_world::site_record &site,
     const tripoint_abs_omt &destination )
@@ -884,10 +892,16 @@ std::vector<tripoint_abs_omt> live_bandit_member_route_to(
                                  site.active_outing.failed_covert_egress_route_omts.end() );
         route_exclusions.erase( member_npc.pos_abs_omt() );
     }
-    std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path(
-                                            member_npc.pos_abs_omt(), destination,
-                                            overmap_path_params::for_npc(),
-                                            route_exclusions ).points;
+    std::vector<tripoint_abs_omt> path;
+    {
+        bandit_live_world_probe::scoped_section route_solve(
+            bandit_live_world_probe::section::loaded_covert_overmap_route_solve );
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::loaded_covert_overmap_route_solves );
+        path = overmap_buffer.get_travel_path(
+                   member_npc.pos_abs_omt(), destination,
+                   overmap_path_params::for_npc(), route_exclusions ).points;
+    }
     if( !live_bandit_route_respects_covert_ring( site.active_outing, path ) ||
         ( site.active_outing.phase == bandit_live_world::scout_phase::burned_withdrawal &&
           !bandit_live_world::covert_scout_egress_route_respects_retry_memory(
@@ -1061,9 +1075,16 @@ live_bandit_covert_egress_plan live_bandit_plan_covert_egress(
                 member_exclusions.insert( retry_footing_exclusions.begin(),
                                           retry_footing_exclusions.end() );
                 member_exclusions.erase( member->pos_abs_omt() );
-                const auto path = overmap_buffer.get_travel_path(
-                                      member->pos_abs_omt(), candidate.omt,
-                                      overmap_path_params::for_npc(), member_exclusions );
+                pf::simple_path<tripoint_abs_omt> path;
+                {
+                    bandit_live_world_probe::scoped_section route_solve(
+                        bandit_live_world_probe::section::loaded_covert_overmap_route_solve );
+                    bandit_live_world_probe::increment(
+                        bandit_live_world_probe::counter::loaded_covert_overmap_route_solves );
+                    path = overmap_buffer.get_travel_path(
+                               member->pos_abs_omt(), candidate.omt,
+                               overmap_path_params::for_npc(), member_exclusions );
+                }
                 if( path.points.empty() || path.cost < 0 ) {
                     all_routes_ready = false;
                     break;
@@ -1209,9 +1230,16 @@ bool live_bandit_fail_burned_egress( const character_id member_id )
         }
         std::unordered_set<tripoint_abs_omt> member_exclusions = home_exclusions;
         member_exclusions.erase( member->pos_abs_omt() );
-        std::vector<tripoint_abs_omt> home_route = overmap_buffer.get_travel_path(
-                    member->pos_abs_omt(), owner->anchor, overmap_path_params::for_npc(),
-                    member_exclusions ).points;
+        std::vector<tripoint_abs_omt> home_route;
+        {
+            bandit_live_world_probe::scoped_section route_solve(
+                bandit_live_world_probe::section::loaded_covert_overmap_route_solve );
+            bandit_live_world_probe::increment(
+                bandit_live_world_probe::counter::loaded_covert_overmap_route_solves );
+            home_route = overmap_buffer.get_travel_path(
+                             member->pos_abs_omt(), owner->anchor,
+                             overmap_path_params::for_npc(), member_exclusions ).points;
+        }
         if( home_route.empty() ||
             !live_bandit_route_respects_covert_ring( owner->active_outing, home_route ) ) {
             home_routes_ready = false;
@@ -3024,7 +3052,7 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             member->goto_to_this_pos = order.second;
             member->clear_ai_guard_pos();
             route_attempted = true;
-            if( !member->update_path( here.get_bub( order.second ), false, false ) ) {
+            if( !live_bandit_update_local_path( *member, here.get_bub( order.second ) ) ) {
                 route_failed = true;
             }
         }
@@ -5464,30 +5492,61 @@ void monmove()
 
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
-    bandit_live_world::burn_live_covert_scouts();
-    std::map<character_id, tripoint_abs_ms> pair_assembly_orders =
-        maintain_live_bandit_local_pair_cohesion();
-    if( calendar::once_every( 1_minutes ) ) {
-        const int local_zombie_observations = record_live_bandit_local_zombie_observations();
-        if( local_zombie_observations > 0 ) {
-            // The first cohesion pass owns safety movement.  Re-read exact positions after
-            // recording so an assembled pair can communicate the new fact before either NPC
-            // moves or dies later in this turn.
-            pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
-                                       << local_zombie_observations << '\n';
+    std::map<character_id, tripoint_abs_ms> pair_assembly_orders;
+    std::set<character_id> pair_homeward_travel_ids;
+    std::set<character_id> profiled_covert_member_ids;
+    {
+        bandit_live_world_probe::scoped_section prepass(
+            bandit_live_world_probe::section::loaded_covert_prepass );
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::loaded_covert_prepass_calls );
+        bandit_live_world::burn_live_covert_scouts();
+        pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
+        if( calendar::once_every( 1_minutes ) ) {
+            const int local_zombie_observations = record_live_bandit_local_zombie_observations();
+            if( local_zombie_observations > 0 ) {
+                // The first cohesion pass owns safety movement.  Re-read exact positions after
+                // recording so an assembled pair can communicate the new fact before either NPC
+                // moves or dies later in this turn.
+                pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
+                                           << local_zombie_observations << '\n';
+            }
+            const int local_scout_assessment_updates =
+                advance_live_bandit_local_scout_assessments();
+            if( local_scout_assessment_updates > 0 ) {
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_scout_assessment_updates="
+                                           << local_scout_assessment_updates << '\n';
+            }
         }
-        const int local_scout_assessment_updates =
-            advance_live_bandit_local_scout_assessments();
-        if( local_scout_assessment_updates > 0 ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_scout_assessment_updates="
-                                       << local_scout_assessment_updates << '\n';
+        pair_homeward_travel_ids = bandit_live_world::local_pair_homeward_travel_ids(
+                                       overmap_buffer.global_state.bandit_live_world );
+        if( bandit_live_world_probe::active() ) {
+            for( const bandit_live_world::site_record &site :
+                 overmap_buffer.global_state.bandit_live_world.sites ) {
+                const bandit_live_world::active_outing_state &outing = site.active_outing;
+                if( !site.retired_empty_site && outing.is_active() &&
+                    outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                    outing.owner == bandit_live_world::simulation_owner::local &&
+                    outing.local_handoff.is_active() && outing.member_ids.size() == 2 ) {
+                    profiled_covert_member_ids.insert( outing.member_ids.begin(),
+                                                       outing.member_ids.end() );
+                }
+            }
         }
     }
-    const std::set<character_id> pair_homeward_travel_ids =
-        bandit_live_world::local_pair_homeward_travel_ids(
-            overmap_buffer.global_state.bandit_live_world );
     for( npc &guy : g->all_npcs() ) {
+        const bool profiled_covert_member =
+            profiled_covert_member_ids.count( guy.getID() ) > 0;
+        std::optional<bandit_live_world_probe::scoped_section> member_motor;
+        bandit_live_world_probe::scoped_loaded_covert_member member_scope(
+            profiled_covert_member );
+        if( profiled_covert_member ) {
+            member_motor.emplace(
+                bandit_live_world_probe::section::loaded_covert_member_motor );
+            bandit_live_world_probe::increment(
+                bandit_live_world_probe::counter::loaded_covert_members_processed );
+        }
         int turns = 0;
         int real_count = 0;
         const int count_limit = std::max( 10, guy.get_moves() / 64 );
@@ -5509,11 +5568,14 @@ void monmove()
                     !m.inbounds( assembly_order->second ) ||
                     rl_dist( guy.pos_abs(), assembly_order->second ) <= 1 ) {
                     guy.move_pause();
-                } else if( guy.update_path( m.get_bub( assembly_order->second ), false, false ) ) {
-                    guy.move_to_next();
                 } else {
-                    guy.path.clear();
-                    guy.move_pause();
+                    if( live_bandit_update_local_path(
+                            guy, m.get_bub( assembly_order->second ) ) ) {
+                        guy.move_to_next();
+                    } else {
+                        guy.path.clear();
+                        guy.move_pause();
+                    }
                 }
             } else if( pair_homeward_travel_ids.count( guy.getID() ) > 0 ) {
                 const std::optional<bandit_live_world::covert_scout_relationship_read>
@@ -5677,7 +5739,7 @@ void monmove()
                            guy.pos_abs_omt() != relationship->egress_omt &&
                            !guy.has_flag( json_flag_CANNOT_MOVE ) ) {
                     if( m.inbounds( local_egress ) &&
-                        guy.update_path( local_egress, false, false ) &&
+                        live_bandit_update_local_path( guy, local_egress ) &&
                         local_path_respects_nonreentry( guy.path ) ) {
                         guy.move_to_next();
                     } else {

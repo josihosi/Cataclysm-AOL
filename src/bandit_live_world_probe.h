@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -24,6 +25,10 @@ enum class section : std::size_t {
     live_dispatch_plan,
     live_dispatch_apply,
     live_return_apply,
+    loaded_covert_prepass,
+    loaded_covert_member_motor,
+    loaded_covert_overmap_route_solve,
+    loaded_covert_local_path_solve,
     count
 };
 
@@ -39,6 +44,10 @@ enum class counter : std::size_t {
     live_dispatch_plans,
     live_dispatch_applies,
     live_return_applies,
+    loaded_covert_prepass_calls,
+    loaded_covert_members_processed,
+    loaded_covert_overmap_route_solves,
+    loaded_covert_local_path_solves,
     count
 };
 
@@ -191,9 +200,38 @@ class scoped_section
         std::chrono::steady_clock::time_point started_;
 };
 
+class scoped_loaded_covert_member
+{
+    public:
+        explicit scoped_loaded_covert_member( bool enabled ) noexcept;
+        ~scoped_loaded_covert_member();
+
+        scoped_loaded_covert_member( const scoped_loaded_covert_member & ) = delete;
+        scoped_loaded_covert_member &operator=( const scoped_loaded_covert_member & ) = delete;
+
+    private:
+        bool enabled_ = false;
+};
+
+class scoped_loaded_covert_local_path_solve
+{
+    public:
+        scoped_loaded_covert_local_path_solve() noexcept;
+
+        scoped_loaded_covert_local_path_solve(
+            const scoped_loaded_covert_local_path_solve & ) = delete;
+        scoped_loaded_covert_local_path_solve &operator=(
+            const scoped_loaded_covert_local_path_solve & ) = delete;
+
+    private:
+        std::optional<scoped_section> section_;
+};
+
 void increment( counter target, std::uint64_t amount = 1 );
 void record_site_service( const std::string &site_id, site_service target,
                           std::uint64_t amount = 1 );
+bool active() noexcept;
+bool loaded_covert_member_active() noexcept;
 bool transition_events_enabled() noexcept;
 void record_transition_event( std::string_view operation_id, int generation,
                               std::string_view simulation_owner,
