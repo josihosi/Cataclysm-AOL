@@ -1437,3 +1437,16 @@ invocation bypassed the repo C++17 wiring and failed in unrelated standard heade
 top-level build replaced it. The retained burn receipt is intentional schema truth even when danger
 wins the phase. No astyle 3.1, live GUI, Linux, or Windows claim. Next: real actor-visible
 burn+survival-hazard motor priority without a synthetic hazard input.
+
+Phase-5 simultaneous burn+survival-hazard priority is green at `ec8c9840d6`. The only production
+surface added is a narrow test entrypoint that directly invokes the existing anonymous monster/NPC
+turn loop; movement/scoring/save logic is unchanged. One production-shaped live covert fixture has
+three generated cases: real intensity-3 acid with one clear north step, all traversable neighbors
+acid-dangerous with north intensity 1 versus intensity 2 elsewhere, and a no-hazard route control.
+The first two choose respectively the ordinary clear and least-dangerous forced non-inward step
+after the same-loop burn; the control reduces distance to the committed egress. All retain exact
+activity/generation/target, one burn fact, one observing-to-burned event, and inert replay. Delegated
+canonical Mac tiles tests build exits 0; root seed 424242 exact passes 1/129, NPC burn 5/297, and
+live egress 4/214; `git diff --check` is clean. Caveat: field hazard only, no separate trap variant,
+no astyle 3.1, live GUI, Linux, or Windows claim. Revision/success and empty/expiry remain blocked on
+real perception producers; next is bounded loaded-movement profiling and replan-count evidence.

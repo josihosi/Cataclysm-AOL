@@ -25,10 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Prove simultaneous reciprocal burn plus a real actor-visible field/trap survival hazard through
-   the existing post-burn movement owner. The burn transaction must publish once, then the real
-   survivor chooses the ordinary clear or least-dangerous non-inward step without a second phase
-   transition, synthetic hazard flag, task reset, or duplicated evidence.
+1. Add the smallest bounded performance proof for loaded covert movement: measure real turn-loop
+   query/movement time and route/replan work for quiet observation, burn, field escape, and ordinary
+   egress across a representative exact-pair scale. Reuse existing counters/harness budgets where
+   possible; do not add a dashboard or per-turn history. Prove no route-solve/replan storm and no
+   save growth, then close only the Phase-5 deterministic exit rows that the evidence actually owns.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

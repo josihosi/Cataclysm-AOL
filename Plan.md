@@ -419,6 +419,13 @@ Route failure instead reuses authoritative arrival/casualty/orphan/evidence/carg
 reconciliation and publishes one observing-to-lost event. Next, prove simultaneous burn plus a real
 actor-visible survival hazard through the existing post-burn motor owner without adding a second
 phase transition or a synthetic hazard input.
+Post-burn survival priority is green at `ec8c9840d6`: a narrow test entrypoint invokes the real
+monster/NPC turn loop, where reciprocal burn runs first and actor-visible fields then outrank
+defense and squad routing. Real acid proves one clear non-inward escape, one least-dangerous forced
+escape, and a no-hazard route control with exactly one burn fact/event and stable operation identity.
+Revision/success and empty/expiry remain deferred for their missing perception producers. Next,
+measure the existing loaded covert movement loop and prove it does not create a per-turn route-solve
+or replan storm before treating Phase 5 deterministic closure as complete.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
