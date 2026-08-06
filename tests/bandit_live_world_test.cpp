@@ -21120,6 +21120,108 @@ TEST_CASE( "hostile_camp_avatar_relocation_does_not_drag_returned_report_lead",
     }
 }
 
+TEST_CASE( "bandit_live_world_response_power_uses_exact_faction_margin",
+           "[bandit][live_world][response_power]" )
+{
+    using bandit_live_world::camp_report_policy;
+    using bandit_live_world::response_power_evaluation;
+
+    const auto evaluate = []( const camp_report_policy policy, const int danger,
+    const std::vector<int> &powers ) {
+        return bandit_live_world::evaluate_response_party_power( policy, danger, powers );
+    };
+    const auto check_default_invalid = []( const response_power_evaluation & result ) {
+        CHECK_FALSE( result.valid );
+        CHECK( result.target_power == 0 );
+        CHECK( result.margin_percent == 0 );
+        CHECK( result.party_power == 0 );
+        CHECK( result.required_power == 0 );
+        CHECK_FALSE( result.clears_margin );
+    };
+    const auto same_result = []( const response_power_evaluation &lhs,
+    const response_power_evaluation &rhs ) {
+        return lhs.valid == rhs.valid && lhs.target_power == rhs.target_power &&
+               lhs.margin_percent == rhs.margin_percent &&
+               lhs.party_power == rhs.party_power &&
+               lhs.required_power == rhs.required_power &&
+               lhs.clears_margin == rhs.clears_margin;
+    };
+
+    const response_power_evaluation bandit_exact = evaluate(
+                camp_report_policy::bandit_shakedown, 8, { 10 } );
+    REQUIRE( bandit_exact.valid );
+    CHECK( bandit_exact.target_power == 8 );
+    CHECK( bandit_exact.margin_percent == 125 );
+    CHECK( bandit_exact.party_power == 10 );
+    CHECK( bandit_exact.required_power == 10 );
+    CHECK( bandit_exact.clears_margin );
+    const response_power_evaluation bandit_below = evaluate(
+                camp_report_policy::bandit_shakedown, 8, { 9 } );
+    REQUIRE( bandit_below.valid );
+    CHECK( bandit_below.required_power == 10 );
+    CHECK_FALSE( bandit_below.clears_margin );
+
+    const response_power_evaluation cannibal_exact = evaluate(
+                camp_report_policy::cannibal_night_raid, 8, { 10, 2 } );
+    REQUIRE( cannibal_exact.valid );
+    CHECK( cannibal_exact.target_power == 8 );
+    CHECK( cannibal_exact.margin_percent == 150 );
+    CHECK( cannibal_exact.party_power == 12 );
+    CHECK( cannibal_exact.required_power == 12 );
+    CHECK( cannibal_exact.clears_margin );
+    const response_power_evaluation cannibal_below = evaluate(
+                camp_report_policy::cannibal_night_raid, 8, { 10, 1 } );
+    REQUIRE( cannibal_below.valid );
+    CHECK( cannibal_below.required_power == 12 );
+    CHECK_FALSE( cannibal_below.clears_margin );
+
+    const response_power_evaluation bandit_37 = evaluate(
+                camp_report_policy::bandit_shakedown, 37, { 10, 10, 10, 10, 7 } );
+    REQUIRE( bandit_37.valid );
+    CHECK( bandit_37.required_power == 47 );
+    CHECK( bandit_37.party_power == 47 );
+    CHECK( bandit_37.clears_margin );
+    const response_power_evaluation cannibal_37 = evaluate(
+                camp_report_policy::cannibal_night_raid, 37,
+                { 10, 10, 10, 10, 10, 6 } );
+    REQUIRE( cannibal_37.valid );
+    CHECK( cannibal_37.required_power == 56 );
+    CHECK( cannibal_37.party_power == 56 );
+    CHECK( cannibal_37.clears_margin );
+
+    const std::vector<int> maximum_party = { 10, 10, 10, 10, 10, 10 };
+    const response_power_evaluation bandit_200 = evaluate(
+                camp_report_policy::bandit_shakedown, 200, maximum_party );
+    REQUIRE( bandit_200.valid );
+    CHECK( bandit_200.required_power == 250 );
+    CHECK( bandit_200.party_power == 60 );
+    CHECK_FALSE( bandit_200.clears_margin );
+    const response_power_evaluation cannibal_200 = evaluate(
+                camp_report_policy::cannibal_night_raid, 200, maximum_party );
+    REQUIRE( cannibal_200.valid );
+    CHECK( cannibal_200.required_power == 300 );
+    CHECK( cannibal_200.party_power == 60 );
+    CHECK_FALSE( cannibal_200.clears_margin );
+
+    const response_power_evaluation ordered = evaluate(
+                camp_report_policy::bandit_shakedown, 37, { 10, 9, 8, 7, 6 } );
+    const response_power_evaluation reversed = evaluate(
+                camp_report_policy::bandit_shakedown, 37, { 6, 7, 8, 9, 10 } );
+    CHECK( same_result( ordered, reversed ) );
+
+    check_default_invalid( evaluate( camp_report_policy::none, 8, { 10 } ) );
+    check_default_invalid( evaluate( static_cast<camp_report_policy>( 99 ), 8, { 10 } ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, -1, { 10 } ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, 201, { 10 } ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, 8, {} ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, 8,
+                                     { 1, 1, 1, 1, 1, 1, 1 } ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, 8, { 0 } ) );
+    check_default_invalid( evaluate( camp_report_policy::bandit_shakedown, 8, { 11 } ) );
+    check_default_invalid( evaluate( camp_report_policy::cannibal_night_raid, 8,
+                                     { 10, -1 } ) );
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {

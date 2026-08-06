@@ -10093,6 +10093,46 @@ int normalize_hostile_camp_danger_risk( const int danger_high )
     return 5 * std::clamp( danger_high, 0, 200 );
 }
 
+response_power_evaluation evaluate_response_party_power(
+    const camp_report_policy policy, const int danger_high,
+    const std::vector<int> &normalized_member_powers )
+{
+    response_power_evaluation result;
+    int margin_percent = 0;
+    switch( policy ) {
+        case camp_report_policy::bandit_shakedown:
+            margin_percent = 125;
+            break;
+        case camp_report_policy::cannibal_night_raid:
+            margin_percent = 150;
+            break;
+        case camp_report_policy::none:
+            return result;
+    }
+    if( margin_percent == 0 || danger_high < 0 || danger_high > 200 ||
+        normalized_member_powers.empty() ||
+        normalized_member_powers.size() > 6 || std::any_of(
+            normalized_member_powers.begin(), normalized_member_powers.end(),
+    []( const int power ) {
+        return power < 1 || power > 10;
+    } ) ) {
+        return result;
+    }
+
+    int party_power = 0;
+    for( const int power : normalized_member_powers ) {
+        party_power += power;
+    }
+    const int scaled_required_power = margin_percent * danger_high;
+    result.valid = true;
+    result.target_power = danger_high;
+    result.margin_percent = margin_percent;
+    result.party_power = party_power;
+    result.required_power = ( scaled_required_power + 99 ) / 100;
+    result.clears_margin = 100 * party_power >= scaled_required_power;
+    return result;
+}
+
 int normalize_ground_bounty_opportunity( const int bounty_units )
 {
     switch( std::clamp( bounty_units, 0, max_finite_resource_units ) ) {

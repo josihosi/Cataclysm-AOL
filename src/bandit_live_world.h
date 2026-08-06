@@ -829,6 +829,15 @@ struct response_party_policy_result {
     std::string rejection_reason;
 };
 
+struct response_power_evaluation {
+    bool valid = false;
+    int target_power = 0;
+    int margin_percent = 0;
+    int party_power = 0;
+    int required_power = 0;
+    bool clears_margin = false;
+};
+
 struct response_party_selection_result {
     bool eligible = false;
     bool threat_derived = false;
@@ -1481,6 +1490,9 @@ int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
 int structural_terrain_static_risk( const std::string &terrain_fit_class );
 int normalize_hostile_camp_danger_risk( int danger_high );
+response_power_evaluation evaluate_response_party_power(
+    camp_report_policy policy, int danger_high,
+    const std::vector<int> &normalized_member_powers );
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );
