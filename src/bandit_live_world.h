@@ -1579,6 +1579,8 @@ bool is_active_shakedown_parley_member( const world_state &state, character_id n
 struct covert_scout_relationship_read {
     scout_phase phase = scout_phase::assembling;
     std::vector<tripoint_abs_omt> target_footprint;
+    tripoint_abs_omt egress_omt;
+    int minimum_target_distance = -1;
 };
 struct covert_scout_member_acquire_read {
     character_id npc_id;
@@ -1595,6 +1597,16 @@ struct covert_scout_burn_read {
     tripoint_abs_omt target_observer_position;
     bool target_saw_scout = false;
     bool scout_saw_target = false;
+    std::vector<tripoint_abs_omt> perceived_target_observer_positions;
+};
+int covert_scout_burn_observer_cap();
+struct covert_scout_egress_candidate {
+    tripoint_abs_omt omt;
+    bool reachable = false;
+    bool concealed = false;
+    bool hard_danger = false;
+    int soft_danger = 0;
+    int route_cost = -1;
 };
 enum class covert_scout_burn_result {
     rejected,
@@ -1611,10 +1623,29 @@ struct covert_scout_burn_effect {
 };
 std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
     const world_state &state, character_id npc_id );
+std::optional<covert_scout_relationship_read> read_active_covert_scout_homeward_member(
+    const world_state &state, character_id npc_id );
 bool is_active_covert_scout_member( const world_state &state, character_id npc_id );
+std::optional<covert_scout_egress_candidate> select_covert_scout_egress(
+    const tripoint_abs_omt &burn_origin,
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<covert_scout_egress_candidate> &candidates );
 covert_scout_burn_effect apply_covert_scout_burn(
     site_record &site, const simulation_advance_cursor &expected_cursor,
-    const std::vector<covert_scout_burn_read> &member_reads, int current_minutes );
+    const std::vector<covert_scout_burn_read> &member_reads,
+    const std::vector<covert_scout_egress_candidate> &egress_candidates,
+    int current_minutes );
+bool complete_covert_scout_burned_egress(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_member_acquire_read> &member_reads,
+    int current_minutes );
+bool fail_covert_scout_burned_egress(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes );
+bool abandon_covert_scout_unreachable_return(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<active_member_observation> &observations,
+    int current_minutes );
 bool covert_scout_party_cleared_target_acquire_range(
     const active_outing_state &outing,
     const std::vector<covert_scout_member_acquire_read> &member_reads );

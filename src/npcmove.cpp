@@ -4347,20 +4347,25 @@ bool npc::can_open_door(const tripoint_bub_ms &p, const bool inside) const {
 }
 
 bool npc::can_move_to(const tripoint_bub_ms &p, bool no_bashing) const {
+  return !g->is_dangerous_tile( p ) && can_move_to_ignoring_danger( p, no_bashing );
+}
+
+bool npc::can_move_to_ignoring_danger( const tripoint_bub_ms &p,
+                                       const bool no_bashing ) const
+{
   map &here = get_map();
 
   // Allow moving into any bashable spots, but penalize them during pathing
   // Doors are not passable for hallucinations
   return (
       rl_dist(pos_bub(), p) <= 1 && here.has_floor_or_water(p) &&
-      !g->is_dangerous_tile(p) &&
       (here.passable_through(p) ||
        (can_open_door(p, !here.is_outside(pos_bub())) && !is_hallucination()) ||
        (!no_bashing && here.bash_rating(smash_ability(), p) > 0)));
 }
 
 void npc::move_to(const tripoint_bub_ms &pt, bool no_bashing,
-                  std::set<tripoint_bub_ms> *nomove) {
+                  std::set<tripoint_bub_ms> *nomove, bool force_dangerous) {
   if (has_flag(json_flag_CANNOT_MOVE)) {
     move_pause();
     return;
@@ -4369,7 +4374,7 @@ void npc::move_to(const tripoint_bub_ms &pt, bool no_bashing,
   map &here = get_map();
   const tripoint_bub_ms pos = pos_bub(here);
 
-  if (sees_dangerous_field(p) ||
+  if ( ( !force_dangerous && sees_dangerous_field( p ) ) ||
       (nomove != nullptr && nomove->find(p) != nomove->end())) {
     // Move to a neighbor field instead, if possible.
     // Maybe this code already exists somewhere?
@@ -6895,7 +6900,8 @@ void npc::set_omt_destination() {
                            << dest_type << "] in " << goal.to_string() << ".";
 }
 
-void npc::go_to_omt_destination() {
+void npc::go_to_omt_destination( const std::function<bool(
+                                     const std::vector<tripoint_bub_ms> & )> &path_validator ) {
   map &here = get_map();
   if (ai_cache.guard_pos) {
     if (pos_abs() == *ai_cache.guard_pos) {
@@ -6921,6 +6927,11 @@ void npc::go_to_omt_destination() {
     }
     if( !path.empty() ) {
         // we already have a path, just use that until we can't.
+        if( path_validator && !path_validator( path ) ) {
+            path.clear();
+            move_pause();
+            return;
+        }
         move_to_next();
         return;
     }
@@ -6950,6 +6961,11 @@ void npc::go_to_omt_destination() {
                 omt_pos.to_string_writable(), goal.to_string_writable());
 
   if (!path.empty()) {
+    if( path_validator && !path_validator( path ) ) {
+      path.clear();
+      move_pause();
+      return;
+    }
     move_to_next();
         return;
     }

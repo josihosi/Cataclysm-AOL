@@ -1410,10 +1410,15 @@ class npc : public Character
         void set_guard_pos( const tripoint_abs_ms &p );
         bool can_open_door( const tripoint_bub_ms &p, bool inside ) const;
         bool can_move_to( const tripoint_bub_ms &p, bool no_bashing = false ) const;
+        bool can_move_to_ignoring_danger( const tripoint_bub_ms &p,
+                                          bool no_bashing = false ) const;
+        bool sees_dangerous_field( const tripoint_bub_ms &p ) const;
 
-        // nomove is used to resolve recursive invocation
+        // nomove is used to resolve recursive invocation.  force_dangerous keeps an explicitly
+        // selected survival step instead of redirecting away from its dangerous field.
         void move_to( const tripoint_bub_ms &p, bool no_bashing = false,
-                      std::set<tripoint_bub_ms> *nomove = nullptr );
+                      std::set<tripoint_bub_ms> *nomove = nullptr,
+                      bool force_dangerous = false );
         // Next in <path>
         void move_to_next();
         // Maneuver so we won't shoot u
@@ -1485,7 +1490,8 @@ class npc : public Character
         // Pick a place to go
         void set_omt_destination();
         // Move there; on the micro scale
-        void go_to_omt_destination();
+        void go_to_omt_destination( const std::function<bool(
+                                    const std::vector<tripoint_bub_ms> & )> &path_validator = {} );
         // We made it!
         void reach_omt_destination();
 
@@ -1842,7 +1848,6 @@ class npc : public Character
         // Temporary variable for preventing from death (used by EoC event)
         bool prevent_death_reminder = false; // NOLINT(cata-serialize)
 
-        bool sees_dangerous_field( const tripoint_bub_ms &p ) const;
         bool could_move_onto( const tripoint_bub_ms &p ) const;
 
         std::vector<sphere> find_dangerous_explosives() const;

@@ -53,6 +53,7 @@ constexpr std::size_t max_sortie_observation_batch = 64;
 constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_structural_target_footprint_omts = 64;
 constexpr std::size_t max_structural_watch_candidates = 256;
+constexpr std::size_t max_covert_burn_egress_candidates = 8;
 constexpr std::size_t max_structural_watch_exact_terrain_reads = 128;
 constexpr std::size_t max_structural_watch_distance_four_terrain_reads = 64;
 constexpr std::size_t max_structural_watch_distance_five_terrain_reads = 64;
@@ -2412,7 +2413,29 @@ bool local_handoff_snapshot_matches_outing(
             snapshot.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
             outing.shared_route[static_cast<std::size_t>( snapshot.waypoint_index + 1 )] :
             snapshot.route_position;
-    if( snapshot.approach_from != expected_approach || snapshot.egress_omt != expected_egress ||
+    const std::optional<int> burn_origin_distance = target_footprint_watch_distance(
+                snapshot.route_position, outing.target_footprint );
+    const std::optional<int> burn_egress_distance = target_footprint_watch_distance(
+                snapshot.egress_omt, outing.target_footprint );
+    const bool has_typed_burn = std::any_of(
+        outing.observations.begin(), outing.observations.end(),
+    [&outing]( const bandit_live_world::sortie_observation & observation ) {
+        return observation.record_schema_version == 1 && observation.critical &&
+               observation.kind == sortie_observation_kind::burn &&
+               observation.receiver_omt == outing.selected_watch_omt &&
+               observation.target_revision == outing.target_lead_revision;
+    } );
+    const bool scored_burn_egress = outing.schema_version >= 10 &&
+                                    has_typed_burn &&
+                                    scout_phase_requires_homeward_only( snapshot.phase ) &&
+                                    snapshot.route_position == outing.selected_watch_omt &&
+                                    snapshot.egress_omt.z() == snapshot.route_position.z() &&
+                                    omt_chebyshev_distance( snapshot.egress_omt,
+                                            snapshot.route_position ) == 1 &&
+                                    burn_origin_distance && burn_egress_distance &&
+                                    *burn_egress_distance >= *burn_origin_distance;
+    if( snapshot.approach_from != expected_approach ||
+        ( snapshot.egress_omt != expected_egress && !scored_burn_egress ) ||
         ( physical_homeward_cursor &&
           ( snapshot.route_position.z() != canonical_route_position.z() ||
             snapshot.approach_from.z() != snapshot.route_position.z() ) ) ) {
@@ -3122,6 +3145,7 @@ bool is_valid_scout_phase_transition( const scout_phase previous_phase,
         case scout_phase::observing:
             return next_phase == scout_phase::harvesting ||
                    next_phase == scout_phase::burned_withdrawal ||
+                   next_phase == scout_phase::returning_exposed ||
                    next_phase == scout_phase::returning_report ||
                    next_phase == scout_phase::returning_home;
         case scout_phase::harvesting:
@@ -3294,7 +3318,7 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
                              outing.local_handoff.approach_from :
                              outing.waypoint_index == 0 ? snapshot.route_position :
                              outing.shared_route[static_cast<std::size_t>( outing.waypoint_index - 1 )];
-    snapshot.egress_omt = resumes_physical_homeward_cursor ? outing.shared_route.back() :
+    snapshot.egress_omt = resumes_physical_homeward_cursor ? outing.local_handoff.egress_omt :
                           outing.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
                           outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )] :
                           snapshot.route_position;
@@ -3471,6 +3495,7 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     local_handoff_snapshot snapshot = outing.local_handoff;
     const tripoint_abs_omt prior_local_route_position = snapshot.route_position;
     const tripoint_abs_omt prior_local_approach = snapshot.approach_from;
+    const tripoint_abs_omt prior_local_egress = snapshot.egress_omt;
     snapshot.schema_version = 3;
     snapshot.handoff_epoch = outing.handoff_epoch + 1;
     snapshot.waypoint_index = outing.waypoint_index;
@@ -3478,7 +3503,8 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     snapshot.route_position = outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
     snapshot.approach_from = outing.waypoint_index == 0 ? snapshot.route_position :
                              outing.shared_route[static_cast<std::size_t>( outing.waypoint_index - 1 )];
-    snapshot.egress_omt = outing.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
+    snapshot.egress_omt = outing.phase == scout_phase::burned_withdrawal ? prior_local_egress :
+                          outing.waypoint_index + 1 < static_cast<int>( outing.shared_route.size() ) ?
                           outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )] :
                           snapshot.route_position;
     snapshot.cargo = cargo;
@@ -14633,17 +14659,20 @@ bool is_active_shakedown_parley_member( const world_state &state, const characte
     return false;
 }
 
-std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
-    const world_state &state, const character_id npc_id )
+static std::optional<covert_scout_relationship_read> read_active_covert_scout_member_impl(
+    const world_state &state, const character_id npc_id,
+    const bool include_ordinary_returning_home )
 {
-    const auto covert_phase = []( const active_outing_state &outing ) {
+    const auto accepted_phase = [include_ordinary_returning_home](
+    const active_outing_state &outing ) {
         return outing.phase == scout_phase::searching ||
                outing.phase == scout_phase::observing ||
                outing.phase == scout_phase::burned_withdrawal ||
                outing.phase == scout_phase::returning_exposed ||
                outing.phase == scout_phase::returning_report ||
                ( outing.phase == scout_phase::returning_home &&
-                 outing.local_handoff.cohesion_abort_return );
+                 ( include_ordinary_returning_home ||
+                   outing.local_handoff.cohesion_abort_return ) );
     };
 
     std::optional<covert_scout_relationship_read> result;
@@ -14665,7 +14694,7 @@ std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
             !simulation_owner_state_is_consistent( outing ) ||
             !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
             outing.selected_watch_kind == structural_watch_kind::none ||
-            !covert_phase( outing ) || outing.local_handoff.phase != outing.phase ||
+            !accepted_phase( outing ) || outing.local_handoff.phase != outing.phase ||
             outing.member_is_resolved( npc_id ) ||
             std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), npc_id ) !=
             outing.casualty_ids.end() ) {
@@ -14686,9 +14715,28 @@ std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
         if( local_member == outing.local_handoff.members.end() || local_member->dead ) {
             return std::nullopt;
         }
-        result = covert_scout_relationship_read{ outing.phase, outing.target_footprint };
+        const std::optional<int> minimum_target_distance =
+            target_footprint_watch_distance(
+                outing.selected_watch_omt, outing.target_footprint );
+        if( !minimum_target_distance ) {
+            return std::nullopt;
+        }
+        result = covert_scout_relationship_read{ outing.phase, outing.target_footprint,
+                  outing.local_handoff.egress_omt, *minimum_target_distance };
     }
     return result;
+}
+
+std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
+    const world_state &state, const character_id npc_id )
+{
+    return read_active_covert_scout_member_impl( state, npc_id, false );
+}
+
+std::optional<covert_scout_relationship_read> read_active_covert_scout_homeward_member(
+    const world_state &state, const character_id npc_id )
+{
+    return read_active_covert_scout_member_impl( state, npc_id, true );
 }
 
 bool is_active_covert_scout_member( const world_state &state, const character_id npc_id )
@@ -14696,9 +14744,136 @@ bool is_active_covert_scout_member( const world_state &state, const character_id
     return read_active_covert_scout_member( state, npc_id ).has_value();
 }
 
+int covert_scout_burn_observer_cap()
+{
+    return 16;
+}
+
+static bool covert_scout_egress_candidates_are_valid(
+    const tripoint_abs_omt &burn_origin,
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<covert_scout_egress_candidate> &candidates )
+{
+    if( burn_origin.is_invalid() || target_footprint.empty() ||
+        candidates.size() > max_covert_burn_egress_candidates ||
+        !target_footprint_watch_distance( burn_origin, target_footprint ) ) {
+        return false;
+    }
+    const int origin_distance = *target_footprint_watch_distance(
+                                    burn_origin, target_footprint );
+    std::vector<tripoint_abs_omt> candidate_omts;
+    candidate_omts.reserve( candidates.size() );
+    for( const covert_scout_egress_candidate &candidate : candidates ) {
+        const std::optional<int> candidate_distance = target_footprint_watch_distance(
+                    candidate.omt, target_footprint );
+        if( candidate.omt.is_invalid() || candidate.omt.z() != burn_origin.z() ||
+            omt_chebyshev_distance( candidate.omt, burn_origin ) != 1 ||
+            !candidate_distance ||
+            *candidate_distance < origin_distance ||
+            candidate.soft_danger < 0 || candidate.soft_danger > 200 ||
+            ( candidate.reachable && candidate.route_cost < 0 ) ||
+            std::find( candidate_omts.begin(), candidate_omts.end(), candidate.omt ) !=
+            candidate_omts.end() ) {
+            return false;
+        }
+        candidate_omts.push_back( candidate.omt );
+    }
+    return true;
+}
+
+std::optional<covert_scout_egress_candidate> select_covert_scout_egress(
+    const tripoint_abs_omt &burn_origin,
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<covert_scout_egress_candidate> &candidates )
+{
+    if( !covert_scout_egress_candidates_are_valid(
+            burn_origin, target_footprint, candidates ) ) {
+        return std::nullopt;
+    }
+    const std::optional<int> origin_distance = target_footprint_watch_distance(
+                burn_origin, target_footprint );
+    if( !origin_distance ) {
+        return std::nullopt;
+    }
+
+    std::optional<covert_scout_egress_candidate> selected_safe;
+    std::optional<covert_scout_egress_candidate> selected_hard;
+    for( const covert_scout_egress_candidate &candidate : candidates ) {
+        const std::optional<int> candidate_distance = target_footprint_watch_distance(
+                    candidate.omt, target_footprint );
+        if( !candidate.reachable || candidate.hard_danger ) {
+            if( !candidate.reachable ) {
+                continue;
+            }
+        }
+        std::optional<covert_scout_egress_candidate> &selected = candidate.hard_danger ?
+                selected_hard : selected_safe;
+        const int candidate_outward_rank = *candidate_distance > *origin_distance ? 0 : 1;
+        const std::optional<int> selected_distance = selected ?
+                target_footprint_watch_distance( selected->omt, target_footprint ) : std::nullopt;
+        const int selected_outward_rank = selected_distance &&
+                                          *selected_distance > *origin_distance ? 0 : 1;
+        if( !selected ||
+            std::make_tuple( candidate.soft_danger, candidate.concealed ? 0 : 1,
+                             candidate_outward_rank, candidate.route_cost, candidate.omt.z(),
+                             candidate.omt.y(), candidate.omt.x() ) <
+            std::make_tuple( selected->soft_danger, selected->concealed ? 0 : 1,
+                             selected_outward_rank, selected->route_cost, selected->omt.z(),
+                             selected->omt.y(), selected->omt.x() ) ) {
+            selected = candidate;
+        }
+    }
+    // Hard danger is a survival override only after every reachable safe exit failed.  A trapped
+    // pair must take the least-dangerous real route instead of remaining in observation forever.
+    return selected_safe ? selected_safe : selected_hard;
+}
+
+static std::optional<covert_scout_egress_candidate> select_covert_scout_survival_direction(
+    const tripoint_abs_omt &burn_origin,
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<covert_scout_egress_candidate> &candidates )
+{
+    if( !covert_scout_egress_candidates_are_valid(
+            burn_origin, target_footprint, candidates ) ) {
+        return std::nullopt;
+    }
+    const std::optional<int> origin_distance = target_footprint_watch_distance(
+                burn_origin, target_footprint );
+    if( !origin_distance ) {
+        return std::nullopt;
+    }
+
+    std::optional<covert_scout_egress_candidate> selected_safe;
+    std::optional<covert_scout_egress_candidate> selected_hard;
+    for( const covert_scout_egress_candidate &candidate : candidates ) {
+        std::optional<covert_scout_egress_candidate> &selected = candidate.hard_danger ?
+                selected_hard : selected_safe;
+        const std::optional<int> candidate_distance = target_footprint_watch_distance(
+                    candidate.omt, target_footprint );
+        const std::optional<int> selected_distance = selected ?
+                target_footprint_watch_distance( selected->omt, target_footprint ) : std::nullopt;
+        const int candidate_outward_rank = candidate_distance &&
+                                           *candidate_distance > *origin_distance ? 0 : 1;
+        const int selected_outward_rank = selected_distance &&
+                                          *selected_distance > *origin_distance ? 0 : 1;
+        if( !selected ||
+            std::make_tuple( candidate.soft_danger, candidate.concealed ? 0 : 1,
+                             candidate_outward_rank, candidate.omt.z(), candidate.omt.y(),
+                             candidate.omt.x() ) <
+            std::make_tuple( selected->soft_danger, selected->concealed ? 0 : 1,
+                             selected_outward_rank, selected->omt.z(), selected->omt.y(),
+                             selected->omt.x() ) ) {
+            selected = candidate;
+        }
+    }
+    return selected_safe ? selected_safe : selected_hard;
+}
+
 covert_scout_burn_effect apply_covert_scout_burn(
     site_record &site, const simulation_advance_cursor &expected_cursor,
-    const std::vector<covert_scout_burn_read> &member_reads, const int current_minutes )
+    const std::vector<covert_scout_burn_read> &member_reads,
+    const std::vector<covert_scout_egress_candidate> &egress_candidates,
+    const int current_minutes )
 {
     covert_scout_burn_effect effect;
     const active_outing_state &outing = site.active_outing;
@@ -14752,6 +14927,19 @@ covert_scout_burn_effect apply_covert_scout_burn(
         } ) != 1 ) {
             return effect;
         }
+        std::vector<tripoint_abs_omt> perceived_positions;
+        for( const tripoint_abs_omt &position : read->perceived_target_observer_positions ) {
+            if( position.is_invalid() ||
+                std::find( perceived_positions.begin(), perceived_positions.end(), position ) !=
+                perceived_positions.end() ) {
+                return effect;
+            }
+            perceived_positions.push_back( position );
+        }
+        if( perceived_positions.size() >
+            static_cast<std::size_t>( covert_scout_burn_observer_cap() ) ) {
+            return effect;
+        }
         const bool reciprocal = read->target_saw_scout && read->scout_saw_target;
         if( reciprocal ) {
             if( exposure == nullptr && !read->target_observer_id.empty() &&
@@ -14772,6 +14960,16 @@ covert_scout_burn_effect apply_covert_scout_burn(
         effect.result = covert_scout_burn_result::unchanged;
         return effect;
     }
+    if( !covert_scout_egress_candidates_are_valid(
+            exposure->position, outing.target_footprint, egress_candidates ) ) {
+        return effect;
+    }
+    const std::optional<covert_scout_egress_candidate> selected_egress =
+        select_covert_scout_egress( exposure->position, outing.target_footprint,
+                                    egress_candidates );
+    const std::optional<covert_scout_egress_candidate> survival_direction = selected_egress ?
+            selected_egress : select_covert_scout_survival_direction(
+                exposure->position, outing.target_footprint, egress_candidates );
 
     sortie_observation burn;
     burn.fact_key = "burn:" + std::to_string( exposure->npc_id.get_value() );
@@ -14814,8 +15012,13 @@ covert_scout_burn_effect apply_covert_scout_burn(
     if( !retained ) {
         return effect;
     }
-    candidate.active_outing.phase = scout_phase::burned_withdrawal;
-    candidate.active_outing.local_handoff.phase = scout_phase::burned_withdrawal;
+    const scout_phase burn_phase = survival_direction ? scout_phase::burned_withdrawal :
+                                   scout_phase::returning_exposed;
+    candidate.active_outing.phase = burn_phase;
+    candidate.active_outing.local_handoff.phase = burn_phase;
+    if( survival_direction ) {
+        candidate.active_outing.local_handoff.egress_omt = survival_direction->omt;
+    }
     candidate.active_outing.last_progress_minutes = current_minutes;
     candidate.active_outing.last_advanced_minutes = current_minutes;
     consume_local_pair_resume_receipt( candidate.active_outing );
@@ -14831,10 +15034,246 @@ covert_scout_burn_effect apply_covert_scout_burn(
     effect.egress_omt = candidate.active_outing.local_handoff.egress_omt;
     effect.rally_omt = candidate.active_outing.local_handoff.egress_omt;
     site = std::move( candidate );
-    record_scout_phase_transition_event( site.active_outing, scout_phase::observing,
-                                         scout_phase::burned_withdrawal,
-                                         "reciprocal ordinary visual exposure", current_minutes );
+    record_scout_phase_transition_event(
+        site.active_outing, scout_phase::observing, burn_phase,
+        selected_egress ? "reciprocal ordinary visual exposure" :
+        survival_direction ? "reciprocal exposure chose a bounded local survival direction" :
+        "reciprocal exposure with no legal local survival direction", current_minutes );
     return effect;
+}
+
+bool complete_covert_scout_burned_egress(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_member_acquire_read> &member_reads,
+    const int current_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !simulation_cursor_matches( outing, expected_cursor ) ||
+        outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local ||
+        outing.phase != scout_phase::burned_withdrawal ||
+        outing.local_handoff.phase != outing.phase || current_minutes < 0 ||
+        current_minutes < outing.last_advanced_minutes ) {
+        return false;
+    }
+
+    bool has_unresolved_survivor = false;
+    bool concealed_rally_reached = true;
+    std::set<character_id> matched_reads;
+    for( const character_id member_id : outing.member_ids ) {
+        if( outing.member_is_resolved( member_id ) ||
+            std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
+            outing.casualty_ids.end() ) {
+            continue;
+        }
+        has_unresolved_survivor = true;
+        const auto read = std::find_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_member_acquire_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } );
+        if( read == member_reads.end() || !matched_reads.emplace( member_id ).second ||
+            !read->position_known || read->position != outing.local_handoff.egress_omt ||
+            std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
+                       read->position ) != outing.target_footprint.end() ||
+            std::count_if( member_reads.begin(), member_reads.end(),
+        [member_id]( const covert_scout_member_acquire_read & candidate ) {
+            return candidate.npc_id == member_id;
+        } ) != 1 ) {
+            return false;
+        }
+        concealed_rally_reached &= !read->mutual_target_visibility;
+    }
+    if( !has_unresolved_survivor || matched_reads.size() != member_reads.size() ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    const scout_phase next_phase = scout_phase_after_burned_evacuation(
+                                       concealed_rally_reached );
+    candidate.active_outing.phase = next_phase;
+    candidate.active_outing.local_handoff.phase = next_phase;
+    candidate.active_outing.last_progress_minutes = current_minutes;
+    candidate.active_outing.last_advanced_minutes = current_minutes;
+    if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
+        !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    record_scout_phase_transition_event(
+        site.active_outing, scout_phase::burned_withdrawal, next_phase,
+        concealed_rally_reached ? "burned pair reached concealed rally" :
+        "burned pair reached exposed rally", current_minutes );
+    return true;
+}
+
+bool fail_covert_scout_burned_egress(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const int current_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !simulation_cursor_matches( outing, expected_cursor ) ||
+        outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local ||
+        outing.phase != scout_phase::burned_withdrawal ||
+        outing.local_handoff.phase != outing.phase || current_minutes < 0 ||
+        current_minutes < outing.last_advanced_minutes ) {
+        return false;
+    }
+
+    site_record candidate = site;
+    candidate.active_outing.phase = scout_phase::returning_exposed;
+    candidate.active_outing.local_handoff.phase = scout_phase::returning_exposed;
+    candidate.active_outing.last_progress_minutes = current_minutes;
+    candidate.active_outing.last_advanced_minutes = current_minutes;
+    if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
+        !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    record_scout_phase_transition_event(
+        site.active_outing, scout_phase::burned_withdrawal,
+        scout_phase::returning_exposed,
+        "burned pair could not execute its bounded local survival direction",
+        current_minutes );
+    return true;
+}
+
+static bool record_active_outing_casualty_unchecked( site_record &site,
+        character_id npc_id, member_state casualty_state, int current_minutes,
+        const std::string &summary );
+
+bool abandon_covert_scout_unreachable_return(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<active_member_observation> &observations,
+    const int current_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !simulation_cursor_matches( outing, expected_cursor ) ||
+        outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local ||
+        ( outing.phase != scout_phase::returning_exposed &&
+          outing.phase != scout_phase::returning_report &&
+          outing.phase != scout_phase::returning_home ) ||
+        outing.local_handoff.phase != outing.phase || current_minutes < 0 ||
+        current_minutes < outing.last_advanced_minutes ) {
+        return false;
+    }
+    if( observations.size() != outing.member_ids.size() ) {
+        return false;
+    }
+    std::set<character_id> observed_ids;
+    for( const active_member_observation &observation : observations ) {
+        if( std::find( outing.member_ids.begin(), outing.member_ids.end(), observation.npc_id ) ==
+            outing.member_ids.end() || !observed_ids.emplace( observation.npc_id ).second ) {
+            return false;
+        }
+    }
+
+    site_record candidate = site;
+    const active_outing_state closed_outing = candidate.active_outing;
+    bool member_closed = false;
+    bool physical_survivor_home = false;
+    for( const character_id member_id : closed_outing.member_ids ) {
+        const auto observation = std::find_if( observations.begin(), observations.end(),
+        [member_id]( const active_member_observation & candidate_observation ) {
+            return candidate_observation.npc_id == member_id;
+        } );
+        if( observation == observations.end() ) {
+            return false;
+        }
+        if( closed_outing.member_is_resolved( member_id ) ||
+            std::find( closed_outing.casualty_ids.begin(), closed_outing.casualty_ids.end(),
+                       member_id ) != closed_outing.casualty_ids.end() ) {
+            const member_record *resolved_member = candidate.find_member( member_id );
+            const bool resolution_matches = resolved_member != nullptr &&
+                    ( ( resolved_member->state == member_state::at_home &&
+                        observation->state == active_member_observation_state::home ) ||
+                      ( resolved_member->state == member_state::dead &&
+                        observation->state == active_member_observation_state::dead ) ||
+                      ( resolved_member->state == member_state::missing &&
+                        observation->state == active_member_observation_state::missing ) );
+            if( !resolution_matches ) {
+                return false;
+            }
+            physical_survivor_home |= resolved_member->state == member_state::at_home;
+            continue;
+        }
+        member_record *member = candidate.find_member( member_id );
+        if( member == nullptr ||
+            ( member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ) {
+            return false;
+        }
+        switch( observation->state ) {
+            case active_member_observation_state::home:
+                if( member->state == member_state::local_contact &&
+                    !update_member_state(
+                        candidate, member_id, member_state::outbound,
+                        "covert scout reached home with physical return writeback pending" ) ) {
+                    return false;
+                }
+                physical_survivor_home = true;
+                break;
+            case active_member_observation_state::dead:
+            case active_member_observation_state::missing: {
+                const member_state casualty_state =
+                    observation->state == active_member_observation_state::dead ?
+                    member_state::dead : member_state::missing;
+                if( !record_active_outing_casualty_unchecked(
+                        candidate, member_id, casualty_state, current_minutes,
+                        observation->summary ) ) {
+                    return false;
+                }
+                break;
+            }
+            case active_member_observation_state::local_contact:
+            case active_member_observation_state::returning_home:
+                if( !update_member_state(
+                        candidate, member_id, member_state::orphaned,
+                        "covert scout stranded after authoritative return route failed" ) ) {
+                    return false;
+                }
+                candidate.active_outing.resolved_member_ids.push_back( member_id );
+                break;
+            case active_member_observation_state::unresolved:
+                return false;
+        }
+        member_closed = true;
+    }
+    if( !member_closed ) {
+        return false;
+    }
+
+    advance_camp_supply( candidate, current_minutes );
+    if( candidate.routine_activated_minutes < 0 ) {
+        candidate.routine_activated_minutes = current_minutes;
+        candidate.routine_no_candidate_streak = 0;
+    }
+    candidate.last_routine_resolved_minutes = current_minutes;
+    candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                current_minutes, 6 * 60 );
+    if( physical_survivor_home ) {
+        if( camp_map_lead *lead = candidate.intelligence_map.find_lead(
+                                     closed_outing.target_lead_id ) ) {
+            apply_returned_structural_threat_observation( candidate, *lead, current_minutes );
+        }
+        apply_returned_structural_signal_observations( candidate, current_minutes );
+        if( !credit_structural_return_cargo( candidate, current_minutes ) ) {
+            return false;
+        }
+    }
+    if( !release_structural_outing_reservation(
+            candidate, closed_outing.activity_id, closed_outing.generation,
+            "authoritative failed return reconciled physical arrivals and casualties" ) ||
+        !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    record_scout_phase_transition_event(
+        closed_outing, closed_outing.phase, scout_phase::lost,
+        "authoritative return route failed; arrivals, casualties, and stranded scouts reconciled",
+        current_minutes );
+    return true;
 }
 
 bool covert_scout_party_cleared_target_acquire_range(
