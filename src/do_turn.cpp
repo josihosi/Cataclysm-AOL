@@ -1821,9 +1821,14 @@ int burn_live_bandit_covert_scouts()
                 egress_routes = std::move( plan.routes.at( selected->omt ) );
             }
         }
+        const int current_minutes = live_bandit_current_minutes();
+        const std::optional<bandit_live_world::structural_local_zombie_read> danger_read =
+            reciprocal_exposure && current_minutes > cursor->last_advanced_minutes ?
+            bandit_live_world::read_live_structural_local_zombie_observation( site ) :
+            std::nullopt;
         const bandit_live_world::covert_scout_burn_effect effect =
             bandit_live_world::apply_covert_scout_burn(
-                site, *cursor, reads, egress_candidates, live_bandit_current_minutes() );
+                site, *cursor, reads, egress_candidates, current_minutes, danger_read );
         if( effect.result != bandit_live_world::covert_scout_burn_result::applied ) {
             continue;
         }

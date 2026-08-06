@@ -16503,11 +16503,55 @@ static std::optional<covert_scout_egress_candidate> select_covert_scout_survival
     return selected_safe ? selected_safe : selected_hard;
 }
 
+static std::optional<std::vector<sortie_observation>> make_atomic_covert_burn_observations(
+    const site_record &site, const simulation_advance_cursor &expected_cursor,
+    const sortie_observation &burn,
+    const std::optional<structural_local_zombie_read> &danger_read,
+    const int current_minutes )
+{
+    if( !typed_sortie_observation_is_valid( burn ) ) {
+        return std::nullopt;
+    }
+    std::optional<sortie_observation> danger;
+    if( danger_read ) {
+        if( current_minutes <= expected_cursor.last_advanced_minutes ||
+            !structural_local_zombie_read_is_valid(
+                site, expected_cursor, *danger_read, current_minutes ) ) {
+            return std::nullopt;
+        }
+        danger = make_structural_local_zombie_observation(
+                     site, *danger_read, current_minutes );
+        if( !typed_sortie_observation_is_valid( *danger ) ) {
+            return std::nullopt;
+        }
+    }
+
+    std::vector<sortie_observation> combined = site.active_outing.observations;
+    if( danger ) {
+        combined.push_back( *danger );
+    }
+    combined.push_back( burn );
+    std::vector<sortie_observation> retained = make_bounded_sortie_observations( combined );
+    const auto observation_was_retained = [&retained]( const sortie_observation &expected ) {
+        return std::any_of( retained.begin(), retained.end(),
+        [&expected]( const sortie_observation & observation ) {
+            return sortie_observation_identity_matches( observation, expected ) &&
+                   sortie_observations_equal( observation, expected );
+        } );
+    };
+    if( !observation_was_retained( burn ) ||
+        ( danger && !observation_was_retained( *danger ) ) ) {
+        return std::nullopt;
+    }
+    return retained;
+}
+
 covert_scout_burn_effect apply_covert_scout_burn(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_burn_read> &member_reads,
     const std::vector<covert_scout_egress_candidate> &egress_candidates,
-    const int current_minutes )
+    const int current_minutes,
+    const std::optional<structural_local_zombie_read> &danger_read )
 {
     covert_scout_burn_effect effect;
     const active_outing_state &outing = site.active_outing;
@@ -16653,23 +16697,15 @@ covert_scout_burn_effect apply_covert_scout_burn(
     burn.target_revision = outing.target_lead_revision;
     burn.expiry_minutes = minutes_after_saturated( current_minutes, 6 * 60 );
     burn.share_state = sortie_observation_share_state::shared;
-    if( !typed_sortie_observation_is_valid( burn ) ) {
-        return effect;
-    }
 
     site_record candidate = site;
-    std::vector<sortie_observation> observations = candidate.active_outing.observations;
-    observations.push_back( burn );
-    candidate.active_outing.observations = make_bounded_sortie_observations( observations );
-    const bool retained = std::any_of( candidate.active_outing.observations.begin(),
-                                      candidate.active_outing.observations.end(),
-    [&burn]( const sortie_observation & observation ) {
-        return sortie_observation_identity_matches( observation, burn ) &&
-               sortie_observations_equal( observation, burn );
-    } );
-    if( !retained ) {
+    const std::optional<std::vector<sortie_observation>> observations =
+        make_atomic_covert_burn_observations(
+            site, expected_cursor, burn, danger_read, current_minutes );
+    if( !observations ) {
         return effect;
     }
+    candidate.active_outing.observations = *observations;
     const scout_phase burn_phase = survival_direction ? scout_phase::burned_withdrawal :
                                    scout_phase::returning_exposed;
     candidate.active_outing.alternate_watch_reposition_pending = false;

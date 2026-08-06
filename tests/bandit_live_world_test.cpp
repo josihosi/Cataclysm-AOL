@@ -16026,6 +16026,105 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
                                 outing.selected_watch_omt.z() ), true, true, false, 0, 2 }
         };
     };
+    const auto make_hard_danger = []( const bandit_live_world::site_record &site ) {
+        bandit_live_world::structural_local_zombie_read read =
+            make_structural_local_zombie_read( site );
+        read.danger_low = 200;
+        read.danger_high = 200;
+        return read;
+    };
+
+    SECTION( "same-tick local danger and burn survive one bounded transaction" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::structural_local_zombie_read danger =
+            make_hard_danger( site );
+
+        const bandit_live_world::covert_scout_burn_effect effect =
+            bandit_live_world::apply_covert_scout_burn(
+                site, *cursor, make_reads( site.active_outing ),
+                make_egress( site.active_outing ), 2, danger );
+        REQUIRE( effect.result == bandit_live_world::covert_scout_burn_result::applied );
+        CHECK( site.active_outing.observations.size() == 16 );
+        const auto danger_count = []( const bandit_live_world::active_outing_state & outing ) {
+            return std::count_if( outing.observations.begin(), outing.observations.end(),
+            []( const bandit_live_world::sortie_observation & observation ) {
+                return observation.fact_key.rfind( "structural-local-zombie:", 0 ) == 0;
+            } );
+        };
+        const auto burn_count = []( const bandit_live_world::active_outing_state & outing ) {
+            return std::count_if( outing.observations.begin(), outing.observations.end(),
+            []( const bandit_live_world::sortie_observation & observation ) {
+                return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+            } );
+        };
+        CHECK( danger_count( site.active_outing ) == 1 );
+        CHECK( burn_count( site.active_outing ) == 1 );
+        const auto retained_danger = std::find_if(
+                                         site.active_outing.observations.begin(),
+                                         site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.fact_key.rfind( "structural-local-zombie:", 0 ) == 0;
+        } );
+        REQUIRE( retained_danger != site.active_outing.observations.end() );
+        CHECK( retained_danger->kind ==
+               bandit_live_world::sortie_observation_kind::hard_danger );
+        CHECK( retained_danger->observer_id == danger.observer_id );
+        CHECK( retained_danger->observed_power_low == 200 );
+        CHECK( retained_danger->observed_power_high == 200 );
+        CHECK( retained_danger->share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+
+        bandit_live_world::world_state reordered_world = make_world();
+        bandit_live_world::site_record &reordered_site = reordered_world.sites.front();
+        std::reverse( reordered_site.active_outing.observations.begin(),
+                      reordered_site.active_outing.observations.end() );
+        const std::optional<bandit_live_world::simulation_advance_cursor> reordered_cursor =
+            bandit_live_world::current_external_simulation_cursor( reordered_site );
+        REQUIRE( reordered_cursor );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     reordered_site, *reordered_cursor,
+                     make_reads( reordered_site.active_outing ),
+                     make_egress( reordered_site.active_outing ), 2,
+                     make_hard_danger( reordered_site ) ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+        CHECK( serialize_world( reordered_world ) == serialize_world( world ) );
+
+        const std::string committed = serialize_world( world );
+        const std::optional<bandit_live_world::simulation_advance_cursor> burned_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( burned_cursor );
+        CHECK_FALSE( bandit_live_world::record_structural_local_zombie_observation(
+                         site, *burned_cursor, danger, 2 ).valid );
+        CHECK( serialize_world( world ) == committed );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, make_reads( site.active_outing ),
+                   make_egress( site.active_outing ), 2, danger ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == committed );
+        CHECK( danger_count( site.active_outing ) == 1 );
+        CHECK( burn_count( site.active_outing ) == 1 );
+    }
+
+    SECTION( "malformed simultaneous danger rejects the burn byte-identically" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        bandit_live_world::structural_local_zombie_read malformed =
+            make_hard_danger( site );
+        malformed.stable_threat_ids = { "local-zombie:zeta", "local-zombie:alpha" };
+        const std::string before = serialize_world( world );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, make_reads( site.active_outing ),
+                   make_egress( site.active_outing ), 2, malformed ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == before );
+    }
 
     SECTION( "reciprocal ordinary sight burns the whole pair once" ) {
         bandit_live_world::world_state world = make_world();

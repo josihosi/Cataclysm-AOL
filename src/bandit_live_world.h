@@ -1782,7 +1782,8 @@ covert_scout_burn_effect apply_covert_scout_burn(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_burn_read> &member_reads,
     const std::vector<covert_scout_egress_candidate> &egress_candidates,
-    int current_minutes );
+    int current_minutes,
+    const std::optional<structural_local_zombie_read> &danger_read = std::nullopt );
 bool complete_covert_scout_burned_egress(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_member_acquire_read> &member_reads,
