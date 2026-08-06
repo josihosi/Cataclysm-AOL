@@ -1515,3 +1515,17 @@ build is `build_logs/phase6_visible_defender_power_partner_build.log`; focused e
 `git diff --check` and the bounded review/fix pass are clean. No astyle 3.1, live GUI, Linux, or
 Windows claim. Next: exact simultaneous-window aggregation plus uncertainty slots; do not start
 response-party or authorization math first.
+
+Phase-6 simultaneous-window assessment uncertainty is green at `21b7290fb6`. The production
+summarizer takes maximum count/power lower bounds without historical summing, joins static hazard
+only by exact 30-minute bucket and source OMT, caps separate route danger at 20, and applies exact
+39/40, 59/60, 79/80 unknown-slot boundaries plus ceiling-divided alert. Empty/signal-only controls,
+two-then-one history, co-located power, alert 20/21, order reversal, counts 13, and burn alert-before-
+summary pass. The redirected Mac build is
+`build_logs/phase6_assessment_uncertainty_review_fix_build.log`; final sequential tests are focused
+1/79, assessment 3/189, burn 7/1,051, history 1/49, alternate 2/151 in
+`build_logs/phase6_assessment_uncertainty_final_*`. An earlier parallel history/alternate run logged
+a shared `test_user_dir` template-write collision while both test bodies passed; sequential retries
+replaced that environmental non-credit evidence. `git diff --check` and fresh review/fix/closure are
+clean. Exact counts above the typed 16-ID cap, downstream risk, astyle 3.1, GUI, Linux, and Windows
+remain open. Next: audit the broad tracked assessment fields and choose one smallest missing seam.

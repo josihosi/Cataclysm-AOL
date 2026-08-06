@@ -462,6 +462,17 @@ receipt, and no visible defender writes no zero fact. Mac build and evaluator 1/
 2/737, burn 5/313, and report-history 1/49 pass after one review/fix pass. No aggregation,
 uncertainty-slot, astyle 3.1, GUI, Linux, or Windows claim. Next replace the assessment's current
 cross-window min/max behavior with the exact simultaneous-window lower-bound and uncertainty rules.
+Assessment uncertainty is green at `21b7290fb6`: retained facts remain independent historical
+windows; the strongest single-window defender count and power form lower bounds, and only a matching
+bucket/source static hazard may join that window. Route danger is a separate `0..20` term. Exact
+certainty boundaries add 4/3/2/1 unknown slots, using strongest observed per-unit power or default 3,
+plus ceiling-divided alert. Empty/signal-only watches retain zero lower bounds and explicit high
+bounds; burn alert is aggregated before the powered burn assessment. Counts 13-16 force danger 200
+without capping the lower bound. Mac build, focused 1/79, assessment 3/189, burn 7/1,051, history
+1/49, alternate 2/151, diff check, and fresh review/fix/closure pass. Exact counts above the existing
+16-ID typed cap, bounty/loss projection, astyle 3.1, GUI, Linux, and Windows remain open. Next audit
+the broad tracked-assessment row and choose its smallest missing durable field without starting
+response-party authorization.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

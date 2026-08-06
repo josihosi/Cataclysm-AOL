@@ -25,12 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Implement the next Phase-6 simultaneous-window aggregation/uncertainty slice. Replace the current
-   assessment min/max-across-history behavior with the ledger equation: never sum distinct windows;
-   derive the strongest simultaneous defender-count/power lower bound with deterministic ties, keep
-   signal-only/no-visible cases at a truthful zero lower bound, then add certainty-based unknown slots
-   to the high bound. Cover two-then-one history, signal-only, co-located defenders, and >12 hard-unsafe
-   lower-bound behavior before touching response-party sizing or authorization gates.
+1. Audit the next broad Phase-6 tracked-assessment row against existing persisted fields and consumers:
+   certainty, defender/power bounds, bounty estimate, route danger, alert, report age, and losses.
+   Record which are already authoritative, identify the smallest missing durable field or projection,
+   and implement only that seam. Keep the 17+ simultaneous defender-count gap explicit; do not hide it
+   by truncation, and do not start response-party sizing or authorization gates yet.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
