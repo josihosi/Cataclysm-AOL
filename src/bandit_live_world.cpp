@@ -15705,6 +15705,21 @@ sortie_observation_effect record_active_typed_observations( site_record &site,
             current_minutes, true );
 }
 
+bool scout_assessment_readiness_after_certainty(
+    const scout_assessment_threshold_class threshold_class,
+    const bool readiness_latched, const int certainty )
+{
+    switch( threshold_class ) {
+        case scout_assessment_threshold_class::normal:
+            return certainty >= ( readiness_latched ? 60 : 70 );
+        case scout_assessment_threshold_class::burned:
+            return certainty >= ( readiness_latched ? 50 : 60 );
+        case scout_assessment_threshold_class::none:
+            return false;
+    }
+    return false;
+}
+
 namespace
 {
 
@@ -15819,9 +15834,10 @@ scout_assessment_state summarize_normal_scout_assessment(
     summary.strong_visual_windows = std::min( 3,
                                     static_cast<int>( strong_visual_buckets.size() ) );
     summary.last_progress_minutes = latest_progress;
-    if( summary.readiness_latched &&
-        summary.threshold_class == scout_assessment_threshold_class::normal &&
-        summary.certainty < 60 ) {
+    if( summary.threshold_class == scout_assessment_threshold_class::normal &&
+        !scout_assessment_readiness_after_certainty(
+            scout_assessment_threshold_class::normal,
+            summary.readiness_latched, summary.certainty ) ) {
         summary.readiness_latched = false;
         summary.threshold_class = scout_assessment_threshold_class::none;
     }
@@ -15867,11 +15883,15 @@ scout_assessment_result advance_structural_scout_assessment(
 
     const scout_assessment_state before = next.assessment;
     next.assessment = summarize_normal_scout_assessment( next );
+    const bool normal_readiness = scout_assessment_readiness_after_certainty(
+                                      scout_assessment_threshold_class::normal,
+                                      next.assessment.readiness_latched,
+                                      next.assessment.certainty );
     const bool normal_success =
         !next.alternate_watch_reposition_pending &&
         current_minutes - next.assessment.observation_started_minutes >= 120 &&
         next.assessment.strong_visual_windows >= 3 &&
-        next.assessment.certainty >= 70 &&
+        normal_readiness &&
         next.assessment.defenders_high - next.assessment.defenders_low <= 2;
     if( normal_success ) {
         next.assessment.readiness_latched = true;
@@ -16673,10 +16693,17 @@ covert_scout_burn_effect apply_covert_scout_burn(
     candidate.active_outing.assessment.burn_origin_omt = exposure->position;
     candidate.active_outing.assessment.certainty = std::min(
                 95, candidate.active_outing.assessment.certainty + 30 );
+    const bool burned_readiness_latched =
+        candidate.active_outing.assessment.threshold_class ==
+        scout_assessment_threshold_class::burned &&
+        candidate.active_outing.assessment.readiness_latched;
     candidate.active_outing.assessment.threshold_class =
         scout_assessment_threshold_class::burned;
     candidate.active_outing.assessment.readiness_latched =
-        candidate.active_outing.assessment.certainty >= 60;
+        scout_assessment_readiness_after_certainty(
+            scout_assessment_threshold_class::burned,
+            burned_readiness_latched,
+            candidate.active_outing.assessment.certainty );
     candidate.active_outing.assessment.next_eligible_minutes = minutes_after_saturated(
                 current_minutes, 48 * 60 );
     candidate.active_outing.assessment.exit_reason =

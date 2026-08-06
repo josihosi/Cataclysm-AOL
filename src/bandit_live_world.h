@@ -1593,6 +1593,9 @@ sortie_observation_effect record_active_typed_observations( site_record &site,
 scout_assessment_result advance_structural_scout_assessment(
     site_record &site, const std::string &expected_activity_id,
     int expected_generation, int expected_target_revision, int current_minutes );
+bool scout_assessment_readiness_after_certainty(
+    scout_assessment_threshold_class threshold_class, bool readiness_latched,
+    int certainty );
 simulation_owner_transition_result transition_external_simulation_owner( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, simulation_owner next_owner,

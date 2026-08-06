@@ -15622,6 +15622,32 @@ TEST_CASE( "bandit_live_world_covert_disposition_is_an_exact_derived_member_view
                      duplicate_owner, first_id ) );
 }
 
+TEST_CASE( "bandit_live_world_scout_assessment_readiness_uses_exact_hysteresis",
+           "[bandit][live_world][scout_assessment]" )
+{
+    using bandit_live_world::scout_assessment_threshold_class;
+
+    CHECK_FALSE( bandit_live_world::scout_assessment_readiness_after_certainty(
+                     scout_assessment_threshold_class::normal, false, 69 ) );
+    CHECK( bandit_live_world::scout_assessment_readiness_after_certainty(
+               scout_assessment_threshold_class::normal, false, 70 ) );
+    CHECK( bandit_live_world::scout_assessment_readiness_after_certainty(
+               scout_assessment_threshold_class::normal, true, 60 ) );
+    CHECK_FALSE( bandit_live_world::scout_assessment_readiness_after_certainty(
+                     scout_assessment_threshold_class::normal, true, 59 ) );
+
+    CHECK_FALSE( bandit_live_world::scout_assessment_readiness_after_certainty(
+                     scout_assessment_threshold_class::burned, false, 59 ) );
+    CHECK( bandit_live_world::scout_assessment_readiness_after_certainty(
+               scout_assessment_threshold_class::burned, false, 60 ) );
+    CHECK( bandit_live_world::scout_assessment_readiness_after_certainty(
+               scout_assessment_threshold_class::burned, true, 50 ) );
+    CHECK_FALSE( bandit_live_world::scout_assessment_readiness_after_certainty(
+                     scout_assessment_threshold_class::burned, true, 49 ) );
+    CHECK_FALSE( bandit_live_world::scout_assessment_readiness_after_certainty(
+                     scout_assessment_threshold_class::none, true, 95 ) );
+}
+
 TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
            "[bandit][live_world][scout_assessment][save]" )
 {
@@ -15880,6 +15906,8 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     CHECK_FALSE( inconclusive_site.current_scout_report.assessment.readiness_latched );
     CHECK( inconclusive_site.current_scout_report.assessment.exit_reason ==
            "maximum watch duration reached without a complete assessment" );
+    CHECK( inconclusive_site.current_scout_report.assessment.next_eligible_minutes ==
+           680 + 12 * 60 );
     CHECK( inconclusive_site.current_scout_report.target_id == "player-camp" );
     CHECK( inconclusive_site.next_routine_dispatch_eligible_minutes >=
            inconclusive_site.current_scout_report.assessment.next_eligible_minutes );
@@ -16029,6 +16057,13 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( site.active_outing.target_footprint == target_footprint );
         CHECK( site.active_outing.last_progress_minutes == 1 );
         CHECK( site.active_outing.last_advanced_minutes == 1 );
+        CHECK( site.active_outing.assessment.certainty == 60 );
+        CHECK( site.active_outing.assessment.readiness_latched );
+        CHECK( site.active_outing.assessment.threshold_class ==
+               bandit_live_world::scout_assessment_threshold_class::burned );
+        CHECK( site.active_outing.assessment.next_eligible_minutes == 1 + 48 * 60 );
+        CHECK( site.active_outing.assessment.exit_reason ==
+               "burned watch assessment ready" );
         CHECK( site.active_outing.observations.size() == 16 );
         const auto burn = std::find_if( site.active_outing.observations.begin(),
                                        site.active_outing.observations.end(),
