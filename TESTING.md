@@ -1464,3 +1464,18 @@ build/link exits 0 and `[npc][bandit][covert_burn]` passes 5/297. Evidence is re
 `build_logs/phase5_loaded_covert_profile_actual_solve_{build,test,regression}.log`; diff check is
 clean. No wall-clock threshold, astyle 3.1, live GUI, Linux, or Windows claim. Next: exact delivered-
 report aging and target-alert decay/reset under stepwise and large-jump time.
+
+Phase-5 delivered scout-report aging is green at `407ab5d61a`. The existing immutable schema-5
+report now has a side-effect-free effective view: exact 12h and 24h reads project certainty 80/70/60,
+alert decays 10 per complete 12 hours from the newest valid burn/alert contact, and attack
+authorization is usable at 48h-minus-one but not exact 48h. Repeated reads preserve identical report
+bytes; 12-hour stepping equals one 48-hour jump; a newer contact resets the alert clock; the real
+camp-decision transition applies before expiry and rejects stale input byte-identically. Reciprocal
+burn resets the outing assessment alert to 100 before report delivery. The canonical Mac build/link
+exits 0; `[scout_report_aging]` passes 1/67, `[scout_assessment]` 2/105, `[camp_decision]` 3/124, and
+NPC `[covert_burn]` 5/297 at seed 424242. Logs are
+`build_logs/phase5_scout_report_aging_{build,test,assessment_regression,decision_regression,burn_regression}.log`;
+diff check and fresh read-only review pass. Caveat: legacy positive-alert/no-contact fallback is
+inspection-only, Phase-6 readiness authorization is not claimed, and no astyle 3.1, live GUI, Linux,
+or Windows evidence exists. Remaining Phase-5 rows keep their recorded producer/live holds; next is
+the first Phase-6 outing-to-report ownership audit.

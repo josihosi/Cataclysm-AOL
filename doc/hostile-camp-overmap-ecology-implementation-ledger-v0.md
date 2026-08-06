@@ -962,7 +962,7 @@ Primary anchors: `live_bandit_make_gate_input`, ordinary standoff helper, local 
 - [ ] Test simultaneous burn+danger, burn+survival hazard, locally observed revision-change+success, and empty+expiry: all perceived evidence is ingested once, exit priority is deterministic, and only one phase transition occurs. _Atomic ingestion footing `3e460ddc15` and routed priority checkpoint `253e048734` close burn+danger. Real-turn checkpoint `ec8c9840d6` closes burn+survival: real acid yields a clear non-inward or least-dangerous forced escape after exactly one burn fact/event, while a no-hazard control follows the committed route; exact Mac 1/129, NPC burn 5/297, live egress 4/214. Revision/success lacks a field-observed revision producer, and empty/expiry lacks a full-footprint clear producer, so neither may be faked._
 - [x] Profile loaded covert movement on the real turn loop and prove bounded route work without persisted probe state. _Checkpoint `bb74646b50`: one authoritative exact pair records actual overmap solves and all three local `map::route` owners. Quiet, reciprocal burn, real field escape, and next-turn egress are exactly `0/0`, `10/2`, `10/1`, and `0/2` overmap/local solves; probe-only owner bytes are identical before/during/after. Mac build/link, exact 1/117, NPC burn 5/297, diff check, and fresh review pass. No astyle/live GUI/Linux/Windows claim._
 - [ ] Test clear-empty semantics across the whole visible target footprint: consecutive distinct windows, occlusion/partial visibility, intermittent presence reset, and save/load while travelling to the one alternate watch point.
-- [ ] Test exact 12h/24h/48h report aging and 12h alert decay/reset under stepwise and large-time-jump advancement.
+- [x] Test exact 12h/24h/48h report aging and 12h alert decay/reset under stepwise and large-time-jump advancement. _Checkpoint `407ab5d61a`: a pure effective report view applies certainty penalties at exact 12h/24h, alert decay per complete 12h from the newest valid burn/alert contact, and authorization expiry at exact 48h. Reads and stale rejection are byte-inert; stepwise and one-jump evaluation converge; the real camp-decision transition consumes expiry; reciprocal burn resets the authoritative outing alert before delivery. Mac build/link, exact 1/67, assessment 2/105, decision 3/124, burn 5/297, diff check, and fresh review pass. Legacy positive-alert/no-contact fallback is correct by inspection but lacks a dedicated case; Phase-6 readiness authorization and cross-platform runtime remain open._
 
 ### Phase 5 exit
 
@@ -971,11 +971,11 @@ Primary anchors: `live_bandit_make_gate_input`, ordinary standoff helper, local 
 - [x] Reload or owner handoff cannot reset `burned_withdrawal` to `observing` or add duplicate burn evidence. _Checkpoint `42bfc59dcd` preserves phase, endpoint, retry revision, and one burn fact through save/load plus local/abstract/local ownership; later contact and unknown visibility cannot regress it._
 - [x] Slow/injured follower, leader death, blocked bridge, no-exit, and save/load-mid-egress tests pass. _Checkpoints `df81293bca`, `76eb587645`, `8a7142757a`, `0dc85f5bc9`, `b9f29496bd23`, and `42bfc59dcd` cover follower delay, leadership/casualty repair, route exhaustion, retries, rally completion, and owner cycling._
 - [x] Local movement profiling shows no per-turn pathfinding/replan storm. _Checkpoint `bb74646b50` counts actual local solves rather than call requests and proves at most two local solves for an exact pair in each representative production turn; burn planning is bounded at ten overmap solves and quiet/post-burn turns perform none._
-- [x] Behavior + tests form a checkpoint commit. _Phase-5 deterministic behavior/test stack is checkpointed through simultaneous danger exit `253e048734` and real-turn survival priority `ec8c9840d6`; live feel and movement profiling remain explicit exit gates._
+- [x] Behavior + tests form a checkpoint commit. _Phase-5 deterministic behavior/test stack is checkpointed through report aging `407ab5d61a`, following simultaneous danger exit `253e048734`, real-turn survival priority `ec8c9840d6`, and movement profiling `bb74646b50`; live feel remains an explicit exit gate._
 
 Evidence:
 
-- Commit: `bb74646b50` (loaded covert movement profiling)
+- Commit: `407ab5d61a` (delivered scout-report aging), `bb74646b50` (loaded covert movement profiling)
 - Burn/egress harness:
 - Hostility presentation proof:
 - Movement trace: `build_logs/phase5_loaded_covert_profile_actual_solve_{build,test,regression}.log`

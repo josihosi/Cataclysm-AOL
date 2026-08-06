@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Implement the smallest authoritative Phase-5 time-aging slice: define and test exact 12h/24h/48h
-   delivered-report certainty/usefulness aging and 12-hour target-alert decay/reset under stepwise
-   and large-time-jump advancement. Reuse the persisted assessment/report owner; do not create a
-   parallel clock, player knowledge, or per-turn history. First inspect the existing consumption
-   seams and migration implications, then close only the aging/alert ledger row actually proven.
+1. Audit the first Phase-6 outing-to-report ownership rows against the real structural return path:
+   observations must remain outing-owned until a survivor reaches home, and only shared evidence
+   carried by survivors may enter a new immutable report revision. Close already-proven rows with
+   focused evidence; if a concrete atomicity/replay gap exists, implement the smallest owner-level
+   fix and exact test. Do not widen into Phase-6 power normalization or authorization math yet.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

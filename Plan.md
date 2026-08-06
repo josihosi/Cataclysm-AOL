@@ -431,6 +431,14 @@ overmap solves plus all three local `map::route` owners. Quiet, reciprocal burn,
 next-turn egress require respectively `0/0`, `10/2`, `10/1`, and `0/2` overmap/local solves, with
 bounded timing histograms and byte-identical probe-only serialization. Next, implement the exact
 12h/24h/48h report-aging and 12h alert-decay/reset contract under stepwise and large-jump time.
+Delivered-report aging is green at `407ab5d61a`: one side-effect-free effective view projects exact
+12h/24h certainty loss, 12-hour alert decay from the latest bounded persisted contact, and exact
+48-hour attack-authorization expiry without rewriting the immutable report. The real camp-decision
+transition rechecks expiry before preparing a follow-on, and reciprocal burn now resets the outing's
+authoritative alert to 100 before delivery. Mac build/link, exact 1/67, assessment 2/105, decision
+3/124, burn 5/297, diff check, and fresh read-only review pass. The remaining Phase-5 unchecked rows
+are held on their already-recorded field-producer/live-attempt seams; next audit the first Phase-6
+outing-to-report ownership rows against the real return transaction and implement only a proven gap.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
