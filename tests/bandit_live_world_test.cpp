@@ -16832,7 +16832,7 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
 }
 
 TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
-           "[bandit][live_world][scout_report_aging]" )
+           "[bandit][live_world][scout_report_aging][assessment_risk]" )
 {
     constexpr int delivered_minutes = 1000;
     bandit_live_world::scout_report_record report;
@@ -16871,8 +16871,10 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
         return bandit_live_world::evaluate_scout_report_at(
                    report, delivered_minutes + elapsed_minutes );
     };
-    CHECK_FALSE( bandit_live_world::evaluate_scout_report_at(
-                     report, delivered_minutes - 1 ).valid );
+    const bandit_live_world::scout_report_effective_state future =
+        bandit_live_world::evaluate_scout_report_at( report, delivered_minutes - 1 );
+    CHECK_FALSE( future.valid );
+    CHECK( future.normalized_risk == -1 );
 
     struct boundary_expectation {
         int elapsed_minutes;
@@ -16903,6 +16905,7 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
         CHECK( state.defenders_high == 4 );
         CHECK( state.danger_low == 9 );
         CHECK( state.danger_high == 37 );
+        CHECK( state.normalized_risk == 185 );
         CHECK( state.bounty_estimate == 1 );
         CHECK( state.route_danger_high == 12 );
         CHECK( state.scout_losses == 1 );
@@ -16912,6 +16915,14 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
                expected.attack_authorization_usable );
     }
     CHECK( serialize_report( report ) == report_before_reads );
+
+    bandit_live_world::scout_report_record hard_unsafe_report = report;
+    hard_unsafe_report.assessment.danger_high = 200;
+    const bandit_live_world::scout_report_effective_state hard_unsafe =
+        bandit_live_world::evaluate_scout_report_at(
+            hard_unsafe_report, delivered_minutes );
+    REQUIRE( hard_unsafe.valid );
+    CHECK( hard_unsafe.normalized_risk == 1000 );
 
     bandit_live_world::scout_report_effective_state stepped;
     for( int elapsed = 0; elapsed <= 48 * 60; elapsed += 12 * 60 ) {
@@ -16925,6 +16936,7 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
     CHECK( stepped.defenders_high == jumped.defenders_high );
     CHECK( stepped.danger_low == jumped.danger_low );
     CHECK( stepped.danger_high == jumped.danger_high );
+    CHECK( stepped.normalized_risk == jumped.normalized_risk );
     CHECK( stepped.bounty_estimate == jumped.bounty_estimate );
     CHECK( stepped.route_danger_high == jumped.route_danger_high );
     CHECK( stepped.scout_losses == jumped.scout_losses );
@@ -21109,7 +21121,7 @@ TEST_CASE( "hostile_camp_avatar_relocation_does_not_drag_returned_report_lead",
 }
 
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
-           "[bandit][live_world][scheduler][structural_bounty][routed_dispatch]" )
+           "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {
     CHECK( bandit_live_world::hostile_camp_dispatch_drive( 1000, 599, 0, 0 ) == 499 );
     CHECK( bandit_live_world::hostile_camp_dispatch_drive( 1000, 600, 0, 0 ) == 500 );
@@ -21117,6 +21129,13 @@ TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundar
     CHECK( bandit_live_world::hostile_camp_routine_score_eligible( 300, false ) );
     CHECK_FALSE( bandit_live_world::hostile_camp_routine_score_eligible( 149, true ) );
     CHECK( bandit_live_world::hostile_camp_routine_score_eligible( 150, true ) );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( -1 ) == 0 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 0 ) == 0 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 37 ) == 185 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 149 ) == 745 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 150 ) == 750 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 200 ) == 1000 );
+    CHECK( bandit_live_world::normalize_hostile_camp_danger_risk( 201 ) == 1000 );
     CHECK_FALSE( bandit_live_world::hostile_camp_routine_risk_blocked( 749 ) );
     CHECK( bandit_live_world::hostile_camp_routine_risk_blocked( 750 ) );
     CHECK( bandit_live_world::hostile_camp_routine_route_risk_eligible( 749, 499 ) );

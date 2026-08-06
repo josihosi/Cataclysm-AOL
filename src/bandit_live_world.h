@@ -615,6 +615,7 @@ struct scout_report_effective_state {
     int defenders_high = 0;
     int danger_low = 0;
     int danger_high = 0;
+    int normalized_risk = -1;
     int bounty_estimate = 0;
     int route_danger_high = -1;
     int target_alert = 0;
@@ -1479,6 +1480,7 @@ structural_bounty_read classify_structural_bounty_terrain( const std::string &ov
 int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
 int structural_terrain_static_risk( const std::string &terrain_fit_class );
+int normalize_hostile_camp_danger_risk( int danger_high );
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );

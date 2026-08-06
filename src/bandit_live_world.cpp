@@ -10088,6 +10088,11 @@ int structural_terrain_static_risk( const std::string &terrain_fit_class )
     return 300;
 }
 
+int normalize_hostile_camp_danger_risk( const int danger_high )
+{
+    return 5 * std::clamp( danger_high, 0, 200 );
+}
+
 int normalize_ground_bounty_opportunity( const int bounty_units )
 {
     switch( std::clamp( bounty_units, 0, max_finite_resource_units ) ) {
@@ -11284,7 +11289,8 @@ sortie_observation make_structural_threat_observation( const site_record &site,
 {
     const active_outing_state &outing = site.active_outing;
     const int party_power = structural_outing_party_power( site );
-    const bool hard_danger = std::min( 1000, 5 * read.danger_high ) >= routine_hard_risk ||
+    const bool hard_danger = normalize_hostile_camp_danger_risk( read.danger_high ) >=
+                             routine_hard_risk ||
                              read.danger_low >= std::min( 200, 2 * party_power );
     sortie_observation observation;
     observation.fact_key = "structural-visual:" +
@@ -11374,7 +11380,8 @@ sortie_observation make_structural_local_zombie_observation( const site_record &
     hash_read.threat_omt = read.source_omt;
     hash_read.stable_threat_ids = read.stable_threat_ids;
     const int party_power = structural_outing_party_power( site );
-    const bool hard_danger = std::min( 1000, 5 * read.danger_high ) >= routine_hard_risk ||
+    const bool hard_danger = normalize_hostile_camp_danger_risk( read.danger_high ) >=
+                             routine_hard_risk ||
                              read.danger_low >= std::min( 200, 2 * party_power );
     sortie_observation observation;
     observation.fact_key = "structural-local-zombie:" +
@@ -11660,7 +11667,8 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
     if( party_power <= 0 ) {
         return abstract_threat_resolution();
     }
-    const bool hard_danger = std::min( 1000, 5 * read.danger_high ) >= routine_hard_risk ||
+    const bool hard_danger = normalize_hostile_camp_danger_risk( read.danger_high ) >=
+                             routine_hard_risk ||
                              read.danger_low >= std::min( 200, 2 * party_power );
     const auto attempt_detour = [&outing, &read, &result]() {
         for( const abstract_threat_detour_read &detour : read.detours ) {
@@ -16202,6 +16210,7 @@ scout_report_effective_state evaluate_scout_report_at(
     result.defenders_high = report.assessment.defenders_high;
     result.danger_low = report.assessment.danger_low;
     result.danger_high = report.assessment.danger_high;
+    result.normalized_risk = normalize_hostile_camp_danger_risk( result.danger_high );
     result.bounty_estimate = report.assessment.bounty_estimate;
     result.route_danger_high = report.assessment.route_danger_high;
     result.scout_losses = static_cast<int>( report.casualty_ids.size() );
