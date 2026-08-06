@@ -1859,6 +1859,20 @@ void apply_group_memory( bandit_live_world::site_record &site,
     site.remembered_return_clock = group.return_clock;
     site.remembered_pressure = group.remaining_pressure;
     site.known_recent_marks = group.known_recent_marks;
+    for( std::string &mark : site.known_recent_marks ) {
+        mark.resize( std::min( mark.size(), max_live_signal_mark_length ) );
+    }
+    if( site.known_recent_marks.size() > max_live_signal_marks ) {
+        site.known_recent_marks.erase(
+            site.known_recent_marks.begin(),
+            site.known_recent_marks.end() - max_live_signal_marks );
+    }
+}
+
+std::string overdue_missing_route_mark( const bandit_live_world::site_record &site )
+{
+    return "missing-route:" + site.anchor.to_string() + "->" +
+           site.active_outing.target_omt.to_string();
 }
 
 int shakedown_demand_modifier_percent( const bandit_live_world::site_record &site )
@@ -18853,8 +18867,16 @@ scout_resolution_effect apply_active_scout_observations( site_record &site,
                 const member_state casualty_state =
                     observation_iter->state == active_member_observation_state::dead ?
                     member_state::dead : member_state::missing;
+                if( casualty_state == member_state::missing &&
+                    ( candidate.active_outing.missing_deadline_minutes < 0 ||
+                      current_minutes < candidate.active_outing.missing_deadline_minutes ) ) {
+                    return effect;
+                }
+                const int resolution_minutes = casualty_state == member_state::missing ?
+                                               candidate.active_outing.missing_deadline_minutes :
+                                               current_minutes;
                 if( !record_active_outing_casualty_unchecked(
-                        candidate, member_id, casualty_state, current_minutes,
+                        candidate, member_id, casualty_state, resolution_minutes,
                         observation_iter->summary ) ) {
                     return effect;
                 }
@@ -18961,6 +18983,7 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     packet.remaining_pressure = rules_for_profile( effective_profile( site ) ).default_remaining_pressure;
 
     bool saw_loss = false;
+    bool all_members_authoritatively_missing = true;
     for( const character_id &member_id : site.active_outing.member_ids ) {
         const std::string member_token = std::to_string( member_id.get_value() );
         packet.member_return_receipts.push_back( {
@@ -18982,13 +19005,22 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
             case active_member_observation_state::returning_home:
                 return std::nullopt;
             case active_member_observation_state::home:
+                all_members_authoritatively_missing = false;
                 packet.survivors_remaining++;
                 break;
             case active_member_observation_state::dead:
+                all_members_authoritatively_missing = false;
                 saw_loss = true;
                 packet.anchored_identity_updates.push_back( { std::to_string( member_id.get_value() ), "dead" } );
                 break;
             case active_member_observation_state::missing:
+                all_members_authoritatively_missing &=
+                    site.active_outing.member_is_resolved( member_id ) &&
+                    std::find( site.active_outing.casualty_ids.begin(),
+                               site.active_outing.casualty_ids.end(), member_id ) !=
+                    site.active_outing.casualty_ids.end() &&
+                    site.find_member( member_id ) != nullptr &&
+                    site.find_member( member_id )->state == member_state::missing;
                 saw_loss = true;
                 packet.anchored_identity_updates.push_back( { std::to_string( member_id.get_value() ), "missing" } );
                 break;
@@ -19003,6 +19035,12 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
                          bandit_pursuit_handoff::return_posture::broken_flee :
                          bandit_pursuit_handoff::return_posture::escape_safe;
         packet.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+    }
+    if( all_members_authoritatively_missing &&
+        site.active_outing.missing_deadline_minutes >= 0 &&
+        site.active_outing.last_advanced_minutes >=
+        site.active_outing.missing_deadline_minutes ) {
+        packet.loss_site_if_any = overdue_missing_route_mark( site );
     }
 
     packet.notes.push_back( "resolved live aftermath observations for active owned outing" );

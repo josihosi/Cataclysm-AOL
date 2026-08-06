@@ -1965,3 +1965,39 @@ caller, and late hourly polling wrote poll time instead of the authoritative rep
 was fixed with affected tests rerun; the final fresh review reports no actionable finding, and
 `git diff --check` is clean. No response reservation/launch, new persistence, astyle 3.1, live GUI,
 Linux, or Windows evidence is claimed. Next: overdue total-loss knowledge provenance.
+
+Phase-6 overdue total-loss proof contract (source identity `8da1c8f7d3`, pre-implementation):
+- Claim: when every unresolved scout is absent through the persisted missing deadline, the camp
+  learns only one bounded route-loss mark and never receives the vanished party's observations,
+  target dossier, cargo, or assessment-ready report.
+- Preconditions/interventions: a real dispatch reserves an exact pair, the production observation
+  owner records private/shared facts, and the pair remains absent. The fixture may save/reload and
+  advance to the deadline, but it does not pre-write missing members, return receipts, route-loss
+  memory, reports, or decisions.
+- Causal boundary/real path: `apply_active_scout_observations` consumes authoritative missing reads
+  at/after `missing_deadline_minutes`, resolves the owned aftermath, and applies the canonical return
+  packet. That packet may add only `missing-route:<camp OMT>-><dispatched OMT>` through the existing
+  bounded `loss_site_if_any`/camp-mark channel; it must not manufacture a point of death.
+- Expected transition: both roster members become missing, the reservation closes once, component
+  generations advance once, current target pressure clears, and exactly one new stable route-loss
+  mark is added without rewriting prior camp knowledge. The report stays absent, cargo stays
+  uncredited, the typed intelligence map is unchanged, and serialized output contains none of the
+  dead party's observation payload.
+- Negative/control: one minute before deadline is byte-inert; confirmed all-dead without an overdue
+  absence does not claim route-loss knowledge; one physical survivor continues to use carrier-aware
+  report semantics. Replay is byte-inert. Exact-boundary, late-jump, and save/reload runs serialize
+  identically because the missing transition is anchored to the persisted deadline.
+- Timeout/pass-fail: one core/test diff, focused `[overdue_total_loss]`, adjacent physical-report,
+  split-return, handoff, save, and camp-map regressions, clean diff, then a fresh ownership review.
+  No late-survivor reopening, response launch, new persistence, astyle 3.1, GUI, Linux, or Windows
+  runtime claim.
+
+Phase-6 overdue total loss is green in the dirty checkpoint after two accepted ownership fixes.
+The missing transition accounts at the persisted deadline even after a later observation cursor,
+and route-loss knowledge requires every member to be durably missing, resolved, and casualty-
+recorded before the packet builder may expose it. The focused Mac row passes 1 case / 73 assertions;
+physical-report, split-return, local-handoff, and camp-map regressions pass 24 / 1,400. The matching
+non-tiles Mac build/link exits 0 with existing deployment-target warnings. Final `autoreview --mode
+local` reports no accepted/actionable findings after its initial P1 deadline-anchor and P2 packet-
+ownership findings were fixed. `git diff --check` is clean. No astyle 3.1, GUI, Linux, or Windows
+runtime claim.

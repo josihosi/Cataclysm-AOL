@@ -5740,6 +5740,193 @@ TEST_CASE( "bandit_live_world_atomically_rehomes_scout_report_and_cargo_before_c
     CHECK( serialize_world( loaded ) == before_replay );
 }
 
+TEST_CASE( "bandit_live_world_overdue_total_loss_returns_only_missing_route_knowledge",
+           "[bandit][live_world][scout_state][physical_report][overdue_total_loss][save]" )
+{
+    const auto make_departed_world = []() {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 7; ++index ) {
+            add_bandit_camp_member( world, index, 45700 );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch(
+                site, tripoint_abs_omt( 18, 20, 0 ), "overdue-secret-target" );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+        const std::optional<bandit_live_world::simulation_advance_cursor> start_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( start_cursor.has_value() );
+        REQUIRE( bandit_live_world::note_active_sortie_started( site, *start_cursor, 100 ) );
+        REQUIRE( bandit_live_world::transition_external_simulation_owner(
+                     site, site.active_outing.activity_id, site.active_outing.generation,
+                     bandit_live_world::simulation_owner::abstract,
+                     bandit_live_world::simulation_owner::local,
+                     site.active_outing.handoff_epoch,
+                     site.active_outing.last_advanced_minutes, 101 ) ==
+                 bandit_live_world::simulation_owner_transition_result::applied );
+
+        bandit_live_world::sortie_observation secret;
+        secret.fact_key = "dead-party-dossier-secret";
+        secret.state_key = "target-confirmed";
+        secret.summary = "observation must die with its absent carriers";
+        secret.confidence = 95;
+        secret.observed_minutes = 120;
+        secret.kind = bandit_live_world::sortie_observation_kind::certainty;
+        REQUIRE( bandit_live_world::record_active_sortie_observations(
+                     site, require_current_simulation_cursor( site ), { secret }, 120 ).valid );
+        site.active_outing.cargo = { 4, 90 };
+        return world;
+    };
+    const auto missing_reads = []( const bandit_live_world::site_record &site ) {
+        REQUIRE( site.active_outing.member_ids.size() == 2 );
+        return std::vector<bandit_live_world::active_member_observation> {
+            { site.active_outing.member_ids[0],
+              bandit_live_world::active_member_observation_state::missing,
+              "observer absent beyond fixed missing deadline" },
+            { site.active_outing.member_ids[1],
+              bandit_live_world::active_member_observation_state::missing,
+              "escort absent beyond fixed missing deadline" }
+        };
+    };
+
+    const bandit_live_world::world_state initial = make_departed_world();
+    const int deadline = initial.sites.front().active_outing.missing_deadline_minutes;
+    REQUIRE( deadline > initial.sites.front().active_outing.last_advanced_minutes );
+    const std::string route_mark = "missing-route:" +
+                                   initial.sites.front().anchor.to_string() + "->" +
+                                   initial.sites.front().active_outing.target_omt.to_string();
+    const std::vector<std::string> marks_before_loss =
+        initial.sites.front().known_recent_marks;
+
+    bandit_live_world::world_state stepped = round_trip_world( initial );
+    bandit_live_world::site_record &stepped_site = stepped.sites.front();
+    const bandit_live_world::simulation_advance_cursor stepped_cursor =
+        require_current_simulation_cursor( stepped_site );
+    const std::string before_deadline = serialize_world( stepped );
+    const bandit_live_world::scout_resolution_effect early =
+        bandit_live_world::apply_active_scout_observations(
+            stepped_site, stepped_cursor, missing_reads( stepped_site ), deadline - 1 );
+    CHECK_FALSE( early.valid );
+    CHECK_FALSE( early.changed );
+    CHECK( serialize_world( stepped ) == before_deadline );
+
+    const bandit_live_world::scout_resolution_effect exact =
+        bandit_live_world::apply_active_scout_observations(
+            stepped_site, stepped_cursor, missing_reads( stepped_site ), deadline );
+    REQUIRE( exact.valid );
+    REQUIRE( exact.completed );
+    CHECK_FALSE( stepped_site.active_outing.is_active() );
+    CHECK_FALSE( stepped_site.current_scout_report.is_present() );
+    CHECK( stepped_site.camp_decision.state ==
+           bandit_live_world::camp_decision_state::idle );
+    CHECK( stepped_site.intelligence_map.leads.empty() );
+    REQUIRE( stepped_site.known_recent_marks.size() == marks_before_loss.size() + 1 );
+    CHECK( std::equal( marks_before_loss.begin(), marks_before_loss.end(),
+                       stepped_site.known_recent_marks.begin() ) );
+    CHECK( stepped_site.known_recent_marks.back() == route_mark );
+    CHECK( stepped_site.remembered_target_or_mark.empty() );
+    CHECK( stepped_site.returned_cargo_stock.supply_units == 0 );
+    CHECK( stepped_site.returned_cargo_stock.trade_value == 0 );
+    CHECK( stepped_site.applied_return_generation == 1 );
+    CHECK( stepped_site.applied_report_generation == 1 );
+    CHECK( stepped_site.applied_cargo_generation == 1 );
+    for( const bandit_live_world::member_record &member : stepped_site.members ) {
+        if( member.npc_id == character_id( 45700 ) ||
+            member.npc_id == character_id( 45701 ) ) {
+            CHECK( member.state == bandit_live_world::member_state::missing );
+        }
+    }
+    CHECK( serialize_world( stepped ).find( "dead-party-dossier-secret" ) ==
+           std::string::npos );
+
+    bandit_live_world::world_state jumped = round_trip_world( initial );
+    bandit_live_world::site_record &jumped_site = jumped.sites.front();
+    const bandit_live_world::scout_resolution_effect late =
+        bandit_live_world::apply_active_scout_observations(
+            jumped_site, require_current_simulation_cursor( jumped_site ),
+            missing_reads( jumped_site ), deadline + 600 );
+    REQUIRE( late.valid );
+    REQUIRE( late.completed );
+    CHECK( serialize_world( jumped ) == serialize_world( stepped ) );
+    CHECK( serialize_world( round_trip_world( jumped ) ) == serialize_world( stepped ) );
+
+    bandit_live_world::world_state preadvanced = round_trip_world( initial );
+    bandit_live_world::site_record &preadvanced_site = preadvanced.sites.front();
+    bandit_live_world::sortie_observation later_secret;
+    later_secret.fact_key = "later-dead-party-secret";
+    later_secret.state_key = "still-absent";
+    later_secret.summary = "later private observation must also die with the pair";
+    later_secret.confidence = 80;
+    later_secret.observed_minutes = deadline + 500;
+    later_secret.kind = bandit_live_world::sortie_observation_kind::certainty;
+    REQUIRE( bandit_live_world::record_active_sortie_observations(
+                 preadvanced_site, require_current_simulation_cursor( preadvanced_site ),
+                 { later_secret }, deadline + 500 ).valid );
+    REQUIRE( preadvanced_site.active_outing.last_advanced_minutes == deadline + 500 );
+    const bandit_live_world::scout_resolution_effect preadvanced_loss =
+        bandit_live_world::apply_active_scout_observations(
+            preadvanced_site, require_current_simulation_cursor( preadvanced_site ),
+            missing_reads( preadvanced_site ), deadline + 501 );
+    REQUIRE( preadvanced_loss.valid );
+    REQUIRE( preadvanced_loss.completed );
+    CHECK( serialize_world( preadvanced ) == serialize_world( stepped ) );
+
+    bandit_live_world::world_state bypass = round_trip_world( initial );
+    bandit_live_world::site_record &bypass_site = bypass.sites.front();
+    bypass_site.active_outing.last_advanced_minutes = deadline;
+    const std::optional<bandit_pursuit_handoff::return_packet> bypass_packet =
+        bandit_live_world::resolve_active_group_aftermath(
+            bypass_site, missing_reads( bypass_site ) );
+    REQUIRE( bypass_packet.has_value() );
+    CHECK( bypass_packet->loss_site_if_any.empty() );
+    CHECK( bypass_site.known_recent_marks == marks_before_loss );
+
+    bandit_live_world::world_state saturated = round_trip_world( initial );
+    bandit_live_world::site_record &saturated_site = saturated.sites.front();
+    saturated_site.known_recent_marks.clear();
+    for( int index = 0; index < 8; ++index ) {
+        saturated_site.known_recent_marks.push_back(
+            "prior-route-mark-" + std::to_string( index ) );
+    }
+    const bandit_live_world::scout_resolution_effect saturated_loss =
+        bandit_live_world::apply_active_scout_observations(
+            saturated_site, require_current_simulation_cursor( saturated_site ),
+            missing_reads( saturated_site ), deadline );
+    REQUIRE( saturated_loss.valid );
+    REQUIRE( saturated_loss.completed );
+    REQUIRE( saturated_site.known_recent_marks.size() == 8 );
+    CHECK( saturated_site.known_recent_marks.front() == "prior-route-mark-1" );
+    CHECK( saturated_site.known_recent_marks.back() == route_mark );
+
+    const std::string completed = serialize_world( jumped );
+    const bandit_live_world::scout_resolution_effect replay =
+        bandit_live_world::apply_active_scout_observations(
+            jumped_site, stepped_cursor, {}, deadline + 601 );
+    CHECK_FALSE( replay.valid );
+    CHECK_FALSE( replay.changed );
+    CHECK( serialize_world( jumped ) == completed );
+
+    bandit_live_world::world_state confirmed_dead = round_trip_world( initial );
+    bandit_live_world::site_record &dead_site = confirmed_dead.sites.front();
+    const std::vector<bandit_live_world::active_member_observation> dead_reads = {
+        { dead_site.active_outing.member_ids[0],
+          bandit_live_world::active_member_observation_state::dead,
+          "observer death physically confirmed" },
+        { dead_site.active_outing.member_ids[1],
+          bandit_live_world::active_member_observation_state::dead,
+          "escort death physically confirmed" }
+    };
+    const bandit_live_world::scout_resolution_effect dead =
+        bandit_live_world::apply_active_scout_observations(
+            dead_site, require_current_simulation_cursor( dead_site ), dead_reads, 121 );
+    REQUIRE( dead.valid );
+    REQUIRE( dead.completed );
+    CHECK( dead_site.known_recent_marks == marks_before_loss );
+    CHECK_FALSE( dead_site.current_scout_report.is_present() );
+    CHECK( dead_site.intelligence_map.leads.empty() );
+}
+
 TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_save_and_writeback",
            "[bandit][live_world][multi_site]" )
 {
