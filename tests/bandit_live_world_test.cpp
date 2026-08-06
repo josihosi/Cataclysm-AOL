@@ -14973,6 +14973,9 @@ TEST_CASE( "bandit_live_world_route_qualified_alternate_watch_persists_once",
     outing.assessment.observation_started_minutes = 200;
     outing.assessment.last_progress_minutes = 200;
     outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    bandit_live_world::world_state large_jump_world = world;
+    bandit_live_world::world_state hourly_poll_world = world;
+    bandit_live_world::world_state transition_jump_world = world;
     const tripoint_abs_omt first_watch = outing.selected_watch_omt;
     CHECK( bandit_live_world::advance_structural_scout_assessment(
                site, outing.activity_id, outing.generation,
@@ -15003,6 +15006,61 @@ TEST_CASE( "bandit_live_world_route_qualified_alternate_watch_persists_once",
     CHECK( outing.assessment.exit_reason ==
            "second watch made no assessment progress" );
     CHECK( outing.assessment.next_eligible_minutes == 440 + 12 * 60 );
+
+    bandit_live_world::site_record &large_jump_site =
+        large_jump_world.sites.front();
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 large_jump_site, large_jump_site.active_outing.activity_id,
+                 large_jump_site.active_outing.generation,
+                 large_jump_site.active_outing.target_lead_revision, 440 ) ==
+             bandit_live_world::scout_assessment_result::inconclusive );
+    CHECK( serialize_world( large_jump_world ) == serialize_world( world ) );
+
+    bandit_live_world_probe::snapshot jump_events;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        bandit_live_world::site_record &transition_jump_site =
+            transition_jump_world.sites.front();
+        REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                     transition_jump_site,
+                     transition_jump_site.active_outing.activity_id,
+                     transition_jump_site.active_outing.generation,
+                     transition_jump_site.active_outing.target_lead_revision, 440 ) ==
+                 bandit_live_world::scout_assessment_result::inconclusive );
+        jump_events = event_session.result();
+    }
+    REQUIRE( jump_events.transition_events.size() == 2 );
+    CHECK( jump_events.transition_events[0].at_minutes == 320 );
+    CHECK( jump_events.transition_events[0].previous_phase == "observing" );
+    CHECK( jump_events.transition_events[0].new_phase == "observing" );
+    CHECK( jump_events.transition_events[1].at_minutes == 440 );
+    CHECK( jump_events.transition_events[1].new_phase == "returning_report" );
+    CHECK( serialize_world( transition_jump_world ) == serialize_world( world ) );
+
+    bandit_live_world::site_record &hourly_poll_site =
+        hourly_poll_world.sites.front();
+    CHECK( bandit_live_world::advance_structural_scout_assessment(
+               hourly_poll_site, hourly_poll_site.active_outing.activity_id,
+               hourly_poll_site.active_outing.generation,
+               hourly_poll_site.active_outing.target_lead_revision, 260 ) ==
+           bandit_live_world::scout_assessment_result::updated );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 hourly_poll_site, hourly_poll_site.active_outing.activity_id,
+                 hourly_poll_site.active_outing.generation,
+                 hourly_poll_site.active_outing.target_lead_revision, 320 ) ==
+             bandit_live_world::scout_assessment_result::alternate_watch_started );
+    CHECK( bandit_live_world::advance_structural_scout_assessment(
+               hourly_poll_site, hourly_poll_site.active_outing.activity_id,
+               hourly_poll_site.active_outing.generation,
+               hourly_poll_site.active_outing.target_lead_revision, 380 ) ==
+           bandit_live_world::scout_assessment_result::updated );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 hourly_poll_site, hourly_poll_site.active_outing.activity_id,
+                 hourly_poll_site.active_outing.generation,
+                 hourly_poll_site.active_outing.target_lead_revision, 440 ) ==
+             bandit_live_world::scout_assessment_result::inconclusive );
+    CHECK( serialize_world( hourly_poll_world ) == serialize_world( world ) );
 
     std::vector<tripoint_abs_omt> malformed_alternate = alternate_route;
     malformed_alternate[2] = primary;

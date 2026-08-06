@@ -15894,8 +15894,11 @@ scout_assessment_result advance_structural_scout_assessment(
                                              current_minutes );
         return scout_assessment_result::normal_success;
     }
+    const int no_progress_deadline = minutes_after_saturated(
+                                         next.assessment.last_progress_minutes,
+                                         2 * 60 );
     const bool no_progress_window_elapsed =
-        current_minutes - next.assessment.last_progress_minutes >= 2 * 60;
+        current_minutes >= no_progress_deadline;
     const bool local_alternate_reposition_required = no_progress_window_elapsed &&
             !next.alternate_watch_reposition_pending &&
             !next.alternate_watch_attempted &&
@@ -15925,14 +15928,28 @@ scout_assessment_result advance_structural_scout_assessment(
                    next.alternate_watch_route_cost );
         next.alternate_watch_attempted = true;
         next.waypoint_index = structural_outing_destination_waypoint( next );
-        next.last_progress_minutes = current_minutes;
-        next.assessment.last_progress_minutes = current_minutes;
+        next.last_progress_minutes = no_progress_deadline;
+        next.assessment.last_progress_minutes = no_progress_deadline;
         next.expected_return_minutes = structural_expected_return_minutes(
                                            next.started_minutes, candidate.anchor,
                                            next.selected_watch_omt );
         next.missing_deadline_minutes = minutes_after_saturated(
                                             next.expected_return_minutes,
                                             scout_missing_grace_minutes );
+        const int second_watch_deadline = minutes_after_saturated(
+                                              no_progress_deadline, 2 * 60 );
+        const bool second_watch_elapsed = current_minutes >= second_watch_deadline;
+        if( second_watch_elapsed ) {
+            next.assessment.readiness_latched = false;
+            next.assessment.threshold_class = scout_assessment_threshold_class::none;
+            next.assessment.last_progress_minutes = second_watch_deadline;
+            next.assessment.next_eligible_minutes = minutes_after_saturated(
+                    second_watch_deadline, 12 * 60 );
+            next.assessment.exit_reason =
+                "second watch made no assessment progress";
+            next.phase = scout_phase::returning_report;
+            next.last_progress_minutes = second_watch_deadline;
+        }
         if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
             return scout_assessment_result::rejected;
         }
@@ -15940,18 +15957,27 @@ scout_assessment_result advance_structural_scout_assessment(
         record_scout_phase_transition_event(
             site.active_outing, scout_phase::observing, scout_phase::observing,
             "no-progress window moved to persisted alternate watch",
-            current_minutes );
+            no_progress_deadline );
+        if( second_watch_elapsed ) {
+            record_scout_phase_transition_event(
+                site.active_outing, scout_phase::observing,
+                scout_phase::returning_report,
+                "second watch made no assessment progress",
+                second_watch_deadline );
+            return scout_assessment_result::inconclusive;
+        }
         return scout_assessment_result::alternate_watch_started;
     }
     if( no_progress_window_elapsed && next.alternate_watch_attempted ) {
         next.assessment.readiness_latched = false;
         next.assessment.threshold_class = scout_assessment_threshold_class::none;
         next.assessment.next_eligible_minutes = minutes_after_saturated(
-                current_minutes, 12 * 60 );
+                no_progress_deadline, 12 * 60 );
         next.assessment.exit_reason =
             "second watch made no assessment progress";
         next.phase = scout_phase::returning_report;
-        next.last_progress_minutes = current_minutes;
+        next.last_progress_minutes = no_progress_deadline;
+        next.assessment.last_progress_minutes = no_progress_deadline;
         if( next.local_handoff.is_active() ) {
             next.local_handoff.phase = next.phase;
         }
@@ -15962,7 +15988,7 @@ scout_assessment_result advance_structural_scout_assessment(
         record_scout_phase_transition_event(
             site.active_outing, scout_phase::observing,
             scout_phase::returning_report,
-            "second watch made no assessment progress", current_minutes );
+            "second watch made no assessment progress", no_progress_deadline );
         return scout_assessment_result::inconclusive;
     }
     const bool watch_expired =
