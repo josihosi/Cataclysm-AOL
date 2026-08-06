@@ -556,6 +556,18 @@ headcount, and stops at the first two-to-six-member strongest prefix that clears
 Mac selection 2/148, response power 2/164, routine policy 3/993, and hostile operation 5/1,155 pass.
 The existing operation planner is not yet wired to this selector; next centralize the V1 readiness,
 revision, opportunity, reserve, and power authorization gates before any launch integration.
+V1 response authorization is green at `6c162d7818`: one side-effect-free result requires the exact
+accepted report watermark while its decision remains `report_awaiting_assessment`, applies the
+immutable 48-hour aging/readiness view, normalizes opportunity to the exact 600 floor, and binds the
+named response/reserve to the same authoritative member-read vector by rerunning selection and
+requiring a field-for-field match. Exact retained thresholds 60 normal / 50 burned, opportunity 667,
+and both faction margins pass; expiry, certainty 59, opportunity 333, insufficient power, stale
+watermark, consumed decision, cached power, and stale reserve fail byte-inertly. Mac build and tests
+pass authorization 1/130, selection 3/278, assessment 4/225, camp decision 3/124, and hostile
+operation 5/1,155. One structured review found and fixed unbound cached party power; the final rerun
+is clean. The old planner still does not consume this authorization and no decision/reservation/
+operation mutates yet. Next define the authoritative denial outcome: hold now, then rescout after
+expiry or abandon through an explicit decision transition.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

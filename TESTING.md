@@ -1871,3 +1871,55 @@ preserved the authoritative overmap owner and the claimed loaded/unloaded bounda
 operation planner remains on its older selector and is not claimed to enforce this row yet. No
 authorization, reservation/launch, new persistence, astyle 3.1, GUI, Linux, or Windows claim.
 Next: centralize the V1 authorization gates without launching an operation.
+
+Phase-6 V1 response-authorization proof contract (source identity `874f58fcb29c`,
+pre-implementation):
+- Claim: one side-effect-free decision consumes the authoritative current final scout report, its
+  existing camp-decision/acted-revision ownership, and an already-selected named response party.
+  It authorizes only when the report is the exact accepted but not-yet-followed-on revision, remains
+  below the 48-hour expiry, retains its normal/burned readiness latch at the effective certainty,
+  exposes normalized opportunity at least 600, and the party plus named reserve still satisfy the
+  exact faction power and hard-readiness gates.
+- Preconditions/interventions: tests create a real camp roster, final report, assessment fields,
+  and response-member reads, then stop before calling the existing report-acceptance owner,
+  capable-party selector, and new evaluator. The persisted `acted_reports` watermark means the
+  report was accepted into the decision owner; `report_awaiting_assessment` is the unconsumed
+  follow-on latch. No new acted registry or persistence field is permitted.
+- Causal boundary/real path: `accept_current_scout_report_for_assessment` pins and watermarks the
+  report; `evaluate_scout_report_at` owns aging/readiness; `normalize_ground_bounty_opportunity`
+  owns opportunity; the existing response selector owns named members/reserve/power. The new pure
+  result verifies those owners and reports each hard gate without transitioning the decision,
+  reserving members, launching an operation, or mutating save bytes.
+- Expected transition: an already-latched bandit normal assessment at its exact retained-certainty
+  threshold 60, bounty 2 (`667`), danger 15, and exact party power 19 authorizes. An already-latched
+  cannibal burned assessment at its exact retained threshold 50, bounty 2, danger 13, and the
+  selected three-member party authorizes under the 150% margin. Exact 48-hour age, normal certainty
+  59, bounty 1 (`333`), and one-below-margin power each deny independently. The existing assessment
+  owner separately proves acquisition at 70 normal / 60 burned before it can set the latch.
+- Negative/control: provisional/mismatched/future reports, missing/older/newer accepted watermark,
+  already-preparing/cooldown state, active outside pressure, malformed selected/reserve identities,
+  stale member state, invalid time/policy, and replay all fail closed. High opportunity cannot
+  override readiness, reserve, freshness, or power. Repeated evaluation and every denial preserve
+  serialized world bytes.
+- Timeout/pass-fail: one header/core/test diff, focused `[response_authorization]`, adjacent
+  `[response_selection]`, `[response_power]`, `[scout_assessment]`, and camp-decision/hostile-
+  operation regressions, plus clean diff. This row does not wire the old planner, transition the
+  decision, reserve/launch, add persistence, run astyle 3.1, or claim GUI/Linux/Windows runtime.
+
+Phase-6 V1 response authorization is green at `6c162d7818`. The pure result requires the exact
+accepted report watermark while its decision is still awaiting assessment, then composes the
+immutable 48-hour readiness view, opportunity floor 600, and the existing named reserve/faction
+margin selector. Authorization reruns selection from the same supplied authoritative member reads
+and requires every result field to match, binding IDs, readiness, reserve, and summed power to one
+snapshot. Exact retained certainty 60 normal / 50 burned, opportunity 667, and bandit/cannibal
+margins authorize; expiry, certainty 59, opportunity 333, insufficient bounded power, stale
+watermark, consumed decision, stale reserve, and tampered cached power deny without changing world
+bytes. The final Mac top-level test build is green; authorization passes 1/130, selection 3/278,
+assessment 4/225, camp decision 3/124, and hostile operation 5/1,155 at seed 424242. The first
+`autoreview --mode local` accepted one P1 because cached party power was not tied to the member-read
+snapshot; the field-for-field reselection fix closed it, affected tests reran green, and the final
+Python-invoked helper exited clean with no actionable findings. `git diff --check` is clean. The
+initial `RELEASE=1`/debug-PCH mismatch and direct submake without the top-level C++17 contract are
+non-credit command-shape failures. No old-planner wiring, denial transition, reservation/launch,
+new persistence, astyle 3.1, GUI, Linux, or Windows claim. Next: explicit hold/rescout/abandon
+handling when authorization denies.

@@ -25,10 +25,10 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Centralize the V1 follow-on authorization gates: an assessment-readiness latch under the exact
-   normal/burned threshold, unexpired and unacted report revision, normalized opportunity at least
-   600, and the already-selected party clearing its faction power margin while preserving the hard
-   named reserve. Keep the decision side-effect-free in this row; do not reserve or launch yet.
+1. Define the authoritative denial outcome for a camp that cannot afford or justify its response:
+   remain on hold while the current report is still usable, then rescout after expiry or abandon by
+   an explicit camp-decision transition. Preserve the current report/watermark and do not reserve or
+   launch in this row.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
