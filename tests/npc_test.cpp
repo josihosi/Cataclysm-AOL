@@ -2138,6 +2138,121 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
     CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
 }
 
+TEST_CASE( "loaded_covert_scout_records_only_visible_player_vehicle_wealth",
+           "[npc][bandit][covert][vehicle_cue]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    clear_vehicles();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 45, 45, 0 ) );
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const tripoint_abs_omt watch_omt = scout.pos_abs_omt();
+    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+    const tripoint_abs_ms scout_abs( watch_origin.x() + 2 * SEEX - 2,
+                                     watch_origin.y() + SEEY, watch_origin.z() );
+    const tripoint_abs_ms partner_abs( scout_abs.x(), scout_abs.y() + 1, scout_abs.z() );
+    scout.setpos( here, here.get_bub( scout_abs ) );
+    partner.setpos( here, here.get_bub( partner_abs ) );
+    REQUIRE( scout.pos_abs_omt() == watch_omt );
+    REQUIRE( partner.pos_abs_omt() == watch_omt );
+
+    const std::vector<character_id> generated_ids = { scout.getID(), partner.getID() };
+    on_out_of_scope cleanup( [generated_ids]() {
+        clear_vehicles();
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    const tripoint_abs_omt target_omt = live_state.sites.front().active_outing.target_omt;
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "vehicle wealth target camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+    REQUIRE( overmap_buffer.is_player_camp_omt( target_omt ) );
+    REQUIRE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+
+    const tripoint_abs_ms target_origin = project_to<coords::ms>( target_omt );
+    const tripoint_bub_ms target_vehicle_position = here.get_bub(
+                tripoint_abs_ms( target_origin.x(), scout_abs.y(), target_origin.z() ) );
+    REQUIRE( here.inbounds( target_vehicle_position ) );
+    const tripoint_bub_ms outside_vehicle_position = here.get_bub(
+                tripoint_abs_ms( watch_origin.x() + 4, scout_abs.y(), watch_origin.z() ) );
+    REQUIRE( here.inbounds( outside_vehicle_position ) );
+
+    vehicle *outside = here.add_vehicle(
+                           vehicle_prototype_test_shopping_cart, outside_vehicle_position,
+                           0_degrees, 0, veh_spawn_status::UNDAMAGED );
+    REQUIRE( outside != nullptr );
+    outside->set_owner( faction_your_followers );
+    const std::string pristine = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == pristine );
+    here.destroy_vehicle( outside );
+
+    vehicle *target_vehicle = here.add_vehicle(
+                                  vehicle_prototype_test_shopping_cart,
+                                  target_vehicle_position, 0_degrees, 0,
+                                  veh_spawn_status::UNDAMAGED );
+    REQUIRE( target_vehicle != nullptr );
+    REQUIRE( target_vehicle->pos_abs_omt() == target_omt );
+    CHECK_FALSE( target_vehicle->has_owner() );
+    CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == pristine );
+
+    target_vehicle->set_owner( faction_your_followers );
+    const efftype_id effect_blind_local( "blind" );
+    for( npc *observer : { &scout, &partner } ) {
+        observer->add_effect( effect_blind_local, 1_hours );
+        observer->recalc_sight_limits();
+        REQUIRE( observer->is_blind() );
+    }
+    CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == pristine );
+    for( npc *observer : { &scout, &partner } ) {
+        observer->remove_effect( effect_blind_local );
+        observer->recalc_sight_limits();
+    }
+    REQUIRE( std::any_of( target_vehicle->get_points().begin(),
+                          target_vehicle->get_points().end(), [&scout, &here](
+    const tripoint_abs_ms & point ) {
+        return here.inbounds( point ) && scout.sees( here, here.get_bub( point ) );
+    } ) );
+    REQUIRE( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 1 );
+    REQUIRE( live_state.sites.front().active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &cue =
+        live_state.sites.front().active_outing.observations.front();
+    CHECK( cue.state_key == "wealth-cue:vehicle" );
+    CHECK( cue.source_id == "vehicle-origin:" + target_vehicle->pos_abs().to_string() );
+    CHECK( cue.source_omt == target_omt );
+    CHECK( cue.observer_id == scout.getID() );
+    CHECK( cue.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+}
+
 TEST_CASE( "live_covert_burn_tracks_environmental_visibility_changes",
            "[npc][bandit][covert_burn][live_egress]" )
 {

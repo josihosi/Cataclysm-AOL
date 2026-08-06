@@ -16047,6 +16047,200 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
     }
 }
 
+TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
+           "[bandit][live_world][vehicle_cue]" )
+{
+    const character_id observer_id( 894200 );
+    const character_id partner_id( 894201 );
+    const tripoint_abs_omt anchor( 10, 20, 0 );
+    const tripoint_abs_omt watch( 12, 20, 0 );
+    const tripoint_abs_omt target( 15, 20, 0 );
+    const tripoint_abs_ms target_origin = project_to<coords::ms>( target );
+    const auto make_world = [&]( const int bounty_baseline ) {
+        bandit_live_world::world_state world;
+        add_bandit_camp_member( world, 0, observer_id.get_value() );
+        add_bandit_camp_member( world, 1, observer_id.get_value() );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.anchor = anchor;
+        site.footprint = { anchor };
+        REQUIRE( bandit_live_world::update_member_state(
+                     site, observer_id, bandit_live_world::member_state::local_contact,
+                     "vehicle cue observer loaded" ) );
+        REQUIRE( bandit_live_world::update_member_state(
+                     site, partner_id, bandit_live_world::member_state::local_contact,
+                     "vehicle cue partner loaded" ) );
+        bandit_live_world::active_outing_state &outing = site.active_outing;
+        set_test_active_outing( site, site.site_id + "#structural:vehicle-cue",
+                                bandit_live_world::outing_kind::structural_sortie );
+        outing.schema_version = 10;
+        outing.job_type = "scout";
+        outing.member_ids = { observer_id, partner_id };
+        outing.leader_id = observer_id;
+        outing.shared_route = { anchor, tripoint_abs_omt( 11, 20, 0 ), watch,
+                                tripoint_abs_omt( 11, 20, 0 ), anchor };
+        outing.waypoint_index = 2;
+        outing.target_id = "vehicle-cue-target";
+        outing.target_omt = target;
+        outing.target_lead_revision = 3;
+        outing.target_footprint = { target };
+        outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+        outing.selected_watch_omt = watch;
+        outing.selected_watch_route_cost = 2;
+        outing.phase = bandit_live_world::scout_phase::observing;
+        outing.owner = bandit_live_world::simulation_owner::local;
+        outing.handoff_epoch = 1;
+        outing.started_minutes = 90;
+        outing.local_contact_minutes = 95;
+        outing.last_progress_minutes = 100;
+        outing.last_advanced_minutes = 100;
+        outing.assessment.observation_started_minutes = 100;
+        outing.assessment.last_progress_minutes = 100;
+        outing.assessment.pinned_target_revision = 3;
+        outing.assessment.bounty_estimate = bounty_baseline;
+        outing.local_handoff.activity_id = outing.activity_id;
+        outing.local_handoff.activity_generation = outing.generation;
+        outing.local_handoff.handoff_epoch = outing.handoff_epoch;
+        outing.local_handoff.waypoint_index = outing.waypoint_index;
+        outing.local_handoff.phase = outing.phase;
+        outing.local_handoff.route_position = watch;
+        outing.local_handoff.approach_from = outing.shared_route[1];
+        outing.local_handoff.egress_omt = outing.shared_route[3];
+        outing.local_handoff.cohesion_leader_id = observer_id;
+        outing.local_handoff.cohesion_assembled = true;
+        outing.local_handoff.committed_minutes = 100;
+        const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch );
+        const tripoint_abs_ms first_position( watch_origin.x() + 8,
+                                              watch_origin.y() + 8, watch_origin.z() );
+        const tripoint_abs_ms second_position( watch_origin.x() + 9,
+                                               watch_origin.y() + 8, watch_origin.z() );
+        outing.local_handoff.members = {
+            { observer_id, site.members[0].home_spawn_tile, first_position,
+              tripoint_abs_ms( first_position.x(), first_position.y() + 1,
+                               first_position.z() ), first_position, 100, false },
+            { partner_id, site.members[1].home_spawn_tile, second_position,
+              tripoint_abs_ms( second_position.x(), second_position.y() + 1,
+                               second_position.z() ), second_position, 100, false }
+        };
+        return world;
+    };
+    const auto make_read = [&]( const int offset ) {
+        bandit_live_world::covert_vehicle_wealth_read read;
+        read.origin = tripoint_abs_ms( target_origin.x() + offset,
+                                       target_origin.y() + 8, target_origin.z() );
+        read.ordinarily_visible_occupied_points = { read.origin };
+        return read;
+    };
+    const auto share_pair = []( bandit_live_world::site_record &site, const int current_minutes ) {
+        std::vector<bandit_live_world::local_cohesion_member_read> reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = member.npc_id;
+            read.present = true;
+            read.current_position = member.staging_position;
+            reads.push_back( read );
+        }
+        const bandit_live_world::local_cohesion_plan plan =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, require_current_simulation_cursor( site ), current_minutes, reads );
+        REQUIRE( plan.valid );
+        REQUIRE( plan.observations_shared > 0 );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     site, plan, false, false ) );
+    };
+
+    bandit_live_world::world_state world = make_world( 1 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::covert_vehicle_wealth_read vehicle = make_read( 2 );
+    const bandit_live_world::sortie_observation_effect recorded =
+        bandit_live_world::record_covert_vehicle_wealth_observations(
+            site, require_current_simulation_cursor( site ), observer_id, watch,
+            { vehicle }, 121 );
+    REQUIRE( recorded.valid );
+    REQUIRE( recorded.changed );
+    REQUIRE( site.active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &private_cue =
+        site.active_outing.observations.front();
+    CHECK( private_cue.state_key == "wealth-cue:vehicle" );
+    CHECK( private_cue.source_id == "vehicle-origin:" + vehicle.origin.to_string() );
+    CHECK( private_cue.bucket_start_minutes == 120 );
+    CHECK( private_cue.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               site.active_outing ).bounty_estimate == 1 );
+    share_pair( site, 121 );
+    CHECK( site.active_outing.observations.front().share_state ==
+           bandit_live_world::sortie_observation_share_state::shared );
+    const bandit_live_world::scout_assessment_state wealthy =
+        bandit_live_world::summarize_normal_scout_assessment( site.active_outing );
+    CHECK( wealthy.bounty_estimate == 2 );
+    CHECK( wealthy.certainty == 0 );
+    CHECK( wealthy.defenders_low == 0 );
+    CHECK( wealthy.danger_low == 0 );
+    const std::string saved_cue = serialize_sortie_observation(
+                                      site.active_outing.observations.front() );
+    JsonValue saved_cue_json = json_loader::from_string( saved_cue );
+    bandit_live_world::sortie_observation loaded_cue;
+    loaded_cue.deserialize( saved_cue_json.get_object() );
+    CHECK( serialize_sortie_observation( loaded_cue ) == saved_cue );
+    CHECK( loaded_cue.state_key == "wealth-cue:vehicle" );
+    CHECK( loaded_cue.share_state ==
+           bandit_live_world::sortie_observation_share_state::shared );
+
+    bandit_live_world::world_state empty_baseline_world = make_world( 0 );
+    bandit_live_world::site_record &empty_baseline_site = empty_baseline_world.sites.front();
+    REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
+                 empty_baseline_site, require_current_simulation_cursor( empty_baseline_site ),
+                 observer_id, watch, { vehicle }, 121 ).valid );
+    share_pair( empty_baseline_site, 121 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               empty_baseline_site.active_outing ).bounty_estimate == 0 );
+
+    const auto rejects_atomically = [&]( const std::vector<
+    bandit_live_world::covert_vehicle_wealth_read> &reads ) {
+        bandit_live_world::world_state attempt = make_world( 1 );
+        bandit_live_world::site_record &attempt_site = attempt.sites.front();
+        const std::string before = serialize_world( attempt );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_vehicle_wealth_observations(
+                attempt_site, require_current_simulation_cursor( attempt_site ), observer_id,
+                watch, reads, 121 );
+        CHECK_FALSE( effect.valid );
+        CHECK_FALSE( effect.changed );
+        CHECK( serialize_world( attempt ) == before );
+    };
+    bandit_live_world::covert_vehicle_wealth_read outside_origin = vehicle;
+    outside_origin.origin = project_to<coords::ms>( watch );
+    rejects_atomically( { outside_origin } );
+    bandit_live_world::covert_vehicle_wealth_read outside_point = vehicle;
+    outside_point.ordinarily_visible_occupied_points.push_back(
+        project_to<coords::ms>( watch ) );
+    rejects_atomically( { outside_point } );
+    bandit_live_world::covert_vehicle_wealth_read wrong_z = vehicle;
+    wrong_z.ordinarily_visible_occupied_points = {
+        tripoint_abs_ms( vehicle.origin.x(), vehicle.origin.y(), vehicle.origin.z() + 1 )
+    };
+    rejects_atomically( { wrong_z } );
+    bandit_live_world::covert_vehicle_wealth_read no_visible_point = vehicle;
+    no_visible_point.ordinarily_visible_occupied_points.clear();
+    rejects_atomically( { no_visible_point } );
+    rejects_atomically( { vehicle, vehicle } );
+
+    bandit_live_world::world_state ordered = make_world( 1 );
+    bandit_live_world::world_state reversed = ordered;
+    const bandit_live_world::covert_vehicle_wealth_read first_vehicle = make_read( 1 );
+    REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
+                 ordered.sites.front(), require_current_simulation_cursor( ordered.sites.front() ),
+                 observer_id, watch, { first_vehicle, vehicle }, 121 ).valid );
+    REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
+                 reversed.sites.front(),
+                 require_current_simulation_cursor( reversed.sites.front() ), observer_id,
+                 watch, { vehicle, first_vehicle }, 121 ).valid );
+    CHECK( ordered.sites.front().active_outing.observations.size() == 1 );
+    CHECK( reversed.sites.front().active_outing.observations.size() == 1 );
+    CHECK( serialize_world( ordered ) == serialize_world( reversed ) );
+}
+
 TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
            "[bandit][live_world][scout_assessment][save]" )
 {
