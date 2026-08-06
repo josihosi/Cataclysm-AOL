@@ -6,7 +6,7 @@ Status: **ACTIVE - Phase 4 live/harness evidence matrix**
 
 Active phase: **Phase 4**
 
-Current execution row: **Boundary-test the Phase-5 assessment timing, replay, polling, expiry, revision, hysteresis, cooldown, and large-jump matrix.**
+Current execution row: **Test exact Phase-5 delivered-report aging and target-alert decay under stepwise and large-jump time.**
 
 Latest checkpoint (mid-watch environment `7f3f0261fd`, 2026-08-06): `dev` on the isolated Mac
 worktree; production `port/cdda-master` remains untouched. One exact physical pair/player-camp owner
@@ -960,6 +960,7 @@ Primary anchors: `live_bandit_make_gate_input`, ordinary standoff helper, local 
 - [x] Cover save/load immediately before and after burn; burn on the last local tick before unload; abstract continuation of the same egress; repeated load/unload; only one loaded member; member death during handoff; leader death; slow/injured follower; no legal exit; soft-danger escape; defender asleep/blind/behind cover; and darkness/weather changing mid-watch. _Last-local-tick abstract resume is green at `2b721e3f2e`; partial-bubble atomicity at `86c8c2fb3b`; repeated cycling at `6217823710`; member/leader death plus pre-fix save repair at `76eb587645`; slow/injured follower at `df81293bca`; production no-legal-exit closure at `8a7142757a`; soft-danger escape at `3384846ee9`; and reciprocal optics at `8f4885582f`. Mid-watch environment closes the row at `7f3f0261fd`: the same owner is byte-inert under actual clear-midnight and late-day-fog sight negatives, clear weather at the identical late-day time restores reciprocal sight, and later noon burns once with both routes bound. Mac build, exact 1/36, `[live_egress]` 4/214, `[covert_burn]` 6/809, and diff check pass. Initial invalid-cursor/non-monotonic-time and full-noon-fog fixtures were rejected. Caveat: fixed coordinates are fixture evidence; no astyle 3.1, tiles/live GUI, Linux, or Windows proof. Next: assessment timing/replay/polling/expiry matrix._
 - [ ] Boundary-test normal success at exactly 120 minutes versus 119; same-bucket replay; poor-night polling; three empty windows; one alternate-watch attempt; eight-hour expiry; target revision replacement; 69/70/60 assessment hysteresis; every cooldown; and large-time-jump equivalence to stepwise maintenance. _Partial checkpoints: assessment foundation `bf93d6cf77`; route-qualified alternate `3c66be732c`; abstract transition `3dd6c28a79`; physical relocation `1fd66d12a9`; exact deadline equivalence `3a0a895118`; shared normal/burned hysteresis plus existing 48h/48h/12h outcome cooldowns `d44b2c20ea`. The row stays open for outcome classes that do not yet have an authoritative transition; do not fake empty, danger, or route-failure cooldown proof._
 - [ ] Test simultaneous burn+danger, burn+survival hazard, locally observed revision-change+success, and empty+expiry: all perceived evidence is ingested once, exit priority is deterministic, and only one phase transition occurs. _Atomic ingestion footing `3e460ddc15` and routed priority checkpoint `253e048734` close burn+danger. Real-turn checkpoint `ec8c9840d6` closes burn+survival: real acid yields a clear non-inward or least-dangerous forced escape after exactly one burn fact/event, while a no-hazard control follows the committed route; exact Mac 1/129, NPC burn 5/297, live egress 4/214. Revision/success lacks a field-observed revision producer, and empty/expiry lacks a full-footprint clear producer, so neither may be faked._
+- [x] Profile loaded covert movement on the real turn loop and prove bounded route work without persisted probe state. _Checkpoint `bb74646b50`: one authoritative exact pair records actual overmap solves and all three local `map::route` owners. Quiet, reciprocal burn, real field escape, and next-turn egress are exactly `0/0`, `10/2`, `10/1`, and `0/2` overmap/local solves; probe-only owner bytes are identical before/during/after. Mac build/link, exact 1/117, NPC burn 5/297, diff check, and fresh review pass. No astyle/live GUI/Linux/Windows claim._
 - [ ] Test clear-empty semantics across the whole visible target footprint: consecutive distinct windows, occlusion/partial visibility, intermittent presence reset, and save/load while travelling to the one alternate watch point.
 - [ ] Test exact 12h/24h/48h report aging and 12h alert decay/reset under stepwise and large-time-jump advancement.
 
@@ -969,15 +970,15 @@ Primary anchors: `live_bandit_make_gate_input`, ordinary standoff helper, local 
 - [ ] A burned party gains evidence, coherently evacuates its `burn_origin_omt`, and does not dance.
 - [x] Reload or owner handoff cannot reset `burned_withdrawal` to `observing` or add duplicate burn evidence. _Checkpoint `42bfc59dcd` preserves phase, endpoint, retry revision, and one burn fact through save/load plus local/abstract/local ownership; later contact and unknown visibility cannot regress it._
 - [x] Slow/injured follower, leader death, blocked bridge, no-exit, and save/load-mid-egress tests pass. _Checkpoints `df81293bca`, `76eb587645`, `8a7142757a`, `0dc85f5bc9`, `b9f29496bd23`, and `42bfc59dcd` cover follower delay, leadership/casualty repair, route exhaustion, retries, rally completion, and owner cycling._
-- [ ] Local movement profiling shows no per-turn pathfinding/replan storm.
+- [x] Local movement profiling shows no per-turn pathfinding/replan storm. _Checkpoint `bb74646b50` counts actual local solves rather than call requests and proves at most two local solves for an exact pair in each representative production turn; burn planning is bounded at ten overmap solves and quiet/post-burn turns perform none._
 - [x] Behavior + tests form a checkpoint commit. _Phase-5 deterministic behavior/test stack is checkpointed through simultaneous danger exit `253e048734` and real-turn survival priority `ec8c9840d6`; live feel and movement profiling remain explicit exit gates._
 
 Evidence:
 
-- Commit:
+- Commit: `bb74646b50` (loaded covert movement profiling)
 - Burn/egress harness:
 - Hostility presentation proof:
-- Movement trace:
+- Movement trace: `build_logs/phase5_loaded_covert_profile_actual_solve_{build,test,regression}.log`
 
 ## Phase 6 - physical reports, assessment, and escalation math
 

@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Add the smallest bounded performance proof for loaded covert movement: measure real turn-loop
-   query/movement time and route/replan work for quiet observation, burn, field escape, and ordinary
-   egress across a representative exact-pair scale. Reuse existing counters/harness budgets where
-   possible; do not add a dashboard or per-turn history. Prove no route-solve/replan storm and no
-   save growth, then close only the Phase-5 deterministic exit rows that the evidence actually owns.
+1. Implement the smallest authoritative Phase-5 time-aging slice: define and test exact 12h/24h/48h
+   delivered-report certainty/usefulness aging and 12-hour target-alert decay/reset under stepwise
+   and large-time-jump advancement. Reuse the persisted assessment/report owner; do not create a
+   parallel clock, player knowledge, or per-turn history. First inspect the existing consumption
+   seams and migration implications, then close only the aging/alert ledger row actually proven.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

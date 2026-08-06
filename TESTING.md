@@ -1450,3 +1450,17 @@ canonical Mac tiles tests build exits 0; root seed 424242 exact passes 1/129, NP
 live egress 4/214; `git diff --check` is clean. Caveat: field hazard only, no separate trap variant,
 no astyle 3.1, live GUI, Linux, or Windows claim. Revision/success and empty/expiry remain blocked on
 real perception producers; next is bounded loaded-movement profiling and replan-count evidence.
+
+Phase-5 loaded covert movement profiling is green at `bb74646b50`. The existing bounded
+`bandit_live_world_probe` now scopes the real monster/NPC prepass and exact two-member motor, counts
+owned overmap travel solves, and counts actual local `map::route` calls in `npc::update_path`,
+sleep-candidate evaluation, and `npc::go_to_omt_destination`. The first review rejected request-site
+counting because it could both miss generic NPC pathfinding and overcount early returns; the corrected
+actual-solve seam passed fresh review. Seed 424242 exact `[loaded_covert_movement_profile]` passes
+1/117: quiet `0/0`, reciprocal burn `10/2`, field escape `10/1`, and next-turn egress `0/2`
+overmap/local solves, with one prepass, two member samples, valid bounded histograms, expected phase
+and physical movement, and byte-identical probe-only owner serialization. The canonical Mac test
+build/link exits 0 and `[npc][bandit][covert_burn]` passes 5/297. Evidence is redirected to
+`build_logs/phase5_loaded_covert_profile_actual_solve_{build,test,regression}.log`; diff check is
+clean. No wall-clock threshold, astyle 3.1, live GUI, Linux, or Windows claim. Next: exact delivered-
+report aging and target-alert decay/reset under stepwise and large-jump time.

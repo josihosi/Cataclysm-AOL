@@ -425,7 +425,12 @@ defense and squad routing. Real acid proves one clear non-inward escape, one lea
 escape, and a no-hazard route control with exactly one burn fact/event and stable operation identity.
 Revision/success and empty/expiry remain deferred for their missing perception producers. Next,
 measure the existing loaded covert movement loop and prove it does not create a per-turn route-solve
-or replan storm before treating Phase 5 deterministic closure as complete.
+or replan storm before treating Phase 5 deterministic closure as complete. Loaded movement
+profiling is green at `bb74646b50`: the production loop scopes one exact pair and counts actual
+overmap solves plus all three local `map::route` owners. Quiet, reciprocal burn, field escape, and
+next-turn egress require respectively `0/0`, `10/2`, `10/1`, and `0/2` overmap/local solves, with
+bounded timing histograms and byte-identical probe-only serialization. Next, implement the exact
+12h/24h/48h report-aging and 12h alert-decay/reset contract under stepwise and large-jump time.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
