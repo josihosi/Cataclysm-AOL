@@ -182,6 +182,7 @@ enum class scout_assessment_result {
     rejected,
     unchanged,
     updated,
+    alternate_watch_reposition_required,
     alternate_watch_started,
     normal_success,
     inconclusive,
@@ -497,6 +498,32 @@ struct local_dematerialization_plan {
     std::vector<std::string> notes;
 };
 
+struct local_alternate_watch_member_read {
+    character_id npc_id;
+    bool readable = false;
+    bool dead = false;
+    bool alternate_route_confirmed = false;
+    int hp_percent = 0;
+    tripoint_abs_ms current_position;
+};
+
+struct local_alternate_watch_reposition_plan {
+    bool valid = false;
+    simulation_advance_cursor expected_cursor;
+    int expected_target_revision = 0;
+    std::vector<character_id> expected_member_ids;
+    structural_watch_kind expected_selected_watch_kind = structural_watch_kind::none;
+    tripoint_abs_omt expected_selected_watch_omt;
+    int expected_selected_watch_route_cost = -1;
+    structural_watch_kind expected_alternate_watch_kind = structural_watch_kind::none;
+    tripoint_abs_omt expected_alternate_watch_omt;
+    int expected_alternate_watch_route_cost = -1;
+    std::vector<tripoint_abs_omt> expected_shared_route;
+    std::vector<tripoint_abs_omt> expected_alternate_watch_shared_route;
+    local_handoff_snapshot resume_snapshot;
+    std::vector<std::string> notes;
+};
+
 struct local_cohesion_member_read {
     character_id npc_id;
     bool present = false;
@@ -653,6 +680,7 @@ struct active_outing_state {
     int alternate_watch_route_cost = -1;
     std::vector<tripoint_abs_omt> alternate_watch_shared_route;
     bool alternate_watch_attempted = false;
+    bool alternate_watch_reposition_pending = false;
     int covert_egress_chain_version = 0;
     int covert_egress_attempts = 0;
     int covert_egress_revision = 0;
@@ -1590,6 +1618,22 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
         const local_dematerialization_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
         const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+local_handoff_commit_result start_local_pair_alternate_watch_reposition(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes );
+local_handoff_commit_result abort_local_pair_alternate_watch_reposition(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes,
+    std::string_view reason = "alternate watch route aborted" );
+local_alternate_watch_reposition_plan plan_local_pair_alternate_watch_reposition(
+    const site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes, const std::vector<local_alternate_watch_member_read> &member_reads );
+local_handoff_commit_result commit_local_pair_alternate_watch_reposition(
+    site_record &site, const local_alternate_watch_reposition_plan &plan,
+    const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
+    const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
+    site_record &site, const local_alternate_watch_reposition_plan &plan );
 bool record_local_pair_member_death( site_record &site,
                                      const simulation_advance_cursor &expected_cursor,
                                      character_id member_id,
@@ -1609,6 +1653,8 @@ bool claim_local_pair_site_ownership( const site_record &site,
 std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const active_outing_state &outing );
 std::set<character_id> local_pair_homeward_travel_ids( const world_state &state );
+std::map<character_id, tripoint_abs_omt> local_pair_alternate_watch_travel_destinations(
+    const world_state &state );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );
 bool scout_phase_requires_homeward_only( scout_phase phase );
