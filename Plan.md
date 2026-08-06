@@ -338,8 +338,13 @@ one cross-layer contract proves unknown visibility is byte-inert, legitimate con
 the burned phase and exact retry commitment, local-to-abstract-to-local handoff preserves it, and
 clear completion plus later contact can advance but never regress to observation. No new persistence
 field was needed. The rebuilt Mac test target, fixed-seed burn 2/391, one-way phase 1/187, and diff
-check pass. Next is credited observer-backed live proof from visible burn through one evidence/alert
-transition and coherent off-OMT egress to rally.
+check pass. The credited observer-backed live row remains open after two non-credit startup-only
+runs (`20260806_100318`, `20260806_100839`) exhausted its attempt cap: both stopped before gameplay
+on legacy fields emitted by the current-schema roster transform. Producer footing is checkpointed at
+`5f4d091250`; schema-aware population and canonical-outing repairs are `685307349e` and
+`38a130e146`. Do not run a third probe now. Per the debug-proof finish rule, retain that prepared
+playtest footing and advance to the next deterministic boundary slice: preserve burned physical
+egress across one real abstract-resume maintenance tick and subsequent rematerialization.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

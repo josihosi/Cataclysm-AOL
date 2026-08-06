@@ -1240,3 +1240,13 @@ cases and the exact one-way phase case passes 187 / 1. `git diff --check` is cle
 unavailable; this test-only slice
 does not claim a fresh tiles link, live GUI behavior, Linux, or Windows runtime. Next is the credited
 observer-backed visible-burn/egress/rally live row.
+
+Phase-5 visible-burn producer footing is checkpointed at `5f4d091250`, but runs
+`20260806_100318` and `20260806_100839` are startup-only red/non-credit and exhaust the row's
+two-attempt cap. Both had green input/capture permissions and stopped before gameplay: the first on
+forbidden schema-12 `headcount`, the second on duplicate legacy `active_group_id`. Harness repairs
+`685307349e` and `38a130e146` make roster shaping schema-aware, preserve canonical `active_outing`,
+reject fabricated current-schema outside ownership, and pass focused 2/2 then 3/3 contracts plus
+Python compile/diff checks. Do not claim burn, observer, egress, or rally from either run and do not
+launch a third producer probe now. The next focused evidence is one last-local-tick dematerialization,
+real abstract maintenance tick, save/load, and rematerialization with the exact burned egress owner.

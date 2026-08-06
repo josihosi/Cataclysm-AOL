@@ -20,11 +20,14 @@ Unknown-command popup. Do not tune or repeat that row now.
 Target relocation is green at `9029d4e1a4`, run `20260805_124207`; do not repeat it by ritual. The
 decoy control's current-schema fixture is green at `5cffecb404`, but live runs `20260805_125925`
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
-the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
+the corrected fixture stays ready for Josef's later disposable playtest packet. The Phase-5 visible-
+burn producer is also held after non-credit startup-only runs `20260806_100318` and
+`20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
+fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Run one credited observer-backed live/harness row from legitimate visible burn through exactly
-   one evidence/alert transition, coherent off-OMT egress, and rally; preserve the screenshot plus
-   compact snapshot pair and prove no anger or movement dance.
+1. Preserve the exact burned egress/retry owner through last-local-tick dematerialization, one real
+   abstract structural-maintenance tick, save/load, and rematerialization; keep one burn fact and a
+   valid cursor throughout.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
