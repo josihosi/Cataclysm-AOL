@@ -1323,3 +1323,15 @@ delegated Mac build exits 0; delegated and root exact pass 1/42; `[live_egress]`
 `[covert_burn]` passes 4/687; diff check and final autoreview are clean. Fixed-fixture coordinates
 change `(1,2,0) -> (1,1,0)` and are evidence, not a compass-direction contract. No astyle 3.1,
 tiles/live GUI, Linux, or Windows claim. Next: asleep/blind/covered defender optics boundaries.
+
+Phase-5 reciprocal production optics are green at `8f4885582f`. One shared side-effect-free gate
+now applies directionally to the avatar, allied defenders, and both scout members before raw
+`sees_without_clairvoyance` can supply reciprocal exposure. The exact real active-pair/player-camp
+case proves byte-inert rejection for ordinary sleep, blindness, narcosis plus `SEESLEEP`, sleeping
+scouts, blind adjacent scouts, and an opaque three-by-three cover screen; a sleeping `SEESLEEP`
+defender and restored ordinary reciprocal sight each produce a one-shot burn with real bound egress.
+The first review preserved legitimate `SEESLEEP`; the next exposed asymmetric avatar/scout adjacent
+sight; the final concrete finding added unconditional narcosis suppression. Redirected Mac rebuild
+exits 0; exact passes 1/86; `[live_egress]` passes 3/178; `[covert_burn]` passes 5/773; diff check is
+clean. No astyle 3.1, tiles/live GUI, Linux, or Windows claim. Next: darkness/weather changing
+mid-watch.

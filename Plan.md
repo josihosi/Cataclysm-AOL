@@ -382,7 +382,14 @@ target camp first establishes the live terrain-dependent baseline, then the iden
 one exact shared typed certainty at that endpoint. The second production burn changes `(1,2,0)` to
 `(1,1,0)` in the fixed fixture, and neither the persisted footprint nor either NPC route traverses
 the new soft-danger tile. Mac exact passes 1/42, `[live_egress]` 2/92, and `[covert_burn]` 4/687
-after a clean build and autoreview. Next: defender asleep/blind/behind-cover visibility boundaries.
+after a clean build and autoreview. The reciprocal production-optics boundary is green at
+`8f4885582f`: avatar, allied-defender, and scout-member sight directions share one ordinary-vision
+eligibility rule, so blind, ordinary-sleeping, and narcotized actors cannot exploit raw adjacent or
+NPC sleep sight; `SEESLEEP` remains valid unless narcosis suppresses it. The live pair/camp test
+proves byte-inert rejection for those states and opaque cover, then one-shot burn plus bound egress
+when reciprocal ordinary sight exists. Mac exact passes 1/86, `[live_egress]` 3/178, and
+`[covert_burn]` 5/773 after a clean rebuild and concrete review-driven corrections. Next:
+darkness/weather changing mid-watch.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
