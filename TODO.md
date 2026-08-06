@@ -25,11 +25,9 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Finish the local-owner half of the persisted alternate watch. After two hours without assessment
-   progress, bind ordinary routes for both authoritative NPCs, preserve the selected-watch handoff
-   while they travel, reject partial/stale arrival, and atomically swap route plus local-to-abstract
-   ownership only after both physically reach the alternate. Then prove poor-night polling, three
-   empty windows, save/reload, no teleport/retarget, and stepwise versus large-time-jump equivalence.
+1. Close alternate-watch timing equivalence: prove poor-night polling and three empty windows, then
+   make stepwise minute advancement and one large time jump converge on the same persisted second-
+   watch inconclusive owner without duplicate transitions, retargeting, or knowledge changes.
 2. Boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
    cooldown table after the alternate-watch owner is green.
 

@@ -1382,3 +1382,16 @@ is inert, and minute 120 returns an explicit 12-hour-cooldown inconclusive repor
 round-trip first caught and removed an invalid test-only forest job mutation; production route
 state was consistent. Local ownership and large-jump equivalence remain open. No astyle 3.1, live
 GUI, Linux, or Windows claim.
+
+Phase-5 physical local alternate-watch relocation is green at `1fd66d12a9`. Mac tiles
+`bandit_live_world`/`do_turn`/test objects and linked tests exit 0. Final evidence:
+`[alternate_watch]` 2 cases / 136 assertions, `[local_handoff]` 2 / 740,
+`[structural_bounty]` 51 / 6,785, and controlled seed 424242 `[covert_burn]` 6 / 812. The owner
+tests cover exact 2h request, pre-departure abort, one persisted pending bit, save/reload, derived
+route repair, stale/split rejection, rollback, casualty, split active/inactive exposure, exact
+loaded local completion, exact unloaded abstract completion, new-watch entry/staging/exit geometry,
+target/revision/evidence preservation, and replay. A different burn seed reproduced the unchanged
+geometry-sensitive reciprocal-sight fixture failure; controlled seed 424242 remains green. A final
+fresh read-only review found no concrete defect. Actual overmap travel/reload and loaded-arrival
+feel remain runtime seams; poor-night/three-window/large-jump equivalence is next. No astyle 3.1,
+live GUI, Linux, or Windows claim.
