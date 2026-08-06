@@ -838,13 +838,24 @@ struct response_power_evaluation {
     bool clears_margin = false;
 };
 
+struct response_member_power_read {
+    character_id npc_id;
+    bool authoritative_present = false;
+    bool at_source_camp = false;
+    bool ready = false;
+    int normalized_power = 0;
+};
+
 struct response_party_selection_result {
     bool eligible = false;
     bool threat_derived = false;
     bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
     int party_size = 0;
     int required_local_reserve = 0;
+    int party_power = 0;
+    int required_power = 0;
     std::vector<character_id> member_ids;
+    std::vector<character_id> reserve_member_ids;
     std::string rejection_reason;
 };
 
@@ -1220,6 +1231,10 @@ int record_live_covert_visible_defenders();
 int record_live_covert_vehicle_wealth_cues();
 int record_live_covert_generation_infrastructure_cues();
 int record_live_covert_cargo_handling_cues();
+std::vector<response_member_power_read> live_response_member_power_reads(
+    const site_record &site );
+response_party_selection_result select_live_capable_response_party(
+    const site_record &site, camp_report_policy policy, int danger_high );
 bool fail_live_covert_scout_burned_egress( character_id member_id );
 bool structural_local_zombie_candidate_is_eligible( bool alive, bool hallucination,
         bool zombie_species, bool zombie_rider, bool hostile, bool visible,
@@ -1490,9 +1505,14 @@ int hostile_camp_terrain_fit( hostile_site_profile profile,
                               const std::string &terrain_fit_class );
 int structural_terrain_static_risk( const std::string &terrain_fit_class );
 int normalize_hostile_camp_danger_risk( int danger_high );
+int normalize_hostile_camp_character_power( float deterministic_character_threat );
+int hostile_response_home_reserve( int living_total );
 response_power_evaluation evaluate_response_party_power(
     camp_report_policy policy, int danger_high,
     const std::vector<int> &normalized_member_powers );
+response_party_selection_result select_capable_response_party(
+    const site_record &site, camp_report_policy policy, int danger_high,
+    const std::vector<response_member_power_read> &member_reads );
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );

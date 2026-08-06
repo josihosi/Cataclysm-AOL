@@ -163,16 +163,6 @@ bool live_bandit_can_make_ordinary_visual_observation( const Character &observer
            ( !observer.in_sleep_state() || observer.has_flag( json_flag_SEESLEEP ) );
 }
 
-int live_bandit_normalize_visible_defender_power( const float deterministic_character_threat )
-{
-    if( !std::isfinite( deterministic_character_threat ) ) {
-        return 0;
-    }
-    const float nonnegative_threat = std::max( 0.0f, deterministic_character_threat );
-    return std::clamp( static_cast<int>( std::ceil(
-                           nonnegative_threat / NPC_DANGER_VERY_LOW ) ), 1, 10 );
-}
-
 bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
 {
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
@@ -181,6 +171,7 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
 static constexpr int live_bandit_basecamp_reach_radius = 30;
 static constexpr int live_bandit_basecamp_storage_zone_scan_radius = live_bandit_basecamp_reach_radius * 2;
 static constexpr int live_bandit_camp_adjacent_radius_submaps = 24;
+static constexpr std::size_t live_bandit_response_source_omt_cap = 64;
 static const faction_id faction_your_followers( "your_followers" );
 static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 
@@ -1852,7 +1843,7 @@ int burn_live_bandit_covert_scouts()
                         defender_read.stable_id = defender.stable_id;
                         defender_read.position = defender.actor->pos_abs_omt();
                         defender_read.normalized_power =
-                            live_bandit_normalize_visible_defender_power(
+                            bandit_live_world::normalize_hostile_camp_character_power(
                                 member->evaluate_character_threat_without_perception_fuzz(
                                     *defender.actor, scout_has_gun, true ) );
                         const item_location defender_weapon = defender.actor->get_wielded_item();
@@ -2186,7 +2177,7 @@ int record_live_bandit_covert_visible_defenders()
                 bandit_live_world::covert_scout_burn_read::visible_defender_read read;
                 read.stable_id = defender.stable_id;
                 read.position = defender.actor->pos_abs_omt();
-                read.normalized_power = live_bandit_normalize_visible_defender_power(
+                read.normalized_power = bandit_live_world::normalize_hostile_camp_character_power(
                                             observer->evaluate_character_threat_without_perception_fuzz(
                                                 *defender.actor, scout_has_gun, true ) );
                 const item_location defender_weapon = defender.actor->get_wielded_item();
@@ -3267,6 +3258,65 @@ void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state
             member.wounded_or_unready = bandit_live_world::routine_member_is_unready( snapshot );
         }
     }
+}
+
+std::vector<bandit_live_world::response_member_power_read>
+live_bandit_response_member_power_reads_impl( const bandit_live_world::site_record &site )
+{
+    const bandit_live_world::roster_view roster = site.roster();
+    if( !roster.valid ) {
+        return {};
+    }
+    std::vector<tripoint_abs_omt> source_omts = site.footprint;
+    source_omts.push_back( site.anchor );
+    std::sort( source_omts.begin(), source_omts.end() );
+    source_omts.erase( std::unique( source_omts.begin(), source_omts.end() ),
+                       source_omts.end() );
+    if( source_omts.size() > live_bandit_response_source_omt_cap ) {
+        return {};
+    }
+    std::unordered_map<int, npc *> overmap_npcs;
+    for( const tripoint_abs_omt &source_omt : source_omts ) {
+        for( const shared_ptr_fast<npc> &guy :
+             overmap_buffer.get_npcs_near_omt( source_omt, 0 ) ) {
+            if( guy != nullptr ) {
+                overmap_npcs.emplace( guy->getID().get_value(), guy.get() );
+            }
+        }
+    }
+
+    std::vector<bandit_live_world::response_member_power_read> reads;
+    reads.reserve( roster.physically_present_ids.size() );
+    for( const character_id npc_id : roster.physically_present_ids ) {
+        bandit_live_world::response_member_power_read read;
+        read.npc_id = npc_id;
+        const auto found = overmap_npcs.find( npc_id.get_value() );
+        npc *guy = found == overmap_npcs.end() ? nullptr : found->second;
+        read.authoritative_present = guy != nullptr;
+        if( guy != nullptr ) {
+            const tripoint_abs_omt position = guy->pos_abs_omt();
+            read.at_source_camp = position == site.anchor || site_contains_omt( site, position );
+            bandit_live_world::routine_member_readiness_snapshot snapshot;
+            snapshot.dead = guy->is_dead();
+            snapshot.hp_percent = guy->hp_percentage();
+            snapshot.sleeping = guy->in_sleep_state();
+            snapshot.incapacitated = guy->has_effect( effect_downed ) ||
+                                     guy->has_effect( effect_stunned ) ||
+                                     guy->has_effect( effect_psi_stunned ) ||
+                                     guy->has_effect( effect_narcosis );
+            read.ready = !bandit_live_world::routine_member_is_unready( snapshot );
+            if( read.at_source_camp && read.ready ) {
+                const bool has_gun = guy->get_wielded_item() &&
+                                     guy->get_wielded_item()->is_gun();
+                read.normalized_power =
+                    bandit_live_world::normalize_hostile_camp_character_power(
+                        guy->evaluate_character_threat_without_perception_fuzz(
+                            *guy, has_gun, false ) );
+            }
+        }
+        reads.push_back( std::move( read ) );
+    }
+    return reads;
 }
 
 int live_bandit_materialize_abstract_members_for_routine(
@@ -5781,6 +5831,19 @@ int record_live_covert_generation_infrastructure_cues()
 int record_live_covert_cargo_handling_cues()
 {
     return record_live_bandit_covert_cargo_handling_cues();
+}
+
+std::vector<response_member_power_read> live_response_member_power_reads(
+    const site_record &site )
+{
+    return live_bandit_response_member_power_reads_impl( site );
+}
+
+response_party_selection_result select_live_capable_response_party(
+    const site_record &site, const camp_report_policy policy, const int danger_high )
+{
+    return select_capable_response_party(
+               site, policy, danger_high, live_response_member_power_reads( site ) );
 }
 
 bool fail_live_covert_scout_burned_egress( const character_id member_id )

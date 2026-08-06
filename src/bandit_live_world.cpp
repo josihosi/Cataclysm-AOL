@@ -17,6 +17,7 @@
 #include "bandit_live_world_probe.h"
 #include "game_constants.h"
 #include "json.h"
+#include "npc.h"
 
 namespace
 {
@@ -10093,6 +10094,21 @@ int normalize_hostile_camp_danger_risk( const int danger_high )
     return 5 * std::clamp( danger_high, 0, 200 );
 }
 
+int normalize_hostile_camp_character_power( const float deterministic_character_threat )
+{
+    if( !std::isfinite( deterministic_character_threat ) ) {
+        return 0;
+    }
+    const float nonnegative_threat = std::max( 0.0f, deterministic_character_threat );
+    return std::clamp( static_cast<int>( std::ceil(
+                           nonnegative_threat / NPC_DANGER_VERY_LOW ) ), 1, 10 );
+}
+
+int hostile_response_home_reserve( const int living_total )
+{
+    return std::max( 1, ( std::max( 0, living_total ) + 2 ) / 3 );
+}
+
 response_power_evaluation evaluate_response_party_power(
     const camp_report_policy policy, const int danger_high,
     const std::vector<int> &normalized_member_powers )
@@ -10130,6 +10146,100 @@ response_power_evaluation evaluate_response_party_power(
     result.party_power = party_power;
     result.required_power = ( scaled_required_power + 99 ) / 100;
     result.clears_margin = 100 * party_power >= scaled_required_power;
+    return result;
+}
+
+response_party_selection_result select_capable_response_party(
+    const site_record &site, const camp_report_policy policy, const int danger_high,
+    const std::vector<response_member_power_read> &member_reads )
+{
+    response_party_selection_result result;
+    if( !evaluate_response_party_power( policy, danger_high, { 1 } ).valid ) {
+        result.rejection_reason = "invalid response power policy or target";
+        return result;
+    }
+    result.job = policy == camp_report_policy::cannibal_night_raid ?
+                 bandit_dry_run::job_template::raid : bandit_dry_run::job_template::toll;
+    const roster_view roster = site.roster();
+    if( !roster.valid || roster.living_total <= 0 || site.retired_empty_site ||
+        site.has_active_outside_pressure() ) {
+        result.rejection_reason = "site roster cannot select a fresh response";
+        return result;
+    }
+
+    std::vector<character_id> read_ids;
+    read_ids.reserve( member_reads.size() );
+    for( const response_member_power_read &read : member_reads ) {
+        if( !read.npc_id.is_valid() || read.normalized_power < 0 ||
+            read.normalized_power > 10 ||
+            std::find( read_ids.begin(), read_ids.end(), read.npc_id ) != read_ids.end() ) {
+            result.rejection_reason = "response member power reads are malformed";
+            return result;
+        }
+        read_ids.push_back( read.npc_id );
+    }
+    std::sort( read_ids.begin(), read_ids.end() );
+    if( read_ids != roster.physically_present_ids ) {
+        result.rejection_reason = "response member power reads do not match the concrete home roster";
+        return result;
+    }
+
+    struct capable_member {
+        character_id npc_id;
+        int power = 0;
+    };
+    std::vector<capable_member> capable_members;
+    capable_members.reserve( member_reads.size() );
+    for( const response_member_power_read &read : member_reads ) {
+        const member_record *member = site.find_member( read.npc_id );
+        if( member == nullptr || member->state != member_state::at_home ||
+            member->wounded_or_unready || !read.authoritative_present ||
+            !read.at_source_camp || !read.ready || read.normalized_power <= 0 ) {
+            continue;
+        }
+        capable_members.push_back( { read.npc_id, read.normalized_power } );
+    }
+    std::sort( capable_members.begin(), capable_members.end(),
+    []( const capable_member & lhs, const capable_member & rhs ) {
+        return std::make_tuple( -lhs.power, lhs.npc_id ) <
+               std::make_tuple( -rhs.power, rhs.npc_id );
+    } );
+
+    result.required_local_reserve = hostile_response_home_reserve( roster.living_total );
+    const int response_capacity = static_cast<int>( capable_members.size() ) -
+                                  result.required_local_reserve;
+    const int maximum_party_size = std::min( 6, response_capacity );
+    if( maximum_party_size < 2 ) {
+        result.rejection_reason = "named capable home reserve leaves fewer than two responders";
+        return result;
+    }
+
+    for( int party_size = 2; party_size <= maximum_party_size; ++party_size ) {
+        std::vector<int> powers;
+        powers.reserve( party_size );
+        for( int index = 0; index < party_size; ++index ) {
+            powers.push_back( capable_members[index].power );
+        }
+        const response_power_evaluation evaluation = evaluate_response_party_power(
+                    policy, danger_high, powers );
+        if( !evaluation.valid || !evaluation.clears_margin ) {
+            continue;
+        }
+        result.party_size = party_size;
+        result.party_power = evaluation.party_power;
+        result.required_power = evaluation.required_power;
+        for( int index = 0; index < party_size; ++index ) {
+            result.member_ids.push_back( capable_members[index].npc_id );
+        }
+        for( int index = party_size;
+             index < party_size + result.required_local_reserve; ++index ) {
+            result.reserve_member_ids.push_back( capable_members[index].npc_id );
+        }
+        result.eligible = true;
+        return result;
+    }
+
+    result.rejection_reason = "no bounded response party clears the faction power margin";
     return result;
 }
 

@@ -21222,6 +21222,148 @@ TEST_CASE( "bandit_live_world_response_power_uses_exact_faction_margin",
                                      { 10, -1 } ) );
 }
 
+TEST_CASE( "bandit_live_world_response_selection_leaves_a_named_capable_home_reserve",
+           "[bandit][live_world][response_power][response_selection]" )
+{
+    using bandit_live_world::camp_report_policy;
+    using bandit_live_world::response_member_power_read;
+    using bandit_live_world::response_party_selection_result;
+
+    CHECK( bandit_live_world::hostile_response_home_reserve( 3 ) == 1 );
+    CHECK( bandit_live_world::hostile_response_home_reserve( 4 ) == 2 );
+    CHECK( bandit_live_world::hostile_response_home_reserve( 7 ) == 3 );
+    CHECK( bandit_live_world::hostile_response_home_reserve( 10 ) == 4 );
+
+    const auto make_world = []( const int concrete_members, const int living_total,
+    const int first_id ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < concrete_members; ++index ) {
+            add_bandit_camp_member( world, index, first_id );
+        }
+        world.sites.front().living_total = living_total;
+        return world;
+    };
+    const auto make_reads = []( const bandit_live_world::site_record &site,
+    const std::vector<int> &powers ) {
+        REQUIRE( site.roster().physically_present_ids.size() == powers.size() );
+        std::vector<response_member_power_read> reads;
+        for( std::size_t index = 0; index < powers.size(); ++index ) {
+            response_member_power_read read;
+            read.npc_id = site.roster().physically_present_ids[index];
+            read.authoritative_present = true;
+            read.at_source_camp = true;
+            read.ready = true;
+            read.normalized_power = powers[index];
+            reads.push_back( read );
+        }
+        return reads;
+    };
+
+    SECTION( "the smallest exact party wins and leaves explicit reserve IDs" ) {
+        bandit_live_world::world_state world = make_world( 7, 7, 54000 );
+        const bandit_live_world::site_record &site = world.sites.front();
+        const std::vector<response_member_power_read> reads = make_reads(
+                    site, { 10, 9, 6, 5, 4, 3, 2 } );
+        const std::string before = serialize_world( world );
+        const response_party_selection_result bandit =
+            bandit_live_world::select_capable_response_party(
+                site, camp_report_policy::bandit_shakedown, 15, reads );
+        REQUIRE( bandit.eligible );
+        CHECK( bandit.party_size == 2 );
+        CHECK( bandit.required_local_reserve == 3 );
+        CHECK( bandit.party_power == 19 );
+        CHECK( bandit.required_power == 19 );
+        CHECK( bandit.member_ids == std::vector<character_id> {
+            character_id( 54000 ), character_id( 54001 )
+        } );
+        CHECK( bandit.reserve_member_ids == std::vector<character_id> {
+            character_id( 54002 ), character_id( 54003 ), character_id( 54004 )
+        } );
+        CHECK( serialize_world( world ) == before );
+
+        const response_party_selection_result cannibal =
+            bandit_live_world::select_capable_response_party(
+                site, camp_report_policy::cannibal_night_raid, 13, reads );
+        REQUIRE( cannibal.eligible );
+        CHECK( cannibal.party_size == 3 );
+        CHECK( cannibal.required_local_reserve == 3 );
+        CHECK( cannibal.party_power == 25 );
+        CHECK( cannibal.required_power == 20 );
+        CHECK( cannibal.member_ids == std::vector<character_id> {
+            character_id( 54000 ), character_id( 54001 ), character_id( 54002 )
+        } );
+        CHECK( serialize_world( world ) == before );
+
+        std::vector<response_member_power_read> reversed = reads;
+        std::reverse( reversed.begin(), reversed.end() );
+        const response_party_selection_result reversed_bandit =
+            bandit_live_world::select_capable_response_party(
+                site, camp_report_policy::bandit_shakedown, 15, reversed );
+        CHECK( reversed_bandit.member_ids == bandit.member_ids );
+        CHECK( reversed_bandit.reserve_member_ids == bandit.reserve_member_ids );
+        CHECK( reversed_bandit.party_power == bandit.party_power );
+    }
+
+    SECTION( "anonymous or ineligible members never satisfy the reserve" ) {
+        bandit_live_world::world_state world = make_world( 4, 7, 54100 );
+        bandit_live_world::site_record &site = world.sites.front();
+        std::vector<response_member_power_read> reads = make_reads(
+                    site, { 10, 10, 10, 10 } );
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        CHECK( serialize_world( world ) == before );
+
+        site.living_total = 4;
+        reads[0].at_source_camp = false;
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        reads[0].at_source_camp = true;
+        reads[0].ready = false;
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        reads[0].ready = true;
+        site.members[0].wounded_or_unready = true;
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+    }
+
+    SECTION( "malformed snapshots and impossible bounded power fail closed" ) {
+        bandit_live_world::world_state world = make_world( 10, 10, 54200 );
+        const bandit_live_world::site_record &site = world.sites.front();
+        std::vector<response_member_power_read> reads = make_reads(
+                    site, { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 } );
+        const std::string before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 200, reads ).eligible );
+        reads.pop_back();
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        reads = make_reads( site, { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 } );
+        reads.back().npc_id = reads.front().npc_id;
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        reads = make_reads( site, { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 } );
+        reads.back().npc_id = character_id( 999999 );
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 1, reads ).eligible );
+        const response_party_selection_result invalid_policy =
+            bandit_live_world::select_capable_response_party(
+                site, camp_report_policy::none, 1, reads );
+        CHECK_FALSE( invalid_policy.eligible );
+        CHECK( invalid_policy.job == bandit_dry_run::job_template::hold_chill );
+        CHECK( invalid_policy.party_size == 0 );
+        CHECK( invalid_policy.required_local_reserve == 0 );
+        CHECK( invalid_policy.party_power == 0 );
+        CHECK( invalid_policy.required_power == 0 );
+        CHECK( invalid_policy.member_ids.empty() );
+        CHECK( invalid_policy.reserve_member_ids.empty() );
+        CHECK_FALSE( bandit_live_world::select_capable_response_party(
+                         site, camp_report_policy::bandit_shakedown, 201, reads ).eligible );
+        CHECK( serialize_world( world ) == before );
+    }
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {

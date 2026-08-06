@@ -1997,6 +1997,117 @@ TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",
            bandit_live_world::sortie_observation_share_state::observer_private );
 }
 
+TEST_CASE( "live_response_selection_reads_loaded_and_unloaded_home_npc_owners",
+           "[npc][bandit][response_selection]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    std::vector<character_id> generated_ids;
+    std::vector<npc *> generated_npcs;
+    for( int index = 0; index < 5; ++index ) {
+        npc &member = spawn_npc( point_bub_ms( 48 + index, 52 ), "thug" );
+        generated_ids.push_back( member.getID() );
+        generated_npcs.push_back( &member );
+    }
+    on_out_of_scope remove_generated_npcs( [&generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record site;
+    site.site_id = "live-response-selection-site";
+    site.anchor = generated_npcs.front()->pos_abs_omt();
+    site.footprint = { site.anchor };
+    site.living_total = 5;
+    for( npc *member : generated_npcs ) {
+        REQUIRE( member->is_active() );
+        REQUIRE( member->pos_abs_omt() == site.anchor );
+        site.members.push_back( { member->getID(), "thug", member->pos_abs(),
+                                  bandit_live_world::member_state::at_home, false, "" } );
+    }
+    world.sites.push_back( site );
+    bandit_live_world::site_record &owned_site = world.sites.front();
+    const std::string before = serialize_live_world_for_optics_test( world );
+
+    const std::vector<bandit_live_world::response_member_power_read> loaded_reads =
+        bandit_live_world::live_response_member_power_reads( owned_site );
+    REQUIRE( loaded_reads.size() == 5 );
+    for( const bandit_live_world::response_member_power_read &read : loaded_reads ) {
+        CHECK( read.authoritative_present );
+        CHECK( read.at_source_camp );
+        CHECK( read.ready );
+        CHECK( read.normalized_power >= 1 );
+        CHECK( read.normalized_power <= 10 );
+    }
+    const bandit_live_world::response_party_selection_result loaded_selection =
+        bandit_live_world::select_live_capable_response_party(
+            owned_site, bandit_live_world::camp_report_policy::bandit_shakedown, 0 );
+    REQUIRE( loaded_selection.eligible );
+    CHECK( loaded_selection.party_size == 2 );
+    CHECK( loaded_selection.required_local_reserve == 2 );
+    CHECK( loaded_selection.reserve_member_ids.size() == 2 );
+    CHECK( serialize_live_world_for_optics_test( world ) == before );
+
+    for( const character_id id : generated_ids ) {
+        g->remove_npc( id );
+    }
+    for( npc *member : generated_npcs ) {
+        REQUIRE_FALSE( member->is_active() );
+    }
+    const std::vector<bandit_live_world::response_member_power_read> unloaded_reads =
+        bandit_live_world::live_response_member_power_reads( owned_site );
+    const bandit_live_world::response_party_selection_result unloaded_selection =
+        bandit_live_world::select_live_capable_response_party(
+            owned_site, bandit_live_world::camp_report_policy::bandit_shakedown, 0 );
+    REQUIRE( unloaded_selection.eligible );
+    CHECK( unloaded_reads.size() == loaded_reads.size() );
+    CHECK( unloaded_selection.member_ids == loaded_selection.member_ids );
+    CHECK( unloaded_selection.reserve_member_ids == loaded_selection.reserve_member_ids );
+    CHECK( unloaded_selection.party_power == loaded_selection.party_power );
+    CHECK( serialize_live_world_for_optics_test( world ) == before );
+
+    g->load_npcs();
+    npc *outside_member = g->find_npc( generated_ids.back() );
+    REQUIRE( outside_member != nullptr );
+    outside_member->setpos( here, outside_member->pos_bub( here ) + tripoint::east * ( 2 * SEEX ) );
+    REQUIRE( outside_member->pos_abs_omt() != owned_site.anchor );
+    const std::vector<bandit_live_world::response_member_power_read> outside_reads =
+        bandit_live_world::live_response_member_power_reads( owned_site );
+    const auto outside_read = std::find_if( outside_reads.begin(), outside_reads.end(),
+    [outside_member]( const bandit_live_world::response_member_power_read & read ) {
+        return read.npc_id == outside_member->getID();
+    } );
+    REQUIRE( outside_read != outside_reads.end() );
+    CHECK_FALSE( outside_read->authoritative_present );
+    CHECK_FALSE( outside_read->at_source_camp );
+    const bandit_live_world::response_party_selection_result outside_selection =
+        bandit_live_world::select_live_capable_response_party(
+            owned_site, bandit_live_world::camp_report_policy::bandit_shakedown, 0 );
+    REQUIRE( outside_selection.eligible );
+    CHECK( std::find( outside_selection.member_ids.begin(), outside_selection.member_ids.end(),
+                      outside_member->getID() ) == outside_selection.member_ids.end() );
+    CHECK( std::find( outside_selection.reserve_member_ids.begin(),
+                      outside_selection.reserve_member_ids.end(), outside_member->getID() ) ==
+           outside_selection.reserve_member_ids.end() );
+
+    npc *sleeping_member = g->find_npc( generated_ids.front() );
+    REQUIRE( sleeping_member != nullptr );
+    sleeping_member->add_effect( effect_sleep, 1_hours );
+    CHECK_FALSE( bandit_live_world::select_live_capable_response_party(
+                     owned_site, bandit_live_world::camp_report_policy::bandit_shakedown,
+                     0 ).eligible );
+    CHECK( serialize_live_world_for_optics_test( world ) == before );
+}
+
 TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
            "[npc][bandit][covert_burn][live_egress][visible_defender_power]" )
 {
