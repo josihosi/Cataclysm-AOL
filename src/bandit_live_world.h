@@ -172,6 +172,20 @@ enum class scout_phase_transition_result {
     applied,
 };
 
+enum class scout_assessment_threshold_class {
+    none,
+    normal,
+    burned,
+};
+
+enum class scout_assessment_result {
+    rejected,
+    unchanged,
+    updated,
+    normal_success,
+    inconclusive,
+};
+
 enum class sortie_observation_kind {
     routine,
     certainty,
@@ -510,8 +524,33 @@ enum class local_handoff_commit_result {
     rolled_back,
 };
 
+struct scout_assessment_state {
+    int schema_version = 1;
+    int observation_started_minutes = -1;
+    int last_progress_minutes = -1;
+    int burned_minutes = -1;
+    tripoint_abs_omt burn_origin_omt;
+    int certainty = 0;
+    bool readiness_latched = false;
+    scout_assessment_threshold_class threshold_class =
+        scout_assessment_threshold_class::none;
+    int strong_visual_windows = 0;
+    int defenders_low = 0;
+    int defenders_high = 0;
+    int danger_low = 0;
+    int danger_high = 0;
+    int target_alert = 0;
+    int pinned_target_revision = 0;
+    int next_eligible_minutes = -1;
+    std::string exit_reason;
+
+    void clear();
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct scout_report_record {
-    int schema_version = 4;
+    int schema_version = 5;
     int revision = 0;
     camp_report_policy action_policy = camp_report_policy::none;
     std::string source_activity_id;
@@ -523,6 +562,7 @@ struct scout_report_record {
     int target_lead_revision = 0;
     std::string application_key;
     std::vector<sortie_observation> observations;
+    scout_assessment_state assessment;
     std::vector<character_id> casualty_ids;
     int delivered_minutes = -1;
     bool provisional = false;
@@ -613,6 +653,7 @@ struct active_outing_state {
     std::vector<tripoint_abs_omt> failed_covert_egress_omts;
     std::vector<tripoint_abs_omt> current_covert_egress_route_omts;
     std::vector<tripoint_abs_omt> failed_covert_egress_route_omts;
+    scout_assessment_state assessment;
 
     void clear();
     bool is_active() const;
@@ -1506,6 +1547,9 @@ sortie_observation_effect record_active_typed_observations( site_record &site,
         const simulation_advance_cursor &expected_cursor, character_id observer_id,
         int expected_target_revision, const std::vector<sortie_observation> &observations,
         int current_minutes );
+scout_assessment_result advance_structural_scout_assessment(
+    site_record &site, const std::string &expected_activity_id,
+    int expected_generation, int expected_target_revision, int current_minutes );
 simulation_owner_transition_result transition_external_simulation_owner( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, simulation_owner next_owner,

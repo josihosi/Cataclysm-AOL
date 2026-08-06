@@ -4743,6 +4743,33 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
     } );
 }
 
+int advance_live_bandit_local_scout_assessments()
+{
+    bandit_live_world::world_state &state =
+        overmap_buffer.global_state.bandit_live_world;
+    const int current_minutes = live_bandit_current_minutes();
+    int completed = 0;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            outing.phase != bandit_live_world::scout_phase::observing ||
+            outing.last_advanced_minutes > current_minutes ) {
+            continue;
+        }
+        const std::string activity_id = outing.activity_id;
+        const int generation = outing.generation;
+        const int target_revision = outing.target_lead_revision;
+        const bandit_live_world::scout_assessment_result result =
+            bandit_live_world::advance_structural_scout_assessment(
+                site, activity_id, generation, target_revision, current_minutes );
+        if( result == bandit_live_world::scout_assessment_result::normal_success ) {
+            completed++;
+        }
+    }
+    return completed;
+}
+
 } // namespace
 
 namespace bandit_live_world
@@ -5036,6 +5063,12 @@ void monmove()
             pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
                                        << local_zombie_observations << '\n';
+        }
+        const int completed_scout_assessments =
+            advance_live_bandit_local_scout_assessments();
+        if( completed_scout_assessments > 0 ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world normal_scout_assessments="
+                                       << completed_scout_assessments << '\n';
         }
     }
     const std::set<character_id> pair_homeward_travel_ids =
