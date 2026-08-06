@@ -1373,3 +1373,12 @@ schema-10 saves round-trip it, old saves default to none, malformed alternate ro
 mutation, and replay is stable. This proves route ownership only: no scout has moved to the
 alternate yet. Next evidence must show the two-hour transition consumes this exact route under both
 abstract and local owners without teleportation or target-revision drift.
+
+Phase-5 abstract alternate-watch transition is green at `3dd6c28a79`. The Mac tiles test build
+exits 0; `[alternate_watch]` passes 1 case / 47 assertions, `[watch_persistence]` 1 / 70,
+`[structural_bounty]` 51 / 6,785, and `[scout_assessment]` 1 / 95. Exact minute 119 is inert,
+minute 120 swaps only the selected/alternate route owner, reload is stable, second-watch minute 119
+is inert, and minute 120 returns an explicit 12-hour-cooldown inconclusive report. The focused
+round-trip first caught and removed an invalid test-only forest job mutation; production route
+state was consistent. Local ownership and large-jump equivalence remain open. No astyle 3.1, live
+GUI, Linux, or Windows claim.

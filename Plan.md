@@ -399,11 +399,12 @@ The first assessment owner checkpoint is green at `bf93d6cf77`: schema-10 outing
 physical reports share one bounded persisted assessment; exact 119/120-minute normal success,
 same-bucket replay, shared-only target evidence, legacy-watch migration, field-pinned revision,
 eight-hour inconclusive return, retained handoff phase, and production cooldown consumption are
-covered. The route footing is now green at `3c66be732c`: the existing bounded geography solve
-persists one deterministic non-primary watch and its canonical shared route without changing target
-knowledge. Next is the two-hour no-progress transition: consume that exact route through normal
-abstract/local route semantics without teleportation, then abort after the second empty window. Poor-night polling,
-three empty windows, save/reload, and stepwise-versus-large-jump equivalence prove that row before
+covered. The route footing is green at `3c66be732c`, and the pure abstract two-hour transition is
+green at `3dd6c28a79`: it consumes the deterministic alternate atomically, survives reload, and
+returns inconclusive after the second empty window. Next is the local-owner half: route both
+authoritative NPCs physically to the alternate, preserve the old handoff cursor while they travel,
+reject split/stale arrival, then commit the route swap and local-to-abstract handoff only when both
+arrive. Poor-night polling, three empty windows, save/reload, and stepwise-versus-large-jump equivalence complete that row before
 69/70/60 hysteresis and the remaining cooldown boundary table.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
