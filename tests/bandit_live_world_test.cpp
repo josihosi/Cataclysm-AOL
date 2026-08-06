@@ -15853,6 +15853,177 @@ TEST_CASE( "bandit_live_world_scout_assessment_readiness_uses_exact_hysteresis",
                      scout_assessment_threshold_class::none, true, 95 ) );
 }
 
+TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_and_uncertainty",
+           "[bandit][live_world][scout_assessment][assessment_uncertainty]" )
+{
+    for( const std::pair<int, int> &boundary : {
+             std::pair<int, int>( 0, 4 ), { 39, 4 }, { 40, 3 }, { 59, 3 },
+             { 60, 2 }, { 79, 2 }, { 80, 1 }, { 95, 1 }
+         } ) {
+        CAPTURE( boundary.first );
+        CHECK( bandit_live_world::scout_assessment_unknown_slots( boundary.first ) ==
+               boundary.second );
+    }
+    const tripoint_abs_omt target( 18, 20, 0 );
+    const tripoint_abs_omt watch( 15, 20, 0 );
+    const character_id observer_id( 894100 );
+    const auto make_outing = [&]() {
+        bandit_live_world::active_outing_state outing;
+        outing.target_lead_revision = 7;
+        outing.target_footprint = { target };
+        outing.assessment.observation_started_minutes = 100;
+        outing.assessment.last_progress_minutes = 100;
+        outing.assessment.pinned_target_revision = 7;
+        return outing;
+    };
+    const auto make_window = [&]( const int observed_minutes,
+                                  const std::string &fact_key ) {
+        bandit_live_world::sortie_observation observation =
+            make_typed_visual_observation(
+                observer_id, 7, observed_minutes, fact_key,
+                bandit_live_world::sortie_observation_share_state::shared );
+        observation.source_omt = target;
+        observation.receiver_omt = watch;
+        return observation;
+    };
+
+    SECTION( "two then one never collapses to one or sums historical power" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        bandit_live_world::sortie_observation two = make_window( 121, "two-visible" );
+        two.observed_power_low = 8;
+        two.observed_power_high = 8;
+        bandit_live_world::sortie_observation one = make_window( 167, "one-visible" );
+        one.defender_ids = { "defender:2" };
+        one.observed_power_low = 7;
+        one.observed_power_high = 7;
+        outing.observations = { two, one };
+
+        const bandit_live_world::scout_assessment_state summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.certainty == 60 );
+        CHECK( summary.defenders_low == 2 );
+        CHECK( summary.defenders_high == 4 );
+        CHECK( summary.danger_low == 8 );
+        CHECK( summary.danger_high == 22 );
+
+        std::reverse( outing.observations.begin(), outing.observations.end() );
+        const bandit_live_world::scout_assessment_state reversed =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( reversed.certainty == summary.certainty );
+        CHECK( reversed.defenders_low == summary.defenders_low );
+        CHECK( reversed.defenders_high == summary.defenders_high );
+        CHECK( reversed.danger_low == summary.danger_low );
+        CHECK( reversed.danger_high == summary.danger_high );
+    }
+
+    SECTION( "signal-only evidence keeps a zero lower bound and explicit unknown slots" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        const bandit_live_world::scout_assessment_state empty_summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( empty_summary.certainty == 0 );
+        CHECK( empty_summary.defenders_low == 0 );
+        CHECK( empty_summary.defenders_high == 4 );
+        CHECK( empty_summary.danger_low == 0 );
+        CHECK( empty_summary.danger_high == 12 );
+
+        bandit_live_world::sortie_observation signal = make_window( 121, "sound-only" );
+        signal.sense = bandit_live_world::sortie_observation_sense::sound;
+        signal.visual_quality = 0;
+        signal.defender_ids.clear();
+        signal.observed_power_low = 0;
+        signal.observed_power_high = 0;
+        signal.equipment_detail = 0;
+        outing.observations = { signal };
+
+        const bandit_live_world::scout_assessment_state summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.certainty == 5 );
+        CHECK( summary.defenders_low == 0 );
+        CHECK( summary.defenders_high == 4 );
+        CHECK( summary.danger_low == 0 );
+        CHECK( summary.danger_high == 12 );
+    }
+
+    SECTION( "one co-located snapshot uses its real count and per-unit power" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        outing.assessment.target_alert = 21;
+        bandit_live_world::sortie_observation defenders = make_window( 121, "co-located" );
+        defenders.defender_ids = { "defender:1", "defender:2", "defender:3" };
+        defenders.observed_power_low = 15;
+        defenders.observed_power_high = 15;
+        outing.observations = { defenders };
+
+        const bandit_live_world::scout_assessment_state summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.certainty == 40 );
+        CHECK( summary.defenders_low == 3 );
+        CHECK( summary.defenders_high == 6 );
+        CHECK( summary.danger_low == 15 );
+        CHECK( summary.danger_high == 32 );
+
+        outing.assessment.target_alert = 20;
+        CHECK( bandit_live_world::summarize_normal_scout_assessment(
+                   outing ).danger_high == 31 );
+    }
+
+    SECTION( "same-window static hazard and route danger stay separate from historical sums" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        bandit_live_world::sortie_observation defenders = make_window( 121, "defenders" );
+        defenders.defender_ids = { "defender:1", "defender:2", "defender:3" };
+        defenders.observed_power_low = 15;
+        defenders.observed_power_high = 15;
+        bandit_live_world::sortie_observation static_hazard =
+            make_window( 122, "static-hazard" );
+        static_hazard.defender_ids.clear();
+        static_hazard.observed_power_low = 8;
+        static_hazard.observed_power_high = 8;
+        static_hazard.equipment_detail = 0;
+        bandit_live_world::sortie_observation route_danger =
+            make_window( 123, "route-danger" );
+        route_danger.source_omt = watch;
+        route_danger.defender_ids.clear();
+        route_danger.observed_power_low = 10;
+        route_danger.observed_power_high = 24;
+        route_danger.equipment_detail = 0;
+        outing.observations = { defenders, static_hazard, route_danger };
+
+        const bandit_live_world::scout_assessment_state summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.certainty == 60 );
+        CHECK( summary.defenders_low == 3 );
+        CHECK( summary.defenders_high == 5 );
+        CHECK( summary.danger_low == 23 );
+        CHECK( summary.danger_high == 53 );
+        std::reverse( outing.observations.begin(), outing.observations.end() );
+        const bandit_live_world::scout_assessment_state reversed =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( reversed.defenders_low == summary.defenders_low );
+        CHECK( reversed.defenders_high == summary.defenders_high );
+        CHECK( reversed.danger_low == summary.danger_low );
+        CHECK( reversed.danger_high == summary.danger_high );
+    }
+
+    SECTION( "more than twelve simultaneous defenders preserves the lower bound as hard unsafe" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        bandit_live_world::sortie_observation defenders = make_window( 121, "hard-unsafe" );
+        defenders.defender_ids.clear();
+        for( int index = 0; index < 13; ++index ) {
+            defenders.defender_ids.push_back(
+                "defender:" + std::to_string( 100 + index ) );
+        }
+        defenders.observed_power_low = 130;
+        defenders.observed_power_high = 130;
+        outing.observations = { defenders };
+
+        const bandit_live_world::scout_assessment_state summary =
+            bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.defenders_low == 13 );
+        CHECK( summary.defenders_high == 13 );
+        CHECK( summary.danger_low == 130 );
+        CHECK( summary.danger_high == 200 );
+    }
+}
+
 TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
            "[bandit][live_world][scout_assessment][save]" )
 {
@@ -15952,6 +16123,10 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     REQUIRE( outing.assessment.certainty >= 70 );
     CHECK( outing.assessment.certainty == 80 );
     REQUIRE( outing.assessment.strong_visual_windows == 3 );
+    CHECK( outing.assessment.defenders_low == 2 );
+    CHECK( outing.assessment.defenders_high == 3 );
+    CHECK( outing.assessment.danger_low == 5 );
+    CHECK( outing.assessment.danger_high == 8 );
     const int certainty_before_replay = outing.assessment.certainty;
     const int windows_before_replay = outing.assessment.strong_visual_windows;
 
@@ -16468,6 +16643,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( danger_count( site.active_outing ) == 1 );
         CHECK( burn_count( site.active_outing ) == 1 );
         CHECK( site.active_outing.assessment.target_alert == 100 );
+        CHECK( site.active_outing.assessment.danger_high == 25 );
         const auto retained_danger = std::find_if(
                                          site.active_outing.observations.begin(),
                                          site.active_outing.observations.end(),

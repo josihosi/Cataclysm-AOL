@@ -1605,6 +1605,9 @@ sortie_observation_effect record_active_typed_observations( site_record &site,
         const simulation_advance_cursor &expected_cursor, character_id observer_id,
         int expected_target_revision, const std::vector<sortie_observation> &observations,
         int current_minutes );
+scout_assessment_state summarize_normal_scout_assessment(
+    const active_outing_state &outing );
+int scout_assessment_unknown_slots( int certainty );
 scout_assessment_result advance_structural_scout_assessment(
     site_record &site, const std::string &expected_activity_id,
     int expected_generation, int expected_target_revision, int current_minutes );

@@ -15897,6 +15897,8 @@ bool scout_assessment_states_equal( const scout_assessment_state &lhs,
            lhs.exit_reason == rhs.exit_reason;
 }
 
+} // namespace
+
 scout_assessment_state summarize_normal_scout_assessment(
     const active_outing_state &outing )
 {
@@ -15915,8 +15917,10 @@ scout_assessment_state summarize_normal_scout_assessment(
     int contradiction_penalty = 0;
     bool confirmed_presence = false;
     bool equipment_detail = false;
-    bool defender_bounds_started = false;
-    bool danger_bounds_started = false;
+    using observation_window_key = std::tuple<int, int, int, int>;
+    std::map<observation_window_key, int> static_hazard_by_window;
+    std::vector<const sortie_observation *> defender_windows;
+    int route_danger_high = 0;
     std::set<int> strong_visual_buckets;
     std::set<sortie_observation_sense> signal_senses;
     int latest_progress = std::max( summary.observation_started_minutes,
@@ -15932,6 +15936,11 @@ scout_assessment_state summarize_normal_scout_assessment(
             std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
                        observation.source_omt ) != outing.target_footprint.end();
         if( !target_evidence && observation.kind != sortie_observation_kind::burn ) {
+            if( observation.sense == sortie_observation_sense::visual ) {
+                route_danger_high = std::max(
+                                        route_danger_high,
+                                        std::clamp( observation.observed_power_high, 0, 20 ) );
+            }
             continue;
         }
         latest_progress = std::max( latest_progress, observation.observed_minutes );
@@ -15954,29 +15963,37 @@ scout_assessment_state summarize_normal_scout_assessment(
         }
         if( !observation.defender_ids.empty() ) {
             confirmed_presence = true;
-            const int defenders = static_cast<int>( observation.defender_ids.size() );
-            if( !defender_bounds_started ) {
-                summary.defenders_low = defenders;
-                summary.defenders_high = defenders;
-                defender_bounds_started = true;
-            } else {
-                summary.defenders_low = std::min( summary.defenders_low, defenders );
-                summary.defenders_high = std::max( summary.defenders_high, defenders );
-            }
-        }
-        if( observation.observed_power_high > 0 ) {
-            if( !danger_bounds_started ) {
-                summary.danger_low = observation.observed_power_low;
-                summary.danger_high = observation.observed_power_high;
-                danger_bounds_started = true;
-            } else {
-                summary.danger_low = std::min( summary.danger_low,
-                                              observation.observed_power_low );
-                summary.danger_high = std::max( summary.danger_high,
-                                               observation.observed_power_high );
-            }
+            defender_windows.push_back( &observation );
+        } else if( observation.observed_power_low > 0 ) {
+            const observation_window_key key(
+                observation.bucket_start_minutes, observation.source_omt.z(),
+                observation.source_omt.y(), observation.source_omt.x() );
+            static_hazard_by_window[key] = std::max(
+                                               static_hazard_by_window[key],
+                                               std::clamp( observation.observed_power_low, 0, 20 ) );
         }
         equipment_detail = equipment_detail || observation.equipment_detail > 0;
+    }
+    int observed_unit_power = 3;
+    bool hard_unsafe_defender_count = false;
+    for( const sortie_observation *observation : defender_windows ) {
+        const int defenders = static_cast<int>( observation->defender_ids.size() );
+        summary.defenders_low = std::max( summary.defenders_low, defenders );
+        const int unit_power = ( observation->observed_power_low + defenders - 1 ) /
+                               defenders;
+        observed_unit_power = std::max( observed_unit_power,
+                                        std::clamp( unit_power, 3, 10 ) );
+        hard_unsafe_defender_count = hard_unsafe_defender_count || defenders > 12;
+        const observation_window_key key(
+            observation->bucket_start_minutes, observation->source_omt.z(),
+            observation->source_omt.y(), observation->source_omt.x() );
+        summary.danger_low = std::max(
+                                 summary.danger_low,
+                                 std::clamp( observation->observed_power_low +
+                                             static_hazard_by_window[key], 0, 140 ) );
+    }
+    for( const auto &hazard : static_hazard_by_window ) {
+        summary.danger_low = std::max( summary.danger_low, hazard.second );
     }
     signal_certainty = std::min( 10, 5 * static_cast<int>( signal_senses.size() ) );
     summary.certainty = std::clamp( visual_certainty + signal_certainty +
@@ -15985,6 +16002,13 @@ scout_assessment_state summarize_normal_scout_assessment(
                                    0, 95 );
     summary.strong_visual_windows = std::min( 3,
                                     static_cast<int>( strong_visual_buckets.size() ) );
+    const int unknown_slots = scout_assessment_unknown_slots( summary.certainty );
+    summary.defenders_high = hard_unsafe_defender_count ? summary.defenders_low :
+                             std::min( 12, summary.defenders_low + unknown_slots );
+    summary.danger_high = hard_unsafe_defender_count ? 200 :
+                          std::clamp( summary.danger_low + unknown_slots * observed_unit_power +
+                                      route_danger_high + ( summary.target_alert + 19 ) / 20,
+                                      0, 200 );
     summary.last_progress_minutes = latest_progress;
     if( summary.threshold_class == scout_assessment_threshold_class::normal &&
         !scout_assessment_readiness_after_certainty(
@@ -15996,7 +16020,10 @@ scout_assessment_state summarize_normal_scout_assessment(
     return summary;
 }
 
-} // namespace
+int scout_assessment_unknown_slots( const int certainty )
+{
+    return certainty < 40 ? 4 : certainty < 60 ? 3 : certainty < 80 ? 2 : 1;
+}
 
 scout_assessment_result advance_structural_scout_assessment(
     site_record &site, const std::string &expected_activity_id,
@@ -16909,12 +16936,12 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
     if( candidate.active_outing.assessment.observation_started_minutes < 0 ) {
         candidate.active_outing.assessment.observation_started_minutes = current_minutes;
     }
+    candidate.active_outing.assessment.target_alert = 100;
     candidate.active_outing.assessment = summarize_normal_scout_assessment(
             candidate.active_outing );
     candidate.active_outing.assessment.last_progress_minutes = current_minutes;
     candidate.active_outing.assessment.burned_minutes = current_minutes;
     candidate.active_outing.assessment.burn_origin_omt = exposure->position;
-    candidate.active_outing.assessment.target_alert = 100;
     candidate.active_outing.assessment.certainty = std::min(
                 95, candidate.active_outing.assessment.certainty + 30 );
     const bool burned_readiness_latched =
