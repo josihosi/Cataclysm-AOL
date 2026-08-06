@@ -351,7 +351,12 @@ abstract travel. The cross-layer test round-trips immediately before/after burn,
 the last local tick, runs real structural maintenance, reloads, and rematerializes with the same
 egress/retry state and one burn fact. Mac build, burn 2/426, handoff 1/651, diff check, and final
 autoreview pass. Next: isolate the partial-bubble/only-one-loaded-member boundary without weakening
-the exact-pair owner.
+the exact-pair owner. That boundary is green as a test-only contract at `86c8c2fb3b`: one absent
+production-shaped member read rejects byte-inert without inferred visibility, casualty, movement,
+route, retry, or burn state; the same pair burns exactly once after the complete read becomes
+available. The rebuilt exact case passes 449 assertions and `[covert_burn]` passes 2/453. Next:
+repeat the burned local/abstract/load cycle and prove the same owner survives more than one bubble
+transition.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

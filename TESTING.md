@@ -1260,3 +1260,11 @@ that the shared homeward predicate also covered ordinary `returning_home`; the a
 by retaining only burned/exposed/report snapshots, an explicit ordinary-home control was added, and
 the required rerun reports no actionable findings. No astyle 3.1, tiles/live GUI, Linux, or Windows
 claim. Next evidence is the only-one-loaded-member partial-bubble boundary.
+
+Phase-5 partial-bubble burn atomicity is green at `86c8c2fb3b`. The production-shaped two-record
+payload with one stable member ID but `present=false` is rejected byte-for-byte: phase, route,
+retry state, casualty state, and the missing member's physical snapshot do not change, and no burn
+fact is created. Supplying the later complete read applies once; replay is inert with one burn fact.
+The delegated rebuild exits 0, the exact fixed-seed case passes 1/449, `[covert_burn]` passes 2/453,
+the root rerun passes 1/449, and `git diff --check` is clean. This is test-only and claims no live or
+cross-platform runtime. Next evidence repeats the full burned load/unload cycle.
