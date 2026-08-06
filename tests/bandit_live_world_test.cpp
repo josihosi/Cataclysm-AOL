@@ -21364,6 +21364,227 @@ TEST_CASE( "bandit_live_world_response_selection_leaves_a_named_capable_home_res
     }
 }
 
+TEST_CASE( "bandit_live_world_response_authorization_centralizes_hard_report_and_party_gates",
+           "[bandit][live_world][response_power][response_selection][response_authorization]" )
+{
+    using bandit_live_world::camp_decision_state;
+    using bandit_live_world::camp_decision_transition_result;
+    using bandit_live_world::camp_report_policy;
+    using bandit_live_world::response_authorization_evaluation;
+    using bandit_live_world::response_member_power_read;
+    using bandit_live_world::response_party_selection_result;
+    using bandit_live_world::scout_assessment_threshold_class;
+
+    const auto make_world = []( const bool cannibal, const int certainty,
+    const int bounty, const int danger, const int first_id ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 7; ++index ) {
+            if( cannibal ) {
+                add_cannibal_camp_member( world, index, first_id );
+            } else {
+                add_bandit_camp_member( world, index, first_id );
+            }
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        bandit_live_world::scout_report_record &report = site.current_scout_report;
+        report.revision = 7;
+        report.action_policy = cannibal ? camp_report_policy::cannibal_night_raid :
+                               camp_report_policy::bandit_shakedown;
+        report.source_activity_id = site.site_id + "#scout:4";
+        report.source_generation = 4;
+        report.source_job_type = "scout";
+        report.target_id = "authorization-target";
+        report.target_omt = cannibal ? tripoint_abs_omt( 78, 80, 0 ) :
+                            tripoint_abs_omt( 18, 20, 0 );
+        report.application_key = report.source_activity_id + ":report:4";
+        report.delivered_minutes = 100;
+        report.assessment.certainty = certainty;
+        report.assessment.readiness_latched = true;
+        report.assessment.threshold_class = cannibal ?
+                scout_assessment_threshold_class::burned :
+                scout_assessment_threshold_class::normal;
+        report.assessment.danger_high = danger;
+        report.assessment.bounty_estimate = bounty;
+        REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+                 camp_decision_transition_result::applied );
+        return world;
+    };
+    const auto make_reads = []( const bandit_live_world::site_record &site,
+    const std::vector<int> &powers ) {
+        REQUIRE( site.roster().physically_present_ids.size() == powers.size() );
+        std::vector<response_member_power_read> reads;
+        for( std::size_t index = 0; index < powers.size(); ++index ) {
+            reads.push_back( { site.roster().physically_present_ids[index], true, true, true,
+                               powers[index] } );
+        }
+        return reads;
+    };
+    const auto select_party = [&make_reads]( const bandit_live_world::site_record &site,
+    const std::vector<int> &powers ) {
+        return bandit_live_world::select_capable_response_party(
+                   site, site.current_scout_report.action_policy,
+                   site.current_scout_report.assessment.danger_high,
+                   make_reads( site, powers ) );
+    };
+
+    SECTION( "exact bandit and cannibal gates authorize without consuming the decision" ) {
+        bandit_live_world::world_state bandit_world = make_world( false, 60, 2, 15, 54300 );
+        bandit_live_world::site_record &bandit_site = bandit_world.sites.front();
+        const response_party_selection_result bandit_party = select_party(
+                    bandit_site, { 10, 9, 6, 5, 4, 3, 2 } );
+        REQUIRE( bandit_party.eligible );
+        const std::string bandit_before = serialize_world( bandit_world );
+        const response_authorization_evaluation bandit =
+            bandit_live_world::evaluate_response_authorization(
+                bandit_site, 101, bandit_party,
+                make_reads( bandit_site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        REQUIRE( bandit.valid );
+        CHECK( bandit.authorized );
+        CHECK( bandit.report_current );
+        CHECK( bandit.report_revision_available );
+        CHECK( bandit.report_unexpired );
+        CHECK( bandit.assessment_ready );
+        CHECK( bandit.opportunity_sufficient );
+        CHECK( bandit.reserve_ready );
+        CHECK( bandit.power_sufficient );
+        CHECK( bandit.normalized_opportunity == 667 );
+        CHECK( bandit.party_power == 19 );
+        CHECK( bandit.required_power == 19 );
+        CHECK( bandit.rejection_reason.empty() );
+        CHECK( serialize_world( bandit_world ) == bandit_before );
+        CHECK( bandit_live_world::evaluate_response_authorization(
+                   bandit_site, 101, bandit_party,
+                   make_reads( bandit_site, { 10, 9, 6, 5, 4, 3, 2 } ) ).authorized );
+        CHECK( serialize_world( bandit_world ) == bandit_before );
+
+        bandit_live_world::world_state cannibal_world = make_world( true, 50, 2, 13, 54400 );
+        bandit_live_world::site_record &cannibal_site = cannibal_world.sites.front();
+        const response_party_selection_result cannibal_party = select_party(
+                    cannibal_site, { 10, 9, 6, 5, 4, 3, 2 } );
+        REQUIRE( cannibal_party.eligible );
+        REQUIRE( cannibal_party.party_size == 3 );
+        const std::string cannibal_before = serialize_world( cannibal_world );
+        const response_authorization_evaluation cannibal =
+            bandit_live_world::evaluate_response_authorization(
+                cannibal_site, 101, cannibal_party,
+                make_reads( cannibal_site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK( cannibal.authorized );
+        CHECK( cannibal.assessment_ready );
+        CHECK( cannibal.party_power == 25 );
+        CHECK( cannibal.required_power == 20 );
+        CHECK( serialize_world( cannibal_world ) == cannibal_before );
+    }
+
+    SECTION( "freshness readiness opportunity and power remain independent hard gates" ) {
+        bandit_live_world::world_state world = make_world( false, 70, 2, 15, 54500 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const response_party_selection_result party = select_party(
+                    site, { 10, 9, 6, 5, 4, 3, 2 } );
+        const std::string before = serialize_world( world );
+        const response_authorization_evaluation expired =
+            bandit_live_world::evaluate_response_authorization(
+                site, 100 + 48 * 60, party,
+                make_reads( site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        REQUIRE( expired.valid );
+        CHECK_FALSE( expired.authorized );
+        CHECK_FALSE( expired.report_unexpired );
+        CHECK( serialize_world( world ) == before );
+
+        bandit_live_world::world_state uncertain_world = make_world( false, 59, 3, 15, 54600 );
+        const bandit_live_world::site_record &uncertain_site = uncertain_world.sites.front();
+        const response_authorization_evaluation uncertain =
+            bandit_live_world::evaluate_response_authorization(
+                uncertain_site, 101, select_party(
+                    uncertain_site, { 10, 9, 6, 5, 4, 3, 2 } ),
+                make_reads( uncertain_site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK_FALSE( uncertain.authorized );
+        CHECK_FALSE( uncertain.assessment_ready );
+        CHECK( uncertain.opportunity_sufficient );
+
+        bandit_live_world::world_state poor_world = make_world( false, 70, 1, 15, 54700 );
+        const bandit_live_world::site_record &poor_site = poor_world.sites.front();
+        const response_authorization_evaluation poor =
+            bandit_live_world::evaluate_response_authorization(
+                poor_site, 101, select_party( poor_site, { 10, 9, 6, 5, 4, 3, 2 } ),
+                make_reads( poor_site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK_FALSE( poor.authorized );
+        CHECK( poor.assessment_ready );
+        CHECK_FALSE( poor.opportunity_sufficient );
+        CHECK( poor.normalized_opportunity == 333 );
+
+        response_party_selection_result below_margin = party;
+        below_margin.party_power = 18;
+        const response_authorization_evaluation weak =
+            bandit_live_world::evaluate_response_authorization(
+                site, 101, below_margin,
+                make_reads( site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK_FALSE( weak.valid );
+        CHECK_FALSE( weak.authorized );
+        CHECK_FALSE( weak.reserve_ready );
+        CHECK_FALSE( weak.power_sufficient );
+        CHECK( weak.required_power == 0 );
+
+        const std::vector<response_member_power_read> insufficient_reads =
+            make_reads( site, { 3, 3, 3, 3, 3, 3, 3 } );
+        const response_party_selection_result insufficient_party =
+            bandit_live_world::select_capable_response_party(
+                site, camp_report_policy::bandit_shakedown, 15, insufficient_reads );
+        REQUIRE_FALSE( insufficient_party.eligible );
+        const response_authorization_evaluation insufficient =
+            bandit_live_world::evaluate_response_authorization(
+                site, 101, insufficient_party, insufficient_reads );
+        REQUIRE( insufficient.valid );
+        CHECK_FALSE( insufficient.authorized );
+        CHECK_FALSE( insufficient.power_sufficient );
+    }
+
+    SECTION( "accepted revision ownership and named reserve fail closed when stale" ) {
+        bandit_live_world::world_state world = make_world( false, 70, 3, 15, 54800 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const response_party_selection_result party = select_party(
+                    site, { 10, 9, 6, 5, 4, 3, 2 } );
+
+        bandit_live_world::world_state stale_watermark = world;
+        stale_watermark.sites.front().acted_reports.front().report_revision = 6;
+        const std::string stale_before = serialize_world( stale_watermark );
+        const response_authorization_evaluation stale =
+            bandit_live_world::evaluate_response_authorization(
+                stale_watermark.sites.front(), 101, party,
+                make_reads( stale_watermark.sites.front(), { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK_FALSE( stale.valid );
+        CHECK( stale.report_current );
+        CHECK_FALSE( stale.report_revision_available );
+        CHECK( serialize_world( stale_watermark ) == stale_before );
+
+        REQUIRE( bandit_live_world::transition_camp_decision_state(
+                     site, camp_decision_state::report_awaiting_assessment,
+                     camp_decision_state::preparing_follow_on, 7, 4, 101, -1,
+                     "test authorization consumed" ) ==
+                 camp_decision_transition_result::applied );
+        const std::string consumed_before = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::evaluate_response_authorization(
+                         site, 102, party,
+                         make_reads( site, { 10, 9, 6, 5, 4, 3, 2 } ) ).valid );
+        CHECK( serialize_world( world ) == consumed_before );
+
+        bandit_live_world::world_state reserve_world = make_world( false, 70, 3, 15, 54900 );
+        bandit_live_world::site_record &reserve_site = reserve_world.sites.front();
+        const response_party_selection_result reserve_party = select_party(
+                    reserve_site, { 10, 9, 6, 5, 4, 3, 2 } );
+        REQUIRE( reserve_party.reserve_member_ids.size() == 3 );
+        reserve_site.find_member( reserve_party.reserve_member_ids.front() )->wounded_or_unready = true;
+        const std::string reserve_before = serialize_world( reserve_world );
+        const response_authorization_evaluation stale_reserve =
+            bandit_live_world::evaluate_response_authorization(
+                reserve_site, 101, reserve_party,
+                make_reads( reserve_site, { 10, 9, 6, 5, 4, 3, 2 } ) );
+        CHECK_FALSE( stale_reserve.valid );
+        CHECK_FALSE( stale_reserve.reserve_ready );
+        CHECK( stale_reserve.opportunity_sufficient );
+        CHECK( serialize_world( reserve_world ) == reserve_before );
+    }
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {

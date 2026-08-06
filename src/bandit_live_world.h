@@ -859,6 +859,22 @@ struct response_party_selection_result {
     std::string rejection_reason;
 };
 
+struct response_authorization_evaluation {
+    bool valid = false;
+    bool authorized = false;
+    bool report_current = false;
+    bool report_revision_available = false;
+    bool report_unexpired = false;
+    bool assessment_ready = false;
+    bool opportunity_sufficient = false;
+    bool reserve_ready = false;
+    bool power_sufficient = false;
+    int normalized_opportunity = 0;
+    int party_power = 0;
+    int required_power = 0;
+    std::string rejection_reason;
+};
+
 struct site_record {
     int schema_version = 12;
     std::string site_id;
@@ -1512,6 +1528,10 @@ response_power_evaluation evaluate_response_party_power(
     const std::vector<int> &normalized_member_powers );
 response_party_selection_result select_capable_response_party(
     const site_record &site, camp_report_policy policy, int danger_high,
+    const std::vector<response_member_power_read> &member_reads );
+response_authorization_evaluation evaluate_response_authorization(
+    const site_record &site, int current_minutes,
+    const response_party_selection_result &selection,
     const std::vector<response_member_power_read> &member_reads );
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,

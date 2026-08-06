@@ -10257,6 +10257,104 @@ int normalize_ground_bounty_opportunity( const int bounty_units )
     }
 }
 
+response_authorization_evaluation evaluate_response_authorization(
+    const site_record &site, const int current_minutes,
+    const response_party_selection_result &selection,
+    const std::vector<response_member_power_read> &member_reads )
+{
+    response_authorization_evaluation result;
+    const scout_report_record &report = site.current_scout_report;
+    const camp_report_policy policy = report.action_policy;
+    const camp_report_policy expected_policy = report_policy_for_profile(
+                effective_profile( site ) );
+    const bandit_dry_run::job_template expected_job =
+        policy == camp_report_policy::cannibal_night_raid ?
+        bandit_dry_run::job_template::raid : bandit_dry_run::job_template::toll;
+    if( current_minutes < 0 || site.retired_empty_site ||
+        site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::report_awaiting_assessment ||
+        policy == camp_report_policy::none || policy != expected_policy ||
+        current_minutes < site.camp_decision.last_transition_minutes ||
+        !report_matches_camp_decision( report, site.camp_decision ) ) {
+        result.rejection_reason = "current report is not awaiting response authorization";
+        return result;
+    }
+    result.report_current = true;
+
+    const acted_report_summary *accepted = find_acted_report( site, report );
+    if( accepted == nullptr || accepted->source_generation != report.source_generation ||
+        accepted->report_revision != report.revision ||
+        accepted->acted_minutes != report.delivered_minutes ) {
+        result.rejection_reason = "current report revision is not the exact accepted decision revision";
+        return result;
+    }
+    result.report_revision_available = true;
+
+    const scout_report_effective_state effective = evaluate_scout_report_at(
+                report, current_minutes );
+    if( !effective.valid ) {
+        result.rejection_reason = "current report cannot be evaluated at this time";
+        return result;
+    }
+    result.report_unexpired = effective.attack_authorization_usable;
+    result.assessment_ready = effective.assessment_ready;
+    result.normalized_opportunity = normalize_ground_bounty_opportunity(
+                                        effective.bounty_estimate );
+    result.opportunity_sufficient = result.normalized_opportunity >= 600;
+
+    const response_party_selection_result fresh_selection =
+        select_capable_response_party( site, policy, effective.danger_high, member_reads );
+    const bool selection_matches =
+        selection.eligible == fresh_selection.eligible &&
+        selection.threat_derived == fresh_selection.threat_derived &&
+        selection.job == fresh_selection.job &&
+        selection.party_size == fresh_selection.party_size &&
+        selection.required_local_reserve == fresh_selection.required_local_reserve &&
+        selection.party_power == fresh_selection.party_power &&
+        selection.required_power == fresh_selection.required_power &&
+        selection.member_ids == fresh_selection.member_ids &&
+        selection.reserve_member_ids == fresh_selection.reserve_member_ids &&
+        selection.rejection_reason == fresh_selection.rejection_reason;
+    if( !selection_matches ) {
+        result.rejection_reason =
+            "selected response party is not bound to the current authoritative member reads";
+        return result;
+    }
+    if( !fresh_selection.eligible ) {
+        result.valid = true;
+        result.rejection_reason = fresh_selection.rejection_reason;
+        return result;
+    }
+
+    const response_power_evaluation expected_power = evaluate_response_party_power(
+                policy, effective.danger_high, { 1 } );
+    if( fresh_selection.job != expected_job || fresh_selection.party_size < 2 ||
+        fresh_selection.party_size > 6 || !expected_power.valid ||
+        fresh_selection.required_power != expected_power.required_power ) {
+        result.rejection_reason = "selected response party is malformed or stale";
+        return result;
+    }
+
+    result.valid = true;
+    result.reserve_ready = true;
+    result.party_power = fresh_selection.party_power;
+    result.required_power = expected_power.required_power;
+    result.power_sufficient = 100 * result.party_power >=
+                              expected_power.margin_percent * effective.danger_high;
+    if( !result.report_unexpired ) {
+        result.rejection_reason = "response report authorization has expired";
+    } else if( !result.assessment_ready ) {
+        result.rejection_reason = "response assessment is not ready";
+    } else if( !result.opportunity_sufficient ) {
+        result.rejection_reason = "response opportunity is below the authorization floor";
+    } else if( !result.power_sufficient ) {
+        result.rejection_reason = "selected response party no longer clears the faction margin";
+    } else {
+        result.authorized = true;
+    }
+    return result;
+}
+
 int hostile_camp_dispatch_drive( const int need, const int knowledge_gap,
                                  const int best_cheap_target, const int cadence )
 {
