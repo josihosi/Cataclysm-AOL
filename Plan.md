@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 EGRESS RETRY MEMORY NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 SLOW/INJURED FOLLOWER NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -360,7 +360,12 @@ transition. Repeated cycling is green at `6217823710`: after the real cohesion s
 dematerialization, abstract-maintenance tick, reload, and rematerialization preserve the exact
 egress/retry owner and one burn fact. Mac exact burn passes 1/474 and the tag passes 2/478. Next:
 cover authoritative member and leader death during a burned handoff, reusing normal casualty
-writeback rather than erasing the outing.
+writeback rather than erasing the outing. That boundary is green at `76eb587645`: either member may
+die during dematerialization, casualty/resolved/roster writeback remains canonical, a dead leader is
+replaced by the survivor in the transaction plan, replay is idempotent, and a serialized pre-fix
+dead-leader shape repairs during survivor rematerialization. Mac exact burn passes 1/532, the burn
+tag passes 2/536, and local handoff passes 1/651 after a clean rebuild and final autoreview. Next:
+cover a slow/injured follower without splitting the pair or resetting the burned egress owner.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

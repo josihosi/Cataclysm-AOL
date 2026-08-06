@@ -1277,3 +1277,15 @@ correctly failed because a rematerialized pair must reassemble; adding the canon
 not a flag mutation, made the sequence honest. Mac build and diff check pass; the exact case passes
 1/474 and `[covert_burn]` 2/478. Test-only; no live/cross-platform claim. Next: authoritative member
 and leader death during a burned handoff.
+
+Phase-5 burned-handoff casualty reconciliation is green at `76eb587645`. Either exact member dies
+during dematerialization through normal casualty/resolved-member/roster writeback; if the leader
+dies, the plan elects the canonical survivor before commit, both ownership commits synchronize the
+leader fields, replay returns unchanged, and the survivor retains the burned egress through
+save/load and rematerialization with one burn fact. A deliberately serialized pre-fix dead-leader
+shape loads unchanged and repairs on the authoritative abstract-to-local transition. The redirected
+Mac rebuild exits 0; fixed-seed exact burn passes 1/532, `[covert_burn]` passes 2/536, and
+`[local_handoff]` passes 1/651. AutoReview found and drove fixes for replay idempotency and pre-fix
+save compatibility; the final rerun is clean. One non-credit concurrent exact launch raced on the
+shared test player-template file, so credited Cata runs were serial. `git diff --check` is clean.
+No astyle 3.1, tiles/live GUI, Linux, or Windows claim. Next: slow/injured follower continuity.
