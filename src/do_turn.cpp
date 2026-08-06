@@ -921,9 +921,11 @@ live_bandit_covert_egress_plan live_bandit_plan_covert_egress(
 {
     live_bandit_covert_egress_plan plan;
     const bandit_live_world::active_outing_state &outing = site.active_outing;
+    const tripoint_abs_omt route_origin = outing.covert_egress_attempts > 0 ?
+            outing.local_handoff.egress_omt : outing.selected_watch_omt;
     const std::optional<int> origin_distance =
         bandit_live_world::target_footprint_watch_distance(
-            outing.selected_watch_omt, outing.target_footprint );
+            route_origin, outing.target_footprint );
     if( !origin_distance ) {
         return plan;
     }
@@ -1007,9 +1009,9 @@ live_bandit_covert_egress_plan live_bandit_plan_covert_egress(
                 continue;
             }
             bandit_live_world::covert_scout_egress_candidate candidate;
-            candidate.omt = tripoint_abs_omt( outing.selected_watch_omt.x() + dx,
-                                              outing.selected_watch_omt.y() + dy,
-                                              outing.selected_watch_omt.z() );
+            candidate.omt = tripoint_abs_omt( route_origin.x() + dx,
+                                              route_origin.y() + dy,
+                                              route_origin.z() );
             const std::optional<int> candidate_distance =
                 bandit_live_world::target_footprint_watch_distance(
                     candidate.omt, outing.target_footprint );
@@ -1143,8 +1145,9 @@ bool live_bandit_fail_burned_egress( const character_id member_id )
     } ), retry_candidates.end() );
     const std::optional<bandit_live_world::covert_scout_egress_candidate> expected_retry =
         bandit_live_world::select_covert_scout_egress(
-            owner->active_outing.selected_watch_omt,
-            owner->active_outing.target_footprint, retry_candidates );
+            owner->active_outing.local_handoff.egress_omt,
+            owner->active_outing.target_footprint, retry_candidates,
+            owner->active_outing.selected_watch_omt );
     std::vector<std::pair<npc *, std::vector<tripoint_abs_omt>>> retry_bindings;
     if( expected_retry ) {
         const auto selected_routes = plan.routes.find( expected_retry->omt );
@@ -2107,19 +2110,27 @@ bool note_live_bandit_aftermath()
             read.position_known = member_npc != nullptr && !member_npc->is_dead();
             if( read.position_known ) {
                 read.position = member_npc->pos_abs_omt();
-                const bool locally_loaded = member_npc->is_active() &&
-                                            here.inbounds( member_npc->pos_bub( here ) );
+                const bool in_bounds = here.inbounds( member_npc->pos_bub( here ) );
+                const bool locally_loaded = member_npc->is_active() && in_bounds;
                 if( locally_loaded ) {
-                    read.mutual_target_visibility = u.sees( here, *member_npc ) ||
-                                                    member_npc->sees( here, u );
+                    read.mutual_target_visibility_evaluated = true;
+                    read.mutual_target_visibility =
+                        u.sees_without_clairvoyance( here, *member_npc ) ||
+                        member_npc->sees_without_clairvoyance( here, u );
                     for( const npc &defender : g->all_npcs() ) {
                         if( read.mutual_target_visibility || &defender == member_npc ||
                             !defender.is_player_ally() ) {
                             continue;
                         }
-                        read.mutual_target_visibility = defender.sees( here, *member_npc ) ||
-                                                        member_npc->sees( here, defender );
+                        read.mutual_target_visibility =
+                            defender.sees_without_clairvoyance( here, *member_npc ) ||
+                            member_npc->sees_without_clairvoyance( here, defender );
                     }
+                } else if( !in_bounds ) {
+                    // Ordinary Creature visibility exists only in the active map.  A known NPC
+                    // outside that map is authoritatively outside current loaded acquire.  An
+                    // inactive but in-bounds NPC remains unknown until materialized.
+                    read.mutual_target_visibility_evaluated = true;
                 }
             }
             acquire_reads.push_back( read );
@@ -2143,6 +2154,22 @@ bool note_live_bandit_aftermath()
             if( cursor && bandit_live_world::complete_covert_scout_burned_egress(
                     site, *cursor, acquire_reads, current_minutes ) ) {
                 changed = true;
+                continue;
+            }
+            const auto visible_survivor = std::find_if(
+                                              acquire_reads.begin(), acquire_reads.end(),
+            []( const bandit_live_world::covert_scout_member_acquire_read & read ) {
+                return read.mutual_target_visibility;
+            } );
+            if( cursor && visible_survivor != acquire_reads.end() &&
+                live_bandit_fail_burned_egress( visible_survivor->npc_id ) ) {
+                changed = true;
+                continue;
+            }
+            if( std::any_of( acquire_reads.begin(), acquire_reads.end(),
+            []( const bandit_live_world::covert_scout_member_acquire_read & read ) {
+                return !read.mutual_target_visibility_evaluated;
+            } ) ) {
                 continue;
             }
         }

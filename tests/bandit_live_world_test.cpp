@@ -14804,11 +14804,15 @@ TEST_CASE( "bandit_live_world_covert_disposition_is_an_exact_derived_member_view
     CHECK( serialize_world( world ) == before );
 
     std::vector<bandit_live_world::covert_scout_member_acquire_read> acquire_reads = {
-        { first_id, outing.selected_watch_omt, true, true, false },
-        { second_id, outing.selected_watch_omt, true, true, false }
+        { first_id, outing.selected_watch_omt, true, true, false, true },
+        { second_id, outing.selected_watch_omt, true, true, false, true }
     };
     CHECK( bandit_live_world::covert_scout_party_cleared_target_acquire_range(
                outing, acquire_reads ) );
+    acquire_reads[0].mutual_target_visibility_evaluated = false;
+    CHECK_FALSE( bandit_live_world::covert_scout_party_cleared_target_acquire_range(
+                     outing, acquire_reads ) );
+    acquire_reads[0].mutual_target_visibility_evaluated = true;
     acquire_reads[0].mutual_target_visibility = true;
     CHECK_FALSE( bandit_live_world::covert_scout_party_cleared_target_acquire_range(
                      outing, acquire_reads ) );
@@ -14839,8 +14843,8 @@ TEST_CASE( "bandit_live_world_covert_disposition_is_an_exact_derived_member_view
     abort_site.active_outing.local_handoff.cohesion_reroutes_used = 2;
     REQUIRE( bandit_live_world::is_active_covert_scout_member( abort_world, first_id ) );
     const std::vector<bandit_live_world::covert_scout_member_acquire_read> abort_clear_reads = {
-        { first_id, abort_site.active_outing.selected_watch_omt, true, true, false },
-        { second_id, abort_site.active_outing.selected_watch_omt, true, true, false }
+        { first_id, abort_site.active_outing.selected_watch_omt, true, true, false, true },
+        { second_id, abort_site.active_outing.selected_watch_omt, true, true, false, true }
     };
     const std::optional<bandit_live_world::simulation_advance_cursor> abort_cursor =
         bandit_live_world::current_external_simulation_cursor( abort_site );
@@ -15199,12 +15203,12 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
             bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( failed_cursor );
         REQUIRE( bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                     site, *failed_cursor, blocked, 2 ).result ==
+                     site, *failed_cursor, {}, 2 ).result ==
                  bandit_live_world::covert_scout_egress_failure_result::exhausted );
         CHECK( site.active_outing.phase ==
                bandit_live_world::scout_phase::returning_exposed );
         CHECK( bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                   site, *failed_cursor, blocked, 2 ).result ==
+                   site, *failed_cursor, {}, 2 ).result ==
                bandit_live_world::covert_scout_egress_failure_result::rejected );
         CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
@@ -15213,18 +15217,30 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         bandit_live_world::world_state world = make_world();
         bandit_live_world::site_record &site = world.sites.front();
         const tripoint_abs_omt first_exit( 0, -1, 0 );
-        const tripoint_abs_omt second_exit( 0, 0, 0 );
-        const tripoint_abs_omt third_exit( 0, 1, 0 );
-        const std::vector<bandit_live_world::covert_scout_egress_candidate> exits = {
-            { third_exit, true, true, false, 0, 1, { third_exit } },
-            { first_exit, true, true, false, 0, 1, { first_exit } },
+        const tripoint_abs_omt second_exit( -1, -1, 0 );
+        const tripoint_abs_omt third_exit( -2, -1, 0 );
+        const std::vector<bandit_live_world::covert_scout_egress_candidate> first_attempt = {
+            { first_exit, true, true, false, 0, 1, { first_exit } }
+        };
+        const std::vector<bandit_live_world::covert_scout_egress_candidate> second_attempt = {
             { second_exit, true, true, false, 0, 1, { second_exit } }
+        };
+        const std::vector<bandit_live_world::covert_scout_egress_candidate> third_attempt = {
+            { third_exit, true, true, false, 0, 1, { third_exit } }
+        };
+        const auto visible_arrivals = []( const bandit_live_world::active_outing_state &outing ) {
+            std::vector<bandit_live_world::covert_scout_member_acquire_read> reads;
+            for( const character_id member_id : outing.member_ids ) {
+                reads.push_back( { member_id, outing.local_handoff.egress_omt,
+                                   true, false, true, true } );
+            }
+            return reads;
         };
         std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
         REQUIRE( bandit_live_world::apply_covert_scout_burn(
-                     site, *cursor, make_reads( site.active_outing ), exits, 1 ).result ==
+                     site, *cursor, make_reads( site.active_outing ), first_attempt, 1 ).result ==
                  bandit_live_world::covert_scout_burn_result::applied );
         CHECK( site.active_outing.local_handoff.egress_omt == first_exit );
         CHECK( site.active_outing.covert_egress_attempts == 1 );
@@ -15236,9 +15252,19 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
         const bandit_live_world::simulation_advance_cursor first_attempt_cursor = *cursor;
+        const std::string before_visible_first_rally = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
+                         site, *cursor, visible_arrivals( site.active_outing ), 1 ) );
+        CHECK( serialize_world( world ) == before_visible_first_rally );
+        const tripoint_abs_omt invalid_jump( -2, -1, 0 );
+        CHECK( bandit_live_world::resolve_covert_scout_burned_egress_failure(
+                   site, *cursor,
+        { { invalid_jump, true, true, false, 0, 1, { invalid_jump } } }, 1 ).result ==
+               bandit_live_world::covert_scout_egress_failure_result::rejected );
+        CHECK( serialize_world( world ) == before_visible_first_rally );
         const bandit_live_world::covert_scout_egress_failure_effect first_retry =
             bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                site, *cursor, exits, 1 );
+                site, *cursor, second_attempt, 1 );
         REQUIRE( first_retry.result ==
                  bandit_live_world::covert_scout_egress_failure_result::retried );
         CHECK( first_retry.failed_egress_omt == first_exit );
@@ -15265,9 +15291,16 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK_FALSE( bandit_live_world::covert_scout_egress_route_respects_retry_memory(
                          site.active_outing, second_exit,
                          { tripoint_abs_omt( 1, 1, 0 ), second_exit }, true ) );
+        CHECK_FALSE( bandit_live_world::covert_scout_egress_route_respects_retry_memory(
+                         site.active_outing, second_exit,
+                         { third_exit, tripoint_abs_omt( 0, 0, 0 ), second_exit }, true ) );
+        CHECK( bandit_live_world::covert_scout_egress_route_respects_retry_memory(
+                   site.active_outing, site.active_outing.selected_watch_omt,
+        { third_exit, tripoint_abs_omt( -1, 0, 0 ), tripoint_abs_omt( 0, 1, 0 ),
+          site.active_outing.selected_watch_omt }, true ) );
         const std::string after_first_retry = serialize_world( world );
         CHECK( bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                   site, first_attempt_cursor, exits, 1 ).result ==
+                   site, first_attempt_cursor, second_attempt, 1 ).result ==
                bandit_live_world::covert_scout_egress_failure_result::rejected );
         CHECK( bandit_live_world::advance_external_simulation(
                    site, first_attempt_cursor.activity_id, first_attempt_cursor.generation,
@@ -15341,9 +15374,13 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
 
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
+        const std::string before_visible_second_rally = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
+                         site, *cursor, visible_arrivals( site.active_outing ), 5 ) );
+        CHECK( serialize_world( world ) == before_visible_second_rally );
         const bandit_live_world::covert_scout_egress_failure_effect second_retry =
             bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                site, *cursor, exits, 5 );
+                site, *cursor, third_attempt, 5 );
         REQUIRE( second_retry.result ==
                  bandit_live_world::covert_scout_egress_failure_result::retried );
         CHECK( second_retry.failed_egress_omt == second_exit );
@@ -15353,13 +15390,21 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
                std::vector<tripoint_abs_omt> { third_exit } );
         CHECK( site.active_outing.failed_covert_egress_route_omts ==
                std::vector<tripoint_abs_omt> { first_exit, second_exit } );
+        bandit_live_world::world_state inward_detour = world;
+        inward_detour.sites.front().active_outing.current_covert_egress_route_omts.push_back(
+            tripoint_abs_omt( 2, 0, 0 ) );
+        CHECK_THROWS( round_trip_world( inward_detour ) );
 
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
         const bandit_live_world::simulation_advance_cursor third_attempt_cursor = *cursor;
+        const std::string before_visible_third_rally = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
+                         site, *cursor, visible_arrivals( site.active_outing ), 5 ) );
+        CHECK( serialize_world( world ) == before_visible_third_rally );
         const bandit_live_world::covert_scout_egress_failure_effect exhausted =
             bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                site, *cursor, exits, 5 );
+                site, *cursor, {}, 5 );
         REQUIRE( exhausted.result ==
                  bandit_live_world::covert_scout_egress_failure_result::exhausted );
         CHECK( exhausted.failed_egress_omt == third_exit );
@@ -15399,7 +15444,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
                exhausted_relationship->forbidden_route_omts );
         const std::string after_exhaustion = serialize_world( world );
         CHECK( bandit_live_world::resolve_covert_scout_burned_egress_failure(
-                   site, third_attempt_cursor, exits, 5 ).result ==
+                   site, third_attempt_cursor, {}, 5 ).result ==
                bandit_live_world::covert_scout_egress_failure_result::rejected );
         CHECK( bandit_live_world::advance_external_simulation(
                    site, third_attempt_cursor.activity_id, third_attempt_cursor.generation,
@@ -15409,6 +15454,52 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
                bandit_live_world::simulation_owner_transition_result::rejected );
         CHECK( serialize_world( world ) == after_exhaustion );
         CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
+    SECTION( "pre-chain schema 10 retry histories load and exhaust safely" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const tripoint_abs_omt first_exit( 0, -1, 0 );
+        const tripoint_abs_omt second_exit( 0, 0, 0 );
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     site, *cursor, make_reads( site.active_outing ),
+        { { first_exit, true, true, false, 0, 1, { first_exit } } }, 1 ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+
+        site.active_outing.covert_egress_chain_version = 0;
+        site.active_outing.covert_egress_attempts = 2;
+        site.active_outing.covert_egress_revision = 2;
+        site.active_outing.failed_covert_egress_omts = { first_exit };
+        site.active_outing.current_covert_egress_route_omts = { second_exit };
+        site.active_outing.failed_covert_egress_route_omts = { first_exit };
+        site.active_outing.local_handoff.egress_omt = second_exit;
+        std::string legacy_bytes = serialize_world( world );
+        erase_pretty_json_member_line( legacy_bytes, "covert_egress_chain_version" );
+        JsonValue jsin = json_loader::from_string( legacy_bytes );
+        bandit_live_world::world_state loaded;
+        loaded.deserialize( jsin.get_object() );
+        REQUIRE( loaded.sites.size() == 1 );
+        bandit_live_world::site_record &loaded_site = loaded.sites.front();
+        CHECK( loaded_site.active_outing.covert_egress_chain_version == 0 );
+        CHECK( loaded_site.active_outing.failed_covert_egress_omts ==
+               std::vector<tripoint_abs_omt> { first_exit } );
+        CHECK( loaded_site.active_outing.local_handoff.egress_omt == second_exit );
+
+        cursor = bandit_live_world::current_external_simulation_cursor( loaded_site );
+        REQUIRE( cursor );
+        const bandit_live_world::covert_scout_egress_failure_effect exhausted =
+            bandit_live_world::resolve_covert_scout_burned_egress_failure(
+                loaded_site, *cursor, {}, 2 );
+        REQUIRE( exhausted.result ==
+                 bandit_live_world::covert_scout_egress_failure_result::exhausted );
+        CHECK( loaded_site.active_outing.phase ==
+               bandit_live_world::scout_phase::returning_exposed );
+        CHECK( loaded_site.active_outing.failed_covert_egress_omts ==
+               std::vector<tripoint_abs_omt> { first_exit, second_exit } );
+        CHECK( serialize_world( round_trip_world( loaded ) ) == serialize_world( loaded ) );
     }
 
     SECTION( "burned withdrawal without its typed burn receipt is malformed" ) {
@@ -15608,37 +15699,70 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
 
-    SECTION( "rally arrival classifies concealed and exposed return once" ) {
-        const auto arrive = [&]( const bool mutual_visibility ) {
-            bandit_live_world::world_state world = make_world();
-            bandit_live_world::site_record &site = world.sites.front();
-            std::optional<bandit_live_world::simulation_advance_cursor> cursor =
-                bandit_live_world::current_external_simulation_cursor( site );
-            REQUIRE( cursor );
-            REQUIRE( bandit_live_world::apply_covert_scout_burn(
-                         site, *cursor, make_reads( site.active_outing ),
-                         make_egress( site.active_outing ), 1 ).result ==
-                     bandit_live_world::covert_scout_burn_result::applied );
-            std::vector<bandit_live_world::covert_scout_member_acquire_read> arrivals;
-            for( const character_id member_id : site.active_outing.member_ids ) {
-                arrivals.push_back( { member_id,
-                                      site.active_outing.local_handoff.egress_omt,
-                                      true, false, mutual_visibility } );
-            }
-            cursor = bandit_live_world::current_external_simulation_cursor( site );
-            REQUIRE( cursor );
-            REQUIRE( bandit_live_world::complete_covert_scout_burned_egress(
+    SECTION( "concealed rally completion is atomic and idempotent" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     site, *cursor, make_reads( site.active_outing ),
+                     make_egress( site.active_outing ), 1 ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+        std::vector<bandit_live_world::covert_scout_member_acquire_read> arrivals;
+        for( const character_id member_id : site.active_outing.member_ids ) {
+            arrivals.push_back( { member_id, site.active_outing.local_handoff.egress_omt,
+                                  true, false, false } );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::string before_unknown_visibility = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
                          site, *cursor, arrivals, 2 ) );
-            CHECK( site.active_outing.phase ==
-                   bandit_live_world::scout_phase_after_burned_evacuation(
-                       !mutual_visibility ) );
-            CHECK( site.active_outing.local_handoff.phase == site.active_outing.phase );
-            CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
-                             site, *cursor, arrivals, 2 ) );
-            CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
-        };
-        arrive( false );
-        arrive( true );
+        CHECK( serialize_world( world ) == before_unknown_visibility );
+        for( bandit_live_world::covert_scout_member_acquire_read &arrival : arrivals ) {
+            arrival.mutual_target_visibility_evaluated = true;
+        }
+        REQUIRE( bandit_live_world::complete_covert_scout_burned_egress(
+                     site, *cursor, arrivals, 2 ) );
+        CHECK( site.active_outing.phase ==
+               bandit_live_world::scout_phase::returning_report );
+        CHECK( site.active_outing.local_handoff.phase == site.active_outing.phase );
+        CHECK_FALSE( bandit_live_world::complete_covert_scout_burned_egress(
+                         site, *cursor, arrivals, 2 ) );
+
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const tripoint_abs_ms camp_origin = project_to<coords::ms>( site.anchor );
+        std::vector<bandit_live_world::local_dematerialization_member_read> home_reads;
+        for( std::size_t index = 0;
+             index < site.active_outing.local_handoff.members.size(); ++index ) {
+            bandit_live_world::local_dematerialization_member_read read;
+            read.npc_id = site.active_outing.local_handoff.members[index].npc_id;
+            read.readable = true;
+            read.homeward_route_confirmed = true;
+            read.hp_percent = site.active_outing.local_handoff.members[index].hp_percent;
+            read.current_position = tripoint_abs_ms(
+                                        camp_origin.x() + static_cast<int>( index ),
+                                        camp_origin.y(), camp_origin.z() );
+            home_reads.push_back( read );
+        }
+        const bandit_live_world::local_dematerialization_plan home_plan =
+            bandit_live_world::plan_local_pair_dematerialization(
+                site, *cursor, 3, home_reads, site.active_outing.cargo );
+        REQUIRE( home_plan.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     site, home_plan,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::abstract );
+        CHECK( site.active_outing.local_handoff.route_position == site.anchor );
+        CHECK( site.active_outing.local_handoff.egress_omt ==
+               site.active_outing.shared_route.back() );
+        CHECK( site.active_outing.covert_egress_attempts == 1 );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
 
     SECTION( "physical casualties remain authoritative after burned egress completes" ) {
@@ -15654,7 +15778,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         std::vector<bandit_live_world::covert_scout_member_acquire_read> arrivals;
         for( const character_id member_id : site.active_outing.member_ids ) {
             arrivals.push_back( { member_id, site.active_outing.local_handoff.egress_omt,
-                                  true, false, false } );
+                                  true, false, false, true } );
         }
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
@@ -15739,7 +15863,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         std::vector<bandit_live_world::covert_scout_member_acquire_read> arrivals;
         for( const character_id member_id : site.active_outing.member_ids ) {
             arrivals.push_back( { member_id, site.active_outing.local_handoff.egress_omt,
-                                  true, false, false } );
+                                  true, false, false, true } );
         }
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
@@ -15749,6 +15873,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
                  bandit_live_world::scout_phase::returning_report );
 
         std::string bytes = serialize_world( world );
+        erase_pretty_json_member_line( bytes, "covert_egress_chain_version" );
         erase_pretty_json_member_line( bytes, "covert_egress_attempts" );
         erase_pretty_json_member_line( bytes, "covert_egress_revision" );
         erase_pretty_json_member_line( bytes, "failed_covert_egress_omts" );
@@ -15758,6 +15883,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         bandit_live_world::world_state loaded;
         loaded.deserialize( jsin.get_object() );
         REQUIRE( loaded.sites.size() == 1 );
+        CHECK( loaded.sites.front().active_outing.covert_egress_chain_version == 0 );
         CHECK( loaded.sites.front().active_outing.covert_egress_attempts == 0 );
         CHECK( loaded.sites.front().active_outing.covert_egress_revision == 1 );
         CHECK( bandit_live_world::current_external_simulation_cursor(

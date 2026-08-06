@@ -607,6 +607,7 @@ struct active_outing_state {
     structural_watch_kind selected_watch_kind = structural_watch_kind::none;
     tripoint_abs_omt selected_watch_omt;
     int selected_watch_route_cost = -1;
+    int covert_egress_chain_version = 0;
     int covert_egress_attempts = 0;
     int covert_egress_revision = 0;
     std::vector<tripoint_abs_omt> failed_covert_egress_omts;
@@ -1596,6 +1597,7 @@ struct covert_scout_member_acquire_read {
     bool position_known = false;
     bool returning_home = false;
     bool mutual_target_visibility = false;
+    bool mutual_target_visibility_evaluated = false;
 };
 struct covert_scout_burn_read {
     character_id npc_id;
@@ -1661,7 +1663,8 @@ bool is_active_covert_scout_member( const world_state &state, character_id npc_i
 std::optional<covert_scout_egress_candidate> select_covert_scout_egress(
     const tripoint_abs_omt &burn_origin,
     const std::vector<tripoint_abs_omt> &target_footprint,
-    const std::vector<covert_scout_egress_candidate> &candidates );
+    const std::vector<covert_scout_egress_candidate> &candidates,
+    const std::optional<tripoint_abs_omt> &route_floor_origin = std::nullopt );
 bool covert_scout_egress_route_respects_retry_memory(
     const active_outing_state &outing, const tripoint_abs_omt &member_start,
     const std::vector<tripoint_abs_omt> &route, bool current_route_failed );
