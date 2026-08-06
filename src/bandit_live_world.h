@@ -553,7 +553,7 @@ enum class local_handoff_commit_result {
 };
 
 struct scout_assessment_state {
-    int schema_version = 1;
+    int schema_version = 2;
     int observation_started_minutes = -1;
     int last_progress_minutes = -1;
     int burned_minutes = -1;
@@ -567,6 +567,8 @@ struct scout_assessment_state {
     int defenders_high = 0;
     int danger_low = 0;
     int danger_high = 0;
+    int bounty_estimate = 0;
+    int route_danger_high = 0;
     int target_alert = 0;
     int pinned_target_revision = 0;
     int next_eligible_minutes = -1;
@@ -608,7 +610,14 @@ struct scout_report_effective_state {
     int contact_age_minutes = -1;
     int certainty = 0;
     bool assessment_ready = false;
+    int defenders_low = 0;
+    int defenders_high = 0;
+    int danger_low = 0;
+    int danger_high = 0;
+    int bounty_estimate = 0;
+    int route_danger_high = -1;
     int target_alert = 0;
+    int scout_losses = 0;
     bool attack_authorization_usable = false;
 };
 

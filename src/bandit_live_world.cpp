@@ -6610,7 +6610,7 @@ void scout_assessment_state::clear()
 void scout_assessment_state::serialize( JsonOut &json ) const
 {
     json.start_object();
-    json.member( "schema_version", schema_version );
+    json.member( "schema_version", 2 );
     json.member( "observation_started_minutes", observation_started_minutes );
     json.member( "last_progress_minutes", last_progress_minutes );
     json.member( "burned_minutes", burned_minutes );
@@ -6624,6 +6624,8 @@ void scout_assessment_state::serialize( JsonOut &json ) const
     json.member( "defenders_high", defenders_high );
     json.member( "danger_low", danger_low );
     json.member( "danger_high", danger_high );
+    json.member( "bounty_estimate", bounty_estimate );
+    json.member( "route_danger_high", route_danger_high );
     json.member( "target_alert", target_alert );
     json.member( "pinned_target_revision", pinned_target_revision );
     json.member( "next_eligible_minutes", next_eligible_minutes );
@@ -6635,8 +6637,9 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
 {
     scout_assessment_state candidate;
     jo.read( "schema_version", candidate.schema_version );
-    if( candidate.schema_version != 1 ) {
-        jo.throw_error( "scout assessment schema version is not supported schema v1" );
+    const int loaded_schema_version = candidate.schema_version;
+    if( loaded_schema_version < 1 || loaded_schema_version > 2 ) {
+        jo.throw_error( "scout assessment schema version is not supported" );
     }
     jo.read( "observation_started_minutes", candidate.observation_started_minutes );
     jo.read( "last_progress_minutes", candidate.last_progress_minutes );
@@ -6657,6 +6660,17 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     jo.read( "defenders_high", candidate.defenders_high );
     jo.read( "danger_low", candidate.danger_low );
     jo.read( "danger_high", candidate.danger_high );
+    if( loaded_schema_version >= 2 &&
+        ( !jo.has_member( "bounty_estimate" ) ||
+          !jo.has_member( "route_danger_high" ) ) ) {
+        jo.throw_error( "schema-v2 scout assessment is missing tracking fields" );
+    }
+    if( loaded_schema_version >= 2 ) {
+        jo.read( "bounty_estimate", candidate.bounty_estimate );
+        jo.read( "route_danger_high", candidate.route_danger_high );
+    } else {
+        candidate.route_danger_high = -1;
+    }
     jo.read( "target_alert", candidate.target_alert );
     jo.read( "pinned_target_revision", candidate.pinned_target_revision );
     jo.read( "next_eligible_minutes", candidate.next_eligible_minutes );
@@ -6672,6 +6686,10 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
                        candidate.danger_low >= 0 &&
                        candidate.danger_high >= candidate.danger_low &&
                        candidate.danger_high <= 200 &&
+                       candidate.bounty_estimate >= 0 &&
+                       candidate.bounty_estimate <= 3 &&
+                       candidate.route_danger_high >= -1 &&
+                       candidate.route_danger_high <= 20 &&
                        candidate.target_alert >= 0 && candidate.target_alert <= 100 &&
                        candidate.pinned_target_revision >= 0 &&
                        candidate.next_eligible_minutes >= -1 &&
@@ -6685,6 +6703,7 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     if( !valid ) {
         jo.throw_error( "scout assessment has malformed bounded state" );
     }
+    candidate.schema_version = 2;
     *this = std::move( candidate );
 }
 
@@ -15837,6 +15856,13 @@ scout_report_effective_state evaluate_scout_report_at(
     const int certainty_penalty = result.age_minutes >= 24 * 60 ? 20 :
                                   result.age_minutes >= 12 * 60 ? 10 : 0;
     result.certainty = std::max( 0, report.assessment.certainty - certainty_penalty );
+    result.defenders_low = report.assessment.defenders_low;
+    result.defenders_high = report.assessment.defenders_high;
+    result.danger_low = report.assessment.danger_low;
+    result.danger_high = report.assessment.danger_high;
+    result.bounty_estimate = report.assessment.bounty_estimate;
+    result.route_danger_high = report.assessment.route_danger_high;
+    result.scout_losses = static_cast<int>( report.casualty_ids.size() );
     result.attack_authorization_usable = result.age_minutes < 48 * 60;
     result.assessment_ready = result.attack_authorization_usable &&
                               report.assessment.readiness_latched &&
@@ -15891,6 +15917,8 @@ bool scout_assessment_states_equal( const scout_assessment_state &lhs,
            lhs.defenders_high == rhs.defenders_high &&
            lhs.danger_low == rhs.danger_low &&
            lhs.danger_high == rhs.danger_high &&
+           lhs.bounty_estimate == rhs.bounty_estimate &&
+           lhs.route_danger_high == rhs.route_danger_high &&
            lhs.target_alert == rhs.target_alert &&
            lhs.pinned_target_revision == rhs.pinned_target_revision &&
            lhs.next_eligible_minutes == rhs.next_eligible_minutes &&
@@ -15903,7 +15931,7 @@ scout_assessment_state summarize_normal_scout_assessment(
     const active_outing_state &outing )
 {
     scout_assessment_state summary = outing.assessment;
-    summary.schema_version = 1;
+    summary.schema_version = 2;
     summary.pinned_target_revision = outing.target_lead_revision;
     summary.certainty = 0;
     summary.strong_visual_windows = 0;
@@ -15911,11 +15939,13 @@ scout_assessment_state summarize_normal_scout_assessment(
     summary.defenders_high = 0;
     summary.danger_low = 0;
     summary.danger_high = 0;
+    summary.route_danger_high = 0;
 
     int visual_certainty = 0;
     int signal_certainty = 0;
     int contradiction_penalty = 0;
     bool confirmed_presence = false;
+    bool confirmed_human_presence = false;
     bool equipment_detail = false;
     using observation_window_key = std::tuple<int, int, int, int>;
     std::map<observation_window_key, int> static_hazard_by_window;
@@ -15954,6 +15984,9 @@ scout_assessment_state summarize_normal_scout_assessment(
         }
         confirmed_presence = confirmed_presence ||
                              observation.kind == sortie_observation_kind::burn;
+        confirmed_human_presence = confirmed_human_presence ||
+                                   observation.kind == sortie_observation_kind::burn ||
+                                   observation.fact_key.rfind( "visible-defenders:", 0 ) == 0;
         const int visual_value = observation.visual_quality == 3 ? 20 :
                                  observation.visual_quality == 2 ? 15 :
                                  observation.visual_quality == 1 ? 5 : 0;
@@ -16009,6 +16042,9 @@ scout_assessment_state summarize_normal_scout_assessment(
                           std::clamp( summary.danger_low + unknown_slots * observed_unit_power +
                                       route_danger_high + ( summary.target_alert + 19 ) / 20,
                                       0, 200 );
+    summary.bounty_estimate = std::max( summary.bounty_estimate,
+                                       confirmed_human_presence ? 1 : 0 );
+    summary.route_danger_high = route_danger_high;
     summary.last_progress_minutes = latest_progress;
     if( summary.threshold_class == scout_assessment_threshold_class::normal &&
         !scout_assessment_readiness_after_certainty(

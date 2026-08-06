@@ -15994,6 +15994,7 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
         CHECK( summary.defenders_high == 5 );
         CHECK( summary.danger_low == 23 );
         CHECK( summary.danger_high == 53 );
+        CHECK( summary.route_danger_high == 20 );
         std::reverse( outing.observations.begin(), outing.observations.end() );
         const bandit_live_world::scout_assessment_state reversed =
             bandit_live_world::summarize_normal_scout_assessment( outing );
@@ -16001,6 +16002,28 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
         CHECK( reversed.defenders_high == summary.defenders_high );
         CHECK( reversed.danger_low == summary.danger_low );
         CHECK( reversed.danger_high == summary.danger_high );
+        CHECK( reversed.route_danger_high == summary.route_danger_high );
+    }
+
+    SECTION( "only explicit target-window human evidence raises coarse bounty" ) {
+        bandit_live_world::active_outing_state outing = make_outing();
+        bandit_live_world::sortie_observation route_defenders =
+            make_window( 121, "visible-defenders:route" );
+        route_defenders.source_omt = watch;
+        outing.observations = { route_defenders };
+        CHECK( bandit_live_world::summarize_normal_scout_assessment(
+                   outing ).bounty_estimate == 0 );
+
+        bandit_live_world::sortie_observation target_defenders =
+            make_window( 122, "visible-defenders:" + target.to_string() );
+        outing.observations = { target_defenders };
+        CHECK( bandit_live_world::summarize_normal_scout_assessment(
+                   outing ).bounty_estimate == 1 );
+
+        outing.assessment.bounty_estimate = 1;
+        outing.observations.clear();
+        CHECK( bandit_live_world::summarize_normal_scout_assessment(
+                   outing ).bounty_estimate == 1 );
     }
 
     SECTION( "more than twelve simultaneous defenders preserves the lower bound as hard unsafe" ) {
@@ -16321,6 +16344,13 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
         bandit_live_world::scout_assessment_threshold_class::normal;
     report.assessment.target_alert = 80;
     report.assessment.burned_minutes = delivered_minutes;
+    report.assessment.defenders_low = 2;
+    report.assessment.defenders_high = 4;
+    report.assessment.danger_low = 9;
+    report.assessment.danger_high = 37;
+    report.assessment.bounty_estimate = 1;
+    report.assessment.route_danger_high = 12;
+    report.casualty_ids = { character_id( 895401 ) };
 
     const auto serialize_report = []( const bandit_live_world::scout_report_record &value ) {
         std::ostringstream out;
@@ -16361,6 +16391,13 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
         CHECK( state.latest_contact_minutes == delivered_minutes );
         CHECK( state.contact_age_minutes == expected.elapsed_minutes );
         CHECK( state.certainty == expected.certainty );
+        CHECK( state.defenders_low == 2 );
+        CHECK( state.defenders_high == 4 );
+        CHECK( state.danger_low == 9 );
+        CHECK( state.danger_high == 37 );
+        CHECK( state.bounty_estimate == 1 );
+        CHECK( state.route_danger_high == 12 );
+        CHECK( state.scout_losses == 1 );
         CHECK( state.target_alert == expected.target_alert );
         CHECK( state.assessment_ready == expected.assessment_ready );
         CHECK( state.attack_authorization_usable ==
@@ -16376,6 +16413,13 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
     CHECK( stepped.valid == jumped.valid );
     CHECK( stepped.age_minutes == jumped.age_minutes );
     CHECK( stepped.certainty == jumped.certainty );
+    CHECK( stepped.defenders_low == jumped.defenders_low );
+    CHECK( stepped.defenders_high == jumped.defenders_high );
+    CHECK( stepped.danger_low == jumped.danger_low );
+    CHECK( stepped.danger_high == jumped.danger_high );
+    CHECK( stepped.bounty_estimate == jumped.bounty_estimate );
+    CHECK( stepped.route_danger_high == jumped.route_danger_high );
+    CHECK( stepped.scout_losses == jumped.scout_losses );
     CHECK( stepped.target_alert == jumped.target_alert );
     CHECK( stepped.assessment_ready == jumped.assessment_ready );
     CHECK( stepped.attack_authorization_usable == jumped.attack_authorization_usable );
@@ -16421,6 +16465,81 @@ TEST_CASE( "scout_report_aging_and_alert_decay_use_exact_time_boundaries",
                delivered_minutes + 48 * 60, -1, "stale report must not authorize" ) ==
            bandit_live_world::camp_decision_transition_result::rejected );
     CHECK( serialize_world( world ) == stale_before );
+}
+
+TEST_CASE( "scout_assessment_tracking_fields_migrate_and_round_trip",
+           "[bandit][live_world][scout_assessment][assessment_tracking][save]" )
+{
+    bandit_live_world::scout_assessment_state assessment;
+    assessment.observation_started_minutes = 100;
+    assessment.last_progress_minutes = 130;
+    assessment.certainty = 60;
+    assessment.defenders_low = 2;
+    assessment.defenders_high = 5;
+    assessment.danger_low = 11;
+    assessment.danger_high = 46;
+    assessment.bounty_estimate = 1;
+    assessment.route_danger_high = 20;
+    assessment.target_alert = 40;
+    assessment.pinned_target_revision = 7;
+
+    const auto serialize_assessment = []( const bandit_live_world::scout_assessment_state &value ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        value.serialize( json );
+        return out.str();
+    };
+    const std::string current_bytes = serialize_assessment( assessment );
+    JsonValue current_input = json_loader::from_string( current_bytes );
+    bandit_live_world::scout_assessment_state loaded;
+    loaded.deserialize( current_input.get_object() );
+    CHECK( serialize_assessment( loaded ) == current_bytes );
+    CHECK( loaded.bounty_estimate == 1 );
+    CHECK( loaded.route_danger_high == 20 );
+
+    std::string legacy_bytes = current_bytes;
+    const std::string current_schema = "\"schema_version\": 2";
+    const std::size_t schema_at = legacy_bytes.find( current_schema );
+    REQUIRE( schema_at != std::string::npos );
+    legacy_bytes.replace( schema_at, current_schema.size(), "\"schema_version\": 1" );
+    erase_pretty_json_member_line( legacy_bytes, "bounty_estimate" );
+    erase_pretty_json_member_line( legacy_bytes, "route_danger_high" );
+    JsonValue legacy_input = json_loader::from_string( legacy_bytes );
+    bandit_live_world::scout_assessment_state migrated;
+    migrated.deserialize( legacy_input.get_object() );
+    CHECK( migrated.schema_version == 2 );
+    CHECK( migrated.bounty_estimate == 0 );
+    CHECK( migrated.route_danger_high == -1 );
+    const std::string migrated_bytes = serialize_assessment( migrated );
+    CHECK( migrated_bytes.find( "\"schema_version\": 2" ) != std::string::npos );
+    CHECK( migrated_bytes.find( "\"route_danger_high\": -1" ) != std::string::npos );
+
+    bandit_live_world::scout_report_record legacy_report;
+    legacy_report.revision = 1;
+    legacy_report.source_activity_id = "legacy-assessment";
+    legacy_report.source_generation = 1;
+    legacy_report.application_key = "legacy-assessment:report:1";
+    legacy_report.delivered_minutes = 200;
+    legacy_report.assessment = migrated;
+    const bandit_live_world::scout_report_effective_state legacy_effective =
+        bandit_live_world::evaluate_scout_report_at( legacy_report, 200 );
+    REQUIRE( legacy_effective.valid );
+    CHECK( legacy_effective.route_danger_high == -1 );
+
+    std::string incomplete_bytes = current_bytes;
+    erase_pretty_json_member_line( incomplete_bytes, "route_danger_high" );
+    JsonValue incomplete_input = json_loader::from_string( incomplete_bytes );
+    CHECK_THROWS( bandit_live_world::scout_assessment_state().deserialize(
+                      incomplete_input.get_object() ) );
+
+    std::string malformed_bytes = current_bytes;
+    const std::string valid_route = "\"route_danger_high\": 20";
+    const std::size_t route_at = malformed_bytes.find( valid_route );
+    REQUIRE( route_at != std::string::npos );
+    malformed_bytes.replace( route_at, valid_route.size(), "\"route_danger_high\": 21" );
+    JsonValue malformed_input = json_loader::from_string( malformed_bytes );
+    CHECK_THROWS( bandit_live_world::scout_assessment_state().deserialize(
+                      malformed_input.get_object() ) );
 }
 
 TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
@@ -16644,6 +16763,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( burn_count( site.active_outing ) == 1 );
         CHECK( site.active_outing.assessment.target_alert == 100 );
         CHECK( site.active_outing.assessment.danger_high == 25 );
+        CHECK( site.active_outing.assessment.bounty_estimate == 1 );
         const auto retained_danger = std::find_if(
                                          site.active_outing.observations.begin(),
                                          site.active_outing.observations.end(),
