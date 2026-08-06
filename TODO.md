@@ -25,11 +25,10 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Reserve real home defense for follow-on operations as
-   `max(1, ceil(living_total / 3))`, using authoritative ready, physically present, unreserved,
-   capable defenders. From the remaining response capacity, select the smallest capable party of
-   at least two and at most six that clears the existing power gate. Do not authorize or launch a
-   response in this row.
+1. Centralize the V1 follow-on authorization gates: an assessment-readiness latch under the exact
+   normal/burned threshold, unexpired and unacted report revision, normalized opportunity at least
+   600, and the already-selected party clearing its faction power margin while preserving the hard
+   named reserve. Keep the decision side-effect-free in this row; do not reserve or launch yet.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

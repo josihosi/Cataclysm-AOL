@@ -1824,3 +1824,50 @@ assessment 4/225, routine policy 3/993, and normalized risk 2/159. `git diff --c
 Authoritative member-power sourcing, selection, home reserve, authorization, launch, persistence,
 astyle 3.1, GUI, Linux, and Windows remain unclaimed. Next: real home reserve and smallest capable
 response selection, without authorization or launch.
+
+Phase-6 home-reserve/response-selection proof contract (source identity `72854c29c4e6`,
+pre-implementation):
+- Claim: a side-effect-free selector names a real home reserve of
+  `max(1, ceil(living_total / 3))` ready, physically present, unreserved capable members and then
+  chooses the smallest response party of two through six whose authoritative normalized power
+  clears the existing faction margin. It never counts anonymous unmaterialized headcount as a
+  named defender or response member.
+- Preconditions/interventions: the production adapter reads only exact site member IDs from the
+  authoritative overmap NPC owner, accepts loaded or unloaded NPCs actually inside the source camp,
+  rechecks death/HP/sleep/incapacitation, and derives power through the existing deterministic
+  character-threat scale normalized to `1..10`. Test setup may create real NPCs, equipment, camp
+  membership, positions, and loaded/unloaded states; setup stops before the adapter/selector call.
+- Causal boundary/real path: the adapter emits one exact read per physically present concrete roster
+  member; the pure selector intersects those reads with the roster's at-home/unreserved/readiness
+  authority, computes the ceiling-third reserve, orders candidates deterministically by power then
+  stable ID, and tests party sizes from two upward through `evaluate_response_party_power`.
+- Expected transition: living totals `3/4/7/10` require named reserves `1/2/3/4`. Exact two-member
+  clearance wins over a larger party; if two fail and three clear, exactly three are selected. The
+  selected IDs, selected power, required power, and reserve IDs are deterministic under input order,
+  and the site/save bytes remain unchanged.
+- Negative/control: invalid roster/policy/danger, duplicate/foreign/missing reads, NPC outside the
+  camp, dead, HP at or below 50%, sleeping, incapacitated, member-record wounded, away/reserved,
+  fewer than two response members after reserve, more power needed than six members can supply, or
+  anonymous unmaterialized capacity fail closed. Loaded and unloaded equivalent real NPC owners
+  produce the same selection when their authoritative state is otherwise equal.
+- Timeout/pass-fail: shared normalizer/core/production-adapter/test diff; focused
+  `[response_selection]` core and live-owner tests; adjacent `[response_power]`, `[routine_policy]`,
+  hostile-operation plan/apply, save/replay, and clean diff. No response authorization, readiness
+  latch consumption, opportunity gate, operation reservation/launch, new persistence, astyle 3.1,
+  GUI, Linux, or Windows claim.
+
+Phase-6 real home reserve and capable response selection are green at `36405e9a56`. The production
+adapter performs no global NPC walk: it queries at most 64 exact source-camp OMTs, accepts loaded or
+unloaded concrete NPC owners actually at camp, rechecks death/HP/sleep/incapacitation, and applies
+the shared deterministic character-power normalizer. The byte-inert core selector requires exact
+concrete-home read coverage, names the ceiling-third capable reserve, excludes anonymous headcount,
+and stops at the first strongest party size `2..6` clearing the faction margin. Exact reserves,
+loaded/unloaded equivalence, co-location, deterministic order, outside/sleeping/wounded/missing/
+duplicate/foreign reads, insufficient reserve, and six-member cap failure pass. The final Mac build
+is green; selection passes 2/148, response power 2/164, routine policy 3/993, and all hostile
+operation tests 5/1,155. `git diff --check` is clean. The first compile was non-credit test-only:
+the fixture attempted the private `game::unload_npcs`; replacing that with active-tracker removal
+preserved the authoritative overmap owner and the claimed loaded/unloaded boundary. The existing
+operation planner remains on its older selector and is not claimed to enforce this row yet. No
+authorization, reservation/launch, new persistence, astyle 3.1, GUI, Linux, or Windows claim.
+Next: centralize the V1 authorization gates without launching an operation.

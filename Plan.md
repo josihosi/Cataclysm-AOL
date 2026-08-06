@@ -548,6 +548,14 @@ exact cross-product result without selecting members, reading NPCs, reserving a 
 or mutating an operation. The fresh Mac build plus response 1/89, assessment 4/225, routine policy
 3/993, and risk 2/159 pass. Next reserve real home defense and choose the smallest capable response
 party from authoritative ready/present/unreserved members; do not authorize or launch yet.
+Real home reserve and capable selection are green at `36405e9a56`: the production adapter queries
+only the source camp's at-most-64 exact OMTs, accepts loaded or unloaded concrete NPC owners actually
+at home, rechecks readiness, and uses the shared deterministic `1..10` character-power normalizer.
+The pure selector names `max(1, ceil(living_total / 3))` capable reserve IDs, never counts anonymous
+headcount, and stops at the first two-to-six-member strongest prefix that clears the faction margin.
+Mac selection 2/148, response power 2/164, routine policy 3/993, and hostile operation 5/1,155 pass.
+The existing operation planner is not yet wired to this selector; next centralize the V1 readiness,
+revision, opportunity, reserve, and power authorization gates before any launch integration.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
