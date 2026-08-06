@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 SOFT-DANGER ESCAPE NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 OPTICS BOUNDARY NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -376,7 +376,13 @@ return closure, releases the outing, preserves the cooldown/receipt, resets both
 guarding, and rejects replay byte-for-byte. Mac exact and `[live_egress]` pass 1/50, while
 `[covert_burn]` passes 3/645 after a clean rebuild and final autoreview. The rejected first test
 design's partial terrain restoration was removed rather than accepted. Next: traverse a production
-soft-danger escape and prove route-wide legitimate evidence changes the selected live egress.
+soft-danger escape and prove route-wide legitimate evidence changes the selected live egress. That
+path is green at `3384846ee9`: a real active pair with ordinary reciprocal sight and a player-owned
+target camp first establishes the live terrain-dependent baseline, then the identical owner ingests
+one exact shared typed certainty at that endpoint. The second production burn changes `(1,2,0)` to
+`(1,1,0)` in the fixed fixture, and neither the persisted footprint nor either NPC route traverses
+the new soft-danger tile. Mac exact passes 1/42, `[live_egress]` 2/92, and `[covert_burn]` 4/687
+after a clean build and autoreview. Next: defender asleep/blind/behind-cover visibility boundaries.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

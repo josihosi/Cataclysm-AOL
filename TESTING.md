@@ -1311,3 +1311,15 @@ Mac rebuild exits 0; the exact case and `[live_egress]` each pass 1/50; `[covert
 after review found that restoring only terrain IDs could leave passability/predecessor metadata
 contaminated; no such mutation remains. No astyle 3.1, tiles/live GUI, Linux, or Windows claim.
 Next: production soft-danger escape selection.
+
+Phase-5 production soft-danger escape is green at `3384846ee9`. The test creates two active thug
+members, a canonical schema-10 local owner, a real player-owned target camp, ordinary reciprocal
+visibility, and actual overmap route binding. The first production burn supplies the terrain-based
+baseline. After restoring the identical world/NPC route state, the scout records one unexpired
+schema-1 shared visual certainty through `record_active_typed_observations` at that baseline
+endpoint. The second production burn selects a different endpoint and neither the persisted route
+footprint nor either concrete NPC route contains the danger tile; both calls remain one-shot. The
+delegated Mac build exits 0; delegated and root exact pass 1/42; `[live_egress]` passes 2/92;
+`[covert_burn]` passes 4/687; diff check and final autoreview are clean. Fixed-fixture coordinates
+change `(1,2,0) -> (1,1,0)` and are evidence, not a compass-direction contract. No astyle 3.1,
+tiles/live GUI, Linux, or Windows claim. Next: asleep/blind/covered defender optics boundaries.

@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0 - Bandit/cannibal hostile-camp ecology
 
-Status: ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 SOFT-DANGER ESCAPE NEXT
+Status: ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 OPTICS BOUNDARY NEXT
 
 Canonical contract and detailed cross-off evidence:
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`.
@@ -42,6 +42,7 @@ Success state:
   - Burned-handoff casualty reconciliation is green at `76eb587645`: either member may die during dematerialization; roster, resolved-member, casualty, survivor-egress, and one-burn truth remain authoritative. A dead leader is replaced in the planned snapshot, transaction replay is unchanged, and a serialized pre-fix dead-leader snapshot repairs during survivor rematerialization. Exact 1/532, burn tag 2/536, and local-handoff 1/651 pass after a clean build and final clean autoreview. Slow/injured follower and the remaining matrix stay open.
   - Slow/injured follower continuity is green at `df81293bca`: a 45%-HP follower remains wounded through local-to-abstract maintenance, save/load, and rematerialization while the exact burned egress/retry owner and one burn persist. A leader already at rally cannot complete for the lagging follower; the rejection is byte-inert, and evaluated-clear co-location completes once. Exact 1/591 and burn tag 2/595 pass. This is an owner/position contract, not a fresh live NPC-speed claim; no-legal-exit and the remaining matrix stay open.
   - Production no-legal-exit closure is green at `8a7142757a`: the public production failure seam reads two real unloaded NPC owners, recomputes actual adjacent-retry and home routes from naturally impassable deep OMTs, exhausts without oscillation, and traverses the canonical stranded-return release/cooldown/guard reset exactly once. Exact and `[live_egress]` pass 1/50; `[covert_burn]` passes 3/645 after a clean build and final clean autoreview. The first terrain-mutating test design was rejected and removed because partial terrain restoration could contaminate route caches. Soft-danger escape and the remaining matrix stay open.
+  - Production soft-danger escape is green at `3384846ee9`: one active exact pair with ordinary reciprocal visibility and a real player-owned target camp establishes a live baseline route; after restoring the identical owner, one schema-1 shared visual certainty is accepted through `record_active_typed_observations` at that endpoint. The second production burn persists and binds a different route that excludes the soft-danger tile for both NPCs, with one-shot replay. Exact 1/42, `[live_egress]` 2/92, and `[covert_burn]` 4/687 pass after a clean Mac build and final clean autoreview. Optics/weather and the remaining matrix stay open.
 - [ ] A naturally generated bandit camp completes the full ecology loop through a real bandit shakedown outcome.
 - [ ] A naturally generated cannibal camp completes the full ecology loop through a real cannibal night-raid outcome.
 - [ ] Deterministic performance, memory, scheduler fairness, and save-growth evidence stays within the ratified limits at the required scales.
