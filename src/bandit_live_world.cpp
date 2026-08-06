@@ -3623,6 +3623,7 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
     next.last_progress_minutes = std::max( next.last_progress_minutes,
                                           plan.snapshot.committed_minutes );
     next.local_handoff = plan.snapshot;
+    next.leader_id = next.local_handoff.cohesion_leader_id;
     if( next.abstract_encounter.active &&
         next.abstract_encounter.overlap_omt == plan.snapshot.route_position ) {
         if( next.abstract_encounter.outcome_applied ) {
@@ -3801,6 +3802,17 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
                                  prior_local_approach : prior_local_route_position;
         snapshot.egress_omt = outing.shared_route.back();
     }
+    if( std::find( snapshot.casualty_ids.begin(), snapshot.casualty_ids.end(),
+                   snapshot.cohesion_leader_id ) != snapshot.casualty_ids.end() ) {
+        const auto replacement = std::find_if( outing.member_ids.begin(), outing.member_ids.end(),
+        [&snapshot]( const character_id candidate_id ) {
+            return std::find( snapshot.casualty_ids.begin(), snapshot.casualty_ids.end(),
+                              candidate_id ) == snapshot.casualty_ids.end();
+        } );
+        if( replacement != outing.member_ids.end() ) {
+            snapshot.cohesion_leader_id = *replacement;
+        }
+    }
     if( read_member_ids.size() != 2 || snapshot.casualty_ids.size() > 2 ||
         !snapshot.is_abstract_resume() ) {
         plan.notes.push_back( "local dematerialization blocked: complete resume snapshot is invalid" );
@@ -3849,6 +3861,7 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
     next.cargo = plan.resume_snapshot.cargo;
     next.casualty_ids = plan.resume_snapshot.casualty_ids;
     next.local_handoff = plan.resume_snapshot;
+    next.leader_id = next.local_handoff.cohesion_leader_id;
     if( next.abstract_encounter.active && next.abstract_encounter.local_claimed ) {
         next.abstract_encounter.local_claimed = false;
         next.abstract_encounter.outcome_applied = true;

@@ -16341,6 +16341,123 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
 
+    SECTION( "burned handoff reconciles either member death before survivor rematerialization" ) {
+        for( std::size_t dead_index = 0; dead_index < 2; ++dead_index ) {
+            CAPTURE( dead_index );
+            bandit_live_world::world_state world = make_world();
+            bandit_live_world::site_record &site = world.sites.front();
+            std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::covert_scout_burn_effect effect =
+                bandit_live_world::apply_covert_scout_burn(
+                    site, *cursor, make_reads( site.active_outing ),
+                    make_egress( site.active_outing ), 1 );
+            REQUIRE( effect.result == bandit_live_world::covert_scout_burn_result::applied );
+            const character_id original_leader = site.active_outing.leader_id;
+            const character_id dead_id = site.active_outing.member_ids[dead_index];
+            const character_id survivor_id = site.active_outing.member_ids[1 - dead_index];
+
+            std::vector<bandit_live_world::local_dematerialization_member_read> exit_reads;
+            for( const bandit_live_world::local_handoff_member_snapshot &member :
+                 site.active_outing.local_handoff.members ) {
+                const bool dead = member.npc_id == dead_id;
+                exit_reads.push_back( {
+                    member.npc_id, true, dead, false, dead ? 0 : member.hp_percent,
+                    dead ? member.entry_position : member.staging_position
+                } );
+            }
+            cursor = bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_dematerialization_plan dematerialization =
+                bandit_live_world::plan_local_pair_dematerialization(
+                    site, *cursor, 2, exit_reads, site.active_outing.cargo );
+            REQUIRE( dematerialization.valid );
+            REQUIRE( std::find( dematerialization.resume_snapshot.casualty_ids.begin(),
+                                dematerialization.resume_snapshot.casualty_ids.end(), dead_id ) !=
+                     dematerialization.resume_snapshot.casualty_ids.end() );
+            REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                         site, dematerialization,
+            []( const bandit_live_world::local_handoff_member_snapshot & ) {
+                return true;
+            }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                     bandit_live_world::local_handoff_commit_result::applied );
+            CHECK( site.active_outing.owner == bandit_live_world::simulation_owner::abstract );
+            CHECK( site.active_outing.phase ==
+                   bandit_live_world::scout_phase::burned_withdrawal );
+            CHECK( site.active_outing.member_is_resolved( dead_id ) );
+            CHECK_FALSE( site.active_outing.member_is_resolved( survivor_id ) );
+            CHECK( site.active_outing.leader_id == survivor_id );
+            CHECK( site.active_outing.local_handoff.cohesion_leader_id == survivor_id );
+            CHECK( site.active_outing.local_handoff.egress_omt == effect.egress_omt );
+            CHECK( site.find_member( dead_id )->state == bandit_live_world::member_state::dead );
+            CHECK( site.find_member( survivor_id )->state !=
+                   bandit_live_world::member_state::dead );
+            if( dead_id == original_leader ) {
+                CHECK( site.active_outing.leader_id != original_leader );
+            } else {
+                CHECK( site.active_outing.leader_id == original_leader );
+            }
+            CHECK( bandit_live_world::commit_local_pair_dematerialization(
+                       site, dematerialization,
+            []( const bandit_live_world::local_handoff_member_snapshot & ) {
+                return true;
+            }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                   bandit_live_world::local_handoff_commit_result::unchanged );
+
+            if( dead_id == original_leader ) {
+                // Preserve the pre-fix save shape: both authoritative leader fields named the
+                // casualty even though the survivor was the only member eligible to rematerialize.
+                site.active_outing.leader_id = dead_id;
+                site.active_outing.local_handoff.cohesion_leader_id = dead_id;
+            }
+
+            world = round_trip_world( world );
+            bandit_live_world::site_record &loaded_site = world.sites.front();
+            if( dead_id == original_leader ) {
+                REQUIRE( loaded_site.active_outing.leader_id == dead_id );
+                REQUIRE( loaded_site.active_outing.local_handoff.cohesion_leader_id == dead_id );
+            }
+            std::vector<bandit_live_world::local_handoff_member_read> rematerialization_reads;
+            const auto survivor_snapshot = std::find_if(
+                    loaded_site.active_outing.local_handoff.members.begin(),
+                    loaded_site.active_outing.local_handoff.members.end(),
+            [survivor_id]( const bandit_live_world::local_handoff_member_snapshot & member ) {
+                return member.npc_id == survivor_id;
+            } );
+            REQUIRE( survivor_snapshot != loaded_site.active_outing.local_handoff.members.end() );
+            rematerialization_reads.push_back( {
+                survivor_id, true, false, survivor_snapshot->hp_percent,
+                survivor_snapshot->exit_position, survivor_snapshot->entry_position,
+                survivor_snapshot->staging_position
+            } );
+            cursor = bandit_live_world::current_external_simulation_cursor( loaded_site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_handoff_plan rematerialization =
+                bandit_live_world::plan_local_pair_handoff(
+                    loaded_site, *cursor, 3, rematerialization_reads );
+            REQUIRE( rematerialization.valid );
+            REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                         loaded_site, rematerialization,
+            []( const bandit_live_world::local_handoff_member_snapshot & ) {
+                return true;
+            }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                     bandit_live_world::local_handoff_commit_result::applied );
+            CHECK( loaded_site.active_outing.owner == bandit_live_world::simulation_owner::local );
+            CHECK( loaded_site.active_outing.leader_id == survivor_id );
+            CHECK( loaded_site.active_outing.local_handoff.cohesion_leader_id == survivor_id );
+            CHECK( loaded_site.active_outing.local_handoff.egress_omt == effect.egress_omt );
+            CHECK( loaded_site.active_outing.member_is_resolved( dead_id ) );
+            CHECK_FALSE( loaded_site.active_outing.member_is_resolved( survivor_id ) );
+            CHECK( std::count_if(
+                       loaded_site.active_outing.observations.begin(),
+                       loaded_site.active_outing.observations.end(),
+            []( const bandit_live_world::sortie_observation & observation ) {
+                return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+            } ) == 1 );
+        }
+    }
+
     SECTION( "dead and overdue-missing burned members reconcile in one transaction" ) {
         bandit_live_world::world_state world = make_world();
         bandit_live_world::site_record &site = world.sites.front();
