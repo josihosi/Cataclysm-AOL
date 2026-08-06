@@ -1755,6 +1755,24 @@ struct covert_scout_burn_effect {
     tripoint_abs_omt egress_omt;
     tripoint_abs_omt rally_omt;
 };
+enum class local_structural_watch_exit_kind {
+    none,
+    hard_danger_return,
+    hard_danger_unreachable,
+};
+struct local_structural_watch_exit_plan {
+    bool applicable = false;
+    bool valid = false;
+    local_structural_watch_exit_kind kind = local_structural_watch_exit_kind::none;
+    simulation_advance_cursor expected_cursor;
+    std::string expected_site_id;
+    int expected_target_revision = 0;
+    std::vector<character_id> expected_member_ids;
+    tripoint_abs_omt expected_watch_omt;
+    active_outing_state next_outing;
+    std::vector<active_member_observation> unreachable_observations;
+    int committed_minutes = -1;
+};
 enum class covert_scout_egress_failure_result {
     rejected,
     retried,
@@ -1784,6 +1802,17 @@ covert_scout_burn_effect apply_covert_scout_burn(
     const std::vector<covert_scout_egress_candidate> &egress_candidates,
     int current_minutes,
     const std::optional<structural_local_zombie_read> &danger_read = std::nullopt );
+local_structural_watch_exit_plan plan_local_structural_watch_exit(
+    const site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_burn_read> &member_reads,
+    const std::vector<covert_scout_egress_candidate> &egress_candidates,
+    const structural_local_zombie_read &danger_read, int current_minutes,
+    bool home_routes_ready,
+    const std::vector<active_member_observation> &unreachable_observations = {} );
+local_handoff_commit_result commit_local_structural_watch_exit(
+    site_record &site, const local_structural_watch_exit_plan &plan,
+    const std::function<bool( character_id )> &prepare_member,
+    const std::function<void( character_id )> &rollback_member );
 bool complete_covert_scout_burned_egress(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_member_acquire_read> &member_reads,

@@ -1826,6 +1826,127 @@ int burn_live_bandit_covert_scouts()
             reciprocal_exposure && current_minutes > cursor->last_advanced_minutes ?
             bandit_live_world::read_live_structural_local_zombie_observation( site ) :
             std::nullopt;
+        if( danger_read ) {
+            struct watch_exit_member_backup {
+                shared_ptr_fast<npc> member;
+                tripoint_abs_ms position;
+                tripoint_abs_omt goal;
+                std::vector<tripoint_abs_omt> omt_path;
+                npc_mission mission = NPC_MISSION_NULL;
+                npc_mission previous_mission = NPC_MISSION_NULL;
+                std::optional<tripoint_abs_ms> ordered_position;
+                std::optional<tripoint_abs_ms> ai_guard_position;
+                std::vector<tripoint_bub_ms> local_path;
+            };
+            std::vector<watch_exit_member_backup> backups;
+            std::map<character_id, std::vector<tripoint_abs_omt>> home_routes;
+            bool home_routes_ready = true;
+            for( const character_id member_id : site.active_outing.member_ids ) {
+                shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
+                if( !member || member->is_dead() ) {
+                    home_routes_ready = false;
+                    continue;
+                }
+                backups.push_back( { member, member->pos_abs(), member->goal,
+                                     member->omt_path, member->mission,
+                                     member->previous_mission, member->goto_to_this_pos,
+                                     member->get_ai_guard_pos(), member->path } );
+                std::vector<tripoint_abs_omt> route = live_bandit_member_route_to(
+                            *member, site, site.anchor );
+                if( route.empty() ) {
+                    home_routes_ready = false;
+                    continue;
+                }
+                home_routes.emplace( member_id, std::move( route ) );
+            }
+            home_routes_ready &= backups.size() == site.active_outing.member_ids.size() &&
+                                 home_routes.size() == site.active_outing.member_ids.size();
+            const std::optional<std::vector<bandit_live_world::active_member_observation>>
+            unreachable_reads = home_routes_ready ? std::nullopt :
+                                live_bandit_read_unreachable_return_members(
+                                    site, current_minutes );
+            const bandit_live_world::local_structural_watch_exit_plan exit_plan =
+                bandit_live_world::plan_local_structural_watch_exit(
+                    site, *cursor, reads, egress_candidates, *danger_read,
+                    current_minutes, home_routes_ready,
+                    unreachable_reads.value_or(
+                        std::vector<bandit_live_world::active_member_observation>() ) );
+            if( exit_plan.applicable ) {
+                if( !exit_plan.valid ) {
+                    continue;
+                }
+                const auto find_backup = [&backups]( const character_id member_id ) {
+                    return std::find_if( backups.begin(), backups.end(),
+                    [member_id]( const watch_exit_member_backup & backup ) {
+                        return backup.member && backup.member->getID() == member_id;
+                    } );
+                };
+                const auto restore_member = [&find_backup, &backups](
+                const character_id member_id ) {
+                    const auto backup = find_backup( member_id );
+                    if( backup == backups.end() ) {
+                        return;
+                    }
+                    backup->member->goal = backup->goal;
+                    backup->member->omt_path = backup->omt_path;
+                    backup->member->mission = backup->mission;
+                    backup->member->previous_mission = backup->previous_mission;
+                    backup->member->goto_to_this_pos = backup->ordered_position;
+                    if( backup->ai_guard_position ) {
+                        backup->member->set_ai_guard_pos( *backup->ai_guard_position );
+                    } else {
+                        backup->member->clear_ai_guard_pos();
+                    }
+                    backup->member->path = backup->local_path;
+                };
+                const auto prepare_member = [&site, &exit_plan, &home_routes,
+                                             &find_backup, &backups](
+                const character_id member_id ) {
+                    const auto backup = find_backup( member_id );
+                    if( backup == backups.end() ) {
+                        return exit_plan.kind == bandit_live_world::
+                               local_structural_watch_exit_kind::hard_danger_unreachable;
+                    }
+                    if( backup->member->is_dead() ||
+                        backup->member->pos_abs() != backup->position ) {
+                        return false;
+                    }
+                    backup->member->goto_to_this_pos = std::nullopt;
+                    backup->member->clear_ai_guard_pos();
+                    backup->member->path.clear();
+                    backup->member->omt_path.clear();
+                    if( exit_plan.kind == bandit_live_world::
+                        local_structural_watch_exit_kind::hard_danger_return ) {
+                        const auto route = home_routes.find( member_id );
+                        if( route == home_routes.end() ) {
+                            return false;
+                        }
+                        backup->member->goal = site.anchor;
+                        backup->member->omt_path = route->second;
+                        backup->member->mission = NPC_MISSION_TRAVELLING;
+                    } else {
+                        backup->member->goal = npc::no_goal_point;
+                        backup->member->set_guard_pos( backup->member->pos_abs() );
+                        backup->member->set_mission( NPC_MISSION_GUARD );
+                    }
+                    return true;
+                };
+                const bandit_live_world::local_handoff_commit_result committed =
+                    bandit_live_world::commit_local_structural_watch_exit(
+                        site, exit_plan, prepare_member, restore_member );
+                if( committed == bandit_live_world::local_handoff_commit_result::applied ) {
+                    burned++;
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit_live_world local_watch_exit"
+                            << " site=" << site.site_id
+                            << " priority=hard_danger"
+                            << " result=" << ( exit_plan.kind == bandit_live_world::
+                                               local_structural_watch_exit_kind::hard_danger_return ?
+                                               "returning_home" : "closed_unreachable" ) << '\n';
+                }
+                continue;
+            }
+        }
         const bandit_live_world::covert_scout_burn_effect effect =
             bandit_live_world::apply_covert_scout_burn(
                 site, *cursor, reads, egress_candidates, current_minutes, danger_read );

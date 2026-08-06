@@ -15914,7 +15914,7 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
 }
 
 TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
-           "[bandit][live_world][covert_burn]" )
+           "[bandit][live_world][covert_burn][simultaneous_watch_exit]" )
 {
     const auto make_world = []() {
         bandit_live_world::world_state world;
@@ -16107,6 +16107,144 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( serialize_world( world ) == committed );
         CHECK( danger_count( site.active_outing ) == 1 );
         CHECK( burn_count( site.active_outing ) == 1 );
+    }
+
+    SECTION( "hard danger outranks burn only after the exact pair route commits" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::string before = serialize_world( world );
+        bandit_live_world_probe::snapshot events;
+        {
+            bandit_live_world_probe::session event_session(
+                bandit_live_world_probe::collection_mode::transition_events );
+            const bandit_live_world::local_structural_watch_exit_plan plan =
+                bandit_live_world::plan_local_structural_watch_exit(
+                    site, *cursor, make_reads( site.active_outing ),
+                    make_egress( site.active_outing ), make_hard_danger( site ), 2, true );
+            REQUIRE( plan.applicable );
+            REQUIRE( plan.valid );
+            CHECK( plan.kind == bandit_live_world::
+                   local_structural_watch_exit_kind::hard_danger_return );
+            CHECK( serialize_world( world ) == before );
+            CHECK( event_session.result().transition_events.empty() );
+
+            std::vector<character_id> prepared;
+            REQUIRE( bandit_live_world::commit_local_structural_watch_exit(
+                         site, plan,
+            [&prepared]( const character_id member_id ) {
+                prepared.push_back( member_id );
+                return true;
+            }, []( const character_id ) {} ) ==
+                     bandit_live_world::local_handoff_commit_result::applied );
+            CHECK( prepared == plan.expected_member_ids );
+            events = event_session.result();
+        }
+        CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+        CHECK( site.active_outing.local_handoff.phase ==
+               bandit_live_world::scout_phase::returning_home );
+        CHECK_FALSE( site.active_outing.assessment.readiness_latched );
+        CHECK( site.active_outing.assessment.threshold_class ==
+               bandit_live_world::scout_assessment_threshold_class::none );
+        CHECK( site.active_outing.assessment.next_eligible_minutes == 2 + 24 * 60 );
+        CHECK( site.active_outing.assessment.exit_reason.empty() );
+        CHECK( std::count_if( site.active_outing.observations.begin(),
+                              site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::hard_danger;
+        } ) == 1 );
+        CHECK( std::count_if( site.active_outing.observations.begin(),
+                              site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+        } ) == 1 );
+        REQUIRE( events.transition_events.size() == 1 );
+        CHECK( events.transition_events.front().previous_phase == "observing" );
+        CHECK( events.transition_events.front().new_phase == "returning_home" );
+        CHECK( events.transition_events.front().at_minutes == 2 );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
+    SECTION( "pair route preparation failure rolls back without publishing the exit" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_structural_watch_exit_plan plan =
+            bandit_live_world::plan_local_structural_watch_exit(
+                site, *cursor, make_reads( site.active_outing ),
+                make_egress( site.active_outing ), make_hard_danger( site ), 2, true );
+        REQUIRE( plan.valid );
+        const std::string before = serialize_world( world );
+        std::vector<character_id> prepared;
+        std::vector<character_id> rolled_back;
+        CHECK( bandit_live_world::commit_local_structural_watch_exit(
+                   site, plan,
+        [&prepared]( const character_id member_id ) {
+            prepared.push_back( member_id );
+            return prepared.size() == 1;
+        }, [&rolled_back]( const character_id member_id ) {
+            rolled_back.push_back( member_id );
+        } ) == bandit_live_world::local_handoff_commit_result::rolled_back );
+        REQUIRE( prepared.size() == 2 );
+        CHECK( rolled_back.size() == 2 );
+        CHECK( rolled_back.front() == prepared.back() );
+        CHECK( serialize_world( world ) == before );
+    }
+
+    SECTION( "unreachable hard-danger return reconciles once from observing" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::vector<character_id> member_ids = site.active_outing.member_ids;
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::vector<bandit_live_world::active_member_observation> observations = {
+            { member_ids[0], bandit_live_world::active_member_observation_state::home,
+              "danger observer physically returned" },
+            { member_ids[1], bandit_live_world::active_member_observation_state::returning_home,
+              "survivor stranded without a route" }
+        };
+        const bandit_live_world::local_structural_watch_exit_plan plan =
+            bandit_live_world::plan_local_structural_watch_exit(
+                site, *cursor, make_reads( site.active_outing ),
+                make_egress( site.active_outing ), make_hard_danger( site ), 2,
+                false, observations );
+        REQUIRE( plan.applicable );
+        REQUIRE( plan.valid );
+        CHECK( plan.kind == bandit_live_world::
+               local_structural_watch_exit_kind::hard_danger_unreachable );
+
+        bandit_live_world_probe::snapshot events;
+        {
+            bandit_live_world_probe::session event_session(
+                bandit_live_world_probe::collection_mode::transition_events );
+            REQUIRE( bandit_live_world::commit_local_structural_watch_exit(
+                         site, plan, []( const character_id ) {
+                return true;
+            }, []( const character_id ) {} ) ==
+                     bandit_live_world::local_handoff_commit_result::applied );
+            events = event_session.result();
+        }
+        CHECK_FALSE( site.active_outing.is_active() );
+        REQUIRE( site.find_member( member_ids[0] ) != nullptr );
+        REQUIRE( site.find_member( member_ids[1] ) != nullptr );
+        CHECK( site.find_member( member_ids[0] )->state ==
+               bandit_live_world::member_state::at_home );
+        CHECK( site.find_member( member_ids[1] )->state ==
+               bandit_live_world::member_state::orphaned );
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( "covert-burn-lead" );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->status == bandit_live_world::camp_lead_status::dangerous );
+        CHECK( lead->threat == 200 );
+        REQUIRE( events.transition_events.size() == 1 );
+        CHECK( events.transition_events.front().previous_phase == "observing" );
+        CHECK( events.transition_events.front().new_phase == "lost" );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     }
 
     SECTION( "malformed simultaneous danger rejects the burn byte-identically" ) {
