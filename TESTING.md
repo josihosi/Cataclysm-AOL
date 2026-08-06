@@ -1299,3 +1299,15 @@ visibility completes once and replay is inert. Delegated Mac rebuild exits 0, ex
 passes 1/591, `[covert_burn]` passes 2/595, the root exact rerun passes 1/591, and diff check is
 clean. This is test-only owner/position proof, not actual loaded-NPC speed profiling. No astyle 3.1,
 tiles/live GUI, Linux, or Windows claim. Next: the production no-legal-egress seam.
+
+Phase-5 production no-legal-egress closure is green at `8a7142757a`. Two real unloaded NPCs are
+owned by the overmap at naturally impassable depth, so the public production failure adapter reads
+their authoritative positions without active-map placement or terrain mutation. It recomputes all
+adjacent retry candidates and both camp-return routes, exhausts into canonical stranded-return
+closure, marks both living survivors orphaned, releases the exact generation, applies the six-hour
+cooldown, clears stale travel goals, and guards both survivors. Replay is byte-inert. The redirected
+Mac rebuild exits 0; the exact case and `[live_egress]` each pass 1/50; `[covert_burn]` passes 3/645;
+`git diff --check` and final autoreview are clean. An earlier otherwise-green design was rejected
+after review found that restoring only terrain IDs could leave passability/predecessor metadata
+contaminated; no such mutation remains. No astyle 3.1, tiles/live GUI, Linux, or Windows claim.
+Next: production soft-danger escape selection.

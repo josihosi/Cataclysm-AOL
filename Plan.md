@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 NO-LEGAL-EXIT NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 SOFT-DANGER ESCAPE NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -369,8 +369,14 @@ cover a slow/injured follower without splitting the pair or resetting the burned
 contract is green at `df81293bca`: a 45%-HP follower remains wounded through dematerialization, real
 abstract maintenance, reload, and rematerialization; leader-only arrival is byte-inert, and the
 party completes exactly once only after the follower reaches the same persisted egress. Mac exact
-burn passes 1/591 and the burn tag passes 2/595. Next: traverse the production no-legal-egress seam
-without route oscillation, invented safety, or erasing the party.
+burn passes 1/591 and the burn tag passes 2/595. The production no-legal-egress seam is green at
+`8a7142757a`: two authoritative unloaded NPCs occupy naturally route-less deep OMTs, the live
+failure owner recomputes both retry and camp-return routes, exhausts once into canonical stranded
+return closure, releases the outing, preserves the cooldown/receipt, resets both survivors to
+guarding, and rejects replay byte-for-byte. Mac exact and `[live_egress]` pass 1/50, while
+`[covert_burn]` passes 3/645 after a clean rebuild and final autoreview. The rejected first test
+design's partial terrain restoration was removed rather than accepted. Next: traverse a production
+soft-danger escape and prove route-wide legitimate evidence changes the selected live egress.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
