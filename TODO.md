@@ -25,11 +25,12 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit the next Phase-6 visible-defender power and uncertainty rows. Trace the actual physical
-   character/NPC weapon, armor, health, and readiness evaluator feeding typed observations; identify
-   where no-visible-defender evidence remains uncertainty rather than zero. Reuse an existing combat
-   evaluator if honest. Implement only the smallest missing adapter/contract before attempting the
-   later multi-window aggregation equation or authorization gates.
+1. Implement the next Phase-6 simultaneous-window aggregation/uncertainty slice. Replace the current
+   assessment min/max-across-history behavior with the ledger equation: never sum distinct windows;
+   derive the strongest simultaneous defender-count/power lower bound with deterministic ties, keep
+   signal-only/no-visible cases at a truthful zero lower bound, then add certainty-based unknown slots
+   to the high bound. Cover two-then-one history, signal-only, co-located defenders, and >12 hard-unsafe
+   lower-bound behavior before touching response-party sizing or authorization gates.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

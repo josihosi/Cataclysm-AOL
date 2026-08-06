@@ -1502,3 +1502,16 @@ The Mac incremental build exits 0; `[report_history]` passes 1/49 and `[typed_ob
 seed 424242. Evidence is `build_logs/phase6_report_history_*`; diff check and fresh read-only review
 pass. This is test-only historical preservation, not aggregation or decision power. No astyle 3.1,
 live GUI, Linux, or Windows claim. Next: visible-defender power/uncertainty source audit.
+
+Phase-6 visible-defender power is green at `2e30cb53ef`. The loaded-pair production adapter uses
+ordinary non-clairvoyant NPC vision and the existing deterministic pre-fuzz character-threat
+evaluator, normalizing each real visible avatar/ally to integer `1..10`. A leader-blind live case
+proves the partner can author the private fact; one-way sight does not burn, reciprocal sight writes
+the powered burn receipt, and malformed injected batches reject atomically. Seed 424242 passes
+evaluator 1/5, live 1/102, core 2/737, NPC burn 5/313, and report history 1/49. The redirected Mac
+build is `build_logs/phase6_visible_defender_power_partner_build.log`; focused evidence is
+`build_logs/phase6_visible_defender_power_{evaluator_test,history_regression}.log` and
+`build_logs/phase6_visible_defender_power_partner_{live_test,core_test,burn_regression}.log`.
+`git diff --check` and the bounded review/fix pass are clean. No astyle 3.1, live GUI, Linux, or
+Windows claim. Next: exact simultaneous-window aggregation plus uncertainty slots; do not start
+response-party or authorization math first.

@@ -453,6 +453,15 @@ uncertainty, expiry, source/receiver OMTs, and target revision survive delivery,
 aging reads exactly; delivery time stays separate. Mac build, exact 1/49, typed 6/196, diff check,
 and fresh review pass. This does not claim aggregation or power math. Next audit the real visible-
 defender power source and unobserved-defender uncertainty seam before implementing normalization.
+Visible-defender power is green at `2e30cb53ef`: both loaded scouts may author an ordinary
+non-clairvoyant snapshot, including the partner-only case, from the existing deterministic pre-fuzz
+NPC character-threat evaluator. Real weapon, armor, dodge, health, speed, bleeding/fleeing, and
+personality inputs normalize to `1..10` per seen avatar/ally; co-located IDs/power and equipment
+detail enter one bounded typed window. One-way sight stays private, reciprocal sight powers the burn
+receipt, and no visible defender writes no zero fact. Mac build and evaluator 1/5, live 1/102, core
+2/737, burn 5/313, and report-history 1/49 pass after one review/fix pass. No aggregation,
+uncertainty-slot, astyle 3.1, GUI, Linux, or Windows claim. Next replace the assessment's current
+cross-window min/max behavior with the exact simultaneous-window lower-bound and uncertainty rules.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
