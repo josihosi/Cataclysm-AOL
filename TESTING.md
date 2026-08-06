@@ -1289,3 +1289,13 @@ Mac rebuild exits 0; fixed-seed exact burn passes 1/532, `[covert_burn]` passes 
 save compatibility; the final rerun is clean. One non-credit concurrent exact launch raced on the
 shared test player-template file, so credited Cata runs were serial. `git diff --check` is clean.
 No astyle 3.1, tiles/live GUI, Linux, or Windows claim. Next: slow/injured follower continuity.
+
+Phase-5 slow/injured burned-follower continuity is green at `df81293bca`. The test creates the
+injury only through a 45%-HP dematerialization read, then carries `wounded_or_unready`, phase, exact
+egress, attempt/revision/routes, and one burn through real abstract maintenance, save/load, and
+rematerialization. With the leader at the rally and follower still on the watch OMT, completion is
+byte-inert; moving the authoritative follower read to the persisted egress with evaluated-clear
+visibility completes once and replay is inert. Delegated Mac rebuild exits 0, exact fixed-seed burn
+passes 1/591, `[covert_burn]` passes 2/595, the root exact rerun passes 1/591, and diff check is
+clean. This is test-only owner/position proof, not actual loaded-NPC speed profiling. No astyle 3.1,
+tiles/live GUI, Linux, or Windows claim. Next: the production no-legal-egress seam.

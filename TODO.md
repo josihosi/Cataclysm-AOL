@@ -25,8 +25,9 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Cover a slow/injured follower during burned egress across local/abstract ownership; the pair must
-   remain coherent, preserve the persisted route, and never reset to observation or invent arrival.
+1. Traverse the production no-legal-egress path from real route selection through the authoritative
+   owner: one deterministic transition, no oscillation/re-entry, and canonical return or casualty
+   closure without erasing the outing.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
