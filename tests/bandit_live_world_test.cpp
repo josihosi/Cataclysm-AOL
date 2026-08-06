@@ -17026,7 +17026,7 @@ TEST_CASE( "scout_assessment_tracking_fields_migrate_and_round_trip",
 }
 
 TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
-           "[bandit][live_world][covert_burn][simultaneous_watch_exit]" )
+           "[bandit][live_world][covert_burn][simultaneous_watch_exit][burned_assessment]" )
 {
     const auto make_world = []() {
         bandit_live_world::world_state world;
@@ -17464,6 +17464,25 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
             bandit_live_world::apply_covert_scout_burn(
                 site, *cursor, reads, make_egress( site.active_outing ), 1 );
         REQUIRE( effect.result == bandit_live_world::covert_scout_burn_result::applied );
+        CHECK( site.active_outing.assessment.target_alert == 100 );
+        CHECK( site.active_outing.assessment.certainty == 60 );
+        CHECK( site.active_outing.assessment.danger_high == 25 );
+        bandit_live_world::active_outing_state contact_without_alert = site.active_outing;
+        contact_without_alert.assessment.target_alert = 0;
+        const bandit_live_world::scout_assessment_state no_alert_summary =
+            bandit_live_world::summarize_normal_scout_assessment( contact_without_alert );
+        CHECK( no_alert_summary.certainty == 30 );
+        CHECK( no_alert_summary.danger_high == 20 );
+        CHECK( site.active_outing.assessment.certainty ==
+               std::min( 95, no_alert_summary.certainty + 30 ) );
+        CHECK( site.active_outing.assessment.danger_high ==
+               no_alert_summary.danger_high +
+               ( site.active_outing.assessment.target_alert + 19 ) / 20 );
+        const std::string committed_burn = serialize_world( world );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, make_egress( site.active_outing ), 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == committed_burn );
         CHECK( effect.observer_id == member_ids[0] );
         CHECK( effect.target_observer_id == "avatar" );
         CHECK( effect.burn_origin_omt == shared_route[2] );
