@@ -92,6 +92,7 @@ enum npc_action : int;
 
 static const activity_id ACT_FORAGE( "ACT_FORAGE" );
 static const activity_id ACT_HARVEST( "ACT_HARVEST" );
+static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 static const activity_id ACT_START_FIRE( "ACT_START_FIRE" );
 
 static const efftype_id effect_bouldering( "bouldering" );
@@ -2144,7 +2145,7 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
 }
 
 TEST_CASE( "loaded_covert_scout_records_only_visible_owned_outward_wealth_cues",
-           "[npc][bandit][covert][vehicle_cue][infrastructure_cue]" )
+           "[npc][bandit][covert][vehicle_cue][infrastructure_cue][cargo_handling_cue]" )
 {
     g->faction_manager_ptr->create_if_needed();
     clear_map_without_vision();
@@ -2348,6 +2349,126 @@ TEST_CASE( "loaded_covert_scout_records_only_visible_owned_outward_wealth_cues",
                bandit_live_world::sortie_observation_share_state::observer_private );
         here.destroy_vehicle( generation );
     }
+
+    reset_live_outing();
+    const tripoint_bub_ms avatar_before_cargo = player_character.pos_bub( here );
+    const tripoint_bub_ms avatar_near_cargo( target_vehicle_position.x() - 20,
+            target_vehicle_position.y() + 8, target_vehicle_position.z() );
+    REQUIRE( here.inbounds( avatar_near_cargo ) );
+    player_character.setpos( here, avatar_near_cargo );
+    on_out_of_scope restore_avatar_after_cargo( [&player_character, &here, avatar_before_cargo]() {
+        player_character.setpos( here, avatar_before_cargo );
+    } );
+    npc &cargo_handler = spawn_npc( target_vehicle_position.xy(), "thug" );
+    const character_id cargo_handler_id = cargo_handler.getID();
+    on_out_of_scope remove_cargo_handler( [cargo_handler_id]() {
+        g->remove_npc( cargo_handler_id );
+        overmap_buffer.remove_npc( cargo_handler_id );
+    } );
+    REQUIRE( cargo_handler.is_active() );
+    REQUIRE_FALSE( cargo_handler.is_dead() );
+    REQUIRE( cargo_handler.pos_abs_omt() == target_omt );
+
+    cargo_handler.set_fac( faction_your_followers );
+    REQUIRE( cargo_handler.get_fac_id() == faction_your_followers );
+    REQUIRE( cargo_handler.activity.id() != ACT_MOVE_LOOT );
+    const std::string before_non_job_probe = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_cargo_handling_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_non_job_probe );
+
+    cargo_handler.assign_activity( zone_sort_activity_actor() );
+    REQUIRE( cargo_handler.activity.id() == ACT_MOVE_LOOT );
+    cargo_handler.set_fac( faction_id::NULL_ID() );
+    const std::string before_unowned_handler_probe =
+        serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_cargo_handling_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_unowned_handler_probe );
+    cargo_handler.set_fac( faction_your_followers );
+
+    for( npc *observer : { &scout, &partner } ) {
+        observer->add_effect( effect_blind_local, 1_hours );
+        observer->recalc_sight_limits();
+    }
+    const std::string before_blind_handler_probe =
+        serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_cargo_handling_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_blind_handler_probe );
+    for( npc *observer : { &scout, &partner } ) {
+        observer->remove_effect( effect_blind_local );
+        observer->recalc_sight_limits();
+    }
+
+    cargo_handler.activity = player_activity();
+    REQUIRE( cargo_handler.activity.id() != ACT_MOVE_LOOT );
+    npc &outside_cargo_handler = spawn_npc( outside_vehicle_position.xy(), "thug" );
+    outside_cargo_handler.set_fac( faction_your_followers );
+    outside_cargo_handler.assign_activity( zone_sort_activity_actor() );
+    const character_id outside_cargo_handler_id = outside_cargo_handler.getID();
+    on_out_of_scope remove_outside_cargo_handler( [outside_cargo_handler_id]() {
+        g->remove_npc( outside_cargo_handler_id );
+        overmap_buffer.remove_npc( outside_cargo_handler_id );
+    } );
+    REQUIRE( outside_cargo_handler.is_active() );
+    REQUIRE( outside_cargo_handler.pos_abs_omt() == watch_omt );
+    const std::string before_outside_handler_probe =
+        serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_cargo_handling_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_outside_handler_probe );
+    for( npc *observer : { &scout, &partner } ) {
+        observer->set_fac( faction_id( "hells_raiders" ) );
+        observer->set_attitude( NPCATT_NULL );
+        observer->hit_by_player = false;
+    }
+    cargo_handler.assign_activity( zone_sort_activity_actor() );
+    REQUIRE( cargo_handler.pos_abs_omt() == target_omt );
+    REQUIRE( cargo_handler.is_active() );
+    REQUIRE( cargo_handler.get_fac_id() == faction_your_followers );
+    REQUIRE( cargo_handler.activity.id() == ACT_MOVE_LOOT );
+    REQUIRE( here.inbounds( cargo_handler.pos_bub( here ) ) );
+    REQUIRE( scout.sees( here, cargo_handler.pos_bub( here ) ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, cargo_handler ) );
+    REQUIRE( scout.is_active() );
+    REQUIRE( scout.pos_abs_omt() == watch_omt );
+    REQUIRE( scout.clairvoyance() == 0 );
+    REQUIRE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor(
+                 live_state.sites.front() ) );
+
+    const time_point cargo_poll_start = calendar::turn;
+    on_out_of_scope restore_cargo_poll_time( [cargo_poll_start]() {
+        set_time( cargo_poll_start );
+    } );
+    REQUIRE( bandit_live_world::record_live_covert_cargo_handling_cues() == 1 );
+    REQUIRE( live_state.sites.front().active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &cargo_cue =
+        live_state.sites.front().active_outing.observations.front();
+    CHECK( cargo_cue.state_key == "wealth-cue:cargo-handling" );
+    CHECK( cargo_cue.source_id == "cargo-handler:npc:" +
+           std::to_string( cargo_handler.getID().get_value() ) );
+    CHECK( cargo_cue.source_omt == target_omt );
+    CHECK( cargo_cue.observer_id == scout.getID() );
+    CHECK( cargo_cue.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( bandit_live_world::record_live_covert_cargo_handling_cues() == 0 );
+
+    calendar::turn += 31_minutes;
+    REQUIRE( bandit_live_world::record_live_covert_cargo_handling_cues() == 1 );
+    calendar::turn += 31_minutes;
+    REQUIRE( bandit_live_world::record_live_covert_cargo_handling_cues() == 1 );
+    REQUIRE( live_state.sites.front().active_outing.observations.size() == 3 );
+    const std::string stable_source = "cargo-handler:npc:" +
+                                      std::to_string( cargo_handler.getID().get_value() );
+    std::set<int> cargo_buckets;
+    for( const bandit_live_world::sortie_observation &observation :
+         live_state.sites.front().active_outing.observations ) {
+        CHECK( observation.source_id == stable_source );
+        CHECK( observation.state_key == "wealth-cue:cargo-handling" );
+        CHECK( observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        cargo_buckets.insert( observation.bucket_start_minutes );
+    }
+    CHECK( cargo_buckets.size() == 3 );
+    CHECK( *cargo_buckets.rbegin() - *cargo_buckets.begin() >= 60 );
 }
 
 TEST_CASE( "live_covert_burn_tracks_environmental_visibility_changes",

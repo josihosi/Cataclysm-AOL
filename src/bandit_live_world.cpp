@@ -618,6 +618,44 @@ bool sortie_observation_is_generation_infrastructure_cue(
            observation.uncertainty_radius_omt == 0;
 }
 
+bool canonical_positive_character_id_source( const std::string &source_id,
+        const std::string &prefix )
+{
+    if( source_id.rfind( prefix, 0 ) != 0 || source_id.size() == prefix.size() ||
+        source_id[prefix.size()] == '0' ) {
+        return false;
+    }
+    int value = 0;
+    for( std::size_t index = prefix.size(); index < source_id.size(); ++index ) {
+        const unsigned char current = static_cast<unsigned char>( source_id[index] );
+        if( !std::isdigit( current ) ) {
+            return false;
+        }
+        const int digit = current - static_cast<unsigned char>( '0' );
+        if( value > ( std::numeric_limits<int>::max() - digit ) / 10 ) {
+            return false;
+        }
+        value = value * 10 + digit;
+    }
+    return value > 0 && source_id == prefix + std::to_string( value );
+}
+
+bool sortie_observation_is_cargo_handling_cue(
+    const bandit_live_world::sortie_observation &observation )
+{
+    static const std::string fact_prefix = "wealth-cue:cargo-handling:";
+    static const std::string source_prefix = "cargo-handler:npc:";
+    return observation.kind == sortie_observation_kind::bounds &&
+           observation.state_key == "wealth-cue:cargo-handling" &&
+           observation.fact_key == fact_prefix + observation.source_id &&
+           canonical_positive_character_id_source( observation.source_id, source_prefix ) &&
+           observation.sense == sortie_observation_sense::visual &&
+           observation.strength == 2 && observation.visual_quality == 2 &&
+           observation.defender_ids.empty() && observation.observed_power_low == 0 &&
+           observation.observed_power_high == 0 && observation.equipment_detail == 0 &&
+           observation.uncertainty_radius_omt == 0;
+}
+
 int sortie_observation_share_rank(
     const bandit_live_world::sortie_observation &observation )
 {
@@ -16035,6 +16073,78 @@ sortie_observation_effect record_covert_generation_infrastructure_observations(
                { observation }, current_minutes );
 }
 
+int covert_cargo_handling_cue_cap()
+{
+    return 8;
+}
+
+sortie_observation_effect record_covert_cargo_handling_observations(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const character_id observer_id, const tripoint_abs_omt &observer_position,
+    const std::vector<covert_cargo_handling_read> &handlers,
+    const int current_minutes )
+{
+    sortie_observation_effect effect;
+    const active_outing_state &outing = site.active_outing;
+    if( outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+        outing.local_handoff.phase != outing.phase || !outing.local_handoff.is_active() ||
+        !outing.local_handoff.cohesion_assembled ||
+        std::find( outing.member_ids.begin(), outing.member_ids.end(), observer_id ) ==
+        outing.member_ids.end() || observer_position != outing.selected_watch_omt ||
+        handlers.empty() ||
+        handlers.size() > static_cast<std::size_t>( covert_cargo_handling_cue_cap() ) ||
+        current_minutes < 0 ) {
+        return effect;
+    }
+
+    std::set<character_id> handler_ids;
+    std::vector<covert_cargo_handling_read> canonical = handlers;
+    for( const covert_cargo_handling_read &handler : canonical ) {
+        const bool handler_in_target = std::find(
+                                           outing.target_footprint.begin(),
+                                           outing.target_footprint.end(), handler.position ) !=
+                                       outing.target_footprint.end();
+        if( !handler.handler_id.is_valid() || handler.position.is_invalid() ||
+            !handler_in_target || !handler_ids.insert( handler.handler_id ).second ) {
+            return effect;
+        }
+    }
+    std::sort( canonical.begin(), canonical.end(), []( const auto &lhs, const auto &rhs ) {
+        return std::tie( lhs.handler_id, lhs.position ) <
+               std::tie( rhs.handler_id, rhs.position );
+    } );
+
+    const covert_cargo_handling_read &handler = canonical.front();
+    sortie_observation observation;
+    observation.source_id = "cargo-handler:npc:" +
+                            std::to_string( handler.handler_id.get_value() );
+    observation.fact_key = "wealth-cue:cargo-handling:" + observation.source_id;
+    observation.summary = "scout saw a player-faction cargo handler at " +
+                          handler.position.to_string();
+    observation.confidence = 100;
+    observation.observed_minutes = current_minutes;
+    observation.kind = sortie_observation_kind::bounds;
+    observation.state_key = "wealth-cue:cargo-handling";
+    observation.record_schema_version = 1;
+    observation.sense = sortie_observation_sense::visual;
+    observation.observer_id = observer_id;
+    observation.source_omt = handler.position;
+    observation.receiver_omt = observer_position;
+    observation.bucket_start_minutes = current_minutes - current_minutes % 30;
+    observation.strength = 2;
+    observation.visual_quality = 2;
+    observation.simultaneity_start_minutes = current_minutes;
+    observation.simultaneity_end_minutes = current_minutes;
+    observation.target_revision = outing.target_lead_revision;
+    observation.uncertainty_radius_omt = 0;
+    observation.expiry_minutes = minutes_after_saturated( current_minutes, 24 * 60 );
+    observation.share_state = sortie_observation_share_state::observer_private;
+    return record_active_typed_observations(
+               site, expected_cursor, observer_id, outing.target_lead_revision,
+               { observation }, current_minutes );
+}
+
 bool scout_assessment_readiness_after_certainty(
     const scout_assessment_threshold_class threshold_class,
     const bool readiness_latched, const int certainty )
@@ -16156,6 +16266,8 @@ scout_assessment_state summarize_normal_scout_assessment(
     bool confirmed_human_presence = false;
     std::set<int> vehicle_wealth_cue_buckets;
     std::set<int> infrastructure_wealth_cue_buckets;
+    std::set<int> cargo_handling_cue_buckets;
+    std::map<std::string, std::set<int>> cargo_handling_buckets_by_source;
     bool equipment_detail = false;
     using observation_window_key = std::tuple<int, int, int, int>;
     std::map<observation_window_key, int> static_hazard_by_window;
@@ -16198,6 +16310,12 @@ scout_assessment_state summarize_normal_scout_assessment(
         }
         if( sortie_observation_is_generation_infrastructure_cue( observation ) ) {
             infrastructure_wealth_cue_buckets.insert( observation.bucket_start_minutes );
+            continue;
+        }
+        if( sortie_observation_is_cargo_handling_cue( observation ) ) {
+            cargo_handling_cue_buckets.insert( observation.bucket_start_minutes );
+            cargo_handling_buckets_by_source[observation.source_id].insert(
+                observation.bucket_start_minutes );
             continue;
         }
         confirmed_presence = confirmed_presence ||
@@ -16263,20 +16381,36 @@ scout_assessment_state summarize_normal_scout_assessment(
     const bool occupied_human_baseline = confirmed_human_presence ||
                                          summary.bounty_estimate >= 1;
     const bool confirmed_outward_wealth_cue = !vehicle_wealth_cue_buckets.empty() ||
-            !infrastructure_wealth_cue_buckets.empty();
-    const bool distinct_class_and_bucket_cues = std::any_of(
-                vehicle_wealth_cue_buckets.begin(), vehicle_wealth_cue_buckets.end(),
-    [&infrastructure_wealth_cue_buckets]( const int vehicle_bucket ) {
-        return std::any_of( infrastructure_wealth_cue_buckets.begin(),
-                            infrastructure_wealth_cue_buckets.end(),
-        [vehicle_bucket]( const int infrastructure_bucket ) {
-            return vehicle_bucket != infrastructure_bucket;
-        } );
+            !infrastructure_wealth_cue_buckets.empty() ||
+            !cargo_handling_cue_buckets.empty();
+    const std::array<const std::set<int> *, 3> cue_class_buckets = {
+        &vehicle_wealth_cue_buckets, &infrastructure_wealth_cue_buckets,
+        &cargo_handling_cue_buckets
+    };
+    bool distinct_class_and_bucket_cues = false;
+    for( std::size_t first = 0; first < cue_class_buckets.size(); ++first ) {
+        for( std::size_t second = first + 1; second < cue_class_buckets.size(); ++second ) {
+            distinct_class_and_bucket_cues = distinct_class_and_bucket_cues || std::any_of(
+                    cue_class_buckets[first]->begin(), cue_class_buckets[first]->end(),
+            [&cue_class_buckets, second]( const int first_bucket ) {
+                return std::any_of( cue_class_buckets[second]->begin(),
+                                    cue_class_buckets[second]->end(),
+                [first_bucket]( const int second_bucket ) {
+                    return first_bucket != second_bucket;
+                } );
+            } );
+        }
+    }
+    const bool repeated_cargo_handling = std::any_of(
+            cargo_handling_buckets_by_source.begin(), cargo_handling_buckets_by_source.end(),
+    []( const auto & source_buckets ) {
+        const std::set<int> &buckets = source_buckets.second;
+        return buckets.size() >= 3 && *buckets.rbegin() - *buckets.begin() >= 60;
     } );
     summary.bounty_estimate = std::max(
                                   summary.bounty_estimate,
                                   occupied_human_baseline ?
-                                  distinct_class_and_bucket_cues ? 3 :
+                                  distinct_class_and_bucket_cues || repeated_cargo_handling ? 3 :
                                   confirmed_outward_wealth_cue ? 2 : 1 : 0 );
     summary.route_danger_high = route_danger_high;
     summary.last_progress_minutes = latest_progress;

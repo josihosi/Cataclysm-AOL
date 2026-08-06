@@ -16048,7 +16048,7 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
 }
 
 TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing",
-           "[bandit][live_world][vehicle_cue][infrastructure_cue]" )
+           "[bandit][live_world][vehicle_cue][infrastructure_cue][cargo_handling_cue]" )
 {
     const character_id observer_id( 894200 );
     const character_id partner_id( 894201 );
@@ -16135,6 +16135,12 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
         read.appliance_origin = tripoint_abs_ms( target_origin.x() + offset,
                                 target_origin.y() + 9, target_origin.z() );
         read.generation_part_position = read.appliance_origin;
+        return read;
+    };
+    const auto make_cargo_read = [&]( const int handler_id, const int offset = 0 ) {
+        bandit_live_world::covert_cargo_handling_read read;
+        read.handler_id = character_id( handler_id );
+        read.position = tripoint_abs_omt( target.x() + offset, target.y(), target.z() );
         return read;
     };
     const auto share_pair = []( bandit_live_world::site_record &site, const int current_minutes ) {
@@ -16228,6 +16234,39 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
     loaded_infrastructure.deserialize( saved_infrastructure_json.get_object() );
     CHECK( serialize_sortie_observation( loaded_infrastructure ) == saved_infrastructure );
 
+    const bandit_live_world::covert_cargo_handling_read cargo_handler =
+        make_cargo_read( 894210 );
+    bandit_live_world::world_state cargo_world = make_world( 1 );
+    bandit_live_world::site_record &cargo_site = cargo_world.sites.front();
+    const bandit_live_world::sortie_observation_effect cargo_recorded =
+        bandit_live_world::record_covert_cargo_handling_observations(
+            cargo_site, require_current_simulation_cursor( cargo_site ), observer_id, watch,
+            { cargo_handler }, 121 );
+    REQUIRE( cargo_recorded.valid );
+    REQUIRE( cargo_recorded.changed );
+    REQUIRE( cargo_site.active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &private_cargo =
+        cargo_site.active_outing.observations.front();
+    CHECK( private_cargo.state_key == "wealth-cue:cargo-handling" );
+    CHECK( private_cargo.source_id == "cargo-handler:npc:894210" );
+    CHECK( private_cargo.fact_key == "wealth-cue:cargo-handling:" +
+           private_cargo.source_id );
+    CHECK( private_cargo.source_omt == target );
+    CHECK( private_cargo.bucket_start_minutes == 120 );
+    CHECK( private_cargo.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               cargo_site.active_outing ).bounty_estimate == 1 );
+    share_pair( cargo_site, 121 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               cargo_site.active_outing ).bounty_estimate == 2 );
+    const std::string saved_cargo = serialize_sortie_observation(
+                                        cargo_site.active_outing.observations.front() );
+    JsonValue saved_cargo_json = json_loader::from_string( saved_cargo );
+    bandit_live_world::sortie_observation loaded_cargo;
+    loaded_cargo.deserialize( saved_cargo_json.get_object() );
+    CHECK( serialize_sortie_observation( loaded_cargo ) == saved_cargo );
+
     bandit_live_world::world_state empty_baseline_world = make_world( 0 );
     bandit_live_world::site_record &empty_baseline_site = empty_baseline_world.sites.front();
     REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
@@ -16246,6 +16285,14 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
     share_pair( empty_infrastructure_site, 121 );
     CHECK( bandit_live_world::summarize_normal_scout_assessment(
                empty_infrastructure_site.active_outing ).bounty_estimate == 0 );
+    bandit_live_world::world_state empty_cargo_world = make_world( 0 );
+    bandit_live_world::site_record &empty_cargo_site = empty_cargo_world.sites.front();
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 empty_cargo_site, require_current_simulation_cursor( empty_cargo_site ),
+                 observer_id, watch, { cargo_handler }, 121 ).valid );
+    share_pair( empty_cargo_site, 121 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               empty_cargo_site.active_outing ).bounty_estimate == 0 );
 
     const auto records_and_shares_vehicle = [&]( bandit_live_world::site_record &cue_site,
     const int current_minutes ) {
@@ -16259,6 +16306,13 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
         REQUIRE( bandit_live_world::record_covert_generation_infrastructure_observations(
                      cue_site, require_current_simulation_cursor( cue_site ), observer_id,
                      watch, { infrastructure }, current_minutes ).valid );
+        share_pair( cue_site, current_minutes );
+    };
+    const auto records_and_shares_cargo = [&]( bandit_live_world::site_record &cue_site,
+    const bandit_live_world::covert_cargo_handling_read &cargo, const int current_minutes ) {
+        REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                     cue_site, require_current_simulation_cursor( cue_site ), observer_id,
+                     watch, { cargo }, current_minutes ).valid );
         share_pair( cue_site, current_minutes );
     };
     bandit_live_world::world_state vehicle_then_infrastructure = make_world( 1 );
@@ -16278,6 +16332,70 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
     records_and_shares_infrastructure( same_bucket.sites.front(), 122 );
     CHECK( bandit_live_world::summarize_normal_scout_assessment(
                same_bucket.sites.front().active_outing ).bounty_estimate == 2 );
+
+    bandit_live_world::world_state cargo_then_vehicle = make_world( 1 );
+    records_and_shares_cargo( cargo_then_vehicle.sites.front(), cargo_handler, 121 );
+    records_and_shares_vehicle( cargo_then_vehicle.sites.front(), 151 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               cargo_then_vehicle.sites.front().active_outing ).bounty_estimate == 3 );
+
+    bandit_live_world::world_state infrastructure_then_cargo = make_world( 1 );
+    records_and_shares_infrastructure( infrastructure_then_cargo.sites.front(), 121 );
+    records_and_shares_cargo( infrastructure_then_cargo.sites.front(), cargo_handler, 151 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               infrastructure_then_cargo.sites.front().active_outing ).bounty_estimate == 3 );
+
+    bandit_live_world::world_state same_bucket_cargo_vehicle = make_world( 1 );
+    records_and_shares_cargo( same_bucket_cargo_vehicle.sites.front(), cargo_handler, 121 );
+    records_and_shares_vehicle( same_bucket_cargo_vehicle.sites.front(), 122 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               same_bucket_cargo_vehicle.sites.front().active_outing ).bounty_estimate == 2 );
+
+    bandit_live_world::world_state repeated_cargo = make_world( 1 );
+    records_and_shares_cargo( repeated_cargo.sites.front(), cargo_handler, 121 );
+    records_and_shares_cargo( repeated_cargo.sites.front(), cargo_handler, 151 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               repeated_cargo.sites.front().active_outing ).bounty_estimate == 2 );
+    records_and_shares_cargo( repeated_cargo.sites.front(), cargo_handler, 181 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               repeated_cargo.sites.front().active_outing ).bounty_estimate == 3 );
+
+    const auto malformed_cargo_source_stays_at_baseline = [&]( const std::string &source_id ) {
+        bandit_live_world::world_state malformed = repeated_cargo;
+        for( bandit_live_world::sortie_observation &observation :
+             malformed.sites.front().active_outing.observations ) {
+            observation.source_id = source_id;
+            observation.fact_key = "wealth-cue:cargo-handling:" + source_id;
+        }
+        CHECK( bandit_live_world::summarize_normal_scout_assessment(
+                   malformed.sites.front().active_outing ).bounty_estimate == 1 );
+    };
+    malformed_cargo_source_stays_at_baseline( "cargo-handler:npc:0" );
+    malformed_cargo_source_stays_at_baseline( "cargo-handler:npc:bogus" );
+
+    bandit_live_world::world_state duplicate_or_short_buckets = make_world( 1 );
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 duplicate_or_short_buckets.sites.front(),
+                 require_current_simulation_cursor( duplicate_or_short_buckets.sites.front() ),
+                 observer_id, watch, { cargo_handler }, 121 ).valid );
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 duplicate_or_short_buckets.sites.front(),
+                 require_current_simulation_cursor( duplicate_or_short_buckets.sites.front() ),
+                 observer_id, watch, { cargo_handler }, 149 ).valid );
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 duplicate_or_short_buckets.sites.front(),
+                 require_current_simulation_cursor( duplicate_or_short_buckets.sites.front() ),
+                 observer_id, watch, { cargo_handler }, 179 ).valid );
+    share_pair( duplicate_or_short_buckets.sites.front(), 179 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               duplicate_or_short_buckets.sites.front().active_outing ).bounty_estimate == 2 );
+
+    bandit_live_world::world_state source_churn = make_world( 1 );
+    records_and_shares_cargo( source_churn.sites.front(), make_cargo_read( 894211 ), 121 );
+    records_and_shares_cargo( source_churn.sites.front(), make_cargo_read( 894212 ), 151 );
+    records_and_shares_cargo( source_churn.sites.front(), make_cargo_read( 894213 ), 181 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               source_churn.sites.front().active_outing ).bounty_estimate == 2 );
 
     const auto rejects_atomically = [&]( const std::vector<
     bandit_live_world::covert_vehicle_wealth_read> &reads ) {
@@ -16339,6 +16457,31 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
     rejects_infrastructure_atomically( {} );
     rejects_infrastructure_atomically( { infrastructure, infrastructure } );
 
+    const auto rejects_cargo_atomically = [&]( const std::vector<
+    bandit_live_world::covert_cargo_handling_read> &reads ) {
+        bandit_live_world::world_state attempt = make_world( 1 );
+        bandit_live_world::site_record &attempt_site = attempt.sites.front();
+        const std::string before = serialize_world( attempt );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_cargo_handling_observations(
+                attempt_site, require_current_simulation_cursor( attempt_site ), observer_id,
+                watch, reads, 121 );
+        CHECK_FALSE( effect.valid );
+        CHECK_FALSE( effect.changed );
+        CHECK( serialize_world( attempt ) == before );
+    };
+    bandit_live_world::covert_cargo_handling_read invalid_cargo = cargo_handler;
+    invalid_cargo.handler_id = character_id();
+    rejects_cargo_atomically( { invalid_cargo } );
+    bandit_live_world::covert_cargo_handling_read outside_cargo = cargo_handler;
+    outside_cargo.position = watch;
+    rejects_cargo_atomically( { outside_cargo } );
+    bandit_live_world::covert_cargo_handling_read wrong_z_cargo = cargo_handler;
+    wrong_z_cargo.position = tripoint_abs_omt( target.x(), target.y(), target.z() + 1 );
+    rejects_cargo_atomically( { wrong_z_cargo } );
+    rejects_cargo_atomically( {} );
+    rejects_cargo_atomically( { cargo_handler, cargo_handler } );
+
     bandit_live_world::world_state ordered = make_world( 1 );
     bandit_live_world::world_state reversed = ordered;
     const bandit_live_world::covert_vehicle_wealth_read first_vehicle = make_read( 1 );
@@ -16369,6 +16512,22 @@ TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing
     CHECK( reversed_infrastructure.sites.front().active_outing.observations.size() == 1 );
     CHECK( serialize_world( ordered_infrastructure ) ==
            serialize_world( reversed_infrastructure ) );
+
+    bandit_live_world::world_state ordered_cargo = make_world( 1 );
+    bandit_live_world::world_state reversed_cargo = ordered_cargo;
+    const bandit_live_world::covert_cargo_handling_read earlier_handler =
+        make_cargo_read( 894209 );
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 ordered_cargo.sites.front(),
+                 require_current_simulation_cursor( ordered_cargo.sites.front() ), observer_id,
+                 watch, { earlier_handler, cargo_handler }, 121 ).valid );
+    REQUIRE( bandit_live_world::record_covert_cargo_handling_observations(
+                 reversed_cargo.sites.front(),
+                 require_current_simulation_cursor( reversed_cargo.sites.front() ), observer_id,
+                 watch, { cargo_handler, earlier_handler }, 121 ).valid );
+    CHECK( ordered_cargo.sites.front().active_outing.observations.size() == 1 );
+    CHECK( reversed_cargo.sites.front().active_outing.observations.size() == 1 );
+    CHECK( serialize_world( ordered_cargo ) == serialize_world( reversed_cargo ) );
 }
 
 TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
