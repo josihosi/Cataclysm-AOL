@@ -2,7 +2,7 @@
   "name": "bandit_scout_to_decision_observer_v0_2026-08-06",
   "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
   "source_profile": "live-debug",
-  "description": "Continuous-road observer footing for the natural bandit scout-to-decision vertical proof. It establishes a deterministic clock, places one five-member bandit camp at (164,39,0) on the existing x=164 north-south route corridor, parks the player at the sector-0 inner waypoint (164,35,0), clears all camp evidence and outings, and adds DEBUG_CLAIRVOYANCE. The road-connected sector-0 outer target is (164,30,0). No lead, dispatch, observation, return, report, or decision is injected.",
+  "description": "Continuous-road observer footing for the natural bandit scout-to-decision vertical proof. It establishes a deterministic clock, places one five-member bandit camp at (164,39,0) on the existing x=164 north-south route corridor, parks the player two OMTs west of the sector-0 inner waypoint at (162,35,0), clears all camp evidence and outings, and adds DEBUG_CLAIRVOYANCE. The road-connected sector-0 outer target is (164,30,0). No lead, dispatch, observation, return, report, or decision is injected.",
   "save_transforms": [
     {
       "kind": "game_turn",
@@ -15,7 +15,7 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "special_id": "bandit_camp",
       "site_index": 2,
-      "offset_omt": [24, -16, 0]
+      "offset_omt": [22, -16, 0]
     },
     {
       "kind": "seed_overmap_special_near_player",
@@ -23,7 +23,7 @@
       "special_id": "bandit_camp",
       "source_special_id": "bandit_camp",
       "site_index": 2,
-      "offset_omt": [0, 4, 0]
+      "offset_omt": [2, 4, 0]
     },
     {
       "kind": "bandit_clone_site",

@@ -3744,9 +3744,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             source_camp_anchor[index] + player_offset[index]
             for index in range(3)
         ]
-        self.assertEqual(player_offset, [24, -16, 0])
-        self.assertEqual(player_omt, [164, 35, 0])
-        self.assertEqual(child_transforms[2]["offset_omt"], [0, 4, 0])
+        self.assertEqual(player_offset, [22, -16, 0])
+        self.assertEqual(player_omt, [162, 35, 0])
+        self.assertEqual(child_transforms[2]["offset_omt"], [2, 4, 0])
         self.assertEqual(child_transforms[3]["new_anchor"], [164, 39, 0])
         self.assertEqual(
             child_transforms[3]["new_footprint"],
@@ -3758,14 +3758,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             child_transforms[3]["new_anchor"][2],
         ]
         self.assertEqual(sector_zero_outer_target, [164, 30, 0])
-        self.assertEqual(
-            {
-                player_omt[0],
-                child_transforms[3]["new_anchor"][0],
-                sector_zero_outer_target[0],
-            },
-            {164},
-        )
+        self.assertEqual(child_transforms[3]["new_anchor"][0], sector_zero_outer_target[0])
+        self.assertEqual(player_omt[0] + 2, child_transforms[3]["new_anchor"][0])
         self.assertLess(sector_zero_outer_target[1], player_omt[1])
         self.assertLess(player_omt[1], child_transforms[3]["new_anchor"][1])
         self.assertTrue(child_transforms[3]["reset_shakedown_history"])
@@ -3790,7 +3784,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["fixture"],
             "bandit_scout_to_decision_observer_v0_2026-08-06",
         )
-        self.assertIn("(164,35,0)", scenario["description"])
+        self.assertIn("(162,35,0)", scenario["description"])
         self.assertIn("(164,30,0)", scenario["description"])
         self.assertIn(
             "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",

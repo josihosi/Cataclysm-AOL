@@ -86,8 +86,9 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   the remembered road lead's watch route was malformed. The old `(160,39,0)` footing has exhausted
   its attempts and must not be rerun.
 - The replacement declared precondition moves only the camp/player footing onto the existing
-  x=164 route corridor: camp `(164,39,0)`, sector-0 inner waypoint/player `(164,35,0)`, and outer
-  target `(164,30,0)`. It still injects no lead, dispatch, observation, return, report, or decision.
+  x=164 route corridor: camp `(164,39,0)`, sector-0 inner waypoint `(164,35,0)`, and outer target
+  `(164,30,0)`. The player observer now stands two OMTs west at `(162,35,0)`. It still injects no
+  lead, dispatch, observation, return, report, or decision.
 - Run `20260807_005959` reached the replacement camp's code-derived deadline at hour `138` but
   rejected the exact road route because the NPC pathfinder's raw cost included half the source
   structure tile. The structural cap is defined from the camp boundary, so this slice subtracts
@@ -101,6 +102,11 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   the scenario allowed only five minutes for a route whose production stalking delay is 135
   minutes and whose owner advances hourly. The repaired contract waits three ordinary game hours
   for the first route waypoint; it does not change or inject the outing.
+- Run `20260807_014256` on clean `c53568ccaf+SDL3` naturally dispatched and committed both exact
+  members into local ownership at route position `(164,35,0)`. The player occupied that same OMT,
+  so ordinary hostile combat began before cohesion assembled; the run stopped red with only
+  `assembled=yes` missing. That footing is exhausted. Moving the observer two OMTs west removes
+  the causal collision without changing the camp, route, actors, clock, or production transition.
 
 ### Capped non-credit probes
 
@@ -158,8 +164,8 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
   final non-provisional report, and enters the authoritative camp decision owner in one run.
 - Preconditions/interventions: derive from the existing McWilliams save; set deterministic time,
   place one five-member camp at `(164,39,0)` on the existing x=164 route corridor, park the player
-  at its sector-0 inner waypoint `(164,35,0)`, retain outer target `(164,30,0)`, retire the empty
-  original roster, clear inherited evidence/outings, and add
+  two OMTs west of its sector-0 inner waypoint at `(162,35,0)`, retain outer target `(164,30,0)`,
+  retire the empty original roster, clear inherited evidence/outings, and add
   `DEBUG_CLAIRVOYANCE`. Each transform records a receipt. Do not inject a lead, dispatch,
   observation, casualty, return, report, or decision.
 - Causal boundary: the saved idle five-member camp with zero leads and no active outing before the

@@ -1,6 +1,6 @@
 {
   "name": "bandit.scout_to_decision_observer_live_mcw",
-  "description": "Observer-backed vertical probe from an idle zero-lead bandit camp at (164,39,0), with the player at the sector-0 inner waypoint (164,35,0) and the sector-0 outer target at (164,30,0) on the existing continuous x=164 north-south road. Production discovers local leads and reaches its stable-ID-derived 13-hour frontier deadline, then dispatches and hands off the sector-0 pair through the real route. A selected-entity capture-and-continue watch follows an initial six-hour natural window before authoritative survivor-return, final-report, and camp-decision audit.",
+  "description": "Observer-backed vertical probe from an idle zero-lead bandit camp at (164,39,0), with the player at (162,35,0), two OMTs west of the sector-0 inner waypoint, and the sector-0 outer target at (164,30,0) on the existing continuous x=164 north-south road. Production discovers local leads and reaches its stable-ID-derived 13-hour frontier deadline, then dispatches and hands off the sector-0 pair through the real route. A selected-entity capture-and-continue watch follows an initial six-hour natural window before authoritative survivor-return, final-report, and camp-decision audit.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_scout_to_decision_observer_v0_2026-08-06",
@@ -270,7 +270,7 @@
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.scout_to_decision_observer_live_mcw",
   "evidence_contract": {
     "claim": "from an idle zero-lead camp on the continuous x=164 road, production naturally discovers terrain, reaches its ID-derived frontier deadline, dispatches and physically hands off an exact pair, exposes that authoritative pair to the shared observer, records one natural incident, and returns at least one scout carrier home",
-    "preconditions_and_interventions": "the source fixture establishes only the idle five-member camp at (164,39,0), zero evidence, player position at the sector-0 inner waypoint (164,35,0), the road-connected sector-0 outer target (164,30,0), and deterministic clock; the derived transform adds only DEBUG_CLAIRVOYANCE and the scenario performs no ecology edit",
+    "preconditions_and_interventions": "the source fixture establishes only the idle five-member camp at (164,39,0), zero evidence, player observer position at (162,35,0) two OMTs west of the route, the road-connected sector-0 outer target (164,30,0), and deterministic clock; the derived transform adds only DEBUG_CLAIRVOYANCE and the scenario performs no ecology edit",
     "causal_boundary": "fixture installation ends before terrain discovery, dispatch, local handoff, observation, assessment, egress, return, report, or decision",
     "real_code_path": "hourly structural terrain scan and scheduler -> exact-pair dispatch -> route/local handoff and cohesion -> production observation and assessment -> return ownership -> report delivery and camp decision acceptance",
     "expected_transition": "idle/no-lead -> natural terrain memory -> due frontier lead -> exact local pair -> meaningful selected-entity delta -> at-least-one-survivor physical return -> final report -> report-awaiting-assessment decision",

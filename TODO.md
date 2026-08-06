@@ -2,10 +2,10 @@
 
 ## Now
 
-Write and execute one observer-backed proof contract for a real bandit scout from current
-authoritative dispatch state through physical return, final report, and camp decision. Use the
-existing shared ecology view, watch/run-until controls, and incident bundle; repair only the first
-concrete gameplay/tooling seam that blocks that vertical path.
+Execute the committed observer-standoff proof for a real bandit scout through physical return,
+final report, and camp decision. Keep the avatar at `(162,35,0)` off the route, use the existing
+shared ecology view, watch/run-until controls, and incident bundle, and do not rerun the exhausted
+on-route collision footing.
 
 ## Immediate follow-ups
 
