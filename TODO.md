@@ -25,8 +25,8 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Persist one route-qualified alternate watch from the existing structural geography owner. After
-   two hours without assessment progress, move the same pair through normal abstract/local route
+1. Consume the persisted route-qualified alternate watch after two hours without assessment
+   progress. Move the same pair through normal abstract/local route
    ownership; after the second empty window, return an explicitly inconclusive report. Prove
    poor-night polling, three empty windows, no teleport/retarget, save/reload, and stepwise versus
    large-time-jump equivalence.

@@ -1364,3 +1364,12 @@ bounded expiry, cooldown consumption, and generated user-dir cleanup are closed.
 review finding is the active next row: an honest route-qualified two-hour no-progress alternate
 cannot be simulated by changing an OMT or route cursor in place. No astyle 3.1, live GUI, Linux, or
 Windows claim.
+
+Phase-5 alternate-watch route footing is green at `3c66be732c`. The Mac tiles object build and
+test-binary link exit 0; `[alternate_watch]` passes 1 case / 31 assertions,
+`[watch_persistence]` 1 / 70, `[structural_bounty]` 51 / 6,785, and `[scout_assessment]` 1 / 95.
+The live geography adapter retains one deterministic non-primary route-qualified candidate, current
+schema-10 saves round-trip it, old saves default to none, malformed alternate routes reject without
+mutation, and replay is stable. This proves route ownership only: no scout has moved to the
+alternate yet. Next evidence must show the two-hour transition consumes this exact route under both
+abstract and local owners without teleportation or target-revision drift.

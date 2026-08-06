@@ -399,9 +399,10 @@ The first assessment owner checkpoint is green at `bf93d6cf77`: schema-10 outing
 physical reports share one bounded persisted assessment; exact 119/120-minute normal success,
 same-bucket replay, shared-only target evidence, legacy-watch migration, field-pinned revision,
 eight-hour inconclusive return, retained handoff phase, and production cooldown consumption are
-covered. Next is the honest route-qualified two-hour no-progress transition: persist one alternate
-watch selected from the existing geography/route owner, move through normal abstract/local route
-semantics without teleportation, then abort after the second empty window. Poor-night polling,
+covered. The route footing is now green at `3c66be732c`: the existing bounded geography solve
+persists one deterministic non-primary watch and its canonical shared route without changing target
+knowledge. Next is the two-hour no-progress transition: consume that exact route through normal
+abstract/local route semantics without teleportation, then abort after the second empty window. Poor-night polling,
 three empty windows, save/reload, and stepwise-versus-large-jump equivalence prove that row before
 69/70/60 hysteresis and the remaining cooldown boundary table.
 
