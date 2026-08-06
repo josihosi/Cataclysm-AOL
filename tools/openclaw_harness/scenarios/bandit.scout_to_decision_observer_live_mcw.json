@@ -97,12 +97,12 @@
     },
     {
       "kind": "long_wait",
-      "label": "wait_5_minutes_for_real_pair_handoff",
-      "choice_key": "3",
-      "expected_duration": "5m",
+      "label": "wait_3_hours_for_real_pair_handoff",
+      "choice_key": "7",
+      "expected_duration": "3h",
       "allow_artifact_elapsed_without_menu_ocr": true,
       "pre_menu_choice_key": "w",
-      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing five minutes",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing three hours",
       "completion_wait_seconds": 60.0,
       "completion_artifact_timeout_seconds": 180.0,
       "artifact_state_patterns": [
@@ -275,7 +275,7 @@
     "real_code_path": "hourly structural terrain scan and scheduler -> exact-pair dispatch -> route/local handoff and cohesion -> production observation and assessment -> return ownership -> report delivery and camp decision acceptance",
     "expected_transition": "idle/no-lead -> natural terrain memory -> due frontier lead -> exact local pair -> meaningful selected-entity delta -> at-least-one-survivor physical return -> final report -> report-awaiting-assessment decision",
     "negative_control": "preflight requires zero leads and zero outing; the incident must report natural provenance, debug_intervention=false, and an empty intervention ledger",
-    "timeout": "two six-hour waits plus one one-hour wait reach the ID-derived frontier deadline, followed by five-minute handoff and one initial six-hour post-observation window; no completion state may be injected",
+    "timeout": "two six-hour waits plus one one-hour wait reach the ID-derived frontier deadline, followed by the next three hourly structural advances and one initial six-hour post-observation window; no completion state may be injected",
     "pass_fail_rule": "The row is green only when preflight, exact production dispatch/handoff, observer selection/watch, natural incident pair, at least one same-run scout survivor home, save writeback, closed outing, final non-provisional report, and report-to-decision identity match are all green.",
     "observer_artifact_requirement": "Coordinator inspection must find one post-window ecology_incident JSON/PNG pair for the selected canonical ID with natural provenance, debug_intervention=false, and an empty intervention ledger.",
     "identity_requirement": "The run artifact must retain commit, binary, fixture, scenario, selected canonical ID, and observer-tool identities."

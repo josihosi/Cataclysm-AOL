@@ -3816,7 +3816,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ("8", "6h"),
                 ("8", "6h"),
                 ("5", "1h"),
-                ("3", "5m"),
+                ("7", "3h"),
                 ("8", "6h"),
             ],
         )
@@ -3829,7 +3829,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             )
         )
         self.assertLess(
-            labels.index("wait_5_minutes_for_real_pair_handoff"),
+            labels.index("wait_3_hours_for_real_pair_handoff"),
             labels.index("select_authoritative_dispatch"),
         )
         self.assertLess(

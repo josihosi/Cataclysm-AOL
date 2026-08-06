@@ -96,6 +96,11 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   at 5 cases / 163 assertions and the harness contract remains green at 139 tests. Medium review
   found both adapter inconsistencies; the final localized fallback fix closed with deterministic
   tests. A clean committed SDL3 rebuild and live rerun are still required.
+- Run `20260807_013140` on clean `1b7b40da3e+SDL3` naturally dispatched the exact pair for
+  `frontier_probe:0`; the previous route rejection is resolved. It then timed out honestly because
+  the scenario allowed only five minutes for a route whose production stalking delay is 135
+  minutes and whose owner advances hourly. The repaired contract waits three ordinary game hours
+  for the first route waypoint; it does not change or inject the outing.
 
 ### Capped non-credit probes
 
@@ -168,8 +173,8 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
 - Negative/control: preflight proves zero leads/zero outing; an empty or all-loss return cannot pass;
   private evidence without a carrier cannot appear; stale identity, duplicate owner, or mismatched
   report generation is red.
-- Timeout: 13 game hours to the code-derived frontier deadline, five minutes for real local
-  handoff, then an initial bounded six-hour post-observation window. The road-connected correction
+- Timeout: 13 game hours to the code-derived frontier deadline, three hourly structural advances
+  for real local handoff, then an initial bounded six-hour post-observation window. The road-connected correction
   is one new causal footing; stop and isolate the first concrete blocker if it fails.
 - Pass/fail identities: record the clean committed binary identity plus the committed source/fixture
   manifest/hash, scenario name, run ID, saved-owner audit, same-run transition patterns, and compact
