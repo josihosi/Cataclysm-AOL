@@ -1335,3 +1335,16 @@ sight; the final concrete finding added unconditional narcosis suppression. Redi
 exits 0; exact passes 1/86; `[live_egress]` passes 3/178; `[covert_burn]` passes 5/773; diff check is
 clean. No astyle 3.1, tiles/live GUI, Linux, or Windows claim. Next: darkness/weather changing
 mid-watch.
+
+Phase-5 darkness/weather changing mid-watch is green at test checkpoint `7f3f0261fd`, with no
+production change. One real active schema-10 pair and player-owned camp keep the same owner while
+time advances monotonically from construction noon through clear midnight, the next late-day
+clear/fog differential, and following clear noon. Clear midnight and fog five minutes before sunset
+both prove reciprocal ordinary visibility false, burn 0, and byte-identical serialized owner state;
+clear weather at the identical late-day time proves the visibility differential, and later clear
+noon burns once, binds both concrete NPC routes, and replays inertly. The delegated first attempt
+constructed the owner at midnight and lacked a valid cursor; full-noon fog remained honestly visible
+even at 50 tiles. Neither was credited. Root corrected time to remain monotonic and removed owner
+resets between no-op calls. Redirected Mac build exits 0; exact passes 1/36; `[live_egress]` passes
+4/214; `[covert_burn]` passes 6/809; diff check is clean. No astyle 3.1, tiles/live GUI, Linux, or
+Windows claim. The burned-egress boundary matrix is complete. Next: assessment timing and replay.

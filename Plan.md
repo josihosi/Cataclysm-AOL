@@ -389,7 +389,15 @@ NPC sleep sight; `SEESLEEP` remains valid unless narcosis suppresses it. The liv
 proves byte-inert rejection for those states and opaque cover, then one-shot burn plus bound egress
 when reciprocal ordinary sight exists. Mac exact passes 1/86, `[live_egress]` 3/178, and
 `[covert_burn]` 5/773 after a clean rebuild and concrete review-driven corrections. Next:
-darkness/weather changing mid-watch.
+darkness/weather changing mid-watch. That final boundary-matrix slice is green at `7f3f0261fd`
+without production changes: one exact physical pair and real player-owned camp retain the same
+authoritative owner while clear midnight and late-day fog produce no reciprocal sight, no burn,
+and byte-identical owner state. At the identical late-day time, clear weather restores reciprocal
+sight; later clear noon burns once, binds both routes, and replay is inert. Time advances
+monotonically throughout. Mac exact passes 1/36, `[live_egress]` 4/214, and `[covert_burn]` 6/809.
+The boundary-matrix row is complete. Next: exact 119/120-minute assessment timing, same-bucket
+replay, poor-night polling, empty-window/alternate-watch/expiry/revision/hysteresis/cooldown, and
+large-jump equivalence.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

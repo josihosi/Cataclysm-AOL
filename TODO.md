@@ -25,9 +25,10 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Cover darkness/weather changing mid-watch through the production burn observer: preserve the
-   exact owner, recompute ordinary current visibility from the real environment, reject invented
-   exposure while obscured, and burn once only if the same watch later becomes genuinely reciprocal.
+1. Boundary-test normal success at exactly 120 minutes versus 119, then same-bucket replay,
+   poor-night polling, three empty windows, the one alternate-watch attempt, eight-hour expiry,
+   target revision replacement, 69/70/60 assessment hysteresis, every cooldown, and large-time-jump
+   equivalence to stepwise maintenance.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
