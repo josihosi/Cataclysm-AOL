@@ -25,9 +25,8 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Preserve the exact burned egress/retry owner through last-local-tick dematerialization, one real
-   abstract structural-maintenance tick, save/load, and rematerialization; keep one burn fact and a
-   valid cursor throughout.
+1. Isolate and cover the burned partial-bubble boundary where only one of the exact pair is loaded;
+   retain atomic ownership and never invent the missing member's visibility, death, or movement.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

@@ -344,7 +344,14 @@ on legacy fields emitted by the current-schema roster transform. Producer footin
 `5f4d091250`; schema-aware population and canonical-outing repairs are `685307349e` and
 `38a130e146`. Do not run a third probe now. Per the debug-proof finish rule, retain that prepared
 playtest footing and advance to the next deterministic boundary slice: preserve burned physical
-egress across one real abstract-resume maintenance tick and subsequent rematerialization.
+egress across one real abstract-resume maintenance tick and subsequent rematerialization. That
+boundary is green at `2b721e3f2e`: burned, returning-exposed, and returning-report snapshots retain
+the physical egress owner, while ordinary returning-home canonical receipts still hand back to
+abstract travel. The cross-layer test round-trips immediately before/after burn, dematerializes on
+the last local tick, runs real structural maintenance, reloads, and rematerializes with the same
+egress/retry state and one burn fact. Mac build, burn 2/426, handoff 1/651, diff check, and final
+autoreview pass. Next: isolate the partial-bubble/only-one-loaded-member boundary without weakening
+the exact-pair owner.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

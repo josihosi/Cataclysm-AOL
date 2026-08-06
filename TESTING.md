@@ -1250,3 +1250,13 @@ reject fabricated current-schema outside ownership, and pass focused 2/2 then 3/
 Python compile/diff checks. Do not claim burn, observer, egress, or rally from either run and do not
 launch a third producer probe now. The next focused evidence is one last-local-tick dematerialization,
 real abstract maintenance tick, save/load, and rematerialization with the exact burned egress owner.
+
+Phase-5 burned abstract resume is green at `2b721e3f2e`. The rebuilt Mac test target exits 0;
+fixed-seed `[covert_burn]` passes 2 cases/426 assertions and `[local_handoff]` passes 1/651. The new
+cross-layer case reloads immediately before and after burn, dematerializes on the last local tick,
+runs `advance_structural_bounty_outings`, reloads again, and rematerializes with the same egress,
+retry revision/routes, valid cursor, and exactly one burn fact. Initial autoreview correctly found
+that the shared homeward predicate also covered ordinary `returning_home`; the accepted P1 was fixed
+by retaining only burned/exposed/report snapshots, an explicit ordinary-home control was added, and
+the required rerun reports no actionable findings. No astyle 3.1, tiles/live GUI, Linux, or Windows
+claim. Next evidence is the only-one-loaded-member partial-bubble boundary.
