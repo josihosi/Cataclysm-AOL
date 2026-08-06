@@ -1348,3 +1348,19 @@ even at 50 tiles. Neither was credited. Root corrected time to remain monotonic 
 resets between no-op calls. Redirected Mac build exits 0; exact passes 1/36; `[live_egress]` passes
 4/214; `[covert_burn]` passes 6/809; diff check is clean. No astyle 3.1, tiles/live GUI, Linux, or
 Windows claim. The burned-egress boundary matrix is complete. Next: assessment timing and replay.
+
+Phase-5 structural watch assessment foundation is green at `bf93d6cf77`. Redirected Mac tiles
+objects and test-binary link exit 0. Fixed final evidence: `[scout_assessment]` 1 case / 95
+assertions, `[structural_bounty]` 51 / 6,785, `[camp_decision]` 3 / 124,
+`[watch_persistence]` 1 / 70, `[physical_report]` 1 / 16, `[split_return]` 2 / 148, and
+`[covert_burn]` 6 / 812. The assessment case covers exact 119/120, replay, shared-only target
+evidence, private-fact exclusion, schema-10 migration from earliest target evidence, camp-side
+revision replacement without field retargeting, exact 479/480 expiry, schema round-trip, durable
+normal/inconclusive reports, target identity, and dispatch deadline propagation. One different burn
+seed failed the unchanged geometry-sensitive NPC sight assertion; the controlled previously green
+seed passed, so no optics change is claimed. Two autoreview passes found concrete ownership defects;
+field pinning, retained abstract-handoff phase, private evidence, migration, report identity,
+bounded expiry, cooldown consumption, and generated user-dir cleanup are closed. The remaining
+review finding is the active next row: an honest route-qualified two-hour no-progress alternate
+cannot be simulated by changing an OMT or route cursor in place. No astyle 3.1, live GUI, Linux, or
+Windows claim.

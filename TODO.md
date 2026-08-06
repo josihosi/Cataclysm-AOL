@@ -25,10 +25,13 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Boundary-test normal success at exactly 120 minutes versus 119, then same-bucket replay,
-   poor-night polling, three empty windows, the one alternate-watch attempt, eight-hour expiry,
-   target revision replacement, 69/70/60 assessment hysteresis, every cooldown, and large-time-jump
-   equivalence to stepwise maintenance.
+1. Persist one route-qualified alternate watch from the existing structural geography owner. After
+   two hours without assessment progress, move the same pair through normal abstract/local route
+   ownership; after the second empty window, return an explicitly inconclusive report. Prove
+   poor-night polling, three empty windows, no teleport/retarget, save/reload, and stepwise versus
+   large-time-jump equivalence.
+2. Boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
+   cooldown table after the alternate-watch owner is green.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

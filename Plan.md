@@ -395,9 +395,15 @@ authoritative owner while clear midnight and late-day fog produce no reciprocal 
 and byte-identical owner state. At the identical late-day time, clear weather restores reciprocal
 sight; later clear noon burns once, binds both routes, and replay is inert. Time advances
 monotonically throughout. Mac exact passes 1/36, `[live_egress]` 4/214, and `[covert_burn]` 6/809.
-The boundary-matrix row is complete. Next: exact 119/120-minute assessment timing, same-bucket
-replay, poor-night polling, empty-window/alternate-watch/expiry/revision/hysteresis/cooldown, and
-large-jump equivalence.
+The first assessment owner checkpoint is green at `bf93d6cf77`: schema-10 outings and schema-5
+physical reports share one bounded persisted assessment; exact 119/120-minute normal success,
+same-bucket replay, shared-only target evidence, legacy-watch migration, field-pinned revision,
+eight-hour inconclusive return, retained handoff phase, and production cooldown consumption are
+covered. Next is the honest route-qualified two-hour no-progress transition: persist one alternate
+watch selected from the existing geography/route owner, move through normal abstract/local route
+semantics without teleportation, then abort after the second empty window. Poor-night polling,
+three empty windows, save/reload, and stepwise-versus-large-jump equivalence prove that row before
+69/70/60 hysteresis and the remaining cooldown boundary table.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
