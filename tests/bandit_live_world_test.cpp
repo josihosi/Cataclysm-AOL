@@ -5024,6 +5024,157 @@ TEST_CASE( "bandit_live_world_private_observer_evidence_dies_without_reaching_th
     } ) );
 }
 
+TEST_CASE( "bandit_live_world_report_preserves_historical_simultaneous_visible_sets",
+           "[bandit][live_world][typed_observation][physical_report][report_history]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 45270 );
+    add_bandit_camp_member( world, 1, 45270 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const character_id observer_id( 45270 );
+    const character_id partner_id( 45271 );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, observer_id, bandit_live_world::member_state::local_contact,
+                 "historical observation scout active" ) );
+    REQUIRE( bandit_live_world::update_member_state(
+                 site, partner_id, bandit_live_world::member_state::local_contact,
+                 "historical observation partner active" ) );
+    set_test_active_outing( site, site.site_id + "#scout:report-history" );
+    site.active_outing.member_ids = { observer_id, partner_id };
+    site.active_outing.leader_id = observer_id;
+    site.active_outing.target_id = "historical-visible-set-target";
+    site.active_outing.target_omt = tripoint_abs_omt( 18, 20, 0 );
+    site.active_outing.target_lead_revision = 12;
+    site.active_outing.started_minutes = 90;
+    site.active_outing.last_progress_minutes = 100;
+    site.active_outing.owner = bandit_live_world::simulation_owner::local;
+    site.active_outing.handoff_epoch = 1;
+    site.active_outing.last_advanced_minutes = 100;
+
+    bandit_live_world::sortie_observation first_window =
+        make_typed_visual_observation(
+            observer_id, 12, 121, "historical-visible-set",
+            bandit_live_world::sortie_observation_share_state::shared );
+    first_window.summary = "two defenders simultaneously visible in the first historical window";
+    first_window.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    first_window.receiver_omt = tripoint_abs_omt( 11, 20, 0 );
+    first_window.simultaneity_start_minutes = 120;
+    first_window.simultaneity_end_minutes = 124;
+    first_window.observed_power_low = 5;
+    first_window.observed_power_high = 8;
+    first_window.equipment_detail = 2;
+    first_window.uncertainty_radius_omt = 1;
+    first_window.expiry_minutes = 301;
+
+    bandit_live_world::sortie_observation second_window =
+        make_typed_visual_observation(
+            observer_id, 12, 167, "historical-visible-set",
+            bandit_live_world::sortie_observation_share_state::shared );
+    second_window.summary = "one defender simultaneously visible in the later historical window";
+    second_window.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    second_window.receiver_omt = tripoint_abs_omt( 12, 21, 0 );
+    second_window.defender_ids = { "defender:2" };
+    second_window.simultaneity_start_minutes = 164;
+    second_window.simultaneity_end_minutes = 171;
+    second_window.observed_power_low = 3;
+    second_window.observed_power_high = 4;
+    second_window.equipment_detail = 1;
+    second_window.uncertainty_radius_omt = 2;
+    second_window.expiry_minutes = 347;
+
+    const bandit_live_world::sortie_observation_effect recorded =
+        bandit_live_world::record_active_typed_observations(
+            site, require_current_simulation_cursor( site ), observer_id, 12,
+            { first_window, second_window }, 180 );
+    REQUIRE( recorded.valid );
+    REQUIRE( recorded.inserted == 2 );
+
+    const std::vector<bandit_live_world::active_member_observation> home_arrival = {
+        { observer_id, bandit_live_world::active_member_observation_state::home,
+          "observer physically returned with historical windows" },
+        { partner_id, bandit_live_world::active_member_observation_state::home,
+          "partner physically returned" }
+    };
+    const bandit_live_world::scout_resolution_effect returned =
+        bandit_live_world::apply_active_scout_observations(
+            site, require_current_simulation_cursor( site ), home_arrival, 600 );
+    REQUIRE( returned.valid );
+    REQUIRE( returned.completed );
+    REQUIRE( site.current_scout_report.is_present() );
+    CHECK( site.current_scout_report.delivered_minutes == 600 );
+    REQUIRE( site.current_scout_report.observations.size() == 2 );
+
+    const auto find_report_window = [&site]( const int bucket_start_minutes ) {
+        return std::find_if( site.current_scout_report.observations.begin(),
+        site.current_scout_report.observations.end(), [bucket_start_minutes](
+        const bandit_live_world::sortie_observation & observation ) {
+            return observation.fact_key == "historical-visible-set" &&
+                   observation.bucket_start_minutes == bucket_start_minutes;
+        } );
+    };
+    const auto reported_first = find_report_window( 120 );
+    const auto reported_second = find_report_window( 150 );
+    REQUIRE( reported_first != site.current_scout_report.observations.end() );
+    REQUIRE( reported_second != site.current_scout_report.observations.end() );
+
+    bandit_live_world::sortie_observation expected_first = first_window;
+    expected_first.share_state = bandit_live_world::sortie_observation_share_state::reported;
+    bandit_live_world::sortie_observation expected_second = second_window;
+    expected_second.share_state = bandit_live_world::sortie_observation_share_state::reported;
+    CHECK( serialize_sortie_observation( *reported_first ) ==
+           serialize_sortie_observation( expected_first ) );
+    CHECK( serialize_sortie_observation( *reported_second ) ==
+           serialize_sortie_observation( expected_second ) );
+    CHECK( reported_first->observed_minutes == 121 );
+    CHECK( reported_first->bucket_start_minutes == 120 );
+    CHECK( reported_first->simultaneity_start_minutes == 120 );
+    CHECK( reported_first->simultaneity_end_minutes == 124 );
+    CHECK( reported_first->defender_ids ==
+           std::vector<std::string> { "defender:1", "defender:2" } );
+    CHECK( reported_first->observed_power_low == 5 );
+    CHECK( reported_first->observed_power_high == 8 );
+    CHECK( reported_first->equipment_detail == 2 );
+    CHECK( reported_first->uncertainty_radius_omt == 1 );
+    CHECK( reported_first->expiry_minutes == 301 );
+    CHECK( reported_first->source_omt == tripoint_abs_omt( 18, 20, 0 ) );
+    CHECK( reported_first->receiver_omt == tripoint_abs_omt( 11, 20, 0 ) );
+    CHECK( reported_first->target_revision == 12 );
+    CHECK( reported_second->observed_minutes == 167 );
+    CHECK( reported_second->bucket_start_minutes == 150 );
+    CHECK( reported_second->simultaneity_start_minutes == 164 );
+    CHECK( reported_second->simultaneity_end_minutes == 171 );
+    CHECK( reported_second->defender_ids ==
+           std::vector<std::string> { "defender:2" } );
+    CHECK( reported_second->observed_power_low == 3 );
+    CHECK( reported_second->observed_power_high == 4 );
+    CHECK( reported_second->equipment_detail == 1 );
+    CHECK( reported_second->uncertainty_radius_omt == 2 );
+    CHECK( reported_second->expiry_minutes == 347 );
+    CHECK( reported_second->source_omt == tripoint_abs_omt( 18, 20, 0 ) );
+    CHECK( reported_second->receiver_omt == tripoint_abs_omt( 12, 21, 0 ) );
+    CHECK( reported_second->target_revision == 12 );
+    CHECK( site.current_scout_report.delivered_minutes > reported_second->observed_minutes );
+
+    const auto serialize_report = []( const bandit_live_world::scout_report_record &report ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        report.serialize( json );
+        return out.str();
+    };
+    const std::string report_bytes = serialize_report( site.current_scout_report );
+    bandit_live_world::world_state loaded = round_trip_world( world );
+    REQUIRE( loaded.sites.size() == 1 );
+    REQUIRE( loaded.sites.front().current_scout_report.is_present() );
+    CHECK( serialize_report( loaded.sites.front().current_scout_report ) == report_bytes );
+
+    const std::string before_later_read =
+        serialize_report( loaded.sites.front().current_scout_report );
+    CHECK( bandit_live_world::evaluate_scout_report_at(
+               loaded.sites.front().current_scout_report, 600 + 12 * 60 ).valid );
+    CHECK( serialize_report( loaded.sites.front().current_scout_report ) ==
+           before_later_read );
+}
+
 TEST_CASE( "bandit_live_world_persists_partial_scout_casualties_without_closing_the_partner",
            "[bandit][live_world][scout_state][save]" )
 {
