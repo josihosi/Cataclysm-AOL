@@ -11921,6 +11921,7 @@ TEST_CASE( "hostile_camp_live_covert_egress_closes_when_retry_and_home_are_unrea
         read.target_saw_scout = true;
         read.scout_saw_target = true;
         read.perceived_target_observer_positions = { target_omt };
+        read.visible_defenders = { { "avatar", target_omt, 4, 0 } };
         burn_reads.push_back( read );
     }
     const bandit_live_world::covert_scout_egress_candidate unreachable_egress(
@@ -15437,6 +15438,7 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
             read.target_saw_scout = true;
             read.scout_saw_target = true;
             read.perceived_target_observer_positions = { target };
+            read.visible_defenders = { { "alternate-watch-target", target, 4, 0 } };
         }
         burn_reads.push_back( read );
     }
@@ -16345,12 +16347,21 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         return world;
     };
     const auto make_reads = []( const bandit_live_world::active_outing_state &outing ) {
-        return std::vector<bandit_live_world::covert_scout_burn_read> {
-            { outing.member_ids[1], outing.selected_watch_omt, true, "avatar",
-              outing.target_omt, true, true, { outing.target_omt } },
-            { outing.member_ids[0], outing.selected_watch_omt, true, "avatar",
-              outing.target_omt, true, true, { outing.target_omt } }
-        };
+        std::vector<bandit_live_world::covert_scout_burn_read> reads;
+        for( const character_id member_id : { outing.member_ids[1], outing.member_ids[0] } ) {
+            bandit_live_world::covert_scout_burn_read read;
+            read.npc_id = member_id;
+            read.position = outing.selected_watch_omt;
+            read.present = true;
+            read.target_observer_id = "avatar";
+            read.target_observer_position = outing.target_omt;
+            read.target_saw_scout = true;
+            read.scout_saw_target = true;
+            read.perceived_target_observer_positions = { outing.target_omt };
+            read.visible_defenders = { { "avatar", outing.target_omt, 4, 0 } };
+            reads.push_back( std::move( read ) );
+        }
+        return reads;
     };
     const auto make_egress = []( const bandit_live_world::active_outing_state &outing ) {
         return std::vector<bandit_live_world::covert_scout_egress_candidate> {
@@ -16366,6 +16377,66 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         read.danger_high = 200;
         return read;
     };
+
+    SECTION( "ordinary one-way visibility records power without burning the sortie" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::vector<bandit_live_world::covert_scout_burn_read::visible_defender_read>
+        defenders = {
+            { "avatar", site.active_outing.target_omt, 3, 0 },
+            { "npc:42", site.active_outing.target_omt, 7, 2 }
+        };
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_visible_defender_observations(
+                site, *cursor, site.active_outing.leader_id,
+                site.active_outing.selected_watch_omt, defenders, 2 );
+        REQUIRE( effect.valid );
+        CHECK( effect.changed );
+        CHECK( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+        const auto observation = std::find_if(
+                                     site.active_outing.observations.begin(),
+                                     site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & candidate ) {
+            return candidate.fact_key.rfind( "visible-defenders:", 0 ) == 0;
+        } );
+        REQUIRE( observation != site.active_outing.observations.end() );
+        CHECK( observation->defender_ids ==
+               std::vector<std::string> { "avatar", "npc:42" } );
+        CHECK( observation->observed_power_low == 10 );
+        CHECK( observation->observed_power_high == 10 );
+        CHECK( observation->equipment_detail == 2 );
+        CHECK( observation->share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        CHECK( std::none_of( site.active_outing.observations.begin(),
+                             site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & candidate ) {
+            return candidate.kind == bandit_live_world::sortie_observation_kind::burn;
+        } ) );
+    }
+
+    SECTION( "malformed visible defender reads reject atomically" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const std::vector<bandit_live_world::covert_scout_burn_read::visible_defender_read>
+        duplicate_ids = {
+            { "npc:42", site.active_outing.target_omt, 3, 1 },
+            { "npc:42", site.active_outing.target_omt, 4, 2 }
+        };
+        const std::string before = serialize_world( world );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_visible_defender_observations(
+                site, *cursor, site.active_outing.leader_id,
+                site.active_outing.selected_watch_omt, duplicate_ids, 2 );
+        CHECK_FALSE( effect.valid );
+        CHECK_FALSE( effect.changed );
+        CHECK( serialize_world( world ) == before );
+    }
 
     SECTION( "same-tick local danger and burn survive one bounded transaction" ) {
         bandit_live_world::world_state world = make_world();
@@ -16644,6 +16715,9 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         REQUIRE( burn != site.active_outing.observations.end() );
         CHECK( burn->observer_id == member_ids[0] );
         CHECK( burn->source_id == "avatar" );
+        CHECK( burn->defender_ids == std::vector<std::string> { "avatar" } );
+        CHECK( burn->observed_power_low == 4 );
+        CHECK( burn->observed_power_high == 4 );
         CHECK( burn->source_omt == site.active_outing.target_omt );
         CHECK( burn->receiver_omt == site.active_outing.selected_watch_omt );
         CHECK( burn->share_state ==
@@ -17153,6 +17227,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         std::vector<bandit_live_world::covert_scout_burn_read> reads =
             make_reads( site.active_outing );
         reads[1].target_observer_position = tripoint_abs_omt( 4, 0, 1 );
+        reads[1].visible_defenders.front().position = tripoint_abs_omt( 4, 0, 1 );
         CHECK( bandit_live_world::apply_covert_scout_burn(
                    site, *cursor, reads, make_egress( site.active_outing ), 1 ).result ==
                bandit_live_world::covert_scout_burn_result::applied );

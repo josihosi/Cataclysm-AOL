@@ -1196,6 +1196,7 @@ struct structural_local_zombie_read {
 std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
     const site_record &site );
 int burn_live_covert_scouts();
+int record_live_covert_visible_defenders();
 bool fail_live_covert_scout_burned_egress( character_id member_id );
 bool structural_local_zombie_candidate_is_eligible( bool alive, bool hallucination,
         bool zombie_species, bool zombie_rider, bool hostile, bool visible,
@@ -1732,7 +1733,19 @@ struct covert_scout_burn_read {
     bool target_saw_scout = false;
     bool scout_saw_target = false;
     std::vector<tripoint_abs_omt> perceived_target_observer_positions;
+    struct visible_defender_read {
+        std::string stable_id;
+        tripoint_abs_omt position;
+        int normalized_power = 0;
+        int equipment_detail = 0;
+    };
+    std::vector<visible_defender_read> visible_defenders;
 };
+sortie_observation_effect record_covert_visible_defender_observations(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    character_id observer_id, const tripoint_abs_omt &observer_position,
+    const std::vector<covert_scout_burn_read::visible_defender_read> &visible_defenders,
+    int current_minutes );
 int covert_scout_burn_observer_cap();
 int covert_scout_egress_route_omt_cap();
 struct covert_scout_egress_candidate {

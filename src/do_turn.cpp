@@ -162,6 +162,16 @@ bool live_bandit_can_make_ordinary_visual_observation( const Character &observer
            ( !observer.in_sleep_state() || observer.has_flag( json_flag_SEESLEEP ) );
 }
 
+int live_bandit_normalize_visible_defender_power( const float deterministic_character_threat )
+{
+    if( !std::isfinite( deterministic_character_threat ) ) {
+        return 0;
+    }
+    const float nonnegative_threat = std::max( 0.0f, deterministic_character_threat );
+    return std::clamp( static_cast<int>( std::ceil(
+                           nonnegative_threat / NPC_DANGER_VERY_LOW ) ), 1, 10 );
+}
+
 bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
 {
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
@@ -1681,7 +1691,7 @@ bool note_live_bandit_local_turn_sight_avoid()
 
 int burn_live_bandit_covert_scouts()
 {
-    struct target_observer {
+    struct target_character {
         const Character *actor = nullptr;
         std::string stable_id;
     };
@@ -1696,20 +1706,16 @@ int burn_live_bandit_covert_scouts()
 
     avatar &u = get_avatar();
     map &here = get_map();
-    std::vector<target_observer> target_observers;
-    if( live_bandit_can_make_ordinary_visual_observation( u ) ) {
-        target_observers.push_back( { &u, "avatar" } );
-    }
+    std::vector<target_character> target_characters = { { &u, "avatar" } };
     for( const npc &defender : g->all_npcs() ) {
-        if( defender.is_player_ally() && !defender.is_dead() &&
-            live_bandit_can_make_ordinary_visual_observation( defender ) && defender.is_active() &&
+        if( defender.is_player_ally() && !defender.is_dead() && defender.is_active() &&
             here.inbounds( defender.pos_bub( here ) ) ) {
-            target_observers.push_back( { &defender, "npc:" +
-                                         std::to_string( defender.getID().get_value() ) } );
+            target_characters.push_back( { &defender, "npc:" +
+                                           std::to_string( defender.getID().get_value() ) } );
         }
     }
-    std::sort( target_observers.begin(), target_observers.end(),
-    []( const target_observer & lhs, const target_observer & rhs ) {
+    std::sort( target_characters.begin(), target_characters.end(),
+    []( const target_character & lhs, const target_character & rhs ) {
         return lhs.stable_id < rhs.stable_id;
     } );
 
@@ -1733,9 +1739,27 @@ int burn_live_bandit_covert_scouts()
         if( !cursor ) {
             continue;
         }
-        std::vector<target_observer> bounded_target_observers = target_observers;
+        std::vector<target_character> bounded_target_characters = target_characters;
+        std::sort( bounded_target_characters.begin(), bounded_target_characters.end(),
+        [&u, &outing]( const target_character & lhs, const target_character & rhs ) {
+            return std::make_tuple( lhs.actor == &u ? 0 : 1,
+                                    rl_dist( lhs.actor->pos_abs_omt(),
+                                             outing.selected_watch_omt ), lhs.stable_id ) <
+                   std::make_tuple( rhs.actor == &u ? 0 : 1,
+                                    rl_dist( rhs.actor->pos_abs_omt(),
+                                             outing.selected_watch_omt ), rhs.stable_id );
+        } );
+        bounded_target_characters.resize( std::min<std::size_t>(
+                                               bounded_target_characters.size(),
+                                               bandit_live_world::covert_scout_burn_observer_cap() ) );
+        std::vector<target_character> bounded_target_observers;
+        std::copy_if( target_characters.begin(), target_characters.end(),
+                      std::back_inserter( bounded_target_observers ),
+        []( const target_character & target ) {
+            return live_bandit_can_make_ordinary_visual_observation( *target.actor );
+        } );
         std::sort( bounded_target_observers.begin(), bounded_target_observers.end(),
-        [&u, &outing]( const target_observer & lhs, const target_observer & rhs ) {
+        [&u, &outing]( const target_character & lhs, const target_character & rhs ) {
             return std::make_tuple( lhs.actor == &u ? 0 : 1,
                                     rl_dist( lhs.actor->pos_abs_omt(),
                                              outing.selected_watch_omt ), lhs.stable_id ) <
@@ -1766,7 +1790,7 @@ int burn_live_bandit_covert_scouts()
                 read.position = member->pos_abs_omt();
                 const bool scout_can_observe =
                     live_bandit_can_make_ordinary_visual_observation( *member );
-                for( const target_observer &observer : bounded_target_observers ) {
+                for( const target_character &observer : bounded_target_observers ) {
                     if( observer.actor == member || observer.actor->is_dead_state() ) {
                         continue;
                     }
@@ -1813,6 +1837,56 @@ int burn_live_bandit_covert_scouts()
                         read.target_saw_scout = true;
                         read.scout_saw_target = true;
                     }
+                }
+                if( scout_can_observe ) {
+                    const bool scout_has_gun = member->get_wielded_item() &&
+                                               member->get_wielded_item()->is_gun();
+                    const auto append_visible_defender = [&]( const target_character & defender ) {
+                        if( defender.actor == member || defender.actor->is_dead_state() ||
+                            !member->sees_without_clairvoyance( here, *defender.actor ) ) {
+                            return;
+                        }
+                        bandit_live_world::covert_scout_burn_read::visible_defender_read
+                        defender_read;
+                        defender_read.stable_id = defender.stable_id;
+                        defender_read.position = defender.actor->pos_abs_omt();
+                        defender_read.normalized_power =
+                            live_bandit_normalize_visible_defender_power(
+                                member->evaluate_character_threat_without_perception_fuzz(
+                                    *defender.actor, scout_has_gun, true ) );
+                        const item_location defender_weapon = defender.actor->get_wielded_item();
+                        defender_read.equipment_detail = !defender_weapon ? 0 :
+                                                         defender_weapon->is_gun() ? 2 : 1;
+                        read.visible_defenders.push_back( std::move( defender_read ) );
+                    };
+                    for( const target_character &defender : bounded_target_characters ) {
+                        append_visible_defender( defender );
+                    }
+                    const bool selected_observer_retained = std::any_of(
+                            read.visible_defenders.begin(), read.visible_defenders.end(),
+                    [&read]( const auto & defender ) {
+                        return defender.stable_id == read.target_observer_id;
+                    } );
+                    if( read.scout_saw_target && !selected_observer_retained ) {
+                        const auto selected_observer = std::find_if(
+                                                           target_characters.begin(),
+                                                           target_characters.end(),
+                        [&read]( const target_character & target ) {
+                            return target.stable_id == read.target_observer_id;
+                        } );
+                        if( selected_observer != target_characters.end() ) {
+                            if( read.visible_defenders.size() ==
+                                static_cast<std::size_t>(
+                                    bandit_live_world::covert_scout_burn_observer_cap() ) ) {
+                                read.visible_defenders.pop_back();
+                            }
+                            append_visible_defender( *selected_observer );
+                        }
+                    }
+                    std::sort( read.visible_defenders.begin(), read.visible_defenders.end(),
+                    []( const auto & lhs, const auto & rhs ) {
+                        return lhs.stable_id < rhs.stable_id;
+                    } );
                 }
                 if( read.target_saw_scout && read.scout_saw_target &&
                     std::find( read.perceived_target_observer_positions.begin(),
@@ -2014,6 +2088,132 @@ int burn_live_bandit_covert_scouts()
                                    << " egress=" << effect.egress_omt.to_string() << '\n';
     }
     return burned;
+}
+
+int record_live_bandit_covert_visible_defenders()
+{
+    struct target_character {
+        const Character *actor = nullptr;
+        std::string stable_id;
+    };
+
+    bandit_live_world::world_state &state =
+        overmap_buffer.global_state.bandit_live_world;
+    std::set<character_id> claimed_members;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
+            return 0;
+        }
+    }
+
+    avatar &u = get_avatar();
+    map &here = get_map();
+    std::vector<target_character> target_characters = { { &u, "avatar" } };
+    for( const npc &defender : g->all_npcs() ) {
+        if( defender.is_player_ally() && !defender.is_dead() && defender.is_active() &&
+            here.inbounds( defender.pos_bub( here ) ) ) {
+            target_characters.push_back( { &defender, "npc:" +
+                                           std::to_string( defender.getID().get_value() ) } );
+        }
+    }
+
+    const int current_minutes = live_bandit_current_minutes();
+    int recorded = 0;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        const bool targets_player_camp = std::any_of(
+            outing.target_footprint.begin(), outing.target_footprint.end(),
+        []( const tripoint_abs_omt & target_omt ) {
+            return overmap_buffer.is_player_camp_omt( target_omt );
+        } );
+        if( site.retired_empty_site || !targets_player_camp || outing.schema_version != 10 ||
+            outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            outing.phase != bandit_live_world::scout_phase::observing ||
+            !outing.local_handoff.is_active() ||
+            !outing.local_handoff.cohesion_assembled || outing.member_ids.size() != 2 ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor ) {
+            continue;
+        }
+
+        std::vector<target_character> bounded_targets = target_characters;
+        std::sort( bounded_targets.begin(), bounded_targets.end(),
+        [&u, &outing]( const target_character & lhs, const target_character & rhs ) {
+            return std::make_tuple( lhs.actor == &u ? 0 : 1,
+                                    rl_dist( lhs.actor->pos_abs_omt(),
+                                             outing.selected_watch_omt ), lhs.stable_id ) <
+                   std::make_tuple( rhs.actor == &u ? 0 : 1,
+                                    rl_dist( rhs.actor->pos_abs_omt(),
+                                             outing.selected_watch_omt ), rhs.stable_id );
+        } );
+        bounded_targets.resize( std::min<std::size_t>(
+                                    bounded_targets.size(),
+                                    bandit_live_world::covert_scout_burn_observer_cap() ) );
+
+        std::vector<npc *> observers;
+        for( const character_id member_id : outing.member_ids ) {
+            npc *member = g->find_npc( member_id );
+            if( member != nullptr && !member->is_dead() && member->is_active() &&
+                here.inbounds( member->pos_bub( here ) ) &&
+                member->pos_abs_omt() == outing.selected_watch_omt &&
+                member->has_ecology_covert_noncombat_relationship( u ) &&
+                live_bandit_can_make_ordinary_visual_observation( *member ) ) {
+                observers.push_back( member );
+            }
+        }
+        std::sort( observers.begin(), observers.end(), [&outing]( const npc *lhs, const npc *rhs ) {
+            return std::make_tuple( lhs->getID() == outing.leader_id ? 0 : 1,
+                                    lhs->getID().get_value() ) <
+                   std::make_tuple( rhs->getID() == outing.leader_id ? 0 : 1,
+                                    rhs->getID().get_value() );
+        } );
+
+        for( npc *observer : observers ) {
+            const bool scout_has_gun = observer->get_wielded_item() &&
+                                       observer->get_wielded_item()->is_gun();
+            std::vector<bandit_live_world::covert_scout_burn_read::visible_defender_read>
+            visible_defenders;
+            for( const target_character &defender : bounded_targets ) {
+                if( defender.actor == observer || defender.actor->is_dead_state() ||
+                    !observer->sees_without_clairvoyance( here, *defender.actor ) ) {
+                    continue;
+                }
+                bandit_live_world::covert_scout_burn_read::visible_defender_read read;
+                read.stable_id = defender.stable_id;
+                read.position = defender.actor->pos_abs_omt();
+                read.normalized_power = live_bandit_normalize_visible_defender_power(
+                                            observer->evaluate_character_threat_without_perception_fuzz(
+                                                *defender.actor, scout_has_gun, true ) );
+                const item_location defender_weapon = defender.actor->get_wielded_item();
+                read.equipment_detail = !defender_weapon ? 0 :
+                                        defender_weapon->is_gun() ? 2 : 1;
+                visible_defenders.push_back( std::move( read ) );
+            }
+            std::sort( visible_defenders.begin(), visible_defenders.end(),
+            []( const auto & lhs, const auto & rhs ) {
+                return lhs.stable_id < rhs.stable_id;
+            } );
+            if( visible_defenders.empty() ) {
+                continue;
+            }
+
+            const bandit_live_world::sortie_observation_effect effect =
+                bandit_live_world::record_covert_visible_defender_observations(
+                    site, *cursor, observer->getID(), observer->pos_abs_omt(),
+                    visible_defenders, current_minutes );
+            if( effect.valid ) {
+                if( effect.changed ) {
+                    recorded++;
+                }
+                break;
+            }
+        }
+    }
+    return recorded;
 }
 
 bool note_live_bandit_aftermath()
@@ -5220,6 +5420,11 @@ int burn_live_covert_scouts()
     return burn_live_bandit_covert_scouts();
 }
 
+int record_live_covert_visible_defenders()
+{
+    return record_live_bandit_covert_visible_defenders();
+}
+
 bool fail_live_covert_scout_burned_egress( const character_id member_id )
 {
     return live_bandit_fail_burned_egress( member_id );
@@ -5511,6 +5716,13 @@ void monmove()
                 pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
                 DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_zombie_observations="
                                            << local_zombie_observations << '\n';
+            }
+            const int visible_defender_observations =
+                bandit_live_world::record_live_covert_visible_defenders();
+            if( visible_defender_observations > 0 ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit_live_world visible_defender_observations="
+                        << visible_defender_observations << '\n';
             }
             const int local_scout_assessment_updates =
                 advance_live_bandit_local_scout_assessments();

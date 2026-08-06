@@ -72,6 +72,7 @@
 #include "player_helpers.h"
 #include "point.h"
 #include "ranged.h"
+#include "rng.h"
 #include "stomach.h"
 #include "test_data.h"
 #include "text_snippets.h"
@@ -871,6 +872,58 @@ TEST_CASE( "npc_prefers_guns", "[npc_ai]" )
 
     CAPTURE( hostile.get_wielded_item().get_item()->tname() );
     REQUIRE( hostile.get_wielded_item().get_item()->is_gun() );
+}
+
+TEST_CASE( "npc_character_threat_evaluator_is_deterministic_and_sensitive",
+           "[npc][character_threat_evaluator]" )
+{
+    standard_npc evaluator( "Evaluator" );
+    standard_npc unarmed_candidate( "Unarmed candidate" );
+    standard_npc armed_candidate( "Armed candidate" );
+    clear_character( evaluator, true );
+    clear_character( unarmed_candidate, true );
+    clear_character( armed_candidate, true );
+    evaluator.personality.aggression = 0;
+    unarmed_candidate.set_all_parts_hp_to_max();
+    armed_candidate.set_all_parts_hp_to_max();
+    armed_candidate.set_wielded_item( item( itype_bat ) );
+
+    const float unarmed_threat = evaluator.evaluate_character_threat_without_perception_fuzz(
+                                     unarmed_candidate, false, true );
+    const float armed_threat = evaluator.evaluate_character_threat_without_perception_fuzz(
+                                   armed_candidate, false, true );
+    CHECK( evaluator.evaluate_character_threat_without_perception_fuzz(
+               armed_candidate, false, true ) == armed_threat );
+    CHECK( armed_threat > unarmed_threat );
+
+    // NOLINTNEXTLINE(cata-determinism)
+    const cata_default_random_engine saved_engine = rng_get_engine();
+    on_out_of_scope restore_rng( [saved_engine]() {
+        rng_get_engine() = saved_engine;
+    } );
+    constexpr unsigned int evaluator_seed = 424242;
+    rng_set_engine_seed( evaluator_seed );
+    const float wrapped_threat = evaluator.evaluate_character(
+                                     armed_candidate, false, true );
+    // NOLINTNEXTLINE(cata-determinism)
+    const cata_default_random_engine wrapped_engine = rng_get_engine();
+    rng_set_engine_seed( evaluator_seed );
+    const float deterministic_threat =
+        evaluator.evaluate_character_threat_without_perception_fuzz(
+            armed_candidate, false, true );
+    const int perception_factor = rng( -10, 10 ) *
+                                  std::max( 20 - evaluator.get_per(), 0 );
+    const float expected_wrapped = std::min(
+                                       deterministic_threat + deterministic_threat *
+                                       perception_factor / 1000.0f,
+                                       NPC_CHARACTER_DANGER_MAX );
+    CHECK( wrapped_threat == Approx( expected_wrapped ) );
+    CHECK( rng_get_engine() == wrapped_engine );
+
+    armed_candidate.set_all_parts_hp_cur( 1 );
+    const float wounded_threat = evaluator.evaluate_character_threat_without_perception_fuzz(
+                                     armed_candidate, false, true );
+    CHECK( wounded_threat < armed_threat );
 }
 
 TEST_CASE( "npc_extracts_weapon_from_wielded_container", "[npc_ai]" )
@@ -1774,7 +1827,7 @@ static std::string serialize_live_world_for_optics_test(
 }
 
 TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
-           "[npc][bandit][covert_burn][live_egress]" )
+           "[npc][bandit][covert_burn][live_egress][visible_defender_power]" )
 {
     g->faction_manager_ptr->create_if_needed();
     clear_map_without_vision();
@@ -1978,16 +2031,54 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
 
     defender.add_effect( effect_blind_local, 1_hours );
     defender.recalc_sight_limits();
+    scout.add_effect( effect_blind_local, 1_hours );
+    scout.recalc_sight_limits();
     reset_owner_and_routes();
     REQUIRE( defender.is_blind() );
+    REQUIRE( scout.is_blind() );
     CHECK_FALSE( defender.sees_without_clairvoyance( here, scout ) );
-    CHECK( scout.sees_without_clairvoyance( here, defender ) );
+    CHECK_FALSE( scout.sees_without_clairvoyance( here, defender ) );
+    CHECK( partner.sees_without_clairvoyance( here, defender ) );
     owner_before = serialize_live_world_for_optics_test( live_state );
     CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
     CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+    REQUIRE( bandit_live_world::record_live_covert_visible_defenders() == 1 );
+    const bandit_live_world::site_record &observed_site = live_state.sites.front();
+    const auto visible_defenders = std::find_if(
+                                       observed_site.active_outing.observations.begin(),
+                                       observed_site.active_outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key.rfind( "visible-defenders:", 0 ) == 0;
+    } );
+    REQUIRE( visible_defenders != observed_site.active_outing.observations.end() );
+    CHECK( visible_defenders->kind ==
+           bandit_live_world::sortie_observation_kind::certainty );
+    CHECK( visible_defenders->observer_id == partner.getID() );
+    CHECK( visible_defenders->share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( visible_defenders->defender_ids == std::vector<std::string> {
+        "npc:" + std::to_string( defender.getID().get_value() )
+    } );
+    const bool hidden_scout_has_gun = partner.get_wielded_item() &&
+                                      partner.get_wielded_item()->is_gun();
+    const float hidden_defender_threat =
+        partner.evaluate_character_threat_without_perception_fuzz(
+            defender, hidden_scout_has_gun, true );
+    const int hidden_defender_power = std::clamp( static_cast<int>( std::ceil(
+                                          std::max( 0.0f, hidden_defender_threat ) /
+                                          NPC_DANGER_VERY_LOW ) ), 1, 10 );
+    CHECK( visible_defenders->observed_power_low == hidden_defender_power );
+    CHECK( visible_defenders->observed_power_high == hidden_defender_power );
+    CHECK( std::none_of( observed_site.active_outing.observations.begin(),
+                         observed_site.active_outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+    } ) );
 
     defender.remove_effect( effect_blind_local );
     defender.recalc_sight_limits();
+    scout.remove_effect( effect_blind_local );
+    scout.recalc_sight_limits();
     for( const tripoint_bub_ms &position : defender_cover ) {
         here.ter_set( position, ter_t_wall );
     }
@@ -2014,6 +2105,29 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
     REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
     REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
     REQUIRE( bandit_live_world::burn_live_covert_scouts() == 1 );
+    const bandit_live_world::site_record &burned_site = live_state.sites.front();
+    const auto burn_observation = std::find_if(
+                                      burned_site.active_outing.observations.begin(),
+                                      burned_site.active_outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+    } );
+    REQUIRE( burn_observation != burned_site.active_outing.observations.end() );
+    const std::string defender_id = "npc:" + std::to_string( defender.getID().get_value() );
+    CHECK( burn_observation->defender_ids == std::vector<std::string> { defender_id } );
+    CHECK( std::find( burn_observation->defender_ids.begin(),
+                      burn_observation->defender_ids.end(), "avatar" ) ==
+           burn_observation->defender_ids.end() );
+    const bool scout_has_gun = scout.get_wielded_item() &&
+                               scout.get_wielded_item()->is_gun();
+    const float deterministic_threat =
+        scout.evaluate_character_threat_without_perception_fuzz(
+            defender, scout_has_gun, true );
+    const int expected_power = std::clamp( static_cast<int>( std::ceil(
+                                         std::max( 0.0f, deterministic_threat ) /
+                                         NPC_DANGER_VERY_LOW ) ), 1, 10 );
+    CHECK( burn_observation->observed_power_low == expected_power );
+    CHECK( burn_observation->observed_power_high == expected_power );
     const tripoint_abs_omt egress_omt =
         live_state.sites.front().active_outing.local_handoff.egress_omt;
     for( const npc *member : { &scout, &partner } ) {

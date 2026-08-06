@@ -1303,6 +1303,9 @@ class npc : public Character
 
         /** rates how dangerous a target is */
         float evaluate_monster( const monster &target, int dist ) const;
+        /** Rates a character's threat without perception-based randomization. */
+        float evaluate_character_threat_without_perception_fuzz( const Character &candidate,
+                bool my_gun, bool enemy ) const;
         float evaluate_character( const Character &candidate, bool my_gun, bool enemy );
         float evaluate_self( bool my_gun );
 

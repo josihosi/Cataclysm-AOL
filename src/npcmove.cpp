@@ -753,8 +753,9 @@ float npc::evaluate_monster(const monster &target, int dist) const {
   return std::min(diff, NPC_MONSTER_DANGER_MAX);
 }
 
-float npc::evaluate_character(const Character &candidate, bool my_gun,
-                              bool enemy = true) {
+float npc::evaluate_character_threat_without_perception_fuzz( const Character &candidate,
+        bool my_gun, bool enemy ) const
+{
   float threat = 0.0f;
   bool candidate_gun =
       candidate.get_wielded_item() && candidate.get_wielded_item()->is_gun();
@@ -783,18 +784,6 @@ float npc::evaluate_character(const Character &candidate, bool my_gun,
                   "<color_red>%s is bleeeeeeding…</color>, intensity %i",
                   candidate.disp_name(), bleed_intensity);
   }
-  if (!enemy) {
-    if (candidate_gun || (is_player_ally() && candidate.is_avatar())) {
-      // later we should evaluate if the NPC trusts the player enough to stick
-      // to them so reliably
-      int dist = rl_dist(pos_bub(), candidate.pos_bub());
-      if (dist > mem_combat.formation_distance) {
-        mem_combat.formation_distance =
-            std::max(dist, mem_combat.engagement_distance);
-      }
-    }
-  }
-
     if( !my_gun ) {
     speed = std::max(speed, 0.5f);
   };
@@ -852,6 +841,27 @@ float npc::evaluate_character(const Character &candidate, bool my_gun,
                 "<color_light_gray>%s sets </color>%s threat: %1.2f "
                 "<color_light_gray>before perception randomization.</color>",
                 name, candidate.disp_name(true), threat);
+  return threat;
+}
+
+float npc::evaluate_character(const Character &candidate, bool my_gun,
+                              bool enemy = true) {
+  bool candidate_gun =
+      candidate.get_wielded_item() && candidate.get_wielded_item()->is_gun();
+  if (!enemy) {
+    if (candidate_gun || (is_player_ally() && candidate.is_avatar())) {
+      // later we should evaluate if the NPC trusts the player enough to stick
+      // to them so reliably
+      int dist = rl_dist(pos_bub(), candidate.pos_bub());
+      if (dist > mem_combat.formation_distance) {
+        mem_combat.formation_distance =
+            std::max(dist, mem_combat.engagement_distance);
+      }
+    }
+  }
+
+  float threat = evaluate_character_threat_without_perception_fuzz( candidate, my_gun, enemy );
+  int perception_inverted = std::max( ( 20 - get_per() ), 0 );
   // the math for perception fuzz is this way to make it more human readable
   // because I kept making silly errors. I hope this helps you too. If not,
   // well, sorry bud. Anyway the higher your perception gets the more accurate

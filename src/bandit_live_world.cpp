@@ -15728,6 +15728,86 @@ sortie_observation_effect record_active_typed_observations( site_record &site,
             current_minutes, true );
 }
 
+sortie_observation_effect record_covert_visible_defender_observations(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const character_id observer_id, const tripoint_abs_omt &observer_position,
+    const std::vector<covert_scout_burn_read::visible_defender_read> &visible_defenders,
+    const int current_minutes )
+{
+    sortie_observation_effect effect;
+    const active_outing_state &outing = site.active_outing;
+    if( outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+        outing.local_handoff.phase != outing.phase || !outing.local_handoff.is_active() ||
+        !outing.local_handoff.cohesion_assembled ||
+        std::find( outing.member_ids.begin(), outing.member_ids.end(), observer_id ) ==
+        outing.member_ids.end() || observer_position != outing.selected_watch_omt ||
+        visible_defenders.empty() ||
+        visible_defenders.size() > static_cast<std::size_t>( covert_scout_burn_observer_cap() ) ||
+        current_minutes < 0 ) {
+        return effect;
+    }
+
+    std::set<std::string> stable_ids;
+    std::map<tripoint_abs_omt, std::vector<covert_scout_burn_read::visible_defender_read>>
+    defenders_by_omt;
+    for( const covert_scout_burn_read::visible_defender_read &defender : visible_defenders ) {
+        if( defender.stable_id.empty() ||
+            defender.stable_id.size() > max_sortie_defender_id_length ||
+            defender.position.is_invalid() || defender.normalized_power < 1 ||
+            defender.normalized_power > 10 || defender.equipment_detail < 0 ||
+            defender.equipment_detail > 3 || !stable_ids.insert( defender.stable_id ).second ) {
+            return effect;
+        }
+        defenders_by_omt[defender.position].push_back( defender );
+    }
+
+    std::vector<sortie_observation> observations;
+    observations.reserve( defenders_by_omt.size() );
+    for( auto &[source_omt, defenders] : defenders_by_omt ) {
+        std::sort( defenders.begin(), defenders.end(), []( const auto & lhs, const auto & rhs ) {
+            return lhs.stable_id < rhs.stable_id;
+        } );
+        sortie_observation observation;
+        observation.fact_key = "visible-defenders:" + source_omt.to_string();
+        observation.summary = "scout saw " + std::to_string( defenders.size() ) +
+                              " loaded defender(s) at " + source_omt.to_string();
+        observation.confidence = 100;
+        observation.observed_minutes = current_minutes;
+        observation.kind = sortie_observation_kind::certainty;
+        observation.state_key = "simultaneous-visible-defenders";
+        observation.record_schema_version = 1;
+        observation.source_id = observation.fact_key;
+        observation.sense = sortie_observation_sense::visual;
+        observation.observer_id = observer_id;
+        observation.source_omt = source_omt;
+        observation.receiver_omt = observer_position;
+        observation.bucket_start_minutes = current_minutes - current_minutes % 30;
+        observation.strength = 4;
+        observation.visual_quality = 3;
+        observation.simultaneity_start_minutes = current_minutes;
+        observation.simultaneity_end_minutes = current_minutes;
+        for( const covert_scout_burn_read::visible_defender_read &defender : defenders ) {
+            observation.defender_ids.push_back( defender.stable_id );
+            observation.observed_power_low = std::min(
+                                                 200, observation.observed_power_low +
+                                                 defender.normalized_power );
+            observation.observed_power_high = observation.observed_power_low;
+            observation.equipment_detail = std::max(
+                                               observation.equipment_detail,
+                                               defender.equipment_detail );
+        }
+        observation.target_revision = outing.target_lead_revision;
+        observation.uncertainty_radius_omt = 0;
+        observation.expiry_minutes = minutes_after_saturated( current_minutes, 24 * 60 );
+        observation.share_state = sortie_observation_share_state::observer_private;
+        observations.push_back( std::move( observation ) );
+    }
+    return record_active_typed_observations(
+               site, expected_cursor, observer_id, outing.target_lead_revision,
+               observations, current_minutes );
+}
+
 bool scout_assessment_readiness_after_certainty(
     const scout_assessment_threshold_class threshold_class,
     const bool readiness_latched, const int certainty )
@@ -16708,6 +16788,26 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
             static_cast<std::size_t>( covert_scout_burn_observer_cap() ) ) {
             return effect;
         }
+        std::vector<std::string> visible_defender_ids;
+        for( const covert_scout_burn_read::visible_defender_read &defender :
+             read->visible_defenders ) {
+            if( defender.stable_id.empty() ||
+                defender.stable_id.size() > max_sortie_defender_id_length ||
+                defender.position.is_invalid() || defender.normalized_power < 1 ||
+                defender.normalized_power > 10 || defender.equipment_detail < 0 ||
+                defender.equipment_detail > 3 ) {
+                return effect;
+            }
+            visible_defender_ids.push_back( defender.stable_id );
+        }
+        if( read->visible_defenders.size() >
+            static_cast<std::size_t>( covert_scout_burn_observer_cap() ) ||
+            !std::is_sorted( visible_defender_ids.begin(), visible_defender_ids.end() ) ||
+            std::adjacent_find( visible_defender_ids.begin(), visible_defender_ids.end() ) !=
+            visible_defender_ids.end() ||
+            visible_defender_ids.size() != read->visible_defenders.size() ) {
+            return effect;
+        }
         const bool reciprocal = read->target_saw_scout && read->scout_saw_target;
         if( reciprocal ) {
             if( !read->present ) {
@@ -16763,10 +16863,24 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
     burn.bucket_start_minutes = current_minutes - current_minutes % 30;
     burn.strength = 6;
     burn.visual_quality = 3;
+    for( const covert_scout_burn_read::visible_defender_read &defender :
+         exposure->visible_defenders ) {
+        if( defender.position != exposure->target_observer_position ) {
+            continue;
+        }
+        burn.defender_ids.push_back( defender.stable_id );
+        burn.observed_power_low = std::min( 200,
+                                           burn.observed_power_low + defender.normalized_power );
+        burn.observed_power_high = burn.observed_power_low;
+        burn.equipment_detail = std::max( burn.equipment_detail, defender.equipment_detail );
+    }
+    if( burn.defender_ids.empty() ||
+        std::find( burn.defender_ids.begin(), burn.defender_ids.end(),
+                   exposure->target_observer_id ) == burn.defender_ids.end() ) {
+        return effect;
+    }
     burn.simultaneity_start_minutes = current_minutes;
     burn.simultaneity_end_minutes = current_minutes;
-    burn.observed_power_low = 1;
-    burn.observed_power_high = 1;
     burn.target_revision = outing.target_lead_revision;
     burn.expiry_minutes = minutes_after_saturated( current_minutes, 6 * 60 );
     burn.share_state = sortie_observation_share_state::shared;
