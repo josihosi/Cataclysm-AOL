@@ -2642,7 +2642,11 @@ bool structural_watch_route_state_is_consistent(
     const bool empty_watch_state = outing.target_footprint.empty() &&
                                    outing.selected_watch_kind == structural_watch_kind::none &&
                                    outing.selected_watch_omt == tripoint_abs_omt() &&
-                                   outing.selected_watch_route_cost == -1;
+                                   outing.selected_watch_route_cost == -1 &&
+                                   outing.alternate_watch_kind == structural_watch_kind::none &&
+                                   outing.alternate_watch_omt == tripoint_abs_omt() &&
+                                   outing.alternate_watch_route_cost == -1 &&
+                                   outing.alternate_watch_shared_route.empty();
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 9 ) {
         return empty_watch_state;
     }
@@ -2660,7 +2664,11 @@ bool structural_watch_route_state_is_consistent(
     }
     if( outing.selected_watch_kind == structural_watch_kind::none ) {
         return outing.selected_watch_omt == tripoint_abs_omt() &&
-               outing.selected_watch_route_cost == -1;
+               outing.selected_watch_route_cost == -1 &&
+               outing.alternate_watch_kind == structural_watch_kind::none &&
+               outing.alternate_watch_omt == tripoint_abs_omt() &&
+               outing.alternate_watch_route_cost == -1 &&
+               outing.alternate_watch_shared_route.empty();
     }
     if( outing.selected_watch_route_cost < 0 ) {
         return false;
@@ -2671,11 +2679,31 @@ bool structural_watch_route_state_is_consistent(
     if( !distance ) {
         return false;
     }
-    if( outing.selected_watch_kind == structural_watch_kind::exact ) {
-        return *distance == 3;
+    const bool selected_distance_is_valid =
+        outing.selected_watch_kind == structural_watch_kind::exact ? *distance == 3 :
+        outing.selected_watch_kind == structural_watch_kind::fallback &&
+        *distance >= 4 && *distance <= 5;
+    if( !selected_distance_is_valid ) {
+        return false;
     }
-    return outing.selected_watch_kind == structural_watch_kind::fallback &&
-           *distance >= 4 && *distance <= 5;
+    if( outing.alternate_watch_kind == structural_watch_kind::none ) {
+        return outing.alternate_watch_omt == tripoint_abs_omt() &&
+               outing.alternate_watch_route_cost == -1 &&
+               outing.alternate_watch_shared_route.empty();
+    }
+    const std::optional<int> alternate_distance = target_footprint_watch_distance(
+                outing.alternate_watch_omt, outing.target_footprint );
+    const bool alternate_distance_is_valid = alternate_distance &&
+            ( outing.alternate_watch_kind == structural_watch_kind::exact ?
+              *alternate_distance == 3 :
+              outing.alternate_watch_kind == structural_watch_kind::fallback &&
+              *alternate_distance >= 4 && *alternate_distance <= 5 );
+    return outing.alternate_watch_omt != outing.selected_watch_omt &&
+           outing.alternate_watch_route_cost >= 0 && alternate_distance_is_valid &&
+           !outing.shared_route.empty() &&
+           bandit_live_world::structural_watch_shared_route_is_canonical(
+               outing.alternate_watch_shared_route, outing.shared_route.front(),
+               outing.alternate_watch_omt, outing.target_footprint );
 }
 
 bool covert_scout_egress_retry_state_is_consistent(
@@ -6232,6 +6260,10 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "selected_watch_route_cost", selected_watch_route_cost );
     }
     if( schema_version >= 10 ) {
+        json.member( "alternate_watch_kind", to_string( alternate_watch_kind ) );
+        json.member( "alternate_watch_omt", alternate_watch_omt );
+        json.member( "alternate_watch_route_cost", alternate_watch_route_cost );
+        json.member( "alternate_watch_shared_route", alternate_watch_shared_route );
         json.member( "covert_egress_chain_version", covert_egress_chain_version );
         json.member( "covert_egress_attempts", covert_egress_attempts );
         json.member( "covert_egress_revision", covert_egress_revision );
@@ -6393,6 +6425,30 @@ void active_outing_state::deserialize( const JsonObject &jo )
         candidate.schema_version = 9;
     }
     if( loaded_schema_version >= 10 ) {
+        const bool has_alternate_kind = jo.has_member( "alternate_watch_kind" );
+        const bool has_alternate_omt = jo.has_member( "alternate_watch_omt" );
+        const bool has_alternate_cost = jo.has_member( "alternate_watch_route_cost" );
+        const bool has_alternate_route = jo.has_member( "alternate_watch_shared_route" );
+        if( has_alternate_kind != has_alternate_omt ||
+            has_alternate_kind != has_alternate_cost ||
+            has_alternate_kind != has_alternate_route ) {
+            jo.throw_error( "schema-v10 structural outing has incomplete alternate watch state" );
+        }
+        if( has_alternate_kind ) {
+            std::string alternate_kind_string;
+            jo.read( "alternate_watch_kind", alternate_kind_string );
+            const std::optional<structural_watch_kind> alternate_kind =
+                structural_watch_kind_from_string( alternate_kind_string );
+            if( !alternate_kind ) {
+                jo.throw_error( "schema-v10 structural outing has invalid alternate watch kind" );
+            }
+            candidate.alternate_watch_kind = *alternate_kind;
+            jo.read( "alternate_watch_omt", candidate.alternate_watch_omt );
+            jo.read( "alternate_watch_route_cost",
+                     candidate.alternate_watch_route_cost );
+            jo.read( "alternate_watch_shared_route",
+                     candidate.alternate_watch_shared_route );
+        }
         if( jo.has_member( "covert_egress_chain_version" ) ) {
             jo.read( "covert_egress_chain_version", candidate.covert_egress_chain_version );
         }
@@ -11487,6 +11543,9 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
             canonical_structural_target_footprint( read.target_footprint );
         const watch_selection_result watch_selection = select_watch_ring_candidate(
                     canonical_footprint, read.watch_candidates );
+        const watch_selection_result alternate_selection =
+            select_alternate_watch_ring_candidate(
+                canonical_footprint, read.watch_candidates, watch_selection.omt );
         if( canonical_footprint.empty() ||
             canonical_footprint.size() > max_structural_target_footprint_omts ||
             read.watch_candidates.empty() ||
@@ -11497,13 +11556,19 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
             !watch_selection.valid ||
             !structural_watch_shared_route_is_canonical(
                 read.watch_shared_route, site.anchor, watch_selection.omt,
-                canonical_footprint ) ) {
+                canonical_footprint ) ||
+            ( !read.alternate_watch_shared_route.empty() &&
+              ( !alternate_selection.valid ||
+                !structural_watch_shared_route_is_canonical(
+                    read.alternate_watch_shared_route, site.anchor,
+                    alternate_selection.omt, canonical_footprint ) ) ) ) {
             return false;
         }
         plan.watch_geography_supplied = true;
         plan.target_footprint = canonical_footprint;
         plan.watch_candidates = read.watch_candidates;
         plan.shared_route = read.watch_shared_route;
+        plan.alternate_watch_shared_route = read.alternate_watch_shared_route;
         watch_destination = watch_selection.omt;
     } else {
         if( !read.watch_shared_route.empty() ) {
@@ -11512,6 +11577,7 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
         plan.watch_geography_supplied = false;
         plan.target_footprint.clear();
         plan.watch_candidates.clear();
+        plan.alternate_watch_shared_route.clear();
     }
 
     camp_map_lead scoring_lead;
@@ -11673,7 +11739,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                 plan.max_route_segment_risk, "", plan.watch_geography_supplied,
                 plan.target_footprint, plan.watch_candidates,
                 plan.watch_geography_supplied ? plan.shared_route :
-                std::vector<tripoint_abs_omt>() };
+                std::vector<tripoint_abs_omt>(),
+                plan.alternate_watch_shared_route };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11694,6 +11761,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             plan.watch_geography_supplied != expected.watch_geography_supplied ||
             plan.target_footprint != expected.target_footprint ||
             plan.watch_candidates != expected.watch_candidates ||
+            plan.alternate_watch_shared_route !=
+            expected.alternate_watch_shared_route ||
             plan.expected_stalking_minutes != expected.expected_stalking_minutes ||
             plan.expected_arrival_minutes != expected.expected_arrival_minutes ||
             plan.expected_return_minutes != expected.expected_return_minutes ) {
@@ -11720,7 +11789,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                 plan.max_route_segment_risk, "", plan.watch_geography_supplied,
                 plan.target_footprint, plan.watch_candidates,
                 plan.watch_geography_supplied ? plan.shared_route :
-                std::vector<tripoint_abs_omt>() };
+                std::vector<tripoint_abs_omt>(),
+                plan.alternate_watch_shared_route };
         if( expected.valid && !apply_structural_route_read(
                 site, now_minutes, persisted_route, expected ) ) {
             expected.valid = false;
@@ -11733,6 +11803,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             plan.watch_geography_supplied != expected.watch_geography_supplied ||
             plan.target_footprint != expected.target_footprint ||
             plan.watch_candidates != expected.watch_candidates ||
+            plan.alternate_watch_shared_route !=
+            expected.alternate_watch_shared_route ||
             plan.expected_stalking_minutes != expected.expected_stalking_minutes ||
             plan.expected_arrival_minutes != expected.expected_arrival_minutes ||
             plan.expected_return_minutes != expected.expected_return_minutes ||
@@ -11833,7 +11905,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             current_external_simulation_cursor( candidate );
         if( !watch_cursor || apply_structural_watch_route_selection(
                 candidate, *watch_cursor, plan.target_footprint,
-                plan.watch_candidates ) != structural_watch_route_apply_result::applied ) {
+                plan.watch_candidates,
+                plan.alternate_watch_shared_route ) !=
+            structural_watch_route_apply_result::applied ) {
             return false;
         }
         candidate.active_outing.schema_version = 10;
@@ -14319,6 +14393,21 @@ watch_selection_result select_watch_ring_candidate(
     return result;
 }
 
+watch_selection_result select_alternate_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates,
+    const tripoint_abs_omt &selected_watch_omt )
+{
+    std::vector<watch_selection_candidate> alternatives;
+    alternatives.reserve( candidates.size() );
+    std::copy_if( candidates.begin(), candidates.end(),
+                  std::back_inserter( alternatives ),
+    [&selected_watch_omt]( const watch_selection_candidate & candidate ) {
+        return candidate.omt != selected_watch_omt;
+    } );
+    return select_watch_ring_candidate( target_footprint, alternatives );
+}
+
 bool structural_watch_route_avoids_target_footprint(
     const std::vector<tripoint_abs_omt> &route,
     const std::vector<tripoint_abs_omt> &target_footprint )
@@ -14515,7 +14604,8 @@ structural_watch_geography_read read_structural_watch_geography(
 structural_watch_route_apply_result apply_structural_watch_route_selection(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<tripoint_abs_omt> &target_footprint,
-    const std::vector<watch_selection_candidate> &candidates )
+    const std::vector<watch_selection_candidate> &candidates,
+    const std::vector<tripoint_abs_omt> &alternate_watch_shared_route )
 {
     const active_outing_state &current = site.active_outing;
     if( current.kind != outing_kind::structural_sortie || current.schema_version < 8 ||
@@ -14558,24 +14648,61 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
     if( !distance_matches_kind ) {
         return structural_watch_route_apply_result::rejected;
     }
+    const watch_selection_result alternate_selection =
+        select_alternate_watch_ring_candidate(
+            canonical_footprint, candidates, selection.omt );
+    const bool has_alternate_route = alternate_selection.valid &&
+                                     !alternate_watch_shared_route.empty();
+    const structural_watch_kind alternate_kind = !has_alternate_route ?
+            structural_watch_kind::none :
+            alternate_selection.outcome == watch_selection_outcome::selected_exact ?
+            structural_watch_kind::exact : structural_watch_kind::fallback;
+    if( ( !alternate_watch_shared_route.empty() && !alternate_selection.valid ) ||
+        ( has_alternate_route &&
+          !structural_watch_shared_route_is_canonical(
+              alternate_watch_shared_route, site.anchor, alternate_selection.omt,
+              canonical_footprint ) ) ) {
+        return structural_watch_route_apply_result::rejected;
+    }
 
     if( current.schema_version >= 9 &&
         current.selected_watch_kind != structural_watch_kind::none ) {
         return current.target_footprint == canonical_footprint &&
                current.selected_watch_kind == selected_kind &&
                current.selected_watch_omt == selection.omt &&
-               current.selected_watch_route_cost == selection.route_cost ?
+               current.selected_watch_route_cost == selection.route_cost &&
+               current.alternate_watch_kind == alternate_kind &&
+               current.alternate_watch_omt == ( has_alternate_route ?
+                       alternate_selection.omt : tripoint_abs_omt() ) &&
+               current.alternate_watch_route_cost == ( has_alternate_route ?
+                       alternate_selection.route_cost : -1 ) &&
+               current.alternate_watch_shared_route == alternate_watch_shared_route ?
                structural_watch_route_apply_result::unchanged :
                structural_watch_route_apply_result::rejected;
     }
 
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
-    next.schema_version = std::max( next.schema_version, 9 );
+    next.schema_version = std::max( next.schema_version,
+                                   has_alternate_route ? 10 : 9 );
     next.target_footprint = canonical_footprint;
     next.selected_watch_kind = selected_kind;
     next.selected_watch_omt = selection.omt;
     next.selected_watch_route_cost = selection.route_cost;
+    next.alternate_watch_kind = alternate_kind;
+    next.alternate_watch_omt = has_alternate_route ? alternate_selection.omt :
+                               tripoint_abs_omt();
+    next.alternate_watch_route_cost = has_alternate_route ?
+                                      alternate_selection.route_cost : -1;
+    next.alternate_watch_shared_route = alternate_watch_shared_route;
+    if( has_alternate_route && next.started_minutes >= 0 ) {
+        next.expected_return_minutes = structural_expected_return_minutes(
+                                           next.started_minutes, candidate.anchor,
+                                           selection.omt );
+        next.missing_deadline_minutes = minutes_after_saturated(
+                                            next.expected_return_minutes,
+                                            scout_missing_grace_minutes );
+    }
     if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
         return structural_watch_route_apply_result::rejected;
     }

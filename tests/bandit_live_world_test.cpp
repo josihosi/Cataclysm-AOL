@@ -14665,7 +14665,8 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         site.intelligence_map.leads.push_back( terrain_lead );
 
         std::vector<bandit_live_world::watch_selection_candidate> committed_candidates;
-        const auto route_lookup = [&committed_candidates](
+        std::vector<tripoint_abs_omt> committed_alternate_route;
+        const auto route_lookup = [&committed_candidates, &committed_alternate_route](
         const bandit_live_world::site_record & route_site,
         const bandit_live_world::structural_outing_plan & plan ) {
             const std::vector<tripoint_abs_omt> footprint = {
@@ -14689,9 +14690,37 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
             const std::vector<tripoint_abs_omt> shared_route = {
                 route_site.anchor, approach, watch.selection.omt, approach, route_site.anchor
             };
+            const bandit_live_world::watch_selection_result alternate =
+                bandit_live_world::select_alternate_watch_ring_candidate(
+                    watch.target_footprint, watch.routed_candidates,
+                    watch.selection.omt );
+            REQUIRE( alternate.valid );
+            std::optional<tripoint_abs_omt> alternate_approach;
+            for( int dy = -1; dy <= 1 && !alternate_approach; ++dy ) {
+                for( int dx = -1; dx <= 1 && !alternate_approach; ++dx ) {
+                    const tripoint_abs_omt candidate(
+                        alternate.omt.x() + dx, alternate.omt.y() + dy,
+                        alternate.omt.z() );
+                    if( ( dx != 0 || dy != 0 ) &&
+                        std::find( watch.target_footprint.begin(),
+                                   watch.target_footprint.end(), candidate ) ==
+                        watch.target_footprint.end() ) {
+                        alternate_approach = candidate;
+                    }
+                }
+            }
+            REQUIRE( alternate_approach );
+            committed_alternate_route = {
+                route_site.anchor, *alternate_approach, alternate.omt,
+                *alternate_approach, route_site.anchor
+            };
+            REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                         committed_alternate_route, route_site.anchor,
+                         alternate.omt, watch.target_footprint ) );
             return bandit_live_world::structural_route_read{
                 true, watch.selection.route_cost, 0, "production watch adapter contract", true,
-                watch.target_footprint, watch.routed_candidates, shared_route
+                watch.target_footprint, watch.routed_candidates, shared_route,
+                committed_alternate_route
             };
         };
         const auto terrain_lookup = []( const tripoint_abs_omt & ) -> std::optional<std::string> {
@@ -14711,6 +14740,11 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK( site.active_outing.selected_watch_route_cost >= 0 );
         CHECK( site.active_outing.shared_route[2] == site.active_outing.selected_watch_omt );
         CHECK( site.active_outing.shared_route[1] == site.active_outing.shared_route[3] );
+        CHECK( site.active_outing.alternate_watch_kind == structural_watch_kind::exact );
+        CHECK( site.active_outing.alternate_watch_omt !=
+               site.active_outing.selected_watch_omt );
+        CHECK( site.active_outing.alternate_watch_shared_route ==
+               committed_alternate_route );
         CHECK( site.active_outing.target_omt == target );
         const std::string committed = serialize_world( world );
         const bandit_live_world::simulation_advance_cursor cursor =
@@ -14718,13 +14752,15 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
 
         CHECK( bandit_live_world::apply_structural_watch_route_selection(
                    site, cursor, site.active_outing.target_footprint,
-                   committed_candidates ) == structural_watch_route_apply_result::unchanged );
+                   committed_candidates, committed_alternate_route ) ==
+               structural_watch_route_apply_result::unchanged );
         CHECK( serialize_world( world ) == committed );
         bandit_live_world::simulation_advance_cursor stale = cursor;
         stale.last_advanced_minutes--;
         CHECK( bandit_live_world::apply_structural_watch_route_selection(
                    site, stale, site.active_outing.target_footprint,
-                   committed_candidates ) == structural_watch_route_apply_result::rejected );
+                   committed_candidates, committed_alternate_route ) ==
+               structural_watch_route_apply_result::rejected );
         CHECK( serialize_world( world ) == committed );
         CHECK( serialize_world( round_trip_world( world ) ) == committed );
 
@@ -14869,6 +14905,83 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
                      loaded_watch_site, cohesion, false, false ) );
         CHECK( serialize_world( round_trip_world( progressed ) ) == serialize_world( progressed ) );
     }
+}
+
+TEST_CASE( "bandit_live_world_route_qualified_alternate_watch_persists_once",
+           "[bandit][live_world][alternate_watch][save]" )
+{
+    bandit_live_world::world_state world = make_abstract_threat_test_world(
+            false, 893500, 6 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    const tripoint_abs_omt target = outing.target_omt;
+    const tripoint_abs_omt primary( target.x() - 3, target.y(), target.z() );
+    const tripoint_abs_omt primary_approach(
+        primary.x() - 1, primary.y(), primary.z() );
+    const tripoint_abs_omt alternate( target.x() + 3, target.y(), target.z() );
+    const tripoint_abs_omt alternate_approach(
+        alternate.x() + 1, alternate.y(), alternate.z() );
+    outing.schema_version = 9;
+    outing.target_footprint = { target };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::none;
+    outing.selected_watch_omt = tripoint_abs_omt();
+    outing.selected_watch_route_cost = -1;
+    outing.shared_route = {
+        site.anchor, primary_approach, primary, primary_approach, site.anchor
+    };
+    outing.waypoint_index = 0;
+    REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                 outing.shared_route, site.anchor, primary,
+                 outing.target_footprint ) );
+    const std::vector<bandit_live_world::watch_selection_candidate> candidates = {
+        { primary, true, true, true, 1 },
+        { alternate, true, true, true, 2 }
+    };
+    const std::vector<tripoint_abs_omt> alternate_route = {
+        site.anchor, alternate_approach, alternate,
+        alternate_approach, site.anchor
+    };
+    REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                 alternate_route, site.anchor, alternate,
+                 outing.target_footprint ) );
+    const bandit_live_world::simulation_advance_cursor cursor =
+        require_current_simulation_cursor( site );
+    REQUIRE( bandit_live_world::apply_structural_watch_route_selection(
+                 site, cursor, outing.target_footprint, candidates,
+                 alternate_route ) ==
+             bandit_live_world::structural_watch_route_apply_result::applied );
+    CHECK( outing.selected_watch_omt == primary );
+    CHECK( outing.alternate_watch_kind ==
+           bandit_live_world::structural_watch_kind::exact );
+    CHECK( outing.alternate_watch_omt == alternate );
+    CHECK( outing.alternate_watch_route_cost == 2 );
+    CHECK( outing.alternate_watch_shared_route == alternate_route );
+
+    const std::string persisted = serialize_world( world );
+    CHECK( serialize_world( round_trip_world( world ) ) == persisted );
+    CHECK( bandit_live_world::apply_structural_watch_route_selection(
+               site, cursor, outing.target_footprint, candidates,
+               alternate_route ) ==
+           bandit_live_world::structural_watch_route_apply_result::unchanged );
+    CHECK( serialize_world( world ) == persisted );
+
+    std::vector<tripoint_abs_omt> malformed_alternate = alternate_route;
+    malformed_alternate[2] = primary;
+    bandit_live_world::world_state rejected = make_abstract_threat_test_world(
+            false, 893600, 6 );
+    bandit_live_world::site_record &rejected_site = rejected.sites.front();
+    rejected_site.active_outing.schema_version = 9;
+    rejected_site.active_outing.target_footprint = {
+        rejected_site.active_outing.target_omt
+    };
+    rejected_site.active_outing.shared_route = outing.shared_route;
+    const std::string before_rejection = serialize_world( rejected );
+    CHECK( bandit_live_world::apply_structural_watch_route_selection(
+               rejected_site, require_current_simulation_cursor( rejected_site ),
+               rejected_site.active_outing.target_footprint, candidates,
+               malformed_alternate ) ==
+           bandit_live_world::structural_watch_route_apply_result::rejected );
+    CHECK( serialize_world( rejected ) == before_rejection );
 }
 
 TEST_CASE( "bandit_live_world_covert_disposition_is_an_exact_derived_member_view",

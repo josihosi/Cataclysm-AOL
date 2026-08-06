@@ -4492,6 +4492,23 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
             read.summary = "live structural route abandoned: watch shared route was malformed";
             return read;
         }
+        const bandit_live_world::watch_selection_result alternate_selection =
+            bandit_live_world::select_alternate_watch_ring_candidate(
+                watch.target_footprint, watch.routed_candidates,
+                watch.selection.omt );
+        if( alternate_selection.valid ) {
+            const auto alternate_path = std::find_if(
+                                            watch_paths.begin(), watch_paths.end(),
+            [&alternate_selection]( const auto & entry ) {
+                return entry.first == alternate_selection.omt;
+            } );
+            if( alternate_path != watch_paths.end() ) {
+                read.alternate_watch_shared_route =
+                    bandit_live_world::make_structural_watch_shared_route(
+                        site.anchor, alternate_selection.omt,
+                        alternate_path->second, watch.target_footprint );
+            }
+        }
         read.complete_route_cost = watch.selection.route_cost;
         read.summary += "; watch geography selected " +
                         watch.selection.omt.to_string() + " route_reads=" +

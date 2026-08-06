@@ -647,6 +647,10 @@ struct active_outing_state {
     structural_watch_kind selected_watch_kind = structural_watch_kind::none;
     tripoint_abs_omt selected_watch_omt;
     int selected_watch_route_cost = -1;
+    structural_watch_kind alternate_watch_kind = structural_watch_kind::none;
+    tripoint_abs_omt alternate_watch_omt;
+    int alternate_watch_route_cost = -1;
+    std::vector<tripoint_abs_omt> alternate_watch_shared_route;
     int covert_egress_chain_version = 0;
     int covert_egress_attempts = 0;
     int covert_egress_revision = 0;
@@ -1038,6 +1042,7 @@ struct structural_outing_plan {
     bool watch_geography_supplied = false;
     std::vector<tripoint_abs_omt> target_footprint;
     std::vector<watch_selection_candidate> watch_candidates;
+    std::vector<tripoint_abs_omt> alternate_watch_shared_route;
     int expected_stalking_minutes = -1;
     int expected_arrival_minutes = -1;
     int expected_return_minutes = -1;
@@ -1053,19 +1058,22 @@ struct structural_route_read {
     std::vector<tripoint_abs_omt> target_footprint;
     std::vector<watch_selection_candidate> watch_candidates;
     std::vector<tripoint_abs_omt> watch_shared_route;
+    std::vector<tripoint_abs_omt> alternate_watch_shared_route;
 
     structural_route_read() = default;
     structural_route_read( bool reachable_, int complete_route_cost_, int max_segment_risk_,
                            std::string summary_, bool watch_geography_supplied_ = false,
                            std::vector<tripoint_abs_omt> target_footprint_ = {},
                            std::vector<watch_selection_candidate> watch_candidates_ = {},
-                           std::vector<tripoint_abs_omt> watch_shared_route_ = {} ) :
+                           std::vector<tripoint_abs_omt> watch_shared_route_ = {},
+                           std::vector<tripoint_abs_omt> alternate_watch_shared_route_ = {} ) :
         reachable( reachable_ ), complete_route_cost( complete_route_cost_ ),
         max_segment_risk( max_segment_risk_ ), summary( std::move( summary_ ) ),
         watch_geography_supplied( watch_geography_supplied_ ),
         target_footprint( std::move( target_footprint_ ) ),
         watch_candidates( std::move( watch_candidates_ ) ),
-        watch_shared_route( std::move( watch_shared_route_ ) ) {}
+        watch_shared_route( std::move( watch_shared_route_ ) ),
+        alternate_watch_shared_route( std::move( alternate_watch_shared_route_ ) ) {}
 };
 
 struct routine_dispatch_evaluation {
@@ -1500,6 +1508,10 @@ watch_selection_result select_exact_watch_ring_candidate(
 watch_selection_result select_watch_ring_candidate(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates );
+watch_selection_result select_alternate_watch_ring_candidate(
+    const std::vector<tripoint_abs_omt> &target_footprint,
+    const std::vector<watch_selection_candidate> &candidates,
+    const tripoint_abs_omt &selected_watch_omt );
 bool structural_watch_route_avoids_target_footprint(
     const std::vector<tripoint_abs_omt> &route,
     const std::vector<tripoint_abs_omt> &target_footprint );
@@ -1520,7 +1532,8 @@ structural_watch_geography_read read_structural_watch_geography(
 structural_watch_route_apply_result apply_structural_watch_route_selection(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<tripoint_abs_omt> &target_footprint,
-    const std::vector<watch_selection_candidate> &candidates );
+    const std::vector<watch_selection_candidate> &candidates,
+    const std::vector<tripoint_abs_omt> &alternate_watch_shared_route = {} );
 int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
