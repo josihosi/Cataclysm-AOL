@@ -439,6 +439,13 @@ authoritative alert to 100 before delivery. Mac build/link, exact 1/67, assessme
 3/124, burn 5/297, diff check, and fresh read-only review pass. The remaining Phase-5 unchecked rows
 are held on their already-recorded field-producer/live-attempt seams; next audit the first Phase-6
 outing-to-report ownership rows against the real return transaction and implement only a proven gap.
+Carrier-aware report merge is green at `37851aee14`: observations remain outing-owned until a
+physical return, shared facts can ride with any survivor, and a private fact can publish only through
+its exact returned observer. Provisional split return includes only the first carrier's private facts;
+the newer final revision can add the later survivor, while dead/unresolved private evidence stays out.
+Mac build, physical 1/17, split 2/156, structural 1/97, typed 5/147, scout-state 9/803, assessment
+2/106, diff check, and fresh review pass. Next audit the Phase-6 timestamp/range and non-collapse
+contract against the typed observation/report projection before adding new assessment math.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

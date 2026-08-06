@@ -1479,3 +1479,15 @@ diff check and fresh read-only review pass. Caveat: legacy positive-alert/no-con
 inspection-only, Phase-6 readiness authorization is not claimed, and no astyle 3.1, live GUI, Linux,
 or Windows evidence exists. Remaining Phase-5 rows keep their recorded producer/live holds; next is
 the first Phase-6 outing-to-report ownership audit.
+
+Phase-6 carrier-aware report ownership is green at `37851aee14`. Report projection now receives an
+explicit authoritative carrier set: schema-1 shared/reported facts require at least one carrier,
+observer-private facts additionally require their exact observer, and included copies become
+reported without modifying the outing. Generic return derives carriers after roster writeback;
+provisional split return uses only newly returned IDs; structural assessment derives living carriers
+before reservation release. The canonical Mac build exits 0. `[physical_report]` passes 1/17,
+`[split_return]` 2/156, the exact structural assessment case 1/97, `[typed_observation]` 5/147,
+`[scout_state]` 9/803, and `[scout_assessment]` 2/106 at seed 424242. Evidence is redirected to
+`build_logs/phase6_report_carrier_*`; diff check and fresh read-only review pass. No persistence,
+schema, astyle 3.1, live GUI, Linux, or Windows claim. Next: timestamp/range and historical-count
+non-collapse semantics.

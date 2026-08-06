@@ -982,8 +982,8 @@ Evidence:
 
 ## Phase 6 - physical reports, assessment, and escalation math
 
-- [ ] Keep observations on the outing until a survivor reaches home.
-- [ ] Merge only shared/surviving evidence into a new immutable report revision.
+- [x] Keep observations on the outing until a survivor reaches home. _Checkpoint `37851aee14`: typed observations remain in the authoritative outing and report construction copies them only at generic, provisional, or structural physical-return boundaries. No new persistence or pre-return mutation._
+- [x] Merge only shared/surviving evidence into a new immutable report revision. _Checkpoint `37851aee14`: a shared fact requires at least one authoritative carrier; an observer-private fact requires that exact observer. Provisional split return includes only newly returned carriers, final return may add a later survivor, and dead/unresolved private facts remain absent. Mac physical 1/17, split 2/156, structural 1/97, typed 5/147, scout-state 9/803, assessment 2/106, diff check, and fresh review pass._
 - [ ] Preserve observation timestamps and ranges; do not collapse `two seen` into `exactly two now`.
 - [ ] Derive visible defender power from existing character weapon/armor/health/readiness evaluation where possible.
 - [ ] Represent unobserved defenders/equipment as uncertainty, not zero and not omniscient truth.

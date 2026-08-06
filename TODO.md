@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit the first Phase-6 outing-to-report ownership rows against the real structural return path:
-   observations must remain outing-owned until a survivor reaches home, and only shared evidence
-   carried by survivors may enter a new immutable report revision. Close already-proven rows with
-   focused evidence; if a concrete atomicity/replay gap exists, implement the smallest owner-level
-   fix and exact test. Do not widen into Phase-6 power normalization or authorization math yet.
+1. Audit the next Phase-6 evidence-semantics row against the typed outing and immutable report:
+   preserve original observation timestamps/ranges and never collapse a historical `two seen` fact
+   into `exactly two now`. Close existing proof if honest; otherwise implement one smallest focused
+   fix/test. Do not begin defender-power normalization or authorization math until this substrate is
+   explicit and green.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
