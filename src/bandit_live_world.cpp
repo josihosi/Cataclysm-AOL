@@ -3399,8 +3399,13 @@ simulation_owner_transition_result transition_external_simulation_owner(
 
 static void consume_local_pair_resume_receipt( active_outing_state &outing )
 {
+    const bool retains_physical_covert_egress =
+        outing.phase == scout_phase::burned_withdrawal ||
+        outing.phase == scout_phase::returning_exposed ||
+        outing.phase == scout_phase::returning_report;
     if( outing.kind == outing_kind::structural_sortie && outing.schema_version >= 7 &&
-        outing.owner == simulation_owner::abstract && outing.local_handoff.is_abstract_resume() ) {
+        outing.owner == simulation_owner::abstract && outing.local_handoff.is_abstract_resume() &&
+        !retains_physical_covert_egress ) {
         const tripoint_abs_omt canonical_route_position =
             outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
         if( outing.local_handoff.route_position == canonical_route_position ) {
