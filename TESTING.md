@@ -1159,6 +1159,19 @@ unavailable; no live GUI or Linux/Windows runtime is claimed. Next evidence is b
 threat/concealment-scored egress; the current persisted return approach is only reachable,
 target-excluding route footing.
 
+Phase-5 danger-scored egress and immediate survival are green at `0658697276e2`. Redirected
+`make -j8 LOCALIZE=1 TESTS=1 tests` and the Mac release-tiles link exit 0. `[covert_burn]` passes
+2/162, `[covert_disposition]` 2/98, `[local_handoff]` 1/651, and `[structural_bounty]` 51/6,785.
+Coverage includes safe-pool precedence over hard danger, route-wide legitimate soft-danger and
+concealment scoring, deterministic caps/ties, no inward candidate or local/OMT path, actor-specific
+field/trap survival, no-route/exposed return, exact scored-egress save plus local/abstract/local
+handoff, post-rally death reconciliation, physical signal/cargo writeback, canonical return receipt,
+and bounded persistent immobility without premature missing closure. The final scoped autoreview
+exits 0 with no actionable finding after fixes for rematerialization, writeback/receipt loss,
+post-egress casualty cleanup, and immobile owner retention. `git diff --check` is clean. `astyle`
+3.1 is unavailable; no live GUI, Linux, or Windows runtime is claimed. Next evidence is failed-egress
+route memory and retry hysteresis, not another proof-infrastructure expansion.
+
 The foreign-platform classifier and native writer contract are repaired at `d12edba150` with 60/60
 tests. Clean-environment Mac secure-store/API proof remains a later release-harness gate; it must
 not trigger another pause, retry, or Discord blocker during deterministic ecology work.

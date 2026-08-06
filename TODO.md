@@ -22,9 +22,9 @@ decoy control's current-schema fixture is green at `5cffecb404`, but live runs `
 and `20260805_130217` are non-credit and exhaust its two-attempt cap. Do not run a third live probe;
 the corrected fixture stays ready for Josef's later disposable playtest packet. The next queue is:
 
-1. Score a bounded set of reachable egress/rally choices against legitimately observed threats and
-   concealment, with hard danger exclusion and soft danger cost. Keep the exact outing owner and
-   persisted burn origin; do not add avatar-radar reads, full-world scans, or per-turn replanning.
+1. Bound egress retries and persist failed egress tiles/routes so local obstacles, load transitions,
+   and changing visibility cannot oscillate the pair or restore observation. Reuse the existing
+   owner timestamps/route state where honest; do not add a second registry or per-turn replanning.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

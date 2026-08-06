@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 EGRESS SCORING NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 EGRESS RETRY MEMORY NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -312,6 +312,17 @@ survivor at camp can commit abstract return. Time-based completion cannot outrun
 location. The exact Mac compile is green, focused handoff coverage passes 1/440, the broader
 structural tag passes 51/6,574, and final closeout review is clean. Harness run `20260804_214456`
 remains honest pre-fix red/inconclusive evidence; it is not recredited or retried by ritual.
+
+Danger-scored physical egress is checkpointed at `0658697276e2`. A burned pair evaluates at most
+eight outward adjacent OMTs through pair-owned target-excluding routes, prefers a safe pool over
+hard danger, and then minimizes legitimate route-wide danger, concealment loss, cost, and stable
+coordinates. Actor-visible fields/traps may force the least-dangerous non-inward step before combat;
+all generated local/overmap routes keep the target inner ring excluded. The chosen egress survives
+dematerialization/rematerialization, post-rally casualties keep the same owner cleanup, and terminal
+no-route or six-hour persistent immobility closes through physical report/cargo/casualty writeback
+plus the canonical structural return receipt. Mac build, focused tests, release tiles link, and the
+fresh closeout review are green. No astyle 3.1, live GUI, Linux, or Windows runtime is claimed. The
+next detailed row is bounded failed-egress route memory and retry hysteresis.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
