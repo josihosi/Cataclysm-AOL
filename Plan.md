@@ -405,8 +405,11 @@ routes under one persisted pending owner; loaded and unloaded exact arrivals com
 teleportation, while stale/split/death/exposure/route-loss paths fail safely. Deadline-anchored
 abstract timing is green at `3a0a895118`: minute, hourly, and one-jump polling converge on the same
 persisted owner and exact minute-320/minute-440 transitions without retargeting or knowledge change.
-Next, boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
-cooldown table.
+Assessment hysteresis is green at `d44b2c20ea`: one shared pure contract acquires normal readiness
+at 70 and burned readiness at 60, retains them through 60 and 50 respectively, and releases one
+point below. Production proof preserves exact 48-hour normal/burned and 12-hour inconclusive
+cooldowns. Next, prove deterministic priority and single-transition ingestion for simultaneous
+burn, danger, revision, success, empty, and expiry conditions.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

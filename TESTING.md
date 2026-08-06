@@ -1404,3 +1404,12 @@ trace contains exactly two transitions anchored to minutes 320 and 440; no late-
 duplicate transition, target rewrite, or knowledge mutation is accepted. Local relocation remains
 physical-travel-owned. No astyle 3.1, live GUI, Linux, or Windows claim. Next: 69/70/60 assessment
 hysteresis and the normal/burned/inconclusive cooldown boundary table.
+
+Phase-5 assessment-readiness hysteresis is green at `d44b2c20ea`. One shared pure production
+contract proves exact normal acquire/retain/release at 70/60/59 and burned acquire/retain/release
+at 60/50/49; a real burn lands at certainty 60 and latches. Existing report owners retain exact
+48-hour normal, 48-hour burned, and 12-hour inconclusive cooldowns. The redirected Mac tiles
+object/test link exits 0; fixed-seed `[scout_assessment]` passes 2/105, `[covert_burn]` 2/649,
+`[alternate_watch]` 2/151, and `[structural_bounty]` 51/6,785. `git diff --check` is clean. No
+astyle 3.1, live GUI, Linux, Windows, Phase-6 authorization, or not-yet-owned empty/danger outcome
+claim. Next: deterministic simultaneous-exit priority and one-transition ingestion.

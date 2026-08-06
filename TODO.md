@@ -25,8 +25,8 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
-   cooldown table now that alternate-watch timing is green at `3a0a895118`.
+1. Prove deterministic simultaneous-exit priority and one transition for burn+danger,
+   burn+survival hazard, legitimately observed revision-change+success, and empty+expiry.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
