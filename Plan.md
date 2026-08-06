@@ -446,6 +446,13 @@ the newer final revision can add the later survivor, while dead/unresolved priva
 Mac build, physical 1/17, split 2/156, structural 1/97, typed 5/147, scout-state 9/803, assessment
 2/106, diff check, and fresh review pass. Next audit the Phase-6 timestamp/range and non-collapse
 contract against the typed observation/report projection before adding new assessment math.
+Historical report semantics are green at `5b3c3ad563`: two visual facts with one stable key but
+distinct 30-minute windows survive real physical return as separate immutable records. Their original
+observation/simultaneity times, two-defender then one-defender sets, power ranges, equipment detail,
+uncertainty, expiry, source/receiver OMTs, and target revision survive delivery, save/load, and later
+aging reads exactly; delivery time stays separate. Mac build, exact 1/49, typed 6/196, diff check,
+and fresh review pass. This does not claim aggregation or power math. Next audit the real visible-
+defender power source and unobserved-defender uncertainty seam before implementing normalization.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

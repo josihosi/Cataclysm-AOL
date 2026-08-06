@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit the next Phase-6 evidence-semantics row against the typed outing and immutable report:
-   preserve original observation timestamps/ranges and never collapse a historical `two seen` fact
-   into `exactly two now`. Close existing proof if honest; otherwise implement one smallest focused
-   fix/test. Do not begin defender-power normalization or authorization math until this substrate is
-   explicit and green.
+1. Audit the next Phase-6 visible-defender power and uncertainty rows. Trace the actual physical
+   character/NPC weapon, armor, health, and readiness evaluator feeding typed observations; identify
+   where no-visible-defender evidence remains uncertainty rather than zero. Reuse an existing combat
+   evaluator if honest. Implement only the smallest missing adapter/contract before attempting the
+   later multi-window aggregation equation or authorization gates.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

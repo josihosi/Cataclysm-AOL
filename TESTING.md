@@ -1491,3 +1491,14 @@ before reservation release. The canonical Mac build exits 0. `[physical_report]`
 `build_logs/phase6_report_carrier_*`; diff check and fresh read-only review pass. No persistence,
 schema, astyle 3.1, live GUI, Linux, or Windows claim. Next: timestamp/range and historical-count
 non-collapse semantics.
+
+Phase-6 historical report semantics are green at `5b3c3ad563`. A production-path test records two
+same-key schema-1 visual facts in distinct 30-minute buckets, physically returns both scouts, and
+requires both historical windows in the immutable report. The first retains two defender IDs and the
+later retains one; each preserves observed/bucket/simultaneity times, power bounds, equipment detail,
+uncertainty radius, expiry, source/receiver OMTs, and target revision. Delivery at minute 600 does not
+refresh observations from minutes 121/167. Report bytes survive save/load and a later aging read.
+The Mac incremental build exits 0; `[report_history]` passes 1/49 and `[typed_observation]` 6/196 at
+seed 424242. Evidence is `build_logs/phase6_report_history_*`; diff check and fresh read-only review
+pass. This is test-only historical preservation, not aggregation or decision power. No astyle 3.1,
+live GUI, Linux, or Windows claim. Next: visible-defender power/uncertainty source audit.
