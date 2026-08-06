@@ -492,6 +492,17 @@ Review reduced same-class retention to one deterministic source per poll. Mac re
 live 1/33, assessment 4/225, typed 6/196, and controlled-seed burn 5/313 pass. Level three and the
 other cue classes remain open. Next audit one real visible infrastructure/storage-fortification seam
 that can supply a distinct class without remote map reads or broad furniture-value inference.
+Outward generation infrastructure is green at `09fa4b5ecd`: appliances are excluded from the
+mobile-vehicle class, while a separate loaded adapter accepts only an owned appliance's available,
+ordinarily visible solar, wind, or water-generation part inside the exact target footprint. It
+records one canonical private infrastructure fact and reads no reactor, battery, wiring, power
+output, contents, capacity, light, or remote map state. Existing pair sharing raises an occupied
+baseline to two from either class; vehicle plus infrastructure reaches three only when strict facts
+come from distinct 30-minute buckets, independent of observation order. Same-bucket and no-human
+controls stop at two/zero. The fresh Mac test build and focused infrastructure 2/327, assessment
+4/225, typed 6/196, controlled-seed burn 7/1,052, diff check, and root review/rerun pass. Next audit
+one equally narrow visible constructed storage-fortification or quality-3 bulk-cargo seam; do not
+infer value from generic furniture, capacity, hidden contents, zones, or remote map reads.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

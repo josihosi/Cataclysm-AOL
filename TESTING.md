@@ -1577,3 +1577,51 @@ same-minute replay expectation, and whole-save serialization of a deliberately n
 structural fixture); none reached a contradictory production result. `git diff --check` is clean.
 No astyle 3.1, GUI, Linux, or Windows claim. Next: audit a second narrow outward infrastructure or
 constructed storage-fortification cue; no generic furniture valuation or remote reads.
+
+Phase-6 outward generation-infrastructure proof contract (source identity `ce5a071649d9`,
+pre-implementation):
+- Claim: once legitimate target-window human occupancy is shared, an ordinary loaded scout may
+  record one player-faction appliance power-generation installation with an actually visible
+  outward solar, wind, or water-generation part as class `infrastructure`. One shared cue class
+  raises opportunity from `1` to exactly `2`; shared `vehicle` and `infrastructure` cues raise it
+  to `3` only when their retained 30-minute buckets differ.
+- Preconditions/interventions: a real schema-10 local observing pair and pinned player-camp
+  footprint; fixtures may place an owned mobile vehicle and/or owned appliance generation part in
+  the loaded target, establish ordinary sight, and advance into a later evidence bucket. Setup
+  stops before each production perception poll and may not write observations or assessment state.
+- Causal boundary/real path: the production one-minute poll reads the loaded map vehicle owner,
+  appliance identity, available generation-part feature and position, exact target footprint, and
+  the scout's ordinary point sight. It records one canonical observer-private typed fact; existing
+  pair cohesion may share it; the existing assessment/report projection consumes strict cue shape,
+  class, source, and bucket provenance.
+- Expected transition: ordinary mobile assets are excluded from `infrastructure`, all appliances
+  are excluded from `vehicle`, and one physical object can never satisfy both classes. A shared
+  generation cue alone yields `2`; vehicle plus generation in distinct 30-minute buckets yields
+  `3`; their order is irrelevant and same-bucket observations remain `2`.
+- Negative/control: an ordinary vehicle, non-generating appliance such as a lamp or wiring/battery
+  alone, reactor/internal capability, unavailable or unseen generation part, unowned/wrong-owner
+  asset, outside origin/part, wrong z-level, private-only fact, and absent human footing remain
+  byte-inert or at opportunity `0..2`. No cargo, contents, exact value, capacity, current power
+  output, light, smoke, camp size, zone, or remote map data may be read.
+- Timeout/pass-fail: one existing perception poll per prepared evidence bucket plus ordinary pair
+  communication. Pass requires exact `1 -> 2 -> 3` and same-bucket controls, deterministic
+  class/source/bucket retention and save/report survival, the loaded adapter controls, and affected
+  Mac objects/focused tests at the recorded source identity. Quality-3 bulk cargo, response sizing,
+  authorization, astyle 3.1, live GUI, Linux, and Windows remain unclaimed.
+
+Phase-6 outward generation infrastructure is green at behavior `09fa4b5ecd`. The production
+adapter excludes all appliances from the mobile-vehicle class and accepts infrastructure only from
+an exact `your_followers` loaded appliance with an available, ordinarily visible solar, wind, or
+water-generation part inside the pinned target footprint. One canonical absolute part source is
+recorded per class/poll as observer-private evidence; existing cohesion sharing is still required.
+Either cue class raises a legitimate human baseline to `2`; vehicle plus infrastructure reaches
+`3` only when strict retained buckets differ, independent of order, while same-bucket and no-human
+controls stay `2`/`0`. Lamp, broken, unowned, outside, blind, and both mutual-exclusion directions
+are inert. The first direct make invocation selected stale test targets and is non-credit; the
+subsequent real `make tests` build advanced both affected test objects and `tests/cata_test` and
+exited zero. Final seed-424242 results are infrastructure 2/327, assessment 4/225, typed 6/196, and
+burn 7/1,052; root rerun is 2/327. Review replaced an unavailable-part approximation with
+`get_avail_parts()` and fixed the live source check to the authoritative absolute part position.
+`git diff --check` is clean. No reactor, battery, wiring, output, cargo, contents, capacity, astyle
+3.1, GUI, Linux, or Windows claim. Next: audit one explicit visible constructed
+storage-fortification or quality-3 bulk-cargo seam without generic furniture or remote reads.
