@@ -473,6 +473,16 @@ without capping the lower bound. Mac build, focused 1/79, assessment 3/189, burn
 16-ID typed cap, bounty/loss projection, astyle 3.1, GUI, Linux, and Windows remain open. Next audit
 the broad tracked-assessment row and choose its smallest missing durable field without starting
 response-party authorization.
+Immutable assessment tracking is green at `b200250a3f`: assessment schema 2 keeps coarse human
+opportunity and separate route danger beside the existing certainty, defender, danger, and alert
+bounds. The immutable effective report view exposes those fields, delivery age, and exact scout
+casualty count without consulting mutable lead memory or writing aging state. Target-window loaded
+human sight or reciprocal burn may raise the coarse opportunity baseline to one; hidden storage and
+lead bounty cannot. Legacy route decomposition is explicit unknown `-1`, while aggregate danger is
+preserved. Mac build, tracking 1/23, assessment 4/225, aging 1/116, burn 7/1,052, diff check, and
+fresh review/fix pass. Wealth cues for bounty levels two/three, exact 17+ counts, astyle 3.1, GUI,
+Linux, and Windows remain open. Next add the smallest real outward wealth-cue producer without
+remote inventory inspection or authorization work.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

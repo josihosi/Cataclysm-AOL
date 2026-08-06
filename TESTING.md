@@ -1529,3 +1529,16 @@ a shared `test_user_dir` template-write collision while both test bodies passed;
 replaced that environmental non-credit evidence. `git diff --check` and fresh review/fix/closure are
 clean. Exact counts above the typed 16-ID cap, downstream risk, astyle 3.1, GUI, Linux, and Windows
 remain open. Next: audit the broad tracked assessment fields and choose one smallest missing seam.
+
+Phase-6 immutable assessment tracking is green at `b200250a3f`. Assessment schema 2 persists coarse
+human opportunity `0..3` and separate route danger beside the existing certainty, defender/danger,
+and alert fields; schema-v1 route decomposition migrates to explicit unknown `-1` without changing
+its aggregate danger. The pure effective report view exposes those fields, delivery age, and exact
+casualty count without mutable lead reads or save writes. Production target-window loaded-human sight
+and reciprocal burn raise the baseline opportunity to one; route-only/empty controls do not, and
+private route danger remains excluded until shared/carried. The reviewed Mac build exits 0; final
+seed-424242 logs are `build_logs/phase6_assessment_tracking_final_*`: tracking 1/23, assessment
+4/225, aging 1/116, and burn 7/1,052. The earlier added private-route assertion is red/non-credit and
+was removed because it contradicted authoritative sharing rules. `git diff --check` and fresh
+review/fix pass. Bounty levels two/three, exact 17+ counts, astyle 3.1, GUI, Linux, and Windows remain
+open. Next: one real outward wealth-cue producer; no remote storage or authorization work.
