@@ -810,13 +810,19 @@ std::vector<bandit_live_world::sortie_observation> make_bounded_sortie_observati
 }
 
 std::vector<bandit_live_world::sortie_observation> make_reportable_sortie_observations(
-            const std::vector<bandit_live_world::sortie_observation> &observations )
+            const std::vector<bandit_live_world::sortie_observation> &observations,
+            const std::vector<character_id> &carrier_ids )
 {
     std::vector<bandit_live_world::sortie_observation> reportable;
     for( bandit_live_world::sortie_observation observation :
          make_bounded_sortie_observations( observations ) ) {
         if( observation.record_schema_version == 1 ) {
-            if( observation.share_state == sortie_observation_share_state::observer_private ) {
+            const bool observer_is_carrier =
+                std::find( carrier_ids.begin(), carrier_ids.end(), observation.observer_id ) !=
+                carrier_ids.end();
+            if( carrier_ids.empty() ||
+                ( observation.share_state == sortie_observation_share_state::observer_private &&
+                  !observer_is_carrier ) ) {
                 continue;
             }
             observation.share_state = sortie_observation_share_state::reported;
@@ -12659,7 +12665,7 @@ structural_signal_record_result record_structural_signal_observations( world_sta
 }
 
 static bool deliver_structural_scout_assessment_report( site_record &site,
-        const int delivered_minutes )
+        const int delivered_minutes, const std::vector<character_id> &carrier_ids )
 {
     const active_outing_state &outing = site.active_outing;
     if( outing.kind != outing_kind::structural_sortie || outing.job_type != "scout" ||
@@ -12690,7 +12696,8 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     report.target_lead_id = outing.target_lead_id;
     report.target_lead_revision = outing.target_lead_revision;
     report.application_key = outing.report_application_key;
-    report.observations = make_reportable_sortie_observations( outing.observations );
+    report.observations = make_reportable_sortie_observations(
+                              outing.observations, carrier_ids );
     report.assessment = outing.assessment;
     report.casualty_ids = outing.casualty_ids;
     report.delivered_minutes = delivered_minutes;
@@ -13121,9 +13128,22 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     candidate.next_routine_dispatch_eligible_minutes =
                         minutes_after_saturated( now_minutes, 1 );
                 }
+                std::vector<character_id> returned_carrier_ids;
+                for( const character_id member_id : candidate.active_outing.member_ids ) {
+                    const member_record *member = candidate.find_member( member_id );
+                    const bool casualty = std::find(
+                                              candidate.active_outing.casualty_ids.begin(),
+                                              candidate.active_outing.casualty_ids.end(), member_id ) !=
+                                          candidate.active_outing.casualty_ids.end();
+                    if( !casualty && member != nullptr &&
+                        member->state != member_state::dead &&
+                        member->state != member_state::missing ) {
+                        returned_carrier_ids.push_back( member_id );
+                    }
+                }
                 if( !candidate.active_outing.assessment.exit_reason.empty() &&
-                    !deliver_structural_scout_assessment_report( candidate,
-                            now_minutes ) ) {
+                    !deliver_structural_scout_assessment_report( candidate, now_minutes,
+                            returned_carrier_ids ) ) {
                     continue;
                 }
                 const std::optional<int> returned = release_structural_outing_reservation(
@@ -17696,8 +17716,15 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         report.target_lead_id = site.active_outing.target_lead_id;
         report.target_lead_revision = site.active_outing.target_lead_revision;
         report.application_key = site.active_outing.report_application_key;
+        std::vector<character_id> carrier_ids;
+        for( const character_id member_id : site.active_outing.member_ids ) {
+            const member_record *member = site.find_member( member_id );
+            if( member != nullptr && member->state == member_state::at_home ) {
+                carrier_ids.push_back( member_id );
+            }
+        }
         report.observations = make_reportable_sortie_observations(
-                                  site.active_outing.observations );
+                                  site.active_outing.observations, carrier_ids );
         report.casualty_ids = site.active_outing.casualty_ids;
         for( const bandit_pursuit_handoff::anchored_identity_state &update :
              packet.anchored_identity_updates ) {
@@ -17928,7 +17955,8 @@ scout_resolution_effect apply_active_scout_observations( site_record &site,
         report.target_lead_revision = candidate.active_outing.target_lead_revision;
         report.application_key = provisional_report_application_key( candidate );
         report.observations = make_reportable_sortie_observations(
-                                  candidate.active_outing.observations );
+                                  candidate.active_outing.observations,
+                                  newly_returned_ids );
         report.casualty_ids = candidate.active_outing.casualty_ids;
         report.delivered_minutes = current_minutes;
         report.provisional = true;

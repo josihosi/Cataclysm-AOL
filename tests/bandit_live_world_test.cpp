@@ -4980,9 +4980,13 @@ TEST_CASE( "bandit_live_world_private_observer_evidence_dies_without_reaching_th
         make_typed_visual_observation(
             surviving_partner, 9, 115, "shared-by-survivor",
             bandit_live_world::sortie_observation_share_state::shared );
+    const bandit_live_world::sortie_observation survivor_private_observation =
+        make_typed_visual_observation(
+            surviving_partner, 9, 116, "private-carried-home",
+            bandit_live_world::sortie_observation_share_state::observer_private );
     REQUIRE( bandit_live_world::record_active_typed_observations(
                  site, require_current_simulation_cursor( site ), surviving_partner, 9,
-                 { shared_observation }, 120 ).valid );
+                 { shared_observation, survivor_private_observation }, 120 ).valid );
 
     const std::vector<bandit_live_world::active_member_observation> aftermath = {
         { doomed_observer, bandit_live_world::active_member_observation_state::dead,
@@ -4996,11 +5000,23 @@ TEST_CASE( "bandit_live_world_private_observer_evidence_dies_without_reaching_th
     REQUIRE( resolved.valid );
     REQUIRE( resolved.completed );
     REQUIRE( site.current_scout_report.is_present() );
-    REQUIRE( site.current_scout_report.observations.size() == 1 );
-    CHECK( site.current_scout_report.observations.front().fact_key ==
-           "shared-by-survivor" );
-    CHECK( site.current_scout_report.observations.front().share_state ==
-           bandit_live_world::sortie_observation_share_state::reported );
+    REQUIRE( site.current_scout_report.observations.size() == 2 );
+    CHECK( std::all_of( site.current_scout_report.observations.begin(),
+                        site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::reported;
+    } ) );
+    CHECK( std::any_of( site.current_scout_report.observations.begin(),
+                       site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "shared-by-survivor";
+    } ) );
+    CHECK( std::any_of( site.current_scout_report.observations.begin(),
+                       site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "private-carried-home";
+    } ) );
     CHECK( std::none_of( site.current_scout_report.observations.begin(),
                         site.current_scout_report.observations.end(),
     []( const bandit_live_world::sortie_observation & observation ) {
@@ -5112,7 +5128,13 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     site.active_outing.target_lead_revision = 4;
     site.active_outing.observations = {
         { "shared-visual", "one visible defender", 75, 490, false,
-          bandit_live_world::sortie_observation_kind::routine, "" }
+          bandit_live_world::sortie_observation_kind::routine, "" },
+        make_typed_visual_observation(
+            character_id( 45500 ), 4, 491, "first-private",
+            bandit_live_world::sortie_observation_share_state::observer_private ),
+        make_typed_visual_observation(
+            character_id( 45501 ), 4, 492, "second-private",
+            bandit_live_world::sortie_observation_share_state::observer_private )
     };
     site.active_outing.cargo = { 3, 60 };
     site.active_outing.started_minutes = 100;
@@ -5152,6 +5174,24 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     CHECK( site.current_scout_report.source_generation == site.active_outing.generation );
     CHECK( site.current_scout_report.application_key.find( ":members:45500" ) !=
            std::string::npos );
+    REQUIRE( site.current_scout_report.observations.size() == 2 );
+    CHECK( std::any_of( site.current_scout_report.observations.begin(),
+                       site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "shared-visual";
+    } ) );
+    CHECK( std::any_of( site.current_scout_report.observations.begin(),
+                       site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "first-private" &&
+               observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::reported;
+    } ) );
+    CHECK( std::none_of( site.current_scout_report.observations.begin(),
+                        site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "second-private";
+    } ) );
     CHECK( site.returned_cargo_stock.supply_units == 3 );
     CHECK( site.returned_cargo_stock.trade_value == 60 );
     CHECK( site.active_outing.cargo.supply_units == 0 );
@@ -5221,6 +5261,7 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     REQUIRE( loaded_site.current_scout_report.is_present() );
     CHECK( loaded_site.current_scout_report.schema_version == 5 );
     CHECK( loaded_site.current_scout_report.provisional );
+    CHECK( loaded_site.current_scout_report.observations.size() == 2 );
     CHECK( loaded_site.applied_report_generation == 0 );
     CHECK( loaded_site.returned_cargo_stock.supply_units == 3 );
     CHECK( loaded_site.camp_decision.state == bandit_live_world::camp_decision_state::idle );
@@ -5248,6 +5289,17 @@ TEST_CASE( "bandit_live_world_first_scout_survivor_applies_provisional_receipts_
     REQUIRE( loaded_site.current_scout_report.is_present() );
     CHECK_FALSE( loaded_site.current_scout_report.provisional );
     CHECK( loaded_site.current_scout_report.revision == 2 );
+    REQUIRE( loaded_site.current_scout_report.observations.size() == 3 );
+    CHECK( std::any_of( loaded_site.current_scout_report.observations.begin(),
+                       loaded_site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "first-private";
+    } ) );
+    CHECK( std::any_of( loaded_site.current_scout_report.observations.begin(),
+                       loaded_site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "second-private";
+    } ) );
     CHECK( loaded_site.current_scout_report.application_key.find( ":members" ) ==
            std::string::npos );
     CHECK( loaded_site.returned_cargo_stock.supply_units == 4 );
@@ -15909,6 +15961,13 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     CHECK( inconclusive_site.current_scout_report.assessment.next_eligible_minutes ==
            680 + 12 * 60 );
     CHECK( inconclusive_site.current_scout_report.target_id == "player-camp" );
+    CHECK( std::any_of( inconclusive_site.current_scout_report.observations.begin(),
+                       inconclusive_site.current_scout_report.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.fact_key == "private-assessment-window" &&
+               observation.share_state ==
+               bandit_live_world::sortie_observation_share_state::reported;
+    } ) );
     CHECK( inconclusive_site.next_routine_dispatch_eligible_minutes >=
            inconclusive_site.current_scout_report.assessment.next_eligible_minutes );
 }
