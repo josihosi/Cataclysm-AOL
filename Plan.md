@@ -514,6 +514,16 @@ furniture, light, smoke, or remote map data are read. The fresh Mac build and fo
 infrastructure 2/581, assessment 4/225, typed 6/196, seed-424242 burn 7/1,052, diff check, and root
 review/rerun pass. Next close the already-present burned-contact certainty/alert/risk behavior with
 one explicit before/after production-path proof; do not add a second mechanic.
+Burned-contact assessment is explicitly green at `cd94489ecf`: one real reciprocal ordinary-sight
+burn retains the shared defender contact, sets authoritative alert to 100, and commits the existing
+capped +30 certainty bonus exactly once. Holding the identical retained contact constant while
+removing only alert yields certainty 30 and danger-high 20; the committed burn is certainty 60 and
+danger-high 25, proving the exact `ceil(100 / 20)` alert contribution. Immediate replay rejects
+byte-identically. The fresh Mac test build plus exact burned assessment 1/698, assessment 4/225,
+aging 1/116, controlled-seed burn 7/1,061, and diff check pass. This is test-only closure of existing
+production behavior, not a new risk owner or response-authorization claim. Next audit the existing
+16-defender typed identity cap and choose the smallest bounded way to preserve a true 17+ simultaneous
+lower bound without unbounded save growth or identity invention.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

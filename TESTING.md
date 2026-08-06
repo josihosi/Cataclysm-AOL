@@ -1675,3 +1675,39 @@ Final results are cargo 2/581, infrastructure 2/581, assessment 4/225, typed 6/1
 burn 7/1,052, and root cargo rerun 2/581; `git diff --check` is clean. No item/zone/storage-value or
 capacity read, sorting-success, astyle 3.1, GUI, Linux, or Windows claim. Next: prove the existing
 burn certainty/alert/danger transition explicitly without adding another assessment owner.
+
+Phase-6 burned-contact assessment proof contract (source identity `52bb2e5bfc8e`,
+pre-implementation):
+- Claim: one valid reciprocal ordinary-sight burn transaction retains its authoritative shared
+  defender contact, adds the existing burned-contact certainty bonus exactly once, sets target
+  alert to 100, and increases the same assessment's danger-high approach term by exactly
+  `ceil(100 / 20) = 5` relative to the identical retained contact with alert disabled.
+- Preconditions/interventions: a real schema-10 local observing pair, current simulation cursor,
+  one valid reciprocal avatar read with normalized defender power 4, and one valid ordinary egress.
+  The fixture may establish these inputs but may not write assessment fields or a burn fact.
+- Causal boundary/real path: `apply_covert_scout_burn(...)` validates and records the shared burn,
+  sets alert before `summarize_normal_scout_assessment(...)`, then applies the existing capped +30
+  burned certainty and one-way phase/readiness transition in the authoritative outing owner.
+- Expected transition: the retained burn contact without alert summarizes to certainty 30 and
+  danger-high 20; the committed burned assessment is certainty 60, alert 100, and danger-high 25.
+  This proves the alert contribution in the assessment equation, not downstream response sizing.
+- Negative/control: malformed reads already reject byte-identically; replay with the consumed
+  cursor/phase must reject and preserve the complete serialized world byte-for-byte. A copied
+  no-alert projection is read-only test comparison state, never committed gameplay truth.
+- Timeout/pass-fail: one transaction and one immediate replay. Pass requires exact `30 -> 60`,
+  `0 -> 100`, and `20 -> 25`, one shared burn fact, byte-identical replay, the focused burn tag,
+  adjacent assessment/aging regressions, and clean diff. Astyle 3.1, GUI, Linux, Windows, the
+  downstream Phase-3 risk multiplier, and response authorization remain unclaimed.
+
+Phase-6 burned-contact assessment is green at test checkpoint `cd94489ecf`. One authoritative
+`apply_covert_scout_burn(...)` transaction retains the shared normalized-power-4 avatar contact,
+sets target alert to 100 before summary, and applies the existing capped +30 burned certainty
+bonus once. A read-only copy of that same retained contact with only alert reset summarizes to
+certainty 30 and danger-high 20; the committed outing holds certainty 60 and danger-high 25, so the
+alert contribution is exactly `ceil(100 / 20) = 5`. Immediate replay with the consumed cursor and
+post-burn phase rejects byte-identically. The fresh root test build advanced
+`tests/obj/bandit_live_world_test.o` and `tests/cata_test`; exact burned assessment is 1/698,
+assessment 4/225, scout-report aging 1/116, and seed-424242 covert burn 7/1,061. `git diff --check`
+is clean. This closes existing production behavior only; no downstream risk multiplier, response
+sizing/authorization, astyle 3.1, GUI, Linux, or Windows claim. Next: audit the bounded typed
+defender-identity cap for an exact 17+ simultaneous lower bound.

@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Add one focused before/after test around the real reciprocal-burn transaction. Hold the same
-   legitimate observation footing constant and prove that one burn raises certainty, sets target
-   alert, and increases the assessment danger/approach-risk term exactly once; malformed and replay
-   controls remain byte-inert. Reuse the existing burn owner and assessment equation—do not add a
-   parallel risk field or change response-party sizing/authorization.
+1. Audit the typed visible-defender identity cap that currently proves exact simultaneous lower
+   bounds only through 16. Choose the smallest bounded representation that preserves a legitimate
+   17+ count as a true lower bound and hard-unsafe danger without inventing identities, summing
+   windows, or making observations/save growth unbounded. Keep the existing combat evaluator and
+   separate static/route terms; do not start the downstream Phase-3 multiplier or response sizing.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
