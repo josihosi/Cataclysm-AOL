@@ -402,9 +402,11 @@ eight-hour inconclusive return, retained handoff phase, and production cooldown 
 covered. The route footing is green at `3c66be732c`, the pure abstract two-hour transition at
 `3dd6c28a79`, and physical local relocation at `1fd66d12a9`. The local pair now traverses ordinary
 routes under one persisted pending owner; loaded and unloaded exact arrivals commit without
-teleportation, while stale/split/death/exposure/route-loss paths fail safely. Next, prove poor-night
-polling, three empty windows, save/reload, and stepwise-versus-large-jump equivalence before
-69/70/60 hysteresis and the remaining cooldown boundary table.
+teleportation, while stale/split/death/exposure/route-loss paths fail safely. Deadline-anchored
+abstract timing is green at `3a0a895118`: minute, hourly, and one-jump polling converge on the same
+persisted owner and exact minute-320/minute-440 transitions without retargeting or knowledge change.
+Next, boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
+cooldown table.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

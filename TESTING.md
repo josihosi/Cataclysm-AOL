@@ -1395,3 +1395,12 @@ geometry-sensitive reciprocal-sight fixture failure; controlled seed 424242 rema
 fresh read-only review found no concrete defect. Actual overmap travel/reload and loaded-arrival
 feel remain runtime seams; poor-night/three-window/large-jump equivalence is next. No astyle 3.1,
 live GUI, Linux, or Windows claim.
+
+Phase-5 alternate-watch deadline equivalence is green at `3a0a895118`. The redirected Mac tiles
+test build exits 0; `[alternate_watch]` passes 2 cases / 151 assertions, `[scout_assessment]`
+1 / 95, `[watch_persistence]` 1 / 70, and `[structural_bounty]` 51 / 6,785. Minute polling,
+hourly polling, and one 200-to-440 jump produce byte-identical serialized owners. The one-jump
+trace contains exactly two transitions anchored to minutes 320 and 440; no late-poll timestamp,
+duplicate transition, target rewrite, or knowledge mutation is accepted. Local relocation remains
+physical-travel-owned. No astyle 3.1, live GUI, Linux, or Windows claim. Next: 69/70/60 assessment
+hysteresis and the normal/burned/inconclusive cooldown boundary table.

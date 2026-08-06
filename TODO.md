@@ -25,11 +25,8 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Close alternate-watch timing equivalence: prove poor-night polling and three empty windows, then
-   make stepwise minute advancement and one large time jump converge on the same persisted second-
-   watch inconclusive owner without duplicate transitions, retargeting, or knowledge changes.
-2. Boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
-   cooldown table after the alternate-watch owner is green.
+1. Boundary-test 69/70/60 assessment hysteresis and the remaining normal/burned/inconclusive
+   cooldown table now that alternate-watch timing is green at `3a0a895118`.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
