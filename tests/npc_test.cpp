@@ -94,6 +94,7 @@ static const efftype_id effect_bouldering( "bouldering" );
 static const efftype_id effect_catch_up( "catch_up" );
 static const efftype_id effect_lying_down( "lying_down" );
 static const efftype_id effect_meth( "meth" );
+static const efftype_id effect_narcosis( "narcosis" );
 static const efftype_id effect_npc_run_away( "npc_run_away" );
 static const efftype_id effect_npc_suspend( "npc_suspend" );
 static const efftype_id effect_sleep( "sleep" );
@@ -162,6 +163,7 @@ static const trait_id trait_INTERCOM_OPERATOR( "INTERCOM_OPERATOR" );
 static const trait_id trait_RETURN_TO_START_POS( "RETURN_TO_START_POS" );
 static const trait_id trait_SAPROPHAGE( "SAPROPHAGE" );
 static const trait_id trait_SAPROVORE( "SAPROVORE" );
+static const trait_id trait_SEESLEEP( "SEESLEEP" );
 static const trait_id trait_TRADE_BACKEND( "TRADE_BACKEND" );
 static const trait_id trait_WEB_WEAVER( "WEB_WEAVER" );
 
@@ -1689,6 +1691,335 @@ TEST_CASE( "ordinary_creature_visibility_excludes_debug_clairvoyance",
 
     REQUIRE( player_character.sees( here, scout ) );
     CHECK_FALSE( player_character.sees_without_clairvoyance( here, scout ) );
+}
+
+static bandit_live_world::site_record make_live_covert_optics_site(
+    npc &scout, npc &partner, const int current_minutes )
+{
+    const tripoint_abs_omt watch_omt = scout.pos_abs_omt();
+    const tripoint_abs_omt approach_omt( watch_omt.x() - 1, watch_omt.y(), watch_omt.z() );
+    const tripoint_abs_omt anchor_omt( watch_omt.x() - 2, watch_omt.y(), watch_omt.z() );
+    const tripoint_abs_omt target_omt( watch_omt.x() + 3, watch_omt.y(), watch_omt.z() );
+
+    bandit_live_world::site_record site;
+    site.site_id = "allied-observer-optics-site";
+    site.anchor = anchor_omt;
+    site.footprint = { anchor_omt };
+    site.living_total = 2;
+    site.members.push_back( { scout.getID(), "thug", scout.pos_abs(),
+                              bandit_live_world::member_state::local_contact, false, "" } );
+    site.members.push_back( { partner.getID(), "thug", partner.pos_abs(),
+                              bandit_live_world::member_state::local_contact, false, "" } );
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    outing.schema_version = 10;
+    outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    outing.activity_id = "allied-observer-optics-outing";
+    outing.camp_id = site.site_id;
+    outing.generation = 1;
+    outing.member_ids = { scout.getID(), partner.getID() };
+    outing.leader_id = scout.getID();
+    outing.shared_route = { anchor_omt, approach_omt, watch_omt, approach_omt, anchor_omt };
+    outing.waypoint_index = 2;
+    outing.target_id = "allied-observer-optics-target";
+    outing.target_omt = target_omt;
+    outing.target_lead_revision = 1;
+    outing.job_type = "scout";
+    outing.phase = bandit_live_world::scout_phase::observing;
+    outing.owner = bandit_live_world::simulation_owner::local;
+    outing.handoff_epoch = 1;
+    outing.started_minutes = current_minutes - 2;
+    outing.local_contact_minutes = current_minutes - 1;
+    outing.last_progress_minutes = current_minutes - 1;
+    outing.last_advanced_minutes = current_minutes - 1;
+    outing.target_footprint = { target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = watch_omt;
+    outing.selected_watch_route_cost = 2;
+    outing.local_handoff.activity_id = outing.activity_id;
+    outing.local_handoff.activity_generation = outing.generation;
+    outing.local_handoff.handoff_epoch = outing.handoff_epoch;
+    outing.local_handoff.waypoint_index = outing.waypoint_index;
+    outing.local_handoff.phase = outing.phase;
+    outing.local_handoff.route_position = watch_omt;
+    outing.local_handoff.approach_from = approach_omt;
+    outing.local_handoff.egress_omt = approach_omt;
+    outing.local_handoff.cohesion_leader_id = scout.getID();
+    outing.local_handoff.cohesion_assembled = true;
+    outing.local_handoff.committed_minutes = current_minutes - 1;
+    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+    const tripoint_abs_ms scout_entry( watch_origin.x() + 8, watch_origin.y() + 8,
+                                       watch_origin.z() );
+    const tripoint_abs_ms partner_entry( watch_origin.x() + 10, watch_origin.y() + 8,
+                                         watch_origin.z() );
+    outing.local_handoff.members = {
+        { scout.getID(), scout.pos_abs(), scout_entry,
+          tripoint_abs_ms( scout_entry.x(), scout_entry.y() + 1, scout_entry.z() ),
+          scout_entry, 100, false },
+        { partner.getID(), partner.pos_abs(), partner_entry,
+          tripoint_abs_ms( partner_entry.x(), partner_entry.y() + 1, partner_entry.z() ),
+          partner_entry, 100, false }
+    };
+    return site;
+}
+
+static std::string serialize_live_world_for_optics_test(
+    const bandit_live_world::world_state &world )
+{
+    std::ostringstream out;
+    JsonOut json( out );
+    world.serialize( json );
+    return out.str();
+}
+
+TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
+           "[npc][bandit][covert_burn][live_egress]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    npc &defender = spawn_npc( point_bub_ms( 54, 50 ), "test_talker" );
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    defender.set_fac( faction_your_followers );
+    REQUIRE( defender.is_player_ally() );
+    REQUIRE( defender.is_active() );
+
+    const std::vector<character_id> generated_ids = {
+        defender.getID(), scout.getID(), partner.getID()
+    };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    const std::vector<tripoint_bub_ms> avatar_cover = {
+        tripoint_bub_ms( 52, 49, 0 ), tripoint_bub_ms( 52, 50, 0 ),
+        tripoint_bub_ms( 52, 51, 0 )
+    };
+    std::vector<tripoint_bub_ms> defender_cover;
+    for( int x = 55; x <= 57; ++x ) {
+        for( int y = 49; y <= 51; ++y ) {
+            defender_cover.emplace_back( x, y, 0 );
+        }
+    }
+    std::vector<std::pair<tripoint_bub_ms, ter_id>> original_terrain;
+    for( const tripoint_bub_ms &position : avatar_cover ) {
+        original_terrain.emplace_back( position, here.ter( position ) );
+        here.ter_set( position, ter_t_wall );
+    }
+    for( const tripoint_bub_ms &position : defender_cover ) {
+        original_terrain.emplace_back( position, here.ter( position ) );
+    }
+    here.invalidate_map_cache( player_character.posz() );
+    here.build_map_cache( player_character.posz(), true );
+    on_out_of_scope restore_terrain( [&here, &original_terrain]() {
+        for( const auto &entry : original_terrain ) {
+            here.ter_set( entry.first, entry.second );
+        }
+        here.invalidate_map_cache( get_avatar().posz() );
+        here.build_map_cache( get_avatar().posz(), true );
+    } );
+
+    for( const npc *member : { &scout, &partner } ) {
+        REQUIRE_FALSE( player_character.sees_without_clairvoyance( here, *member ) );
+        REQUIRE_FALSE( member->sees_without_clairvoyance( here, player_character ) );
+    }
+    REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor(
+                 live_state.sites.front() ) );
+    const tripoint_abs_omt target_omt = live_state.sites.front().active_outing.target_omt;
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "allied observer optics camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+    REQUIRE( overmap_buffer.is_player_camp_omt( target_omt ) );
+    REQUIRE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+
+    const bandit_live_world::world_state pristine_world = live_state;
+    const auto reset_owner_and_routes = [&]() {
+        live_state = pristine_world;
+        for( npc *member : { &scout, &partner } ) {
+            member->goto_to_this_pos = std::nullopt;
+            member->clear_ai_guard_pos();
+            member->path.clear();
+            member->goal = npc::no_goal_point;
+            member->omt_path.clear();
+            member->set_mission( NPC_MISSION_GUARD );
+        }
+    };
+    reset_owner_and_routes();
+
+    const efftype_id effect_blind_local( "blind" );
+    const tripoint_bub_ms avatar_origin = player_character.pos_bub( here );
+    defender.add_effect( effect_sleep, 1_hours );
+    defender.recalc_sight_limits();
+    player_character.setpos( here, tripoint_bub_ms( 57, 50, 0 ) );
+    player_character.add_effect( effect_sleep, 1_hours );
+    player_character.recalc_sight_limits();
+    reset_owner_and_routes();
+    REQUIRE( player_character.in_sleep_state() );
+    REQUIRE( player_character.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, player_character ) );
+    std::string owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    player_character.remove_effect( effect_sleep );
+    player_character.add_effect( effect_blind_local, 1_hours );
+    player_character.recalc_sight_limits();
+    reset_owner_and_routes();
+    REQUIRE( player_character.is_blind() );
+    REQUIRE( player_character.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, player_character ) );
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    player_character.remove_effect( effect_blind_local );
+    player_character.setpos( here, avatar_origin );
+    player_character.recalc_sight_limits();
+    defender.remove_effect( effect_sleep );
+    defender.recalc_sight_limits();
+    reset_owner_and_routes();
+
+    defender.add_effect( effect_sleep, 1_hours );
+    defender.recalc_sight_limits();
+    REQUIRE( defender.in_sleep_state() );
+    CHECK( defender.sees_without_clairvoyance( here, scout ) );
+    CHECK( scout.sees_without_clairvoyance( here, defender ) );
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    defender.set_mutation( trait_SEESLEEP );
+    defender.recalc_sight_limits();
+    reset_owner_and_routes();
+    REQUIRE( defender.in_sleep_state() );
+    REQUIRE( defender.has_trait( trait_SEESLEEP ) );
+    REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 1 );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+
+    reset_owner_and_routes();
+    defender.setpos( here, tripoint_bub_ms( 57, 50, 0 ) );
+    defender.add_effect( effect_narcosis, 1_hours );
+    defender.recalc_sight_limits();
+    REQUIRE( defender.in_sleep_state() );
+    REQUIRE( defender.has_trait( trait_SEESLEEP ) );
+    REQUIRE( defender.has_effect( effect_narcosis ) );
+    REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+    defender.remove_effect( effect_narcosis );
+    defender.setpos( here, tripoint_bub_ms( 54, 50, 0 ) );
+    defender.unset_mutation( trait_SEESLEEP );
+    defender.recalc_sight_limits();
+
+    defender.remove_effect( effect_sleep );
+    for( npc *member : { &scout, &partner } ) {
+        member->add_effect( effect_sleep, 1_hours );
+        member->recalc_sight_limits();
+        REQUIRE( member->in_sleep_state() );
+        REQUIRE( defender.sees_without_clairvoyance( here, *member ) );
+        REQUIRE( member->sees_without_clairvoyance( here, defender ) );
+    }
+    reset_owner_and_routes();
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    defender.setpos( here, tripoint_bub_ms( 57, 50, 0 ) );
+    for( npc *member : { &scout, &partner } ) {
+        member->remove_effect( effect_sleep );
+        member->add_effect( effect_blind_local, 1_hours );
+        member->recalc_sight_limits();
+        REQUIRE( member->is_blind() );
+        REQUIRE( defender.sees_without_clairvoyance( here, *member ) );
+        REQUIRE( member->sees_without_clairvoyance( here, defender ) );
+    }
+    reset_owner_and_routes();
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+    defender.setpos( here, tripoint_bub_ms( 54, 50, 0 ) );
+    for( npc *member : { &scout, &partner } ) {
+        member->remove_effect( effect_blind_local );
+        member->recalc_sight_limits();
+    }
+
+    defender.add_effect( effect_blind_local, 1_hours );
+    defender.recalc_sight_limits();
+    reset_owner_and_routes();
+    REQUIRE( defender.is_blind() );
+    CHECK_FALSE( defender.sees_without_clairvoyance( here, scout ) );
+    CHECK( scout.sees_without_clairvoyance( here, defender ) );
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    defender.remove_effect( effect_blind_local );
+    defender.recalc_sight_limits();
+    for( const tripoint_bub_ms &position : defender_cover ) {
+        here.ter_set( position, ter_t_wall );
+    }
+    here.invalidate_map_cache( player_character.posz() );
+    here.build_map_cache( player_character.posz(), true );
+    reset_owner_and_routes();
+    REQUIRE_FALSE( defender.is_blind() );
+    REQUIRE( defender.pos_bub( here ) == tripoint_bub_ms( 54, 50, 0 ) );
+    REQUIRE( scout.pos_bub( here ) == tripoint_bub_ms( 58, 50, 0 ) );
+    REQUIRE( here.ter( tripoint_bub_ms( 56, 50, 0 ) ) == ter_t_wall );
+    CHECK_FALSE( defender.sees_without_clairvoyance( here, scout ) );
+    CHECK_FALSE( scout.sees_without_clairvoyance( here, defender ) );
+    owner_before = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+
+    for( std::size_t index = 0; index < defender_cover.size(); ++index ) {
+        here.ter_set( defender_cover[index],
+                      original_terrain[avatar_cover.size() + index].second );
+    }
+    here.invalidate_map_cache( player_character.posz() );
+    here.build_map_cache( player_character.posz(), true );
+    reset_owner_and_routes();
+    REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+    REQUIRE( bandit_live_world::burn_live_covert_scouts() == 1 );
+    const tripoint_abs_omt egress_omt =
+        live_state.sites.front().active_outing.local_handoff.egress_omt;
+    for( const npc *member : { &scout, &partner } ) {
+        CHECK( member->goal == egress_omt );
+        CHECK( member->is_travelling() );
+        CHECK_FALSE( member->omt_path.empty() );
+    }
+    CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
 }
 
 TEST_CASE( "live_covert_burn_avoids_pair_owned_soft_danger_evidence",

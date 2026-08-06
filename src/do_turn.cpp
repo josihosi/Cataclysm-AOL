@@ -133,6 +133,7 @@ static const event_statistic_id event_statistic_last_words( "last_words" );
 static const json_character_flag json_flag_CANNOT_MOVE( "CANNOT_MOVE" );
 static const json_character_flag json_flag_CANNOT_ATTACK( "CANNOT_ATTACK" );
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
+static const json_character_flag json_flag_SEESLEEP( "SEESLEEP" );
 static constexpr int hostile_scout_immobility_grace_minutes = 6 * 60;
 
 static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
@@ -154,6 +155,12 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 
 namespace
 {
+bool live_bandit_can_make_ordinary_visual_observation( const Character &observer )
+{
+    return !observer.is_blind() && !observer.has_effect( effect_narcosis ) &&
+           ( !observer.in_sleep_state() || observer.has_flag( json_flag_SEESLEEP ) );
+}
+
 bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
 {
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
@@ -1610,15 +1617,19 @@ int burn_live_bandit_covert_scouts()
 
     avatar &u = get_avatar();
     map &here = get_map();
-    std::vector<target_observer> target_observers = { { &u, "avatar" } };
+    std::vector<target_observer> target_observers;
+    if( live_bandit_can_make_ordinary_visual_observation( u ) ) {
+        target_observers.push_back( { &u, "avatar" } );
+    }
     for( const npc &defender : g->all_npcs() ) {
-        if( defender.is_player_ally() && !defender.is_dead() && defender.is_active() &&
+        if( defender.is_player_ally() && !defender.is_dead() &&
+            live_bandit_can_make_ordinary_visual_observation( defender ) && defender.is_active() &&
             here.inbounds( defender.pos_bub( here ) ) ) {
             target_observers.push_back( { &defender, "npc:" +
                                          std::to_string( defender.getID().get_value() ) } );
         }
     }
-    std::sort( target_observers.begin() + 1, target_observers.end(),
+    std::sort( target_observers.begin(), target_observers.end(),
     []( const target_observer & lhs, const target_observer & rhs ) {
         return lhs.stable_id < rhs.stable_id;
     } );
@@ -1668,6 +1679,8 @@ int burn_live_bandit_covert_scouts()
                 here.inbounds( member->pos_bub( here ) ) ) {
                 read.present = true;
                 read.position = member->pos_abs_omt();
+                const bool scout_can_observe =
+                    live_bandit_can_make_ordinary_visual_observation( *member );
                 for( const target_observer &observer : bounded_target_observers ) {
                     if( observer.actor == member || observer.actor->is_dead_state() ) {
                         continue;
@@ -1675,6 +1688,7 @@ int burn_live_bandit_covert_scouts()
                     const bool target_saw_scout =
                         observer.actor->sees_without_clairvoyance( here, *member );
                     const bool scout_saw_target =
+                        scout_can_observe &&
                         member->sees_without_clairvoyance( here, *observer.actor );
                     if( scout_saw_target ) {
                         const tripoint_abs_omt observer_position =
