@@ -602,6 +602,22 @@ bool sortie_observation_is_vehicle_wealth_cue(
            observation.uncertainty_radius_omt == 0;
 }
 
+bool sortie_observation_is_generation_infrastructure_cue(
+    const bandit_live_world::sortie_observation &observation )
+{
+    static const std::string fact_prefix = "wealth-cue:infrastructure:";
+    static const std::string source_prefix = "generation-part:";
+    return observation.kind == sortie_observation_kind::bounds &&
+           observation.state_key == "wealth-cue:infrastructure" &&
+           observation.fact_key == fact_prefix + observation.source_id &&
+           observation.source_id.rfind( source_prefix, 0 ) == 0 &&
+           observation.sense == sortie_observation_sense::visual &&
+           observation.strength == 2 && observation.visual_quality == 2 &&
+           observation.defender_ids.empty() && observation.observed_power_low == 0 &&
+           observation.observed_power_high == 0 && observation.equipment_detail == 0 &&
+           observation.uncertainty_radius_omt == 0;
+}
+
 int sortie_observation_share_rank(
     const bandit_live_world::sortie_observation &observation )
 {
@@ -15934,6 +15950,91 @@ sortie_observation_effect record_covert_vehicle_wealth_observations(
                observations, current_minutes );
 }
 
+int covert_generation_infrastructure_cue_cap()
+{
+    return 8;
+}
+
+sortie_observation_effect record_covert_generation_infrastructure_observations(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const character_id observer_id, const tripoint_abs_omt &observer_position,
+    const std::vector<covert_generation_infrastructure_read> &installations,
+    const int current_minutes )
+{
+    sortie_observation_effect effect;
+    const active_outing_state &outing = site.active_outing;
+    if( outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
+        outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+        outing.local_handoff.phase != outing.phase || !outing.local_handoff.is_active() ||
+        !outing.local_handoff.cohesion_assembled ||
+        std::find( outing.member_ids.begin(), outing.member_ids.end(), observer_id ) ==
+        outing.member_ids.end() || observer_position != outing.selected_watch_omt ||
+        installations.empty() ||
+        installations.size() > static_cast<std::size_t>(
+            covert_generation_infrastructure_cue_cap() ) || current_minutes < 0 ) {
+        return effect;
+    }
+
+    std::set<tripoint_abs_ms> generation_part_positions;
+    std::vector<covert_generation_infrastructure_read> canonical = installations;
+    for( const covert_generation_infrastructure_read &installation : canonical ) {
+        const tripoint_abs_omt origin_omt = project_to<coords::omt>(
+                                                installation.appliance_origin );
+        const tripoint_abs_omt part_omt = project_to<coords::omt>(
+                                              installation.generation_part_position );
+        const bool origin_in_target = std::find(
+                                          outing.target_footprint.begin(),
+                                          outing.target_footprint.end(), origin_omt ) !=
+                                      outing.target_footprint.end();
+        const bool part_in_target = std::find(
+                                        outing.target_footprint.begin(),
+                                        outing.target_footprint.end(), part_omt ) !=
+                                    outing.target_footprint.end();
+        if( installation.appliance_origin.is_invalid() ||
+            installation.generation_part_position.is_invalid() || !origin_in_target ||
+            !part_in_target ||
+            !generation_part_positions.insert(
+                installation.generation_part_position ).second ) {
+            return effect;
+        }
+    }
+    std::sort( canonical.begin(), canonical.end(), []( const auto &lhs, const auto &rhs ) {
+        return std::tie( lhs.generation_part_position, lhs.appliance_origin ) <
+               std::tie( rhs.generation_part_position, rhs.appliance_origin );
+    } );
+
+    const covert_generation_infrastructure_read &installation = canonical.front();
+    const tripoint_abs_omt source_omt = project_to<coords::omt>(
+                                            installation.generation_part_position );
+    sortie_observation observation;
+    observation.source_id = "generation-part:" +
+                            installation.generation_part_position.to_string();
+    observation.fact_key = "wealth-cue:infrastructure:" + observation.source_id;
+    observation.summary = "scout saw an outward player-faction generation installation at " +
+                          source_omt.to_string();
+    observation.confidence = 100;
+    observation.observed_minutes = current_minutes;
+    observation.kind = sortie_observation_kind::bounds;
+    observation.state_key = "wealth-cue:infrastructure";
+    observation.record_schema_version = 1;
+    observation.sense = sortie_observation_sense::visual;
+    observation.observer_id = observer_id;
+    observation.source_omt = source_omt;
+    observation.receiver_omt = observer_position;
+    observation.bucket_start_minutes = current_minutes - current_minutes % 30;
+    observation.strength = 2;
+    observation.visual_quality = 2;
+    observation.simultaneity_start_minutes = current_minutes;
+    observation.simultaneity_end_minutes = current_minutes;
+    observation.target_revision = outing.target_lead_revision;
+    observation.uncertainty_radius_omt = 0;
+    observation.expiry_minutes = minutes_after_saturated( current_minutes, 24 * 60 );
+    observation.share_state = sortie_observation_share_state::observer_private;
+    return record_active_typed_observations(
+               site, expected_cursor, observer_id, outing.target_lead_revision,
+               { observation }, current_minutes );
+}
+
 bool scout_assessment_readiness_after_certainty(
     const scout_assessment_threshold_class threshold_class,
     const bool readiness_latched, const int certainty )
@@ -16053,7 +16154,8 @@ scout_assessment_state summarize_normal_scout_assessment(
     int contradiction_penalty = 0;
     bool confirmed_presence = false;
     bool confirmed_human_presence = false;
-    bool confirmed_vehicle_wealth_cue = false;
+    std::set<int> vehicle_wealth_cue_buckets;
+    std::set<int> infrastructure_wealth_cue_buckets;
     bool equipment_detail = false;
     using observation_window_key = std::tuple<int, int, int, int>;
     std::map<observation_window_key, int> static_hazard_by_window;
@@ -16091,7 +16193,11 @@ scout_assessment_state summarize_normal_scout_assessment(
             continue;
         }
         if( sortie_observation_is_vehicle_wealth_cue( observation ) ) {
-            confirmed_vehicle_wealth_cue = true;
+            vehicle_wealth_cue_buckets.insert( observation.bucket_start_minutes );
+            continue;
+        }
+        if( sortie_observation_is_generation_infrastructure_cue( observation ) ) {
+            infrastructure_wealth_cue_buckets.insert( observation.bucket_start_minutes );
             continue;
         }
         confirmed_presence = confirmed_presence ||
@@ -16156,10 +16262,22 @@ scout_assessment_state summarize_normal_scout_assessment(
                                       0, 200 );
     const bool occupied_human_baseline = confirmed_human_presence ||
                                          summary.bounty_estimate >= 1;
+    const bool confirmed_outward_wealth_cue = !vehicle_wealth_cue_buckets.empty() ||
+            !infrastructure_wealth_cue_buckets.empty();
+    const bool distinct_class_and_bucket_cues = std::any_of(
+                vehicle_wealth_cue_buckets.begin(), vehicle_wealth_cue_buckets.end(),
+    [&infrastructure_wealth_cue_buckets]( const int vehicle_bucket ) {
+        return std::any_of( infrastructure_wealth_cue_buckets.begin(),
+                            infrastructure_wealth_cue_buckets.end(),
+        [vehicle_bucket]( const int infrastructure_bucket ) {
+            return vehicle_bucket != infrastructure_bucket;
+        } );
+    } );
     summary.bounty_estimate = std::max(
                                   summary.bounty_estimate,
                                   occupied_human_baseline ?
-                                  confirmed_vehicle_wealth_cue ? 2 : 1 : 0 );
+                                  distinct_class_and_bucket_cues ? 3 :
+                                  confirmed_outward_wealth_cue ? 2 : 1 : 0 );
     summary.route_danger_high = route_danger_high;
     summary.last_progress_minutes = latest_progress;
     if( summary.threshold_class == scout_assessment_threshold_class::normal &&

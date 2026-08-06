@@ -80,6 +80,7 @@
 #include "type_id.h"
 #include "units.h"
 #include "value_ptr.h"
+#include "veh_appliance.h"
 #include "veh_type.h"
 #include "vehicle.h"
 #include "viewer.h"
@@ -172,6 +173,10 @@ static const trait_id trait_WEB_WEAVER( "WEB_WEAVER" );
 
 static const vpart_id vpart_cargo_lock( "cargo_lock" );
 static const vpart_id vpart_frame( "frame" );
+static const vpart_id vpart_ap_ground_solar_panel( "ap_ground_solar_panel" );
+static const vpart_id vpart_ap_test_standing_lamp( "ap_test_standing_lamp" );
+static const vpart_id vpart_ap_water_wheel( "ap_water_wheel" );
+static const vpart_id vpart_ap_wind_turbine( "ap_wind_turbine" );
 static const vpart_id vpart_seat( "seat" );
 static const vpart_id vpart_trunk_floor( "trunk_floor" );
 
@@ -2138,8 +2143,8 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
     CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
 }
 
-TEST_CASE( "loaded_covert_scout_records_only_visible_player_vehicle_wealth",
-           "[npc][bandit][covert][vehicle_cue]" )
+TEST_CASE( "loaded_covert_scout_records_only_visible_owned_outward_wealth_cues",
+           "[npc][bandit][covert][vehicle_cue][infrastructure_cue]" )
 {
     g->faction_manager_ptr->create_if_needed();
     clear_map_without_vision();
@@ -2240,6 +2245,7 @@ TEST_CASE( "loaded_covert_scout_records_only_visible_player_vehicle_wealth",
     const tripoint_abs_ms & point ) {
         return here.inbounds( point ) && scout.sees( here, here.get_bub( point ) );
     } ) );
+    CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
     REQUIRE( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 1 );
     REQUIRE( live_state.sites.front().active_outing.observations.size() == 1 );
     const bandit_live_world::sortie_observation &cue =
@@ -2251,6 +2257,97 @@ TEST_CASE( "loaded_covert_scout_records_only_visible_player_vehicle_wealth",
     CHECK( cue.share_state ==
            bandit_live_world::sortie_observation_share_state::observer_private );
     CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+    here.destroy_vehicle( target_vehicle );
+
+    const auto reset_live_outing = [&]() {
+        live_state.sites.clear();
+        live_state.sites.push_back( make_live_covert_optics_site(
+                                        scout, partner, current_minutes ) );
+    };
+    const auto target_appliance = [&]( const vpart_id &part_id ) {
+        REQUIRE( place_appliance( here, target_vehicle_position, part_id,
+                                  player_character ) );
+        vehicle *result = veh_pointer_or_null( here.veh_at( target_vehicle_position ) );
+        REQUIRE( result != nullptr );
+        REQUIRE( result->is_appliance() );
+        REQUIRE( result->get_owner() == faction_your_followers );
+        return result;
+    };
+
+    reset_live_outing();
+    vehicle *lamp = target_appliance( vpart_ap_test_standing_lamp );
+    const std::string before_lamp_probe = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+    CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_lamp_probe );
+    here.destroy_vehicle( lamp );
+
+    reset_live_outing();
+    vehicle *unowned_solar = target_appliance( vpart_ap_ground_solar_panel );
+    unowned_solar->set_owner( faction_id::NULL_ID() );
+    const std::string before_unowned_probe = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_unowned_probe );
+    here.destroy_vehicle( unowned_solar );
+
+    reset_live_outing();
+    vehicle *broken_solar = target_appliance( vpart_ap_ground_solar_panel );
+    broken_solar->set_hp( broken_solar->part( 0 ), 0, false );
+    REQUIRE( broken_solar->part( 0 ).is_broken() );
+    const std::string before_broken_probe = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_broken_probe );
+    here.destroy_vehicle( broken_solar );
+
+    reset_live_outing();
+    REQUIRE( place_appliance( here, outside_vehicle_position, vpart_ap_ground_solar_panel,
+                              player_character ) );
+    vehicle *outside_solar = veh_pointer_or_null( here.veh_at( outside_vehicle_position ) );
+    REQUIRE( outside_solar != nullptr );
+    const std::string before_outside_probe = serialize_live_world_for_optics_test( live_state );
+    CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
+    CHECK( serialize_live_world_for_optics_test( live_state ) == before_outside_probe );
+    here.destroy_vehicle( outside_solar );
+
+    const std::vector<std::pair<vpart_id, vpart_bitflags>> generation_parts = {
+        { vpart_ap_ground_solar_panel, VPFLAG_SOLAR_PANEL },
+        { vpart_ap_wind_turbine, VPFLAG_WIND_TURBINE },
+        { vpart_ap_water_wheel, VPFLAG_WATER_WHEEL }
+    };
+    for( const auto &[part_id, feature] : generation_parts ) {
+        reset_live_outing();
+        vehicle *generation = target_appliance( part_id );
+        const auto available_parts = generation->get_avail_parts( feature );
+        REQUIRE( available_parts.begin() != available_parts.end() );
+        const tripoint_abs_ms generation_part_position = available_parts.begin()->pos_abs();
+        REQUIRE( scout.sees( here, target_vehicle_position ) );
+        CHECK( bandit_live_world::record_live_covert_vehicle_wealth_cues() == 0 );
+
+        for( npc *observer : { &scout, &partner } ) {
+            observer->add_effect( effect_blind_local, 1_hours );
+            observer->recalc_sight_limits();
+        }
+        const std::string before_blind_probe = serialize_live_world_for_optics_test( live_state );
+        CHECK( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 0 );
+        CHECK( serialize_live_world_for_optics_test( live_state ) == before_blind_probe );
+        for( npc *observer : { &scout, &partner } ) {
+            observer->remove_effect( effect_blind_local );
+            observer->recalc_sight_limits();
+        }
+
+        REQUIRE( bandit_live_world::record_live_covert_generation_infrastructure_cues() == 1 );
+        REQUIRE( live_state.sites.front().active_outing.observations.size() == 1 );
+        const bandit_live_world::sortie_observation &infrastructure_cue =
+            live_state.sites.front().active_outing.observations.front();
+        CHECK( infrastructure_cue.state_key == "wealth-cue:infrastructure" );
+        CHECK( infrastructure_cue.source_id ==
+               "generation-part:" + generation_part_position.to_string() );
+        CHECK( infrastructure_cue.source_omt == target_omt );
+        CHECK( infrastructure_cue.observer_id == scout.getID() );
+        CHECK( infrastructure_cue.share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        here.destroy_vehicle( generation );
+    }
 }
 
 TEST_CASE( "live_covert_burn_tracks_environmental_visibility_changes",

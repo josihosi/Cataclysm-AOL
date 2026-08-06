@@ -2285,7 +2285,8 @@ int record_live_bandit_covert_vehicle_wealth_cues()
             std::vector<bandit_live_world::covert_vehicle_wealth_read> reads;
             for( const wrapped_vehicle &wrapped : loaded_vehicles ) {
                 const vehicle *veh = wrapped.v;
-                if( veh == nullptr || veh->get_owner() != faction_your_followers ||
+                if( veh == nullptr || veh->is_appliance() ||
+                    veh->get_owner() != faction_your_followers ||
                     std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
                                veh->pos_abs_omt() ) == outing.target_footprint.end() ) {
                     continue;
@@ -2314,6 +2315,132 @@ int record_live_bandit_covert_vehicle_wealth_cues()
             }
             const bandit_live_world::sortie_observation_effect effect =
                 bandit_live_world::record_covert_vehicle_wealth_observations(
+                    site, *cursor, observer->getID(), observer->pos_abs_omt(), reads,
+                    current_minutes );
+            if( effect.valid ) {
+                if( effect.changed ) {
+                    recorded++;
+                }
+                break;
+            }
+        }
+    }
+    return recorded;
+}
+
+int record_live_bandit_covert_generation_infrastructure_cues()
+{
+    bandit_live_world::world_state &state =
+        overmap_buffer.global_state.bandit_live_world;
+    std::set<character_id> claimed_members;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
+            return 0;
+        }
+    }
+
+    avatar &u = get_avatar();
+    map &here = get_map();
+    VehicleList loaded_vehicles = here.get_vehicles();
+    std::sort( loaded_vehicles.begin(), loaded_vehicles.end(), []( const auto &lhs,
+    const auto &rhs ) {
+        if( lhs.v == nullptr || rhs.v == nullptr ) {
+            return lhs.v != nullptr;
+        }
+        return lhs.v->pos_abs() < rhs.v->pos_abs();
+    } );
+
+    const int current_minutes = live_bandit_current_minutes();
+    int recorded = 0;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        const bool targets_player_camp = std::any_of(
+            outing.target_footprint.begin(), outing.target_footprint.end(),
+        []( const tripoint_abs_omt & target_omt ) {
+            return overmap_buffer.is_player_camp_omt( target_omt );
+        } );
+        if( site.retired_empty_site || !targets_player_camp || outing.schema_version != 10 ||
+            outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            outing.phase != bandit_live_world::scout_phase::observing ||
+            !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
+            outing.member_ids.size() != 2 ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor ) {
+            continue;
+        }
+
+        std::vector<npc *> observers;
+        for( const character_id member_id : outing.member_ids ) {
+            npc *member = g->find_npc( member_id );
+            if( member != nullptr && !member->is_dead() && member->is_active() &&
+                here.inbounds( member->pos_bub( here ) ) &&
+                member->pos_abs_omt() == outing.selected_watch_omt &&
+                member->has_ecology_covert_noncombat_relationship( u ) &&
+                member->clairvoyance() == 0 &&
+                live_bandit_can_make_ordinary_visual_observation( *member ) ) {
+                observers.push_back( member );
+            }
+        }
+        std::sort( observers.begin(), observers.end(), [&outing]( const npc *lhs,
+        const npc *rhs ) {
+            return std::make_tuple( lhs->getID() == outing.leader_id ? 0 : 1,
+                                    lhs->getID().get_value() ) <
+                   std::make_tuple( rhs->getID() == outing.leader_id ? 0 : 1,
+                                    rhs->getID().get_value() );
+        } );
+
+        for( npc *observer : observers ) {
+            std::vector<bandit_live_world::covert_generation_infrastructure_read> reads;
+            std::set<tripoint_abs_ms> generation_part_positions;
+            for( const wrapped_vehicle &wrapped : loaded_vehicles ) {
+                vehicle *veh = wrapped.v;
+                if( veh == nullptr || !veh->is_appliance() ||
+                    veh->get_owner() != faction_your_followers ||
+                    std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
+                               veh->pos_abs_omt() ) == outing.target_footprint.end() ) {
+                    continue;
+                }
+                const auto append_visible_generation_parts = [&]( const vpart_bitflags flag ) {
+                    for( const vpart_reference &part : veh->get_avail_parts( flag ) ) {
+                        const tripoint_abs_ms part_position = part.pos_abs();
+                        const tripoint_abs_omt part_omt = project_to<coords::omt>( part_position );
+                        if( std::find( outing.target_footprint.begin(),
+                                      outing.target_footprint.end(), part_omt ) ==
+                            outing.target_footprint.end() || !here.inbounds( part_position ) ||
+                            !observer->sees( here, here.get_bub( part_position ) ) ||
+                            !generation_part_positions.insert( part_position ).second ) {
+                            continue;
+                        }
+                        reads.push_back( { veh->pos_abs(), part_position } );
+                        if( reads.size() == static_cast<std::size_t>(
+                                    bandit_live_world::covert_generation_infrastructure_cue_cap() ) ) {
+                            return;
+                        }
+                    }
+                };
+                append_visible_generation_parts( VPFLAG_SOLAR_PANEL );
+                if( reads.size() < static_cast<std::size_t>(
+                        bandit_live_world::covert_generation_infrastructure_cue_cap() ) ) {
+                    append_visible_generation_parts( VPFLAG_WIND_TURBINE );
+                }
+                if( reads.size() < static_cast<std::size_t>(
+                        bandit_live_world::covert_generation_infrastructure_cue_cap() ) ) {
+                    append_visible_generation_parts( VPFLAG_WATER_WHEEL );
+                }
+                if( reads.size() == static_cast<std::size_t>(
+                            bandit_live_world::covert_generation_infrastructure_cue_cap() ) ) {
+                    break;
+                }
+            }
+            if( reads.empty() ) {
+                continue;
+            }
+            const bandit_live_world::sortie_observation_effect effect =
+                bandit_live_world::record_covert_generation_infrastructure_observations(
                     site, *cursor, observer->getID(), observer->pos_abs_omt(), reads,
                     current_minutes );
             if( effect.valid ) {
@@ -5541,6 +5668,11 @@ int record_live_covert_vehicle_wealth_cues()
     return record_live_bandit_covert_vehicle_wealth_cues();
 }
 
+int record_live_covert_generation_infrastructure_cues()
+{
+    return record_live_bandit_covert_generation_infrastructure_cues();
+}
+
 bool fail_live_covert_scout_burned_egress( const character_id member_id )
 {
     return live_bandit_fail_burned_egress( member_id );
@@ -5845,6 +5977,13 @@ void monmove()
             if( vehicle_wealth_observations > 0 ) {
                 DebugLog( D_INFO, DC_ALL ) << "bandit_live_world vehicle_wealth_observations="
                                            << vehicle_wealth_observations << '\n';
+            }
+            const int generation_infrastructure_observations =
+                bandit_live_world::record_live_covert_generation_infrastructure_cues();
+            if( generation_infrastructure_observations > 0 ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit_live_world generation_infrastructure_observations="
+                        << generation_infrastructure_observations << '\n';
             }
             const int local_scout_assessment_updates =
                 advance_live_bandit_local_scout_assessments();

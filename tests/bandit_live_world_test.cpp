@@ -16047,8 +16047,8 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
     }
 }
 
-TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
-           "[bandit][live_world][vehicle_cue]" )
+TEST_CASE( "bandit_live_world_outward_wealth_cues_are_private_until_pair_sharing",
+           "[bandit][live_world][vehicle_cue][infrastructure_cue]" )
 {
     const character_id observer_id( 894200 );
     const character_id partner_id( 894201 );
@@ -16130,6 +16130,13 @@ TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
         read.ordinarily_visible_occupied_points = { read.origin };
         return read;
     };
+    const auto make_infrastructure_read = [&]( const int offset ) {
+        bandit_live_world::covert_generation_infrastructure_read read;
+        read.appliance_origin = tripoint_abs_ms( target_origin.x() + offset,
+                                target_origin.y() + 9, target_origin.z() );
+        read.generation_part_position = read.appliance_origin;
+        return read;
+    };
     const auto share_pair = []( bandit_live_world::site_record &site, const int current_minutes ) {
         std::vector<bandit_live_world::local_cohesion_member_read> reads;
         for( const bandit_live_world::local_handoff_member_snapshot &member :
@@ -16187,6 +16194,40 @@ TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
     CHECK( loaded_cue.share_state ==
            bandit_live_world::sortie_observation_share_state::shared );
 
+    const bandit_live_world::covert_generation_infrastructure_read infrastructure =
+        make_infrastructure_read( 3 );
+    bandit_live_world::world_state infrastructure_world = make_world( 1 );
+    bandit_live_world::site_record &infrastructure_site = infrastructure_world.sites.front();
+    const bandit_live_world::sortie_observation_effect infrastructure_recorded =
+        bandit_live_world::record_covert_generation_infrastructure_observations(
+            infrastructure_site, require_current_simulation_cursor( infrastructure_site ),
+            observer_id, watch, { infrastructure }, 121 );
+    REQUIRE( infrastructure_recorded.valid );
+    REQUIRE( infrastructure_recorded.changed );
+    REQUIRE( infrastructure_site.active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &private_infrastructure =
+        infrastructure_site.active_outing.observations.front();
+    CHECK( private_infrastructure.state_key == "wealth-cue:infrastructure" );
+    CHECK( private_infrastructure.source_id == "generation-part:" +
+           infrastructure.generation_part_position.to_string() );
+    CHECK( private_infrastructure.fact_key == "wealth-cue:infrastructure:" +
+           private_infrastructure.source_id );
+    CHECK( private_infrastructure.source_omt == target );
+    CHECK( private_infrastructure.bucket_start_minutes == 120 );
+    CHECK( private_infrastructure.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               infrastructure_site.active_outing ).bounty_estimate == 1 );
+    share_pair( infrastructure_site, 121 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               infrastructure_site.active_outing ).bounty_estimate == 2 );
+    const std::string saved_infrastructure = serialize_sortie_observation(
+            infrastructure_site.active_outing.observations.front() );
+    JsonValue saved_infrastructure_json = json_loader::from_string( saved_infrastructure );
+    bandit_live_world::sortie_observation loaded_infrastructure;
+    loaded_infrastructure.deserialize( saved_infrastructure_json.get_object() );
+    CHECK( serialize_sortie_observation( loaded_infrastructure ) == saved_infrastructure );
+
     bandit_live_world::world_state empty_baseline_world = make_world( 0 );
     bandit_live_world::site_record &empty_baseline_site = empty_baseline_world.sites.front();
     REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
@@ -16195,6 +16236,48 @@ TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
     share_pair( empty_baseline_site, 121 );
     CHECK( bandit_live_world::summarize_normal_scout_assessment(
                empty_baseline_site.active_outing ).bounty_estimate == 0 );
+    bandit_live_world::world_state empty_infrastructure_world = make_world( 0 );
+    bandit_live_world::site_record &empty_infrastructure_site =
+        empty_infrastructure_world.sites.front();
+    REQUIRE( bandit_live_world::record_covert_generation_infrastructure_observations(
+                 empty_infrastructure_site,
+                 require_current_simulation_cursor( empty_infrastructure_site ), observer_id,
+                 watch, { infrastructure }, 121 ).valid );
+    share_pair( empty_infrastructure_site, 121 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               empty_infrastructure_site.active_outing ).bounty_estimate == 0 );
+
+    const auto records_and_shares_vehicle = [&]( bandit_live_world::site_record &cue_site,
+    const int current_minutes ) {
+        REQUIRE( bandit_live_world::record_covert_vehicle_wealth_observations(
+                     cue_site, require_current_simulation_cursor( cue_site ), observer_id,
+                     watch, { vehicle }, current_minutes ).valid );
+        share_pair( cue_site, current_minutes );
+    };
+    const auto records_and_shares_infrastructure = [&]( bandit_live_world::site_record &cue_site,
+    const int current_minutes ) {
+        REQUIRE( bandit_live_world::record_covert_generation_infrastructure_observations(
+                     cue_site, require_current_simulation_cursor( cue_site ), observer_id,
+                     watch, { infrastructure }, current_minutes ).valid );
+        share_pair( cue_site, current_minutes );
+    };
+    bandit_live_world::world_state vehicle_then_infrastructure = make_world( 1 );
+    records_and_shares_vehicle( vehicle_then_infrastructure.sites.front(), 121 );
+    records_and_shares_infrastructure( vehicle_then_infrastructure.sites.front(), 151 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               vehicle_then_infrastructure.sites.front().active_outing ).bounty_estimate == 3 );
+
+    bandit_live_world::world_state infrastructure_then_vehicle = make_world( 1 );
+    records_and_shares_infrastructure( infrastructure_then_vehicle.sites.front(), 121 );
+    records_and_shares_vehicle( infrastructure_then_vehicle.sites.front(), 151 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               infrastructure_then_vehicle.sites.front().active_outing ).bounty_estimate == 3 );
+
+    bandit_live_world::world_state same_bucket = make_world( 1 );
+    records_and_shares_vehicle( same_bucket.sites.front(), 121 );
+    records_and_shares_infrastructure( same_bucket.sites.front(), 122 );
+    CHECK( bandit_live_world::summarize_normal_scout_assessment(
+               same_bucket.sites.front().active_outing ).bounty_estimate == 2 );
 
     const auto rejects_atomically = [&]( const std::vector<
     bandit_live_world::covert_vehicle_wealth_read> &reads ) {
@@ -16226,6 +16309,36 @@ TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
     rejects_atomically( { no_visible_point } );
     rejects_atomically( { vehicle, vehicle } );
 
+    const auto rejects_infrastructure_atomically = [&]( const std::vector<
+    bandit_live_world::covert_generation_infrastructure_read> &reads ) {
+        bandit_live_world::world_state attempt = make_world( 1 );
+        bandit_live_world::site_record &attempt_site = attempt.sites.front();
+        const std::string before = serialize_world( attempt );
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_generation_infrastructure_observations(
+                attempt_site, require_current_simulation_cursor( attempt_site ), observer_id,
+                watch, reads, 121 );
+        CHECK_FALSE( effect.valid );
+        CHECK_FALSE( effect.changed );
+        CHECK( serialize_world( attempt ) == before );
+    };
+    bandit_live_world::covert_generation_infrastructure_read outside_infrastructure_origin =
+        infrastructure;
+    outside_infrastructure_origin.appliance_origin = project_to<coords::ms>( watch );
+    rejects_infrastructure_atomically( { outside_infrastructure_origin } );
+    bandit_live_world::covert_generation_infrastructure_read outside_generation_part =
+        infrastructure;
+    outside_generation_part.generation_part_position = project_to<coords::ms>( watch );
+    rejects_infrastructure_atomically( { outside_generation_part } );
+    bandit_live_world::covert_generation_infrastructure_read wrong_generation_z = infrastructure;
+    wrong_generation_z.generation_part_position = tripoint_abs_ms(
+                infrastructure.generation_part_position.x(),
+                infrastructure.generation_part_position.y(),
+                infrastructure.generation_part_position.z() + 1 );
+    rejects_infrastructure_atomically( { wrong_generation_z } );
+    rejects_infrastructure_atomically( {} );
+    rejects_infrastructure_atomically( { infrastructure, infrastructure } );
+
     bandit_live_world::world_state ordered = make_world( 1 );
     bandit_live_world::world_state reversed = ordered;
     const bandit_live_world::covert_vehicle_wealth_read first_vehicle = make_read( 1 );
@@ -16239,6 +16352,23 @@ TEST_CASE( "bandit_live_world_vehicle_wealth_cue_is_private_until_pair_sharing",
     CHECK( ordered.sites.front().active_outing.observations.size() == 1 );
     CHECK( reversed.sites.front().active_outing.observations.size() == 1 );
     CHECK( serialize_world( ordered ) == serialize_world( reversed ) );
+
+    bandit_live_world::world_state ordered_infrastructure = make_world( 1 );
+    bandit_live_world::world_state reversed_infrastructure = ordered_infrastructure;
+    const bandit_live_world::covert_generation_infrastructure_read first_infrastructure =
+        make_infrastructure_read( 1 );
+    REQUIRE( bandit_live_world::record_covert_generation_infrastructure_observations(
+                 ordered_infrastructure.sites.front(),
+                 require_current_simulation_cursor( ordered_infrastructure.sites.front() ),
+                 observer_id, watch, { first_infrastructure, infrastructure }, 121 ).valid );
+    REQUIRE( bandit_live_world::record_covert_generation_infrastructure_observations(
+                 reversed_infrastructure.sites.front(),
+                 require_current_simulation_cursor( reversed_infrastructure.sites.front() ),
+                 observer_id, watch, { infrastructure, first_infrastructure }, 121 ).valid );
+    CHECK( ordered_infrastructure.sites.front().active_outing.observations.size() == 1 );
+    CHECK( reversed_infrastructure.sites.front().active_outing.observations.size() == 1 );
+    CHECK( serialize_world( ordered_infrastructure ) ==
+           serialize_world( reversed_infrastructure ) );
 }
 
 TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",

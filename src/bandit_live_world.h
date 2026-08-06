@@ -1207,6 +1207,7 @@ std::optional<structural_local_zombie_read> read_live_structural_local_zombie_ob
 int burn_live_covert_scouts();
 int record_live_covert_visible_defenders();
 int record_live_covert_vehicle_wealth_cues();
+int record_live_covert_generation_infrastructure_cues();
 bool fail_live_covert_scout_burned_egress( character_id member_id );
 bool structural_local_zombie_candidate_is_eligible( bool alive, bool hallucination,
         bool zombie_species, bool zombie_rider, bool hostile, bool visible,
@@ -1768,6 +1769,16 @@ sortie_observation_effect record_covert_vehicle_wealth_observations(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     character_id observer_id, const tripoint_abs_omt &observer_position,
     const std::vector<covert_vehicle_wealth_read> &vehicles, int current_minutes );
+struct covert_generation_infrastructure_read {
+    tripoint_abs_ms appliance_origin;
+    tripoint_abs_ms generation_part_position;
+};
+int covert_generation_infrastructure_cue_cap();
+sortie_observation_effect record_covert_generation_infrastructure_observations(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    character_id observer_id, const tripoint_abs_omt &observer_position,
+    const std::vector<covert_generation_infrastructure_read> &installations,
+    int current_minutes );
 int covert_scout_burn_observer_cap();
 int covert_scout_egress_route_omt_cap();
 struct covert_scout_egress_candidate {
