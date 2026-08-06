@@ -1423,3 +1423,17 @@ Mac tiles objects/test link exits 0; delegated broad `[covert_burn]` passes 6/84
 2/673, and root `[phase4_local_zombie_observation]` 4/389 at seed 424242. `git diff --check` is
 clean. This is ingestion footing, not hard-danger exit priority; paired route plan/commit and one
 combined no-route closure are next. No astyle 3.1, live GUI, Linux, or Windows claim.
+
+Phase-5 simultaneous hard-danger exit priority is green at `253e048734`. The ephemeral plan runs
+the exact capped danger+burn transaction on a copy and emits no event; commit revalidates site,
+cursor, revision, pair, and watch, prepares both concrete NPC owners before publication, and rolls
+back byte-identically if either preparation fails. A real home-route failure validates and reuses
+the existing arrival/casualty/orphan/carried-danger/cargo/roster/reservation closure, emitting one
+`observing -> lost` event rather than an intermediate return. The canonical Mac tiles object build
+and test link exit 0. Seed 424242 passes exact `[simultaneous_watch_exit]` 1/668,
+`[covert_burn]` 2/718, local-zombie 4/389, local-handoff 2/740, alternate-watch 2/151, and
+structural-bounty 51/6,785; `git diff --check` is clean. One discarded direct `make -C tests`
+invocation bypassed the repo C++17 wiring and failed in unrelated standard headers; the canonical
+top-level build replaced it. The retained burn receipt is intentional schema truth even when danger
+wins the phase. No astyle 3.1, live GUI, Linux, or Windows claim. Next: real actor-visible
+burn+survival-hazard motor priority without a synthetic hazard input.

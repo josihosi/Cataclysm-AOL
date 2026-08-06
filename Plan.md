@@ -412,8 +412,13 @@ cooldowns. Next, prove deterministic priority and single-transition ingestion fo
 burn, danger, revision, success, empty, and expiry conditions.
 Atomic loaded burn+danger ingestion is green at `3e460ddc15`: the real local-zombie read and burn
 fact share one capped candidate transaction and both must survive exactly before the existing burn
-exit publishes. Next, add the reviewed route-preflighted local-watch plan/commit owner so hard
-danger can outrank burn without losing either fact or partially binding the two physical NPCs.
+exit publishes. Routed hard-danger priority is green at `253e048734`: a side-effect-free plan keeps
+both facts, lets overwhelming danger clear assessment authorization and select the 24-hour danger
+boundary, then prepares both concrete home routes before publishing one `returning_home` transition.
+Route failure instead reuses authoritative arrival/casualty/orphan/evidence/cargo/reservation
+reconciliation and publishes one observing-to-lost event. Next, prove simultaneous burn plus a real
+actor-visible survival hazard through the existing post-burn motor owner without adding a second
+phase transition or a synthetic hazard input.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
