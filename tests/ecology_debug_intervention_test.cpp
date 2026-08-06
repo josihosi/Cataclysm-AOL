@@ -26,6 +26,7 @@ bandit_live_world::simulation_advance_cursor cursor()
     result.owner = bandit_live_world::simulation_owner::local;
     result.handoff_epoch = 2;
     result.last_advanced_minutes = 90;
+    result.covert_egress_revision = 3;
     return result;
 }
 
@@ -109,6 +110,10 @@ TEST_CASE( "ecology dispatch edit guard rejects every stale authority dimension"
            "outing_cursor_stale" );
     current = read();
     current.cursor.last_advanced_minutes++;
+    CHECK( ecology_debug::validate_dispatch_member_edit( expected, current ) ==
+           "outing_cursor_stale" );
+    current = read();
+    current.cursor.covert_egress_revision++;
     CHECK( ecology_debug::validate_dispatch_member_edit( expected, current ) ==
            "outing_cursor_stale" );
     current = read();

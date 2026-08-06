@@ -21,7 +21,8 @@ bool same_cursor( const bandit_live_world::simulation_advance_cursor &lhs,
 {
     return lhs.activity_id == rhs.activity_id && lhs.generation == rhs.generation &&
            lhs.owner == rhs.owner && lhs.handoff_epoch == rhs.handoff_epoch &&
-           lhs.last_advanced_minutes == rhs.last_advanced_minutes;
+           lhs.last_advanced_minutes == rhs.last_advanced_minutes &&
+           lhs.covert_egress_revision == rhs.covert_egress_revision;
 }
 
 } // namespace

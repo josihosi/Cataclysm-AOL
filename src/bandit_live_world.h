@@ -150,6 +150,7 @@ struct simulation_advance_cursor {
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = -1;
     int last_advanced_minutes = -1;
+    int covert_egress_revision = 0;
 };
 
 enum class scout_phase {
@@ -606,6 +607,11 @@ struct active_outing_state {
     structural_watch_kind selected_watch_kind = structural_watch_kind::none;
     tripoint_abs_omt selected_watch_omt;
     int selected_watch_route_cost = -1;
+    int covert_egress_attempts = 0;
+    int covert_egress_revision = 0;
+    std::vector<tripoint_abs_omt> failed_covert_egress_omts;
+    std::vector<tripoint_abs_omt> current_covert_egress_route_omts;
+    std::vector<tripoint_abs_omt> failed_covert_egress_route_omts;
 
     void clear();
     bool is_active() const;
@@ -1505,7 +1511,8 @@ simulation_owner_transition_result transition_external_simulation_owner( site_re
 simulation_owner_transition_result advance_external_simulation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         simulation_owner expected_owner, int expected_handoff_epoch,
-        int expected_last_advanced_minutes, int current_minutes );
+        int expected_last_advanced_minutes, int expected_covert_egress_revision,
+        int current_minutes );
 local_handoff_plan plan_local_pair_handoff( const site_record &site,
         const simulation_advance_cursor &expected_cursor, int current_minutes,
         const std::vector<local_handoff_member_read> &member_reads );
@@ -1581,6 +1588,7 @@ struct covert_scout_relationship_read {
     std::vector<tripoint_abs_omt> target_footprint;
     tripoint_abs_omt egress_omt;
     int minimum_target_distance = -1;
+    std::vector<tripoint_abs_omt> forbidden_route_omts;
 };
 struct covert_scout_member_acquire_read {
     character_id npc_id;
@@ -1600,6 +1608,7 @@ struct covert_scout_burn_read {
     std::vector<tripoint_abs_omt> perceived_target_observer_positions;
 };
 int covert_scout_burn_observer_cap();
+int covert_scout_egress_route_omt_cap();
 struct covert_scout_egress_candidate {
     tripoint_abs_omt omt;
     bool reachable = false;
@@ -1607,6 +1616,19 @@ struct covert_scout_egress_candidate {
     bool hard_danger = false;
     int soft_danger = 0;
     int route_cost = -1;
+    std::vector<tripoint_abs_omt> route_omts;
+
+    covert_scout_egress_candidate() = default;
+    covert_scout_egress_candidate( const tripoint_abs_omt &candidate_omt,
+                                   bool candidate_reachable, bool candidate_concealed,
+                                   bool candidate_hard_danger, int candidate_soft_danger,
+                                   int candidate_route_cost,
+                                   const std::vector<tripoint_abs_omt> &candidate_route_omts = {} ) :
+        omt( candidate_omt ), reachable( candidate_reachable ), concealed( candidate_concealed ),
+        hard_danger( candidate_hard_danger ), soft_danger( candidate_soft_danger ),
+        route_cost( candidate_route_cost ),
+        route_omts( candidate_route_omts.empty() && candidate_reachable ?
+                    std::vector<tripoint_abs_omt> { candidate_omt } : candidate_route_omts ) {}
 };
 enum class covert_scout_burn_result {
     rejected,
@@ -1621,6 +1643,16 @@ struct covert_scout_burn_effect {
     tripoint_abs_omt egress_omt;
     tripoint_abs_omt rally_omt;
 };
+enum class covert_scout_egress_failure_result {
+    rejected,
+    retried,
+    exhausted,
+};
+struct covert_scout_egress_failure_effect {
+    covert_scout_egress_failure_result result = covert_scout_egress_failure_result::rejected;
+    tripoint_abs_omt failed_egress_omt;
+    tripoint_abs_omt egress_omt;
+};
 std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
     const world_state &state, character_id npc_id );
 std::optional<covert_scout_relationship_read> read_active_covert_scout_homeward_member(
@@ -1630,6 +1662,9 @@ std::optional<covert_scout_egress_candidate> select_covert_scout_egress(
     const tripoint_abs_omt &burn_origin,
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<covert_scout_egress_candidate> &candidates );
+bool covert_scout_egress_route_respects_retry_memory(
+    const active_outing_state &outing, const tripoint_abs_omt &member_start,
+    const std::vector<tripoint_abs_omt> &route, bool current_route_failed );
 covert_scout_burn_effect apply_covert_scout_burn(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_burn_read> &member_reads,
@@ -1639,8 +1674,9 @@ bool complete_covert_scout_burned_egress(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<covert_scout_member_acquire_read> &member_reads,
     int current_minutes );
-bool fail_covert_scout_burned_egress(
+covert_scout_egress_failure_effect resolve_covert_scout_burned_egress_failure(
     site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_egress_candidate> &egress_candidates,
     int current_minutes );
 bool abandon_covert_scout_unreachable_return(
     site_record &site, const simulation_advance_cursor &expected_cursor,

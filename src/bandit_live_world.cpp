@@ -54,6 +54,10 @@ constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_structural_target_footprint_omts = 64;
 constexpr std::size_t max_structural_watch_candidates = 256;
 constexpr std::size_t max_covert_burn_egress_candidates = 8;
+constexpr int max_covert_egress_attempts = 3;
+constexpr std::size_t max_covert_egress_route_omts = 64;
+constexpr std::size_t max_failed_covert_egress_route_omts =
+    max_covert_egress_attempts * max_covert_egress_route_omts;
 constexpr std::size_t max_structural_watch_exact_terrain_reads = 128;
 constexpr std::size_t max_structural_watch_distance_four_terrain_reads = 64;
 constexpr std::size_t max_structural_watch_distance_five_terrain_reads = 64;
@@ -2364,6 +2368,22 @@ bool local_handoff_snapshot_is_empty(
            snapshot.cargo.supply_units == 0 && snapshot.cargo.trade_value == 0;
 }
 
+bool active_outing_has_current_covert_burn_receipt(
+    const bandit_live_world::active_outing_state &outing )
+{
+    return std::any_of( outing.observations.begin(), outing.observations.end(),
+    [&outing]( const bandit_live_world::sortie_observation & observation ) {
+        return observation.record_schema_version == 1 && observation.critical &&
+               observation.kind == sortie_observation_kind::burn &&
+               observation.sense == sortie_observation_sense::visual &&
+               observation.share_state == sortie_observation_share_state::shared &&
+               observation.receiver_omt == outing.selected_watch_omt &&
+               observation.target_revision == outing.target_lead_revision &&
+               std::find( outing.member_ids.begin(), outing.member_ids.end(),
+                          observation.observer_id ) != outing.member_ids.end();
+    } );
+}
+
 bool local_handoff_snapshot_matches_outing(
     const bandit_live_world::active_outing_state &outing )
 {
@@ -2417,16 +2437,8 @@ bool local_handoff_snapshot_matches_outing(
                 snapshot.route_position, outing.target_footprint );
     const std::optional<int> burn_egress_distance = target_footprint_watch_distance(
                 snapshot.egress_omt, outing.target_footprint );
-    const bool has_typed_burn = std::any_of(
-        outing.observations.begin(), outing.observations.end(),
-    [&outing]( const bandit_live_world::sortie_observation & observation ) {
-        return observation.record_schema_version == 1 && observation.critical &&
-               observation.kind == sortie_observation_kind::burn &&
-               observation.receiver_omt == outing.selected_watch_omt &&
-               observation.target_revision == outing.target_lead_revision;
-    } );
     const bool scored_burn_egress = outing.schema_version >= 10 &&
-                                    has_typed_burn &&
+                                    active_outing_has_current_covert_burn_receipt( outing ) &&
                                     scout_phase_requires_homeward_only( snapshot.phase ) &&
                                     snapshot.route_position == outing.selected_watch_omt &&
                                     snapshot.egress_omt.z() == snapshot.route_position.z() &&
@@ -2624,6 +2636,94 @@ bool structural_watch_route_state_is_consistent(
            *distance >= 4 && *distance <= 5;
 }
 
+bool covert_scout_egress_retry_state_is_consistent(
+    const bandit_live_world::active_outing_state &outing )
+{
+    if( outing.schema_version < 10 ) {
+        return outing.covert_egress_attempts == 0 &&
+               outing.covert_egress_revision == 0 &&
+               outing.failed_covert_egress_omts.empty() &&
+               outing.current_covert_egress_route_omts.empty() &&
+               outing.failed_covert_egress_route_omts.empty();
+    }
+    if( outing.covert_egress_attempts < 0 ||
+        outing.covert_egress_attempts > max_covert_egress_attempts ||
+        outing.covert_egress_revision < 0 ||
+        outing.failed_covert_egress_omts.size() >
+        static_cast<std::size_t>( outing.covert_egress_attempts ) ||
+        outing.failed_covert_egress_omts.size() >
+        static_cast<std::size_t>( max_covert_egress_attempts ) ||
+        outing.current_covert_egress_route_omts.size() > max_covert_egress_route_omts ||
+        outing.failed_covert_egress_route_omts.size() >
+        max_failed_covert_egress_route_omts ) {
+        return false;
+    }
+    const bool has_burn = active_outing_has_current_covert_burn_receipt( outing );
+    if( outing.phase == scout_phase::burned_withdrawal && !has_burn ) {
+        return false;
+    }
+    if( !has_burn ) {
+        return outing.covert_egress_attempts == 0 &&
+               outing.covert_egress_revision == 0 &&
+               outing.failed_covert_egress_omts.empty() &&
+               outing.current_covert_egress_route_omts.empty() &&
+               outing.failed_covert_egress_route_omts.empty();
+    }
+    if( outing.phase == scout_phase::burned_withdrawal &&
+        ( outing.covert_egress_attempts < 1 || outing.covert_egress_revision < 1 ||
+          outing.failed_covert_egress_omts.size() + 1 !=
+          static_cast<std::size_t>( outing.covert_egress_attempts ) ) ) {
+        return false;
+    }
+    if( outing.covert_egress_revision !=
+        static_cast<int>( outing.failed_covert_egress_omts.size() ) + 1 ) {
+        return false;
+    }
+    const std::optional<int> origin_distance = target_footprint_watch_distance(
+                outing.selected_watch_omt, outing.target_footprint );
+    const auto route_footprint_is_valid = [&](
+        const std::vector<tripoint_abs_omt> &footprint ) {
+        std::vector<tripoint_abs_omt> seen;
+        for( const tripoint_abs_omt &omt : footprint ) {
+            const std::optional<int> distance = target_footprint_watch_distance(
+                                                    omt, outing.target_footprint );
+            if( omt.is_invalid() || omt.z() != outing.selected_watch_omt.z() ||
+                !origin_distance || !distance || *distance < *origin_distance ||
+                std::find( seen.begin(), seen.end(), omt ) != seen.end() ) {
+                return false;
+            }
+            seen.push_back( omt );
+        }
+        return true;
+    };
+    if( !route_footprint_is_valid( outing.current_covert_egress_route_omts ) ||
+        !route_footprint_is_valid( outing.failed_covert_egress_route_omts ) ||
+        ( outing.phase == scout_phase::burned_withdrawal &&
+          std::any_of( outing.current_covert_egress_route_omts.begin(),
+                       outing.current_covert_egress_route_omts.end(),
+        [&outing]( const tripoint_abs_omt &omt ) {
+            return std::find( outing.failed_covert_egress_route_omts.begin(),
+                              outing.failed_covert_egress_route_omts.end(), omt ) !=
+                   outing.failed_covert_egress_route_omts.end();
+        } ) ) ) {
+        return false;
+    }
+    std::vector<tripoint_abs_omt> seen;
+    for( const tripoint_abs_omt &failed : outing.failed_covert_egress_omts ) {
+        const std::optional<int> failed_distance = target_footprint_watch_distance(
+                    failed, outing.target_footprint );
+        if( failed.is_invalid() || failed.z() != outing.selected_watch_omt.z() ||
+            omt_chebyshev_distance( failed, outing.selected_watch_omt ) != 1 ||
+            !origin_distance || !failed_distance || *failed_distance < *origin_distance ||
+            std::find( seen.begin(), seen.end(), failed ) != seen.end() ) {
+            return false;
+        }
+        seen.push_back( failed );
+    }
+    return outing.phase != scout_phase::burned_withdrawal ||
+           std::find( seen.begin(), seen.end(), outing.local_handoff.egress_omt ) == seen.end();
+}
+
 bool simulation_owner_state_is_consistent(
     const bandit_live_world::active_outing_state &outing )
 {
@@ -2635,7 +2735,8 @@ bool simulation_owner_state_is_consistent(
     return outing.handoff_epoch >= 0 && owner_matches_epoch &&
            outing.last_advanced_minutes >= minimum_advanced_minutes &&
            local_handoff_snapshot_matches_outing( outing ) &&
-           structural_watch_route_state_is_consistent( outing );
+           structural_watch_route_state_is_consistent( outing ) &&
+           covert_scout_egress_retry_state_is_consistent( outing );
 }
 
 bool current_serialized_owner_fields_are_consistent( JsonObject owner_json )
@@ -2707,7 +2808,8 @@ bool simulation_cursor_matches(
            outing.activity_id == cursor.activity_id &&
            outing.generation == cursor.generation && outing.owner == cursor.owner &&
            outing.handoff_epoch == cursor.handoff_epoch &&
-           outing.last_advanced_minutes == cursor.last_advanced_minutes;
+           outing.last_advanced_minutes == cursor.last_advanced_minutes &&
+           outing.covert_egress_revision == cursor.covert_egress_revision;
 }
 
 void normalize_legacy_simulation_owner_state(
@@ -3232,7 +3334,7 @@ simulation_owner_transition_result advance_external_simulation(
     site_record &site, const std::string &expected_activity_id,
     const int expected_generation, const simulation_owner expected_owner,
     const int expected_handoff_epoch, const int expected_last_advanced_minutes,
-    const int current_minutes )
+    const int expected_covert_egress_revision, const int current_minutes )
 {
     const active_outing_state *current = site.active_external_outing();
     if( current == nullptr || !current->is_active() ||
@@ -3241,6 +3343,7 @@ simulation_owner_transition_result advance_external_simulation(
         current->generation != expected_generation || current->owner != expected_owner ||
         current->handoff_epoch != expected_handoff_epoch || expected_handoff_epoch < 0 ||
         current->last_advanced_minutes != expected_last_advanced_minutes ||
+        current->covert_egress_revision != expected_covert_egress_revision ||
         current_minutes < 0 || current_minutes < current->last_advanced_minutes ) {
         return simulation_owner_transition_result::rejected;
     }
@@ -5874,6 +5977,13 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "selected_watch_omt", selected_watch_omt );
         json.member( "selected_watch_route_cost", selected_watch_route_cost );
     }
+    if( schema_version >= 10 ) {
+        json.member( "covert_egress_attempts", covert_egress_attempts );
+        json.member( "covert_egress_revision", covert_egress_revision );
+        json.member( "failed_covert_egress_omts", failed_covert_egress_omts );
+        json.member( "current_covert_egress_route_omts", current_covert_egress_route_omts );
+        json.member( "failed_covert_egress_route_omts", failed_covert_egress_route_omts );
+    }
     json.end_object();
 }
 
@@ -6026,8 +6136,38 @@ void active_outing_state::deserialize( const JsonObject &jo )
         candidate.target_footprint = { candidate.target_omt };
         candidate.schema_version = 9;
     }
+    if( loaded_schema_version >= 10 ) {
+        const bool has_attempts = jo.has_member( "covert_egress_attempts" );
+        const bool has_revision = jo.has_member( "covert_egress_revision" );
+        const bool has_failed_egress = jo.has_member( "failed_covert_egress_omts" );
+        const bool has_current_route = jo.has_member( "current_covert_egress_route_omts" );
+        const bool has_failed_routes = jo.has_member( "failed_covert_egress_route_omts" );
+        if( has_attempts != has_revision || has_attempts != has_failed_egress ||
+            has_attempts != has_current_route ||
+            has_attempts != has_failed_routes ) {
+            jo.throw_error( "schema-v10 structural outing has incomplete covert egress retry state" );
+        }
+        if( has_attempts ) {
+            jo.read( "covert_egress_attempts", candidate.covert_egress_attempts );
+            jo.read( "covert_egress_revision", candidate.covert_egress_revision );
+            jo.read( "failed_covert_egress_omts", candidate.failed_covert_egress_omts );
+            jo.read( "current_covert_egress_route_omts",
+                     candidate.current_covert_egress_route_omts );
+            jo.read( "failed_covert_egress_route_omts",
+                     candidate.failed_covert_egress_route_omts );
+        } else if( active_outing_has_current_covert_burn_receipt( candidate ) ) {
+            // Schema 10 predates explicit retry memory.  Every retained authoritative burn starts
+            // revision one; only a pair still withdrawing has a pending first route attempt.
+            candidate.covert_egress_attempts =
+                candidate.phase == scout_phase::burned_withdrawal ? 1 : 0;
+            candidate.covert_egress_revision = 1;
+        }
+    }
     if( !structural_watch_route_state_is_consistent( candidate ) ) {
         jo.throw_error( "current structural outing has malformed watch route state" );
+    }
+    if( !covert_scout_egress_retry_state_is_consistent( candidate ) ) {
+        jo.throw_error( "current structural outing has malformed covert egress retry state" );
     }
     if( candidate.activity_id.empty() || candidate.kind == outing_kind::none ||
         candidate.generation <= 0 ) {
@@ -7745,6 +7885,7 @@ std::optional<simulation_advance_cursor> current_external_simulation_cursor(
     cursor.owner = outing->owner;
     cursor.handoff_epoch = outing->handoff_epoch;
     cursor.last_advanced_minutes = outing->last_advanced_minutes;
+    cursor.covert_egress_revision = outing->covert_egress_revision;
     return cursor;
 }
 
@@ -11721,7 +11862,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             const simulation_owner_transition_result advance = advance_external_simulation(
                         candidate, expected_cursor->activity_id, expected_cursor->generation,
                         expected_cursor->owner, expected_cursor->handoff_epoch,
-                        expected_cursor->last_advanced_minutes, now_minutes );
+                        expected_cursor->last_advanced_minutes,
+                        expected_cursor->covert_egress_revision, now_minutes );
             if( advance != simulation_owner_transition_result::applied ) {
                 continue;
             }
@@ -11737,7 +11879,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             const simulation_owner_transition_result advance = advance_external_simulation(
                         candidate, expected_cursor->activity_id, expected_cursor->generation,
                         expected_cursor->owner, expected_cursor->handoff_epoch,
-                        expected_cursor->last_advanced_minutes, now_minutes );
+                        expected_cursor->last_advanced_minutes,
+                        expected_cursor->covert_egress_revision, now_minutes );
             if( advance != simulation_owner_transition_result::applied ) {
                 continue;
             }
@@ -11866,7 +12009,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             const simulation_owner_transition_result advance = advance_external_simulation(
                         candidate, expected_cursor->activity_id, expected_cursor->generation,
                         expected_cursor->owner, expected_cursor->handoff_epoch,
-                        expected_cursor->last_advanced_minutes, now_minutes );
+                        expected_cursor->last_advanced_minutes,
+                        expected_cursor->covert_egress_revision, now_minutes );
             if( advance != simulation_owner_transition_result::applied ) {
                 continue;
             }
@@ -14721,8 +14865,32 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
         if( !minimum_target_distance ) {
             return std::nullopt;
         }
-        result = covert_scout_relationship_read{ outing.phase, outing.target_footprint,
-                  outing.local_handoff.egress_omt, *minimum_target_distance };
+        const bool terminal_homeward = outing.phase == scout_phase::returning_exposed ||
+                                       outing.phase == scout_phase::returning_report ||
+                                       outing.phase == scout_phase::returning_home;
+        std::vector<tripoint_abs_omt> forbidden_route_omts;
+        if( terminal_homeward ) {
+            forbidden_route_omts.push_back( outing.selected_watch_omt );
+            forbidden_route_omts.insert( forbidden_route_omts.end(),
+                                         outing.failed_covert_egress_omts.begin(),
+                                         outing.failed_covert_egress_omts.end() );
+            forbidden_route_omts.insert( forbidden_route_omts.end(),
+                                         outing.failed_covert_egress_route_omts.begin(),
+                                         outing.failed_covert_egress_route_omts.end() );
+            std::sort( forbidden_route_omts.begin(), forbidden_route_omts.end(),
+            []( const tripoint_abs_omt &lhs, const tripoint_abs_omt &rhs ) {
+                return std::make_tuple( lhs.z(), lhs.y(), lhs.x() ) <
+                       std::make_tuple( rhs.z(), rhs.y(), rhs.x() );
+            } );
+            forbidden_route_omts.erase(
+                std::unique( forbidden_route_omts.begin(), forbidden_route_omts.end() ),
+                forbidden_route_omts.end() );
+        }
+        result = covert_scout_relationship_read{
+            outing.phase, outing.target_footprint,
+            terminal_homeward ? site.anchor : outing.local_handoff.egress_omt,
+            *minimum_target_distance, std::move( forbidden_route_omts )
+        };
     }
     return result;
 }
@@ -14749,6 +14917,11 @@ int covert_scout_burn_observer_cap()
     return 16;
 }
 
+int covert_scout_egress_route_omt_cap()
+{
+    return static_cast<int>( max_covert_egress_route_omts );
+}
+
 static bool covert_scout_egress_candidates_are_valid(
     const tripoint_abs_omt &burn_origin,
     const std::vector<tripoint_abs_omt> &target_footprint,
@@ -14772,9 +14945,25 @@ static bool covert_scout_egress_candidates_are_valid(
             *candidate_distance < origin_distance ||
             candidate.soft_danger < 0 || candidate.soft_danger > 200 ||
             ( candidate.reachable && candidate.route_cost < 0 ) ||
+            candidate.route_omts.size() > max_covert_egress_route_omts ||
+            ( candidate.reachable &&
+              std::find( candidate.route_omts.begin(), candidate.route_omts.end(),
+                         candidate.omt ) == candidate.route_omts.end() ) ||
             std::find( candidate_omts.begin(), candidate_omts.end(), candidate.omt ) !=
             candidate_omts.end() ) {
             return false;
+        }
+        std::vector<tripoint_abs_omt> route_omts;
+        for( const tripoint_abs_omt &route_omt : candidate.route_omts ) {
+            const std::optional<int> route_distance = target_footprint_watch_distance(
+                        route_omt, target_footprint );
+            if( route_omt.is_invalid() || route_omt.z() != burn_origin.z() ||
+                !route_distance || *route_distance < origin_distance ||
+                std::find( route_omts.begin(), route_omts.end(), route_omt ) !=
+                route_omts.end() ) {
+                return false;
+            }
+            route_omts.push_back( route_omt );
         }
         candidate_omts.push_back( candidate.omt );
     }
@@ -14826,6 +15015,52 @@ std::optional<covert_scout_egress_candidate> select_covert_scout_egress(
     // Hard danger is a survival override only after every reachable safe exit failed.  A trapped
     // pair must take the least-dangerous real route instead of remaining in observation forever.
     return selected_safe ? selected_safe : selected_hard;
+}
+
+bool covert_scout_egress_route_respects_retry_memory(
+    const active_outing_state &outing, const tripoint_abs_omt &member_start,
+    const std::vector<tripoint_abs_omt> &route, const bool current_route_failed )
+{
+    const std::optional<int> origin_distance = target_footprint_watch_distance(
+                outing.selected_watch_omt, outing.target_footprint );
+    const std::optional<int> destination_distance = route.empty() ? std::nullopt :
+            target_footprint_watch_distance( route.front(), outing.target_footprint );
+    if( !origin_distance || !destination_distance || route.back() != member_start ||
+        *destination_distance < *origin_distance ||
+        ( outing.covert_egress_attempts > 0 && current_route_failed &&
+          *destination_distance <= *origin_distance ) ) {
+        return false;
+    }
+    for( std::size_t index = 0; index < route.size(); ++index ) {
+        const tripoint_abs_omt &route_omt = route[index];
+        const std::optional<int> route_distance = target_footprint_watch_distance(
+                    route_omt, outing.target_footprint );
+        if( !route_distance || *route_distance < *origin_distance ) {
+            return false;
+        }
+        const bool remembered_footing = route_omt == outing.selected_watch_omt ||
+                std::find( outing.failed_covert_egress_omts.begin(),
+                           outing.failed_covert_egress_omts.end(), route_omt ) !=
+                outing.failed_covert_egress_omts.end() ||
+                ( current_route_failed &&
+                  std::find( outing.current_covert_egress_route_omts.begin(),
+                             outing.current_covert_egress_route_omts.end(), route_omt ) !=
+                  outing.current_covert_egress_route_omts.end() ) ||
+                std::find( outing.failed_covert_egress_route_omts.begin(),
+                           outing.failed_covert_egress_route_omts.end(), route_omt ) !=
+                outing.failed_covert_egress_route_omts.end();
+        const bool current_start = index + 1 == route.size() && route_omt == member_start;
+        if( outing.covert_egress_attempts > 0 && remembered_footing && !current_start ) {
+            return false;
+        }
+        if( outing.covert_egress_attempts > 0 && !current_route_failed && !current_start &&
+            std::find( outing.current_covert_egress_route_omts.begin(),
+                       outing.current_covert_egress_route_omts.end(), route_omt ) ==
+            outing.current_covert_egress_route_omts.end() ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static std::optional<covert_scout_egress_candidate> select_covert_scout_survival_direction(
@@ -15016,6 +15251,12 @@ covert_scout_burn_effect apply_covert_scout_burn(
                                    scout_phase::returning_exposed;
     candidate.active_outing.phase = burn_phase;
     candidate.active_outing.local_handoff.phase = burn_phase;
+    candidate.active_outing.covert_egress_attempts = survival_direction ? 1 : 0;
+    candidate.active_outing.covert_egress_revision = 1;
+    candidate.active_outing.failed_covert_egress_omts.clear();
+    candidate.active_outing.current_covert_egress_route_omts = survival_direction ?
+            survival_direction->route_omts : std::vector<tripoint_abs_omt>();
+    candidate.active_outing.failed_covert_egress_route_omts.clear();
     if( survival_direction ) {
         candidate.active_outing.local_handoff.egress_omt = survival_direction->omt;
     }
@@ -15106,36 +15347,90 @@ bool complete_covert_scout_burned_egress(
     return true;
 }
 
-bool fail_covert_scout_burned_egress(
+covert_scout_egress_failure_effect resolve_covert_scout_burned_egress_failure(
     site_record &site, const simulation_advance_cursor &expected_cursor,
+    const std::vector<covert_scout_egress_candidate> &egress_candidates,
     const int current_minutes )
 {
+    covert_scout_egress_failure_effect effect;
     const active_outing_state &outing = site.active_outing;
     if( !simulation_cursor_matches( outing, expected_cursor ) ||
         outing.schema_version != 10 || outing.kind != outing_kind::structural_sortie ||
         outing.owner != simulation_owner::local ||
         outing.phase != scout_phase::burned_withdrawal ||
         outing.local_handoff.phase != outing.phase || current_minutes < 0 ||
-        current_minutes < outing.last_advanced_minutes ) {
-        return false;
+        current_minutes < outing.last_advanced_minutes ||
+        outing.covert_egress_revision == std::numeric_limits<int>::max() ||
+        !covert_scout_egress_candidates_are_valid(
+            outing.selected_watch_omt, outing.target_footprint, egress_candidates ) ) {
+        return effect;
     }
 
     site_record candidate = site;
-    candidate.active_outing.phase = scout_phase::returning_exposed;
-    candidate.active_outing.local_handoff.phase = scout_phase::returning_exposed;
+    active_outing_state &next = candidate.active_outing;
+    next.covert_egress_revision++;
+    effect.failed_egress_omt = next.local_handoff.egress_omt;
+    next.failed_covert_egress_omts.push_back( effect.failed_egress_omt );
+    for( const tripoint_abs_omt &route_omt : next.current_covert_egress_route_omts ) {
+        if( std::find( next.failed_covert_egress_route_omts.begin(),
+                      next.failed_covert_egress_route_omts.end(), route_omt ) ==
+            next.failed_covert_egress_route_omts.end() ) {
+            next.failed_covert_egress_route_omts.push_back( route_omt );
+        }
+    }
+    next.current_covert_egress_route_omts.clear();
+
+    std::vector<covert_scout_egress_candidate> alternatives;
+    alternatives.reserve( egress_candidates.size() );
+    std::copy_if( egress_candidates.begin(), egress_candidates.end(),
+                  std::back_inserter( alternatives ), [&next](
+                      const covert_scout_egress_candidate &candidate_egress ) {
+        return std::find( next.failed_covert_egress_omts.begin(),
+                          next.failed_covert_egress_omts.end(), candidate_egress.omt ) ==
+               next.failed_covert_egress_omts.end() &&
+               std::none_of( candidate_egress.route_omts.begin(),
+                             candidate_egress.route_omts.end(),
+        [&next]( const tripoint_abs_omt &route_omt ) {
+            return route_omt == next.selected_watch_omt ||
+                   std::find( next.failed_covert_egress_omts.begin(),
+                              next.failed_covert_egress_omts.end(), route_omt ) !=
+                   next.failed_covert_egress_omts.end() ||
+                   std::find( next.failed_covert_egress_route_omts.begin(),
+                              next.failed_covert_egress_route_omts.end(), route_omt ) !=
+                   next.failed_covert_egress_route_omts.end();
+        } );
+    } );
+    const std::optional<covert_scout_egress_candidate> selected =
+        next.covert_egress_attempts < max_covert_egress_attempts ?
+        select_covert_scout_egress(
+            next.selected_watch_omt, next.target_footprint, alternatives ) : std::nullopt;
+    if( selected ) {
+        next.covert_egress_attempts++;
+        next.local_handoff.egress_omt = selected->omt;
+        next.current_covert_egress_route_omts = selected->route_omts;
+        effect.egress_omt = selected->omt;
+        effect.result = covert_scout_egress_failure_result::retried;
+    } else {
+        next.phase = scout_phase::returning_exposed;
+        next.local_handoff.phase = scout_phase::returning_exposed;
+        effect.egress_omt = next.local_handoff.egress_omt;
+        effect.result = covert_scout_egress_failure_result::exhausted;
+    }
     candidate.active_outing.last_progress_minutes = current_minutes;
     candidate.active_outing.last_advanced_minutes = current_minutes;
     if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
         !candidate.roster().valid ) {
-        return false;
+        return covert_scout_egress_failure_effect();
     }
     site = std::move( candidate );
-    record_scout_phase_transition_event(
-        site.active_outing, scout_phase::burned_withdrawal,
-        scout_phase::returning_exposed,
-        "burned pair could not execute its bounded local survival direction",
-        current_minutes );
-    return true;
+    if( effect.result == covert_scout_egress_failure_result::exhausted ) {
+        record_scout_phase_transition_event(
+            site.active_outing, scout_phase::burned_withdrawal,
+            scout_phase::returning_exposed,
+            "burned pair exhausted its bounded remembered egress routes",
+            current_minutes );
+    }
+    return effect;
 }
 
 static bool record_active_outing_casualty_unchecked( site_record &site,
