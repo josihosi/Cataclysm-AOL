@@ -4733,6 +4733,11 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
 
 namespace bandit_live_world
 {
+int burn_live_covert_scouts()
+{
+    return burn_live_bandit_covert_scouts();
+}
+
 bool fail_live_covert_scout_burned_egress( const character_id member_id )
 {
     return live_bandit_fail_burned_egress( member_id );
@@ -5005,7 +5010,7 @@ void monmove()
 
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
-    burn_live_bandit_covert_scouts();
+    bandit_live_world::burn_live_covert_scouts();
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders =
         maintain_live_bandit_local_pair_cohesion();
     if( calendar::once_every( 1_minutes ) ) {
