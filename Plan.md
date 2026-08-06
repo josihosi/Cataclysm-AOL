@@ -333,8 +333,13 @@ and exhaustion installs real home routes without re-entry. Concrete routes are n
 target distance from each survivor's physical start, legacy schema-10 chains load without gaining
 new retries, and endpoint ownership releases cleanly for camp return/dematerialization. Fixed-seed
 focused tests, Mac test build, release tiles link after a targeted generated-PCH refresh, and final
-autoreview are green. Next is the persisted route-commitment/hysteresis row: prove bubble and
-visibility transitions cannot reset the party to `observing`.
+autoreview are green. The persisted route-commitment/hysteresis row is green at `42bfc59dcd`:
+one cross-layer contract proves unknown visibility is byte-inert, legitimate contact updates retain
+the burned phase and exact retry commitment, local-to-abstract-to-local handoff preserves it, and
+clear completion plus later contact can advance but never regress to observation. No new persistence
+field was needed. The rebuilt Mac test target, fixed-seed burn 2/391, one-way phase 1/187, and diff
+check pass. Next is credited observer-backed live proof from visible burn through one evidence/alert
+transition and coherent off-OMT egress to rally.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

@@ -1229,3 +1229,14 @@ attempt exposed only a stale generated tiles PCH configuration; removing that ge
 dependency file made the second run green. `astyle` 3.1 is unavailable; no live GUI, Linux, or
 Windows runtime is claimed. Next is route-commitment/hysteresis proof across bubble and visibility
 transitions.
+
+Phase-5 bubble/visibility reset prevention is green at `42bfc59dcd`. No production state was added:
+the focused contract proves the existing authoritative phase graph, retry revision, persisted route
+memory, and local-handoff snapshot stay locked across unknown visibility, legitimate member-contact
+updates, save/load, and local-to-abstract-to-local ownership. Evaluated-clear completion advances to
+`returning_report`, and later visibility/contact cannot regress it.
+`make -j8 LOCALIZE=1 TESTS=1 tests` exits 0; fixed-seed `[covert_burn]` passes 391 assertions / 2
+cases and the exact one-way phase case passes 187 / 1. `git diff --check` is clean. `astyle` 3.1 is
+unavailable; this test-only slice
+does not claim a fresh tiles link, live GUI behavior, Linux, or Windows runtime. Next is the credited
+observer-backed visible-burn/egress/rally live row.
