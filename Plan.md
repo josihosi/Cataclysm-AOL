@@ -356,7 +356,11 @@ production-shaped member read rejects byte-inert without inferred visibility, ca
 route, retry, or burn state; the same pair burns exactly once after the complete read becomes
 available. The rebuilt exact case passes 449 assertions and `[covert_burn]` passes 2/453. Next:
 repeat the burned local/abstract/load cycle and prove the same owner survives more than one bubble
-transition.
+transition. Repeated cycling is green at `6217823710`: after the real cohesion step, a second
+dematerialization, abstract-maintenance tick, reload, and rematerialization preserve the exact
+egress/retry owner and one burn fact. Mac exact burn passes 1/474 and the tag passes 2/478. Next:
+cover authoritative member and leader death during a burned handoff, reusing normal casualty
+writeback rather than erasing the outing.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

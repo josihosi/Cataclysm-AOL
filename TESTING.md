@@ -1268,3 +1268,12 @@ fact is created. Supplying the later complete read applies once; replay is inert
 The delegated rebuild exits 0, the exact fixed-seed case passes 1/449, `[covert_burn]` passes 2/453,
 the root rerun passes 1/449, and `git diff --check` is clean. This is test-only and claims no live or
 cross-platform runtime. Next evidence repeats the full burned load/unload cycle.
+
+Phase-5 repeated burned handoff cycling is green at `6217823710`. After the first reload and
+rematerialization, the test traverses the real cohesion plan/commit, dematerializes a second time,
+runs real abstract structural maintenance, reloads, and rematerializes again. Both cycles retain the
+same egress, retry revision/routes, valid owner cursor, and exactly one burn fact. The first attempt
+correctly failed because a rematerialized pair must reassemble; adding the canonical cohesion step,
+not a flag mutation, made the sequence honest. Mac build and diff check pass; the exact case passes
+1/474 and `[covert_burn]` 2/478. Test-only; no live/cross-platform claim. Next: authoritative member
+and leader death during a burned handoff.
