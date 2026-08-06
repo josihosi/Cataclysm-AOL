@@ -2210,6 +2210,101 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         self.assertEqual(empty["required_fields"]["required_max_leads"], 0)
         self.assertEqual(nonzero["status"], "required_state_missing")
 
+    def test_final_scout_report_and_decision_audit_share_authoritative_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["active_outing"] = {}
+            site["active_group_id"] = ""
+            site["active_target_id"] = ""
+            site["active_member_ids"] = []
+            report_identity = {
+                "revision": 7,
+                "source_generation": 3,
+                "source_activity_id": "camp-current#structural",
+                "application_key": "camp-current#structural:3:report",
+                "target_id": "road",
+                "target_omt": [3, 1, 0],
+                "target_lead_id": "terrain-opportunity:road",
+                "target_lead_revision": 2,
+            }
+            site["current_scout_report"] = {
+                **report_identity,
+                "action_policy": "raid",
+                "source_job_type": "scout",
+                "observations": [{"kind": "occupancy"}],
+                "casualty_ids": [],
+                "delivered_minutes": 480,
+                "provisional": False,
+            }
+            site["camp_decision"] = {
+                "state": "report_awaiting_assessment",
+                "report_policy": "raid",
+                "source_report_revision": report_identity["revision"],
+                "source_report_generation": report_identity["source_generation"],
+                "source_report_activity_id": report_identity["source_activity_id"],
+                "source_report_application_key": report_identity["application_key"],
+                "target_id": report_identity["target_id"],
+                "target_omt": report_identity["target_omt"],
+                "target_lead_id": report_identity["target_lead_id"],
+                "target_lead_revision": report_identity["target_lead_revision"],
+            }
+            self.write_world(world_dir, site)
+
+            matching = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_active_group_id_exact="",
+                required_scout_report_present=True,
+                required_scout_report_provisional=False,
+                required_scout_report_min_observations=1,
+                required_camp_decision_state="report_awaiting_assessment",
+                required_report_decision_identity_match=True,
+            )
+            site["camp_decision"]["target_lead_revision"] = 3
+            self.write_world(world_dir, site)
+            mismatched = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_report_decision_identity_match=True,
+            )
+
+        self.assertEqual(matching["status"], "required_state_present")
+        matched_site = matching["matching_sites"][0]
+        self.assertFalse(matched_site["current_scout_report"]["provisional"])
+        self.assertEqual(matched_site["current_scout_report"]["observation_count"], 1)
+        self.assertTrue(matched_site["report_decision_identity_matches"])
+        self.assertEqual(mismatched["status"], "required_state_missing")
+
+    def test_home_survivor_audit_accepts_wounded_carrier_and_rejects_all_loss(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            site["active_outing"] = {}
+            site["active_group_id"] = ""
+            site["active_member_ids"] = []
+            site["members"] = [
+                {"npc_id": 1, "state": "at_home"},
+                {"npc_id": 2, "state": "at_home"},
+                {"npc_id": 3, "state": "at_home"},
+                {"npc_id": 4, "state": "at_home", "wounded_or_unready": True},
+                {"npc_id": 5, "state": "missing"},
+            ]
+            self.write_world(world_dir, site)
+            wounded_carrier = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_min_home_survivor_count=4,
+            )
+
+            site["members"][3]["state"] = "missing"
+            self.write_world(world_dir, site)
+            all_scouts_lost = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_min_home_survivor_count=4,
+            )
+
+        self.assertEqual(wounded_carrier["status"], "required_state_present")
+        self.assertEqual(wounded_carrier["matching_sites"][0]["home_survivor_count"], 4)
+        self.assertEqual(all_scouts_lost["status"], "required_state_missing")
+
     def test_required_all_lead_origin_rejects_one_foreign_writer(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)
@@ -2444,6 +2539,42 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
             self.assertEqual(result["new_hostile_profile"], "cannibal_camp")
             self.assertEqual(cloned["site_kind"], "cannibal_camp")
             self.assertEqual(cloned["hostile_profile"], "cannibal_camp")
+
+    def test_clone_can_reset_inherited_shakedown_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [{
+                                "site_id": "source",
+                                "last_shakedown_outcome": "fight_defender_loss",
+                                "shakedown_anger": 4,
+                                "shakedown_defender_losses": 2,
+                                "shakedown_reopen_available": True,
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            result = apply_bandit_clone_site_transform(world_dir, {
+                "source_site_id": "source",
+                "new_site_id": "clean-clone",
+                "reset_shakedown_history": True,
+            })
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            source, cloned = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+
+        self.assertTrue(result["reset_shakedown_history"])
+        self.assertEqual(source["last_shakedown_outcome"], "fight_defender_loss")
+        self.assertEqual(cloned["last_shakedown_outcome"], "")
+        self.assertEqual(cloned["shakedown_anger"], 0)
+        self.assertEqual(cloned["shakedown_defender_losses"], 0)
+        self.assertFalse(cloned["shakedown_reopen_available"])
 
 
 class BanditRosterShapeTransformContractTest(unittest.TestCase):
@@ -3574,6 +3705,127 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "audit_saved_returned_sound_lead",
         ):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
+
+    def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
+        resolved = resolve_fixture_payload(
+            "bandit_scout_to_decision_observer_v0_2026-08-06",
+            "live-debug",
+        )
+
+        self.assertEqual(
+            resolved["source_chain"][:2],
+            [
+                ("live-debug", "bandit_scout_to_decision_observer_v0_2026-08-06"),
+                ("live-debug", "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24"),
+            ],
+        )
+        child_transforms = resolved["save_transforms"]
+        self.assertEqual(
+            [transform["kind"] for transform in child_transforms],
+            [
+                "game_turn",
+                "player_near_overmap_special",
+                "seed_overmap_special_near_player",
+                "bandit_clone_site",
+                "bandit_site_roster_shape",
+                "bandit_site_roster_shape",
+                "bandit_clear_site_evidence",
+                "bandit_clear_site_evidence",
+                "player_mutations",
+            ],
+        )
+        self.assertNotIn(
+            "bandit_camp_map_lead",
+            [transform["kind"] for transform in child_transforms],
+        )
+        self.assertEqual(child_transforms[1]["offset_omt"], [20, -16, 0])
+        self.assertEqual(child_transforms[2]["offset_omt"], [0, 4, 0])
+        self.assertEqual(child_transforms[3]["new_anchor"], [160, 39, 0])
+        self.assertTrue(child_transforms[3]["reset_shakedown_history"])
+        child_transform = child_transforms[-1]
+        self.assertEqual(
+            child_transform,
+            {
+                "kind": "player_mutations",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "mutations": ["DEBUG_CLAIRVOYANCE"],
+            },
+        )
+        self.assertEqual(child_transform["mutations"], ["DEBUG_CLAIRVOYANCE"])
+
+    def test_scout_to_decision_observer_scenario_preserves_causal_boundary(self) -> None:
+        scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+        exact_target = "lead=frontier_probe:0"
+
+        self.assertEqual(
+            scenario["fixture"],
+            "bandit_scout_to_decision_observer_v0_2026-08-06",
+        )
+        preflight = steps[labels.index("preflight_idle_zero_lead_camp")]
+        self.assertEqual(preflight["required_max_leads"], 0)
+        self.assertEqual(preflight["required_active_group_id_exact"], "")
+        self.assertEqual(preflight["required_active_target_id_exact"], "")
+        waits = [step for step in steps if step["kind"] == "long_wait"]
+        self.assertEqual(
+            [(step["choice_key"], step["expected_duration"]) for step in waits],
+            [
+                ("8", "6h"),
+                ("8", "6h"),
+                ("5", "1h"),
+                ("5", "1h"),
+                ("3", "5m"),
+                ("8", "6h"),
+            ],
+        )
+        self.assertTrue(
+            any(
+                exact_target in pattern
+                for pattern in steps[
+                    labels.index("wait_second_1_hour_for_real_frontier_dispatch")
+                ]["artifact_state_patterns"]
+            )
+        )
+        self.assertLess(
+            labels.index("wait_5_minutes_for_real_pair_handoff"),
+            labels.index("select_authoritative_dispatch"),
+        )
+        self.assertLess(
+            labels.index("arm_default_capture_and_continue_watch"),
+            labels.index("advance_initial_6_hour_post_observation_window"),
+        )
+        self.assertLess(
+            labels.index("advance_initial_6_hour_post_observation_window"),
+            labels.index("record_post_window_ecology_incident"),
+        )
+        press_keys = [
+            key
+            for step in steps if step["kind"] == "press"
+            for key in step["keys"]
+        ]
+        self.assertNotIn("I", press_keys)
+        self.assertNotIn("P", press_keys)
+        self.assertEqual(press_keys.count("A"), 1)
+        self.assertEqual(press_keys.count("R"), 1)
+        self.assertIn(
+            "debug_intervention=false",
+            scenario["evidence_contract"]["observer_artifact_requirement"],
+        )
+        final_audit = steps[labels.index("audit_saved_survivors_home_and_outing_closed")]
+        self.assertEqual(final_audit["required_min_home_survivor_count"], 4)
+        self.assertNotIn("required_wounded_or_unready_count", final_audit)
+        self.assertEqual(final_audit["required_active_outside_count"], 0)
+        self.assertEqual(final_audit["required_active_group_id_exact"], "")
+        self.assertTrue(final_audit["required_scout_report_present"])
+        self.assertFalse(final_audit["required_scout_report_provisional"])
+        self.assertEqual(final_audit["required_scout_report_min_observations"], 1)
+        self.assertEqual(
+            final_audit["required_camp_decision_state"],
+            "report_awaiting_assessment",
+        )
+        self.assertTrue(final_audit["required_report_decision_identity_match"])
+        self.assertIn("final non-provisional report", scenario["evidence_contract"]["pass_fail_rule"])
 
     def test_phase4_target_relocation_observes_same_authoritative_dispatch(self) -> None:
         scenario = load_scenario("bandit.phase4_target_relocation_observer_live_mcw")

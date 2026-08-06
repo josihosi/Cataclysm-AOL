@@ -1,0 +1,75 @@
+{
+  "name": "bandit_scout_to_decision_observer_v0_2026-08-06",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "source_profile": "live-debug",
+  "description": "Forest-route observer footing for the natural bandit scout-to-decision vertical proof. It establishes a deterministic clock, places one five-member bandit camp at an existing forest location, parks the player on its route-facing waypoint, clears all camp evidence and outings, and adds DEBUG_CLAIRVOYANCE. No lead, dispatch, observation, return, report, or decision is injected.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5205593,
+      "shift_queued_eocs": true
+    },
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [20, -16, 0]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, 4, 0]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@160,39,0",
+      "new_source_id": "bandit_camp",
+      "new_site_kind": "bandit_camp",
+      "new_anchor": [160, 39, 0],
+      "new_footprint": [[160, 39, 0], [161, 39, 0], [160, 40, 0], [161, 40, 0]],
+      "reset_shakedown_history": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 0,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@160,39,0",
+      "living_member_count": 5,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 5,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0"
+    },
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@160,39,0"
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_CLAIRVOYANCE"]
+    }
+  ]
+}

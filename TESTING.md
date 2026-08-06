@@ -61,6 +61,27 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 - Mobile horde/stalker production adapters remain disabled because stable movement/load-transfer
   identity is unavailable.
 
+### Scout-to-decision vertical — tooling green, live proof pending
+
+- The canonical Mac SDL3 binary rebuilt successfully from `0d99500b33` plus the dirty harness-only
+  slice; existing deployment-target dylib warnings remain non-fatal. Its dirty title is not trusted
+  for future feature credit; rebuild from the clean checkpoint first.
+- The saved-state audit now exposes the authoritative final scout report, camp decision, and their
+  exact revision/generation/activity/application/target identity match. Harness contract suite:
+  139 tests green.
+- Runtime identity remains strict: any dirty build title is untrusted because current worktree state
+  cannot prove which paths were dirty at build time. A clean committed rebuild is required.
+- Run `20260806_232503` naturally discovered the road at the original open camp but reached
+  `scheduler_hour=137` with no routed score-eligible candidate after the new concealed-watch route
+  contract. This supersedes the pre-watch historical dispatch expectation.
+- Run `20260806_234324` used a declared forest-camp precondition, naturally accumulated 12 leads,
+  and remained healthy but idle at drive `473` through `scheduler_hour=137`. The stable camp ID
+  yields its first frontier deadline at hour `139`; the inherited 12-hour timeout was two hours
+  short. Permissions, startup, wait elapsed time, and feature error guard were green.
+- These are the two bounded attempts for this obstacle. Do not rerun in this coordinator phase.
+  The corrected scenario now targets the code-derived hour-139 sector-0 frontier dispatch and is
+  explicitly pending live credit.
+
 ### Capped non-credit probes
 
 - Smoke/light/sound runs `20260805_121516` and `20260805_122335` stopped on overmap-key and
@@ -96,6 +117,7 @@ Use the narrow test binary when affected objects match:
 ```sh
 ./tests/cata_test '[overdue_total_loss]' --rng-seed 860806
 ./tests/cata_test '[physical_report],[split_return],[local_handoff],[camp_map]' --rng-seed 860806
+python3 -m unittest tools.openclaw_harness.test_fixture_contract
 ```
 
 Build the Mac non-tiles test target when core ownership code changes:
@@ -107,3 +129,33 @@ make -j8 SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=1 tests
 Use `tools/openclaw_harness/startup_harness.py` for scenario list/probe/handoff operations. Preserve
 the run directory, exact command, source/binary identity, observer snapshot, incident JSON, and
 screenshot receipt. Cross-platform qualification follows only when the vertical behavior is green.
+
+## Active bandit scout-to-decision proof contract
+
+- Claim: one real bandit camp naturally builds terrain memory, reaches its ID-derived sector-0
+  frontier deadline, dispatches its exact pair,
+  travels and observes, completes quietly, physically returns at least one survivor, creates a
+  final non-provisional report, and enters the authoritative camp decision owner in one run.
+- Preconditions/interventions: derive from the existing McWilliams save; set deterministic time,
+  place one five-member camp at `(160,39,0)`, park the player on its sector-0 inner waypoint,
+  retire the empty original roster, clear inherited evidence/outings, and add
+  `DEBUG_CLAIRVOYANCE`. Each transform records a receipt. Do not inject a lead, dispatch,
+  observation, casualty, return, report, or decision.
+- Causal boundary: the saved idle five-member camp with zero leads and no active outing before the
+  first wait. Production owns every later transition.
+- Real path: hourly structural scheduler -> terrain discovery -> exact-pair route/handoff/cohesion
+  -> ordinary observation and return movement -> canonical return packet/report -> decision
+  acceptance.
+- Expected transition: the same stable pair reaches observing, at least one real survivor returns
+  home, the dispatch completes without a debug ecology intervention, its eligible evidence enters
+  one final report, and that exact report enters assessment/decision.
+- Negative/control: preflight proves zero leads/zero outing; an empty or all-loss return cannot pass;
+  private evidence without a carrier cannot appear; stale identity, duplicate owner, or mismatched
+  report generation is red.
+- Timeout: 14 game hours to the code-derived frontier deadline, five minutes for real local
+  handoff, then an initial bounded six-hour post-observation window. The two-attempt cap is already
+  exhausted; this corrected contract is pending a later phase/session, not another immediate run.
+- Pass/fail identities: record `0d99500b33` source plus the rebuilt binary identity, derived fixture
+  manifest/hash, scenario name, run ID, saved-owner audit, same-run transition patterns, and compact
+  incident JSON/PNG. Passing requires a surviving physical return, final report, and decision;
+  startup, handoff, or schema validity alone is non-credit.

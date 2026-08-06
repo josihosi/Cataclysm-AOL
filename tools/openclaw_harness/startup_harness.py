@@ -5340,6 +5340,7 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(members, list):
         members = []
     ready_at_home = 0
+    home_survivors = 0
     wounded_or_unready = 0
     active_outside_ids = {str(value) for value in active_member_ids}
     member_state_counts: Dict[str, int] = {}
@@ -5351,6 +5352,8 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         is_wounded_or_unready = bool(member.get("wounded_or_unready", False))
         if state == "at_home" and not is_wounded_or_unready:
             ready_at_home += 1
+        if state == "at_home":
+            home_survivors += 1
         if state in {"at_home", "outbound", "local_contact"} and is_wounded_or_unready:
             wounded_or_unready += 1
         if state in {"outbound", "local_contact"}:
@@ -5369,6 +5372,70 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     known_recent_marks = site.get("known_recent_marks", [])
     if not isinstance(known_recent_marks, list):
         known_recent_marks = []
+    raw_report = site.get("current_scout_report", {})
+    if not isinstance(raw_report, dict):
+        raw_report = {}
+    def persisted_int(owner: Dict[str, Any], key: str, default: int) -> int:
+        try:
+            return int(owner.get(key, default))
+        except (TypeError, ValueError):
+            return default
+
+    report_observations = raw_report.get("observations", [])
+    if not isinstance(report_observations, list):
+        report_observations = []
+    scout_report = {
+        "present": (
+            persisted_int(raw_report, "revision", 0) > 0
+            and persisted_int(raw_report, "source_generation", 0) > 0
+            and bool(str(raw_report.get("source_activity_id", "") or ""))
+            and bool(str(raw_report.get("application_key", "") or ""))
+        ),
+        "revision": persisted_int(raw_report, "revision", 0),
+        "action_policy": str(raw_report.get("action_policy", "") or ""),
+        "source_activity_id": str(raw_report.get("source_activity_id", "") or ""),
+        "source_generation": persisted_int(raw_report, "source_generation", 0),
+        "source_job_type": str(raw_report.get("source_job_type", "") or ""),
+        "target_id": str(raw_report.get("target_id", "") or ""),
+        "target_omt": raw_report.get("target_omt", []),
+        "target_lead_id": str(raw_report.get("target_lead_id", "") or ""),
+        "target_lead_revision": persisted_int(raw_report, "target_lead_revision", 0),
+        "application_key": str(raw_report.get("application_key", "") or ""),
+        "observation_count": len(report_observations),
+        "casualty_count": len(raw_report.get("casualty_ids", []))
+        if isinstance(raw_report.get("casualty_ids", []), list) else 0,
+        "delivered_minutes": persisted_int(raw_report, "delivered_minutes", -1),
+        "provisional": bool(raw_report.get("provisional", False)),
+    }
+    raw_decision = site.get("camp_decision", {})
+    if not isinstance(raw_decision, dict):
+        raw_decision = {}
+    camp_decision = {
+        "state": str(raw_decision.get("state", "") or ""),
+        "report_policy": str(raw_decision.get("report_policy", "") or ""),
+        "source_report_revision": persisted_int(raw_decision, "source_report_revision", 0),
+        "source_report_generation": persisted_int(raw_decision, "source_report_generation", 0),
+        "source_report_activity_id": str(raw_decision.get("source_report_activity_id", "") or ""),
+        "source_report_application_key": str(raw_decision.get("source_report_application_key", "") or ""),
+        "target_id": str(raw_decision.get("target_id", "") or ""),
+        "target_omt": raw_decision.get("target_omt", []),
+        "target_lead_id": str(raw_decision.get("target_lead_id", "") or ""),
+        "target_lead_revision": persisted_int(raw_decision, "target_lead_revision", 0),
+        "last_transition_minutes": persisted_int(raw_decision, "last_transition_minutes", -1),
+        "next_eligible_minutes": persisted_int(raw_decision, "next_eligible_minutes", -1),
+        "transition_reason": str(raw_decision.get("transition_reason", "") or ""),
+    }
+    report_decision_identity_matches = bool(scout_report["present"]) and all([
+        camp_decision["source_report_revision"] == scout_report["revision"],
+        camp_decision["source_report_generation"] == scout_report["source_generation"],
+        camp_decision["source_report_activity_id"] == scout_report["source_activity_id"],
+        camp_decision["source_report_application_key"] == scout_report["application_key"],
+        camp_decision["report_policy"] == scout_report["action_policy"],
+        camp_decision["target_id"] == scout_report["target_id"],
+        camp_decision["target_omt"] == scout_report["target_omt"],
+        camp_decision["target_lead_id"] == scout_report["target_lead_id"],
+        camp_decision["target_lead_revision"] == scout_report["target_lead_revision"],
+    ])
     return {
         "site_id": site.get("site_id", ""),
         "source_kind": site.get("source_kind", ""),
@@ -5384,6 +5451,7 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "empty_site_retirement_blockers": empty_retirement_blockers,
         "member_count": len(members),
         "ready_at_home_count": ready_at_home,
+        "home_survivor_count": home_survivors,
         "wounded_or_unready_count": wounded_or_unready,
         "active_outside_count": len(active_outside_ids),
         "member_state_counts": member_state_counts,
@@ -5400,6 +5468,9 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "remembered_pressure": site.get("remembered_pressure", ""),
         "known_recent_marks": known_recent_marks,
         "known_recent_mark_count": len(known_recent_marks),
+        "current_scout_report": scout_report,
+        "camp_decision": camp_decision,
+        "report_decision_identity_matches": report_decision_identity_matches,
         "lead_entries_valid": lead_entries_valid,
         "lead_count": len(leads),
         "leads": leads,
@@ -5434,6 +5505,8 @@ def audit_saved_bandit_live_world_state(
     required_local_handoff_pair_contract: Optional[bool] = None,
     required_member_count: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
+    required_min_ready_at_home_count: Optional[int] = None,
+    required_min_home_survivor_count: Optional[int] = None,
     required_wounded_or_unready_count: Optional[int] = None,
     required_active_outside_count: Optional[int] = None,
     required_min_active_member_ids: Optional[int] = None,
@@ -5462,6 +5535,11 @@ def audit_saved_bandit_live_world_state(
     required_retired_empty_site: Optional[bool] = None,
     required_retirement_summary_contains: str = "",
     required_empty_retirement_blocker_contains: str = "",
+    required_scout_report_present: Optional[bool] = None,
+    required_scout_report_provisional: Optional[bool] = None,
+    required_scout_report_min_observations: Optional[int] = None,
+    required_camp_decision_state: str = "",
+    required_report_decision_identity_match: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Read-only saved dimension-data audit for persisted bandit_live_world state."""
     if not world_dir.exists():
@@ -5629,6 +5707,7 @@ def audit_saved_bandit_live_world_state(
     required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
     required_retirement_summary_contains = str(required_retirement_summary_contains or "").strip()
     required_empty_retirement_blocker_contains = str(required_empty_retirement_blocker_contains or "").strip()
+    required_camp_decision_state = str(required_camp_decision_state or "").strip()
 
     def site_matches(site: Dict[str, Any]) -> bool:
         if required_profile and site.get("hostile_profile") != required_profile:
@@ -5687,6 +5766,10 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) != required_ready_at_home_count:
             return False
+        if required_min_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) < required_min_ready_at_home_count:
+            return False
+        if required_min_home_survivor_count is not None and int(site.get("home_survivor_count", 0) or 0) < required_min_home_survivor_count:
+            return False
         if required_wounded_or_unready_count is not None and int(site.get("wounded_or_unready_count", 0) or 0) != required_wounded_or_unready_count:
             return False
         if required_active_outside_count is not None and int(site.get("active_outside_count", 0) or 0) != required_active_outside_count:
@@ -5701,6 +5784,22 @@ def audit_saved_bandit_live_world_state(
             blockers = site.get("empty_site_retirement_blockers", [])
             if not isinstance(blockers, list) or required_empty_retirement_blocker_contains not in [str(blocker) for blocker in blockers]:
                 return False
+        scout_report = site.get("current_scout_report", {})
+        if not isinstance(scout_report, dict):
+            scout_report = {}
+        if required_scout_report_present is not None and bool(scout_report.get("present", False)) != required_scout_report_present:
+            return False
+        if required_scout_report_provisional is not None and bool(scout_report.get("provisional", False)) != required_scout_report_provisional:
+            return False
+        if required_scout_report_min_observations is not None and int(scout_report.get("observation_count", 0) or 0) < required_scout_report_min_observations:
+            return False
+        camp_decision = site.get("camp_decision", {})
+        if not isinstance(camp_decision, dict):
+            camp_decision = {}
+        if required_camp_decision_state and str(camp_decision.get("state", "")) != required_camp_decision_state:
+            return False
+        if required_report_decision_identity_match is not None and bool(site.get("report_decision_identity_matches", False)) != required_report_decision_identity_match:
+            return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
             return False
         if required_active_members_found and not bool(site.get("active_members_all_found_in_saved_overmap")):
@@ -5828,6 +5927,8 @@ def audit_saved_bandit_live_world_state(
         "required_local_handoff_pair_contract": required_local_handoff_pair_contract,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
+        "required_min_ready_at_home_count": required_min_ready_at_home_count,
+        "required_min_home_survivor_count": required_min_home_survivor_count,
         "required_wounded_or_unready_count": required_wounded_or_unready_count,
         "required_active_outside_count": required_active_outside_count,
         "required_min_active_member_ids": required_min_active_member_ids,
@@ -5855,6 +5956,11 @@ def audit_saved_bandit_live_world_state(
         "required_retired_empty_site": required_retired_empty_site,
         "required_retirement_summary_contains": required_retirement_summary_contains,
         "required_empty_retirement_blocker_contains": required_empty_retirement_blocker_contains,
+        "required_scout_report_present": required_scout_report_present,
+        "required_scout_report_provisional": required_scout_report_provisional,
+        "required_scout_report_min_observations": required_scout_report_min_observations,
+        "required_camp_decision_state": required_camp_decision_state,
+        "required_report_decision_identity_match": required_report_decision_identity_match,
     }
     has_requirement = any(value not in (None, "", []) for value in required_fields.values())
     matching_sites = [site for site in observed_sites if site_matches(site)]
@@ -9295,6 +9401,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "new_footprint": new_footprint,
                 "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
                 "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
+                "reset_shakedown_history": bool(raw.get("reset_shakedown_history", False)),
             })
             continue
 
@@ -12168,6 +12275,22 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
         cloned_site["remembered_target_or_mark"] = ""
         cloned_site["remembered_pressure"] = ""
         cloned_site["known_recent_marks"] = []
+    if bool(transform.get("reset_shakedown_history", False)):
+        cloned_site.update({
+            "last_shakedown_outcome": "",
+            "shakedown_anger": 0,
+            "shakedown_bandit_losses": 0,
+            "shakedown_basecamp_defender_observation_pending": False,
+            "shakedown_basecamp_defenders_at_fight": 0,
+            "shakedown_caution": 0,
+            "shakedown_defender_losses": 0,
+            "shakedown_last_demanded_value": 0,
+            "shakedown_last_reachable_value": 0,
+            "shakedown_last_surrendered_value": 0,
+            "shakedown_loot_value": 0,
+            "shakedown_reopen_available": False,
+            "shakedown_reopen_used": False,
+        })
 
     sites.append(cloned_site)
     dimension_path.write_text(
@@ -12186,6 +12309,7 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
         "new_footprint": cloned_site.get("footprint", []),
         "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
         "clear_remembered_pressure": bool(transform.get("clear_remembered_pressure", True)),
+        "reset_shakedown_history": bool(transform.get("reset_shakedown_history", False)),
     }
 
 
@@ -13246,6 +13370,8 @@ def execute_probe_steps(
 
             required_member_count = optional_step_int("required_member_count")
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
+            required_min_ready_at_home_count = optional_step_int("required_min_ready_at_home_count")
+            required_min_home_survivor_count = optional_step_int("required_min_home_survivor_count")
             required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
             required_active_outside_count = optional_step_int("required_active_outside_count")
             required_active_sortie_started_minutes = optional_step_int("required_active_sortie_started_minutes")
@@ -13263,6 +13389,16 @@ def execute_probe_steps(
             required_local_handoff_exact_pair = optional_step_bool("required_local_handoff_exact_pair")
             required_local_handoff_pair_contract = optional_step_bool(
                 "required_local_handoff_pair_contract"
+            )
+            required_scout_report_present = optional_step_bool("required_scout_report_present")
+            required_scout_report_provisional = optional_step_bool(
+                "required_scout_report_provisional"
+            )
+            required_scout_report_min_observations = optional_step_int(
+                "required_scout_report_min_observations"
+            )
+            required_report_decision_identity_match = optional_step_bool(
+                "required_report_decision_identity_match"
             )
             required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
             required_lead_bounty = optional_step_int("required_lead_bounty")
@@ -13342,6 +13478,8 @@ def execute_probe_steps(
                     required_local_handoff_pair_contract=required_local_handoff_pair_contract,
                     required_member_count=required_member_count,
                     required_ready_at_home_count=required_ready_at_home_count,
+                    required_min_ready_at_home_count=required_min_ready_at_home_count,
+                    required_min_home_survivor_count=required_min_home_survivor_count,
                     required_wounded_or_unready_count=required_wounded_or_unready_count,
                     required_active_outside_count=required_active_outside_count,
                     required_home_side_signal_count=required_home_side_signal_count,
@@ -13380,6 +13518,13 @@ def execute_probe_steps(
                     required_known_recent_mark_contains=str(
                         step.get("required_known_recent_mark_contains", "") or ""
                     ).strip(),
+                    required_scout_report_present=required_scout_report_present,
+                    required_scout_report_provisional=required_scout_report_provisional,
+                    required_scout_report_min_observations=required_scout_report_min_observations,
+                    required_camp_decision_state=str(
+                        step.get("required_camp_decision_state", "") or ""
+                    ).strip(),
+                    required_report_decision_identity_match=required_report_decision_identity_match,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -13399,6 +13544,8 @@ def execute_probe_steps(
                     "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
                     "required_member_count": required_member_count,
                     "required_ready_at_home_count": required_ready_at_home_count,
+                    "required_min_ready_at_home_count": required_min_ready_at_home_count,
+                    "required_min_home_survivor_count": required_min_home_survivor_count,
                     "required_wounded_or_unready_count": required_wounded_or_unready_count,
                     "required_active_outside_count": required_active_outside_count,
                     "required_home_side_signal_count": required_home_side_signal_count,
@@ -13412,6 +13559,13 @@ def execute_probe_steps(
                     "required_min_active_member_ids": required_min_active_member_ids,
                     "required_active_members_found": bool(step.get("required_active_members_found", False)),
                     "required_active_member_max_abs_offset_ms": required_max_offset,
+                    "required_scout_report_present": required_scout_report_present,
+                    "required_scout_report_provisional": required_scout_report_provisional,
+                    "required_scout_report_min_observations": required_scout_report_min_observations,
+                    "required_camp_decision_state": str(
+                        step.get("required_camp_decision_state", "") or ""
+                    ).strip(),
+                    "required_report_decision_identity_match": required_report_decision_identity_match,
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
                     "required_max_leads": required_max_leads,
