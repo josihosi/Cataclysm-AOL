@@ -3540,6 +3540,99 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertEqual(clear["site_id"], "overmap_special:bandit_camp@140,51,0")
 
+    def test_phase5_visible_burn_producer_fixture_is_uncloaked_target_footing(self) -> None:
+        resolved = resolve_fixture_payload(
+            "bandit_phase5_player_camp_burn_producer_v0_2026-08-06",
+            "live-debug",
+        )
+        transforms = resolved["save_transforms"]
+        kinds = [transform["kind"] for transform in transforms]
+        lead = next(
+            transform for transform in transforms
+            if transform["kind"] == "bandit_camp_map_lead"
+        )
+        mutations = [
+            mutation
+            for transform in transforms if transform["kind"] == "player_mutations"
+            for mutation in transform["mutations"]
+        ]
+
+        self.assertEqual(
+            resolved["source_chain"][-2:],
+            [
+                ("live-debug", "bandit_phase5_player_camp_burn_producer_v0_2026-08-06"),
+                ("live-debug", "bandit_phase4_quiet_current_schema_v0_2026-08-05"),
+            ],
+        )
+        self.assertLess(kinds.index("bandit_clear_site_evidence"), kinds.index("bandit_camp_map_lead"))
+        self.assertLess(kinds.index("bandit_camp_map_lead"), kinds.index("game_turn"))
+        self.assertEqual(kinds[-1], "player_mutations")
+        self.assertEqual(mutations, ["DEBUG_CLAIRVOYANCE"])
+        self.assertNotIn("DEBUG_CLOAK", mutations)
+        self.assertEqual(lead["kind_value"], "terrain_opportunity")
+        self.assertEqual(lead["origin"], "structural_routine")
+        self.assertEqual(lead["status"], "scout_confirmed")
+        self.assertEqual(lead["target_id"], "player@140,39,0")
+        self.assertEqual(lead["target_omt"], [140, 39, 0])
+        self.assertEqual(lead["bounty"], 8)
+        self.assertEqual(lead["threat"], 0)
+        self.assertEqual(lead["next_routine_dispatch_eligible_minutes"], 8280)
+        self.assertIn("no discovery, route, watch, dispatch, burn, or outcome", lead["source_summary"])
+        clock = next(transform for transform in transforms if transform["kind"] == "game_turn")
+        self.assertEqual(clock["turn"], 5255993)
+        self.assertTrue(clock["shift_queued_eocs"])
+
+    def test_phase5_visible_burn_producer_is_explicit_non_credit_observing_capture(self) -> None:
+        scenario = load_scenario("bandit.phase5_visible_burn_producer_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+        exact_lead = (
+            "overmap_special:bandit_camp@140,51,0:"
+            "terrain_opportunity:140,39,0:player_camp"
+        )
+
+        self.assertEqual(
+            scenario["fixture"],
+            "bandit_phase5_player_camp_burn_producer_v0_2026-08-06",
+        )
+        self.assertEqual(scenario["profile"], "dev-harness")
+        self.assertEqual(scenario["world"], "McWilliams")
+        self.assertTrue(scenario["replace_existing_worlds"])
+        self.assertLess(
+            labels.index("preflight_phase5_player_camp_producer"),
+            labels.index("wait_three_hours_for_phase5_schema10_observer_pair"),
+        )
+        self.assertLess(
+            labels.index("audit_exact_phase5_player_camp_dispatch"),
+            labels.index("open_phase5_burn_producer_save_prompt"),
+        )
+        self.assertLess(
+            labels.index("audit_phase5_burn_producer_mtime_after_save"),
+            labels.index("audit_saved_phase5_schema10_observing_pair"),
+        )
+        waits = [step for step in steps if step["kind"] == "long_wait"]
+        self.assertEqual([(step["choice_key"], step["expected_duration"]) for step in waits], [("7", "3h")])
+        preflight = steps[labels.index("preflight_phase5_player_camp_producer")]
+        postflight = steps[labels.index("audit_saved_phase5_schema10_observing_pair")]
+        dispatch = steps[labels.index("audit_exact_phase5_player_camp_dispatch")]
+        self.assertEqual(preflight["required_lead_kind"], "terrain_opportunity")
+        self.assertEqual(preflight["required_lead_target_id"], "player@140,39,0")
+        self.assertEqual(postflight["required_active_target_id_exact"], exact_lead)
+        self.assertEqual(postflight["required_active_outing_kind"], "structural_sortie")
+        self.assertEqual(postflight["required_active_outing_generation"], 1)
+        self.assertEqual(postflight["required_active_outing_phase"], "observing")
+        self.assertEqual(postflight["required_active_job_type"], "scout")
+        self.assertTrue(
+            any(
+                exact_lead in pattern
+                for group in dispatch["required_line_patterns"]
+                for pattern in group
+            )
+        )
+        self.assertIn("non-credit producer/calibration only", scenario["evidence_contract"]["claim"])
+        self.assertIn("no Phase-5 burn or observer credit", scenario["evidence_contract"]["load_only_verdict"])
+        self.assertIn("--compact-stdout", scenario["recommended_test_command"])
+
     def test_phase4_decoy_scenario_uses_real_empty_arrival_and_owner_audit(self) -> None:
         scenario = load_scenario("bandit.phase4_decoy_empty_signal_live_mcw")
         steps = list(scenario["steps"])

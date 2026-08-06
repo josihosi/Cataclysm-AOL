@@ -1,0 +1,168 @@
+{
+  "name": "bandit.phase5_visible_burn_producer_mcw",
+  "description": "Non-credit Phase-5 producer/calibration run. A current quiet five-member bandit camp receives one fixture-known terrain-opportunity lead at the real player camp, then production must choose a bounded watch route and dispatch an exact structural pair into observing within one three-hour wait. The run saves that authoritative owner for coordinator inspection and requires direct confirmation of schema_version 10 plus selected_watch_omt before any derived credited run; it does not stage or claim burn, ordinary visibility, observer rendering, incident capture, or an ecology outcome.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase5_player_camp_burn_producer_v0_2026-08-06",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+    "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:140,39,0:player_camp"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "settle_phase5_visible_burn_producer",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_phase5_burn_producer_load",
+      "abort_reason": "the current-schema producer fixture did not reach normal gameplay",
+      "expected_visible_fact": "the non-credit producer reaches normal gameplay before any simulation time advances"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_phase5_player_camp_producer",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 5,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_min_leads": 1,
+      "required_max_leads": 1,
+      "required_lead_kind": "terrain_opportunity",
+      "required_lead_origin": "structural_routine",
+      "required_lead_target_id": "player@140,39,0",
+      "required_lead_source_contains": "fixture_phase5_player_camp:terrain_fit:road",
+      "required_lead_status": "scout_confirmed",
+      "required_lead_bounty": 8,
+      "required_lead_threat": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_phase5_player_camp_producer",
+      "abort_reason": "fixture did not contain exactly five ready members, no active outing, and the sole exact player-camp terrain opportunity",
+      "expected_immediate_state": "five ready members and one fixture-known player-camp target are idle; production has not chosen a route, watch, pair, or outcome"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "record_phase5_burn_producer_turn",
+      "record_baseline": true,
+      "expected_visible_fact": "the hour-139 producer baseline is recorded before the bounded wait"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_three_hours_for_phase5_schema10_observer_pair",
+      "choice_key": "7",
+      "expected_duration": "3h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu opens before choosing the single three-hour producer window",
+      "completion_wait_seconds": 2,
+      "completion_artifact_timeout_seconds": 300,
+      "artifact_state_patterns": [
+        "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:140,39,0:player_camp"
+      ],
+      "expected_visible_fact": "one bounded three-hour window lets production select geography, dispatch the exact pair, and advance it toward the selected watch",
+      "failure_rule": "If production does not dispatch the exact fixture-known target in this window, preserve the producer artifacts but do not create a calibration fixture."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_exact_phase5_player_camp_dispatch",
+      "required_line_patterns": [
+        [
+          "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+          "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:140,39,0:player_camp"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase5_player_camp_dispatch_missing",
+      "abort_reason": "same-run production logs did not contain the exact player-camp structural dispatch",
+      "expected_immediate_state": "production, not the fixture, owns one exact pair and its selected watch route"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_phase5_burn_producer_mtime_before_save",
+      "expected_visible_fact": "the player-save mtime baseline is recorded before producer writeback"
+    },
+    {
+      "kind": "press",
+      "label": "open_phase5_burn_producer_save_prompt",
+      "keys": ["S"],
+      "delay_ms": 250,
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": ["quit", "Case"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_phase5_burn_producer_save_prompt",
+      "abort_reason": "the case-sensitive save-and-quit prompt was not visibly proven",
+      "expected_visible_fact": "the final producer save-and-quit prompt is open"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_phase5_burn_producer_save",
+      "keys": ["Y"],
+      "delay_ms": 250,
+      "settle_seconds": 5,
+      "capture_after": false,
+      "expected_visible_fact": "uppercase Y confirms the producer save"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_phase5_burn_producer_mtime_after_save",
+      "changed_since_label": "audit_phase5_burn_producer_mtime_before_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase5_burn_producer_writeback",
+      "abort_reason": "the player save mtime did not advance after save-and-quit",
+      "expected_visible_fact": "the same-run authoritative producer state is written to disk"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_phase5_schema10_observing_pair",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 3,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_activity_id_contains": "#structural",
+      "required_active_outing_generation": 1,
+      "required_active_outing_phase": "observing",
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "required_active_target_id_exact": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:140,39,0:player_camp",
+      "required_active_job_type": "scout",
+      "required_min_active_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase5_schema10_observing_pair_missing",
+      "abort_reason": "saved producer state did not retain the exact generation-1 structural pair in observing on the player-camp target",
+      "expected_immediate_state": "saved owner contains the natural current-code pair for coordinator-only schema_version and selected_watch_omt calibration"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase5_visible_burn_producer_mcw",
+  "evidence_contract": {
+    "claim": "non-credit producer/calibration only: production selected and saved one exact observing structural pair against fixture-known real player-camp target footing",
+    "setup_boundary": "the fixture injects one known terrain-opportunity target, deliberately restages the player clock to hour 139 as deterministic calibration setup rather than natural elapsed play, and adds DEBUG_CLAIRVOYANCE; it does not inject discovery, route, watch, dispatch, pair ownership, burn, observer selection, incident, or outcome",
+    "coordinator_calibration": "Inspect the captured authoritative save for active_outing.schema_version == 10 and selected_watch_omt before deriving any credited visible-burn scenario.",
+    "load_only_verdict": "producer footing only / no Phase-5 burn or observer credit",
+    "failure_rule": "Do not credit burn, reciprocal visibility, egress, rally, observer rendering, or incident evidence from this producer. If saved phase is not observing or schema/watch inspection is invalid, discard the calibration output."
+  }
+}
