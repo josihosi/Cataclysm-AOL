@@ -14965,6 +14965,45 @@ TEST_CASE( "bandit_live_world_route_qualified_alternate_watch_persists_once",
            bandit_live_world::structural_watch_route_apply_result::unchanged );
     CHECK( serialize_world( world ) == persisted );
 
+    outing.phase = bandit_live_world::scout_phase::observing;
+    outing.waypoint_index = 2;
+    outing.local_contact_minutes = 160;
+    outing.last_progress_minutes = 200;
+    outing.last_advanced_minutes = 200;
+    outing.assessment.observation_started_minutes = 200;
+    outing.assessment.last_progress_minutes = 200;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    const tripoint_abs_omt first_watch = outing.selected_watch_omt;
+    CHECK( bandit_live_world::advance_structural_scout_assessment(
+               site, outing.activity_id, outing.generation,
+               outing.target_lead_revision, 319 ) ==
+           bandit_live_world::scout_assessment_result::updated );
+    CHECK( outing.selected_watch_omt == first_watch );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 site, outing.activity_id, outing.generation,
+                 outing.target_lead_revision, 320 ) ==
+             bandit_live_world::scout_assessment_result::alternate_watch_started );
+    CHECK( outing.phase == bandit_live_world::scout_phase::observing );
+    CHECK( outing.alternate_watch_attempted );
+    CHECK( outing.selected_watch_omt == alternate );
+    CHECK( outing.alternate_watch_omt == first_watch );
+    CHECK( outing.shared_route == alternate_route );
+    CHECK( outing.assessment.last_progress_minutes == 320 );
+    CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    CHECK( bandit_live_world::advance_structural_scout_assessment(
+               site, outing.activity_id, outing.generation,
+               outing.target_lead_revision, 439 ) ==
+           bandit_live_world::scout_assessment_result::updated );
+    CHECK( outing.phase == bandit_live_world::scout_phase::observing );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 site, outing.activity_id, outing.generation,
+                 outing.target_lead_revision, 440 ) ==
+             bandit_live_world::scout_assessment_result::inconclusive );
+    CHECK( outing.phase == bandit_live_world::scout_phase::returning_report );
+    CHECK( outing.assessment.exit_reason ==
+           "second watch made no assessment progress" );
+    CHECK( outing.assessment.next_eligible_minutes == 440 + 12 * 60 );
+
     std::vector<tripoint_abs_omt> malformed_alternate = alternate_route;
     malformed_alternate[2] = primary;
     bandit_live_world::world_state rejected = make_abstract_threat_test_world(

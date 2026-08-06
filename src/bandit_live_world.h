@@ -182,6 +182,7 @@ enum class scout_assessment_result {
     rejected,
     unchanged,
     updated,
+    alternate_watch_started,
     normal_success,
     inconclusive,
 };
@@ -651,6 +652,7 @@ struct active_outing_state {
     tripoint_abs_omt alternate_watch_omt;
     int alternate_watch_route_cost = -1;
     std::vector<tripoint_abs_omt> alternate_watch_shared_route;
+    bool alternate_watch_attempted = false;
     int covert_egress_chain_version = 0;
     int covert_egress_attempts = 0;
     int covert_egress_revision = 0;

@@ -2646,7 +2646,8 @@ bool structural_watch_route_state_is_consistent(
                                    outing.alternate_watch_kind == structural_watch_kind::none &&
                                    outing.alternate_watch_omt == tripoint_abs_omt() &&
                                    outing.alternate_watch_route_cost == -1 &&
-                                   outing.alternate_watch_shared_route.empty();
+                                   outing.alternate_watch_shared_route.empty() &&
+                                   !outing.alternate_watch_attempted;
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 9 ) {
         return empty_watch_state;
     }
@@ -2668,7 +2669,8 @@ bool structural_watch_route_state_is_consistent(
                outing.alternate_watch_kind == structural_watch_kind::none &&
                outing.alternate_watch_omt == tripoint_abs_omt() &&
                outing.alternate_watch_route_cost == -1 &&
-               outing.alternate_watch_shared_route.empty();
+               outing.alternate_watch_shared_route.empty() &&
+               !outing.alternate_watch_attempted;
     }
     if( outing.selected_watch_route_cost < 0 ) {
         return false;
@@ -2689,7 +2691,8 @@ bool structural_watch_route_state_is_consistent(
     if( outing.alternate_watch_kind == structural_watch_kind::none ) {
         return outing.alternate_watch_omt == tripoint_abs_omt() &&
                outing.alternate_watch_route_cost == -1 &&
-               outing.alternate_watch_shared_route.empty();
+               outing.alternate_watch_shared_route.empty() &&
+               !outing.alternate_watch_attempted;
     }
     const std::optional<int> alternate_distance = target_footprint_watch_distance(
                 outing.alternate_watch_omt, outing.target_footprint );
@@ -6264,6 +6267,7 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "alternate_watch_omt", alternate_watch_omt );
         json.member( "alternate_watch_route_cost", alternate_watch_route_cost );
         json.member( "alternate_watch_shared_route", alternate_watch_shared_route );
+        json.member( "alternate_watch_attempted", alternate_watch_attempted );
         json.member( "covert_egress_chain_version", covert_egress_chain_version );
         json.member( "covert_egress_attempts", covert_egress_attempts );
         json.member( "covert_egress_revision", covert_egress_revision );
@@ -6449,6 +6453,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
             jo.read( "alternate_watch_shared_route",
                      candidate.alternate_watch_shared_route );
         }
+        jo.read( "alternate_watch_attempted", candidate.alternate_watch_attempted );
         if( jo.has_member( "covert_egress_chain_version" ) ) {
             jo.read( "covert_egress_chain_version", candidate.covert_egress_chain_version );
         }
@@ -12480,8 +12485,15 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                     site.active_outing.target_id );
                 continue;
             }
-            if( assessment == scout_assessment_result::updated ) {
+            if( assessment == scout_assessment_result::updated ||
+                assessment == scout_assessment_result::alternate_watch_started ) {
                 site = std::move( candidate );
+                if( assessment == scout_assessment_result::alternate_watch_started ) {
+                    result.notes.push_back(
+                        "structural outing moved to its persisted alternate watch lead=" +
+                        site.active_outing.target_id );
+                    continue;
+                }
                 if( waypoint_progressed ) {
                     result.arrivals_processed++;
                     result.notes.push_back(
@@ -15236,7 +15248,8 @@ scout_assessment_state summarize_normal_scout_assessment(
     bool danger_bounds_started = false;
     std::set<int> strong_visual_buckets;
     std::set<sortie_observation_sense> signal_senses;
-    int latest_progress = summary.observation_started_minutes;
+    int latest_progress = std::max( summary.observation_started_minutes,
+                                    summary.last_progress_minutes );
     for( const sortie_observation &observation : outing.observations ) {
         if( observation.record_schema_version != 1 ||
             observation.target_revision != outing.target_lead_revision ||
@@ -15375,6 +15388,63 @@ scout_assessment_result advance_structural_scout_assessment(
                                              "normal watch assessment complete",
                                              current_minutes );
         return scout_assessment_result::normal_success;
+    }
+    const bool no_progress_window_elapsed =
+        current_minutes - next.assessment.last_progress_minutes >= 2 * 60;
+    const bool can_start_abstract_alternate = no_progress_window_elapsed &&
+            !next.alternate_watch_attempted &&
+            next.alternate_watch_kind != structural_watch_kind::none &&
+            !next.alternate_watch_shared_route.empty() &&
+            next.owner == simulation_owner::abstract &&
+            !next.local_handoff.is_active() &&
+            !next.local_handoff.is_abstract_resume();
+    if( can_start_abstract_alternate ) {
+        std::swap( next.shared_route, next.alternate_watch_shared_route );
+        std::swap( next.selected_watch_kind, next.alternate_watch_kind );
+        std::swap( next.selected_watch_omt, next.alternate_watch_omt );
+        std::swap( next.selected_watch_route_cost,
+                   next.alternate_watch_route_cost );
+        next.alternate_watch_attempted = true;
+        next.waypoint_index = structural_outing_destination_waypoint( next );
+        next.last_progress_minutes = current_minutes;
+        next.assessment.last_progress_minutes = current_minutes;
+        next.expected_return_minutes = structural_expected_return_minutes(
+                                           next.started_minutes, candidate.anchor,
+                                           next.selected_watch_omt );
+        next.missing_deadline_minutes = minutes_after_saturated(
+                                            next.expected_return_minutes,
+                                            scout_missing_grace_minutes );
+        if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+            return scout_assessment_result::rejected;
+        }
+        site = std::move( candidate );
+        record_scout_phase_transition_event(
+            site.active_outing, scout_phase::observing, scout_phase::observing,
+            "no-progress window moved to persisted alternate watch",
+            current_minutes );
+        return scout_assessment_result::alternate_watch_started;
+    }
+    if( no_progress_window_elapsed && next.alternate_watch_attempted ) {
+        next.assessment.readiness_latched = false;
+        next.assessment.threshold_class = scout_assessment_threshold_class::none;
+        next.assessment.next_eligible_minutes = minutes_after_saturated(
+                current_minutes, 12 * 60 );
+        next.assessment.exit_reason =
+            "second watch made no assessment progress";
+        next.phase = scout_phase::returning_report;
+        next.last_progress_minutes = current_minutes;
+        if( next.local_handoff.is_active() ) {
+            next.local_handoff.phase = next.phase;
+        }
+        if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+            return scout_assessment_result::rejected;
+        }
+        site = std::move( candidate );
+        record_scout_phase_transition_event(
+            site.active_outing, scout_phase::observing,
+            scout_phase::returning_report,
+            "second watch made no assessment progress", current_minutes );
+        return scout_assessment_result::inconclusive;
     }
     const bool watch_expired =
         current_minutes - next.assessment.observation_started_minutes >= 8 * 60;
