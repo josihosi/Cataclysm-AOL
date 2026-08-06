@@ -2493,6 +2493,15 @@ class BanditRosterShapeTransformContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)
             dimension_path = world_dir / "dimension_data.gsav"
+            canonical_active_outing = {
+                "operation_id": "structural-sortie-4",
+                "generation": 4,
+                "phase": "observing",
+                "member_ids": [901, 902],
+            }
+            canonical_active_outing_bytes = json.dumps(
+                canonical_active_outing, sort_keys=True, separators=(",", ":")
+            )
             dimension_path.write_text(
                 "# version 39\n" + json.dumps({
                     "overmapbuffer": {
@@ -2506,6 +2515,14 @@ class BanditRosterShapeTransformContractTest(unittest.TestCase):
                                 "supply_last_update_minutes": 8280,
                                 "supply_accounted_living_total": 6,
                                 "supply_member_minute_remainder": 311,
+                                "active_member_ids": [101],
+                                "active_group_id": "legacy-group",
+                                "active_target_id": "legacy-target",
+                                "active_target_omt": [140, 39, 0],
+                                "active_job_type": "scout",
+                                "active_sortie_started_minutes": 8000,
+                                "active_sortie_local_contact_minutes": 8100,
+                                "active_outing": canonical_active_outing,
                                 "spawn_tiles": [
                                     {
                                         "tile": [3360, 1224, 0],
@@ -2551,11 +2568,61 @@ class BanditRosterShapeTransformContractTest(unittest.TestCase):
         self.assertEqual(updated["supply_units"], 37)
         self.assertEqual(updated["supply_member_minute_remainder"], 311)
         self.assertEqual(len(updated["members"]), 5)
+        legacy_active_fields = {
+            "active_member_ids",
+            "active_group_id",
+            "active_target_id",
+            "active_target_omt",
+            "active_job_type",
+            "active_sortie_started_minutes",
+            "active_sortie_local_contact_minutes",
+        }
+        self.assertTrue(legacy_active_fields.isdisjoint(updated))
+        self.assertEqual(
+            json.dumps(updated["active_outing"], sort_keys=True, separators=(",", ":")),
+            canonical_active_outing_bytes,
+        )
         self.assertEqual(
             [spawn_tile["assigned_living_total"] for spawn_tile in updated["spawn_tiles"]],
             [3, 2],
         )
         self.assertTrue(all("headcount" not in spawn_tile for spawn_tile in updated["spawn_tiles"]))
+
+    def test_current_schema_rejects_fabricated_outside_ownership(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            original = "# version 39\n" + json.dumps({
+                "overmapbuffer": {
+                    "bandit_live_world": {
+                        "sites": [{
+                            "schema_version": 12,
+                            "site_id": "camp-selected",
+                            "living_total": 2,
+                            "members": [
+                                {"npc_id": 101, "state": "at_home"},
+                                {"npc_id": 102, "state": "at_home"},
+                            ],
+                        }],
+                    },
+                },
+            })
+            dimension_path.write_text(original, encoding="utf-8")
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_site_roster_shape",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                    "living_member_count": 2,
+                    "active_outside_member_count": 1,
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "authoritative outing transform"):
+                apply_fixture_save_transforms(world_dir, normalized)
+
+            self.assertEqual(dimension_path.read_text(encoding="utf-8"), original)
 
 
 class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):

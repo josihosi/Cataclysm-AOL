@@ -12234,6 +12234,12 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     member_start_index = int(transform.get("member_start_index", 0) or 0)
     wounded_or_unready_count = int(transform.get("wounded_or_unready_count", 0) or 0)
     active_outside_member_count = int(transform.get("active_outside_member_count", 0) or 0)
+    site_schema_version = int(selected_site.get("schema_version", 0) or 0)
+    if site_schema_version >= 10 and active_outside_member_count > 0:
+        raise SystemExit(
+            "Fixture bandit roster-shape transform cannot fabricate current-schema outside ownership; "
+            "use an authoritative outing transform"
+        )
     member_end_index = member_start_index + living_member_count
     if member_end_index > len(members):
         raise SystemExit(
@@ -12260,7 +12266,6 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         member["last_writeback_summary"] = "fixture roster shape: wounded/unready member"
 
     selected_site["members"] = shaped_members
-    site_schema_version = int(selected_site.get("schema_version", 0) or 0)
     headcount_override = transform.get("headcount_override")
     has_headcount_override = headcount_override is not None and str(headcount_override).strip() != ""
     if site_schema_version >= 10:
@@ -12284,21 +12289,33 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
                         spawn_tile.pop("headcount", None)
                     else:
                         spawn_tile["headcount"] = 0
-    selected_site["active_member_ids"] = active_member_ids
-    if active_member_ids:
-        site_id = str(selected_site.get("site_id", ""))
-        selected_site["active_group_id"] = site_id + "#fixture_active_pressure"
-        selected_site["active_job_type"] = str(transform.get("active_job_type", "stalk") or "stalk").strip()
-        selected_site["active_target_id"] = str(transform.get("active_target_id", "") or "").strip()
-        selected_site["active_sortie_started_minutes"] = 0
-        selected_site["active_sortie_local_contact_minutes"] = 0
+    if site_schema_version >= 10:
+        for legacy_active_field in (
+            "active_member_ids",
+            "active_group_id",
+            "active_target_id",
+            "active_target_omt",
+            "active_job_type",
+            "active_sortie_started_minutes",
+            "active_sortie_local_contact_minutes",
+        ):
+            selected_site.pop(legacy_active_field, None)
     else:
-        selected_site["active_group_id"] = ""
-        selected_site["active_target_id"] = ""
-        selected_site["active_target_omt"] = [0, 0, 0]
-        selected_site["active_job_type"] = ""
-        selected_site["active_sortie_started_minutes"] = -1
-        selected_site["active_sortie_local_contact_minutes"] = -1
+        selected_site["active_member_ids"] = active_member_ids
+        if active_member_ids:
+            site_id = str(selected_site.get("site_id", ""))
+            selected_site["active_group_id"] = site_id + "#fixture_active_pressure"
+            selected_site["active_job_type"] = str(transform.get("active_job_type", "stalk") or "stalk").strip()
+            selected_site["active_target_id"] = str(transform.get("active_target_id", "") or "").strip()
+            selected_site["active_sortie_started_minutes"] = 0
+            selected_site["active_sortie_local_contact_minutes"] = 0
+        else:
+            selected_site["active_group_id"] = ""
+            selected_site["active_target_id"] = ""
+            selected_site["active_target_omt"] = [0, 0, 0]
+            selected_site["active_job_type"] = ""
+            selected_site["active_sortie_started_minutes"] = -1
+            selected_site["active_sortie_local_contact_minutes"] = -1
 
     dimension_path.write_text(
         version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
