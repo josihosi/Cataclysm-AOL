@@ -1206,3 +1206,13 @@ Use these when they are actually the missing evidence, not as ritual.
 On this Mac, treat top-level `make -j4 tests` as the reliable path for a fresh `cata_test`.
 Avoid treating `make -C tests cata_test` as authoritative here; it has been a repeated source of toolchain/stale-build nonsense.
 Also: if you actually need a fresh tiles binary, use `make -j4 TILES=1 cataclysm-tiles`; plain `make cataclysm-tiles` is not an honest rebuild path here.
+
+Phase-5 bounded failed-egress memory is green at `0dc85f5bc9`. Redirected Mac test build and
+release-tiles link exit 0. With `--rng-seed 424242`, `[covert_burn]` passes 2/278,
+`[local_handoff]` 1/651, `[structural_bounty]` 51/6,785, `[covert_disposition]` 2/97, and
+`[ecology_intervention]` 2/61. Coverage includes the three-attempt cap, same-minute revision CAS,
+endpoint/route-footprint persistence, legacy schema-10 migration, local/abstract/local handoff,
+strict retry versus authorized lateral replan, terminal home-route preflight, authoritative no-home
+abandonment, and failed-footing exclusion across exposed/report/home overmap and local emergency
+movement. `git diff --check` and final scoped autoreview are clean. `astyle` 3.1 is unavailable; no
+live GUI, Linux, or Windows runtime is claimed. Next is full bounded egress completion/rally proof.

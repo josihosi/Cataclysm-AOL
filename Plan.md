@@ -321,8 +321,12 @@ all generated local/overmap routes keep the target inner ring excluded. The chos
 dematerialization/rematerialization, post-rally casualties keep the same owner cleanup, and terminal
 no-route or six-hour persistent immobility closes through physical report/cargo/casualty writeback
 plus the canonical structural return receipt. Mac build, focused tests, release tiles link, and the
-fresh closeout review are green. No astyle 3.1, live GUI, Linux, or Windows runtime is claimed. The
-next detailed row is bounded failed-egress route memory and retry hysteresis.
+fresh closeout review are green. Bounded failed-egress memory is checkpointed at `0dc85f5bc9`:
+three cursor-revisioned attempts remember endpoints and route footprints across save/load and owner
+handoff; exhausted survivors receive preflighted home routes whose exclusions remain active until
+the outing closes. Only failed home routing may use stranded-return closure. Final Mac focused
+tests, release tiles link, and clean autoreview are green. No astyle 3.1, live GUI, Linux, or Windows
+runtime is claimed. Next is full bounded egress completion and rally/no-mutual-visibility semantics.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
