@@ -25,12 +25,12 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit the real loaded perception seams for the first outward bandit wealth cue. Implement the
-   smallest honest producer that can raise coarse bounty from occupied baseline `1` to `2`, with
-   explicit cue class/source/bucket provenance and no remote storage, hidden-item, light/smoke, or
-   theoretical-capacity reads. Preserve the `3` threshold for two distinct cue classes in distinct
-   buckets or one real quality-3 bulk-cargo observation; do not start response-party sizing or
-   authorization gates yet.
+1. Audit one real loaded, ordinarily visible infrastructure or constructed storage-fortification
+   seam for the second outward wealth-cue class. Classify only an explicit narrow set of existing
+   outward construction facts; do not infer value from generic furniture, zones, hidden contents,
+   theoretical capacity, remote map loads, light/smoke, or camp size. Preserve distinct
+   class/source/30-minute-bucket provenance so vehicle plus this second class can reach `3` only
+   when observed in distinct buckets. Do not start response-party sizing or authorization gates.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

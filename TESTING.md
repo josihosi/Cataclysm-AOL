@@ -1542,3 +1542,38 @@ seed-424242 logs are `build_logs/phase6_assessment_tracking_final_*`: tracking 1
 was removed because it contradicted authoritative sharing rules. `git diff --check` and fresh
 review/fix pass. Bounty levels two/three, exact 17+ counts, astyle 3.1, GUI, Linux, and Windows remain
 open. Next: one real outward wealth-cue producer; no remote storage or authorization work.
+
+Phase-6 outward vehicle-cue proof contract (source identity `4c0bb009a839`, pre-implementation):
+- Claim: once legitimate target-window human occupancy is shared, one ordinary loaded-scout visual
+  observation of a player-faction vehicle whose origin and actually seen part both lie inside the
+  pinned target footprint raises immutable coarse opportunity from `1` to exactly `2`.
+- Preconditions/interventions: a real schema-10 local observing pair, pinned player-camp footprint,
+  one loaded owned vehicle, and visible human-defender footing. Fixture setup stops before the
+  normal one-minute perception poll and may not write an assessment or cue fact directly.
+- Causal boundary/real path: production turn polling reads only the loaded map vehicle owner,
+  occupied points, exact footprint, and the scout's ordinary point sight; it records one
+  observer-private typed fact, the existing pair-communication owner may share it, and the existing
+  assessment/report projection derives the bounty estimate.
+- Expected transition: cue provenance retains class `vehicle`, concrete source, target OMT, and
+  30-minute bucket; private-only evidence remains inert and a legitimately shared cue raises `1`
+  to `2` without importing lead bounty, cargo contents, capacity, light, smoke, or hidden items.
+- Negative/control: unowned vehicle, vehicle origin outside the target footprint, no visible part,
+  wrong footprint/z-level, private-only cue, and absent confirmed-human footing remain byte-inert or
+  at opportunity `0..1`.
+- Timeout/pass-fail: one existing one-minute perception poll plus ordinary pair communication. Pass
+  requires deterministic provenance/save-report survival, exact positive `2`, all controls, and the
+  affected Mac objects/focused tests at the recorded source identity. Level `3`, remote storage,
+  response sizing/authorization, live GUI, Linux, and Windows remain explicitly unclaimed.
+
+Phase-6 outward vehicle cue is green at behavior `b16c357825`. The final review found and fixed one
+boundedness defect before commit: up to eight same-class vehicle facts could crowd the 16-record
+observation ring, so the recorder now retains one deterministic canonical source per class/poll.
+The final Mac rebuild has no hard errors; core passes 1/87, the production loaded adapter 1/33,
+assessment 4/225, and typed-observation persistence 6/196. Controlled seed `424242` covert burn
+passes 5/313. One uncontrolled burn run failed the pre-existing geometry-sensitive
+`defender.sees_without_clairvoyance` setup assertion before the vehicle path and is non-credit.
+Three earlier core reds were fixture/test-contract corrections (invalid local staging, invalid
+same-minute replay expectation, and whole-save serialization of a deliberately noncanonical
+structural fixture); none reached a contradictory production result. `git diff --check` is clean.
+No astyle 3.1, GUI, Linux, or Windows claim. Next: audit a second narrow outward infrastructure or
+constructed storage-fortification cue; no generic furniture valuation or remote reads.

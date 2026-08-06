@@ -483,6 +483,15 @@ preserved. Mac build, tracking 1/23, assessment 4/225, aging 1/116, burn 7/1,052
 fresh review/fix pass. Wealth cues for bounty levels two/three, exact 17+ counts, astyle 3.1, GUI,
 Linux, and Windows remain open. Next add the smallest real outward wealth-cue producer without
 remote inventory inspection or authorization work.
+Outward vehicle wealth is green at `b16c357825`: the production loaded-scout adapter reads only
+authoritative `your_followers` vehicle ownership, exact footprint geometry, occupied points, and
+ordinary sight with clairvoyance rejected. One canonical private typed fact retains vehicle class,
+concrete source, target OMT, and 30-minute bucket; existing pair sharing raises a legitimate occupied
+baseline from one to exactly two without importing cargo, capacity, storage, signals, or lead bounty.
+Review reduced same-class retention to one deterministic source per poll. Mac rebuild, core 1/87,
+live 1/33, assessment 4/225, typed 6/196, and controlled-seed burn 5/313 pass. Level three and the
+other cue classes remain open. Next audit one real visible infrastructure/storage-fortification seam
+that can supply a distinct class without remote map reads or broad furniture-value inference.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
