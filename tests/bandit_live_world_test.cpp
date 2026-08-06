@@ -15339,6 +15339,85 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( resumed_site.active_outing.local_handoff.egress_omt == effect.egress_omt );
         CHECK( resumed_site.active_outing.covert_egress_revision == egress_revision );
         CHECK( burn_count( resumed_site.active_outing ) == 1 );
+
+        std::vector<bandit_live_world::local_cohesion_member_read> second_cohesion_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             resumed_site.active_outing.local_handoff.members ) {
+            second_cohesion_reads.push_back( {
+                member.npc_id, true, false, member.staging_position
+            } );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( resumed_site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_cohesion_plan second_cohesion =
+            bandit_live_world::plan_local_pair_cohesion(
+                resumed_site, *cursor, 4, second_cohesion_reads );
+        REQUIRE( second_cohesion.valid );
+        REQUIRE( second_cohesion.snapshot.cohesion_assembled );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     resumed_site, second_cohesion, false, false ) );
+
+        std::vector<bandit_live_world::local_dematerialization_member_read> second_exit_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             resumed_site.active_outing.local_handoff.members ) {
+            second_exit_reads.push_back( {
+                member.npc_id, true, false, false, member.hp_percent, member.staging_position
+            } );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( resumed_site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_dematerialization_plan second_dematerialization =
+            bandit_live_world::plan_local_pair_dematerialization(
+                resumed_site, *cursor, 5, second_exit_reads,
+                resumed_site.active_outing.cargo );
+        REQUIRE( second_dematerialization.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     resumed_site, second_dematerialization,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        REQUIRE( resumed_site.active_outing.local_handoff.is_abstract_resume() );
+        const bandit_live_world::structural_outing_result second_abstract_tick =
+            bandit_live_world::advance_structural_bounty_outings( world, 6, {} );
+        CHECK( second_abstract_tick.active_outings_considered == 1 );
+        CHECK( resumed_site.active_outing.local_handoff.is_abstract_resume() );
+        CHECK( resumed_site.active_outing.local_handoff.egress_omt == effect.egress_omt );
+        CHECK( resumed_site.active_outing.covert_egress_revision == egress_revision );
+        CHECK( resumed_site.active_outing.current_covert_egress_route_omts == current_route );
+        CHECK( resumed_site.active_outing.failed_covert_egress_route_omts == failed_route );
+        CHECK( burn_count( resumed_site.active_outing ) == 1 );
+
+        world = round_trip_world( world );
+        bandit_live_world::site_record &second_resumed_site = world.sites.front();
+        std::vector<bandit_live_world::local_handoff_member_read> second_rematerialization_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             second_resumed_site.active_outing.local_handoff.members ) {
+            second_rematerialization_reads.push_back( {
+                member.npc_id, true, member.dead, member.hp_percent, member.exit_position,
+                member.entry_position, member.staging_position
+            } );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( second_resumed_site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_handoff_plan second_rematerialization =
+            bandit_live_world::plan_local_pair_handoff(
+                second_resumed_site, *cursor, 7, second_rematerialization_reads );
+        REQUIRE( second_rematerialization.valid );
+        CHECK( second_rematerialization.snapshot.egress_omt == effect.egress_omt );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     second_resumed_site, second_rematerialization,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( second_resumed_site.active_outing.owner ==
+               bandit_live_world::simulation_owner::local );
+        CHECK( second_resumed_site.active_outing.local_handoff.egress_omt == effect.egress_omt );
+        CHECK( second_resumed_site.active_outing.covert_egress_revision == egress_revision );
+        CHECK( second_resumed_site.active_outing.current_covert_egress_route_omts == current_route );
+        CHECK( second_resumed_site.active_outing.failed_covert_egress_route_omts == failed_route );
+        CHECK( burn_count( second_resumed_site.active_outing ) == 1 );
     }
 
     SECTION( "ordinary reciprocal sight may cross a z-level" ) {
