@@ -15158,6 +15158,75 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
 
     }
 
+    SECTION( "a partial bubble read waits for the complete pair before burning once" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::vector<character_id> member_ids = site.active_outing.member_ids;
+        const std::vector<tripoint_abs_omt> shared_route = site.active_outing.shared_route;
+        const bandit_live_world::local_handoff_member_snapshot missing_member_before =
+            site.active_outing.local_handoff.members.front();
+        const int egress_attempts_before = site.active_outing.covert_egress_attempts;
+        const int egress_revision_before = site.active_outing.covert_egress_revision;
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::covert_scout_burn_read> reads =
+            make_reads( site.active_outing );
+        reads[1] = {};
+        reads[1].npc_id = missing_member_before.npc_id;
+        REQUIRE( reads[0].present );
+        REQUIRE_FALSE( reads[1].present );
+        const std::string before = serialize_world( world );
+
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, make_egress( site.active_outing ), 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == before );
+        CHECK( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+        CHECK( site.active_outing.local_handoff.phase ==
+               bandit_live_world::scout_phase::observing );
+        CHECK( site.active_outing.shared_route == shared_route );
+        CHECK( site.active_outing.covert_egress_attempts == egress_attempts_before );
+        CHECK( site.active_outing.covert_egress_revision == egress_revision_before );
+        CHECK( site.active_outing.casualty_ids.empty() );
+        const bandit_live_world::local_handoff_member_snapshot &missing_member_after =
+            site.active_outing.local_handoff.members.front();
+        CHECK( missing_member_after.npc_id == missing_member_before.npc_id );
+        CHECK( missing_member_after.prior_position == missing_member_before.prior_position );
+        CHECK( missing_member_after.entry_position == missing_member_before.entry_position );
+        CHECK( missing_member_after.staging_position == missing_member_before.staging_position );
+        CHECK( missing_member_after.exit_position == missing_member_before.exit_position );
+        CHECK( missing_member_after.hp_percent == missing_member_before.hp_percent );
+        CHECK( missing_member_after.dead == missing_member_before.dead );
+        CHECK( std::none_of( site.active_outing.observations.begin(),
+                             site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+        } ) );
+
+        reads[1] = make_reads( site.active_outing )[1];
+        REQUIRE( reads[1].present );
+        REQUIRE( bandit_live_world::apply_covert_scout_burn(
+                     site, *cursor, reads, make_egress( site.active_outing ), 1 ).result ==
+                 bandit_live_world::covert_scout_burn_result::applied );
+        const auto burn_count = []( const bandit_live_world::active_outing_state & outing ) {
+            return std::count_if( outing.observations.begin(), outing.observations.end(),
+            []( const bandit_live_world::sortie_observation & observation ) {
+                return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+            } );
+        };
+        CHECK( burn_count( site.active_outing ) == 1 );
+        CHECK( site.active_outing.phase ==
+               bandit_live_world::scout_phase::burned_withdrawal );
+        const std::string burned = serialize_world( world );
+        CHECK( bandit_live_world::apply_covert_scout_burn(
+                   site, *cursor, reads, make_egress( site.active_outing ), 1 ).result ==
+               bandit_live_world::covert_scout_burn_result::rejected );
+        CHECK( serialize_world( world ) == burned );
+        CHECK( burn_count( site.active_outing ) == 1 );
+        CHECK( site.active_outing.member_ids == member_ids );
+    }
+
     SECTION( "last-local-tick burn keeps its physical egress through abstract maintenance" ) {
         bandit_live_world::world_state world = make_world();
         world = round_trip_world( world );
