@@ -2,9 +2,15 @@
 
 Identity: `CAOL-ECOLOGY-OBSERVER-EDITOR-v0`
 
-Status: ACTIVE / O4+E1 GREEN / DECOY-EMPTY LIVE NEXT
+Status: V0 USABLE / FIELD INTERVENTION + NEUTRALITY GREEN / SUPPORTING REAL SCOUT PROOF
 
-Parent lane: Phase 4 of `CAOL-HOSTILE-CAMP-ECOLOGY-v1`.
+Parent lane: `CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0`.
+
+Execution note: the active queue is now the six-outcome vertical ledger in `SUCCESS.md`. The next
+use of this tool is one real bandit scout-through-survivor-return/report/decision proof. The signal,
+decoy, and visible-burn probe families each exhausted their two-attempt coordinator cap and remain
+historical non-credit evidence; corrected fixtures are retained for Josef's later disposable
+playtest packet and are not current targets.
 
 ## Goal and proof workflow
 
@@ -126,9 +132,10 @@ natural while retaining causal linkage to the intervention ledger.
   overlay has no serializer. Different seeded isolated worlds prevent a paired whole-directory byte
   identity claim._
 
-Execution-order exception: O3's missing identity seam does not justify fake IDs. The practical
-party-first stop condition keeps those mobile adapters deferred while E1 casualty outcomes and the
-observer-backed smoke/light/sound row advance.
+Historical execution-order note: O3's missing identity seam does not justify fake IDs. The
+party-first stop condition kept mobile adapters deferred while E1 casualty outcomes advanced. The
+observer-backed smoke/light/sound row later exhausted its two-attempt cap as non-credit evidence;
+it no longer advances in the coordinator lane.
 
 ### O1 - shared read-only camp/dispatch view
 
@@ -311,16 +318,18 @@ Before speculative polish, the tool must be used in the next real Phase-4 row. J
 6. record one screenshot + compact incident bundle whose deltas distinguish natural from debug
    intervention.
 
-The first target live row is the existing smoke/light/sound matrix. Its pre-fix run
-`20260804_214456` remains red/inconclusive; it is not observer proof.
+Historical capped row: smoke/light/sound was the originally planned first live target. Its pre-fix
+run `20260804_214456` remains red/inconclusive; it is not observer proof and is not the current
+target.
 
 Corrected scenario support is checkpointed at `927251fc70`, but the two permitted live attempts
 remain non-credit. Run `20260805_121516` proved three carried facts and logged the atomic
 three-lead return, but opened Mutations rather than the overmap, so it produced no observer pair.
 Run `20260805_122335` proved an exact five-minute wait, then safely aborted before signal setup
 after the handler acknowledged ordinary shadow-warning flavor and created an Unknown-command
-popup. No incident pair exists to credit. Per the anti-churn cap, the row stays open while work
-advances to live target relocation; use the corrected `m` overmap path there when possible.
+popup. No incident pair exists to credit. Per the anti-churn cap, the row stays non-credit and must
+not receive a third coordinator attempt; retain the corrected fixture for Josef's later disposable
+playtest packet.
 
 That later use is green at scenario checkpoints `029363748c` / `9029d4e1a4`, run
 `20260805_124207`. Two atomic incident pairs and their overmap frames follow natural dispatch
@@ -329,8 +338,8 @@ canonical ID/OMT/destination/route/generation/member IDs/HP stay fixed, and load
 changes from true to false. Both selected snapshots say `provenance=natural` and both intervention
 ledgers are empty; the exact saved owner target remains present. The generic harness verdict stays
 yellow because ordinary press/capture rows lack automatic semantic promotion, so the narrow
-receipt does not relabel the whole probe. This satisfies practical later-row observer use, not the
-still-open smoke/light/sound pair.
+receipt does not relabel the whole probe. This satisfies practical later-row observer use. The next
+active use is the bandit scout-through-survivor-return/report/decision proof named in `Plan.md`.
 
 ## Explicit deferrals
 
