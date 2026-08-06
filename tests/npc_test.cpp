@@ -1832,6 +1832,171 @@ static std::string serialize_live_world_for_optics_test(
     return out.str();
 }
 
+TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",
+           "[npc][bandit][covert][visible_defender_power][defender_count]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    npc &initial_scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &initial_partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const character_id scout_id = initial_scout.getID();
+    const character_id partner_id = initial_partner.getID();
+    const tripoint_abs_omt watch_omt = initial_scout.pos_abs_omt();
+    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+    const tripoint_abs_ms scout_abs( watch_origin.x() + 2 * SEEX - 2,
+                                     watch_origin.y() + SEEY, watch_origin.z() );
+    initial_scout.setpos( here, here.get_bub( scout_abs ) );
+    initial_partner.setpos( here, here.get_bub( tripoint_abs_ms(
+                                scout_abs.x(), scout_abs.y() + 1, scout_abs.z() ) ) );
+    REQUIRE( initial_scout.pos_abs_omt() == watch_omt );
+    REQUIRE( initial_partner.pos_abs_omt() == watch_omt );
+
+    const tripoint_abs_omt target_omt( watch_omt.x() + 3, watch_omt.y(), watch_omt.z() );
+    const tripoint_abs_ms target_origin = project_to<coords::ms>( target_omt );
+    const tripoint_bub_ms avatar_target_position = here.get_bub( tripoint_abs_ms(
+                target_origin.x() + 5, scout_abs.y(), target_origin.z() ) );
+    REQUIRE( here.inbounds( avatar_target_position ) );
+    player_character.setpos( here, avatar_target_position );
+    REQUIRE_FALSE( player_character.is_dead_state() );
+    REQUIRE( player_character.pos_abs_omt() == target_omt );
+
+    std::vector<character_id> generated_ids = { scout_id, partner_id };
+    on_out_of_scope remove_generated_npcs( [&generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+    std::vector<character_id> defender_ids;
+    for( int index = 0; index < 16; ++index ) {
+        const tripoint_bub_ms requested_position = here.get_bub( tripoint_abs_ms(
+                    target_origin.x() + index % 4,
+                    scout_abs.y() + 1 + index / 4, target_origin.z() ) );
+        REQUIRE( here.inbounds( requested_position ) );
+        npc &defender = spawn_npc( requested_position.xy(), "test_talker" );
+        defender.set_fac( faction_your_followers );
+        REQUIRE( defender.is_player_ally() );
+        REQUIRE_FALSE( defender.is_dead() );
+        REQUIRE( defender.is_active() );
+        REQUIRE( defender.pos_abs_omt() == target_omt );
+        defender_ids.push_back( defender.getID() );
+        generated_ids.push_back( defender.getID() );
+    }
+
+    npc *scout = g->find_npc( scout_id );
+    npc *partner = g->find_npc( partner_id );
+    REQUIRE( scout != nullptr );
+    REQUIRE( partner != nullptr );
+    for( npc *observer : { scout, partner } ) {
+        observer->set_fac( faction_id( "hells_raiders" ) );
+        observer->set_attitude( NPCATT_NULL );
+        observer->hit_by_player = false;
+        REQUIRE( observer->is_active() );
+        REQUIRE( observer->pos_abs_omt() == watch_omt );
+        REQUIRE( observer->clairvoyance() == 0 );
+    }
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    *scout, *partner, current_minutes ) );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor(
+                 live_state.sites.front() ) );
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "defender count target camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+    REQUIRE( overmap_buffer.is_player_camp_omt( target_omt ) );
+    REQUIRE( scout->has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( partner->has_ecology_covert_noncombat_relationship( player_character ) );
+
+    std::vector<const Character *> real_defenders = { &player_character };
+    std::vector<std::string> real_stable_ids = { "avatar" };
+    for( const character_id defender_id : defender_ids ) {
+        const npc *defender = g->find_npc( defender_id );
+        REQUIRE( defender != nullptr );
+        REQUIRE( defender->is_player_ally() );
+        REQUIRE_FALSE( defender->is_dead_state() );
+        REQUIRE( defender->is_active() );
+        REQUIRE( defender->pos_abs_omt() == target_omt );
+        REQUIRE( scout->sees_without_clairvoyance( here, *defender ) );
+        real_defenders.push_back( defender );
+        real_stable_ids.push_back( "npc:" +
+                                   std::to_string( defender_id.get_value() ) );
+    }
+    REQUIRE( scout->sees_without_clairvoyance( here, player_character ) );
+    REQUIRE( real_defenders.size() == 17 );
+    std::sort( real_stable_ids.begin(), real_stable_ids.end() );
+    REQUIRE( std::adjacent_find( real_stable_ids.begin(), real_stable_ids.end() ) ==
+             real_stable_ids.end() );
+
+    const bool scout_has_gun = scout->get_wielded_item() &&
+                               scout->get_wielded_item()->is_gun();
+    int expected_power = 0;
+    for( const Character *defender : real_defenders ) {
+        const float deterministic_threat =
+            scout->evaluate_character_threat_without_perception_fuzz(
+                *defender, scout_has_gun, true );
+        const int normalized_power = std::clamp( static_cast<int>( std::ceil(
+                                             std::max( 0.0f, deterministic_threat ) /
+                                             NPC_DANGER_VERY_LOW ) ), 1, 10 );
+        expected_power = std::min( 200, expected_power + normalized_power );
+    }
+    REQUIRE( expected_power < 200 );
+
+    REQUIRE( bandit_live_world::record_live_covert_visible_defenders() == 1 );
+    const bandit_live_world::active_outing_state &outing =
+        live_state.sites.front().active_outing;
+    const auto observation = std::find_if(
+                                 outing.observations.begin(), outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & candidate ) {
+        return candidate.fact_key.rfind( "visible-defenders:", 0 ) == 0;
+    } );
+    REQUIRE( observation != outing.observations.end() );
+    CHECK( observation->observed_defender_count == 17 );
+    REQUIRE( observation->defender_ids.size() == 16 );
+    CHECK( std::is_sorted( observation->defender_ids.begin(),
+                           observation->defender_ids.end() ) );
+    CHECK( std::adjacent_find( observation->defender_ids.begin(),
+                               observation->defender_ids.end() ) ==
+           observation->defender_ids.end() );
+    const std::vector<std::string> expected_sample( real_stable_ids.begin(),
+            real_stable_ids.begin() + 16 );
+    CHECK( observation->defender_ids == expected_sample );
+    CHECK( observation->observed_power_low == expected_power );
+    CHECK( observation->observed_power_high == expected_power );
+    CHECK( observation->share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+
+    std::ostringstream saved_observation_out;
+    JsonOut saved_observation_json( saved_observation_out );
+    observation->serialize( saved_observation_json );
+    const std::string saved_observation = saved_observation_out.str();
+    JsonValue loaded_observation_json = json_loader::from_string( saved_observation );
+    bandit_live_world::sortie_observation loaded_observation;
+    loaded_observation.deserialize( loaded_observation_json.get_object() );
+    CHECK( loaded_observation.observed_defender_count == 17 );
+    CHECK( loaded_observation.defender_ids == expected_sample );
+    CHECK( loaded_observation.observed_power_low == expected_power );
+    CHECK( loaded_observation.share_state ==
+           bandit_live_world::sortie_observation_share_state::observer_private );
+}
+
 TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
            "[npc][bandit][covert_burn][live_egress][visible_defender_power]" )
 {

@@ -66,6 +66,7 @@ constexpr int max_structural_watch_exact_route_reads = 4;
 constexpr int max_structural_watch_distance_four_route_reads = 2;
 constexpr int max_structural_watch_distance_five_route_reads = 2;
 constexpr std::size_t max_abstract_threat_ids = 16;
+constexpr int max_observed_defender_count = 32;
 constexpr std::size_t max_abstract_threat_id_length = 128;
 constexpr std::size_t max_structural_signal_reads = 4;
 constexpr std::size_t max_abstract_encounter_outcome_length = 128;
@@ -597,7 +598,8 @@ bool sortie_observation_is_vehicle_wealth_cue(
            observation.source_id.rfind( source_prefix, 0 ) == 0 &&
            observation.sense == sortie_observation_sense::visual &&
            observation.strength == 2 && observation.visual_quality == 2 &&
-           observation.defender_ids.empty() && observation.observed_power_low == 0 &&
+           observation.defender_ids.empty() && observation.observed_defender_count <= 0 &&
+           observation.observed_power_low == 0 &&
            observation.observed_power_high == 0 && observation.equipment_detail == 0 &&
            observation.uncertainty_radius_omt == 0;
 }
@@ -613,7 +615,8 @@ bool sortie_observation_is_generation_infrastructure_cue(
            observation.source_id.rfind( source_prefix, 0 ) == 0 &&
            observation.sense == sortie_observation_sense::visual &&
            observation.strength == 2 && observation.visual_quality == 2 &&
-           observation.defender_ids.empty() && observation.observed_power_low == 0 &&
+           observation.defender_ids.empty() && observation.observed_defender_count <= 0 &&
+           observation.observed_power_low == 0 &&
            observation.observed_power_high == 0 && observation.equipment_detail == 0 &&
            observation.uncertainty_radius_omt == 0;
 }
@@ -651,7 +654,8 @@ bool sortie_observation_is_cargo_handling_cue(
            canonical_positive_character_id_source( observation.source_id, source_prefix ) &&
            observation.sense == sortie_observation_sense::visual &&
            observation.strength == 2 && observation.visual_quality == 2 &&
-           observation.defender_ids.empty() && observation.observed_power_low == 0 &&
+           observation.defender_ids.empty() && observation.observed_defender_count <= 0 &&
+           observation.observed_power_low == 0 &&
            observation.observed_power_high == 0 && observation.equipment_detail == 0 &&
            observation.uncertainty_radius_omt == 0;
 }
@@ -673,6 +677,14 @@ int sortie_observation_share_rank(
     return 0;
 }
 
+int sortie_observation_defender_count(
+    const bandit_live_world::sortie_observation &observation )
+{
+    return observation.observed_defender_count >= 0 ?
+           observation.observed_defender_count :
+           static_cast<int>( observation.defender_ids.size() );
+}
+
 bool sortie_observation_identity_matches(
     const bandit_live_world::sortie_observation &lhs,
     const bandit_live_world::sortie_observation &rhs )
@@ -688,6 +700,7 @@ bool sortie_observation_identity_matches(
 bool typed_sortie_observation_is_valid(
     const bandit_live_world::sortie_observation &observation )
 {
+    const int defender_count = sortie_observation_defender_count( observation );
     if( observation.record_schema_version != 1 || observation.fact_key.empty() ||
         observation.fact_key.size() > max_sortie_fact_key_length ||
         observation.summary.size() > max_sortie_summary_length ||
@@ -703,6 +716,9 @@ bool typed_sortie_observation_is_valid(
         observation.strength < 0 || observation.strength > 6 ||
         observation.visual_quality < 0 || observation.visual_quality > 3 ||
         observation.defender_ids.size() > max_abstract_threat_ids ||
+        defender_count < 0 || defender_count > max_observed_defender_count ||
+        defender_count < static_cast<int>( observation.defender_ids.size() ) ||
+        ( defender_count > 0 && observation.defender_ids.empty() ) ||
         !std::is_sorted( observation.defender_ids.begin(), observation.defender_ids.end() ) ||
         std::adjacent_find( observation.defender_ids.begin(), observation.defender_ids.end() ) !=
         observation.defender_ids.end() ||
@@ -807,6 +823,8 @@ bool sortie_observations_equal( const bandit_live_world::sortie_observation &lhs
            lhs.bucket_start_minutes == rhs.bucket_start_minutes &&
            lhs.strength == rhs.strength && lhs.visual_quality == rhs.visual_quality &&
            lhs.defender_ids == rhs.defender_ids &&
+           sortie_observation_defender_count( lhs ) ==
+           sortie_observation_defender_count( rhs ) &&
            lhs.simultaneity_start_minutes == rhs.simultaneity_start_minutes &&
            lhs.simultaneity_end_minutes == rhs.simultaneity_end_minutes &&
            lhs.observed_power_low == rhs.observed_power_low &&
@@ -6096,6 +6114,7 @@ void sortie_observation::serialize( JsonOut &json ) const
         json.member( "strength", strength );
         json.member( "visual_quality", visual_quality );
         json.member( "defender_ids", defender_ids );
+        json.member( "observed_defender_count", sortie_observation_defender_count( *this ) );
         json.member( "simultaneity_start_minutes", simultaneity_start_minutes );
         json.member( "simultaneity_end_minutes", simultaneity_end_minutes );
         json.member( "observed_power_low", observed_power_low );
@@ -6171,6 +6190,8 @@ void sortie_observation::deserialize( const JsonObject &jo )
         jo.read( "strength", candidate.strength );
         jo.read( "visual_quality", candidate.visual_quality );
         jo.read( "defender_ids", candidate.defender_ids );
+        candidate.observed_defender_count = static_cast<int>( candidate.defender_ids.size() );
+        jo.read( "observed_defender_count", candidate.observed_defender_count );
         jo.read( "simultaneity_start_minutes", candidate.simultaneity_start_minutes );
         jo.read( "simultaneity_end_minutes", candidate.simultaneity_end_minutes );
         jo.read( "observed_power_low", candidate.observed_power_low );
@@ -15832,7 +15853,7 @@ sortie_observation_effect record_covert_visible_defender_observations(
         std::find( outing.member_ids.begin(), outing.member_ids.end(), observer_id ) ==
         outing.member_ids.end() || observer_position != outing.selected_watch_omt ||
         visible_defenders.empty() ||
-        visible_defenders.size() > static_cast<std::size_t>( covert_scout_burn_observer_cap() ) ||
+        visible_defenders.size() > static_cast<std::size_t>( covert_visible_defender_read_cap() ) ||
         current_minutes < 0 ) {
         return effect;
     }
@@ -15874,10 +15895,13 @@ sortie_observation_effect record_covert_visible_defender_observations(
         observation.bucket_start_minutes = current_minutes - current_minutes % 30;
         observation.strength = 4;
         observation.visual_quality = 3;
+        observation.observed_defender_count = static_cast<int>( defenders.size() );
         observation.simultaneity_start_minutes = current_minutes;
         observation.simultaneity_end_minutes = current_minutes;
         for( const covert_scout_burn_read::visible_defender_read &defender : defenders ) {
-            observation.defender_ids.push_back( defender.stable_id );
+            if( observation.defender_ids.size() < max_abstract_threat_ids ) {
+                observation.defender_ids.push_back( defender.stable_id );
+            }
             observation.observed_power_low = std::min(
                                                  200, observation.observed_power_low +
                                                  defender.normalized_power );
@@ -16330,7 +16354,7 @@ scout_assessment_state summarize_normal_scout_assessment(
         if( observation.visual_quality >= 2 ) {
             strong_visual_buckets.insert( observation.bucket_start_minutes );
         }
-        if( !observation.defender_ids.empty() ) {
+        if( sortie_observation_defender_count( observation ) > 0 ) {
             confirmed_presence = true;
             defender_windows.push_back( &observation );
         } else if( observation.observed_power_low > 0 ) {
@@ -16346,7 +16370,7 @@ scout_assessment_state summarize_normal_scout_assessment(
     int observed_unit_power = 3;
     bool hard_unsafe_defender_count = false;
     for( const sortie_observation *observation : defender_windows ) {
-        const int defenders = static_cast<int>( observation->defender_ids.size() );
+        const int defenders = sortie_observation_defender_count( *observation );
         summary.defenders_low = std::max( summary.defenders_low, defenders );
         const int unit_power = ( observation->observed_power_low + defenders - 1 ) /
                                defenders;
@@ -16881,6 +16905,11 @@ bool is_active_covert_scout_member( const world_state &state, const character_id
 int covert_scout_burn_observer_cap()
 {
     return 16;
+}
+
+int covert_visible_defender_read_cap()
+{
+    return max_observed_defender_count;
 }
 
 int covert_scout_egress_route_omt_cap()

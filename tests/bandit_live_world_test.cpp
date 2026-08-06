@@ -4731,8 +4731,18 @@ TEST_CASE( "bandit_live_world_round_trips_typed_physical_observations_for_both_c
         CHECK( loaded_observation.observer_id == observer_id );
         CHECK( loaded_observation.defender_ids ==
                std::vector<std::string> { "defender:1", "defender:2" } );
+        CHECK( loaded_observation.observed_defender_count == 2 );
         CHECK( loaded_observation.share_state ==
                bandit_live_world::sortie_observation_share_state::shared );
+
+        std::string legacy_bytes = serialize_sortie_observation( observation );
+        erase_pretty_json_member_line( legacy_bytes, "observed_defender_count" );
+        JsonValue legacy_json = json_loader::from_string( legacy_bytes );
+        bandit_live_world::sortie_observation migrated;
+        migrated.deserialize( legacy_json.get_object() );
+        CHECK( migrated.observed_defender_count == 2 );
+        CHECK( serialize_sortie_observation( migrated ).find(
+                   "\"observed_defender_count\": 2" ) != std::string::npos );
     }
 }
 
@@ -4801,6 +4811,16 @@ TEST_CASE( "bandit_live_world_rejects_malformed_typed_observations_atomically",
     rejects( malformed );
     malformed = valid;
     malformed.defender_ids = { "defender:1", "defender:1" };
+    rejects( malformed );
+    malformed = valid;
+    malformed.observed_defender_count = 1;
+    rejects( malformed );
+    malformed = valid;
+    malformed.observed_defender_count = 33;
+    rejects( malformed );
+    malformed = valid;
+    malformed.defender_ids.clear();
+    malformed.observed_defender_count = 1;
     rejects( malformed );
     malformed = valid;
     malformed.source_omt = tripoint_abs_omt::invalid;
@@ -5058,6 +5078,7 @@ TEST_CASE( "bandit_live_world_report_preserves_historical_simultaneous_visible_s
     first_window.summary = "two defenders simultaneously visible in the first historical window";
     first_window.source_omt = tripoint_abs_omt( 18, 20, 0 );
     first_window.receiver_omt = tripoint_abs_omt( 11, 20, 0 );
+    first_window.observed_defender_count = 2;
     first_window.simultaneity_start_minutes = 120;
     first_window.simultaneity_end_minutes = 124;
     first_window.observed_power_low = 5;
@@ -5074,6 +5095,7 @@ TEST_CASE( "bandit_live_world_report_preserves_historical_simultaneous_visible_s
     second_window.source_omt = tripoint_abs_omt( 18, 20, 0 );
     second_window.receiver_omt = tripoint_abs_omt( 12, 21, 0 );
     second_window.defender_ids = { "defender:2" };
+    second_window.observed_defender_count = 1;
     second_window.simultaneity_start_minutes = 164;
     second_window.simultaneity_end_minutes = 171;
     second_window.observed_power_low = 3;
@@ -5131,6 +5153,7 @@ TEST_CASE( "bandit_live_world_report_preserves_historical_simultaneous_visible_s
     CHECK( reported_first->simultaneity_end_minutes == 124 );
     CHECK( reported_first->defender_ids ==
            std::vector<std::string> { "defender:1", "defender:2" } );
+    CHECK( reported_first->observed_defender_count == 2 );
     CHECK( reported_first->observed_power_low == 5 );
     CHECK( reported_first->observed_power_high == 8 );
     CHECK( reported_first->equipment_detail == 2 );
@@ -5145,6 +5168,7 @@ TEST_CASE( "bandit_live_world_report_preserves_historical_simultaneous_visible_s
     CHECK( reported_second->simultaneity_end_minutes == 171 );
     CHECK( reported_second->defender_ids ==
            std::vector<std::string> { "defender:2" } );
+    CHECK( reported_second->observed_defender_count == 1 );
     CHECK( reported_second->observed_power_low == 3 );
     CHECK( reported_second->observed_power_high == 4 );
     CHECK( reported_second->equipment_detail == 1 );
@@ -16030,19 +16054,20 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
         bandit_live_world::active_outing_state outing = make_outing();
         bandit_live_world::sortie_observation defenders = make_window( 121, "hard-unsafe" );
         defenders.defender_ids.clear();
-        for( int index = 0; index < 13; ++index ) {
+        for( int index = 0; index < 16; ++index ) {
             defenders.defender_ids.push_back(
                 "defender:" + std::to_string( 100 + index ) );
         }
-        defenders.observed_power_low = 130;
-        defenders.observed_power_high = 130;
+        defenders.observed_defender_count = 17;
+        defenders.observed_power_low = 140;
+        defenders.observed_power_high = 140;
         outing.observations = { defenders };
 
         const bandit_live_world::scout_assessment_state summary =
             bandit_live_world::summarize_normal_scout_assessment( outing );
-        CHECK( summary.defenders_low == 13 );
-        CHECK( summary.defenders_high == 13 );
-        CHECK( summary.danger_low == 130 );
+        CHECK( summary.defenders_low == 17 );
+        CHECK( summary.defenders_high == 17 );
+        CHECK( summary.danger_low == 140 );
         CHECK( summary.danger_high == 200 );
     }
 }
@@ -17026,7 +17051,7 @@ TEST_CASE( "scout_assessment_tracking_fields_migrate_and_round_trip",
 }
 
 TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
-           "[bandit][live_world][covert_burn][simultaneous_watch_exit][burned_assessment]" )
+           "[bandit][live_world][covert_burn][simultaneous_watch_exit][burned_assessment][defender_count]" )
 {
     const auto make_world = []() {
         bandit_live_world::world_state world;
@@ -17213,6 +17238,51 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK_FALSE( effect.valid );
         CHECK_FALSE( effect.changed );
         CHECK( serialize_world( world ) == before );
+    }
+
+    SECTION( "visible defender writer keeps exact count beyond the stable ID sample" ) {
+        bandit_live_world::world_state world = make_world();
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::covert_scout_burn_read::visible_defender_read>
+        defenders;
+        for( int index = 0; index < 17; ++index ) {
+            defenders.push_back( {
+                "npc:" + std::to_string( 100 + index ), site.active_outing.target_omt, 5, 1
+            } );
+        }
+        const bandit_live_world::sortie_observation_effect effect =
+            bandit_live_world::record_covert_visible_defender_observations(
+                site, *cursor, site.active_outing.leader_id,
+                site.active_outing.selected_watch_omt, defenders, 2 );
+        REQUIRE( effect.valid );
+        REQUIRE( effect.changed );
+        const auto observation = std::find_if(
+                                     site.active_outing.observations.begin(),
+                                     site.active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & candidate ) {
+            return candidate.fact_key.rfind( "visible-defenders:", 0 ) == 0;
+        } );
+        REQUIRE( observation != site.active_outing.observations.end() );
+        CHECK( observation->observed_defender_count == 17 );
+        CHECK( observation->defender_ids.size() == 16 );
+        CHECK( observation->observed_power_low == 85 );
+        CHECK( observation->observed_power_high == 85 );
+        CHECK( observation->share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        const bandit_live_world::world_state loaded = round_trip_world( world );
+        const auto loaded_observation = std::find_if(
+                                            loaded.sites.front().active_outing.observations.begin(),
+                                            loaded.sites.front().active_outing.observations.end(),
+        []( const bandit_live_world::sortie_observation & candidate ) {
+            return candidate.fact_key.rfind( "visible-defenders:", 0 ) == 0;
+        } );
+        REQUIRE( loaded_observation !=
+                 loaded.sites.front().active_outing.observations.end() );
+        CHECK( loaded_observation->observed_defender_count == 17 );
+        CHECK( loaded_observation->defender_ids == observation->defender_ids );
     }
 
     SECTION( "same-tick local danger and burn survive one bounded transaction" ) {
@@ -20045,11 +20115,25 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     saturated_site.current_scout_report.application_key =
         saturated_site.current_scout_report.source_activity_id + ":report:1";
     for( int index = 0; index < 16; ++index ) {
-        const bandit_live_world::sortie_observation observation = {
+        bandit_live_world::sortie_observation observation = {
             "bounded-fact-" + std::to_string( index ), std::string( 512, 'x' ),
             100, 1000 + index, index % 2 == 0,
             bandit_live_world::sortie_observation_kind::routine, ""
         };
+        if( index == 15 ) {
+            observation = make_typed_visual_observation(
+                              character_id( 11800 ), 1, 1000 + index,
+                              "bounded-defender-count",
+                              bandit_live_world::sortie_observation_share_state::shared );
+            observation.defender_ids.clear();
+            for( int defender = 0; defender < 16; ++defender ) {
+                observation.defender_ids.push_back(
+                    string_format( "defender:%03d", defender ) );
+            }
+            observation.observed_defender_count = 32;
+            observation.observed_power_low = 160;
+            observation.observed_power_high = 160;
+        }
         saturated_site.active_outing.observations.push_back( observation );
         saturated_site.current_scout_report.observations.push_back( observation );
     }
@@ -20064,7 +20148,11 @@ TEST_CASE( "bandit_live_world_scout_persistence_stays_within_a_coarse_save_budge
     CHECK( empty_bytes < normal_bytes );
     CHECK( normal_bytes < saturated_bytes );
     CHECK( saturated_bytes < 64 * 1024 );
-    CHECK( serialize_world( round_trip_world( saturated_world ) ).size() == saturated_bytes );
+    const bandit_live_world::world_state loaded_saturated = round_trip_world( saturated_world );
+    CHECK( serialize_world( loaded_saturated ).size() == saturated_bytes );
+    REQUIRE( loaded_saturated.sites.front().active_outing.observations.size() == 16 );
+    CHECK( loaded_saturated.sites.front().active_outing.observations.back().observed_defender_count ==
+           32 );
 }
 
 TEST_CASE( "bandit_live_world_empty_site_retirement_requires_both_home_and_active_sides_empty",

@@ -365,6 +365,7 @@ struct sortie_observation {
     int strength = 0;
     int visual_quality = 0;
     std::vector<std::string> defender_ids;
+    int observed_defender_count = -1;
     int simultaneity_start_minutes = -1;
     int simultaneity_end_minutes = -1;
     int observed_power_low = 0;
@@ -1790,6 +1791,7 @@ sortie_observation_effect record_covert_cargo_handling_observations(
     character_id observer_id, const tripoint_abs_omt &observer_position,
     const std::vector<covert_cargo_handling_read> &handlers, int current_minutes );
 int covert_scout_burn_observer_cap();
+int covert_visible_defender_read_cap();
 int covert_scout_egress_route_omt_cap();
 struct covert_scout_egress_candidate {
     tripoint_abs_omt omt;

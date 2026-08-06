@@ -2153,7 +2153,7 @@ int record_live_bandit_covert_visible_defenders()
         } );
         bounded_targets.resize( std::min<std::size_t>(
                                     bounded_targets.size(),
-                                    bandit_live_world::covert_scout_burn_observer_cap() ) );
+                                    bandit_live_world::covert_visible_defender_read_cap() ) );
 
         std::vector<npc *> observers;
         for( const character_id member_id : outing.member_ids ) {
