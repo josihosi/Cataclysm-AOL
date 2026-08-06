@@ -2022,6 +2022,146 @@ TEST_CASE( "live_covert_burn_requires_an_eligible_allied_observer",
     CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
 }
 
+TEST_CASE( "live_covert_burn_tracks_environmental_visibility_changes",
+           "[npc][bandit][covert_burn][live_egress]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+
+    const time_point original_time = calendar::turn;
+    on_out_of_scope restore_time( [original_time]() {
+        set_time( original_time );
+    } );
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 10, 10, 0 ) );
+    npc &defender = spawn_npc( point_bub_ms( 8, 50 ), "test_talker" );
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    defender.set_fac( faction_your_followers );
+    REQUIRE( defender.is_player_ally() );
+    REQUIRE( defender.is_active() );
+    REQUIRE( scout.pos_abs_omt() == partner.pos_abs_omt() );
+
+    const std::vector<character_id> generated_ids = {
+        defender.getID(), scout.getID(), partner.getID()
+    };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    const efftype_id effect_blind_local( "blind" );
+    player_character.add_effect( effect_blind_local, 1_days );
+    player_character.recalc_sight_limits();
+    on_out_of_scope restore_avatar_sight( [&player_character, &effect_blind_local]() {
+        player_character.remove_effect( effect_blind_local );
+        player_character.recalc_sight_limits();
+    } );
+    REQUIRE( player_character.is_blind() );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor(
+                 live_state.sites.front() ) );
+    const tripoint_abs_omt target_omt = live_state.sites.front().active_outing.target_omt;
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "environmental optics camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+    REQUIRE( overmap_buffer.is_player_camp_omt( target_omt ) );
+    REQUIRE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    REQUIRE( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+
+    const bandit_live_world::world_state pristine_world = live_state;
+    const auto reset_owner_and_routes = [&]() {
+        live_state = pristine_world;
+        for( npc *member : { &scout, &partner } ) {
+            member->goto_to_this_pos = std::nullopt;
+            member->clear_ai_guard_pos();
+            member->path.clear();
+            member->goal = npc::no_goal_point;
+            member->omt_path.clear();
+            member->set_mission( NPC_MISSION_GUARD );
+        }
+    };
+    const auto refresh_visibility = [&]( const time_point &when ) {
+        set_time( when );
+        for( Character *actor : { static_cast<Character *>( &player_character ),
+                                  static_cast<Character *>( &defender ),
+                                  static_cast<Character *>( &scout ),
+                                  static_cast<Character *>( &partner ) } ) {
+            actor->recalc_sight_limits();
+        }
+    };
+    const auto require_no_burn = [&]() {
+        const std::string owner_before = serialize_live_world_for_optics_test( live_state );
+        CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+        CHECK( serialize_live_world_for_optics_test( live_state ) == owner_before );
+    };
+
+    const time_point fixture_noon = calendar::turn;
+    const time_point midnight = fixture_noon + 12_hours;
+    reset_owner_and_routes();
+    {
+        scoped_weather_override clear_weather( WEATHER_CLEAR );
+        refresh_visibility( midnight );
+        REQUIRE_FALSE( defender.sees_without_clairvoyance( here, scout ) );
+        REQUIRE_FALSE( scout.sees_without_clairvoyance( here, defender ) );
+        require_no_burn();
+    }
+
+    const weather_type_id fog( "fog" );
+    REQUIRE( fog.is_valid() );
+    const time_point fog_transition_time = sunset( fixture_noon + 1_days ) - 5_minutes;
+    {
+        scoped_weather_override clear_weather( WEATHER_CLEAR );
+        refresh_visibility( fog_transition_time );
+        REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+        REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+    }
+    {
+        scoped_weather_override fog_weather( fog );
+        refresh_visibility( fog_transition_time );
+        REQUIRE_FALSE( defender.sees_without_clairvoyance( here, scout ) );
+        REQUIRE_FALSE( scout.sees_without_clairvoyance( here, defender ) );
+        require_no_burn();
+    }
+
+    {
+        scoped_weather_override clear_weather( WEATHER_CLEAR );
+        refresh_visibility( fixture_noon + 2_days );
+        REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+        REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+        REQUIRE( bandit_live_world::burn_live_covert_scouts() == 1 );
+        const tripoint_abs_omt egress_omt =
+            live_state.sites.front().active_outing.local_handoff.egress_omt;
+        for( const npc *member : { &scout, &partner } ) {
+            CHECK( member->goal == egress_omt );
+            CHECK( member->is_travelling() );
+            CHECK_FALSE( member->omt_path.empty() );
+        }
+        CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
+    }
+}
+
 TEST_CASE( "live_covert_burn_avoids_pair_owned_soft_danger_evidence",
            "[npc][bandit][covert_burn][live_egress]" )
 {
