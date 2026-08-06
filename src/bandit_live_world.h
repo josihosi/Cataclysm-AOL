@@ -875,6 +875,13 @@ struct response_authorization_evaluation {
     std::string rejection_reason;
 };
 
+enum class response_denial_resolution {
+    rejected,
+    held,
+    rescout_ready,
+    abandoned,
+};
+
 struct site_record {
     int schema_version = 12;
     std::string site_id;
@@ -1346,6 +1353,10 @@ struct structural_bounty_maintenance_result {
     int dispatches_blocked = 0;
     int materialization_attempts = 0;
     int members_materialized = 0;
+    int response_denials_held = 0;
+    int response_rescouts_ready = 0;
+    int response_decisions_abandoned = 0;
+    int response_denial_rejections = 0;
     int dispatch_cap = 0;
     bool dispatch_cap_reached = false;
     std::vector<std::string> notes;
@@ -1533,6 +1544,10 @@ response_authorization_evaluation evaluate_response_authorization(
     const site_record &site, int current_minutes,
     const response_party_selection_result &selection,
     const std::vector<response_member_power_read> &member_reads );
+response_denial_resolution resolve_response_authorization_denial(
+    site_record &site, int current_minutes,
+    const response_party_selection_result &selection,
+    const std::vector<response_member_power_read> &member_reads );
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );
@@ -1601,7 +1616,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup = {},
-        const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch = {} );
+        const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch = {},
+        const std::function<std::vector<response_member_power_read>( const site_record & )>
+        &response_member_read_lookup = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 std::string render_evidence_debug_report( const world_state &state, int current_minutes );

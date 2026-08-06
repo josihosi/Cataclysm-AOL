@@ -10321,7 +10321,10 @@ response_authorization_evaluation evaluate_response_authorization(
         return result;
     }
     if( !fresh_selection.eligible ) {
-        result.valid = true;
+        const roster_view roster = site.roster();
+        result.valid = roster.valid &&
+                       fresh_selection.required_local_reserve ==
+                       hostile_response_home_reserve( roster.living_total );
         result.rejection_reason = fresh_selection.rejection_reason;
         return result;
     }
@@ -10353,6 +10356,74 @@ response_authorization_evaluation evaluate_response_authorization(
         result.authorized = true;
     }
     return result;
+}
+
+response_denial_resolution resolve_response_authorization_denial(
+    site_record &site, const int current_minutes,
+    const response_party_selection_result &selection,
+    const std::vector<response_member_power_read> &member_reads )
+{
+    const camp_decision_record &decision = site.camp_decision;
+    if( current_minutes < 0 || site.retired_empty_site ||
+        decision.state != camp_decision_state::report_awaiting_assessment ||
+        current_minutes < decision.last_transition_minutes ) {
+        return response_denial_resolution::rejected;
+    }
+    if( site.has_active_outside_pressure() ) {
+        return response_denial_resolution::held;
+    }
+
+    const scout_report_record &report = site.current_scout_report;
+    const acted_report_summary *accepted = find_acted_report( site, report );
+    const bool exact_accepted_revision = accepted != nullptr &&
+                                         accepted->source_generation == report.source_generation &&
+                                         accepted->report_revision == report.revision &&
+                                         accepted->acted_minutes == report.delivered_minutes;
+    const bool report_identity_valid =
+        report.action_policy == report_policy_for_profile( effective_profile( site ) ) &&
+        report_matches_camp_decision( report, decision ) && exact_accepted_revision;
+    if( !report_identity_valid ) {
+        site_record candidate = site;
+        const camp_decision_transition_result abandoned = transition_camp_decision_state(
+                    candidate, camp_decision_state::report_awaiting_assessment,
+                    camp_decision_state::abandoned, decision.source_report_revision,
+                    decision.source_report_generation, current_minutes, -1,
+                    "response assessment abandoned after losing its accepted report identity" );
+        if( abandoned != camp_decision_transition_result::applied ) {
+            return response_denial_resolution::rejected;
+        }
+        site = std::move( candidate );
+        return response_denial_resolution::abandoned;
+    }
+
+    const response_authorization_evaluation authorization =
+        evaluate_response_authorization( site, current_minutes, selection, member_reads );
+    if( !authorization.valid || authorization.authorized ) {
+        return response_denial_resolution::rejected;
+    }
+    if( !authorization.report_unexpired ) {
+        const int expiry_minutes = minutes_after_saturated(
+                                       report.delivered_minutes, 48 * 60 );
+        site_record candidate = site;
+        const camp_decision_transition_result cooldown = transition_camp_decision_state(
+                    candidate, camp_decision_state::report_awaiting_assessment,
+                    camp_decision_state::cooldown, decision.source_report_revision,
+                    decision.source_report_generation, expiry_minutes, expiry_minutes,
+                    "response report expired; rescout cooldown elapsed" );
+        if( cooldown != camp_decision_transition_result::applied ) {
+            return response_denial_resolution::rejected;
+        }
+        const camp_decision_transition_result idle = transition_camp_decision_state(
+                    candidate, camp_decision_state::cooldown, camp_decision_state::idle,
+                    decision.source_report_revision, decision.source_report_generation,
+                    expiry_minutes, -1, "expired response report released for rescout" );
+        if( idle != camp_decision_transition_result::applied ) {
+            return response_denial_resolution::rejected;
+        }
+        site = std::move( candidate );
+        return response_denial_resolution::rescout_ready;
+    }
+    return response_denial_resolution::held;
 }
 
 int hostile_camp_dispatch_drive( const int need, const int knowledge_gap,
@@ -13707,7 +13778,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup,
-        const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch )
+        const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch,
+        const std::function<std::vector<response_member_power_read>( const site_record & )>
+        &response_member_read_lookup )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_maintenance );
@@ -13872,6 +13945,51 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         }
         dispatch_site_indices.push_back( site_index );
         normal_sites_selected++;
+    }
+    if( response_member_read_lookup ) {
+        for( const std::size_t site_index : dispatch_site_indices ) {
+            site_record &site = state.sites[site_index];
+            if( site.camp_decision.state !=
+                camp_decision_state::report_awaiting_assessment ) {
+                continue;
+            }
+            const std::vector<response_member_power_read> reads =
+                response_member_read_lookup( site );
+            const scout_report_effective_state effective = evaluate_scout_report_at(
+                        site.current_scout_report, now_minutes );
+            const response_party_selection_result selection = select_capable_response_party(
+                        site, site.current_scout_report.action_policy,
+                        effective.danger_high, reads );
+            const response_authorization_evaluation authorization =
+                evaluate_response_authorization( site, now_minutes, selection, reads );
+            if( authorization.authorized ) {
+                continue;
+            }
+            const response_denial_resolution resolution =
+                resolve_response_authorization_denial( site, now_minutes, selection, reads );
+            switch( resolution ) {
+                case response_denial_resolution::held:
+                    result.response_denials_held++;
+                    result.notes.push_back( "response denial maintenance held site=" +
+                                            site.site_id );
+                    break;
+                case response_denial_resolution::rescout_ready:
+                    result.response_rescouts_ready++;
+                    result.notes.push_back( "response denial maintenance released rescout site=" +
+                                            site.site_id );
+                    break;
+                case response_denial_resolution::abandoned:
+                    result.response_decisions_abandoned++;
+                    result.notes.push_back( "response denial maintenance abandoned site=" +
+                                            site.site_id );
+                    break;
+                case response_denial_resolution::rejected:
+                    result.response_denial_rejections++;
+                    result.notes.push_back( "response denial maintenance rejected stale input site=" +
+                                            site.site_id );
+                    break;
+            }
+        }
     }
     struct routine_dispatch_candidate {
         std::size_t site_index;
@@ -14236,6 +14354,10 @@ std::string render_structural_bounty_maintenance_report(
         << " dispatches_applied=" << result.dispatches_applied
         << " materialization_attempts=" << result.materialization_attempts
         << " members_materialized=" << result.members_materialized
+        << " response_denials_held=" << result.response_denials_held
+        << " response_rescouts_ready=" << result.response_rescouts_ready
+        << " response_decisions_abandoned=" << result.response_decisions_abandoned
+        << " response_denial_rejections=" << result.response_denial_rejections
         << " dispatch_cap_reached=" << ( result.dispatch_cap_reached ? "yes" : "no" )
         << " active_outings=" << result.outing.active_outings_considered
         << " stalking_checks=" << result.outing.stalking_checks_processed

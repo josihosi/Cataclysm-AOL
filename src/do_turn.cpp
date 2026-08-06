@@ -5667,6 +5667,8 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                     }
                     return live_bandit_materialize_abstract_members_for_routine(
                                world, world.sites[site_index] );
+                }, []( const bandit_live_world::site_record & site ) {
+                    return live_bandit_response_member_power_reads_impl( site );
                 } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_evidence_debug_report(

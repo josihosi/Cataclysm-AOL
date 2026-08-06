@@ -21585,6 +21585,221 @@ TEST_CASE( "bandit_live_world_response_authorization_centralizes_hard_report_and
     }
 }
 
+TEST_CASE( "bandit_live_world_response_denial_holds_then_releases_for_rescout",
+           "[bandit][live_world][response_authorization][response_denial]" )
+{
+    using bandit_live_world::camp_decision_state;
+    using bandit_live_world::camp_decision_transition_result;
+    using bandit_live_world::camp_report_policy;
+    using bandit_live_world::response_denial_resolution;
+    using bandit_live_world::response_member_power_read;
+    using bandit_live_world::response_party_selection_result;
+    using bandit_live_world::scout_assessment_threshold_class;
+
+    const auto make_world = []( const int certainty, const int bounty, const int first_id ) {
+        bandit_live_world::world_state world;
+        for( int index = 0; index < 7; ++index ) {
+            add_bandit_camp_member( world, index, first_id );
+        }
+        bandit_live_world::site_record &site = world.sites.front();
+        bandit_live_world::scout_report_record &report = site.current_scout_report;
+        report.revision = 7;
+        report.action_policy = camp_report_policy::bandit_shakedown;
+        report.source_activity_id = site.site_id + "#scout:denial";
+        report.source_generation = 4;
+        report.source_job_type = "scout";
+        report.target_id = "denial-target";
+        report.target_omt = tripoint_abs_omt( 18, 20, 0 );
+        report.application_key = report.source_activity_id + ":report:4";
+        report.delivered_minutes = 100;
+        report.assessment.certainty = certainty;
+        report.assessment.readiness_latched = true;
+        report.assessment.threshold_class = scout_assessment_threshold_class::normal;
+        report.assessment.danger_high = 15;
+        report.assessment.bounty_estimate = bounty;
+        REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+                 camp_decision_transition_result::applied );
+        return world;
+    };
+    const auto make_reads = []( const bandit_live_world::site_record &site,
+    const std::vector<int> &powers ) {
+        REQUIRE( site.roster().physically_present_ids.size() == powers.size() );
+        std::vector<response_member_power_read> reads;
+        for( std::size_t index = 0; index < powers.size(); ++index ) {
+            reads.push_back( { site.roster().physically_present_ids[index], true, true, true,
+                               powers[index] } );
+        }
+        return reads;
+    };
+    const auto select_party = []( const bandit_live_world::site_record &site,
+    const std::vector<response_member_power_read> &reads ) {
+        return bandit_live_world::select_capable_response_party(
+                   site, site.current_scout_report.action_policy,
+                   site.current_scout_report.assessment.danger_high, reads );
+    };
+
+    SECTION( "unexpired denial holds and exact expiry releases atomically" ) {
+        bandit_live_world::world_state initial = make_world( 59, 3, 55000 );
+        const std::vector<response_member_power_read> reads = make_reads(
+                    initial.sites.front(), { 10, 9, 6, 5, 4, 3, 2 } );
+        const response_party_selection_result party = select_party(
+                    initial.sites.front(), reads );
+        REQUIRE( party.eligible );
+
+        bandit_live_world::world_state stepped = initial;
+        bandit_live_world::site_record &stepped_site = stepped.sites.front();
+        const std::string before_hold = serialize_world( stepped );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   stepped_site, 100 + 48 * 60 - 1, party, reads ) ==
+               response_denial_resolution::held );
+        CHECK( serialize_world( stepped ) == before_hold );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   stepped_site, 100 + 48 * 60, party, reads ) ==
+               response_denial_resolution::rescout_ready );
+        CHECK( stepped_site.camp_decision.state == camp_decision_state::idle );
+        CHECK( stepped_site.camp_decision.last_transition_minutes == 100 + 48 * 60 );
+        CHECK( stepped_site.camp_decision.next_eligible_minutes == -1 );
+        CHECK( stepped_site.camp_decision.transition_reason ==
+               "expired response report released for rescout" );
+        CHECK( stepped_site.current_scout_report.revision == 7 );
+        REQUIRE( stepped_site.acted_reports.size() == 1 );
+        CHECK( stepped_site.acted_reports.front().report_revision == 7 );
+        CHECK_FALSE( stepped_site.has_active_outside_pressure() );
+
+        bandit_live_world::world_state jumped = initial;
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   jumped.sites.front(), 4000, party, reads ) ==
+               response_denial_resolution::rescout_ready );
+        CHECK( serialize_world( jumped ) == serialize_world( stepped ) );
+        const std::string released = serialize_world( jumped );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   jumped.sites.front(), 4000, party, reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( jumped ) == released );
+        CHECK( bandit_live_world::accept_current_scout_report_for_assessment(
+                   jumped.sites.front() ) == camp_decision_transition_result::rejected );
+        CHECK( serialize_world( jumped ) == released );
+    }
+
+    SECTION( "low opportunity and unaffordable current parties hold without score override" ) {
+        bandit_live_world::world_state poor = make_world( 70, 1, 55100 );
+        const std::vector<response_member_power_read> capable_reads = make_reads(
+                    poor.sites.front(), { 10, 9, 6, 5, 4, 3, 2 } );
+        const response_party_selection_result capable_party = select_party(
+                    poor.sites.front(), capable_reads );
+        const std::string poor_before = serialize_world( poor );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   poor.sites.front(), 101, capable_party, capable_reads ) ==
+               response_denial_resolution::held );
+        CHECK( serialize_world( poor ) == poor_before );
+
+        bandit_live_world::world_state weak = make_world( 70, 3, 55200 );
+        const std::vector<response_member_power_read> weak_reads = make_reads(
+                    weak.sites.front(), { 3, 3, 3, 3, 3, 3, 3 } );
+        const response_party_selection_result weak_party = select_party(
+                    weak.sites.front(), weak_reads );
+        REQUIRE_FALSE( weak_party.eligible );
+        const std::string weak_before = serialize_world( weak );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   weak.sites.front(), 101, weak_party, weak_reads ) ==
+               response_denial_resolution::held );
+        CHECK( serialize_world( weak ) == weak_before );
+    }
+
+    SECTION( "hourly maintenance consumes fresh response reads and reaches the owner" ) {
+        bandit_live_world::world_state world = make_world( 59, 3, 55500 );
+        int response_read_calls = 0;
+        const auto response_reads = [&response_read_calls, &make_reads](
+        const bandit_live_world::site_record & site ) {
+            response_read_calls++;
+            return make_reads( site, { 10, 9, 6, 5, 4, 3, 2 } );
+        };
+        const bandit_live_world::structural_bounty_maintenance_result maintenance =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, 100 + 48 * 60, 0, 0, {}, {}, {}, {}, {}, {}, response_reads );
+        CHECK( response_read_calls == 1 );
+        CHECK( maintenance.response_denials_held == 0 );
+        CHECK( maintenance.response_rescouts_ready == 1 );
+        CHECK( maintenance.response_decisions_abandoned == 0 );
+        CHECK( maintenance.response_denial_rejections == 0 );
+        CHECK( world.sites.front().camp_decision.state == camp_decision_state::idle );
+        CHECK_FALSE( world.sites.front().has_active_outside_pressure() );
+        const std::string after_maintenance = serialize_world( world );
+
+        const bandit_live_world::structural_bounty_maintenance_result replay =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, 100 + 48 * 60, 0, 0, {}, {}, {}, {}, {}, {}, response_reads );
+        CHECK( replay.scheduler_replay_suppressed );
+        CHECK( response_read_calls == 1 );
+        CHECK( replay.response_rescouts_ready == 0 );
+        CHECK( serialize_world( world ) == after_maintenance );
+
+        bandit_live_world::world_state authorized = make_world( 70, 2, 55600 );
+        const bandit_live_world::structural_bounty_maintenance_result authorized_maintenance =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                authorized, 101, 0, 0, {}, {}, {}, {}, {}, {}, response_reads );
+        CHECK( response_read_calls == 2 );
+        CHECK( authorized_maintenance.response_denials_held == 0 );
+        CHECK( authorized_maintenance.response_rescouts_ready == 0 );
+        CHECK( authorized_maintenance.response_decisions_abandoned == 0 );
+        CHECK( authorized_maintenance.response_denial_rejections == 0 );
+        CHECK( authorized.sites.front().camp_decision.state ==
+               camp_decision_state::report_awaiting_assessment );
+        CHECK( authorized.sites.front().current_scout_report.revision == 7 );
+        CHECK( authorized.sites.front().acted_reports.size() == 1 );
+        CHECK_FALSE( authorized.sites.front().has_active_outside_pressure() );
+        CHECK( authorized.sites.front().living_total == 7 );
+    }
+
+    SECTION( "authorized stale and malformed owners cannot enter a denial transition" ) {
+        bandit_live_world::world_state authorized = make_world( 70, 2, 55300 );
+        const std::vector<response_member_power_read> reads = make_reads(
+                    authorized.sites.front(), { 10, 9, 6, 5, 4, 3, 2 } );
+        const response_party_selection_result party = select_party(
+                    authorized.sites.front(), reads );
+        const std::string authorized_before = serialize_world( authorized );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   authorized.sites.front(), 101, party, reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( authorized ) == authorized_before );
+
+        response_party_selection_result stale_party = party;
+        stale_party.party_power--;
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   authorized.sites.front(), 101, stale_party, reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( authorized ) == authorized_before );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   authorized.sites.front(), 100 + 48 * 60, stale_party, reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( authorized ) == authorized_before );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   authorized.sites.front(), 100 + 48 * 60, party, {} ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( authorized ) == authorized_before );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   authorized.sites.front(), 99, party, reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( authorized ) == authorized_before );
+
+        bandit_live_world::world_state malformed = make_world( 70, 3, 55400 );
+        const std::vector<response_member_power_read> malformed_reads = make_reads(
+                    malformed.sites.front(), { 10, 9, 6, 5, 4, 3, 2 } );
+        const response_party_selection_result malformed_party = select_party(
+                    malformed.sites.front(), malformed_reads );
+        malformed.sites.front().current_scout_report.revision++;
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   malformed.sites.front(), 101, malformed_party, malformed_reads ) ==
+               response_denial_resolution::abandoned );
+        CHECK( malformed.sites.front().camp_decision.state == camp_decision_state::abandoned );
+        const std::string abandoned = serialize_world( malformed );
+        CHECK( bandit_live_world::resolve_response_authorization_denial(
+                   malformed.sites.front(), 102, malformed_party, malformed_reads ) ==
+               response_denial_resolution::rejected );
+        CHECK( serialize_world( malformed ) == abandoned );
+    }
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {
