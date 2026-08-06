@@ -57,7 +57,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ### Active target - CAOL-HOSTILE-CAMP-OVERMAP-ECOLOGY-v0
 
-**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-5 OPTICS BOUNDARY NEXT
+**Status:** ACTIVE / PHASE-4 LIVE HOLD / PHASE-6 RESPONSE DENIAL GREEN / OVERDUE LOSS NEXT
 
 Josef explicitly promoted the bandit/cannibal hostile-camp implementation on 2026-08-02. The
 canonical contract and cross-off evidence ledger is
@@ -568,6 +568,18 @@ operation 5/1,155. One structured review found and fixed unbound cached party po
 is clean. The old planner still does not consume this authorization and no decision/reservation/
 operation mutates yet. Next define the authoritative denial outcome: hold now, then rescout after
 expiry or abandon through an explicit decision transition.
+Response-denial ownership is green at `df9fbcb7c6`: the existing hourly structural scheduler reads
+fresh loaded/unloaded member authority only for its at-most-16 selected awaiting-assessment camps,
+skips authorized responses, and resolves valid denials without a second loop. An unexpired denial
+is byte-inert; exact report expiry traverses the existing awaiting-assessment-to-cooldown-to-idle
+graph at the authoritative 48-hour deadline so late polling and boundary stepping converge; lost
+accepted-report identity abandons once. Stale selection/read snapshots reject before mutation,
+replay performs no reads, and report/watermark history remains intact. Mac build and tests pass
+denial 1/121, combined authorization 2/251, scheduler 11/27,860, camp decision 3/124, and hostile
+operation 5/1,155. Three review rounds exposed and closed stale-read mutation, missing runtime
+wiring, and poll-time timestamp drift; the final fresh review is clean. No response reservation or
+launch, new persistence, astyle 3.1, GUI, Linux, or Windows claim. Next prove overdue total loss
+creates missing-route knowledge only and never imports the dead party's dossier.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

@@ -1923,3 +1923,45 @@ initial `RELEASE=1`/debug-PCH mismatch and direct submake without the top-level 
 non-credit command-shape failures. No old-planner wiring, denial transition, reservation/launch,
 new persistence, astyle 3.1, GUI, Linux, or Windows claim. Next: explicit hold/rescout/abandon
 handling when authorization denies.
+
+Phase-6 response-denial outcome proof contract (source identity `eacec6a5a483`,
+pre-implementation):
+- Claim: an authoritative owner transaction prevents a denied follow-on decision from wedging the
+  camp. A structurally valid denial holds byte-identically while its report remains usable; at the
+  exact 48-hour expiry it atomically releases the decision to ordinary rescout eligibility; a lost
+  or mismatched pinned report identity abandons the decision fail-closed.
+- Preconditions/interventions: tests create and accept a real final report, current member reads,
+  and the selector result, then stop before denial resolution. No operation is active, reserved, or
+  launched. The resolver recomputes authorization from those reads and the current owners.
+- Causal boundary/real path: unexpired denial returns `held` without calling a mutator. Exact expiry
+  applies the existing `report_awaiting_assessment -> cooldown -> idle` transition graph to one
+  candidate at one timestamp and commits once, leaving report/watermark history intact while the
+  ordinary scheduler may scout again. Missing/mismatched report identity uses the existing
+  `-> abandoned` transition on a candidate. No direct state assignment is the production path.
+- Expected transition: certainty 59, opportunity 333, or no capable party holds at 47h59m; at
+  exactly 48h the same owner becomes idle once with no active pressure and no roster/report change.
+  A mismatched current report becomes abandoned once. One large jump and a boundary-step run end in
+  identical serialized state.
+- Negative/control: an authorized result, invalid/future time, wrong decision state, active outside
+  pressure, retired site, or stale selection/member-read pairing rejects or holds without mutation.
+  Replay after rescout-ready or abandonment is byte-identical. High opportunity cannot force a
+  reservation, and neither outcome clears the accepted-report watermark.
+- Timeout/pass-fail: one enum/owner/core-test diff, focused `[response_denial]`, adjacent
+  authorization/decision/selection/operation regressions, clean diff, and one review if the owner
+  boundary changes materially. No scheduler launch wiring, response reservation/operation, new
+  persistence, astyle 3.1, GUI, Linux, or Windows runtime claim.
+
+Phase-6 response-denial ownership is green at `df9fbcb7c6`. The existing hourly structural
+maintenance path now supplies fresh loaded/unloaded response-member reads only for the at-most-16
+selected camps still awaiting assessment. Authorization-success cases remain untouched; valid
+unexpired denials hold byte-identically; exact expiry traverses the existing cooldown-to-idle graph
+at `delivered_minutes + 48h`, preserving report and acted watermark; mismatched report identity
+abandons once. Stale/malformed selection-read pairs reject before mutation, boundary stepping and a
+late minute-4000 jump serialize identically, and scheduler-hour replay performs no member reads.
+The Mac build exits 0; exact denial passes 1/121, combined authorization 2/251, scheduler 11/27,860,
+camp decision 3/124, and hostile operation 5/1,155. Three successive reviews found concrete issues:
+expiry initially mutated before current reads were validated, the resolver lacked a production
+caller, and late hourly polling wrote poll time instead of the authoritative report deadline. Each
+was fixed with affected tests rerun; the final fresh review reports no actionable finding, and
+`git diff --check` is clean. No response reservation/launch, new persistence, astyle 3.1, live GUI,
+Linux, or Windows evidence is claimed. Next: overdue total-loss knowledge provenance.
