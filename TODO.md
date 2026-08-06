@@ -25,10 +25,9 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit the existing downstream Phase-3 risk consumer and prove exactly
-   `X = clamp(5 * danger_high, 0, 1000)` from the immutable Phase-6 assessment, including ordinary,
-   hard-unsafe, and stale/unknown controls. Do not begin follow-on party sizing, reserve policy, or
-   response authorization in this row.
+1. Define and prove follow-on party power against the immutable report's pessimistic target estimate
+   and the faction-specific 125% bandit / 150% cannibal safety margins. Keep this a pure bounded
+   computation row: do not select members, reserve home defense, authorize, or launch a response.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.

@@ -1756,3 +1756,40 @@ production assertion; only observation-schema round-trip is credited from that f
 observer remains separately capped at 16. No count above 32, downstream Phase-3 risk, response
 sizing/authorization, astyle 3.1, GUI, Linux, or Windows claim. Next: prove the existing Phase-3
 `X = clamp(5 * danger_high, 0, 1000)` consumer from the immutable assessment.
+
+Phase-6 normalized downstream-risk proof contract (source identity `8675e80301f5`,
+pre-implementation):
+- Claim: one shared pure normalization owns the Phase-3 `X` scale and every current live/abstract
+  hard-danger consumer uses it. A valid immutable scout-report view exposes
+  `normalized_risk = clamp(5 * danger_high, 0, 1000)` without mutating the report or authorizing a
+  response.
+- Preconditions/interventions: construct valid delivered reports with authoritative assessment
+  danger values and use existing real structural threat reads for the live/abstract boundary.
+  Fixtures may set the input assessment/read fields; they may not pre-write normalized risk or a
+  decision outcome.
+- Causal boundary/real path: `evaluate_scout_report_at(...)` copies the persisted `danger_high` and
+  invokes the same normalization function used by structural visual, local-zombie, and abstract
+  encounter hard-risk gates. Existing `750` blocking semantics remain unchanged.
+- Expected transition: `0/37/149/150/200` map to `0/185/745/750/1000`; an ordinary delivered report
+  exposes 185, a hard-unsafe report exposes 1000, and the 48-hour authorization boundary leaves
+  remembered risk intact while separately disabling attack authorization.
+- Negative/control: an absent/future report keeps `normalized_risk = -1` so unknown is not silently
+  represented as safe; helper inputs outside `0..200` clamp safely; repeated/equivalent reads are
+  byte-inert; `149` remains below and `150` reaches the existing hard-risk gate.
+- Timeout/pass-fail: one behavior/test checkpoint. Pass requires exact helper boundaries, immutable
+  report projection, all three production call sites on the helper, current aging/assessment and
+  structural threat regressions, and clean diff. Response sizing, reserve policy, authorization,
+  new persistence, astyle 3.1, GUI, Linux, and Windows remain unclaimed.
+
+Phase-6 normalized downstream risk is green at behavior checkpoint `95974a7206`. One pure helper
+now owns `5 * clamp(danger_high, 0, 200)` for the immutable report projection and the existing
+structural visual, local-zombie, and abstract-encounter hard-risk gates. Exact boundaries are
+`0/37/149/150/200 -> 0/185/745/750/1000`; out-of-range helper inputs clamp safely. A future report
+keeps explicit unknown `-1`, a valid ordinary report exposes 185, a hard-unsafe report exposes 1000,
+and the exact 48-hour authorization expiry retains known risk while disabling response authority.
+Repeated and step/jump reads leave serialized report bytes unchanged. The final Mac build is green;
+focused risk is 2/159, assessment 4/225, aging 1/126, abstract threat 7/467, local zombie 4/389, and
+seed-424242 covert burn 7/1,073. `git diff --check` is clean. No response-party computation,
+selection, reserve, authorization, launch, persistence, astyle 3.1, GUI, Linux, or Windows claim.
+Next: compute follow-on party power against pessimistic target power and faction margin without
+selecting or reserving members.

@@ -533,6 +533,14 @@ ID vector; new facts always emit it. A real 17-actor fixture yields count 17 bel
 history, and saturated-save controls pass. The reciprocal burn observer keeps its separate 16-target
 cap. Next verify the existing uncertainty equation's downstream Phase-3 `X = 5 * danger_high`
 consumer exactly; do not begin response sizing or authorization.
+Normalized downstream risk is green at `95974a7206`: one pure bounded helper maps assessment
+`danger_high` to `0..1000`, the immutable report view exposes the result without persistence, and
+the structural visual, local-zombie, and abstract-encounter hard-risk gates all consume that same
+function. Exact 149/150 inputs remain 745/750 around the existing hard block; invalid/future reports
+retain unknown `-1`, while a 48-hour-old report retains known risk but separately loses attack
+authorization. The Mac build plus focused risk 2/159, assessment 4/225, aging 1/126, abstract threat
+7/467, local zombie 4/389, and controlled-seed burn 7/1,073 pass. Next compute follow-on party power
+against the pessimistic target estimate and faction margin; do not select/reserve members yet.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
