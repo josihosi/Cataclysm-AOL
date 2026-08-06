@@ -326,7 +326,15 @@ three cursor-revisioned attempts remember endpoints and route footprints across 
 handoff; exhausted survivors receive preflighted home routes whose exclusions remain active until
 the outing closes. Only failed home routing may use stranded-return closure. Final Mac focused
 tests, release tiles link, and clean autoreview are green. No astyle 3.1, live GUI, Linux, or Windows
-runtime is claimed. Next is full bounded egress completion and rally/no-mutual-visibility semantics.
+runtime is claimed. Full bounded egress completion is checkpointed at `b9f29496bd23`: every
+survivor must reach the persisted rally and receive an explicit clear ordinary-vision acquire read;
+unknown in-bounds actors hold, visible rallies extend strictly outward for at most three attempts,
+and exhaustion installs real home routes without re-entry. Concrete routes are nondecreasing in
+target distance from each survivor's physical start, legacy schema-10 chains load without gaining
+new retries, and endpoint ownership releases cleanly for camp return/dematerialization. Fixed-seed
+focused tests, Mac test build, release tiles link after a targeted generated-PCH refresh, and final
+autoreview are green. Next is the persisted route-commitment/hysteresis row: prove bubble and
+visibility transitions cannot reset the party to `observing`.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

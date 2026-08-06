@@ -1215,4 +1215,17 @@ endpoint/route-footprint persistence, legacy schema-10 migration, local/abstract
 strict retry versus authorized lateral replan, terminal home-route preflight, authoritative no-home
 abandonment, and failed-footing exclusion across exposed/report/home overmap and local emergency
 movement. `git diff --check` and final scoped autoreview are clean. `astyle` 3.1 is unavailable; no
-live GUI, Linux, or Windows runtime is claimed. Next is full bounded egress completion/rally proof.
+live GUI, Linux, or Windows runtime is claimed. That checkpoint fed the completion slice below.
+
+Phase-5 full bounded egress completion is green at `b9f29496bd23`. With fixed seed 424242,
+`[covert_burn]` passes 2/308, `[local_handoff]` 1/651, `[structural_bounty]` 51/6,785,
+`[covert_disposition]` 2/98, and `[ecology_intervention]` 2/61. Coverage requires every survivor at
+the persisted endpoint and an explicitly evaluated clear ordinary-vision acquire read; unknown
+in-bounds actors hold, visible rallies extend outward for no more than three attempts, member paths
+are nondecreasing in target distance from their actual starts, legacy schema-10 chains cannot gain
+new retries, and endpoint ownership releases for camp return/dematerialization. The Mac test build,
+release-tiles link, `git diff --check`, and final scoped autoreview are green. The first release link
+attempt exposed only a stale generated tiles PCH configuration; removing that generated PCH and its
+dependency file made the second run green. `astyle` 3.1 is unavailable; no live GUI, Linux, or
+Windows runtime is claimed. Next is route-commitment/hysteresis proof across bubble and visibility
+transitions.
