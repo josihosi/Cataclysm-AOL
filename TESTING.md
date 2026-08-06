@@ -1711,3 +1711,48 @@ assessment 4/225, scout-report aging 1/116, and seed-424242 covert burn 7/1,061.
 is clean. This closes existing production behavior only; no downstream risk multiplier, response
 sizing/authorization, astyle 3.1, GUI, Linux, or Windows claim. Next: audit the bounded typed
 defender-identity cap for an exact 17+ simultaneous lower bound.
+
+Phase-6 simultaneous 17+ defender proof contract (source identity `35215270fa0a`,
+pre-implementation):
+- Claim: one ordinary loaded scout may retain a true simultaneous lower bound above the existing
+  16 stable-ID save cap. A bounded read of at most 32 distinct visible avatar/allied defenders
+  stores their exact observed count and summed normalized power while persisting only a canonical
+  sample of at most 16 real IDs; a 17-defender window therefore remains `defenders_low = 17` and
+  hard-unsafe danger 200 after sharing, return, and save/load.
+- Preconditions/interventions: a schema-10 local observing pair at a valid player-camp target and
+  17 real loaded, living avatar/allied actors in ordinary scout sight at one target OMT. Fixtures
+  may place those actors and establish the existing human baseline; they may not write the count,
+  power, observation, assessment, or report directly.
+- Causal boundary/real path: the production loaded visible-defender poll evaluates at most 32
+  deterministic real actors through the existing combat evaluator. The core writer validates
+  distinct reads, sums every accepted actor's normalized power, stores the accepted simultaneous
+  count, and retains only the first 16 canonical real IDs. Existing cohesion sharing, assessment,
+  physical report, and serialization consume that one authoritative typed fact.
+- Persistence/migration: add one bounded typed-observation count field. Current schema-1 saves that
+  lack it infer exactly `defender_ids.size()`; new saves always emit it. Count must be `0..32`, may
+  not be smaller than the retained IDs, and may be nonzero only with a nonempty real-ID sample.
+  No duplicate registry, invented IDs, unbounded vector, or separate assessment owner is allowed.
+- Negative/control: 16 remains 16; 17 IDs cannot bypass the persisted 16-ID sample cap; count below
+  sample size, count above 32, nonzero count with no IDs, duplicate/unsorted IDs, private-only facts,
+  hidden/dead/hostile/out-of-footprint actors, and distinct historical windows remain rejected,
+  excluded, or uncombined. Burn observer selection remains on its existing separate cap.
+- Timeout/pass-fail: one prepared production poll, normal share/report round trip, and core
+  migration/malformed matrix. Pass requires live count 17 with 16 canonical IDs, assessment
+  `17/17/200`, byte-stable current save reload, legacy inference, bounded saturated-save evidence,
+  focused defender/assessment/typed/history regressions, and clean diff. Astyle 3.1, GUI, Linux,
+  Windows, 33+ exact totals, downstream risk, and response authorization remain unclaimed.
+
+Phase-6 simultaneous 17+ defender retention is green at behavior checkpoint `4c3fb5a9a7`. The
+production loaded poll observed the avatar plus 16 real loaded allied NPCs at one target OMT through
+ordinary scout vision, evaluated all 17 below the existing power saturation cap, persisted count 17,
+and retained the first 16 sorted real IDs. Core proof preserves assessment
+`defenders_low/high = 17/17` and `danger_low/high = 140/200`; current and legacy typed facts,
+physical report history, malformed atomic rejection, and a count-32 saturated save remain stable.
+The final-identity Mac build is green. Focused results are defender count 2/958, assessment 4/225,
+typed observation 6/225, report history 1/51, save size 1/12, visible power 2/350, and seed-424242
+covert burn 7/1,073. `git diff --check` is clean. The rejected whole-world fixture reload exposed an
+unrelated pre-existing missing spawn-tile authority in the synthetic optics site after every live
+production assertion; only observation-schema round-trip is credited from that fixture. The burn
+observer remains separately capped at 16. No count above 32, downstream Phase-3 risk, response
+sizing/authorization, astyle 3.1, GUI, Linux, or Windows claim. Next: prove the existing Phase-3
+`X = clamp(5 * danger_high, 0, 1000)` consumer from the immutable assessment.

@@ -524,6 +524,15 @@ aging 1/116, controlled-seed burn 7/1,061, and diff check pass. This is test-onl
 production behavior, not a new risk owner or response-authorization claim. Next audit the existing
 16-defender typed identity cap and choose the smallest bounded way to preserve a true 17+ simultaneous
 lower bound without unbounded save growth or identity invention.
+Simultaneous 17+ defender retention is green at `4c3fb5a9a7`: the passive loaded poll considers at
+most 32 deterministic real avatar/allied targets, persists the exact accepted simultaneous count,
+sums every accepted evaluator result, and retains only the first 16 sorted real IDs as a bounded
+correlation sample. Current schema-1 facts without the count infer it from their formerly complete
+ID vector; new facts always emit it. A real 17-actor fixture yields count 17 below power saturation,
+16 canonical IDs, and assessment `17/17/140/200`; report, legacy/current round-trip, malformed,
+history, and saturated-save controls pass. The reciprocal burn observer keeps its separate 16-target
+cap. Next verify the existing uncertainty equation's downstream Phase-3 `X = 5 * danger_high`
+consumer exactly; do not begin response sizing or authorization.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is
