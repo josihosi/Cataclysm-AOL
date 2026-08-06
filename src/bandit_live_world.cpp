@@ -110,6 +110,7 @@ constexpr int routine_scheduler_start_cap = 2;
 constexpr int routine_frontier_recurrence_minutes = 72 * 60;
 constexpr int routine_candidate_full_route_solve_cap = 2;
 constexpr int routine_remembered_ground_candidate_cap = 6;
+constexpr std::size_t max_structural_route_rejection_summary_length = 160;
 constexpr int routine_acquire_score = 300;
 constexpr int routine_retain_score = 150;
 constexpr int routine_hard_risk = 750;
@@ -126,6 +127,51 @@ void bound_camp_map_lead_strings( camp_map_lead &lead )
     lead.source_summary.resize( std::min( lead.source_summary.size(),
                                          max_camp_lead_summary_length ) );
     lead.last_outcome.resize( std::min( lead.last_outcome.size(), max_camp_lead_outcome_length ) );
+}
+
+std::string sanitize_structural_route_rejection_field( const std::string &raw,
+        const std::size_t cap )
+{
+    std::string result;
+    result.reserve( std::min( raw.size(), cap ) );
+    for( const char character : raw ) {
+        if( result.size() == cap ) {
+            break;
+        }
+        const unsigned char byte = static_cast<unsigned char>( character );
+        result.push_back( byte <= 0x20 || byte == 0x7f || character == '=' ||
+                          character == '\\' ? '_' : character );
+    }
+    if( raw.size() > cap && !result.empty() ) {
+        result.back() = '~';
+    }
+    return result;
+}
+
+std::string structural_route_rejection_reason(
+    const bandit_live_world::structural_outing_plan &plan,
+    const bandit_live_world::structural_route_read &read )
+{
+    if( read.complete_route_cost > max_structural_route_cost_omt ) {
+        return "complete_route_cost_over_cap";
+    }
+    if( read.watch_geography_supplied && !read.reachable ) {
+        return "watch_geography_contract_rejected";
+    }
+    if( !read.reachable ) {
+        return "route_lookup_unreachable";
+    }
+    if( read.complete_route_cost < 0 ) {
+        return "invalid_complete_route_cost";
+    }
+    if( !bandit_live_world::hostile_camp_routine_route_risk_eligible(
+            plan.static_risk, read.max_segment_risk ) ) {
+        return "route_risk_ineligible";
+    }
+    if( read.watch_geography_supplied ) {
+        return "watch_geography_contract_rejected";
+    }
+    return "route_contract_rejected";
 }
 
 int minutes_after_saturated( const int base_minutes, const int delta_minutes )
@@ -14207,6 +14253,16 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     read.summary = "deterministic bounded route fallback";
                 }
                 if( !apply_structural_route_read( site, now_minutes, read, routed ) ) {
+                    const std::string rejection_detail =
+                        sanitize_structural_route_rejection_field(
+                            read.summary, max_structural_route_rejection_summary_length );
+                    result.notes.push_back(
+                        "routine dispatch routed candidate rejected site=" +
+                        sanitize_structural_route_rejection_field( site.site_id, 96 ) +
+                        " lead=" + sanitize_structural_route_rejection_field(
+                            routed.lead_id, 128 ) + " reason=" +
+                        structural_route_rejection_reason( routed, read ) +
+                        ( rejection_detail.empty() ? "" : " detail=" + rejection_detail ) );
                     routed.valid = false;
                 }
             }

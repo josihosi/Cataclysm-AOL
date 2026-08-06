@@ -22115,6 +22115,99 @@ TEST_CASE( "hostile_camp_routed_dispatch_ranks_cheap_then_solves_only_top_two",
     CHECK( site.active_outing.target_id == lead_ids[1] );
 }
 
+TEST_CASE( "hostile_camp_routed_dispatch_preserves_bounded_rejection_reasons",
+           "[bandit][live_world][scheduler][structural_bounty][routed_dispatch]" )
+{
+    struct rejection_case {
+        bandit_live_world::structural_route_read read;
+        std::string reason;
+        std::string detail;
+    };
+    const std::vector<rejection_case> cases = {
+        { { false, -1, 0, "unreachable\nriver=deep\\ford" },
+            "route_lookup_unreachable", "unreachable_river_deep_ford" },
+        { { true, 19, 0, "route exceeds configured OMT cap" },
+            "complete_route_cost_over_cap", "route_exceeds_configured_OMT_cap" },
+        { { false, 4, 0, "no bounded safe watch geography", true },
+            "watch_geography_contract_rejected", "no_bounded_safe_watch_geography" },
+        { { true, -1, 0, "contradictory route read" },
+            "invalid_complete_route_cost", "contradictory_route_read" },
+        { { true, 4, 1001, std::string( 200, 'r' ) },
+            "route_risk_ineligible", std::string( 159, 'r' ) + "~" }
+    };
+
+    for( const rejection_case &rejection : cases ) {
+        CAPTURE( rejection.read.reachable, rejection.read.complete_route_cost,
+                 rejection.read.max_segment_risk, rejection.read.watch_geography_supplied,
+                 rejection.read.summary );
+        bandit_live_world::world_state world;
+        add_scheduler_test_site( world, 0, false, 521500 );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.routine_activated_minutes = 0;
+        site.supply_units = 0;
+        site.supply_last_update_minutes = 0;
+        site.intelligence_map.frontier_last_resolved_minutes.assign( 8, -1 );
+        const tripoint_abs_omt target( site.anchor.x() + 2,
+                                       site.anchor.y(), site.anchor.z() );
+        const bandit_live_world::structural_bounty_read terrain =
+            bandit_live_world::classify_structural_bounty_terrain( "forest" );
+        REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                     site, target, terrain, 0 ) );
+        std::vector<std::string> routed_leads;
+        const bandit_live_world::structural_bounty_maintenance_result result =
+            bandit_live_world::advance_structural_bounty_maintenance(
+                world, 60, 0, 1, {},
+        []( const bandit_live_world::site_record &,
+           const bandit_live_world::camp_map_lead & ) {
+            return bandit_live_world::structural_threat_read{};
+        }, [&routed_leads, &rejection]( const bandit_live_world::site_record &,
+        const bandit_live_world::structural_outing_plan & plan ) {
+            routed_leads.push_back( plan.lead_id );
+            return rejection.read;
+        } );
+
+        REQUIRE( routed_leads.size() == 1 );
+        CHECK( result.full_route_solves == 1 );
+        CHECK( result.dispatches_applied == 0 );
+        INFO( bandit_live_world::render_structural_bounty_maintenance_report( result ) );
+        for( const std::string &routed_lead : routed_leads ) {
+            const std::string expected =
+                "routine dispatch routed candidate rejected site=" + site.site_id +
+                " lead=" + routed_lead + " reason=" + rejection.reason +
+                " detail=" + rejection.detail;
+            CHECK( std::count( result.notes.begin(), result.notes.end(), expected ) == 1 );
+            CHECK( bandit_live_world::render_structural_bounty_maintenance_report( result ).find(
+                       expected ) != std::string::npos );
+        }
+    }
+
+    bandit_live_world::world_state empty_summary;
+    add_scheduler_test_site( empty_summary, 0, false, 521600 );
+    bandit_live_world::site_record &site = empty_summary.sites.front();
+    site.routine_activated_minutes = 0;
+    site.supply_units = 0;
+    site.supply_last_update_minutes = 0;
+    site.intelligence_map.frontier_last_resolved_minutes.assign( 8, -1 );
+    const tripoint_abs_omt target( site.anchor.x() + 2, site.anchor.y(), site.anchor.z() );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                 site, target,
+                 bandit_live_world::classify_structural_bounty_terrain( "forest" ), 0 ) );
+    const bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance(
+            empty_summary, 60, 0, 1, {}, {},
+    []( const bandit_live_world::site_record &,
+    const bandit_live_world::structural_outing_plan & ) {
+        return bandit_live_world::structural_route_read{ false, -1, 0, "" };
+    } );
+    const auto rejection_note = std::find_if(
+                                    result.notes.begin(), result.notes.end(), []( const std::string & note ) {
+        return note.find( "routine dispatch routed candidate rejected" ) != std::string::npos;
+    } );
+    REQUIRE( rejection_note != result.notes.end() );
+    CHECK( rejection_note->find( "reason=route_lookup_unreachable" ) != std::string::npos );
+    CHECK( rejection_note->find( " detail=" ) == std::string::npos );
+}
+
 TEST_CASE( "hostile_camp_routed_dispatch_enforces_global_eight_solve_two_start_budget",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][fairness][save]" )
 {
