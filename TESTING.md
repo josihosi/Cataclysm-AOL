@@ -1625,3 +1625,53 @@ burn 7/1,052; root rerun is 2/327. Review replaced an unavailable-part approxima
 `git diff --check` is clean. No reactor, battery, wiring, output, cargo, contents, capacity, astyle
 3.1, GUI, Linux, or Windows claim. Next: audit one explicit visible constructed
 storage-fortification or quality-3 bulk-cargo seam without generic furniture or remote reads.
+
+Phase-6 repeated cargo-handling proof contract (source identity `548bc2092c79`,
+pre-implementation):
+- Claim: once legitimate target-window human occupancy is shared, an ordinary loaded scout may
+  record a visible active `your_followers` NPC performing the real `ACT_MOVE_LOOT` job inside the
+  pinned footprint as class `cargo-handling`. One or two legitimately shared windows raise the
+  opportunity baseline only to `2`; the same stable handler in three distinct 30-minute buckets
+  whose first/last bucket starts span at least 60 minutes constitutes quality-3 repeated/bulk
+  handling and may raise it to `3`.
+- Preconditions/interventions: a real schema-10 local observing pair, pinned player-camp
+  footprint, legitimate human baseline, and one loaded allied NPC whose real activity is
+  `ACT_MOVE_LOOT`. A fixture may place the actor, start that existing activity, establish ordinary
+  sight, and advance time; setup stops before each production perception poll and may not write a
+  cargo cue or assessment directly.
+- Causal boundary/real path: the production one-minute poll reads only loaded active NPC faction,
+  stable character ID, current absolute position/activity, exact target footprint, and ordinary
+  scout sight. It records a canonical observer-private typed fact; existing pair cohesion may
+  share it; the existing assessment/report projection derives repetition from strict
+  class/source/bucket provenance.
+- Expected transition: the first shared cargo-handling fact yields `2`; a second remains `2`; a
+  third for the same handler reaches `3` only with a bucket-start span of at least 60 minutes.
+  Input order is irrelevant and the underlying individual facts remain historical observations.
+- Negative/control: inactive/dead, wrong-faction, outside-footprint, wrong-z, hidden/blind,
+  non-`ACT_MOVE_LOOT`, private-only, absent-human, same-bucket replay, two buckets, three buckets
+  spanning less than 60 minutes, and source churn among different handlers remain byte-inert or at
+  `0..2`. No item identity/count/value, inventory, cargo tile, storage zone, capacity, terrain,
+  furniture, light/smoke, or remote map data may be read.
+- Timeout/pass-fail: three prepared production polls plus ordinary pair communication. Pass
+  requires exact source/bucket serialization, atomic controls, `1 -> 2 -> 2 -> 3`, order
+  independence, loaded adapter proof, and the affected fresh Mac objects/focused tests. This is
+  perception of real work state, not proof that sorting itself succeeds. Clear-empty lowering,
+  response sizing/authorization, astyle 3.1, GUI, Linux, and Windows remain unclaimed.
+
+Phase-6 repeated cargo handling is green at behavior `78d7030aa1`. The production minute poll
+accepts only a loaded, living, active `your_followers` NPC performing the real `ACT_MOVE_LOOT`
+activity inside the exact target footprint and visible by ordinary point/actor sight. It records
+one observer-private typed fact with canonical positive handler ID and 30-minute bucket; existing
+pair sharing remains required. A first/second window raises a legitimate human baseline only to
+`2`; three distinct buckets for the same handler spanning at least 60 minutes raise it to `3`, as
+do two distinct cue classes in distinct buckets. Malformed/nonpositive IDs, source churn, short or
+duplicate buckets, blind/unowned/non-job/outside/private/no-human controls remain inert or `0..2`.
+The first direct tests submake omitted the repository C++17 configuration and is non-credit. Two
+live-fixture attempts were also non-credit: the valid +3-OMT target lay outside the original avatar
+load radius, while a shortened target violated the structural-watch relationship contract. The
+final fixture preserves the production-valid +3 target and moves only the avatar before spawning
+the real handler. The fresh root build advanced both affected test objects and `tests/cata_test`.
+Final results are cargo 2/581, infrastructure 2/581, assessment 4/225, typed 6/196, seed-424242
+burn 7/1,052, and root cargo rerun 2/581; `git diff --check` is clean. No item/zone/storage-value or
+capacity read, sorting-success, astyle 3.1, GUI, Linux, or Windows claim. Next: prove the existing
+burn certainty/alert/danger transition explicitly without adding another assessment owner.

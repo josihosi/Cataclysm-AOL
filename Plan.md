@@ -503,6 +503,17 @@ controls stop at two/zero. The fresh Mac test build and focused infrastructure 2
 4/225, typed 6/196, controlled-seed burn 7/1,052, diff check, and root review/rerun pass. Next audit
 one equally narrow visible constructed storage-fortification or quality-3 bulk-cargo seam; do not
 infer value from generic furniture, capacity, hidden contents, zones, or remote map reads.
+Repeated cargo handling is green at `78d7030aa1`: a loaded scout records only an active, living
+`your_followers` NPC visibly performing the real `ACT_MOVE_LOOT` job inside the exact footprint.
+The private fact retains one canonical positive character ID and 30-minute bucket. Existing pair
+sharing raises the occupied baseline to two; three distinct buckets for the same handler spanning
+at least 60 minutes raise it to three, as may two distinct cue classes in distinct buckets. Source
+churn, malformed IDs, one/two windows, private-only, blind, unowned, non-job, outside, and no-human
+controls do not overstate the estimate. No items, zones, storage contents/value/capacity, terrain,
+furniture, light, smoke, or remote map data are read. The fresh Mac build and focused cargo 2/581,
+infrastructure 2/581, assessment 4/225, typed 6/196, seed-424242 burn 7/1,052, diff check, and root
+review/rerun pass. Next close the already-present burned-contact certainty/alert/risk behavior with
+one explicit before/after production-path proof; do not add a second mechanic.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

@@ -25,11 +25,11 @@ burn producer is also held after non-credit startup-only runs `20260806_100318` 
 `20260806_100839` exhausted its two-attempt cap. The schema-aware transform defects they exposed are
 fixed at `685307349e` and `38a130e146`; do not run a third producer probe now. The next queue is:
 
-1. Audit one real loaded, ordinarily visible constructed storage-fortification or quality-3
-   repeated/bulk-cargo seam. Prefer an explicit authoritative construction/terrain/part flag over
-   names or generic furniture valuation. Do not read zones, hidden contents, exact value,
-   theoretical capacity, remote map loads, light/smoke, or camp size. Preserve strict
-   class/source/30-minute-bucket provenance and do not start response-party sizing or authorization.
+1. Add one focused before/after test around the real reciprocal-burn transaction. Hold the same
+   legitimate observation footing constant and prove that one burn raises certainty, sets target
+   alert, and increases the assessment danger/approach-risk term exactly once; malformed and replay
+   controls remain byte-inert. Reuse the existing burn owner and assessment equation—do not add a
+   parallel risk field or change response-party sizing/authorization.
 
 Deferred by an explicit owner seam: enable O3 horde/writhing-stalker adapters only after the
 authoritative owners have stable movement/load-transfer identity; never substitute position IDs.
