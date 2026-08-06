@@ -541,6 +541,13 @@ retain unknown `-1`, while a 48-hour-old report retains known risk but separatel
 authorization. The Mac build plus focused risk 2/159, assessment 4/225, aging 1/126, abstract threat
 7/467, local zombie 4/389, and controlled-seed burn 7/1,073 pass. Next compute follow-on party power
 against the pessimistic target estimate and faction margin; do not select/reserve members yet.
+Follow-on response power is green at `4175eca2da`: one pure evaluator treats report `danger_high`
+as pessimistic target power, accepts one to six already-normalized member powers in `1..10`, and
+uses exact integer 125% bandit or 150% cannibal margins. It reports the ceiling requirement and
+exact cross-product result without selecting members, reading NPCs, reserving a roster, authorizing,
+or mutating an operation. The fresh Mac build plus response 1/89, assessment 4/225, routine policy
+3/993, and risk 2/159 pass. Next reserve real home defense and choose the smallest capable response
+party from authoritative ready/present/unreserved members; do not authorize or launch yet.
 
 Josef's comfort-first ecology observer/editor directive is now the canonical prerequisite before
 the remaining Phase-4 live matrix. The ratified roadmap and success-state packet is

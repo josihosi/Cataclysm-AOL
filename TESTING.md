@@ -1793,3 +1793,34 @@ seed-424242 covert burn 7/1,073. `git diff --check` is clean. No response-party 
 selection, reserve, authorization, launch, persistence, astyle 3.1, GUI, Linux, or Windows claim.
 Next: compute follow-on party power against pessimistic target power and faction margin without
 selecting or reserving members.
+
+Phase-6 follow-on power proof contract (source identity `d13985a1d241`, pre-implementation):
+- Claim: a side-effect-free bounded evaluator treats immutable report `danger_high` as the
+  pessimistic target power, sums at most six supplied normalized response-member powers in `1..10`,
+  and applies exactly 125% for bandit shakedowns or 150% for cannibal raids.
+- Preconditions/interventions: caller supplies a valid report policy, `danger_high` in `0..200`,
+  and one to six powers already produced on the shared `1..10` combat scale. This slice does not
+  claim where unloaded/loaded member powers are sourced and may not inspect NPC equipment remotely.
+- Causal boundary/real path: one pure result reports target power, faction margin, summed party
+  power, ceiling required power, and exact `100 * party_power >= margin * danger_high` outcome.
+  It writes no site, report, roster, decision, or operation state.
+- Expected transition: at danger 8, bandits require 10 and cannibals require 12; exact equality
+  passes and one below fails. At danger 37, requirements are 47 and 56. Danger 200 cannot be cleared
+  by the bounded six-member maximum of 60.
+- Negative/control: policy `none`, danger outside `0..200`, empty or over-six party, and member
+  powers outside `1..10` are invalid; input order does not change the result; invalid evaluation has
+  no partial positive fields or authorization meaning.
+- Timeout/pass-fail: one header/core/test diff and one focused `[response_power]` test, plus adjacent
+  assessment/routine-policy regressions and clean diff. Member selection, authoritative power-source
+  wiring, home reserve, response authorization/launch, persistence, astyle 3.1, GUI, Linux, and
+  Windows remain unclaimed.
+
+Phase-6 follow-on response power is green at `4175eca2da`. The pure evaluator accepts only a
+bandit/cannibal policy, danger `0..200`, and one to six supplied powers in `1..10`; it computes
+125%/150% ceiling requirements and exact integer clearance without reading or mutating gameplay
+owners. Danger 8 requires 10/12, danger 37 requires 47/56, and danger 200 rejects the bounded
+maximum 60. The delegated and root Mac build/source identity is green; root response is 1/89,
+assessment 4/225, routine policy 3/993, and normalized risk 2/159. `git diff --check` is clean.
+Authoritative member-power sourcing, selection, home reserve, authorization, launch, persistence,
+astyle 3.1, GUI, Linux, and Windows remain unclaimed. Next: real home reserve and smallest capable
+response selection, without authorization or launch.
