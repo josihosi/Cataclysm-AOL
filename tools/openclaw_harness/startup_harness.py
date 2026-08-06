@@ -12260,17 +12260,30 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         member["last_writeback_summary"] = "fixture roster shape: wounded/unready member"
 
     selected_site["members"] = shaped_members
+    site_schema_version = int(selected_site.get("schema_version", 0) or 0)
     headcount_override = transform.get("headcount_override")
-    if headcount_override is None or str(headcount_override).strip() == "":
-        selected_site["headcount"] = living_member_count
+    has_headcount_override = headcount_override is not None and str(headcount_override).strip() != ""
+    if site_schema_version >= 10:
+        requested_living_total = living_member_count
+        if has_headcount_override:
+            requested_living_total = max(living_member_count, int(headcount_override))
+        selected_site["living_total"] = requested_living_total
+        selected_site["supply_accounted_living_total"] = requested_living_total
+        selected_site.pop("headcount", None)
     else:
-        selected_site["headcount"] = max(0, int(headcount_override))
+        if not has_headcount_override:
+            selected_site["headcount"] = living_member_count
+        else:
+            selected_site["headcount"] = max(0, int(headcount_override))
     if bool(transform.get("clear_spawn_tile_headcount", False)):
         spawn_tiles = selected_site.get("spawn_tiles", [])
         if isinstance(spawn_tiles, list):
             for spawn_tile in spawn_tiles:
                 if isinstance(spawn_tile, dict):
-                    spawn_tile["headcount"] = 0
+                    if site_schema_version >= 10:
+                        spawn_tile.pop("headcount", None)
+                    else:
+                        spawn_tile["headcount"] = 0
     selected_site["active_member_ids"] = active_member_ids
     if active_member_ids:
         site_id = str(selected_site.get("site_id", ""))
@@ -12295,6 +12308,7 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "kind": "bandit_site_roster_shape",
         "world": world_dir.name,
         "site_id": str(selected_site.get("site_id", "")),
+        "site_schema_version": site_schema_version,
         "living_member_count": living_member_count,
         "member_start_index": member_start_index,
         "headcount": int(selected_site.get("headcount", 0) or 0),

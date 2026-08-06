@@ -2489,6 +2489,74 @@ class BanditRosterShapeTransformContractTest(unittest.TestCase):
         self.assertEqual(len(updated["members"]), 3)
         self.assertEqual(updated["spawn_tiles"][0]["headcount"], 0)
 
+    def test_current_schema_shapes_authority_without_legacy_headcounts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "sites": [{
+                                "schema_version": 12,
+                                "site_id": "camp-selected",
+                                "headcount": 6,
+                                "living_total": 6,
+                                "supply_units": 37,
+                                "supply_last_update_minutes": 8280,
+                                "supply_accounted_living_total": 6,
+                                "supply_member_minute_remainder": 311,
+                                "spawn_tiles": [
+                                    {
+                                        "tile": [3360, 1224, 0],
+                                        "headcount": 4,
+                                        "assigned_living_total": 3,
+                                    },
+                                    {
+                                        "tile": [3361, 1224, 0],
+                                        "headcount": 2,
+                                        "assigned_living_total": 2,
+                                    },
+                                ],
+                                "members": [
+                                    {"npc_id": 101 + index, "state": "at_home"}
+                                    for index in range(6)
+                                ],
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "bandit_site_roster_shape",
+                    "player_save": "survivor.sav",
+                    "site_id": "camp-selected",
+                    "living_member_count": 5,
+                    "headcount_override": 7,
+                    "clear_spawn_tile_headcount": True,
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            reports = apply_fixture_save_transforms(world_dir, normalized)
+            reloaded = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            updated = reloaded["overmapbuffer"]["bandit_live_world"]["sites"][0]
+
+        self.assertEqual(reports[0]["site_schema_version"], 12)
+        self.assertNotIn("headcount", updated)
+        self.assertEqual(updated["living_total"], 7)
+        self.assertEqual(updated["supply_accounted_living_total"], 7)
+        self.assertEqual(updated["supply_units"], 37)
+        self.assertEqual(updated["supply_member_minute_remainder"], 311)
+        self.assertEqual(len(updated["members"]), 5)
+        self.assertEqual(
+            [spawn_tile["assigned_living_total"] for spawn_tile in updated["spawn_tiles"]],
+            [3, 2],
+        )
+        self.assertTrue(all("headcount" not in spawn_tile for spawn_tile in updated["spawn_tiles"]))
+
 
 class BanditClearSiteEvidenceTransformContractTest(unittest.TestCase):
     def test_clears_only_exact_site_evidence_and_preserves_identity_and_roster(self) -> None:
