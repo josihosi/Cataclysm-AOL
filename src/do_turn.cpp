@@ -5283,16 +5283,26 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     int &watch_path_budget )
 {
     bandit_live_world::structural_route_read read;
+    const overmap_path_params npc_route = overmap_path_params::for_npc();
     const auto path = overmap_buffer.get_travel_path(
-                site.anchor, plan.target_omt, overmap_path_params::for_npc() );
+                site.anchor, plan.target_omt, npc_route );
     if( path.points.empty() || path.cost < 0 ) {
         read.summary = "live structural route solve found no passable route";
         return read;
     }
 
-    const long long one_way_cost = ( static_cast<long long>( path.cost ) + 23 ) / 24;
-    read.complete_route_cost = static_cast<int>( std::min<long long>(
-                                   std::numeric_limits<int>::max(), one_way_cost * 2 ) );
+    const int source_node_cost = npc_route.get_cost(
+                                     overmap_buffer.ter_existing( site.anchor )->get_travel_cost_type() );
+    const bool diagonal_departure = path.points.size() >= 2 &&
+                                    path.points[path.points.size() - 2].x() != site.anchor.x() &&
+                                    path.points[path.points.size() - 2].y() != site.anchor.y();
+    read.complete_route_cost =
+        bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+            path.cost, source_node_cost, diagonal_departure );
+    if( read.complete_route_cost < 0 ) {
+        read.summary = "live structural route solve produced invalid boundary cost";
+        return read;
+    }
     read.max_segment_risk = 0;
     for( const tripoint_abs_omt &omt : path.points ) {
         if( omt == plan.target_omt ) {
@@ -5307,8 +5317,11 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
             bandit_live_world::structural_terrain_static_risk( terrain.terrain_fit_class ) );
     }
     read.reachable = read.complete_route_cost <= 18;
-    read.summary = read.reachable ? "live structural route solve accepted" :
-                   "live structural route solve exceeded complete-route cap";
+    read.summary = string_format(
+                       "live structural route solve %s raw_cost=%d source_cost=%d diagonal=%s round_trip_omt=%d",
+                       read.reachable ? "accepted" : "exceeded complete-route cap", path.cost,
+                       source_node_cost, diagonal_departure ? "yes" : "no",
+                       read.complete_route_cost );
     if( !read.reachable ) {
         return read;
     }
@@ -5337,7 +5350,6 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         }
     }
 
-    const overmap_path_params npc_route = overmap_path_params::for_npc();
     const std::unordered_set<tripoint_abs_omt> target_footprint_exclusions(
         target_footprint.begin(), target_footprint.end() );
     std::vector<std::pair<tripoint_abs_omt, std::vector<tripoint_abs_omt>>> watch_paths;
@@ -5370,7 +5382,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         } );
         return terrain;
     };
-    const auto watch_route_lookup = [&site, &npc_route, &target_footprint,
+    const auto watch_route_lookup = [&site, &npc_route, &source_node_cost, &target_footprint,
                                     &target_footprint_exclusions,
                                     &watch_path_budget,
                                     &watch_paths]( const tripoint_abs_omt &candidate ) {
@@ -5387,11 +5399,14 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
                 watch_path.points, target_footprint ) ) {
             return route;
         }
-        const long long one_way_watch_cost =
-            ( static_cast<long long>( watch_path.cost ) + 23 ) / 24;
-        route.route_cost = static_cast<int>( std::min<long long>(
-                               std::numeric_limits<int>::max(), one_way_watch_cost * 2 ) );
-        route.reachable = route.route_cost <= 18;
+        const bool diagonal_departure = watch_path.points.size() >= 2 &&
+                                        watch_path.points[watch_path.points.size() - 2].x() !=
+                                        site.anchor.x() &&
+                                        watch_path.points[watch_path.points.size() - 2].y() !=
+                                        site.anchor.y();
+        route.route_cost = bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+                               watch_path.cost, source_node_cost, diagonal_departure );
+        route.reachable = route.route_cost >= 0 && route.route_cost <= 18;
         watch_paths.emplace_back( candidate, watch_path.points );
         return route;
     };

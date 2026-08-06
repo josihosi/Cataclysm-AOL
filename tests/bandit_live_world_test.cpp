@@ -22118,6 +22118,19 @@ TEST_CASE( "hostile_camp_routed_dispatch_ranks_cheap_then_solves_only_top_two",
 TEST_CASE( "hostile_camp_routed_dispatch_preserves_bounded_rejection_reasons",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch]" )
 {
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               234, 60, false ) == 18 );
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               247, 60, true ) == 18 );
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               258, 60, false ) == 20 );
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               216, -1, false ) == 18 );
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               -1, 60, false ) == -1 );
+    CHECK( bandit_live_world::normalize_structural_live_round_trip_cost_omt(
+               20, 60, false ) == -1 );
+
     struct rejection_case {
         bandit_live_world::structural_route_read read;
         std::string reason;

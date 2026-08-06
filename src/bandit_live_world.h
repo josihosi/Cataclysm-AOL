@@ -1554,6 +1554,8 @@ int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_tar
 bool hostile_camp_routine_score_eligible( int score, bool retained_target );
 bool hostile_camp_routine_risk_blocked( int risk );
 bool hostile_camp_routine_route_risk_eligible( int risk, int max_segment_risk );
+int normalize_structural_live_round_trip_cost_omt( int raw_path_cost,
+        int source_node_cost, bool diagonal_departure );
 routine_dispatch_evaluation evaluate_hostile_camp_routine_dispatch(
     const site_record &site, int now_minutes, int best_cheap_target );
 std::string make_structural_bounty_lead_id( const std::string &site_id,

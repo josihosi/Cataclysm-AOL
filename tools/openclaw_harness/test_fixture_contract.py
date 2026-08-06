@@ -3816,7 +3816,6 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ("8", "6h"),
                 ("8", "6h"),
                 ("5", "1h"),
-                ("5", "1h"),
                 ("3", "5m"),
                 ("8", "6h"),
             ],
@@ -3825,7 +3824,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             any(
                 exact_target in pattern
                 for pattern in steps[
-                    labels.index("wait_second_1_hour_for_real_frontier_dispatch")
+                    labels.index("wait_1_hour_for_real_frontier_dispatch")
                 ]["artifact_state_patterns"]
             )
         )

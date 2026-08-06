@@ -10515,6 +10515,25 @@ bool hostile_camp_routine_route_risk_eligible( const int risk, const int max_seg
     return risk < 500 || max_segment_risk < 500;
 }
 
+int normalize_structural_live_round_trip_cost_omt( const int raw_path_cost,
+        const int source_node_cost, const bool diagonal_departure )
+{
+    if( raw_path_cost < 0 ) {
+        return -1;
+    }
+    const int effective_source_node_cost = std::max( 0, source_node_cost );
+    const long long departure_cost = diagonal_departure ?
+                                     ( 99LL * effective_source_node_cost + 70 ) / 140 :
+                                     ( static_cast<long long>( effective_source_node_cost ) + 1 ) / 2;
+    if( departure_cost > raw_path_cost ) {
+        return -1;
+    }
+    const long long boundary_to_target_cost = raw_path_cost - departure_cost;
+    const long long one_way_omt = ( boundary_to_target_cost + 23 ) / 24;
+    return static_cast<int>( std::min<long long>(
+                                 std::numeric_limits<int>::max(), one_way_omt * 2 ) );
+}
+
 routine_dispatch_evaluation evaluate_hostile_camp_routine_dispatch(
     const site_record &site, const int now_minutes, const int best_cheap_target )
 {

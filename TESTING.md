@@ -88,6 +88,14 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 - The replacement declared precondition moves only the camp/player footing onto the existing
   x=164 route corridor: camp `(164,39,0)`, sector-0 inner waypoint/player `(164,35,0)`, and outer
   target `(164,30,0)`. It still injects no lead, dispatch, observation, return, report, or decision.
+- Run `20260807_005959` reached the replacement camp's code-derived deadline at hour `138` but
+  rejected the exact road route because the NPC pathfinder's raw cost included half the source
+  structure tile. The structural cap is defined from the camp boundary, so this slice subtracts
+  only that pathfinder-defined departure fraction before normalizing both target and watch routes;
+  the pathfinder's zero-cost impassable-source escape remains intact. `[routed_dispatch]` is green
+  at 5 cases / 163 assertions and the harness contract remains green at 139 tests. Medium review
+  found both adapter inconsistencies; the final localized fallback fix closed with deterministic
+  tests. A clean committed SDL3 rebuild and live rerun are still required.
 
 ### Capped non-credit probes
 
@@ -160,10 +168,10 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
 - Negative/control: preflight proves zero leads/zero outing; an empty or all-loss return cannot pass;
   private evidence without a carrier cannot appear; stale identity, duplicate owner, or mismatched
   report generation is red.
-- Timeout: 14 game hours to the code-derived frontier deadline, five minutes for real local
+- Timeout: 13 game hours to the code-derived frontier deadline, five minutes for real local
   handoff, then an initial bounded six-hour post-observation window. The road-connected correction
   is one new causal footing; stop and isolate the first concrete blocker if it fails.
-- Pass/fail identities: record `9b435e1ee3` binary identity plus the committed source/fixture
+- Pass/fail identities: record the clean committed binary identity plus the committed source/fixture
   manifest/hash, scenario name, run ID, saved-owner audit, same-run transition patterns, and compact
   incident JSON/PNG. Passing requires a surviving physical return, final report, and decision;
   startup, handoff, or schema validity alone is non-credit.
