@@ -2,11 +2,10 @@
 
 ## Current necessary claim
 
-Fix the forward ingress owner that split run `20260807_094606` after successful exact-pair assembly:
-NPC `4` remained at staging while NPC `5` returned to camp, although both retained the same watch
-goal and local reservation. Prove complete-pair transactional watch arrival, then rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged.
+Preserve exact-pair ownership after assembly so both members of the pair from run
+`20260807_094606` advance under the forward ingress owner and complete one transactional watch
+arrival. Prove that owner seam with the focused test, then rerun
+`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract.
 
-Do not extend the wait, alter geometry, discard the committed ingress slice, expand debug tooling,
-start another behavior lane, or add another review/documentation pass unless deleting that claim
-would leave the active contract unmet or unproven.
+Do not extend the production-derived wait, alter geometry, discard the committed ingress slice,
+expand debug tooling, or start another behavior lane to force the result.

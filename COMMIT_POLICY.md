@@ -13,9 +13,9 @@ A real state boundary is something like:
 - a blocker fix landed and the blocked path is now testable again
 - a documentation/ledger rewrite changed the active target or testing truth materially
 
-Do **not** wait until fifteen files and three half-features are tangled together.
+Do **not** wait until unrelated or half-finished changes are tangled together.
 
-## Dirty-tree budget
+## Checkpoint trigger
 
 If the tree starts feeling soupy, stop adding new behavior and checkpoint it.
 As a practical rule, create or split a commit before continuing when any of these becomes true:

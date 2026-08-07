@@ -4,7 +4,7 @@ This is the sole task description and roadmap for the active Mac hostile-camp ec
 `SUCCESS.md` defines proof of completion, `TODO.md` names the current necessary claim, and
 `TESTING.md` records only the proof policy and current evidence.
 
-## Contract
+## Requested outcome
 
 On `dev`, make naturally generated bandit and cannibal camps feel like physical factions rather
 than omniscient event generators. Camps dispatch coherent two-person scouts; scouts discover
@@ -16,9 +16,7 @@ Josef and the harness must be able to observe the authoritative state and collec
 evidence without save archaeology, OCR dependence, a second simulation, or debug code that writes
 the behavior being proved.
 
-The smallest completion contract is the outcome ledger in `SUCCESS.md`: authoritative observer,
-one natural scout-to-decision incident, one physical bandit shakedown lifecycle, one physical
-cannibal night-raid lifecycle, and release-relevant performance/save/platform qualification.
+Completion is exactly the outcome ledger in `SUCCESS.md`.
 
 ## Proven state
 
@@ -26,35 +24,17 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
   UI, compact JSON, selection/follow, deltas, watches, incident capture, and labelled intervention.
   Its disabled-cost and save-neutrality proof is checkpointed at `117857f551`; authoritative
   casualty intervention and reconciliation are checkpointed at `1e6a0924e7`.
-- Authority, persistence, exact-pair roster ownership, perception, route/handoff, cohesion,
-  physical return, report, decision, resource, fairness, and loss controls have focused test
-  coverage. These components do not substitute for one live end-to-end incident.
-- Clean checkpoints `2606701d4e`, `2b263a6354`, and `6c1a574ba6` route frontier scouts through the
-  watch owner, allow canonical frontier watch outings to advance, and release an assembled local
-  pair from staging into a transactionally completed physical watch arrival. Focused Mac tests
-  cover split-arrival rejection, exact-pair destination ownership, replay, and save round-trip.
-- Run `20260807_083248` on `2b263a6354+SDL3` naturally dispatched, handed off, and assembled the
-  exact pair, proving the southwest geometry. It then remained at the ingress waypoint through the
-  six-hour window with zero observations or return; that stalled motor is fixed at `6c1a574ba6`.
-- Run `20260807_090025` on clean `6c1a574ba6+SDL3` naturally dispatched and committed the exact-pair
-  handoff at `(164,34,0)`, but cohesion changed from `assembled=no, abort=no` to
-  `assembled=no, abort=yes` before watch ingress. Verdict:
-  `blocked_scout_to_decision_pair_handoff_missing`; no lifecycle credit. No run yet proves the
-  complete natural survivor return, final report, and camp decision chain.
-- Checkpoint `81c8a9f46c` puts the first same-minute staging orders through cohesion's transactional
-  route accounting. Run `20260807_091941` on its clean SDL3 binary naturally reached the exact-pair
-  handoff and `assembled=yes, failed_routes=0, abort=no`, then exposed the next owner defect: forward
-  travel revoked the completed staging gate on every step, oscillated the pair back to staging, and
-  eventually forced `returning_home` by the rendezvous deadline. The current fix latches completed
-  assembly while the forward ingress motor owns that route. Focused Mac local-handoff tests pass
-  824 assertions. Run `20260807_093242` on clean `67848e5f84+SDL3` regenerated a handoff that
-  reached the same deadline without assembly or a recorded route failure. Its saved abort state no
-  longer contains the transient motor result, so the existing cohesion event now records planned
-  orders, route attempt/failure, and path steps. Run `20260807_094606` on clean
-  `25be8f51c8+SDL3` proved two successful staging routes with 21 total path steps and immediate
-  assembly. The forward latch held, but the pair then split under the local ingress owner: saved
-  NPC `4` remained at staging while NPC `5` was back at camp; both retained the watch goal, no
-  dematerialization or observation occurred, and the six-hour survivor-return audit failed.
+- Focused tests cover authority, persistence, exact-pair roster ownership, perception,
+  route/handoff, cohesion, physical return/report/decision, resource, fairness, and loss controls.
+  They do not substitute for a live incident.
+- Committed checkpoints through `25be8f51c8` make frontier watch outings advance, route an exact
+  pair through transactional staging, latch completed assembly during forward ingress, and expose
+  movement orders, route results, and path steps through the existing observer event.
+- Run `20260807_094606` on clean `25be8f51c8+SDL3` naturally dispatched and assembled the exact pair
+  with two successful staging routes and 21 path steps. The pair then split under the local ingress
+  owner: saved NPC `4` remained at staging while NPC `5` returned to camp, although both retained
+  the same watch goal. No watch arrival, observation, survivor return, final report, or camp
+  decision was proved.
 
 ## Active claim
 
@@ -82,9 +62,8 @@ lifecycle.
 - Apply the global MSW deletion rule to every proposed plan step, change, test, review finding, and
   discovered edge case. Re-proving a closed claim is not work.
 
-## Held decisions
+## Next milestone
 
-Upstream refresh, Windows free play, packaging, release, and integration through `master` and the
-porting orchestrator remain held until the active ecology contract reaches its qualification gate.
-Historical details remain recoverable from Git and named run artifacts; they are not active
-roadmap material.
+After the natural scout-to-decision incident satisfies the next unchecked `SUCCESS.md` outcome,
+continue the decided physical bandit owner through the shakedown lifecycle. Upstream refresh,
+packaging, release, and integration remain outside this lane until qualification is active.

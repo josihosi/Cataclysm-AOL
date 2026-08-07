@@ -1,10 +1,6 @@
 # Testing
 
-Current proof policy and evidence for the active hostile-camp ecology claim. Historical commands,
-failed geometries, review transcripts, and detailed receipts remain in Git and named harness run
-artifacts; they are not active instructions.
-
-## Evidence policy
+## Current validation policy
 
 - Prove the route Josef will play: authoritative game owner -> changed executable -> loaded game ->
   structured observer/artifact. Isolated helpers prove only the helper.
@@ -21,7 +17,21 @@ artifacts; they are not active instructions.
 - Apply the global MSW deletion rule to every proposed test and remediation. Once evidence closes a
   claim, repeating it requires a new contract-breaking reason.
 
-## Current scout-to-decision proof contract
+## Latest relevant evidence
+
+- Observer performance/save neutrality is checkpointed at `117857f551`; authoritative casualty
+  intervention and both-faction reconciliation are checkpointed at `1e6a0924e7`.
+- Focused owner tests cover roster identity, transactional route/handoff, cohesion,
+  unload/writeback, physical return/report, no-progress loss, and report/decision matching. They do
+  not close the live lifecycle outcome.
+- Run `20260807_094606` on clean `25be8f51c8+SDL3` passed startup, zero-lead/outgoing preflight,
+  natural discovery, dispatch, exact-pair handoff, two successful staging routes, 21 path steps,
+  and immediate assembly. The assembly latch stayed green, but the local ingress owner split the
+  pair: saved NPC `4` remained at staging `(3936,828)` while NPC `5` was at camp `(3948,936)`.
+  Both retained goal `(163,33)` and the outing remained local/observing. No dematerialization,
+  observation, survivor return, report, or decision occurred, so the run earns no lifecycle credit.
+
+## Pending proof contract
 
 Claim: one real bandit camp naturally creates terrain knowledge, dispatches its exact scout pair,
 travels and watches, completes or burns coherently, physically returns at least one survivor,
@@ -49,11 +59,10 @@ absent carrier; an empty/all-dead return cannot satisfy the survivor artifact; s
 duplicate owner, or mismatched generation/report identity is red.
 
 Time boundaries: the fixture's frontier timing derives from the production scheduler and its
-persisted deadline. The handoff waits follow the scheduler's hourly cadence. The post-observation
-window is six game hours because that is the existing production observation/return interval under
-test; the controller measures `now_minutes` immediately before the wait and requires a relative
-advance of 360 minutes, accepting scheduler overshoot. These values are code/fixture-derived, not
-agent-created retry budgets.
+persisted deadline. Handoff waits follow the scheduler's hourly cadence. The post-observation
+window is the existing production observation/return interval under test: six game hours. The
+controller measures `now_minutes` immediately before the wait and requires a relative advance of
+360 minutes, accepting scheduler overshoot.
 
 Pass: a surviving physical return, final non-provisional report, and matching authoritative camp
 decision appear in the same structured incident. Startup, schema validity, dispatch, handoff,
@@ -65,49 +74,7 @@ the pass condition. The next work claim must be necessary to close that exact ga
 Identities: record source commit, executable identity, fixture manifest/hash, scenario name, run
 ID, authoritative owner audit, compact incident JSON, and paired screenshot where UI state matters.
 
-## Latest relevant evidence
-
-- Observer performance/save neutrality: `117857f551`.
-- Authoritative casualty intervention and both-faction reconciliation: `1e6a0924e7`; field run
-  `20260805_101713` preserves the screenshot/incident pair and debug provenance.
-- Deterministic owner tests cover roster identity, route/handoff, cohesion, unload/writeback,
-  physical return/report, no-progress loss, and report/decision matching. They support diagnosis but
-  do not close the live lifecycle row.
-- Prior live geometries exposed concrete owner, intent, motor, structured-popup, and relative-wait
-  defects that are checkpointed in Git. None produced the required survivor-return/report/decision
-  incident, so none receives end-to-end credit and none is an active rerun target.
-- Run `20260807_083248` on clean `2b263a6354+SDL3` naturally dispatched, handed off, and assembled
-  the exact pair, then stalled at ingress through the six-hour window. This proves the southwest
-  geometry and identifies the missing forward motor; it earns no lifecycle credit.
-- Checkpoint `6c1a574ba6` adds exact-pair ingress destination ownership and a physical arrival
-  transaction. The Mac tests target built cleanly. The scheduler tags passed 27,912 assertions in
-  12 cases, and
-  `bandit_live_world_production_watch_geography_adapter_is_bounded_and_owner_committed` passed 126
-  assertions including split arrival, completion, replay, and save round-trip. Clean SDL3 build
-  identity: `6c1a574ba6+SDL3`.
-- Run `20260807_090025` exposed an initial staging path failure outside cohesion's route accounting;
-  committed checkpoint `81c8a9f46c` makes first-pass staging orders transactional. Run
-  `20260807_091941` on clean `81c8a9f46c+SDL3` then passed startup, preflight, frontier discovery,
-  exact-pair handoff, and immediate `assembled=yes, failed_routes=0, abort=no`. It failed the
-  survivor-return audit because forward steps repeatedly changed cohesion back to `assembled=no`,
-  reasserted staging ownership, and reached `abort=yes` at the rendezvous deadline. Saved state
-  preserved the pair alive under the local owner in `returning_home`; no lifecycle credit. The
-  current fix preserves the completed assembly gate during its exact forward-ingress route. Mac
-  `[local_handoff]` passed 824 assertions in 2 cases, including the new released-ingress regression.
-  Run `20260807_093242` on clean `67848e5f84+SDL3` committed the handoff but again reached the
-  rendezvous deadline without assembly; its persisted state showed `failed_routes=0` but could not
-  recover whether orders were motor-addressable or whether successful paths went unconsumed. The
-  existing cohesion state-change event now includes movement-order, route-attempt/failure, and path
-  step counts. Run `20260807_094606` on clean `25be8f51c8+SDL3` recorded two movement orders,
-  successful routes, 21 path steps, and immediate `assembled=yes`. The assembly latch remained
-  green through the six-hour window, but no dematerialization, observation, or return occurred.
-  Saved authoritative records put NPC `4` at staging `(3936,828)` and NPC `5` at camp
-  `(3948,936)` while both retained goal `(163,33)` and the outing remained local/observing. This is
-  the pending exact-pair ingress-owner seam; the run earns no lifecycle credit.
-
-## Focused commands
-
-Harness contract and scenario probe:
+Necessary validation after the owner fix:
 
 ```sh
 python3 -m unittest tools.openclaw_harness.test_fixture_contract
@@ -115,9 +82,10 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-When core ownership code changes, build the Mac tests target and run only the tags covering the
-changed owner seam. Do not rebuild for this documentation cleanup or repeat a broad test suite
-without a contract-derived reason.
+Build the Mac tests target and run the focused local-handoff/ingress-owner test that demonstrates
+both reserved members complete one transactional watch arrival. Then run the unchanged live
+scenario above. The live pass still requires a surviving physical return, final non-provisional
+report, and matching authoritative camp decision in the same incident.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

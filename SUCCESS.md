@@ -1,7 +1,8 @@
 # Success
 
-Outcome evidence for the contract in `Plan.md`. A helper test, startup screenshot, serializer
-check, schema-valid fixture, or debug-written outcome proves only its own layer.
+These are the smallest outcome-level criteria that prove `Plan.md`. Helper tests, startup
+screenshots, serializer checks, schema-valid fixtures, and debug-written outcomes prove only their
+own layers.
 
 - [x] The debug/harness observer is practical and authoritative: one `DEBUG_CLAIRVOYANCE`-gated
   projection supplies useful UI detail and compact deterministic artifacts, remains read-only
