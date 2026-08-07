@@ -2,10 +2,10 @@
 
 ## Current necessary claim
 
-Preserve exact-pair ownership after assembly so both members of the pair from run
-`20260807_094606` advance under the forward ingress owner and complete one transactional watch
-arrival. Prove that owner seam with the focused test, then rerun
-`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract.
+Relink the Mac game with the focused-proven loaded forward-ingress owner, then rerun
+`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
+prove watch, coherent egress, a surviving physical return, final report, and matching authoritative
+camp decision in one natural incident.
 
 Do not extend the production-derived wait, alter geometry, discard the committed ingress slice,
 expand debug tooling, or start another behavior lane to force the result.

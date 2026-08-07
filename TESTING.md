@@ -30,6 +30,10 @@
   pair: saved NPC `4` remained at staging `(3936,828)` while NPC `5` was at camp `(3948,936)`.
   Both retained goal `(163,33)` and the outing remained local/observing. No dematerialization,
   observation, survivor return, report, or decision occurred, so the run earns no lifecycle credit.
+- The Mac tests target containing the loaded forward-ingress motor built successfully. The focused
+  `tests/cata_test '[local_handoff]'` gate passed 833 assertions in two cases: both members of the
+  authoritative pair physically entered the selected watch OMT, then the normal overmap cadence
+  advanced the route cursor and committed the local handoff at that OMT.
 
 ## Pending proof contract
 
@@ -74,7 +78,7 @@ the pass condition. The next work claim must be necessary to close that exact ga
 Identities: record source commit, executable identity, fixture manifest/hash, scenario name, run
 ID, authoritative owner audit, compact incident JSON, and paired screenshot where UI state matters.
 
-Necessary validation after the owner fix:
+Necessary live validation after the focused owner proof:
 
 ```sh
 python3 -m unittest tools.openclaw_harness.test_fixture_contract
@@ -82,10 +86,9 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-Build the Mac tests target and run the focused local-handoff/ingress-owner test that demonstrates
-both reserved members complete one transactional watch arrival. Then run the unchanged live
-scenario above. The live pass still requires a surviving physical return, final non-provisional
-report, and matching authoritative camp decision in the same incident.
+Relink the changed Mac executable and run the unchanged live scenario above. The live pass still
+requires a surviving physical return, final non-provisional report, and matching authoritative camp
+decision in the same incident.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

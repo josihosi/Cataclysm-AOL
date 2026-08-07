@@ -35,13 +35,17 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   owner: saved NPC `4` remained at staging while NPC `5` returned to camp, although both retained
   the same watch goal. No watch arrival, observation, survivor return, final report, or camp
   decision was proved.
+- The loaded forward-ingress owner now takes motor priority over generic NPC behavior for both
+  reserved members after assembly. The focused `[local_handoff]` integration gate passed 833
+  assertions in two cases and proved both members physically enter the selected watch OMT before
+  the ordinary overmap cadence commits the transactional arrival.
 
 ## Active claim
 
-Preserve exact-pair ownership after assembly so the forward ingress motor cannot leave one reserved
-member at staging while the other returns to camp. The next proof must exercise both members from
-the committed staging pair through one transactional watch arrival; then rerun
-`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract.
+Rerun `bandit.scout_to_decision_observer_live_mcw` unchanged on the executable containing the
+loaded forward-ingress owner. The natural incident must carry the same exact pair through watch,
+egress, survivor return, final report, and authoritative camp decision; the focused owner test does
+not substitute for that outcome.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

@@ -6303,6 +6303,7 @@ void monmove()
     // evidence recording can never delay an incomplete pair's safety update.
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders;
     std::set<character_id> pair_homeward_travel_ids;
+    std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
     std::set<character_id> profiled_covert_member_ids;
     {
         bandit_live_world_probe::scoped_section prepass(
@@ -6360,6 +6361,9 @@ void monmove()
         }
         pair_homeward_travel_ids = bandit_live_world::local_pair_homeward_travel_ids(
                                        overmap_buffer.global_state.bandit_live_world );
+        pair_ingress_travel_destinations =
+            bandit_live_world::local_pair_ingress_travel_destinations(
+                overmap_buffer.global_state.bandit_live_world );
         if( bandit_live_world_probe::active() ) {
             for( const bandit_live_world::site_record &site :
                  overmap_buffer.global_state.bandit_live_world.sites ) {
@@ -6402,6 +6406,8 @@ void monmove()
             const int moves = guy.get_moves();
             const bool has_destination = guy.has_destination_activity();
             const auto assembly_order = pair_assembly_orders.find( guy.getID() );
+            const auto ingress_destination = pair_ingress_travel_destinations.find(
+                                                 guy.getID() );
             if( assembly_order != pair_assembly_orders.end() ) {
                 if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
                     !m.inbounds( assembly_order->second ) ||
@@ -6415,6 +6421,36 @@ void monmove()
                         guy.path.clear();
                         guy.move_pause();
                     }
+                }
+            } else if( ingress_destination != pair_ingress_travel_destinations.end() ) {
+                const std::optional<bandit_live_world::covert_scout_relationship_read>
+                relationship = bandit_live_world::read_active_covert_scout_member(
+                                   overmap_buffer.global_state.bandit_live_world, guy.getID() );
+                const auto local_path_respects_watch_ring = [relationship, &m, &guy](
+                const std::vector<tripoint_bub_ms> &candidate_path ) {
+                    return relationship && std::all_of(
+                               candidate_path.begin(), candidate_path.end(),
+                    [relationship, &m, &guy]( const tripoint_bub_ms & step ) {
+                        const tripoint_abs_omt step_omt =
+                            project_to<coords::omt>( m.get_abs( step ) );
+                        const std::optional<int> distance =
+                            bandit_live_world::target_footprint_watch_distance(
+                                step_omt, relationship->target_footprint );
+                        return distance && *distance >= relationship->minimum_target_distance &&
+                               ( step_omt == guy.pos_abs_omt() ||
+                                 std::find( relationship->forbidden_route_omts.begin(),
+                                            relationship->forbidden_route_omts.end(), step_omt ) ==
+                                 relationship->forbidden_route_omts.end() );
+                    } );
+                };
+                if( !relationship || guy.has_flag( json_flag_CANNOT_MOVE ) ||
+                    !guy.is_travelling() ||
+                    guy.goal != ingress_destination->second || guy.omt_path.empty() ) {
+                    // The overmap cadence owns route binding and repair.  Keep this loaded
+                    // member inert until that exact owner route is present.
+                    guy.move_pause();
+                } else {
+                    guy.go_to_omt_destination( local_path_respects_watch_ring );
                 }
             } else if( pair_homeward_travel_ids.count( guy.getID() ) > 0 ) {
                 const std::optional<bandit_live_world::covert_scout_relationship_read>
