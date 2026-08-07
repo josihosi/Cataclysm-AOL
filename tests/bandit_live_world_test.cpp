@@ -8327,11 +8327,25 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 CHECK( live_site.active_outing.owner ==
                        bandit_live_world::simulation_owner::local );
                 REQUIRE( live_site.active_outing.local_handoff.members.size() == live_ids.size() );
+                std::map<character_id, int> distance_before_motor;
                 for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
                      live_site.active_outing.local_handoff.members ) {
                     const character_id id = snapshot.npc_id;
                     REQUIRE( g->find_npc( id ) != nullptr );
                     CHECK( g->find_npc( id )->is_active() );
+                    distance_before_motor.emplace(
+                        id, rl_dist( g->find_npc( id )->pos_abs(), snapshot.staging_position ) );
+                }
+                process_monsters_and_npcs_turn_for_test();
+                for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+                     live_site.active_outing.local_handoff.members ) {
+                    const character_id id = snapshot.npc_id;
+                    REQUIRE( g->find_npc( id ) != nullptr );
+                    REQUIRE( distance_before_motor.count( id ) == 1 );
+                    if( distance_before_motor.at( id ) > 1 ) {
+                        CHECK( rl_dist( g->find_npc( id )->pos_abs(), snapshot.staging_position ) <
+                               distance_before_motor.at( id ) );
+                    }
                     g->find_npc( id )->setpos( get_map(), get_map().get_bub(
                                                   snapshot.staging_position ) );
                 }

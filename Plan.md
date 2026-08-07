@@ -27,11 +27,13 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
 - Focused tests cover authority, persistence, exact-pair roster ownership, perception,
   route/handoff, cohesion, physical return/report/decision, resource, fairness, and loss controls.
   They do not substitute for a live incident.
-- Committed gameplay checkpoints through `307e43efda` carry the exact pair through natural
+- Committed gameplay checkpoints through `c7be851d23` carry the exact pair through natural
   discovery, transactional forward ingress, a paired reality-bubble exit, watch completion, and a
-  distance-derived home leg. The focused `[local_handoff]` proof now covers an already-populated
+  distance-derived home leg. The focused `[local_handoff]` proof covers an already-populated
   local path, a camp beyond the loaded bubble, a paired exit onto the persisted overmap route,
-  continued physical travel, and two-member camp dematerialization.
+  continued physical travel, and two-member camp dematerialization. The return repair keeps a pair
+  unloaded while its persisted home route is incomplete and gives camp dematerialization a final
+  pre-reload opportunity.
 - Live run `20260807_110822` proved the final non-provisional report and matching
   `report_awaiting_assessment` decision, but only after an abstract jump home; it therefore earns no
   physical-return credit.
@@ -41,13 +43,18 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   to be a post-wait flavor-text input error and fixed at `c74427ca37`; it did not erase the full
   gameplay window. Run `20260807_140347` did not reach this seam because the pair missed the
   existing assembly guard under accelerated time, so it is inconclusive.
+- Run `20260807_142412` on `c7be851d23+SDL3` proved a valid two-member forward assembly route with
+  twenty total local path steps and no route failure, then forced `returning_home` before either
+  scout assembled. The focused owner test proves that an ordinary production NPC turn consumes a
+  real staging order, so the remaining distinction is live route geometry versus elapsed-time
+  ownership at that exact handoff.
 
 ## Active claim
 
-Identify why the exact live `returning_home` pair does not select or complete its persisted
-reality-bubble route edge after handoff. Prefer a focused reproduction using the preserved live map
-geometry and actual `omt_path` ordering; if that cannot distinguish selector absence from motor
-failure, add only the homeward boundary state needed to do so. Repair the proved seam, then rerun
+Identify why the exact live observing pair receives valid staging paths but reaches the cohesion
+abort without assembly or a recorded path failure. Use only the committed cohesion receipt for
+the game minute and exact member/stage positions to distinguish an off-route-OMT detour from lost
+movement time. Repair that proved seam, then rerun
 `bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
 bubble exit and camp dematerialization before canonical home reconciliation, final report, and the
 authoritative camp decision.

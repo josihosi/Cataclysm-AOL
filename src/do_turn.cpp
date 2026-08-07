@@ -3785,9 +3785,23 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                 member->path.clear();
             }
         }
+        std::ostringstream member_positions;
+        for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+             site.active_outing.local_handoff.members ) {
+            npc *member = g->find_npc( snapshot.npc_id );
+            member_positions << ( member_positions.tellp() > 0 ? ";" : "" )
+                             << snapshot.npc_id.get_value() << ':';
+            if( member == nullptr ) {
+                member_positions << "missing";
+            } else {
+                member_positions << member->pos_abs().to_string()
+                                 << "->" << snapshot.staging_position.to_string();
+            }
+        }
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_cohesion"
                                    << " site=" << site.site_id
                                    << " activity=" << site.active_outing.activity_id
+                                   << " minute=" << live_bandit_current_minutes()
                                    << " leader=" << site.active_outing.leader_id.get_value()
                                    << " assembled=" <<
                                    ( site.active_outing.local_handoff.cohesion_assembled ? "yes" : "no" )
@@ -3797,6 +3811,7 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                                    << " route_attempted=" << ( route_attempted ? "yes" : "no" )
                                    << " route_failed=" << ( route_failed ? "yes" : "no" )
                                    << " path_steps=" << routed_path_steps
+                                   << " member_positions=" << member_positions.str()
                                    << " abort=" <<
                                    ( site.active_outing.local_handoff.cohesion_abort_return ? "yes" : "no" )
                                    << '\n';
