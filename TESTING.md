@@ -63,6 +63,12 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
+- The current fixture `bandit_scout_to_decision_observer_northeast_v0_2026-08-07` derives directly
+  from the original zero-lead source with one transform `[96,-24,0]`, moving only the observer from
+  OMT `(162,35,0)` to `(166,34,0)`. Camp `(164,39,0)`, route waypoint `(164,35,0)`, target
+  `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited `DEBUG_CLAIRVOYANCE` are
+  unchanged; no lifecycle result is written. Both JSON payloads parse and all 149 harness contracts
+  pass. No live credit.
 - The new fixture `bandit_scout_to_decision_observer_east_v0_2026-08-07` derives from the exhausted
   west fixture with exactly one declared precondition transform: player offset `[96,0,0]`, moving
   the observer from OMT `(162,35,0)` to `(166,35,0)`. Camp, route, clock, zero-lead/zero-outing

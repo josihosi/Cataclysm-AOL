@@ -2,9 +2,9 @@
 
 ## Now
 
-Checkpoint the reviewed local-handoff motor-boundary fix, then write the next proof contract and
-prepare one materially different observer footing. Require the same naturally dispatched pair to
-continue through physical return, final report, and camp decision.
+Build the exact clean SDL3 binary for the northeast observer footing, then run its first bounded
+scout-to-decision probe. Require the same naturally dispatched pair to continue through physical
+return, final report, and camp decision; preserve the compact observer incident pair.
 
 ## Immediate follow-ups
 

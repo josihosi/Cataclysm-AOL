@@ -107,11 +107,10 @@ fixture boundary, select the real dispatch in the ecology observer, use the exis
 flow with structured popup receipts, and preserve one compact incident chain. The lifecycle row is
 not credited at egress; the same artifact must continue through a surviving physical return,
 report, and decision.
-Checkpoint the scout/shakedown ownership repair, then establish a materially different footing for
-the next proof. Repair only a gameplay or tooling seam that directly blocks this proof.
+Repair only a gameplay or tooling seam that directly blocks this proof.
 
-The next footing is `bandit_scout_to_decision_observer_east_v0_2026-08-07`. It inherits the same
-idle zero-lead camp, deterministic clock, road, and observer gate, then moves only the player by
+The exhausted east footing was `bandit_scout_to_decision_observer_east_v0_2026-08-07`. It inherited
+the same idle zero-lead camp, deterministic clock, road, and observer gate, then moved only the player by
 96 map squares from OMT `(162,35,0)` to `(166,35,0)`: two OMTs east rather than west of the local
 handoff waypoint. Discovery, dispatch, observation, return, report, and decision remain unwritten
 at the fixture boundary. This is a new loaded-bubble geometry, not a third attempt on the exhausted
@@ -131,6 +130,14 @@ the abstract outing byte-for-byte; the adjacent geometry selects load-addressabl
 the complete pair, and activates both through `game::load_npcs`. This is ownership proof, not live
 lifecycle credit. The next proof contract must choose a new observer footing and retain the same
 natural discovery-to-decision causal boundary.
+
+The current footing is `bandit_scout_to_decision_observer_northeast_v0_2026-08-07`. It derives
+directly from the original zero-lead source and applies exactly one declared player transform,
+`[96,-24,0]`, placing the observer at OMT `(166,34,0)`: two OMTs east and one north of the handoff
+waypoint `(164,35,0)`. It leaves the observer off the x=164 route, changes both loaded-bubble axes,
+and writes no lead, dispatch, observation, return, report, or decision. The scenario's existing
+evidence contract remains the run contract; all waits, authoritative audits, and pass/fail rules are
+unchanged.
 
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
