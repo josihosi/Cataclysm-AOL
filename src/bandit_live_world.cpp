@@ -13793,7 +13793,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                                                   scout_missing_grace_minutes );
             outing.last_progress_minutes = now_minutes;
             if( outing.local_handoff.is_abstract_resume() ) {
-                outing.local_handoff.clear();
+                outing.local_handoff.phase = scout_phase::returning_home;
             }
             site = std::move( candidate );
             record_scout_phase_transition_event(
