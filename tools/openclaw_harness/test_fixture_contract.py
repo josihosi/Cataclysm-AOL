@@ -4255,7 +4255,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
 
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
-        fixture_name = "bandit_scout_to_decision_observer_southeast_v0_2026-08-07"
+        fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"
         resolved = resolve_fixture_payload(
             fixture_name,
             "live-debug",
@@ -4289,7 +4289,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 {
                     "kind": "player_location_offset_ms",
                     "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-                    "offset_ms": [96, 24, 0],
+                    "offset_ms": [0, 24, 0],
                 }
             ],
         )
@@ -4325,10 +4325,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             player_omt[1] + derived_manifest["save_transforms"][0]["offset_ms"][1] // 24,
             player_omt[2] + derived_manifest["save_transforms"][0]["offset_ms"][2] // 24,
         ]
-        self.assertEqual(derived_player_omt, [166, 36, 0])
+        self.assertEqual(derived_player_omt, [162, 36, 0])
         self.assertEqual(
             [
-                derived_player_omt[0] - 2,
+                derived_player_omt[0] + 2,
                 derived_player_omt[1] - 1,
                 derived_player_omt[2],
             ],
@@ -4374,14 +4374,15 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertEqual(
             scenario["fixture"],
-            "bandit_scout_to_decision_observer_southeast_v0_2026-08-07",
+            "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
         )
-        self.assertIn("(166,36,0)", scenario["description"])
-        self.assertIn("two OMTs east and one OMT south", scenario["description"])
+        self.assertIn("(162,36,0)", scenario["description"])
+        self.assertIn("two OMTs west and one OMT south", scenario["description"])
         self.assertIn("(164,35,0)", scenario["description"])
         self.assertNotIn("(166,34,0)", scenario["description"])
+        self.assertNotIn("(166,36,0)", scenario["description"])
         self.assertNotIn("(166,35,0)", scenario["description"])
-        self.assertNotIn("two OMTs west", scenario["description"])
+        self.assertNotIn("two OMTs east", scenario["description"])
         self.assertIn("(164,30,0)", scenario["description"])
         self.assertIn(
             "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
@@ -4396,11 +4397,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
         self.assertIn(
-            "moves only the player observer from (162,35,0) to (166,36,0)",
+            "moves only the player observer from (162,35,0) to (162,36,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
         self.assertIn(
-            "two OMTs east and one OMT south of the same route waypoint at (164,35,0)",
+            "two OMTs west and one OMT south of the same route waypoint at (164,35,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
         preflight = steps[labels.index("preflight_idle_zero_lead_camp")]

@@ -176,24 +176,27 @@ dispatch, local handoff, observer selection, and one stable `assembled=yes` tran
 previous cohesion oscillation or abort. This is live evidence that the motor-hold repair works at
 its layer, not lifecycle credit. The visible six-hour wait completed, but the step timed out because
 it inherited one-shot dispatch/handoff artifact patterns that were already behind the audit cursor.
-The harness now owns that wait endpoint with the exact later maintenance markers
-`scheduler_hour=142` and `now_minutes=8520`; downstream authoritative audits still own return,
-report, and decision. That absolute endpoint assumption was tested by the final run below.
+The first repair mistakenly treated the pre-choice maintenance baseline, `scheduler_hour=142` /
+`now_minutes=8520`, as a post-choice endpoint; downstream authoritative audits still own return,
+report, and decision.
 
 The second and final southeast run, `20260807_072156` on clean `4b57bffaa3+SDL3`, again naturally
 reached dispatch, handoff, and stable assembly. Its six-hour wait visibly finished at 4:04:53 AM,
 while authoritative maintenance advanced through `scheduler_hour=148` / `now_minutes=8880` with
 the outing still active and zero members returned. The harness rejected the completed wait because
-the previous run's absolute clock values were not invariant across a freshly staged natural run;
-no incident, return, report, or decision receives credit. Southeast is exhausted. The repaired
-controller now captures the authoritative `now_minutes` baseline immediately before the duration
-choice and requires a relative advance of at least 360 minutes plus ordinary production cadence.
-It cannot be satisfied by older log history and tolerates the scheduler's hourly overshoot.
+hour 142 was correctly excluded behind the post-choice audit cursor; both runs actually reached the
+same hour-148 endpoint. No incident, return, report, or decision receives credit. Southeast is
+exhausted. The repaired controller captures the authoritative `now_minutes` baseline immediately
+before the duration choice and requires a relative advance of at least 360 minutes plus ordinary
+production cadence. It cannot be satisfied by older log history and tolerates hourly overshoot.
 
-The next materially distinct footing must name claim, preconditions/interventions, causal boundary, production owner
-path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
-new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may
-not pre-write discovery, return, report, or decision.
+The current materially distinct footing is
+`bandit_scout_to_decision_observer_southwest_v0_2026-08-07`. It derives directly from the original
+zero-lead source and applies exactly one player transform, `[0,24,0]`, placing the observer at OMT
+`(162,36,0)`: two west and one south of waypoint `(164,35,0)`. It writes no ecology outcome and
+retains the relative wait endpoint plus all authoritative audits. Its proof contract names the
+causal boundary, production owner path, expected transitions, controls, deadlines, and identities.
+Structured state supersedes OCR.
 
 Do not resume helper-by-helper Phase-6 expansion. A visible failure in this vertical path chooses
 the next code slice. The capped smoke/light/sound, decoy, and visible-burn probes already consumed
