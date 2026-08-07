@@ -2,14 +2,14 @@
 
 ## Now
 
-Checkpoint the final observer wait's own deterministic endpoint, then build its exact clean SDL3
-identity. This repairs harness polling only; return, report, and decision remain authoritative
-downstream audits.
+Checkpoint the relative authoritative wait endpoint and build its exact clean SDL3 identity. The
+southeast footing is exhausted; return, report, and decision remain authoritative downstream
+audits.
 
 ## Immediate follow-ups
 
-1. Spend the second and final southeast scout-to-decision attempt and preserve the compact observer
-   incident pair; the first run proved stable motor hold but received no lifecycle credit.
+1. Declare one materially distinct observer footing and run its scout-to-decision contract with the
+   relative six-hour endpoint; northeast and southeast are exhausted.
 2. Let the first visible gameplay/tooling blocker choose the next bounded slice; do not alter the
    footing merely to force success.
 3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.

@@ -178,9 +178,19 @@ its layer, not lifecycle credit. The visible six-hour wait completed, but the st
 it inherited one-shot dispatch/handoff artifact patterns that were already behind the audit cursor.
 The harness now owns that wait endpoint with the exact later maintenance markers
 `scheduler_hour=142` and `now_minutes=8520`; downstream authoritative audits still own return,
-report, and decision. One southeast attempt remains after this tooling checkpoint.
+report, and decision. That absolute endpoint assumption was tested by the final run below.
 
-The proof contract must name claim, preconditions/interventions, causal boundary, production owner
+The second and final southeast run, `20260807_072156` on clean `4b57bffaa3+SDL3`, again naturally
+reached dispatch, handoff, and stable assembly. Its six-hour wait visibly finished at 4:04:53 AM,
+while authoritative maintenance advanced through `scheduler_hour=148` / `now_minutes=8880` with
+the outing still active and zero members returned. The harness rejected the completed wait because
+the previous run's absolute clock values were not invariant across a freshly staged natural run;
+no incident, return, report, or decision receives credit. Southeast is exhausted. The repaired
+controller now captures the authoritative `now_minutes` baseline immediately before the duration
+choice and requires a relative advance of at least 360 minutes plus ordinary production cadence.
+It cannot be satisfied by older log history and tolerates the scheduler's hourly overshoot.
+
+The next materially distinct footing must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may
 not pre-write discovery, return, report, or decision.

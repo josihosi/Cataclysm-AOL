@@ -2630,6 +2630,8 @@ def poll_wait_artifact_completion(
     timeout_seconds: float,
     poll_seconds: float,
     filter_debug_noise: bool,
+    baseline_now_minutes: Optional[int] = None,
+    minimum_elapsed_minutes: int = 0,
     interruption_handler: Optional[Callable[[], Dict[str, Any]]] = None,
     continue_after_contaminating: bool = False,
 ) -> Dict[str, Any]:
@@ -2655,6 +2657,34 @@ def poll_wait_artifact_completion(
             filter_debug_noise=filter_debug_noise,
         )
         poll_match = artifact_delta_matches_all_patterns( poll_report )
+        latest_now_minutes = latest_now_minutes_marker(
+            artifact_log,
+            start_offset=start_size,
+        )
+        observed_elapsed_minutes = (
+            latest_now_minutes - baseline_now_minutes
+            if latest_now_minutes is not None and baseline_now_minutes is not None
+            else None
+        )
+        elapsed_minutes_matched = bool(
+            minimum_elapsed_minutes <= 0 or
+            (
+                observed_elapsed_minutes is not None and
+                observed_elapsed_minutes >= minimum_elapsed_minutes
+            )
+        )
+        poll_match["artifact_now_minutes"] = {
+            "baseline": baseline_now_minutes,
+            "latest": latest_now_minutes,
+            "observed_elapsed": observed_elapsed_minutes,
+            "minimum_elapsed": minimum_elapsed_minutes,
+            "matched": elapsed_minutes_matched,
+        }
+        if not elapsed_minutes_matched:
+            poll_match["matched"] = False
+            poll_match["missing_patterns"] = list(
+                poll_match.get("missing_patterns", [])
+            ) + [f"now_minutes_delta>={minimum_elapsed_minutes}"]
         if poll_match["matched"]:
             break
         if interruption_handler is not None:
@@ -2723,6 +2753,25 @@ def poll_wait_artifact_completion(
             "reports": interruption_reports,
         },
     }
+
+
+def latest_now_minutes_marker(
+    artifact_log: Path,
+    *,
+    start_offset: int = 0,
+    end_offset: Optional[int] = None,
+    read_cap_bytes: int = 256 * 1024,
+) -> Optional[int]:
+    if not artifact_log.exists():
+        return None
+    size = artifact_log.stat().st_size
+    bounded_end = max(0, min(size, end_offset)) if end_offset is not None else size
+    bounded_start = max(0, min(start_offset, bounded_end), bounded_end - read_cap_bytes)
+    with artifact_log.open("rb") as handle:
+        handle.seek(bounded_start)
+        body = handle.read(bounded_end - bounded_start).decode("utf-8", errors="replace")
+    matches = list(re.finditer(r"\bnow_minutes=(\d+)\b", body))
+    return int(matches[-1].group(1)) if matches else None
 
 
 def audit_log_contains(
@@ -3024,6 +3073,9 @@ def execute_long_wait_action(
     completion_artifact_settle_seconds = float(
         step.get("completion_artifact_settle_seconds", 1.0) or 0.0
     )
+    minimum_artifact_elapsed_minutes = int(
+        step.get("minimum_artifact_elapsed_minutes", 0) or 0
+    )
     tail_lines = int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 32)) or 32)
     complete_patterns = normalize_screen_text_patterns(
         step.get("wait_complete_text_contains", ["You finish waiting"])
@@ -3065,6 +3117,7 @@ def execute_long_wait_action(
         "completion_artifact_timeout_seconds": completion_artifact_timeout_seconds,
         "completion_artifact_poll_seconds": completion_artifact_poll_seconds,
         "completion_artifact_settle_seconds": completion_artifact_settle_seconds,
+        "minimum_artifact_elapsed_minutes": minimum_artifact_elapsed_minutes,
         "proof_rule": (
             "captures before/initial-menu/duration-menu/after screens plus before/after artifact deltas; "
             "does not type through prompts; interruptions remain evidence and must not be classified green by default"
@@ -3139,6 +3192,12 @@ def execute_long_wait_action(
         else 0
     )
     report["completion_artifact_start_size"] = completion_start_size
+    baseline_now_minutes = (
+        latest_now_minutes_marker(artifact_log, end_offset=completion_start_size)
+        if artifact_log is not None and minimum_artifact_elapsed_minutes > 0
+        else None
+    )
+    report["completion_artifact_baseline_now_minutes"] = baseline_now_minutes
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
         time.sleep(after_choice_settle_seconds)
@@ -3146,7 +3205,9 @@ def execute_long_wait_action(
         time.sleep(completion_wait_seconds)
     completion_poll_timed_out = False
     completion_poll_aborted = False
-    if completion_artifact_timeout_seconds > 0 and state_patterns and artifact_log is not None:
+    if completion_artifact_timeout_seconds > 0 and \
+            (state_patterns or minimum_artifact_elapsed_minutes > 0) and \
+            artifact_log is not None:
         poll_acknowledgement_count = 0
         poll_scan_count = 0
         poll_shadow_warning_acknowledged = False
@@ -3190,6 +3251,8 @@ def execute_long_wait_action(
             timeout_seconds=completion_artifact_timeout_seconds,
             poll_seconds=completion_artifact_poll_seconds,
             filter_debug_noise=filter_debug_noise,
+            baseline_now_minutes=baseline_now_minutes,
+            minimum_elapsed_minutes=minimum_artifact_elapsed_minutes,
             interruption_handler=(
                 handle_poll_interruption
                 if auto_acknowledge_interruptions and max_interrupt_responses > 0
@@ -3436,7 +3499,7 @@ def execute_long_wait_action(
             "guard": "completion_artifact_timeout",
             "status": "blocked_wait_completion_timeout",
             "verdict": "red_wait_completion_artifact_timeout",
-            "reason": "the bounded wait did not reach its exact post-choice endpoint before timeout",
+            "reason": "the bounded wait did not reach its authoritative post-choice elapsed endpoint before timeout",
             "missing_patterns": report["completion_artifact_poll"]["match"].get(
                 "missing_patterns", []
             ),

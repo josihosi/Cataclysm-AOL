@@ -62,6 +62,7 @@ from startup_harness import (  # noqa: E402
     execute_long_wait_action,
     execute_probe_steps,
     launch_game,
+    latest_now_minutes_marker,
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
@@ -796,6 +797,123 @@ class WaitStepLedgerContractTest(unittest.TestCase):
 
         self.assertEqual(report["status"], "timed_out")
         self.assertEqual(report["match"]["missing_patterns"], ["endpoint"])
+
+    def test_poll_requires_relative_authoritative_wait_elapsed_minutes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("now_minutes=100\n", encoding="utf-8")
+            post_choice_baseline = artifact_log.stat().st_size
+            with artifact_log.open("a", encoding="utf-8") as stream:
+                stream.write("bandit_live_world perf: sites=1\nnow_minutes=460\n")
+
+            report = poll_wait_artifact_completion(
+                artifact_log,
+                run_dir,
+                "wait_contract",
+                post_choice_baseline,
+                ["bandit_live_world perf:"],
+                timeout_seconds=0.01,
+                poll_seconds=0.001,
+                filter_debug_noise=False,
+                baseline_now_minutes=100,
+                minimum_elapsed_minutes=360,
+            )
+
+        self.assertEqual(report["status"], "matched")
+        self.assertEqual(
+            report["match"]["artifact_now_minutes"],
+            {
+                "baseline": 100,
+                "latest": 460,
+                "observed_elapsed": 360,
+                "minimum_elapsed": 360,
+                "matched": True,
+            },
+        )
+
+    def test_poll_rejects_early_authoritative_wait_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text(
+                "now_minutes=100\nbandit_live_world perf: sites=1\nnow_minutes=459\n",
+                encoding="utf-8",
+            )
+            start_size = len("now_minutes=100\n".encode("utf-8"))
+            report = poll_wait_artifact_completion(
+                artifact_log,
+                run_dir,
+                "wait_contract",
+                start_size,
+                ["bandit_live_world perf:"],
+                timeout_seconds=0.01,
+                poll_seconds=0.001,
+                filter_debug_noise=False,
+                baseline_now_minutes=100,
+                minimum_elapsed_minutes=360,
+            )
+
+        self.assertEqual(report["status"], "timed_out")
+        self.assertIn("now_minutes_delta>=360", report["match"]["missing_patterns"])
+
+    def test_latest_now_minutes_marker_respects_end_offset(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_log = Path(temp_dir) / "debug.log"
+            artifact_log.write_text("now_minutes=100\n", encoding="utf-8")
+            baseline = artifact_log.stat().st_size
+            with artifact_log.open("a", encoding="utf-8") as stream:
+                stream.write("now_minutes=460\n")
+
+            self.assertEqual(
+                latest_now_minutes_marker(artifact_log, end_offset=baseline),
+                100,
+            )
+            self.assertEqual(latest_now_minutes_marker(artifact_log), 460)
+
+    def test_long_wait_captures_relative_elapsed_baseline_before_choice(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("now_minutes=100\n", encoding="utf-8")
+
+            def press(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                if keys == ["5"]:
+                    with artifact_log.open("a", encoding="utf-8") as stream:
+                        stream.write("bandit_live_world perf: sites=1\nnow_minutes=160\n")
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "Wait a while: 1 hour"},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press),
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "5",
+                        "expected_duration": "1h",
+                        "completion_artifact_timeout_seconds": 0.01,
+                        "completion_artifact_poll_seconds": 0.001,
+                        "artifact_state_patterns": ["bandit_live_world perf:"],
+                        "minimum_artifact_elapsed_minutes": 60,
+                    },
+                    artifact_log=artifact_log,
+                )
+
+        self.assertEqual(report["completion_artifact_baseline_now_minutes"], 100)
+        self.assertEqual(report["completion_artifact_poll"]["status"], "matched")
+        self.assertEqual(
+            report["completion_artifact_poll"]["match"]["artifact_now_minutes"][
+                "observed_elapsed"
+            ],
+            60,
+        )
 
     def test_active_eoc_popup_trace_round_trips_escaped_multiline_text(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -4357,8 +4475,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertEqual(
             final_wait["artifact_state_patterns"],
-            ["scheduler_hour=142", "now_minutes=8520"],
+            ["bandit_live_world perf:"],
         )
+        self.assertEqual(final_wait["minimum_artifact_elapsed_minutes"], 360)
         press_keys = [
             key
             for step in steps if step["kind"] == "press"

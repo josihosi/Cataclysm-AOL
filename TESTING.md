@@ -68,7 +68,7 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   OMT `(162,35,0)` to `(166,36,0)`: two east and one south of waypoint `(164,35,0)`. Camp
   `(164,39,0)`, target `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited
   `DEBUG_CLAIRVOYANCE` are unchanged; no lifecycle result is written. Both JSON payloads parse and
-  all 149 harness contracts pass. No live credit.
+  all 153 harness contracts pass. No live credit.
 - Southeast run `20260807_070159` on clean `f09ac3882f+SDL3` naturally reached discovery,
   dispatch, local handoff, observer selection, and a single stable `assembled=yes` transition;
   there was no cohesion oscillation or abort. The motor-hold repair is therefore live-green at its
@@ -77,7 +77,17 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   one-shot dispatch/handoff patterns behind its audit cursor. The outing remained active, so this
   receives no return/report/decision credit. The repaired wait contract requires those two exact
   endpoint markers and leaves all lifecycle proof to the existing later audits. One southeast
-  attempt remains after the tooling checkpoint.
+  attempt remained after that tooling checkpoint.
+- Final southeast run `20260807_072156` on clean `4b57bffaa3+SDL3` again reached natural dispatch,
+  handoff, and stable assembly. The final wait visibly finished at 4:04:53 AM and the structured
+  owner advanced through `scheduler_hour=148` / `now_minutes=8880`; the outing remained active with
+  `members_returned=0`. The harness correctly rejected the missing hard-coded hour-142 endpoint,
+  proving that absolute game-day markers are not stable across otherwise equivalent natural runs.
+  Southeast is exhausted and receives no incident, return, report, or decision credit. The
+  replacement controller snapshots the last bounded authoritative `now_minutes` before the wait
+  choice, then requires at least +360 newly logged minutes and production cadence; +359 is red,
+  +360 is green, old bytes are excluded, and hourly overshoot is accepted. Python compile, JSON
+  parse, all 153 harness contracts, and `git diff --check` are green on the dirty checkpoint.
 - The exhausted fixture `bandit_scout_to_decision_observer_northeast_v0_2026-08-07` derives directly
   from the original zero-lead source with one transform `[96,-24,0]`, moving only the observer from
   OMT `(162,35,0)` to `(166,34,0)`. Camp `(164,39,0)`, route waypoint `(164,35,0)`, target
