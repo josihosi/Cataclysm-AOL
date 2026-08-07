@@ -155,6 +155,15 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 
 #define dbg(x) DebugLog((x),D_GAME) << __FILE__ << ":" << __LINE__ << ": "
 
+bool live_bandit_local_handoff_position_is_motor_addressable(
+    const tripoint_abs_ms &position, const tripoint_abs_sm &motor_center,
+    const int motor_radius_sm )
+{
+    return motor_radius_sm >= 0 &&
+           square_dist( project_to<coords::sm>( position ).xy(), motor_center.xy() ) <=
+           motor_radius_sm;
+}
+
 namespace
 {
 bool live_bandit_can_make_ordinary_visual_observation( const Character &observer )
@@ -4050,13 +4059,16 @@ std::vector<tripoint_abs_ms> live_bandit_local_handoff_entry_positions(
 
     std::vector<entry_candidate> candidates;
     map &here = get_map();
+    const tripoint_abs_sm motor_center = get_player_character().pos_abs_sm();
     const tripoint_abs_ms omt_origin = project_to<coords::ms>( route_position );
     const int max_local = coords::map_squares_per( coords::omt ) - 1;
     const int dx = route_position.x() - approach_from.x();
     const int dy = route_position.y() - approach_from.y();
     for( const tripoint_bub_ms &point : here.points_on_zlevel( route_position.z() ) ) {
         const tripoint_abs_ms absolute = here.get_abs( point );
-        if( project_to<coords::omt>( absolute ) != route_position || !here.passable( point ) ||
+        if( project_to<coords::omt>( absolute ) != route_position ||
+            !live_bandit_local_handoff_position_is_motor_addressable(
+                absolute, motor_center, HALF_MAPSIZE - 1 ) || !here.passable( point ) ||
             !g->is_empty( point ) ||
             std::find( excluded_positions.begin(), excluded_positions.end(), absolute ) !=
             excluded_positions.end() ) {
@@ -6866,6 +6878,11 @@ void overmap_npc_move()
 bool process_live_bandit_aftermath_for_test()
 {
     return note_live_bandit_aftermath();
+}
+
+bool materialize_live_bandit_structural_handoffs_for_test()
+{
+    return materialize_live_bandit_structural_handoffs();
 }
 
 void process_monsters_and_npcs_turn_for_test()

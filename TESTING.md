@@ -77,6 +77,12 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   overmap buffer, while the movement adapter can act only on members in the current map; no route
   was attempted before timeout. Both east attempts are exhausted. No live success credit and no
   permission/OCR blocker are assigned.
+- The repair filters both entry and staging candidates through the exact Chebyshev submap radius
+  used by `game::load_npcs` before a local transaction can be planned. The real-map/NPC regression
+  covers the non-activating loaded-map fringe (no commit, both NPCs inactive, serialized abstract
+  world byte-identical) and the adjacent geometry (complete epoch-1 commit and both NPCs active
+  through the production loader). Canonical Mac SDL3/SOUND test build/link: exit 0; `[local_handoff]`:
+  2 cases / 783 assertions, seed `860807`. Existing newer-deployment-target dylib warnings only.
 - Run `20260807_043746` on clean `5010d98e3d+SDL3` naturally reached exact dispatch and
   `local_handoff committed ... members=2`. During the ordinary wait it opened the real bandit
   Pay/Fight dialogue for Giuseppe Bachman before physical return/report/decision; the paired

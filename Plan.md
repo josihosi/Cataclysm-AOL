@@ -125,6 +125,13 @@ local motor cannot address them in the active reality bubble; local ownership mu
 that boundary. No further east run is allowed until a deterministic ownership fix is green, and a
 later live proof must use a materially different footing.
 
+The local ownership repair is now green in a deterministic production-seam regression. A route OMT
+that intersects only the map's non-activating fringe leaves both real NPCs inactive and preserves
+the abstract outing byte-for-byte; the adjacent geometry selects load-addressable slots, commits
+the complete pair, and activates both through `game::load_npcs`. This is ownership proof, not live
+lifecycle credit. The next proof contract must choose a new observer footing and retain the same
+natural discovery-to-decision causal boundary.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may

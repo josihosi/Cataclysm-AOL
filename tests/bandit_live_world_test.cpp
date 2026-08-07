@@ -16,6 +16,7 @@
 #include "cata_scope_helpers.h"
 #include "calendar.h"
 #include "avatar.h"
+#include "do_turn.h"
 #include "faction.h"
 #include "game.h"
 #include "game_constants.h"
@@ -8234,6 +8235,99 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         stale.last_advanced_minutes--;
         CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
                          site, stale, 100, make_reads( site ) ).valid );
+    }
+
+    SECTION( "handoff slots stop at the reality bubble motor boundary" ) {
+        clear_avatar();
+        clear_npcs();
+        clear_map();
+        clear_vehicles();
+        set_time_to_day();
+        bandit_live_world::world_state saved_world =
+            overmap_buffer.global_state.bandit_live_world;
+        std::vector<character_id> generated_npc_ids;
+        on_out_of_scope cleanup( [&generated_npc_ids,
+                                  saved_world = std::move( saved_world )]() mutable {
+            for( const character_id id : generated_npc_ids ) {
+                g->remove_npc( id );
+                overmap_buffer.remove_npc( id );
+            }
+            overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+            clear_creatures();
+        } );
+
+        const auto run_boundary_case = [&]( const int player_offset_omt,
+        const int player_local_x, const bool expect_materialized ) {
+            bandit_live_world::world_state world = make_world( false );
+            bandit_live_world::site_record &site = world.sites.front();
+            bandit_live_world::active_outing_state &outing = site.active_outing;
+            REQUIRE( outing.shared_route.size() >= 3 );
+            outing.waypoint_index = 1;
+            const tripoint_abs_omt route_omt = outing.shared_route[1];
+            const tripoint_abs_omt player_omt(
+                route_omt.x() + player_offset_omt, route_omt.y(), route_omt.z() );
+            g->place_player_overmap( player_omt );
+            clear_map();
+            const tripoint_abs_ms player_position =
+                project_to<coords::ms>( player_omt ) + point( player_local_x, 12 );
+            REQUIRE( get_map().inbounds( player_position ) );
+            get_avatar().setpos( player_position, false );
+
+            const std::vector<character_id> old_ids = outing.member_ids;
+            std::vector<character_id> live_ids;
+            for( std::size_t index = 0; index < old_ids.size(); ++index ) {
+                shared_ptr_fast<npc> member = make_shared_fast<npc>();
+                member->normalize();
+                member->load_npc_template( npc_template_test_talker );
+                const bandit_live_world::member_record *record = site.find_member( old_ids[index] );
+                REQUIRE( record != nullptr );
+                member->spawn_at_precise( record->home_spawn_tile );
+                overmap_buffer.insert_npc( member );
+                live_ids.push_back( member->getID() );
+                generated_npc_ids.push_back( member->getID() );
+            }
+            REQUIRE( live_ids.size() == old_ids.size() );
+            for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+                bandit_live_world::member_record *record = site.find_member( old_ids[index] );
+                REQUIRE( record != nullptr );
+                record->npc_id = live_ids[index];
+            }
+            outing.member_ids = live_ids;
+            outing.leader_id = live_ids.front();
+
+            overmap_buffer.global_state.bandit_live_world = std::move( world );
+            const std::string before = serialize_world(
+                                           overmap_buffer.global_state.bandit_live_world );
+            CHECK( materialize_live_bandit_structural_handoffs_for_test() ==
+                   expect_materialized );
+            bandit_live_world::site_record &live_site =
+                overmap_buffer.global_state.bandit_live_world.sites.front();
+            if( expect_materialized ) {
+                CHECK( live_site.active_outing.owner ==
+                       bandit_live_world::simulation_owner::local );
+                for( const character_id id : live_ids ) {
+                    REQUIRE( g->find_npc( id ) != nullptr );
+                    CHECK( g->find_npc( id )->is_active() );
+                }
+            } else {
+                CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
+                CHECK( live_site.active_outing.owner ==
+                       bandit_live_world::simulation_owner::abstract );
+                for( const character_id id : live_ids ) {
+                    REQUIRE( g->find_npc( id ) != nullptr );
+                    CHECK_FALSE( g->find_npc( id )->is_active() );
+                }
+            }
+            for( const character_id id : live_ids ) {
+                g->remove_npc( id );
+                overmap_buffer.remove_npc( id );
+                generated_npc_ids.erase( std::remove( generated_npc_ids.begin(),
+                                         generated_npc_ids.end(), id ), generated_npc_ids.end() );
+            }
+        };
+
+        run_boundary_case( 3, 0, false );
+        run_boundary_case( 2, 12, true );
     }
 
     SECTION( "arrival waits for every survivor at staging and replay is inert" ) {

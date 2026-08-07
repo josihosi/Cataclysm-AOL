@@ -2,14 +2,14 @@
 
 ## Now
 
-Make local handoff ownership action-capable: a pair may commit to the local owner only when both
-members can be addressed by the current reality-bubble motor. Preserve the abstract outing byte-for-
-byte when that precondition is unavailable, and cover the edge geometry with a deterministic test.
+Checkpoint the reviewed local-handoff motor-boundary fix, then write the next proof contract and
+prepare one materially different observer footing. Require the same naturally dispatched pair to
+continue through physical return, final report, and camp decision.
 
 ## Immediate follow-ups
 
-1. Rebuild only after the ownership regression is green; both east attempts are exhausted and must
-   not be rerun on unchanged geometry.
+1. Build an exact clean SDL3 identity for the new footing only; both prior east attempts are
+   exhausted and must not be rerun on unchanged geometry.
 2. Preserve the green bounded physical-return/report/decision regression as the lower-half control;
    do not substitute it for the required same-incident live evidence.
 3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.
