@@ -50,14 +50,18 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
   824 assertions. Run `20260807_093242` on clean `67848e5f84+SDL3` regenerated a handoff that
   reached the same deadline without assembly or a recorded route failure. Its saved abort state no
   longer contains the transient motor result, so the existing cohesion event now records planned
-  orders, route attempt/failure, and path steps for the next unchanged run.
+  orders, route attempt/failure, and path steps. Run `20260807_094606` on clean
+  `25be8f51c8+SDL3` proved two successful staging routes with 21 total path steps and immediate
+  assembly. The forward latch held, but the pair then split under the local ingress owner: saved
+  NPC `4` remained at staging while NPC `5` was back at camp; both retained the watch goal, no
+  dematerialization or observation occurred, and the six-hour survivor-return audit failed.
 
 ## Active claim
 
-Checkpoint the targeted cohesion motor receipt, build a clean SDL3 binary from that commit, and rerun
-`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
-either reach the natural survivor-return/report/decision pass or preserve the first new
-authoritative blocker.
+Preserve exact-pair ownership after assembly so the forward ingress motor cannot leave one reserved
+member at staging while the other returns to camp. The next proof must exercise both members from
+the committed staging pair through one transactional watch arrival; then rerun
+`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

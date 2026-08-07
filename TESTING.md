@@ -98,8 +98,12 @@ ID, authoritative owner audit, compact incident JSON, and paired screenshot wher
   rendezvous deadline without assembly; its persisted state showed `failed_routes=0` but could not
   recover whether orders were motor-addressable or whether successful paths went unconsumed. The
   existing cohesion state-change event now includes movement-order, route-attempt/failure, and path
-  step counts. The unchanged live scenario on a clean committed SDL3 binary is the pending proof;
-  those fields must isolate the first motor divergence without another debug surface.
+  step counts. Run `20260807_094606` on clean `25be8f51c8+SDL3` recorded two movement orders,
+  successful routes, 21 path steps, and immediate `assembled=yes`. The assembly latch remained
+  green through the six-hour window, but no dematerialization, observation, or return occurred.
+  Saved authoritative records put NPC `4` at staging `(3936,828)` and NPC `5` at camp
+  `(3948,936)` while both retained goal `(163,33)` and the outing remained local/observing. This is
+  the pending exact-pair ingress-owner seam; the run earns no lifecycle credit.
 
 ## Focused commands
 
