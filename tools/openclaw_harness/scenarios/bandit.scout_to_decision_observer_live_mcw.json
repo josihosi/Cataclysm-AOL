@@ -18,8 +18,7 @@
     "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
     "lead=frontier_probe:0",
     "bandit_live_world local_handoff committed",
-    "members=2",
-    "structural outing returned home lead="
+    "members=2"
   ],
   "capture_world_after": true,
   "steps": [
@@ -276,7 +275,7 @@
     "expected_transition": "idle/no-lead -> natural terrain memory -> due frontier lead -> exact local pair -> meaningful selected-entity delta -> at-least-one-survivor physical return -> final report -> report-awaiting-assessment decision",
     "negative_control": "preflight requires zero leads and zero outing; the incident must report natural provenance, debug_intervention=false, and an empty intervention ledger",
     "timeout": "two six-hour waits plus one one-hour wait reach the ID-derived frontier deadline, followed by the next three hourly structural advances and one initial six-hour post-observation window; no completion state may be injected",
-    "pass_fail_rule": "The row is green only when preflight, exact production dispatch/handoff, observer selection/watch, natural incident pair, at least one same-run scout survivor home, save writeback, closed outing, final non-provisional report, and report-to-decision identity match are all green.",
+    "pass_fail_rule": "The row is green only when preflight, exact production dispatch/handoff, observer selection/watch, natural incident pair, at least one same-run scout survivor home, save writeback, closed outing, final non-provisional report, and report-to-decision identity match are all green. Return is owned by the post-window live-log audit and final saved-state audit, not by the bounded wait-menu completion token, so an intermediate no-progress incident remains capturable.",
     "observer_artifact_requirement": "Coordinator inspection must find one post-window ecology_incident JSON/PNG pair for the selected canonical ID with natural provenance, debug_intervention=false, and an empty intervention ledger.",
     "identity_requirement": "The run artifact must retain commit, binary, fixture, scenario, selected canonical ID, and observer-tool identities."
   }

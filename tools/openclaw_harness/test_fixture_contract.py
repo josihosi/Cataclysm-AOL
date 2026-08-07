@@ -3791,6 +3791,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["artifact_patterns"],
         )
         self.assertIn(exact_target, scenario["artifact_patterns"])
+        self.assertNotIn(
+            "structural outing returned home lead=", scenario["artifact_patterns"]
+        )
         self.assertIn(
             "road-connected sector-0 outer target (164,30,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
@@ -3861,6 +3864,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertTrue(final_audit["required_report_decision_identity_match"])
         self.assertIn("final non-provisional report", scenario["evidence_contract"]["pass_fail_rule"])
+        self.assertIn(
+            "not by the bounded wait-menu completion token",
+            scenario["evidence_contract"]["pass_fail_rule"],
+        )
 
     def test_phase4_target_relocation_observes_same_authoritative_dispatch(self) -> None:
         scenario = load_scenario("bandit.phase4_target_relocation_observer_live_mcw")
