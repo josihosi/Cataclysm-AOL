@@ -9,7 +9,8 @@
   "profile_snapshot_profile": "live-debug",
   "profile_option_overrides_by_platform": {
     "macos": {
-      "SCALING_FACTOR": "2"
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
     }
   },
   "replace_existing_worlds": true,
