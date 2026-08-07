@@ -272,6 +272,28 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertFalse(result["release_blocking"])
         self.assertFalse(result["contaminating"])
 
+    def test_observed_multiline_lifeless_grass_popup_is_known(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "blackened grass you can\nYou suddenly realize\nthis\n"
+                "area\nseems almost devoid\nof\nlife\n"
+                "what happened to the grass? What, is the grass coming to\n"
+                "discounting the night.\nWaiting 79%\nPress . or 5 to interrupt"
+            ),
+        })
+
+        self.assertEqual(result["status"], "known_prompt")
+        self.assertEqual(
+            result["classification"],
+            "shadow_warning_wilderness_flavor_popup",
+        )
+        self.assertEqual(result["response_key"], "space")
+        self.assertEqual(
+            result["matched_markers"],
+            ["almost devoid of life", "what happened to the grass"],
+        )
+
     def test_lifeless_grass_text_cannot_override_safe_mode_prompt(self) -> None:
         result = classify_blocking_interruption({
             "ok": True,

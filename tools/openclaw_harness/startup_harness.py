@@ -1963,7 +1963,7 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "what happened to the grass",
             "grass coming to life to eat people",
         )
-        if marker in lowered
+        if marker in normalized_ocr_body
     ]
     safe_mode_markers = [
         marker

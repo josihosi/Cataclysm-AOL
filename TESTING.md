@@ -136,6 +136,14 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   initial broad guard removal; the narrowed fix preserves deferred-phase target skipping, and the
   clean re-review reports `patch is correct (0.94)`. A clean committed SDL3 rebuild and one live
   observer rerun are next; Linux/Windows runtime are not claimed.
+- Run `20260807_030535` on clean `5090474d85+SDL3` naturally dispatched, handed off, assembled,
+  exposed, and reached the repaired `returning_home` phase. It stopped at 79% of the three-hour
+  wait on the non-contaminating base-game `Shadow_Warnings_Snippets_early` lifeless-grass story
+  popup. The existing fail-closed classifier already accepts the full snippet, but the observed
+  column-split OCR preserved its two distinctive phrases across newlines. Normalizing whitespace
+  for only those existing lifeless-grass markers recovers this exact safe popup while partial text,
+  safe-mode prompts, confirmations, and contaminating portal warnings remain fail-closed. Harness
+  contract: 140 tests green. One second and final live attempt remains on this footing.
 
 ### Capped non-credit probes
 
