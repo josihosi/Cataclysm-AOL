@@ -1447,6 +1447,39 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(result["acknowledgement_count"], 0)
         press.assert_not_called()
 
+    def test_completed_wait_shadow_message_is_suppressed_without_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={
+                        "ok": True,
+                        "text": (
+                            "You finish waiting.\n"
+                            "The wind faintly cries into the night."
+                        ),
+                    },
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.interruption",
+                    stop_on_unknown=True,
+                    suppress_retained_shadow_warning=True,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 0)
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "acknowledged_prompt_text_retained_on_hud",
+        )
+        press.assert_not_called()
+
     def test_poll_aborts_unknown_interruption_without_response_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)

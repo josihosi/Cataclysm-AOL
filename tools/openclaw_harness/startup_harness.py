@@ -3305,6 +3305,9 @@ def execute_long_wait_action(
         first_boundary_scan = True
         while first_boundary_scan or \
                 response_count + mid_poll_acknowledgement_count < max_interrupt_responses:
+            completed_wait_shadow_message = first_boundary_scan and str(
+                report.get("wait_classification", {}).get("status", "")
+            ) == "completed"
             first_boundary_scan = False
             mid_poll_shadow_warning_acknowledged = any(
                 str(acknowledgement.get("classification", {}).get("classification", ""))
@@ -3327,7 +3330,10 @@ def execute_long_wait_action(
                 delay_ms=delay_ms,
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
-                suppress_retained_shadow_warning=mid_poll_shadow_warning_acknowledged,
+                suppress_retained_shadow_warning=(
+                    mid_poll_shadow_warning_acknowledged
+                    or completed_wait_shadow_message
+                ),
                 structured_popup_trace_log=action_trace_log,
                 structured_popup_trace_start_offset=structured_popup_trace_start_offset,
             )
