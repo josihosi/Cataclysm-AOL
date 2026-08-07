@@ -503,12 +503,18 @@ int structural_arrival_delay_minutes( const tripoint_abs_omt &anchor,
            std::clamp( distance * 10, 30, 180 );
 }
 
+int structural_homeward_delay_minutes( const tripoint_abs_omt &anchor,
+                                       const tripoint_abs_omt &target )
+{
+    const int distance = std::max( 1, omt_chebyshev_distance( anchor, target ) );
+    return std::clamp( distance * 10, 30, 180 );
+}
+
 int structural_return_delay_minutes( const tripoint_abs_omt &anchor,
                                      const tripoint_abs_omt &target )
 {
-    const int distance = std::max( 1, omt_chebyshev_distance( anchor, target ) );
     return structural_arrival_delay_minutes( anchor, target ) +
-           std::clamp( distance * 10, 30, 180 );
+           structural_homeward_delay_minutes( anchor, target );
 }
 
 int structural_expected_return_minutes( const int started_minutes,
@@ -517,6 +523,28 @@ int structural_expected_return_minutes( const int started_minutes,
 {
     return minutes_after_saturated( started_minutes,
                                     structural_return_delay_minutes( anchor, target ) );
+}
+
+bool structural_expected_return_is_consistent(
+        const bandit_live_world::active_outing_state &outing,
+        const tripoint_abs_omt &anchor )
+{
+    int expected = structural_expected_return_minutes(
+                       outing.started_minutes, anchor,
+                       structural_outing_travel_destination( outing ) );
+    const bool assessment_homeward_leg = outing.schema_version >= 10 &&
+            outing.phase == scout_phase::returning_home &&
+            !outing.assessment.exit_reason.empty() && outing.last_progress_minutes >= 0 &&
+            outing.shared_route.size() >= 2 &&
+            outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2;
+    if( assessment_homeward_leg ) {
+        expected = minutes_after_saturated(
+                       outing.last_progress_minutes,
+                       structural_homeward_delay_minutes(
+                           anchor, outing.shared_route[static_cast<std::size_t>(
+                                       outing.waypoint_index )] ) );
+    }
+    return outing.expected_return_minutes == expected;
 }
 
 bool finite_resource_record_is_valid( const bandit_live_world::finite_resource_record &record )
@@ -8300,9 +8328,7 @@ void site_record::deserialize( const JsonObject &jo )
           structural_lead->omt == active_outing.target_omt &&
           structural_route_is_canonical_for_outing( active_outing, anchor,
                   *structural_lead ) &&
-          active_outing.expected_return_minutes == structural_expected_return_minutes(
-              active_outing.started_minutes, anchor,
-              structural_outing_travel_destination( active_outing ) ) &&
+          structural_expected_return_is_consistent( active_outing, anchor ) &&
           active_outing.missing_deadline_minutes == minutes_after_saturated(
               active_outing.expected_return_minutes, scout_missing_grace_minutes ) &&
           structural_phase_is_consistent );
@@ -13444,9 +13470,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             site.active_outing.target_id != site.active_outing.target_lead_id ||
             site.active_outing.member_ids.size() != 2 ||
             site.active_outing.started_minutes < 0 ||
-            site.active_outing.expected_return_minutes != structural_expected_return_minutes(
-                site.active_outing.started_minutes, site.anchor,
-                structural_outing_travel_destination( site.active_outing ) ) ) {
+            !structural_expected_return_is_consistent( site.active_outing, site.anchor ) ) {
             continue;
         }
         const camp_map_lead *current_lead = site.intelligence_map.find_lead(
@@ -13760,6 +13784,13 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             outing.owner == simulation_owner::abstract ) {
             outing.phase = scout_phase::returning_home;
             outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
+            outing.expected_return_minutes = minutes_after_saturated(
+                    now_minutes, structural_homeward_delay_minutes(
+                        candidate.anchor,
+                        outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ) );
+            outing.missing_deadline_minutes = minutes_after_saturated(
+                                                  outing.expected_return_minutes,
+                                                  scout_missing_grace_minutes );
             outing.last_progress_minutes = now_minutes;
             if( outing.local_handoff.is_abstract_resume() ) {
                 outing.local_handoff.clear();

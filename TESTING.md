@@ -88,10 +88,18 @@
   `assembled=no ... abort=yes`; materialization had cleared both camp goals, so the homeward motor
   could not continue after that rendezvous abort. The required camp-boundary dematerialization,
   canonical return, report, and decision were absent.
+- Run `20260807_115306` on commit `3a025769ef`, executable SHA-256
+  `afcb3937f893d1d097960bcae750440f2bb333f0d11ee7c883d5794f40bfd93e`, repeated ingress and
+  watch completion but emitted no `returning_home` handoff or dematerialization. It advanced
+  `returning_report` at hour 143 and reconciled both members abstractly at hour 144 because the
+  dispatch-time expected return had expired during the two-hour watch. The final report and
+  decision do not satisfy the physical-return outcome.
 - The transactional homeward-bind tests target rebuilt successfully. With the recorded stable seed
-  `3003869255`, `[local_handoff]` passes 874 assertions in two cases and proves a homeward bind is
-  immediately coherent, owns both travelers, preserves exact exit checks, and round-trips.
-  `[scout_assessment]` passes 231 assertions in four cases, and the harness fixture contract passes
+  `3003869255`, `[local_handoff]` passes 900 assertions in two cases and proves a homeward bind is
+  immediately coherent, owns both travelers, preserves exact exit checks, round-trips, and assigns
+  both real NPCs nonempty camp routes. `[scout_assessment]` passes 233 assertions in four cases and
+  proves assessment completion rebases expected return to a future home leg while both exact and
+  inconclusive reports still reconcile only at that new ETA. The harness fixture contract passes
   154 tests. The live run remains necessary to prove the prepared routes reach the camp boundary.
 
 ## Pending proof contract

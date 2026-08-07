@@ -73,13 +73,19 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   rendezvous gate treated their adjacent transactional entry as unassembled; one scout reached a
   staging slot, the other missed the existing rendezvous deadline, and the abort path cleared both
   routes. No camp-boundary dematerialization or canonical return occurred.
+- Run `20260807_115306` on `3a025769ef+SDL3` proved the transactional bind itself, but no homeward
+  local handoff occurred. Assessment completed after the dispatch-time expected return had already
+  elapsed, so the next same-minute abstract advance reconciled both scouts directly at camp. The
+  final report and matching decision were again authoritative, but the required physical return
+  remained absent.
 
 ## Active claim
 
-Hand the abstract returning pair to local reality at the existing homeward approach, then rerun
-`bandit.scout_to_decision_observer_live_mcw` with the same causal setup. The incident must show a
-`returning_home` local handoff and physical boundary exit for the exact pair before the already
-proved canonical home reconciliation, final report, and authoritative camp decision.
+Schedule the actual homeward leg from assessment completion with the existing distance-derived
+return travel policy, then rerun `bandit.scout_to_decision_observer_live_mcw` with the same causal
+setup. The incident must show a `returning_home` local handoff and physical boundary exit for the
+exact pair before the already proved canonical home reconciliation, final report, and authoritative
+camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
