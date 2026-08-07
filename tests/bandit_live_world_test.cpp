@@ -8531,7 +8531,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         overmap_buffer.global_state.bandit_live_world = std::move( world );
 
         REQUIRE( materialize_live_bandit_structural_handoffs_for_test() );
-        const bandit_live_world::site_record &live_site =
+        bandit_live_world::site_record &live_site =
             overmap_buffer.global_state.bandit_live_world.sites.front();
         CHECK( live_site.active_outing.owner ==
                bandit_live_world::simulation_owner::local );
@@ -8544,6 +8544,75 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             CHECK_FALSE( member->omt_path.empty() );
             CHECK( member->mission == NPC_MISSION_TRAVELLING );
         }
+
+        const tripoint_abs_omt camp = live_site.anchor;
+        g->place_player_overmap( camp + point( 0, -3 ) );
+        wipe_map_terrain();
+        clear_creatures();
+        struct boundary_slot {
+            tripoint_abs_ms departure;
+            tripoint_abs_ms exit;
+        };
+        std::vector<boundary_slot> boundary_slots;
+        for( const tripoint_bub_ms &point : get_map().points_on_zlevel( camp.z() ) ) {
+            const tripoint_abs_ms departure = get_map().get_abs( point );
+            if( !get_map().passable( point ) ) {
+                continue;
+            }
+            for( int dy = -1; dy <= 1; ++dy ) {
+                for( int dx = -1; dx <= 1; ++dx ) {
+                    if( dx == 0 && dy == 0 ) {
+                        continue;
+                    }
+                    const tripoint_abs_ms exit = departure + point_rel_ms( dx, dy );
+                    if( !get_map().inbounds( exit ) &&
+                        project_to<coords::omt>( exit ) == camp ) {
+                        boundary_slots.push_back( { departure, exit } );
+                    }
+                }
+            }
+        }
+        std::optional<std::pair<boundary_slot, boundary_slot>> paired_slots;
+        for( const boundary_slot &first : boundary_slots ) {
+            for( const boundary_slot &second : boundary_slots ) {
+                if( first.departure != second.departure && first.exit != second.exit &&
+                    rl_dist( first.exit, second.exit ) <= 1 ) {
+                    paired_slots = std::make_pair( first, second );
+                    break;
+                }
+            }
+            if( paired_slots ) {
+                break;
+            }
+        }
+        REQUIRE( paired_slots );
+        const std::array<boundary_slot, 2> assigned_slots = {
+            paired_slots->first, paired_slots->second
+        };
+        for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+            npc *member = g->find_npc( live_ids[index] );
+            REQUIRE( member != nullptr );
+            REQUIRE( get_map().inbounds( assigned_slots[index].departure ) );
+            member->setpos( get_map(), get_map().get_bub( assigned_slots[index].departure ) );
+            member->goal = camp;
+            member->omt_path = { camp, member->pos_abs_omt() };
+            member->set_mission( NPC_MISSION_TRAVELLING );
+            member->path.clear();
+        }
+
+        process_monsters_and_npcs_turn_for_test();
+        for( const character_id id : live_ids ) {
+            shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK_FALSE( member->is_active() );
+            CHECK_FALSE( get_map().inbounds( member->pos_abs() ) );
+            CHECK( member->pos_abs_omt() == camp );
+        }
+        REQUIRE( dematerialize_live_bandit_structural_handoffs_for_test() );
+        CHECK( live_site.active_outing.owner ==
+               bandit_live_world::simulation_owner::abstract );
+        CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
+        CHECK( live_site.active_outing.local_handoff.route_position == camp );
     }
 
     SECTION( "arrival waits for every survivor at staging and replay is inert" ) {
