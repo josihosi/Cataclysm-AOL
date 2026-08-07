@@ -5014,7 +5014,9 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
         outing.schema_version < 7 || outing.owner != simulation_owner::local ||
         !simulation_owner_state_is_consistent( outing ) ||
-        !outing.local_handoff.is_active() || outing.local_handoff.cohesion_assembled ||
+        !outing.local_handoff.is_active() ||
+        scout_phase_requires_homeward_only( outing.phase ) ||
+        outing.alternate_watch_reposition_pending ||
         outing.local_handoff.cohesion_abort_return ||
         outing.local_handoff.members.size() != 2 || outing.member_ids.size() != 2 ) {
         return result;

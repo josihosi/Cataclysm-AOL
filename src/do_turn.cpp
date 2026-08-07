@@ -6280,6 +6280,10 @@ void monmove()
             const int local_scout_assessment_updates =
                 advance_live_bandit_local_scout_assessments();
             if( local_scout_assessment_updates > 0 ) {
+                // Assessment may release staging ownership into a homeward phase or an
+                // alternate-watch reposition.  Refresh the cached motor view so that release
+                // takes effect in this NPC turn rather than one turn later.
+                pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
                 DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_scout_assessment_updates="
                                            << local_scout_assessment_updates << '\n';
             }

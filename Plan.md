@@ -149,6 +149,15 @@ on its owned route; real separation or leaving the route still restarts bounded 
 production-seam and pure-owner tests, including unload back to the abstract owner, are green. One
 northeast live attempt remains after clean re-review, checkpoint, and an exact clean rebuild.
 
+The second and final northeast run, `20260807_063000` on clean `7e92528d87+SDL3`, reproduced the
+same visible failure after the latch/writeback repair: the exact pair assembled, but ordinary NPC
+turns alternated `assembled=no/yes` until the ten-minute abort and `returning_home`. The footing is
+exhausted. The concrete missing seam is motor ownership, not another latch: an assembled outbound
+pair at its selected observation OMT receives only a soft AI guard, so each scout may wander away
+independently. The next slice keeps hard staging motor priority while that local pair remains
+non-homeward; a real observation/return phase must still release it through the existing homeward
+path.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may

@@ -8318,6 +8318,16 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 REQUIRE( live_site.active_outing.local_handoff.cohesion_assembled );
                 CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
 
+                process_monsters_and_npcs_turn_for_test();
+                for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+                     live_site.active_outing.local_handoff.members ) {
+                    npc *member = g->find_npc( snapshot.npc_id );
+                    REQUIRE( member != nullptr );
+                    CHECK( rl_dist( member->pos_abs(), snapshot.staging_position ) <= 1 );
+                }
+                CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
+                CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
+
                 const tripoint_abs_ms route_center = project_to<coords::ms>( route_omt ) +
                         point( SEEX, SEEY );
                 for( std::size_t index = 0; index < live_ids.size(); ++index ) {
@@ -8433,7 +8443,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( serialize_world( round_trip_world( world ) ) == assembled );
     }
 
-    SECTION( "incomplete local ownership pins both staging motor orders" ) {
+    SECTION( "non-homeward local ownership pins both staging motor orders" ) {
         bandit_live_world::world_state world = make_world( false );
         bandit_live_world::site_record &site = world.sites.front();
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -8460,7 +8470,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
 
         site.active_outing.local_handoff.cohesion_assembled = true;
-        CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).empty() );
+        CHECK( bandit_live_world::local_pair_assembly_orders( site.active_outing ).size() == 2 );
         site.active_outing.local_handoff.cohesion_assembled = false;
         site.active_outing.local_handoff.cohesion_abort_return = true;
         site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
@@ -8952,7 +8962,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                bandit_live_world::simulation_owner::local );
         CHECK( followed_site.active_outing.local_handoff.route_position == next_omt );
         CHECK( bandit_live_world::local_pair_assembly_orders(
-                   followed_site.active_outing ).size() == 2 );
+                   followed_site.active_outing ).empty() );
         assemble_pair( followed_site, 103 );
         CHECK( bandit_live_world::local_pair_assembly_orders(
                    followed_site.active_outing ).empty() );
@@ -15781,6 +15791,7 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     CHECK( outing.alternate_watch_reposition_pending );
     CHECK( outing.local_handoff.route_position == primary );
     CHECK_FALSE( outing.alternate_watch_attempted );
+    CHECK( bandit_live_world::local_pair_assembly_orders( outing ).empty() );
     CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
     CHECK( bandit_live_world::start_local_pair_alternate_watch_reposition(
                site, reposition_cursor, 320 ) ==

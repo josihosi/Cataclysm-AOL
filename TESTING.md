@@ -81,6 +81,32 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   attempt remains after clean re-review/build identity. The first medium review found the stale
   staging-only dematerialization gate; the accepted fix extends the production regression through
   unload/writeback, and the required re-review is clean at `patch is correct (0.94)`.
+- Final northeast run `20260807_063000` on clean `7e92528d87+SDL3` naturally reached dispatch,
+  handoff, and initial assembly, then again alternated `assembled=no/yes` until `abort=yes` and
+  `returning_home`. Verdict: `red_wait_completion_artifact_timeout`; no lifecycle credit. The latch
+  and epoch-2 unload path are sound, but the assembled non-homeward pair loses hard motor ownership
+  and its soft per-NPC guard permits independent wandering. Northeast is exhausted.
+
+Motor-hold proof contract: claim — an assembled local scout pair at its selected observation OMT
+retains staging motor priority until production changes it to a homeward phase. Preconditions — a
+real materialized two-NPC handoff, exact staging rendezvous, no debug intervention. Causal boundary
+— the first committed `cohesion_assembled=true`. Real path — cohesion owner -> authoritative
+`local_pair_assembly_orders` -> ordinary loaded NPC motor. Expected transition — repeated ordinary
+turns hold both living members within one tile of their distinct staging positions and do not
+restart a rendezvous deadline or abort. Negative/control — an otherwise identical homeward phase
+or an authoritative pending alternate-watch reposition emits no staging orders; real
+separation/off-route reads still reacquire under the bounded owner.
+Timeout — the existing ten-minute rendezvous window. Pass/fail — focused pure-owner plus real-NPC
+motor tests must be green on the exact commit; a later live run must use a materially different
+footing and is the only lifecycle credit. Identities — seed `860807`, current fixture/tool contract,
+and the implementation commit/exact SDL3 binary named by this checkpoint. Current Mac SDL3/SOUND focused build/link: exit 0;
+`[local_handoff],[alternate_watch]`: 3 cases / 878 assertions. The production test passes the
+assembled pair through the ordinary loaded NPC motor while pure-owner controls cover non-homeward
+hold, homeward release, and release to a valid pending alternate-watch travel owner.
+The first medium review found the alternate-watch motor conflict; the accepted fix releases that
+owner. The required re-review found a one-turn stale order cache after assessment transitions;
+production now refreshes the authoritative cohesion/order view in the same NPC turn. This localized
+ordering fix closes with focused tests and deterministic diff checks rather than another reviewer.
 - The new fixture `bandit_scout_to_decision_observer_east_v0_2026-08-07` derives from the exhausted
   west fixture with exactly one declared precondition transform: player offset `[96,0,0]`, moving
   the observer from OMT `(162,35,0)` to `(166,35,0)`. Camp, route, clock, zero-lead/zero-outing
