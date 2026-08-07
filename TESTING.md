@@ -63,6 +63,15 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
+- The replacement wait footing traces the real EOC popup open/return boundary only when the
+  harness-set `OPENCLAW_HARNESS_UI_TRACE` gate is active. It reads at most 256 KiB of the existing
+  debug log and reuses the existing interruption classifier: only an already-known safe prompt can
+  be acknowledged; unknown, portal/contaminating, release-blocking, truncated, and repeated active
+  events fail closed. Normal game starts emit no trace. Mac evidence for this checkpoint:
+  `obj/tiles/npctalk.o` compile exit 0; 145 harness contracts green; medium autoreview clean at
+  `patch is correct (0.91)`; `git diff --check` clean. Live behavior credit remains pending a clean
+  committed SDL3 build and new scenario run.
+
 - The canonical Mac SDL3 binary rebuilt successfully as clean `9b435e1ee3+SDL3`; existing
   deployment-target dylib warnings remain non-fatal.
 - The saved-state audit now exposes the authoritative final scout report, camp decision, and their

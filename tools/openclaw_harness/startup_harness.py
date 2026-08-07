@@ -30,7 +30,7 @@ import time
 from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Sequence, Set, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
 
@@ -129,6 +129,12 @@ PAUSE_DISPATCH_MARKER = (
     b'openclaw_harness_ui_trace: component=default_action_dispatch '
     b'event=invoke_pause raw_action="pause" action_id="pause"'
 )
+EOC_POPUP_TRACE_PATTERN = re.compile(
+    r'openclaw_harness_ui_trace: component=eoc_popup '
+    r'event=(open|return) message=("(?:\\.|[^"\\])*") '
+    r'truncated=(yes|no) popup_flag=(-?\d+)'
+)
+EOC_POPUP_TRACE_READ_CAP_BYTES = 256 * 1024
 DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS = 32
 DEFAULT_STEP_MAX_AUTO_ACKNOWLEDGEMENTS = 6
 
@@ -1549,6 +1555,47 @@ def wait_for_pause_dispatch_count(
     return observed
 
 
+def read_active_eoc_popup_trace(
+    log_path: Optional[Path],
+    start_offset: int,
+) -> Optional[Dict[str, Any]]:
+    if log_path is None or not log_path.exists():
+        return None
+    size = log_path.stat().st_size
+    bounded_start = max(start_offset if 0 <= start_offset <= size else 0,
+                        size - EOC_POPUP_TRACE_READ_CAP_BYTES)
+    with log_path.open("rb") as handle:
+        handle.seek(bounded_start)
+        body = handle.read(EOC_POPUP_TRACE_READ_CAP_BYTES).decode("utf-8", errors="replace")
+
+    active: Optional[Dict[str, Any]] = None
+    for match in EOC_POPUP_TRACE_PATTERN.finditer(body):
+        try:
+            message = json.loads(match.group(2))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(message, str):
+            continue
+        event = match.group(1)
+        trace = {
+            "component": "eoc_popup",
+            "event": event,
+            "message": message,
+            "truncated": match.group(3) == "yes",
+            "popup_flag": int(match.group(4)),
+            "log_path": str(log_path),
+            "start_offset": start_offset,
+            "scan_offset": bounded_start,
+            "event_offset": bounded_start + len(body[:match.start()].encode("utf-8")),
+            "read_truncated": bounded_start > start_offset,
+        }
+        if event == "open":
+            active = trace
+        elif active is not None and active.get("message") == message:
+            active = None
+    return active
+
+
 def advance_turns(
     pid: int,
     count: int,
@@ -2895,6 +2942,7 @@ def execute_long_wait_action(
     step: Dict[str, Any],
     *,
     artifact_log: Optional[Path] = None,
+    action_trace_log: Optional[Path] = None,
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
@@ -3029,6 +3077,11 @@ def execute_long_wait_action(
         if artifact_log is not None and artifact_log.exists()
         else wait_start_size
     )
+    structured_popup_trace_start_offset = (
+        action_trace_log.stat().st_size
+        if action_trace_log is not None and action_trace_log.exists()
+        else 0
+    )
     report["completion_artifact_start_size"] = completion_start_size
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
@@ -3058,6 +3111,8 @@ def execute_long_wait_action(
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
                 suppress_retained_shadow_warning=poll_shadow_warning_acknowledged,
+                structured_popup_trace_log=action_trace_log,
+                structured_popup_trace_start_offset=structured_popup_trace_start_offset,
             )
             poll_acknowledgement_count += int(
                 interruption.get("acknowledgement_count", 0) or 0
@@ -3150,6 +3205,8 @@ def execute_long_wait_action(
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
                 suppress_retained_shadow_warning=mid_poll_shadow_warning_acknowledged,
+                structured_popup_trace_log=action_trace_log,
+                structured_popup_trace_start_offset=structured_popup_trace_start_offset,
             )
             interruption_reports.append(interruption)
             acknowledged = int(interruption.get("acknowledgement_count", 0) or 0)
@@ -7695,6 +7752,8 @@ def acknowledge_blocking_interruptions(
     continue_after_contaminating: bool = False,
     persist_clear_scan: bool = False,
     suppress_retained_shadow_warning: bool = False,
+    structured_popup_trace_log: Optional[Path] = None,
+    structured_popup_trace_start_offset: int = 0,
 ) -> Dict[str, Any]:
     acknowledgements: List[Dict[str, Any]] = []
     scan_count = 0
@@ -7707,6 +7766,7 @@ def acknowledge_blocking_interruptions(
         "shadow_warning_wilderness_flavor_popup",
         "partial_lifeless_grass_wilderness_flavor_popup",
     }
+    acknowledged_structured_event_offsets: Set[int] = set()
 
     while True:
         scan_count += 1
@@ -7715,6 +7775,45 @@ def acknowledge_blocking_interruptions(
             capture = capture_screenshot(pid, scan_dir, "scan")
             screen_text = capture_screen_text_artifact(scan_dir, "scan", capture, tail_lines=48)
             classification = classify_blocking_interruption(screen_text)
+            structured_popup = read_active_eoc_popup_trace(
+                structured_popup_trace_log,
+                structured_popup_trace_start_offset,
+            )
+            if structured_popup is not None and \
+                    str(classification.get("status", "")) in {"clear", "unobservable"}:
+                structured_classification = classify_blocking_interruption({
+                    "ok": True,
+                    "text": str(structured_popup.get("message", "")),
+                })
+                structured_event_offset = int(structured_popup.get("event_offset", -1) or -1)
+                structured_safe = (
+                    str(structured_classification.get("status", "")) == "known_prompt"
+                    and bool(str(structured_classification.get("response_key", "")))
+                    and not bool(structured_classification.get("release_blocking", False))
+                    and not bool(structured_classification.get("contaminating", False))
+                    and not bool(structured_popup.get("truncated", False))
+                )
+                if structured_safe and structured_event_offset not in acknowledged_structured_event_offsets:
+                    classification = {
+                        **structured_classification,
+                        "provenance": "structured_eoc_popup_trace",
+                        "structured_popup_trace": structured_popup,
+                    }
+                else:
+                    classification = {
+                        **structured_classification,
+                        "status": "unknown_prompt",
+                        "classification": "structured_eoc_popup_not_auto_acknowledged",
+                        "response_key": "",
+                        "provenance": "structured_eoc_popup_trace",
+                        "structured_popup_trace": structured_popup,
+                        "structured_classification": structured_classification,
+                        "structured_rejection": (
+                            "already_acknowledged_without_return"
+                            if structured_event_offset in acknowledged_structured_event_offsets
+                            else "not_existing_safe_classification"
+                        ),
+                    }
             status = str(classification.get("status", "unobservable"))
             classification_name = str(classification.get("classification", ""))
             if suppress_retained_shadow_warning_once and \
@@ -7773,6 +7872,11 @@ def acknowledge_blocking_interruptions(
             if not response_key:
                 raise SystemExit("Known blocking interruption did not provide a response key")
             peekaboo_press_sequence(pid, [response_key], delay_ms=delay_ms)
+            structured_trace = classification.get("structured_popup_trace")
+            if isinstance(structured_trace, dict):
+                acknowledged_structured_event_offsets.add(
+                    int(structured_trace.get("event_offset", -1) or -1)
+                )
             if settle_seconds > 0:
                 time.sleep(settle_seconds)
             acknowledgements.append({
@@ -12778,6 +12882,7 @@ def execute_probe_steps(
                 label,
                 step,
                 artifact_log=artifact_log,
+                action_trace_log=action_trace_log,
                 artifact_baseline=artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,

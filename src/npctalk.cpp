@@ -5,6 +5,7 @@
 #include <climits>
 #include <cmath>
 #include <cstddef>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -158,6 +159,70 @@
 #include "vpart_range.h"
 #include "weather.h"
 #include "weighted_list.h"
+
+namespace
+{
+bool openclaw_harness_eoc_popup_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+std::string openclaw_harness_quote_eoc_popup_message( const std::string &value,
+        bool &truncated )
+{
+    static constexpr size_t max_trace_message_bytes = 2048;
+    const size_t bounded_size = std::min( value.size(), max_trace_message_bytes );
+    truncated = bounded_size < value.size();
+    std::string out = "\"";
+    for( size_t index = 0; index < bounded_size; ++index ) {
+        const unsigned char c = value[index];
+        switch( c ) {
+            case '\\':
+            case '"':
+                out += '\\';
+                out += static_cast<char>( c );
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if( c < 0x20 ) {
+                    out += '?';
+                } else {
+                    out += static_cast<char>( c );
+                }
+                break;
+        }
+    }
+    out += '"';
+    return out;
+}
+
+void openclaw_harness_trace_eoc_popup( const std::string &event,
+                                       const std::string &message,
+                                       const PopupFlags popup_flag )
+{
+    if( !openclaw_harness_eoc_popup_trace_enabled() ) {
+        return;
+    }
+    bool truncated = false;
+    const std::string quoted_message = openclaw_harness_quote_eoc_popup_message( message,
+                                       truncated );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=eoc_popup"
+            << " event=" << event
+            << " message=" << quoted_message
+            << " truncated=" << ( truncated ? "yes" : "no" )
+            << " popup_flag=" << static_cast<int>( popup_flag );
+}
+} // namespace
 
 class recipe_subset;
 
@@ -6061,7 +6126,9 @@ talk_effect_fun_t::func f_message( const JsonObject &jo, std::string_view member
             }
         }
         if( popup_msg ) {
+            openclaw_harness_trace_eoc_popup( "open", translated_message, popup_flag );
             popup( translated_message, popup_flag );
+            openclaw_harness_trace_eoc_popup( "return", translated_message, popup_flag );
             g->cancel_activity_or_ignore_query( distraction_type::eoc, "" );
         }
         if( popup_w_interrupt_query_msg ) {

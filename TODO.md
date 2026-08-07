@@ -2,9 +2,9 @@
 
 ## Now
 
-Inspect and use the existing ecology observer watch/run-until seam for a new live scout-to-decision
-footing that advances through structured debug state instead of the popup-sensitive wait activity.
-Do not add another OCR or screenshot classifier.
+Commit and rebuild the structured EOC-popup trace seam, then run one new live scout-to-decision
+attempt on that exact binary. Require structured receipts for any benign popup acknowledgement;
+do not add another OCR or screenshot classifier.
 
 ## Immediate follow-ups
 

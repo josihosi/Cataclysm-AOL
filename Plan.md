@@ -72,9 +72,10 @@ behavior. The focused real-NPC regression and adjacent Mac NPC/bandit slice are 
 observer contract must now prove physical return/report/decision in play.
 
 The two post-fix observer attempts (`20260807_030535`, `20260807_031409`) were both stopped by
-ordinary non-contaminating Shadow story popups during waits. The first exact multiline form is now
-recognized under the existing fail-closed policy; the second popup was not present in structured
-OCR, so the footing is capped rather than growing more screenshot heuristics. Deterministic
+ordinary non-contaminating Shadow story popups during waits. That OCR footing is capped. The
+harness now emits an opt-in bounded structured event around the real EOC popup call and feeds its
+message through the existing fail-closed interruption classifier; normal starts emit nothing and
+unknown, contaminating, release-blocking, and truncated events remain blocked. Deterministic
 in-process proof now drives a production-planned real inactive pair through ordinary overmap NPC
 travel, camp arrival, transactional dematerialization, authoritative roster return, final report,
 and camp-decision acceptance without post-boundary outcome writes. The focused Mac regression is
@@ -86,10 +87,10 @@ this physical second half in one incident.
 
 Produce one observer-backed vertical proof from a real naturally generated bandit scout
 through physical return, final report, and camp decision. Begin from a declared pre-transition
-fixture boundary, select the real dispatch in the ecology observer, use the existing Step/Play and
-watch controls rather than the popup-sensitive wait activity, and preserve one compact incident
-chain. The lifecycle row is not credited at
-egress; the same artifact must continue through a surviving physical return, report, and decision.
+fixture boundary, select the real dispatch in the ecology observer, use the existing wait/watch
+flow with structured popup receipts, and preserve one compact incident chain. The lifecycle row is
+not credited at egress; the same artifact must continue through a surviving physical return,
+report, and decision.
 Repair only a gameplay or tooling seam that directly blocks this proof.
 
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner

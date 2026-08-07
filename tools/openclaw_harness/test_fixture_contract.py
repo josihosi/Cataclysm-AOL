@@ -41,6 +41,7 @@ RELEASE_GATE_SCENARIOS = (
 )
 
 from startup_harness import (  # noqa: E402
+    EOC_POPUP_TRACE_READ_CAP_BYTES,
     StartupPlan,
     acknowledge_blocking_interruptions,
     audit_saved_bandit_live_world_state,
@@ -69,6 +70,7 @@ from startup_harness import (  # noqa: E402
     peekaboo_switch_app_for_pid,
     poll_wait_artifact_completion,
     provision_llm_api_key_environment,
+    read_active_eoc_popup_trace,
     read_secure_llm_credential,
     resolve_configured_python_command,
     resolve_fixture_payload,
@@ -793,6 +795,223 @@ class WaitStepLedgerContractTest(unittest.TestCase):
 
         self.assertEqual(report["status"], "timed_out")
         self.assertEqual(report["match"]["missing_patterns"], ["endpoint"])
+
+    def test_active_eoc_popup_trace_round_trips_escaped_multiline_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace_log = Path(temp_dir) / "debug.log"
+            trace_log.write_text("before\n", encoding="utf-8")
+            start_offset = trace_log.stat().st_size
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    'openclaw_harness_ui_trace: component=eoc_popup event=open '
+                    'message="You have a vague feeling\\nof being \\"watched\\"." '
+                    'truncated=no popup_flag=0\n'
+                )
+
+            active = read_active_eoc_popup_trace(trace_log, start_offset)
+            self.assertIsNotNone(active)
+            self.assertEqual(
+                active["message"],
+                'You have a vague feeling\nof being "watched".',
+            )
+
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    'openclaw_harness_ui_trace: component=eoc_popup event=return '
+                    'message="You have a vague feeling\\nof being \\"watched\\"." '
+                    'truncated=no popup_flag=0\n'
+                )
+            self.assertIsNone(read_active_eoc_popup_trace(trace_log, start_offset))
+
+    def test_structured_shadow_popup_acknowledges_once_without_ocr_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text("before\n", encoding="utf-8")
+            start_offset = trace_log.stat().st_size
+            trace_line = (
+                'openclaw_harness_ui_trace: component=eoc_popup event=open '
+                'message="You have a vague feeling of being watched.\\nStay alert." '
+                'truncated=no popup_flag=0\n'
+            )
+            trace_log.write_text("before\n" + trace_line, encoding="utf-8")
+
+            def press_and_return(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                self.assertEqual(keys, ["space"])
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    stream.write(trace_line.replace("event=open", "event=return"))
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": ""},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press_and_return) as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.interruption",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=start_offset,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertEqual(
+            result["acknowledgements"][0]["classification"]["provenance"],
+            "structured_eoc_popup_trace",
+        )
+        press.assert_called_once()
+
+    def test_structured_shadow_popup_uses_complete_open_in_bounded_noisy_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_bytes(b"x" * (EOC_POPUP_TRACE_READ_CAP_BYTES + 1024))
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    '\nopenclaw_harness_ui_trace: component=eoc_popup event=open '
+                    'message="You have a vague feeling of being watched." '
+                    'truncated=no popup_flag=0\n'
+                )
+
+            def press_and_return(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                self.assertEqual(keys, ["space"])
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    stream.write(
+                        'openclaw_harness_ui_trace: component=eoc_popup event=return '
+                        'message="You have a vague feeling of being watched." '
+                        'truncated=no popup_flag=0\n'
+                    )
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "Press | to interrupt waiting 55%"},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press_and_return) as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.noisy_tail",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=0,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertTrue(
+            result["acknowledgements"][0]["classification"]
+            ["structured_popup_trace"]["read_truncated"]
+        )
+        press.assert_called_once()
+
+    def test_structured_unknown_and_portal_popups_remain_fail_closed(self) -> None:
+        messages = (
+            "An unfamiliar story popup asks for attention.",
+            "There is a buzzing in your senses. A tiny cataclysm has begun.",
+        )
+        for message in messages:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temp_dir:
+                run_dir = Path(temp_dir)
+                trace_log = run_dir / "debug.log"
+                trace_log.write_text(
+                    'openclaw_harness_ui_trace: component=eoc_popup event=open '
+                    f'message={json.dumps(message)} truncated=no popup_flag=0\n',
+                    encoding="utf-8",
+                )
+                with (
+                    mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        return_value={"ok": True, "text": ""},
+                    ),
+                    mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                ):
+                    result = acknowledge_blocking_interruptions(
+                        42,
+                        run_dir,
+                        "wait_contract.interruption",
+                        stop_on_unknown=True,
+                        structured_popup_trace_log=trace_log,
+                    )
+
+                self.assertEqual(result["status"], "blocked_unknown_prompt")
+                self.assertEqual(result["acknowledgement_count"], 0)
+                self.assertEqual(
+                    result["final_classification"]["classification"],
+                    "structured_eoc_popup_not_auto_acknowledged",
+                )
+                press.assert_not_called()
+
+    def test_long_wait_poll_consumes_structured_shadow_popup_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text("before\n", encoding="utf-8")
+            open_line = (
+                'openclaw_harness_ui_trace: component=eoc_popup event=open '
+                'message="You have a vague feeling of being watched.\\nStay alert." '
+                'truncated=no popup_flag=0\n'
+            )
+
+            def press(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                if keys == ["5"]:
+                    with trace_log.open("a", encoding="utf-8") as stream:
+                        stream.write(open_line)
+                elif keys == ["space"]:
+                    with trace_log.open("a", encoding="utf-8") as stream:
+                        stream.write(open_line.replace("event=open", "event=return"))
+                        stream.write("endpoint\n")
+
+            def screen_text(
+                _run_dir: Path,
+                label: str,
+                _capture: Dict[str, Any],
+                **_kwargs: Any,
+            ) -> Dict[str, Any]:
+                if label.endswith(".wait_menu"):
+                    return {"ok": True, "text": "Wait a while: 1 hour"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": ""}
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press) as keypress,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "5",
+                        "expected_duration": "1h",
+                        "completion_artifact_timeout_seconds": 1.0,
+                        "completion_artifact_poll_seconds": 0.001,
+                        "artifact_state_patterns": ["endpoint"],
+                    },
+                    artifact_log=trace_log,
+                    action_trace_log=trace_log,
+                )
+
+        self.assertEqual(report["completion_artifact_poll"]["status"], "matched")
+        self.assertEqual(report["interruption_handling"]["acknowledgement_count"], 1)
+        self.assertEqual(report["interruption_handling"]["response_keys"], ["space"])
+        self.assertEqual(
+            [call.args[1] for call in keypress.call_args_list].count(["space"]),
+            1,
+        )
 
     def test_poll_recovers_shadow_then_activity_prompt_before_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
