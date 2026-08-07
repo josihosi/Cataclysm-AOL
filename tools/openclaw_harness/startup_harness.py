@@ -2087,6 +2087,10 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         r"press(?=[\s\S]{0,160}interrupt)[\s\S]{0,64}waiting"
         r"[\s\S]{0,64}\bto\b[\s\S]{0,64}interrupt",
         lowered,
+    ) ) or bool( re.search(
+        r"waiting(?=[\s\S]{0,160}interrupt)[\s\S]{0,64}press"
+        r"[\s\S]{0,64}\bto\b[\s\S]{0,64}interrupt",
+        lowered,
     ) )
     fragmented_wait_activity = (
         bounded_fragmented_wait_banner

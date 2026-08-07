@@ -73,6 +73,14 @@
   `phase=returning_home` handoff and dematerialization logs. A concurrent game-test invocation had
   one transient local-handoff failure; the immediate isolated rerun passed, so game-test evidence
   is kept serial.
+- Run `20260807_112737` on commit `638808e67d`, executable SHA-256
+  `8f3fa26002b698dcb86faf62f4203c7ce62f847afb473bdc05889ffa2ba436e7`, passed startup,
+  dispatch, physical ingress handoff, boundary crossing, and watch dematerialization. During the
+  next three-hour wait, structured traces safely acknowledged `The night feels longer than usual.`
+  and its ignore-distraction query. OCR rendered the live `71%` wait banner as `71-`; because the
+  wait classifier required the percent or a different word order, it falsely reported a partial
+  safe-mode prompt and terminated the run. The preserved screenshot visibly shows ordinary wait
+  progress. No return credit is claimed.
 
 ## Pending proof contract
 

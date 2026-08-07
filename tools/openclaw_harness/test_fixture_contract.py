@@ -388,6 +388,16 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             ["garbled vague feeling of being watched"],
         )
 
+    def test_fragmented_wait_banner_does_not_require_ocr_percent(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "waiting:\n71-\nPress\nor\n712\nto\ninterrupt",
+        })
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["classification"], "wait_activity_in_progress")
+        self.assertEqual(result["matched_markers"], ["waiting", "to interrupt"])
+
     def test_garbled_shadow_warning_cannot_override_safety_prompts(self) -> None:
         cases = (
             (

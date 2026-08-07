@@ -63,6 +63,11 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   those non-contract constraints makes the preserved authoritative state pass. The run still does
   not prove the required physical return: production advanced the abstract pair directly from the
   watch to home without a homeward local handoff.
+- Run `20260807_112737` on `638808e67d+SDL3` cleanly repeated physical ingress and watch arrival,
+  then stopped during the three-hour watch wait when OCR rendered the ordinary wait banner's
+  percentage as `71-`. The harness acknowledged the structured wilderness-flavor popup and its
+  activity query, but misclassified the remaining `Waiting ... Press ... to interrupt` banner as a
+  partial safe-mode prompt. This is a harness visibility blocker, not lifecycle evidence.
 
 ## Active claim
 
