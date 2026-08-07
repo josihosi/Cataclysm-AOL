@@ -483,8 +483,7 @@ bool structural_route_is_canonical_for_outing(
     if( !structural_outing_uses_watch_route( outing ) ) {
         return structural_route_is_canonical_for_lead( outing.shared_route, anchor, lead );
     }
-    return !frontier_sector_from_lead( lead ) &&
-           bandit_live_world::structural_watch_shared_route_is_canonical(
+    return bandit_live_world::structural_watch_shared_route_is_canonical(
                outing.shared_route, anchor, outing.selected_watch_omt,
                outing.target_footprint );
 }

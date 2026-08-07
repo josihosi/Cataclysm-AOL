@@ -22825,6 +22825,16 @@ TEST_CASE( "bandit_live_world_scheduler_replay_and_frontier_due_state_are_determ
             REQUIRE( frontier != nullptr );
             CHECK( frontier->kind == bandit_live_world::camp_lead_kind::frontier_probe );
             CHECK( frontier->status == bandit_live_world::camp_lead_status::active );
+            const bandit_live_world::structural_outing_result advanced =
+                bandit_live_world::advance_structural_bounty_outings(
+                    due_world, 22 * 60,
+            []( const bandit_live_world::site_record &,
+            const bandit_live_world::camp_map_lead & ) {
+                return bandit_live_world::structural_threat_read{ 0, true, "quiet frontier" };
+            } );
+            CHECK( advanced.active_outings_considered == 1 );
+            CHECK( advanced.stalking_checks_processed == 1 );
+            CHECK( due_site.active_outing.waypoint_index == 1 );
         }
     }
 }
