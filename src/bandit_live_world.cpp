@@ -12717,12 +12717,12 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             select_watch_ring_candidate( plan.target_footprint, plan.watch_candidates ) :
             watch_selection_result();
     const bool has_watch_route = plan.watch_geography_supplied && watch_selection.valid;
-    const bool route_is_canonical = frontier_plan ?
-                                    !has_watch_route && frontier_route_is_canonical(
-                                        plan.shared_route, site.anchor, plan.frontier_sector ) :
-                                    has_watch_route ? structural_watch_shared_route_is_canonical(
+    const bool route_is_canonical = has_watch_route ?
+                                    structural_watch_shared_route_is_canonical(
                                         plan.shared_route, site.anchor, watch_selection.omt,
                                         plan.target_footprint ) :
+                                    frontier_plan ? frontier_route_is_canonical(
+                                        plan.shared_route, site.anchor, plan.frontier_sector ) :
                                     structural_route_is_canonical( plan.shared_route, site.anchor,
                                             plan.target_omt );
     const tripoint_abs_omt travel_destination = has_watch_route ?
@@ -12940,6 +12940,10 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
             return false;
         }
         candidate.active_outing.schema_version = 10;
+        candidate_lead = candidate.intelligence_map.find_lead( plan.lead_id );
+        if( candidate_lead == nullptr ) {
+            return false;
+        }
     }
     if( candidate.intelligence_map.last_routine_target_lead_id != plan.lead_id ) {
         candidate.intelligence_map.previous_routine_target_lead_id =

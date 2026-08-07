@@ -5423,8 +5423,9 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     }
     const bandit_live_world::camp_map_lead *lead =
         site.intelligence_map.find_lead( plan.lead_id );
-    if( plan.frontier_sector >= 0 || lead == nullptr ||
-        lead->kind == bandit_live_world::camp_lead_kind::structural_bounty ) {
+    if( ( plan.frontier_sector < 0 && lead == nullptr ) ||
+        ( lead != nullptr &&
+          lead->kind == bandit_live_world::camp_lead_kind::structural_bounty ) ) {
         return read;
     }
 

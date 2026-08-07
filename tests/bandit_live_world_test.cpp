@@ -22795,11 +22795,31 @@ TEST_CASE( "bandit_live_world_scheduler_replay_and_frontier_due_state_are_determ
             }, []( const bandit_live_world::site_record &,
                    const bandit_live_world::camp_map_lead & ) {
                 return bandit_live_world::structural_threat_read{};
+            }, []( const bandit_live_world::site_record &site,
+                   const bandit_live_world::structural_outing_plan &plan ) {
+                const tripoint_abs_omt watch( plan.target_omt.x() + 3,
+                                               plan.target_omt.y(), plan.target_omt.z() );
+                const tripoint_abs_omt approach( watch.x() + 1, watch.y(), watch.z() );
+                bandit_live_world::structural_route_read read;
+                read.reachable = true;
+                read.complete_route_cost = 4;
+                read.watch_geography_supplied = true;
+                read.target_footprint = { plan.target_omt };
+                read.watch_candidates = { { watch, true, true, true, 4 } };
+                read.watch_shared_route = {
+                    site.anchor, approach, watch, approach, site.anchor
+                };
+                return read;
             } );
             REQUIRE( due.dispatches_applied == 1 );
             const bandit_live_world::site_record &due_site = due_world.sites.front();
             CHECK( due_site.active_outing.member_ids.size() == 2 );
             CHECK( due_site.active_outing.target_id == "frontier_probe:0" );
+            CHECK( due_site.active_outing.schema_version == 10 );
+            CHECK( due_site.active_outing.selected_watch_kind ==
+                   bandit_live_world::structural_watch_kind::exact );
+            CHECK( due_site.active_outing.shared_route[2] ==
+                   due_site.active_outing.selected_watch_omt );
             const bandit_live_world::camp_map_lead *frontier =
                 due_site.intelligence_map.find_lead( due_site.active_outing.target_id );
             REQUIRE( frontier != nullptr );
