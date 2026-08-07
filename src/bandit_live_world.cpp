@@ -13753,9 +13753,10 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( outing.phase == scout_phase::returning_report &&
             outing.owner == simulation_owner::abstract ) {
             outing.phase = scout_phase::returning_home;
+            outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
             outing.last_progress_minutes = now_minutes;
             if( outing.local_handoff.is_abstract_resume() ) {
-                outing.local_handoff.phase = outing.phase;
+                outing.local_handoff.clear();
             }
             site = std::move( candidate );
             record_scout_phase_transition_event(

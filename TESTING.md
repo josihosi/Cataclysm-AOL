@@ -56,6 +56,23 @@
   `returning_report` at the existing two-hour no-progress boundary when no alternate exists.
   `tests/cata_test '[scout_assessment]'` passes 225 assertions in four cases and preserves the
   eight-hour maximum for incomplete assessment state with recent progress.
+- Unchanged run `20260807_110822` on commit `2a08d892b5`, executable SHA-256
+  `031530bdaccbc4256966c7587424c855c6649a6ad7881d92c61e2856ab9d3ac4`, committed watch
+  completion and returned the abstract pair. Its saved authority contains twelve reconciled home
+  members, no active outing, the final non-provisional zero-observation report, and the exact
+  matching `report_awaiting_assessment` decision. The old saved audit was falsely red because it
+  imposed fixture member count five and at least one observation, neither of which is an outcome
+  requirement. Direct re-audit of the preserved state passes after removing those constraints.
+  The run remains red for the outcome ledger because it contains no homeward local handoff or
+  physical dematerialization; the pair jumped abstractly from watch to home.
+- The homeward-handoff tests target rebuilt successfully. Serial focused runs pass 231 assertions
+  in four `[scout_assessment]` cases and 877 assertions in two `[local_handoff]` cases. They prove
+  both secured and inconclusive reports move the abstract route cursor to the existing homeward
+  approach, while the established local owner still snapshots a physical home-bound pair out at
+  the camp boundary. The fixture contract passes 153 tests and now requires explicit
+  `phase=returning_home` handoff and dematerialization logs. A concurrent game-test invocation had
+  one transient local-handoff failure; the immediate isolated rerun passed, so game-test evidence
+  is kept serial.
 
 ## Pending proof contract
 
@@ -109,9 +126,9 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-Relink the changed Mac executable and run the unchanged live scenario above. The live pass still
-requires a surviving physical return, final non-provisional report, and matching authoritative camp
-decision in the same incident.
+Relink the changed Mac executable and run the same causal scenario above. The live pass requires
+the exact pair's `returning_home` local handoff and physical boundary dematerialization before the
+surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

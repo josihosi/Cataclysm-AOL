@@ -56,13 +56,20 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   inconclusive at that existing two-hour boundary. The focused `[local_handoff]` test carries the
   off-bubble pair through abstract resume into `returning_report`; `[scout_assessment]` preserves
   the separate eight-hour maximum for incomplete assessments that continue making progress.
+- Unchanged run `20260807_110822` on `2a08d892b5+SDL3` completed that return and wrote a final
+  non-provisional report plus the matching `report_awaiting_assessment` camp decision. All twelve
+  reconciled camp members were home and no outing remained active. The saved-state audit had
+  incorrectly required the five-member fixture roster and a nonempty quiet-watch report; removing
+  those non-contract constraints makes the preserved authoritative state pass. The run still does
+  not prove the required physical return: production advanced the abstract pair directly from the
+  watch to home without a homeward local handoff.
 
 ## Active claim
 
-Relink and rerun `bandit.scout_to_decision_observer_live_mcw` unchanged on the executable containing
-the no-alternate no-progress return. The natural incident must carry the same exact pair through
-watch, egress, survivor return, final report, and authoritative camp decision; the focused owner
-test does not substitute for that outcome.
+Hand the abstract returning pair to local reality at the existing homeward approach, then rerun
+`bandit.scout_to_decision_observer_live_mcw` with the same causal setup. The incident must show a
+`returning_home` local handoff and physical boundary exit for the exact pair before the already
+proved canonical home reconciliation, final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

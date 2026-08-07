@@ -8385,27 +8385,6 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                     process_overmap_npc_move_for_test();
                     CHECK( live_site.active_outing.owner ==
                            bandit_live_world::simulation_owner::abstract );
-                    CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
-                    const int first_assessment_minute =
-                        live_site.active_outing.last_advanced_minutes + 1;
-                    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
-                                 live_site, live_site.active_outing.activity_id,
-                                 live_site.active_outing.generation,
-                                 live_site.active_outing.target_lead_revision,
-                                 first_assessment_minute ) ==
-                             bandit_live_world::scout_assessment_result::updated );
-                    const int observation_started =
-                        live_site.active_outing.assessment.observation_started_minutes;
-                    REQUIRE( observation_started == first_assessment_minute );
-                    const bandit_live_world::structural_outing_result empty_watch =
-                        bandit_live_world::advance_structural_bounty_outings(
-                            overmap_buffer.global_state.bandit_live_world,
-                            observation_started + 2 * 60, {} );
-                    CHECK( empty_watch.active_outings_considered == 1 );
-                    CHECK( live_site.active_outing.phase ==
-                           bandit_live_world::scout_phase::returning_report );
-                    CHECK( live_site.active_outing.assessment.exit_reason ==
-                           "selected watch made no assessment progress and no alternate was available" );
                 } else {
                     const point_rel_omt route_direction(
                         route_omt.x() == watch_omt.x() ? 0 : route_omt.x() > watch_omt.x() ? 1 : -1,
@@ -17204,6 +17183,22 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     outing.assessment.pinned_target_revision = outing.target_lead_revision;
     const character_id observer_id = outing.leader_id;
     bandit_live_world::world_state inconclusive_world = world;
+    bandit_live_world::world_state no_progress_world = inconclusive_world;
+    bandit_live_world::site_record &no_progress_site = no_progress_world.sites.front();
+    CHECK( bandit_live_world::advance_structural_scout_assessment(
+               no_progress_site, no_progress_site.active_outing.activity_id,
+               no_progress_site.active_outing.generation,
+               no_progress_site.active_outing.target_lead_revision, 319 ) ==
+           bandit_live_world::scout_assessment_result::updated );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                 no_progress_site, no_progress_site.active_outing.activity_id,
+                 no_progress_site.active_outing.generation,
+                 no_progress_site.active_outing.target_lead_revision, 320 ) ==
+             bandit_live_world::scout_assessment_result::inconclusive );
+    CHECK( no_progress_site.active_outing.phase ==
+           bandit_live_world::scout_phase::returning_report );
+    CHECK( no_progress_site.active_outing.assessment.exit_reason ==
+           "selected watch made no assessment progress and no alternate was available" );
 
     bandit_live_world::sortie_observation unrelated_signal =
         make_typed_visual_observation(
@@ -17326,6 +17321,7 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
         bandit_live_world::advance_structural_bounty_outings( world, 321, {} );
     REQUIRE( secured.active_outings_considered == 1 );
     CHECK( outing.phase == bandit_live_world::scout_phase::returning_home );
+    CHECK( outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2 );
     const bandit_live_world::structural_outing_result returned =
         bandit_live_world::advance_structural_bounty_outings( world, 322, {} );
     CHECK( returned.members_returned == 2 );
@@ -17424,6 +17420,8 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     REQUIRE( inconclusive_secured.active_outings_considered == 1 );
     CHECK( inconclusive_outing.phase ==
            bandit_live_world::scout_phase::returning_home );
+    CHECK( inconclusive_outing.waypoint_index ==
+           static_cast<int>( inconclusive_outing.shared_route.size() ) - 2 );
     const bandit_live_world::structural_outing_result inconclusive_returned =
         bandit_live_world::advance_structural_bounty_outings(
             inconclusive_world, 682, {} );

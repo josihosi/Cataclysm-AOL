@@ -221,6 +221,8 @@
       "kind": "audit_log_contains",
       "label": "audit_same_run_survivor_physical_return",
       "required_line_patterns": [
+        ["bandit_live_world local_handoff committed", "phase=returning_home", "members=2"],
+        ["bandit_live_world local_dematerialization committed", "phase=returning_home", "route_position=(164,39,0)", "members=2"],
         ["structural outing returned home lead=", "frontier_probe:0"]
       ],
       "required_any_line_patterns": [
@@ -269,7 +271,6 @@
       "kind": "audit_saved_bandit_live_world_state",
       "label": "audit_saved_survivors_home_and_outing_closed",
       "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
-      "required_member_count": 5,
       "required_min_home_survivor_count": 4,
       "required_active_outside_count": 0,
       "required_active_group_id_exact": "",
@@ -281,7 +282,6 @@
       "required_lead_source_contains": "frontier_sector_0",
       "required_scout_report_present": true,
       "required_scout_report_provisional": false,
-      "required_scout_report_min_observations": 1,
       "required_camp_decision_state": "report_awaiting_assessment",
       "required_report_decision_identity_match": true,
       "abort_on_metadata_failure": true,

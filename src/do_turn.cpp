@@ -4108,6 +4108,8 @@ bool dematerialize_live_bandit_structural_handoffs()
                                    << " activity=" << site.active_outing.activity_id
                                    << " generation=" << site.active_outing.generation
                                    << " epoch=" << site.active_outing.handoff_epoch
+                                   << " phase=" << bandit_live_world::to_string(
+                                       site.active_outing.phase )
                                    << " route_position="
                                    << site.active_outing.local_handoff.route_position.to_string()
                                    << " members=" << reads.size() << '\n';
@@ -4348,6 +4350,8 @@ bool materialize_live_bandit_structural_handoffs()
                                    << " activity=" << site.active_outing.activity_id
                                    << " generation=" << site.active_outing.generation
                                    << " epoch=" << site.active_outing.handoff_epoch
+                                   << " phase=" << bandit_live_world::to_string(
+                                       site.active_outing.phase )
                                    << " route_position=" << route_position.to_string()
                                    << " members=" << surviving_member_ids.size() << '\n';
     }

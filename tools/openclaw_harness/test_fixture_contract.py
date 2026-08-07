@@ -4471,6 +4471,24 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
         )
+        return_audit = steps[labels.index("audit_same_run_survivor_physical_return")]
+        self.assertEqual(
+            return_audit["required_line_patterns"],
+            [
+                [
+                    "bandit_live_world local_handoff committed",
+                    "phase=returning_home",
+                    "members=2",
+                ],
+                [
+                    "bandit_live_world local_dematerialization committed",
+                    "phase=returning_home",
+                    "route_position=(164,39,0)",
+                    "members=2",
+                ],
+                ["structural outing returned home lead=", "frontier_probe:0"],
+            ],
+        )
         final_wait = steps[
             labels.index("advance_initial_6_hour_post_observation_window")
         ]
@@ -4493,13 +4511,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["observer_artifact_requirement"],
         )
         final_audit = steps[labels.index("audit_saved_survivors_home_and_outing_closed")]
+        self.assertNotIn("required_member_count", final_audit)
         self.assertEqual(final_audit["required_min_home_survivor_count"], 4)
         self.assertNotIn("required_wounded_or_unready_count", final_audit)
         self.assertEqual(final_audit["required_active_outside_count"], 0)
         self.assertEqual(final_audit["required_active_group_id_exact"], "")
         self.assertTrue(final_audit["required_scout_report_present"])
         self.assertFalse(final_audit["required_scout_report_provisional"])
-        self.assertEqual(final_audit["required_scout_report_min_observations"], 1)
+        self.assertNotIn("required_scout_report_min_observations", final_audit)
         self.assertEqual(
             final_audit["required_camp_decision_state"],
             "report_awaiting_assessment",
