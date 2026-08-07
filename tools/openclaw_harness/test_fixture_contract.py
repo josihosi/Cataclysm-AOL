@@ -4352,6 +4352,13 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
         )
+        final_wait = steps[
+            labels.index("advance_initial_6_hour_post_observation_window")
+        ]
+        self.assertEqual(
+            final_wait["artifact_state_patterns"],
+            ["scheduler_hour=142", "now_minutes=8520"],
+        )
         press_keys = [
             key
             for step in steps if step["kind"] == "press"

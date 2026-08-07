@@ -171,6 +171,15 @@ loaded-bubble y-axis to the camp side of the waypoint while remaining off the x=
 writes no lead, dispatch, observation, return, report, or decision. The scenario's waits, audits,
 proof rules, and causal boundary remain unchanged.
 
+Its first run, `20260807_070159` on clean `f09ac3882f+SDL3`, naturally reached discovery,
+dispatch, local handoff, observer selection, and one stable `assembled=yes` transition without the
+previous cohesion oscillation or abort. This is live evidence that the motor-hold repair works at
+its layer, not lifecycle credit. The visible six-hour wait completed, but the step timed out because
+it inherited one-shot dispatch/handoff artifact patterns that were already behind the audit cursor.
+The harness now owns that wait endpoint with the exact later maintenance markers
+`scheduler_hour=142` and `now_minutes=8520`; downstream authoritative audits still own return,
+report, and decision. One southeast attempt remains after this tooling checkpoint.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may

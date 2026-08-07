@@ -69,6 +69,15 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   `(164,39,0)`, target `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited
   `DEBUG_CLAIRVOYANCE` are unchanged; no lifecycle result is written. Both JSON payloads parse and
   all 149 harness contracts pass. No live credit.
+- Southeast run `20260807_070159` on clean `f09ac3882f+SDL3` naturally reached discovery,
+  dispatch, local handoff, observer selection, and a single stable `assembled=yes` transition;
+  there was no cohesion oscillation or abort. The motor-hold repair is therefore live-green at its
+  own layer. The six-hour wait visibly completed from 10:04:53 PM to 4:04:53 AM and the trace
+  reached `scheduler_hour=142` / `now_minutes=8520`, but the step timed out after falling back to
+  one-shot dispatch/handoff patterns behind its audit cursor. The outing remained active, so this
+  receives no return/report/decision credit. The repaired wait contract requires those two exact
+  endpoint markers and leaves all lifecycle proof to the existing later audits. One southeast
+  attempt remains after the tooling checkpoint.
 - The exhausted fixture `bandit_scout_to_decision_observer_northeast_v0_2026-08-07` derives directly
   from the original zero-lead source with one transform `[96,-24,0]`, moving only the observer from
   OMT `(162,35,0)` to `(166,34,0)`. Camp `(164,39,0)`, route waypoint `(164,35,0)`, target
@@ -333,7 +342,8 @@ screenshot receipt. Cross-platform qualification follows only when the vertical 
   final non-provisional report, and enters the authoritative camp decision owner in one run.
 - Preconditions/interventions: derive from the existing McWilliams save; set deterministic time,
   place one five-member camp at `(164,39,0)` on the existing x=164 route corridor, park the player
-  two OMTs west of its sector-0 inner waypoint at `(162,35,0)`, retain outer target `(164,30,0)`,
+  two OMTs east and one south of its sector-0 inner waypoint at `(166,36,0)`, retain outer target
+  `(164,30,0)`,
   retire the empty original roster, clear inherited evidence/outings, and add
   `DEBUG_CLAIRVOYANCE`. Each transform records a receipt. Do not inject a lead, dispatch,
   observation, casualty, return, report, or decision.

@@ -186,6 +186,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before the initial six-hour observer window",
       "completion_wait_seconds": 90.0,
       "completion_artifact_timeout_seconds": 420.0,
+      "artifact_state_patterns": ["scheduler_hour=142", "now_minutes=8520"],
       "expected_visible_fact": "six ordinary game hours let production movement, watch assessment, egress, physical return, report delivery, and decision acceptance run if their real deadlines fit",
       "failure_rule": "If the pair has not returned by this first bounded window, retain the incident as honest no-progress or intermediate evidence; do not inject completion."
     },

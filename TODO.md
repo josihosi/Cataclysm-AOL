@@ -2,13 +2,14 @@
 
 ## Now
 
-Checkpoint the southeast observer footing and build its exact clean SDL3 identity. Its sole
-intervention is `[96,24,0]`; all ecology outcomes remain beyond the fixture boundary.
+Checkpoint the final observer wait's own deterministic endpoint, then build its exact clean SDL3
+identity. This repairs harness polling only; return, report, and decision remain authoritative
+downstream audits.
 
 ## Immediate follow-ups
 
-1. Run one bounded scout-to-decision proof on the southeast footing and preserve the compact
-   observer incident pair; northeast is exhausted.
+1. Spend the second and final southeast scout-to-decision attempt and preserve the compact observer
+   incident pair; the first run proved stable motor hold but received no lifecycle credit.
 2. Let the first visible gameplay/tooling blocker choose the next bounded slice; do not alter the
    footing merely to force success.
 3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.
