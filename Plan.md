@@ -29,22 +29,26 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
 - Authority, persistence, exact-pair roster ownership, perception, route/handoff, cohesion,
   physical return, report, decision, resource, fairness, and loss controls have focused test
   coverage. These components do not substitute for one live end-to-end incident.
-- Recent live runs exposed and closed concrete local ownership, scout/shakedown intent, cohesion
-  motor, and relative-wait observer seams. No run yet proves the complete natural survivor return,
-  final report, and camp decision chain.
-- `7af4127ade2b` is the current clean source checkpoint for the southwest observer footing. Run
-  `20260807_074745` naturally dispatched and handed off the exact pair, held stable cohesion, and
-  advanced the production clock from scheduler hour 142 through 148. It ended with the outing
-  still active, zero observations, and zero members returned. Verdict:
-  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`; no lifecycle credit.
+- Clean checkpoints `2606701d4e`, `2b263a6354`, and `6c1a574ba6` route frontier scouts through the
+  watch owner, allow canonical frontier watch outings to advance, and release an assembled local
+  pair from staging into a transactionally completed physical watch arrival. Focused Mac tests
+  cover split-arrival rejection, exact-pair destination ownership, replay, and save round-trip.
+- Run `20260807_083248` on `2b263a6354+SDL3` naturally dispatched, handed off, and assembled the
+  exact pair, proving the southwest geometry. It then remained at the ingress waypoint through the
+  six-hour window with zero observations or return; that stalled motor is fixed at `6c1a574ba6`.
+- Run `20260807_090025` on clean `6c1a574ba6+SDL3` naturally dispatched and committed the exact-pair
+  handoff at `(164,34,0)`, but cohesion changed from `assembled=no, abort=no` to
+  `assembled=no, abort=yes` before watch ingress. Verdict:
+  `blocked_scout_to_decision_pair_handoff_missing`; no lifecycle credit. No run yet proves the
+  complete natural survivor return, final report, and camp decision chain.
 
 ## Active claim
 
-Using the structured state from run `20260807_074745`, identify the first missing authoritative
-transition after stable local assembly. Establish whether production still legitimately owns a
-longer watch state or whether the local owner failed to advance observation/egress. Change nothing
-until that distinction is proved from the existing artifact and code path. Then fix only the
-reproducible contract-breaking seam and rerun the same causal contract.
+Reconcile the same-fixture cohesion outcomes in runs `20260807_083248` and `20260807_090025` before
+changing code: the former assembled the pair; the latter handed off the same route and then tripped
+the persisted cohesion abort. Use their member positions, staging orders, deadlines, and motor
+logs to identify the first authoritative divergence. Fix only that reproducible divergence, then
+rerun the unchanged causal contract on a clean committed binary.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

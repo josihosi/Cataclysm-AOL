@@ -2,12 +2,12 @@
 
 ## Current necessary claim
 
-Inspect run `20260807_074745` on clean source `7af4127ade2b` and trace the first missing production
-transition after the exact pair's stable local assembly. The outing remained active through
-scheduler hour 148 with zero observations and zero members returned. Prove from the existing
-artifact and owner code whether this is a legitimate watch interval or a stalled observation/
-egress owner; then make only the necessary repair and rerun the same causal contract.
+Compare the exact-pair handoff/cohesion artifacts from green assembly run `20260807_083248` and
+abort run `20260807_090025`. Prove why the same southwest fixture reached `assembled=yes` on
+`2b263a6354+SDL3` but reached `assembled=no, abort=yes` on `6c1a574ba6+SDL3`. Repair only the first
+authoritative position, deadline, or motor divergence, then rerun
+`bandit.scout_to_decision_observer_live_mcw` from a clean committed binary.
 
-Do not extend the wait, alter geometry, rerun old footings, expand debug tooling, start another
+Do not extend the wait, alter geometry, discard the committed ingress slice, expand debug tooling, start another
 behavior lane, or add another review/documentation pass unless deleting that claim would leave the
 active contract unmet or unproven.

@@ -76,13 +76,19 @@ ID, authoritative owner audit, compact incident JSON, and paired screenshot wher
 - Prior live geometries exposed concrete owner, intent, motor, structured-popup, and relative-wait
   defects that are checkpointed in Git. None produced the required survivor-return/report/decision
   incident, so none receives end-to-end credit and none is an active rerun target.
-- Run `20260807_074745` on clean `7af4127ade2b`, scenario
-  `bandit.scout_to_decision_observer_live_mcw`, naturally dispatched and handed off the exact pair,
-  recorded stable cohesion, and advanced from scheduler hour 142 through 148. The outing remained
-  active with zero observations and zero members returned. Verdict:
-  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`; the report is honest
-  non-credit evidence. The next proof question is whether the authoritative watch interval had not
-  elapsed or its observation/egress owner stalled after assembly.
+- Run `20260807_083248` on clean `2b263a6354+SDL3` naturally dispatched, handed off, and assembled
+  the exact pair, then stalled at ingress through the six-hour window. This proves the southwest
+  geometry and identifies the missing forward motor; it earns no lifecycle credit.
+- Checkpoint `6c1a574ba6` adds exact-pair ingress destination ownership and a physical arrival
+  transaction. The Mac tests target built cleanly. The scheduler tags passed 27,912 assertions in
+  12 cases, and
+  `bandit_live_world_production_watch_geography_adapter_is_bounded_and_owner_committed` passed 126
+  assertions including split arrival, completion, replay, and save round-trip. Clean SDL3 build
+  identity: `6c1a574ba6+SDL3`.
+- Run `20260807_090025` on that clean binary passed startup, preflight, frontier discovery,
+  dispatch, and handoff, but its cohesion audit recorded `assembled=no, abort=no` followed by
+  `assembled=no, abort=yes`. Verdict: `blocked_scout_to_decision_pair_handoff_missing`. Compare it
+  with `20260807_083248` before another change or rerun; the new ingress transaction was not reached.
 
 ## Focused commands
 
