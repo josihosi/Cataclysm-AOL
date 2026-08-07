@@ -34,6 +34,16 @@
   `tests/cata_test '[local_handoff]'` gate passed 833 assertions in two cases: both members of the
   authoritative pair physically entered the selected watch OMT, then the normal overmap cadence
   advanced the route cursor and committed the local handoff at that OMT.
+- Unchanged run `20260807_102520` on commit `59879bc2bf`, executable SHA-256
+  `3753da834bf5ed6d34916b66c00a54c8c879090cecf6dd6431f273eebe40116c`, passed clean startup,
+  natural dispatch, handoff, and assembly. Both scouts remained coherent at `(3925,818)` and
+  `(3926,818)`, goal `(163,33)`, but the destination center lay beyond the loaded map and neither
+  generic local routing nor inactive overmap travel could cross that reality-bubble seam. No
+  return/report/decision occurred, so the run remains red and earns no lifecycle credit.
+- The focused boundary build and `tests/cata_test '[local_handoff]'` gate pass 878 assertions in
+  two cases. The added case proves distinct adjacent edge slots, one transactional off-bubble watch
+  arrival for both members, inactive physical positions in the watch OMT, and the existing
+  local-to-abstract resume commit.
 
 ## Pending proof contract
 

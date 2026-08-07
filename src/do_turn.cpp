@@ -6209,6 +6209,172 @@ void handle_key_blocking_activity()
 
 namespace
 {
+struct live_bandit_ingress_boundary_step {
+    tripoint_abs_ms departure;
+    tripoint_abs_ms exit;
+};
+
+std::map<character_id, live_bandit_ingress_boundary_step>
+live_bandit_ingress_boundary_steps()
+{
+    std::map<character_id, live_bandit_ingress_boundary_step> result;
+    map &here = get_map();
+    const std::map<character_id, tripoint_abs_omt> destinations =
+        bandit_live_world::local_pair_ingress_travel_destinations(
+            overmap_buffer.global_state.bandit_live_world );
+    for( const bandit_live_world::site_record &site :
+         overmap_buffer.global_state.bandit_live_world.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( outing.member_ids.size() != 2 || destinations.size() < 2 ) {
+            continue;
+        }
+        const auto first_destination = destinations.find( outing.member_ids[0] );
+        const auto second_destination = destinations.find( outing.member_ids[1] );
+        if( first_destination == destinations.end() || second_destination == destinations.end() ||
+            first_destination->second != second_destination->second ) {
+            continue;
+        }
+        const tripoint_abs_omt destination = first_destination->second;
+        const tripoint_abs_ms destination_center =
+            project_to<coords::ms>( destination ) + point( SEEX, SEEY );
+        npc *first = g->find_npc( outing.member_ids[0] );
+        npc *second = g->find_npc( outing.member_ids[1] );
+        if( here.inbounds( destination_center ) || first == nullptr || second == nullptr ||
+            first->is_dead() || second->is_dead() || !first->is_active() ||
+            !second->is_active() || !first->path.empty() || !second->path.empty() ) {
+            continue;
+        }
+
+        struct candidate {
+            tripoint_abs_ms departure;
+            tripoint_abs_ms exit;
+        };
+        std::vector<candidate> candidates;
+        for( const tripoint_bub_ms &point : here.points_on_zlevel( destination.z() ) ) {
+            const tripoint_abs_ms departure = here.get_abs( point );
+            if( !here.passable( point ) ||
+                ( !g->is_empty( point ) && departure != first->pos_abs() &&
+                  departure != second->pos_abs() ) ) {
+                continue;
+            }
+            for( int dy = -1; dy <= 1; ++dy ) {
+                for( int dx = -1; dx <= 1; ++dx ) {
+                    if( dx == 0 && dy == 0 ) {
+                        continue;
+                    }
+                    const tripoint_abs_ms exit = departure + point_rel_ms( dx, dy );
+                    if( !here.inbounds( exit ) &&
+                        project_to<coords::omt>( exit ) == destination ) {
+                        candidates.push_back( { departure, exit } );
+                    }
+                }
+            }
+        }
+        std::sort( candidates.begin(), candidates.end(), []( const candidate &lhs,
+        const candidate &rhs ) {
+            return std::tie( lhs.departure, lhs.exit ) <
+                   std::tie( rhs.departure, rhs.exit );
+        } );
+
+        std::optional<std::pair<candidate, candidate>> selected;
+        std::tuple<int, int, tripoint_abs_ms, tripoint_abs_ms> selected_score;
+        for( const candidate &first_candidate : candidates ) {
+            for( const candidate &second_candidate : candidates ) {
+                if( first_candidate.departure == second_candidate.departure ||
+                    first_candidate.exit == second_candidate.exit ||
+                    // Preserve the adjacent two-slot formation already required at handoff.
+                    rl_dist( first_candidate.exit, second_candidate.exit ) > 1 ) {
+                    continue;
+                }
+                const int first_distance = rl_dist( first->pos_abs(), first_candidate.departure );
+                const int second_distance = rl_dist( second->pos_abs(), second_candidate.departure );
+                const auto score = std::make_tuple(
+                                       std::max( first_distance, second_distance ),
+                                       first_distance + second_distance,
+                                       first_candidate.departure, second_candidate.departure );
+                if( !selected || score < selected_score ) {
+                    selected = std::make_pair( first_candidate, second_candidate );
+                    selected_score = score;
+                }
+            }
+        }
+        if( selected ) {
+            result.emplace( first->getID(), live_bandit_ingress_boundary_step{
+                selected->first.departure, selected->first.exit
+            } );
+            result.emplace( second->getID(), live_bandit_ingress_boundary_step{
+                selected->second.departure, selected->second.exit
+            } );
+        }
+    }
+    return result;
+}
+
+void complete_live_bandit_ingress_boundary_steps(
+    const std::map<character_id, live_bandit_ingress_boundary_step> &steps )
+{
+    for( bandit_live_world::site_record &site :
+         overmap_buffer.global_state.bandit_live_world.sites ) {
+        bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( outing.member_ids.size() != 2 ) {
+            continue;
+        }
+        const auto first_step = steps.find( outing.member_ids[0] );
+        const auto second_step = steps.find( outing.member_ids[1] );
+        npc *first = g->find_npc( outing.member_ids[0] );
+        npc *second = g->find_npc( outing.member_ids[1] );
+        if( first_step == steps.end() || second_step == steps.end() || first == nullptr ||
+            second == nullptr || first->pos_abs() != first_step->second.departure ||
+            second->pos_abs() != second_step->second.departure ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor ) {
+            continue;
+        }
+        const tripoint_abs_ms first_prior = first->pos_abs();
+        const tripoint_abs_ms second_prior = second->pos_abs();
+        first->setpos( first_step->second.exit, false );
+        second->setpos( second_step->second.exit, false );
+        std::vector<bandit_live_world::local_route_arrival_member_read> reads;
+        for( npc *member : { first, second } ) {
+            bandit_live_world::local_route_arrival_member_read read;
+            read.npc_id = member->getID();
+            read.readable = true;
+            read.route_confirmed = member->pos_abs_omt() == outing.selected_watch_omt;
+            read.hp_percent = member->hp_percentage();
+            read.current_position = member->pos_abs();
+            reads.push_back( read );
+        }
+        if( bandit_live_world::commit_local_pair_route_arrival(
+                site, *cursor, live_bandit_current_minutes(), reads ) !=
+            bandit_live_world::local_handoff_commit_result::applied ) {
+            first->setpos( first_prior, false );
+            second->setpos( second_prior, false );
+            continue;
+        }
+        for( npc *member : { first, second } ) {
+            member->goal = npc::no_goal_point;
+            member->omt_path.clear();
+            member->mission = NPC_MISSION_NULL;
+            member->previous_mission = NPC_MISSION_NULL;
+            member->goto_to_this_pos = std::nullopt;
+            member->clear_ai_guard_pos();
+            member->path.clear();
+            member->on_unload();
+            g->remove_npc( member->getID() );
+        }
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local ingress boundary committed"
+                                   << " site=" << site.site_id
+                                   << " activity=" << outing.activity_id
+                                   << " generation=" << outing.generation
+                                   << " route_position=" <<
+                                   outing.local_handoff.route_position.to_string()
+                                   << " members=2\n";
+    }
+}
+
 void monmove()
 {
     g->cleanup_dead();
@@ -6304,6 +6470,7 @@ void monmove()
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders;
     std::set<character_id> pair_homeward_travel_ids;
     std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
+    std::map<character_id, live_bandit_ingress_boundary_step> pair_ingress_boundary_steps;
     std::set<character_id> profiled_covert_member_ids;
     {
         bandit_live_world_probe::scoped_section prepass(
@@ -6364,6 +6531,7 @@ void monmove()
         pair_ingress_travel_destinations =
             bandit_live_world::local_pair_ingress_travel_destinations(
                 overmap_buffer.global_state.bandit_live_world );
+        pair_ingress_boundary_steps = live_bandit_ingress_boundary_steps();
         if( bandit_live_world_probe::active() ) {
             for( const bandit_live_world::site_record &site :
                  overmap_buffer.global_state.bandit_live_world.sites ) {
@@ -6408,6 +6576,7 @@ void monmove()
             const auto assembly_order = pair_assembly_orders.find( guy.getID() );
             const auto ingress_destination = pair_ingress_travel_destinations.find(
                                                  guy.getID() );
+            const auto ingress_boundary = pair_ingress_boundary_steps.find( guy.getID() );
             if( assembly_order != pair_assembly_orders.end() ) {
                 if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
                     !m.inbounds( assembly_order->second ) ||
@@ -6449,6 +6618,17 @@ void monmove()
                     // The overmap cadence owns route binding and repair.  Keep this loaded
                     // member inert until that exact owner route is present.
                     guy.move_pause();
+                } else if( ingress_boundary != pair_ingress_boundary_steps.end() ) {
+                    if( guy.pos_abs() == ingress_boundary->second.departure ) {
+                        guy.move_pause();
+                    } else if( live_bandit_update_local_path(
+                                   guy, m.get_bub( ingress_boundary->second.departure ) ) &&
+                               local_path_respects_watch_ring( guy.path ) ) {
+                        guy.move_to_next();
+                    } else {
+                        guy.path.clear();
+                        guy.move_pause();
+                    }
                 } else {
                     guy.go_to_omt_destination( local_path_respects_watch_ring );
                 }
@@ -6662,6 +6842,7 @@ void monmove()
             guy.npc_update_body();
         }
     }
+    complete_live_bandit_ingress_boundary_steps( pair_ingress_boundary_steps );
     g->cleanup_dead();
 }
 

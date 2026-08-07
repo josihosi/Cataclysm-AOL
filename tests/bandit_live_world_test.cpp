@@ -8257,7 +8257,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         } );
 
         const auto run_boundary_case = [&]( const int player_offset_omt,
-        const int player_local_x, const bool expect_materialized ) {
+        const int player_local_x, const bool expect_materialized,
+        const bool expect_ingress_boundary_exit ) {
             bandit_live_world::world_state world = make_world( false );
             bandit_live_world::site_record &site = world.sites.front();
             bandit_live_world::active_outing_state &outing = site.active_outing;
@@ -8338,75 +8339,124 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 REQUIRE( live_site.active_outing.local_handoff.cohesion_assembled );
                 CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
                 const tripoint_abs_omt watch_omt = live_site.active_outing.selected_watch_omt;
-                const point_rel_omt route_direction(
-                    route_omt.x() == watch_omt.x() ? 0 : route_omt.x() > watch_omt.x() ? 1 : -1,
-                    route_omt.y() == watch_omt.y() ? 0 : route_omt.y() > watch_omt.y() ? 1 : -1 );
-                REQUIRE( route_direction != point_rel_omt::zero );
-                g->place_player_overmap( watch_omt );
-                wipe_map_terrain();
-                clear_creatures();
-                const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
-                const tripoint_abs_ms player_position = watch_origin + point( SEEX, SEEY );
-                REQUIRE( get_map().inbounds( player_position ) );
-                get_avatar().setpos( player_position, false );
-                for( std::size_t index = 0; index < live_ids.size(); ++index ) {
-                    npc *member = g->find_npc( live_ids[index] );
-                    REQUIRE( member != nullptr );
-                    const int lateral_offset = 10 + static_cast<int>( index );
-                    const tripoint_abs_ms ingress_position(
-                        watch_origin.x() + ( route_direction.x() > 0 ? 24 :
-                                             route_direction.x() < 0 ? -1 : lateral_offset ),
-                        watch_origin.y() + ( route_direction.y() > 0 ? 24 :
-                                             route_direction.y() < 0 ? -1 : lateral_offset ),
-                        watch_origin.z() );
-                    REQUIRE( project_to<coords::omt>( ingress_position ) != watch_omt );
-                    REQUIRE( rl_dist( project_to<coords::omt>( ingress_position ),
-                                      watch_omt ) == 1 );
-                    REQUIRE( get_map().inbounds( ingress_position ) );
-                    REQUIRE( member->is_active() );
-                    member->setpos( get_map(), get_map().get_bub( ingress_position ) );
-                    member->goal = watch_omt;
-                    member->omt_path = { watch_omt, member->pos_abs_omt() };
-                    member->set_mission( NPC_MISSION_TRAVELLING );
-                    member->goto_to_this_pos = std::nullopt;
-                    member->clear_ai_guard_pos();
-                    member->path.clear();
-                }
+                if( expect_ingress_boundary_exit ) {
+                    const tripoint_abs_omt observer_omt = route_omt + point( -2, 2 );
+                    g->place_player_overmap( observer_omt );
+                    wipe_map_terrain();
+                    clear_creatures();
+                    const tripoint_abs_ms observer_position =
+                        project_to<coords::ms>( observer_omt ) + point( SEEX, SEEY );
+                    REQUIRE( get_map().inbounds( observer_position ) );
+                    get_avatar().setpos( observer_position, false );
+                    int north_edge = std::numeric_limits<int>::max();
+                    for( const tripoint_bub_ms &point : get_map().points_on_zlevel( watch_omt.z() ) ) {
+                        north_edge = std::min( north_edge, get_map().get_abs( point ).y() );
+                    }
+                    REQUIRE( north_edge != std::numeric_limits<int>::max() );
+                    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+                    REQUIRE( north_edge == watch_origin.y() + 24 );
+                    for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+                        npc *member = g->find_npc( live_ids[index] );
+                        REQUIRE( member != nullptr );
+                        const tripoint_abs_ms departure(
+                            watch_origin.x() + 10 + static_cast<int>( index ), north_edge,
+                            watch_origin.z() );
+                        REQUIRE( get_map().inbounds( departure ) );
+                        REQUIRE( project_to<coords::omt>( departure ) != watch_omt );
+                        member->setpos( get_map(), get_map().get_bub( departure ) );
+                        member->goal = watch_omt;
+                        member->omt_path = { watch_omt };
+                        member->set_mission( NPC_MISSION_TRAVELLING );
+                        member->goto_to_this_pos = std::nullopt;
+                        member->clear_ai_guard_pos();
+                        member->path.clear();
+                    }
 
-                const std::map<character_id, tripoint_abs_omt> ingress_destinations =
-                    bandit_live_world::local_pair_ingress_travel_destinations(
-                        overmap_buffer.global_state.bandit_live_world );
-                REQUIRE( ingress_destinations.size() == live_ids.size() );
-                process_monsters_and_npcs_turn_for_test();
-                for( const character_id id : live_ids ) {
-                    npc *member = g->find_npc( id );
-                    REQUIRE( member != nullptr );
-                    CHECK( member->pos_abs_omt() == watch_omt );
-                }
-                process_overmap_npc_move_for_test();
-                CHECK( live_site.active_outing.waypoint_index == 2 );
-                CHECK( live_site.active_outing.local_handoff.route_position == watch_omt );
-                maintain_live_bandit_local_pair_cohesion_for_test();
-                CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
-                CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_abort_return );
-                CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
+                    process_monsters_and_npcs_turn_for_test();
+                    CHECK( live_site.active_outing.waypoint_index == 2 );
+                    CHECK( live_site.active_outing.local_handoff.route_position == watch_omt );
+                    for( const character_id id : live_ids ) {
+                        shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+                        REQUIRE( member != nullptr );
+                        CHECK_FALSE( member->is_active() );
+                        CHECK( member->pos_abs_omt() == watch_omt );
+                        CHECK_FALSE( get_map().inbounds( member->pos_abs() ) );
+                    }
+                    process_overmap_npc_move_for_test();
+                    CHECK( live_site.active_outing.owner ==
+                           bandit_live_world::simulation_owner::abstract );
+                    CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
+                } else {
+                    const point_rel_omt route_direction(
+                        route_omt.x() == watch_omt.x() ? 0 : route_omt.x() > watch_omt.x() ? 1 : -1,
+                        route_omt.y() == watch_omt.y() ? 0 : route_omt.y() > watch_omt.y() ? 1 : -1 );
+                    REQUIRE( route_direction != point_rel_omt::zero );
+                    g->place_player_overmap( watch_omt );
+                    wipe_map_terrain();
+                    clear_creatures();
+                    const tripoint_abs_ms watch_origin = project_to<coords::ms>( watch_omt );
+                    const tripoint_abs_ms player_position = watch_origin + point( SEEX, SEEY );
+                    REQUIRE( get_map().inbounds( player_position ) );
+                    get_avatar().setpos( player_position, false );
+                    for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+                        npc *member = g->find_npc( live_ids[index] );
+                        REQUIRE( member != nullptr );
+                        const int lateral_offset = 10 + static_cast<int>( index );
+                        const tripoint_abs_ms ingress_position(
+                            watch_origin.x() + ( route_direction.x() > 0 ? 24 :
+                                                 route_direction.x() < 0 ? -1 : lateral_offset ),
+                            watch_origin.y() + ( route_direction.y() > 0 ? 24 :
+                                                 route_direction.y() < 0 ? -1 : lateral_offset ),
+                            watch_origin.z() );
+                        REQUIRE( project_to<coords::omt>( ingress_position ) != watch_omt );
+                        REQUIRE( rl_dist( project_to<coords::omt>( ingress_position ),
+                                          watch_omt ) == 1 );
+                        REQUIRE( get_map().inbounds( ingress_position ) );
+                        REQUIRE( member->is_active() );
+                        member->setpos( get_map(), get_map().get_bub( ingress_position ) );
+                        member->goal = watch_omt;
+                        member->omt_path = { watch_omt, member->pos_abs_omt() };
+                        member->set_mission( NPC_MISSION_TRAVELLING );
+                        member->goto_to_this_pos = std::nullopt;
+                        member->clear_ai_guard_pos();
+                        member->path.clear();
+                    }
 
-                for( const character_id id : live_ids ) {
-                    g->remove_npc( id );
+                    const std::map<character_id, tripoint_abs_omt> ingress_destinations =
+                        bandit_live_world::local_pair_ingress_travel_destinations(
+                            overmap_buffer.global_state.bandit_live_world );
+                    REQUIRE( ingress_destinations.size() == live_ids.size() );
+                    process_monsters_and_npcs_turn_for_test();
+                    for( const character_id id : live_ids ) {
+                        npc *member = g->find_npc( id );
+                        REQUIRE( member != nullptr );
+                        CHECK( member->pos_abs_omt() == watch_omt );
+                    }
+                    process_overmap_npc_move_for_test();
+                    CHECK( live_site.active_outing.waypoint_index == 2 );
+                    CHECK( live_site.active_outing.local_handoff.route_position == watch_omt );
+                    maintain_live_bandit_local_pair_cohesion_for_test();
+                    CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
+                    CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_abort_return );
+                    CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
+
+                    for( const character_id id : live_ids ) {
+                        g->remove_npc( id );
+                    }
+                    const tripoint_abs_omt unload_omt(
+                        route_omt.x() + 4, route_omt.y(), route_omt.z() );
+                    g->place_player_overmap( unload_omt );
+                    clear_map();
+                    for( const character_id id : live_ids ) {
+                        REQUIRE( g->find_npc( id ) != nullptr );
+                        CHECK_FALSE( g->find_npc( id )->is_active() );
+                        CHECK_FALSE( get_map().inbounds( g->find_npc( id )->pos_abs() ) );
+                    }
+                    CHECK( dematerialize_live_bandit_structural_handoffs_for_test() );
+                    CHECK( live_site.active_outing.owner ==
+                           bandit_live_world::simulation_owner::abstract );
+                    CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
                 }
-                const tripoint_abs_omt unload_omt(
-                    route_omt.x() + 4, route_omt.y(), route_omt.z() );
-                g->place_player_overmap( unload_omt );
-                clear_map();
-                for( const character_id id : live_ids ) {
-                    REQUIRE( g->find_npc( id ) != nullptr );
-                    CHECK_FALSE( g->find_npc( id )->is_active() );
-                    CHECK_FALSE( get_map().inbounds( g->find_npc( id )->pos_abs() ) );
-                }
-                CHECK( dematerialize_live_bandit_structural_handoffs_for_test() );
-                CHECK( live_site.active_outing.owner ==
-                       bandit_live_world::simulation_owner::abstract );
-                CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
             } else {
                 CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
                 CHECK( live_site.active_outing.owner ==
@@ -8424,8 +8474,9 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             }
         };
 
-        run_boundary_case( 3, 0, false );
-        run_boundary_case( 2, 12, true );
+        run_boundary_case( 3, 0, false, false );
+        run_boundary_case( 2, 12, true, false );
+        run_boundary_case( 2, 12, true, true );
     }
 
     SECTION( "arrival waits for every survivor at staging and replay is inert" ) {

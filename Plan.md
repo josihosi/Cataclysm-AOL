@@ -39,13 +39,20 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   reserved members after assembly. The focused `[local_handoff]` integration gate passed 833
   assertions in two cases and proved both members physically enter the selected watch OMT before
   the ordinary overmap cadence commits the transactional arrival.
+- Unchanged run `20260807_102520` on `59879bc2bf+SDL3` kept the exact pair coherent and advanced
+  both from staging `(164,34)` to adjacent tiles `(3925,818)` and `(3926,818)` with the correct
+  watch goal `(163,33)`. The watch center was outside the loaded map, so generic local routing could
+  not cross the last two squares and active NPCs never became eligible for abstract travel.
+- The forward owner now handles that exact reality-bubble seam as a paired adjacent boundary exit.
+  The focused `[local_handoff]` gate passes 878 assertions in two cases, including transactional
+  watch arrival, unload, and abstract resume when the destination center is off-map.
 
 ## Active claim
 
 Rerun `bandit.scout_to_decision_observer_live_mcw` unchanged on the executable containing the
-loaded forward-ingress owner. The natural incident must carry the same exact pair through watch,
-egress, survivor return, final report, and authoritative camp decision; the focused owner test does
-not substitute for that outcome.
+paired reality-bubble boundary exit. The natural incident must carry the same exact pair through
+watch, egress, survivor return, final report, and authoritative camp decision; the focused owner
+test does not substitute for that outcome.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
