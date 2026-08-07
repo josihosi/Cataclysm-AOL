@@ -7908,8 +7908,12 @@ def acknowledge_blocking_interruptions(
                 structured_popup_trace_log,
                 structured_popup_trace_start_offset,
             )
-            if structured_popup is not None and \
-                    str(classification.get("status", "")) in {"clear", "unobservable"}:
+            structured_popup_ocr_compatible = (
+                str(classification.get("status", "")) in {"clear", "unobservable"}
+                or str(classification.get("classification", ""))
+                == "partial_lifeless_grass_wilderness_flavor_popup"
+            )
+            if structured_popup is not None and structured_popup_ocr_compatible:
                 structured_classification = classify_blocking_interruption({
                     "ok": True,
                     "text": str(structured_popup.get("message", "")),

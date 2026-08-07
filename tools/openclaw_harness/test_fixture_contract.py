@@ -1184,6 +1184,59 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         )
         press.assert_called_once()
 
+    def test_structured_lifeless_grass_popup_resolves_partial_ocr(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            message = (
+                "You suddenly realize this area seems almost devoid of life. The few bits of "
+                "blackened grass you can see are barely recognizable as grass, even discounting "
+                "the night. Sure the zombies might be tearing people apart, but what happened to "
+                "the grass? What is the grass coming to life to eat people too? You snort at the "
+                "idea, but it doesn't feel safe out here."
+            )
+            trace_line = (
+                "openclaw_harness_ui_trace: component=eoc_popup event=open "
+                f"message={json.dumps(message)} truncated=no popup_flag=0\n"
+            )
+            trace_log.write_text(trace_line, encoding="utf-8")
+
+            def press_and_return(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                self.assertEqual(keys, ["space"])
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    stream.write(trace_line.replace("event=open", "event=return"))
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={
+                        "ok": True,
+                        "text": (
+                            "Press | to interrupt waiting\n"
+                            "This area seems almost devoid of life."
+                        ),
+                    },
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press_and_return) as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.lifeless_grass_partial_ocr",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertEqual(
+            result["acknowledgements"][0]["classification"]["provenance"],
+            "structured_eoc_popup_trace",
+        )
+        press.assert_called_once()
+
     def test_structured_shadow_popup_uses_complete_open_in_bounded_noisy_tail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
