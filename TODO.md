@@ -1,17 +1,13 @@
 # TODO
 
-## Now
+## Current necessary claim
 
-Checkpoint the direct-derived southwest observer footing and build its exact clean SDL3 identity.
-Its sole transform is `[0,24,0]`; all ecology outcomes remain beyond the fixture boundary.
+Inspect run `20260807_074745` on clean source `7af4127ade2b` and trace the first missing production
+transition after the exact pair's stable local assembly. The outing remained active through
+scheduler hour 148 with zero observations and zero members returned. Prove from the existing
+artifact and owner code whether this is a legitimate watch interval or a stalled observation/
+egress owner; then make only the necessary repair and rerun the same causal contract.
 
-## Immediate follow-ups
-
-1. Run one southwest scout-to-decision attempt with the relative six-hour endpoint and preserve the
-   compact observer incident pair; northeast and southeast are exhausted.
-2. Let the first visible gameplay/tooling blocker choose the next bounded slice; do not alter the
-   footing merely to force success.
-3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.
-
-Do not suppress upstream debug popups, start horde/stalker adapters, add arbitrary editor breadth,
-or resume Phase-6 helper expansion.
+Do not extend the wait, alter geometry, rerun old footings, expand debug tooling, start another
+behavior lane, or add another review/documentation pass unless deleting that claim would leave the
+active contract unmet or unproven.
