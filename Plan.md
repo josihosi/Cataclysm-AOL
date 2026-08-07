@@ -27,62 +27,18 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
 - Focused tests cover authority, persistence, exact-pair roster ownership, perception,
   route/handoff, cohesion, physical return/report/decision, resource, fairness, and loss controls.
   They do not substitute for a live incident.
-- Committed checkpoints through `25be8f51c8` make frontier watch outings advance, route an exact
-  pair through transactional staging, latch completed assembly during forward ingress, and expose
-  movement orders, route results, and path steps through the existing observer event.
-- Run `20260807_094606` on clean `25be8f51c8+SDL3` naturally dispatched and assembled the exact pair
-  with two successful staging routes and 21 path steps. The pair then split under the local ingress
-  owner: saved NPC `4` remained at staging while NPC `5` returned to camp, although both retained
-  the same watch goal. No watch arrival, observation, survivor return, final report, or camp
-  decision was proved.
-- The loaded forward-ingress owner now takes motor priority over generic NPC behavior for both
-  reserved members after assembly. The focused `[local_handoff]` integration gate passed 833
-  assertions in two cases and proved both members physically enter the selected watch OMT before
-  the ordinary overmap cadence commits the transactional arrival.
-- Unchanged run `20260807_102520` on `59879bc2bf+SDL3` kept the exact pair coherent and advanced
-  both from staging `(164,34)` to adjacent tiles `(3925,818)` and `(3926,818)` with the correct
-  watch goal `(163,33)`. The watch center was outside the loaded map, so generic local routing could
-  not cross the last two squares and active NPCs never became eligible for abstract travel.
-- The forward owner now handles that exact reality-bubble seam as a paired adjacent boundary exit.
-  The focused `[local_handoff]` gate passes 878 assertions in two cases, including transactional
-  watch arrival, unload, and abstract resume when the destination center is off-map.
-- Unchanged run `20260807_104736` on `1f99097e22+SDL3` live-proved that seam: the pair committed
-  watch arrival at `(163,33)`, then committed local dematerialization as the same exact two members.
-  Night visibility yielded no observation, and the selected route had no alternate watch. The
-  assessment had an existing two-hour no-progress boundary but no transition for that state, so it
-  fell through to the eight-hour maximum and missed the scenario's last scheduler tick by seven
-  minutes. No survivor return, report, or decision was proved.
-- A selected watch with no assessment progress and no qualified alternate now returns
-  inconclusive at that existing two-hour boundary. The focused `[local_handoff]` test carries the
-  off-bubble pair through abstract resume into `returning_report`; `[scout_assessment]` preserves
-  the separate eight-hour maximum for incomplete assessments that continue making progress.
-- Unchanged run `20260807_110822` on `2a08d892b5+SDL3` completed that return and wrote a final
-  non-provisional report plus the matching `report_awaiting_assessment` camp decision. All twelve
-  reconciled camp members were home and no outing remained active. The saved-state audit had
-  incorrectly required the five-member fixture roster and a nonempty quiet-watch report; removing
-  those non-contract constraints makes the preserved authoritative state pass. The run still does
-  not prove the required physical return: production advanced the abstract pair directly from the
-  watch to home without a homeward local handoff.
-- Run `20260807_112737` on `638808e67d+SDL3` cleanly repeated physical ingress and watch arrival,
-  then stopped during the three-hour watch wait when OCR rendered the ordinary wait banner's
-  percentage as `71-`. The harness acknowledged the structured wilderness-flavor popup and its
-  activity query, but misclassified the remaining `Waiting ... Press ... to interrupt` banner as a
-  partial safe-mode prompt. This is a harness visibility blocker, not lifecycle evidence.
-- Run `20260807_113559` on `a4a8c2efdb+SDL3` passed that wait guard and proved the exact pair's
-  `returning_home` local handoff at `(164,34)`. The bind cleared their abstract goals and the
-  rendezvous gate treated their adjacent transactional entry as unassembled; one scout reached a
-  staging slot, the other missed the existing rendezvous deadline, and the abort path cleared both
-  routes. No camp-boundary dematerialization or canonical return occurred.
-- Run `20260807_115306` on `3a025769ef+SDL3` proved the transactional bind itself, but no homeward
-  local handoff occurred. Assessment completed after the dispatch-time expected return had already
-  elapsed, so the next same-minute abstract advance reconciled both scouts directly at camp. The
-  final report and matching decision were again authoritative, but the required physical return
-  remained absent.
-- Run `20260807_121217` on `ff981207da+SDL3` rebased the assessment transition at minute 8580 to a
-  future expected return at minute 8630. The outing remained abstract and `returning_home` until
-  the minute-8640 scheduler reconciled both members; no homeward handoff or dematerialization was
-  committed. Existing materialization diagnostics do not identify which live preflight rejected
-  the fixture, so the focused route-bind proof does not establish that live route.
+- Committed gameplay checkpoints through `ff981207da` now carry the exact pair through natural
+  discovery, transactional forward ingress, a paired reality-bubble exit, watch completion, and a
+  distance-derived future home leg. Focused `[local_handoff]` and `[scout_assessment]` tests prove
+  the corresponding owner transitions, including coherent homeward route binding.
+- Live run `20260807_110822` proved the final non-provisional report and matching
+  `report_awaiting_assessment` decision, but only after an abstract jump home; it therefore earns no
+  physical-return credit.
+- Latest unchanged run `20260807_121217` on `ff981207da+SDL3` proved the future home schedule, then
+  remained abstract until canonical reconciliation. It emitted neither the required
+  `returning_home` handoff nor camp-boundary dematerialization. Existing diagnostics do not expose
+  which live materialization preflight rejected the pair, so that rejection is the first unproven
+  seam.
 
 ## Active claim
 
