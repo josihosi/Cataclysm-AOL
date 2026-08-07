@@ -2,9 +2,9 @@
 
 ## Now
 
-Build the clean committed SDL3 binary for the new east-side observer footing, then run its first
-scout-to-decision probe. Require the same selected party to reach physical return, final report,
-and report-awaiting-assessment decision; preserve the incident pair and do not credit setup alone.
+Checkpoint the east-footing staging repair, rebuild the exact SDL3 binary, then spend the footing's
+second and final probe. Require valid same-OMT routes to survive the former ten-minute boundary and
+the same selected party to reach physical return, final report, and camp decision.
 
 ## Immediate follow-ups
 
