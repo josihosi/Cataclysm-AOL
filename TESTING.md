@@ -63,6 +63,19 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
+- Run `20260807_041806` on clean `38ab88e8cf+SDL3` naturally reached the exact pair's dispatch,
+  handoff, repeated `assembled=yes` cohesion, observer selection, and the final six-hour watch. At
+  scheduler hour 144 the outing was still active. A safe Shadow EOC popup was acknowledged and its
+  structured open/return pair was preserved; production then opened the separate activity
+  distraction query, whose partial OCR correctly failed closed. Verdict:
+  `red_wait_mid_poll_interruption`; no return/report/decision credit and no debug intervention.
+- The repair traces the authoritative `cancel_activity_or_ignore_query` open/return only under the
+  harness gate, including distraction type and returned action. It reuses the existing safe
+  `I`/`IGNORE` response only for a complete known-type query when OCR is compatible with that UI;
+  unrelated unknown, malformed, truncated, and stale inputs produce no action. Mac evidence:
+  `obj/tiles/game.o` compile exit 0; 149 harness contracts green; medium autoreview clean at
+  `patch is correct (0.88)`; `git diff --check` clean. Runtime proof requires the next committed
+  SDL3 build to record `action=IGNORE` on the real query.
 - The replacement wait footing traces the real EOC popup open/return boundary only when the
   harness-set `OPENCLAW_HARNESS_UI_TRACE` gate is active. It reads at most 256 KiB of the existing
   debug log and reuses the existing interruption classifier: only an already-known safe prompt can

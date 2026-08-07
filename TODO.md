@@ -2,9 +2,9 @@
 
 ## Now
 
-Commit and rebuild the structured EOC-popup trace seam, then run one new live scout-to-decision
-attempt on that exact binary. Require structured receipts for any benign popup acknowledgement;
-do not add another OCR or screenshot classifier.
+Commit and rebuild the structured activity-query trace seam, then spend the second and final live
+scout-to-decision attempt on that exact binary. Require the real trace to return `action=IGNORE`
+before crediting prompt recovery; do not add another OCR or screenshot classifier.
 
 ## Immediate follow-ups
 

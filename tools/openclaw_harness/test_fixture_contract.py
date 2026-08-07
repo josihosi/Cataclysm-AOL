@@ -71,6 +71,7 @@ from startup_harness import (  # noqa: E402
     poll_wait_artifact_completion,
     provision_llm_api_key_environment,
     read_active_eoc_popup_trace,
+    read_active_activity_query_trace,
     read_secure_llm_credential,
     resolve_configured_python_command,
     resolve_fixture_payload,
@@ -822,6 +823,194 @@ class WaitStepLedgerContractTest(unittest.TestCase):
                     'truncated=no popup_flag=0\n'
                 )
             self.assertIsNone(read_active_eoc_popup_trace(trace_log, start_offset))
+
+    def test_active_activity_query_trace_closes_on_returned_action(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace_log = Path(temp_dir) / "debug.log"
+            trace_log.write_text("before\n", encoding="utf-8")
+            start_offset = trace_log.stat().st_size
+            open_line = (
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text="" truncated=no action=none\n'
+            )
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(open_line)
+
+            active = read_active_activity_query_trace(trace_log, start_offset)
+            self.assertIsNotNone(active)
+            self.assertEqual(active["type"], "eoc")
+            self.assertEqual(active["action"], "none")
+
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(open_line.replace("event=open", "event=return").replace(
+                    "action=none", "action=IGNORE"
+                ))
+            self.assertIsNone(read_active_activity_query_trace(trace_log, start_offset))
+
+    def test_structured_eoc_then_partial_activity_query_acknowledges_once_each(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text("before\n", encoding="utf-8")
+            start_offset = trace_log.stat().st_size
+            popup_open = (
+                'openclaw_harness_ui_trace: component=eoc_popup event=open '
+                'message="You have a vague feeling of being watched." '
+                'truncated=no popup_flag=0\n'
+            )
+            query_open = (
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text="" truncated=no action=none\n'
+            )
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(popup_open)
+
+            screens = iter((
+                {"ok": True, "text": ""},
+                {"ok": True, "text": "Open Manager"},
+                {"ok": True, "text": ""},
+            ))
+
+            def press_and_return(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    if keys == ["space"]:
+                        stream.write(popup_open.replace("event=open", "event=return"))
+                        stream.write(query_open)
+                    elif keys == ["I"]:
+                        stream.write(query_open.replace("event=open", "event=return").replace(
+                            "action=none", "action=IGNORE"
+                        ))
+                    else:
+                        self.fail(f"unexpected response keys: {keys}")
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    side_effect=lambda *_args, **_kwargs: next(screens),
+                ),
+                mock.patch(
+                    "startup_harness.peekaboo_press_sequence",
+                    side_effect=press_and_return,
+                ) as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.structured_sequence",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=start_offset,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 2)
+        self.assertEqual([call.args[1] for call in press.call_args_list], [["space"], ["I"]])
+        activity_receipt = result["acknowledgements"][1]["classification"]
+        self.assertEqual(
+            activity_receipt["provenance"],
+            "structured_activity_distraction_query_trace",
+        )
+        self.assertEqual(activity_receipt["structured_activity_query_trace"]["type"], "eoc")
+        self.assertEqual(activity_receipt["response_action"], "IGNORE")
+
+    def test_structured_activity_query_malformed_truncated_unknown_and_stale_fail_closed(self) -> None:
+        cases = (
+            (
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text=not-json truncated=no action=none\n',
+                None,
+            ),
+            (
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text="cut" truncated=yes action=none\n',
+                "blocked_unknown_prompt",
+            ),
+            (
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=unknown_future text="" truncated=no action=none\n',
+                "blocked_unknown_prompt",
+            ),
+        )
+        for trace_line, expected_status in cases:
+            with self.subTest(trace_line=trace_line), tempfile.TemporaryDirectory() as temp_dir:
+                run_dir = Path(temp_dir)
+                trace_log = run_dir / "debug.log"
+                trace_log.write_text(trace_line, encoding="utf-8")
+                with (
+                    mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        return_value={"ok": True, "text": ""},
+                    ),
+                    mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                ):
+                    result = acknowledge_blocking_interruptions(
+                        42,
+                        run_dir,
+                        "wait_contract.bad_activity_query",
+                        stop_on_unknown=True,
+                        structured_popup_trace_log=trace_log,
+                    )
+                self.assertEqual(result["status"], expected_status or "clear")
+                press.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text(
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text="" truncated=no action=none\n',
+                encoding="utf-8",
+            )
+            stale_offset = trace_log.stat().st_size
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": ""},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.stale_activity_query",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=stale_offset,
+                )
+            self.assertEqual(result["status"], "clear")
+            press.assert_not_called()
+
+    def test_structured_activity_query_does_not_override_unrelated_unknown_ocr(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text(
+                'openclaw_harness_ui_trace: component=activity_distraction_query '
+                'event=open type=eoc text="" truncated=no action=none\n',
+                encoding="utf-8",
+            )
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "Apply changes? (y/n)"},
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "wait_contract.unrelated_unknown",
+                    stop_on_unknown=True,
+                    structured_popup_trace_log=trace_log,
+                )
+        self.assertEqual(result["status"], "blocked_unknown_prompt")
+        self.assertEqual(result["final_classification"]["classification"], "unhandled_blocking_menu")
+        press.assert_not_called()
 
     def test_structured_shadow_popup_acknowledges_once_without_ocr_text(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

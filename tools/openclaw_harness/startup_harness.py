@@ -135,6 +135,17 @@ EOC_POPUP_TRACE_PATTERN = re.compile(
     r'truncated=(yes|no) popup_flag=(-?\d+)'
 )
 EOC_POPUP_TRACE_READ_CAP_BYTES = 256 * 1024
+ACTIVITY_QUERY_TRACE_PATTERN = re.compile(
+    r'openclaw_harness_ui_trace: component=activity_distraction_query '
+    r'event=(open|return) type=([a-z0-9_]+) text=("(?:\\.|[^"\\])*") '
+    r'truncated=(yes|no) action=([A-Z_]+|none)'
+)
+ACTIVITY_QUERY_TRACE_TYPES = {
+    "noise", "pain", "attacked", "hostile_spotted_far", "hostile_spotted_near",
+    "talked_to", "asthma", "motion_alarm", "weather_change", "portal_storm_popup",
+    "eoc", "dangerous_field", "hunger", "thirst", "temperature", "mutation",
+    "oxygen", "withdrawal", "craft_step_complete",
+}
 DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS = 32
 DEFAULT_STEP_MAX_AUTO_ACKNOWLEDGEMENTS = 6
 
@@ -1592,6 +1603,51 @@ def read_active_eoc_popup_trace(
         if event == "open":
             active = trace
         elif active is not None and active.get("message") == message:
+            active = None
+    return active
+
+
+def read_active_activity_query_trace(
+    log_path: Optional[Path],
+    start_offset: int,
+) -> Optional[Dict[str, Any]]:
+    if log_path is None or not log_path.exists():
+        return None
+    size = log_path.stat().st_size
+    bounded_start = max(start_offset if 0 <= start_offset <= size else 0,
+                        size - EOC_POPUP_TRACE_READ_CAP_BYTES)
+    with log_path.open("rb") as handle:
+        handle.seek(bounded_start)
+        body = handle.read(EOC_POPUP_TRACE_READ_CAP_BYTES).decode("utf-8", errors="replace")
+
+    active: Optional[Dict[str, Any]] = None
+    for match in ACTIVITY_QUERY_TRACE_PATTERN.finditer(body):
+        try:
+            text = json.loads(match.group(3))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(text, str):
+            continue
+        event = match.group(1)
+        distraction_type = match.group(2)
+        action = match.group(5)
+        trace = {
+            "component": "activity_distraction_query",
+            "event": event,
+            "type": distraction_type,
+            "text": text,
+            "truncated": match.group(4) == "yes",
+            "action": action,
+            "log_path": str(log_path),
+            "start_offset": start_offset,
+            "scan_offset": bounded_start,
+            "event_offset": bounded_start + len(body[:match.start()].encode("utf-8")),
+            "read_truncated": bounded_start > start_offset,
+        }
+        if event == "open" and action == "none":
+            active = trace
+        elif event == "return" and active is not None and \
+                active.get("type") == distraction_type:
             active = None
     return active
 
@@ -7814,6 +7870,55 @@ def acknowledge_blocking_interruptions(
                             else "not_existing_safe_classification"
                         ),
                     }
+            structured_activity_query = read_active_activity_query_trace(
+                structured_popup_trace_log,
+                structured_popup_trace_start_offset,
+            )
+            ocr_status = str(classification.get("status", ""))
+            ocr_classification = str(classification.get("classification", ""))
+            activity_query_ocr_compatible = (
+                ocr_status in {"clear", "unobservable"}
+                or ocr_classification == "partial_activity_distraction_prompt"
+            )
+            if structured_activity_query is not None and activity_query_ocr_compatible:
+                structured_classification = classify_blocking_interruption({
+                    "ok": True,
+                    "text": "Open manager\nIgnore this distraction and continue",
+                })
+                structured_event_offset = int(
+                    structured_activity_query.get("event_offset", -1) or -1
+                )
+                structured_safe = (
+                    str(structured_classification.get("status", "")) == "known_prompt"
+                    and str(structured_classification.get("response_key", "")) == "I"
+                    and str(structured_activity_query.get("action", "")) == "none"
+                    and str(structured_activity_query.get("type", ""))
+                    in ACTIVITY_QUERY_TRACE_TYPES
+                    and not bool(structured_activity_query.get("truncated", False))
+                )
+                if structured_safe and \
+                        structured_event_offset not in acknowledged_structured_event_offsets:
+                    classification = {
+                        **structured_classification,
+                        "provenance": "structured_activity_distraction_query_trace",
+                        "response_action": "IGNORE",
+                        "structured_activity_query_trace": structured_activity_query,
+                    }
+                else:
+                    classification = {
+                        **structured_classification,
+                        "status": "unknown_prompt",
+                        "classification": "structured_activity_query_not_auto_acknowledged",
+                        "response_key": "",
+                        "provenance": "structured_activity_distraction_query_trace",
+                        "structured_activity_query_trace": structured_activity_query,
+                        "structured_classification": structured_classification,
+                        "structured_rejection": (
+                            "already_acknowledged_without_return"
+                            if structured_event_offset in acknowledged_structured_event_offsets
+                            else "malformed_or_truncated_active_query"
+                        ),
+                    }
             status = str(classification.get("status", "unobservable"))
             classification_name = str(classification.get("classification", ""))
             if suppress_retained_shadow_warning_once and \
@@ -7876,6 +7981,11 @@ def acknowledge_blocking_interruptions(
             if isinstance(structured_trace, dict):
                 acknowledged_structured_event_offsets.add(
                     int(structured_trace.get("event_offset", -1) or -1)
+                )
+            structured_activity_trace = classification.get("structured_activity_query_trace")
+            if isinstance(structured_activity_trace, dict):
+                acknowledged_structured_event_offsets.add(
+                    int(structured_activity_trace.get("event_offset", -1) or -1)
                 )
             if settle_seconds > 0:
                 time.sleep(settle_seconds)

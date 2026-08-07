@@ -97,6 +97,7 @@
 #include "effect.h"
 #include "effect_on_condition.h"
 #include "end_screen.h"
+#include "enum_conversions.h"
 #include "enums.h"
 #include "event.h"
 #include "event_bus.h"
@@ -1485,6 +1486,69 @@ static bool cancel_auto_move( Character &you, const std::string &text )
     return false;
 }
 
+namespace
+{
+bool openclaw_harness_activity_query_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+std::string openclaw_harness_quote_activity_query_text( const std::string &value,
+        bool &truncated )
+{
+    static constexpr size_t max_trace_message_bytes = 2048;
+    const size_t bounded_size = std::min( value.size(), max_trace_message_bytes );
+    truncated = bounded_size < value.size();
+    std::string out = "\"";
+    for( size_t index = 0; index < bounded_size; ++index ) {
+        const unsigned char c = value[index];
+        switch( c ) {
+            case '\\':
+            case '"':
+                out += '\\';
+                out += static_cast<char>( c );
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if( c < 0x20 ) {
+                    out += '?';
+                } else {
+                    out += static_cast<char>( c );
+                }
+                break;
+        }
+    }
+    out += '"';
+    return out;
+}
+
+void openclaw_harness_trace_activity_query( const std::string &event,
+        const distraction_type type, const std::string &text, const std::string &action = "" )
+{
+    if( !openclaw_harness_activity_query_trace_enabled() ) {
+        return;
+    }
+    bool truncated = false;
+    const std::string quoted_text = openclaw_harness_quote_activity_query_text( text, truncated );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=activity_distraction_query"
+            << " event=" << event
+            << " type=" << io::enum_to_string( type )
+            << " text=" << quoted_text
+            << " truncated=" << ( truncated ? "yes" : "no" )
+            << " action=" << ( action.empty() ? "none" : action );
+}
+} // namespace
+
 bool game::cancel_activity_or_ignore_query( const distraction_type type, const std::string &text )
 {
     if( u.has_distant_destination() ) {
@@ -1502,6 +1566,7 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
     const auto &allow_key = force_uc ? input_context::disallow_lower_case_or_non_modified_letters
                             : input_context::allow_all_keys;
 
+    openclaw_harness_trace_activity_query( "open", type, text );
     const std::string &action = query_popup()
                                 .preferred_keyboard_mode( keyboard_mode::keycode )
                                 .context( "CANCEL_ACTIVITY_OR_IGNORE_QUERY" )
@@ -1517,6 +1582,7 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
                                 .option( "IGNORE", allow_key )
                                 .query()
                                 .action;
+    openclaw_harness_trace_activity_query( "return", type, text, action );
 
     if( action == "YES" ) {
         u.cancel_activity();

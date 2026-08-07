@@ -83,6 +83,15 @@ green at 1 case / 50 assertions. This closes the isolated owner seam but does no
 live success row; a new structured-observer footing must join the already-natural first half to
 this physical second half in one incident.
 
+Run `20260807_041806` on clean `38ab88e8cf+SDL3` naturally reached dispatch, local handoff,
+cohesion, observer selection, and the final six-hour watch. The structured trace correctly
+identified and closed a safe Shadow popup, then exposed the separate authoritative activity
+distraction query that OCR only partially recognized. That run is retained as non-credit evidence.
+The same opt-in channel now traces the real activity-query open/returned action and permits only
+the existing `IGNORE` response for a complete known-type query when OCR is clear/unobservable or
+recognizes that same partial prompt; unrelated unknown, malformed, stale, and truncated inputs
+remain fail-closed.
+
 ## Next milestone
 
 Produce one observer-backed vertical proof from a real naturally generated bandit scout
