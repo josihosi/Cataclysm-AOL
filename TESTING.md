@@ -85,14 +85,16 @@ ID, authoritative owner audit, compact incident JSON, and paired screenshot wher
   `bandit_live_world_production_watch_geography_adapter_is_bounded_and_owner_committed` passed 126
   assertions including split arrival, completion, replay, and save round-trip. Clean SDL3 build
   identity: `6c1a574ba6+SDL3`.
-- Run `20260807_090025` on that clean binary passed startup, preflight, frontier discovery,
-  dispatch, and handoff, but its cohesion audit recorded `assembled=no, abort=no` followed by
-  `assembled=no, abort=yes`. Saved state shows terrain-dependent staging positions, no assembly by
-  the production deadline at minute `8410`, and `failed_routes=0`: the fallback assembly motor's
-  path failure was outside authoritative cohesion accounting. The current fix makes first-pass
-  staging orders transactional in the handoff minute. Mac `[local_handoff]` passed 818 assertions
-  in 2 cases; the production watch-adapter case passed 126 assertions. The unchanged live scenario
-  on a clean committed SDL3 binary remains the pending proof.
+- Run `20260807_090025` exposed an initial staging path failure outside cohesion's route accounting;
+  committed checkpoint `81c8a9f46c` makes first-pass staging orders transactional. Run
+  `20260807_091941` on clean `81c8a9f46c+SDL3` then passed startup, preflight, frontier discovery,
+  exact-pair handoff, and immediate `assembled=yes, failed_routes=0, abort=no`. It failed the
+  survivor-return audit because forward steps repeatedly changed cohesion back to `assembled=no`,
+  reasserted staging ownership, and reached `abort=yes` at the rendezvous deadline. Saved state
+  preserved the pair alive under the local owner in `returning_home`; no lifecycle credit. The
+  current fix preserves the completed assembly gate during its exact forward-ingress route. Mac
+  `[local_handoff]` passed 824 assertions in 2 cases, including the new released-ingress regression.
+  The unchanged live scenario on a clean committed SDL3 binary remains the pending proof.
 
 ## Focused commands
 

@@ -4941,6 +4941,16 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         }
         plan.share_private_observations = plan.observations_shared > 0;
     }
+    const int destination_waypoint = structural_outing_destination_waypoint( outing );
+    const bool forward_assembly_released = snapshot.cohesion_assembled &&
+            outing.schema_version == 10 && outing.phase == scout_phase::observing &&
+            !outing.alternate_watch_reposition_pending && outing.waypoint_index >= 0 &&
+            outing.waypoint_index < destination_waypoint &&
+            snapshot.waypoint_index == outing.waypoint_index &&
+            snapshot.route_position ==
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
+            snapshot.egress_omt ==
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )];
     const bool homeward_assembly_released = snapshot.cohesion_assembled &&
             scout_phase_requires_homeward_only( outing.phase );
     bool assembled = cohesive;
@@ -4958,7 +4968,10 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         }
     }
 
-    assembled = assembled || homeward_assembly_released;
+    // Assembly is a gate before route travel, not a tether to the staging squares.
+    // Once released, the ingress or homeward motor owns movement until the complete pair
+    // can be snapshotted across the boundary.
+    assembled = assembled || forward_assembly_released || homeward_assembly_released;
     snapshot.cohesion_assembled = assembled;
     snapshot.cohesion_abort_return = false;
     if( assembled ) {

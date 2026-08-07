@@ -8665,6 +8665,24 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( local_cursor );
+        std::vector<bandit_live_world::local_cohesion_member_read> ingress_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            REQUIRE( rl_dist( member.exit_position, member.staging_position ) > 1 );
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = member.npc_id;
+            read.present = true;
+            read.current_position = member.exit_position;
+            ingress_reads.push_back( read );
+        }
+        const bandit_live_world::local_cohesion_plan released_ingress =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *local_cursor, 101, ingress_reads );
+        REQUIRE( released_ingress.valid );
+        CHECK( released_ingress.snapshot.cohesion_assembled );
+        CHECK_FALSE( released_ingress.reroute_needed );
+        CHECK( released_ingress.movement_orders.empty() );
+
         CHECK( bandit_live_world::transition_external_simulation_owner(
                    site, local_cursor->activity_id, local_cursor->generation,
                    bandit_live_world::simulation_owner::local,

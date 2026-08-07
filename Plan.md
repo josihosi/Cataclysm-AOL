@@ -41,15 +41,17 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
   `assembled=no, abort=yes` before watch ingress. Verdict:
   `blocked_scout_to_decision_pair_handoff_missing`; no lifecycle credit. No run yet proves the
   complete natural survivor return, final report, and camp decision chain.
-- The run comparison traced that abort to local terrain-dependent staging: the initial fallback
-  motor could fail to path while authoritative cohesion still recorded `failed_routes=0`, then
-  reached its production rendezvous deadline. The current checkpoint puts the first same-minute
-  staging orders through cohesion's transactional route accounting. Focused Mac tests pass 818
-  local-handoff assertions and 126 production watch-adapter assertions.
+- Checkpoint `81c8a9f46c` puts the first same-minute staging orders through cohesion's transactional
+  route accounting. Run `20260807_091941` on its clean SDL3 binary naturally reached the exact-pair
+  handoff and `assembled=yes, failed_routes=0, abort=no`, then exposed the next owner defect: forward
+  travel revoked the completed staging gate on every step, oscillated the pair back to staging, and
+  eventually forced `returning_home` by the rendezvous deadline. The current fix latches completed
+  assembly while the forward ingress motor owns that route. Focused Mac local-handoff tests pass
+  824 assertions.
 
 ## Active claim
 
-Checkpoint the same-minute staging-route fix, build a clean SDL3 binary from that commit, and rerun
+Checkpoint the forward-ingress assembly release, build a clean SDL3 binary from that commit, and rerun
 `bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
 either reach the natural survivor-return/report/decision pass or preserve the first new
 authoritative blocker.

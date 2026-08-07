@@ -2,7 +2,7 @@
 
 ## Current necessary claim
 
-Commit the same-minute authoritative staging-route fix, build its clean SDL3 binary, and rerun
+Commit the forward-ingress assembly-release fix, build its clean SDL3 binary, and rerun
 `bandit.scout_to_decision_observer_live_mcw` unchanged. Credit only a same-run physical survivor
 return, eligible final report, and matching camp decision; otherwise preserve the first new
 authoritative blocker.
