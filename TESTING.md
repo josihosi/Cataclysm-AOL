@@ -63,6 +63,11 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
+- The new fixture `bandit_scout_to_decision_observer_east_v0_2026-08-07` derives from the exhausted
+  west fixture with exactly one declared precondition transform: player offset `[96,0,0]`, moving
+  the observer from OMT `(162,35,0)` to `(166,35,0)`. Camp, route, clock, zero-lead/zero-outing
+  boundary, and `DEBUG_CLAIRVOYANCE` are inherited; no lifecycle outcome is written. Both JSON
+  payloads parse, all 149 harness contracts pass, and `git diff --check` is clean. No live credit.
 - Run `20260807_043746` on clean `5010d98e3d+SDL3` naturally reached exact dispatch and
   `local_handoff committed ... members=2`. During the ordinary wait it opened the real bandit
   Pay/Fight dialogue for Giuseppe Bachman before physical return/report/decision; the paired

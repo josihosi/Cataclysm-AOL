@@ -4137,19 +4137,45 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
 
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
+        fixture_name = "bandit_scout_to_decision_observer_east_v0_2026-08-07"
         resolved = resolve_fixture_payload(
-            "bandit_scout_to_decision_observer_v0_2026-08-06",
+            fixture_name,
             "live-debug",
         )
 
         self.assertEqual(
-            resolved["source_chain"][:2],
+            resolved["source_chain"][:3],
             [
+                ("live-debug", fixture_name),
                 ("live-debug", "bandit_scout_to_decision_observer_v0_2026-08-06"),
                 ("live-debug", "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24"),
             ],
         )
-        child_transforms = resolved["save_transforms"]
+        manifest_path = (
+            HARNESS_DIR
+            / "fixtures"
+            / "saves"
+            / "live-debug"
+            / fixture_name
+            / "manifest.json"
+        )
+        derived_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            derived_manifest["source_fixture"],
+            "bandit_scout_to_decision_observer_v0_2026-08-06",
+        )
+        self.assertEqual(derived_manifest["source_profile"], "live-debug")
+        self.assertEqual(
+            derived_manifest["save_transforms"],
+            [
+                {
+                    "kind": "player_location_offset_ms",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "offset_ms": [96, 0, 0],
+                }
+            ],
+        )
+        child_transforms = resolved["save_transforms"][:-1]
         self.assertEqual(
             [transform["kind"] for transform in child_transforms],
             [
@@ -4176,6 +4202,12 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertEqual(player_offset, [22, -16, 0])
         self.assertEqual(player_omt, [162, 35, 0])
+        mirrored_player_omt = [
+            player_omt[0] + derived_manifest["save_transforms"][0]["offset_ms"][0] // 24,
+            player_omt[1],
+            player_omt[2],
+        ]
+        self.assertEqual(mirrored_player_omt, [166, 35, 0])
         self.assertEqual(child_transforms[2]["offset_omt"], [2, 4, 0])
         self.assertEqual(child_transforms[3]["new_anchor"], [164, 39, 0])
         self.assertEqual(
@@ -4203,6 +4235,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             },
         )
         self.assertEqual(child_transform["mutations"], ["DEBUG_CLAIRVOYANCE"])
+        self.assertEqual(
+            resolved["save_transforms"][-1],
+            derived_manifest["save_transforms"][0],
+        )
 
     def test_scout_to_decision_observer_scenario_preserves_causal_boundary(self) -> None:
         scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
@@ -4212,9 +4248,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertEqual(
             scenario["fixture"],
-            "bandit_scout_to_decision_observer_v0_2026-08-06",
+            "bandit_scout_to_decision_observer_east_v0_2026-08-07",
         )
-        self.assertIn("(162,35,0)", scenario["description"])
+        self.assertIn("(166,35,0)", scenario["description"])
+        self.assertIn("two OMTs east", scenario["description"])
+        self.assertNotIn("two OMTs west", scenario["description"])
         self.assertIn("(164,30,0)", scenario["description"])
         self.assertIn(
             "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
@@ -4226,6 +4264,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertIn(
             "road-connected sector-0 outer target (164,30,0)",
+            scenario["evidence_contract"]["preconditions_and_interventions"],
+        )
+        self.assertIn(
+            "moves only the player observer from (162,35,0) to (166,35,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
         preflight = steps[labels.index("preflight_idle_zero_lead_camp")]

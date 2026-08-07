@@ -110,6 +110,13 @@ report, and decision.
 Checkpoint the scout/shakedown ownership repair, then establish a materially different footing for
 the next proof. Repair only a gameplay or tooling seam that directly blocks this proof.
 
+The next footing is `bandit_scout_to_decision_observer_east_v0_2026-08-07`. It inherits the same
+idle zero-lead camp, deterministic clock, road, and observer gate, then moves only the player by
+96 map squares from OMT `(162,35,0)` to `(166,35,0)`: two OMTs east rather than west of the local
+handoff waypoint. Discovery, dispatch, observation, return, report, and decision remain unwritten
+at the fixture boundary. This is a new loaded-bubble geometry, not a third attempt on the exhausted
+west footing.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may
