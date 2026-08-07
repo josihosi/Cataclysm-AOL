@@ -24,20 +24,22 @@
 - Focused owner tests cover roster identity, transactional route/handoff, cohesion,
   unload/writeback, physical return/report, no-progress loss, and report/decision matching. They do
   not close the live lifecycle outcome.
-- The transactional homeward-bind tests target rebuilt successfully. With the recorded stable seed
-  `3003869255`, `[local_handoff]` passes 900 assertions in two cases and proves a homeward bind is
-  immediately coherent, owns both travelers, preserves exact exit checks, round-trips, and assigns
-  both real NPCs nonempty camp routes. `[scout_assessment]` passes 233 assertions in four cases and
-  proves assessment completion rebases expected return to a future home leg while both exact and
-  inconclusive reports still reconcile only at that new ETA. The harness fixture contract passes
-  154 tests. The live run remains necessary to prove the prepared routes reach the camp boundary.
-- Run `20260807_121217` on commit `ff981207da`, executable SHA-256
-  `1335cc0af9cc53454b227e933105176da1bfcf394cb2b75d2606aa6ed2e3bbde`, was red with verdict
-  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`. Assessment completed
-  at minute 8580 and the new distance-derived home leg scheduled minute 8630, proving the stale ETA
-  was repaired. The outing stayed abstract and `returning_home` until minute 8640, when the
-  scheduler returned both members without a homeward handoff or dematerialization. The live
-  materializer exposes no branch-level rejection reason, so no further cause is claimed.
+- `[local_handoff]` passes 932 assertions in two cases on `307e43efda`. It proves a pair with
+  existing local paths can leave a bubble several overmap tiles from camp, retain/rebuild physical
+  routes, traverse intermediate loaded/unloaded ownership, and dematerialize together at camp.
+  `WaitStepLedgerContractTest` passes all 38 tests on `c74427ca37`; a completed wait with retained
+  wilderness flavor now sends no spurious input, while unknown confirmations remain blocking. The
+  full harness fixture contract passes 155 tests.
+- Run `20260807_135056` used `307e43efda+SDL3`, executable SHA-256
+  `fd7f9d5ee742957f66e63173dee8125b5fc99038f744d310d9525531a2182fae`. It proved the forward
+  handoff/ingress/dematerialization, normal watch report, and exact `returning_home` handoff at
+  `(164,34,0)`. The full six-hour post-observation window then produced no homeward boundary,
+  dematerialization, or returned-member event. The later `SPACE`/unknown-command abort was
+  post-window harness behavior, not a gameplay interruption.
+- Run `20260807_140347` on `c74427ca37+SDL3` was inconclusive: the observing handoff committed but
+  the exact pair did not assemble within its existing five-minute production guard. It did not
+  exercise the active return seam. The global MSW three-round fuse is exhausted, so the next turn
+  must isolate the route edge rather than retry the scenario unchanged.
 
 ## Pending proof contract
 
