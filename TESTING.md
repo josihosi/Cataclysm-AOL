@@ -101,6 +101,13 @@
   proves assessment completion rebases expected return to a future home leg while both exact and
   inconclusive reports still reconcile only at that new ETA. The harness fixture contract passes
   154 tests. The live run remains necessary to prove the prepared routes reach the camp boundary.
+- Run `20260807_121217` on commit `ff981207da`, executable SHA-256
+  `1335cc0af9cc53454b227e933105176da1bfcf394cb2b75d2606aa6ed2e3bbde`, was red with verdict
+  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`. Assessment completed
+  at minute 8580 and the new distance-derived home leg scheduled minute 8630, proving the stale ETA
+  was repaired. The outing stayed abstract and `returning_home` until minute 8640, when the
+  scheduler returned both members without a homeward handoff or dematerialization. The live
+  materializer exposes no branch-level rejection reason, so no further cause is claimed.
 
 ## Pending proof contract
 

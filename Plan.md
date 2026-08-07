@@ -78,14 +78,20 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   elapsed, so the next same-minute abstract advance reconciled both scouts directly at camp. The
   final report and matching decision were again authoritative, but the required physical return
   remained absent.
+- Run `20260807_121217` on `ff981207da+SDL3` rebased the assessment transition at minute 8580 to a
+  future expected return at minute 8630. The outing remained abstract and `returning_home` until
+  the minute-8640 scheduler reconciled both members; no homeward handoff or dematerialization was
+  committed. Existing materialization diagnostics do not identify which live preflight rejected
+  the fixture, so the focused route-bind proof does not establish that live route.
 
 ## Active claim
 
-Schedule the actual homeward leg from assessment completion with the existing distance-derived
-return travel policy, then rerun `bandit.scout_to_decision_observer_live_mcw` with the same causal
-setup. The incident must show a `returning_home` local handoff and physical boundary exit for the
-exact pair before the already proved canonical home reconciliation, final report, and authoritative
-camp decision.
+Identify the first authoritative live materialization preflight that rejects the exact homeward
+pair in the preserved fixture, using the smallest route-level isolation or homeward-only diagnostic
+that distinguishes the existing rejection branches. Repair only that proven seam, then rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show a `returning_home`
+local handoff and physical boundary exit for the exact pair before the already proved canonical
+home reconciliation, final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
