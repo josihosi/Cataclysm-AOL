@@ -6792,6 +6792,11 @@ void process_monsters_and_npcs_turn_for_test()
     monmove();
 }
 
+void process_overmap_npc_move_for_test()
+{
+    overmap_npc_move();
+}
+
 void game::handle_progress_ui()
 {
     avatar &u = get_avatar();

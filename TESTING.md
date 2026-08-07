@@ -143,7 +143,31 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   column-split OCR preserved its two distinctive phrases across newlines. Normalizing whitespace
   for only those existing lifeless-grass markers recovers this exact safe popup while partial text,
   safe-mode prompts, confirmations, and contaminating portal warnings remain fail-closed. Harness
-  contract: 140 tests green. One second and final live attempt remains on this footing.
+  contract: 140 tests green.
+- Final run `20260807_031409` naturally dispatched on the same gameplay binary, completed both
+  frontier waits and the three-hour boundary wait, then stopped at 55% of the five-minute cadence
+  wait on another non-contaminating Shadow story popup: `You have a vague feeling of being
+  watched.` The visible popup was absent from the structured classifier input, so the bounded
+  `bandit_live_world perf:` heartbeat timed out. No handoff/return credit is assigned. This footing
+  has consumed its two attempts; do not add another OCR/screenshot heuristic or rerun it. The next
+  proof is a bounded real-NPC in-process owner integration through travel, camp arrival,
+  dematerialization, return/report, and decision; later Josef playtesting may reuse the retained
+  artifacts without reopening the coordinator cap.
+- The replacement in-process owner proof is green on Mac at 1 case / 50 assertions. Its fixture is
+  created by the production structural outing planner, then declares the real inactive pair's
+  local `returning_home` state and carried assessment immediately before the causal boundary.
+  After that boundary only `overmap_npc_move()` advances time: both NPCs physically traverse the
+  two-OMT field corridor, the complete pair dematerializes transactionally, the abstract scheduler
+  applies the roster return, the carried assessment becomes the final report, and the camp accepts
+  that report into `report_awaiting_assessment`. No position, return generation, report, or decision
+  is written after the boundary. This is isolated owner-chain proof, not live-row credit. Final
+  build/test logs: `physical_return-reref-build.log`,
+  `physical_return-reref-focused.log`, and `physical_return-reref-adjacent.log`. The adjacent
+  `[npc][bandit]` slice is green at 12
+  cases / 1,046 assertions. Medium autoreview found one P2 test-lifetime defect: the scheduler may
+  append camps and invalidate a retained vector-element reference. The fixed test reacquires its
+  site by stable ID around every production tick; the one clean re-review reports `patch is correct
+  (0.92)` with its focused test green.
 
 ### Capped non-credit probes
 

@@ -71,12 +71,24 @@ target-facing local gate exits, while a deferred homeward phase transition still
 behavior. The focused real-NPC regression and adjacent Mac NPC/bandit slice are green; the same
 observer contract must now prove physical return/report/decision in play.
 
+The two post-fix observer attempts (`20260807_030535`, `20260807_031409`) were both stopped by
+ordinary non-contaminating Shadow story popups during waits. The first exact multiline form is now
+recognized under the existing fail-closed policy; the second popup was not present in structured
+OCR, so the footing is capped rather than growing more screenshot heuristics. Deterministic
+in-process proof now drives a production-planned real inactive pair through ordinary overmap NPC
+travel, camp arrival, transactional dematerialization, authoritative roster return, final report,
+and camp-decision acceptance without post-boundary outcome writes. The focused Mac regression is
+green at 1 case / 50 assertions. This closes the isolated owner seam but does not credit either
+live success row; a new structured-observer footing must join the already-natural first half to
+this physical second half in one incident.
+
 ## Next milestone
 
 Produce one observer-backed vertical proof from a real naturally generated bandit scout
 through physical return, final report, and camp decision. Begin from a declared pre-transition
 fixture boundary, select the real dispatch in the ecology observer, use the existing Step/Play and
-watch controls, and preserve one compact incident chain. The lifecycle row is not credited at
+watch controls rather than the popup-sensitive wait activity, and preserve one compact incident
+chain. The lifecycle row is not credited at
 egress; the same artifact must continue through a surviving physical return, report, and decision.
 Repair only a gameplay or tooling seam that directly blocks this proof.
 
