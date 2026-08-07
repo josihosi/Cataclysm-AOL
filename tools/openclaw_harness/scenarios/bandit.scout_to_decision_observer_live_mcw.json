@@ -104,6 +104,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing three hours",
       "completion_wait_seconds": 60.0,
       "completion_artifact_timeout_seconds": 180.0,
+      "artifact_state_patterns": ["bandit_live_world perf:"],
       "expected_visible_fact": "three ordinary game hours reach the local-handoff boundary without requiring the hourly scheduler to run before the wait UI returns",
       "failure_rule": "The wait may finish exactly on the boundary; the following ordinary turn and log audit own proof of handoff and cohesion."
     },
@@ -117,6 +118,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing five minutes",
       "completion_wait_seconds": 60.0,
       "completion_artifact_timeout_seconds": 180.0,
+      "artifact_state_patterns": ["bandit_live_world perf:"],
       "expected_visible_fact": "five ordinary game minutes cross the overmap-NPC cadence and let production consume the reached handoff boundary",
       "failure_rule": "The following whole-run log audit owns the one-shot handoff/cohesion proof whether production emits it at the three-hour endpoint or during this cadence wait.",
       "proof_deferred_to_label": "audit_real_pair_handoff_and_cohesion"

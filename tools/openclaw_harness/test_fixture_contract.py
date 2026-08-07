@@ -3839,7 +3839,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("select_authoritative_dispatch"),
         )
         handoff_wait = steps[labels.index("wait_3_hours_for_real_pair_handoff")]
-        self.assertNotIn("artifact_state_patterns", handoff_wait)
+        self.assertEqual(handoff_wait["artifact_state_patterns"], ["bandit_live_world perf:"])
         boundary_wait = steps[labels.index("wait_5_minutes_through_real_pair_handoff_cadence")]
         self.assertEqual(boundary_wait["choice_key"], "3")
         self.assertEqual(boundary_wait["expected_duration"], "5m")
@@ -3847,7 +3847,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             boundary_wait["proof_deferred_to_label"],
             "audit_real_pair_handoff_and_cohesion",
         )
-        self.assertNotIn("artifact_state_patterns", boundary_wait)
+        self.assertEqual(boundary_wait["artifact_state_patterns"], ["bandit_live_world perf:"])
         self.assertIn("whole-run log audit", boundary_wait["failure_rule"])
         handoff_audit = steps[labels.index("audit_real_pair_handoff_and_cohesion")]
         self.assertEqual(
