@@ -16,6 +16,9 @@
   measured separately with the gate closed and open.
 - Apply the global MSW deletion rule to every proposed test and remediation. Once evidence closes a
   claim, repeating it requires a new contract-breaking reason.
+- Every red item in `doc/bandit-cannibal-hostile-camp-ai-spec.md` maps to an unchecked outcome in
+  `SUCCESS.md`. Cross it off only with named changed-source, executable, fixture, run, and artifact
+  evidence at the scope claimed; old packet documents and helper-only tests cannot close it.
 
 ## Latest relevant evidence
 

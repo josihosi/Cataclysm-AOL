@@ -7,6 +7,20 @@ This document defines what the feature must do in play, how the implementation i
 game systems, and which parts of the current `dev` diff are complete, partial, or absent. It is not
 a second task roadmap: `Plan.md` and `SUCCESS.md` still determine execution order.
 
+## Document authority and supersession
+
+- `Plan.md` is the sole roadmap, this file is the normative functional/technical contract,
+  `SUCCESS.md` is the outcome ledger, `TODO.md` is only the next execution claim, and `TESTING.md`
+  owns current proof policy/evidence.
+- Older dated bandit/cannibal packet, audit, and proof documents are implementation archaeology.
+  They may explain why a seam exists, but they cannot add requirements, declare success, or
+  override this contract and current source evidence.
+- `TechnicalTome.md` is chronological mechanic history, not a second current-state specification.
+  If its historical wording conflicts with this file, this file and the inspected game path win.
+- Do not recreate a phase ledger or parallel roadmap. Close work by crossing the matching red item
+  here and the corresponding outcome in `SUCCESS.md`, then reduce `TODO.md` to the next necessary
+  claim.
+
 Status markers:
 
 - `[x]` is present in the game path and has proportionate source/test evidence.

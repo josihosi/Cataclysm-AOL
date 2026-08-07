@@ -519,6 +519,11 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
 
 #### Bandit live-world ownership seam v0
+- This subsection is chronological implementation archaeology. The current normative behavior,
+  owner precedence, conformance status, and red gaps live in
+  `doc/bandit-cannibal-hostile-camp-ai-spec.md`; `Plan.md` remains the only roadmap. In particular,
+  persisted hostile-operation structures and focused tests do not prove that the production
+  scheduler launches or completes a shakedown or raid.
 - The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
 - This seam started as the owner ledger and now carries one first bounded control hook too: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim at `map::place_npc` time, and nearby owned sites can now mint one bounded scout dispatch through `plan_site_dispatch(...)` / `apply_dispatch_plan(...)` instead of staying pure post-hoc bookkeeping.
 - Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
