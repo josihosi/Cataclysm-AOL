@@ -41,14 +41,18 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
   `assembled=no, abort=yes` before watch ingress. Verdict:
   `blocked_scout_to_decision_pair_handoff_missing`; no lifecycle credit. No run yet proves the
   complete natural survivor return, final report, and camp decision chain.
+- The run comparison traced that abort to local terrain-dependent staging: the initial fallback
+  motor could fail to path while authoritative cohesion still recorded `failed_routes=0`, then
+  reached its production rendezvous deadline. The current checkpoint puts the first same-minute
+  staging orders through cohesion's transactional route accounting. Focused Mac tests pass 818
+  local-handoff assertions and 126 production watch-adapter assertions.
 
 ## Active claim
 
-Reconcile the same-fixture cohesion outcomes in runs `20260807_083248` and `20260807_090025` before
-changing code: the former assembled the pair; the latter handed off the same route and then tripped
-the persisted cohesion abort. Use their member positions, staging orders, deadlines, and motor
-logs to identify the first authoritative divergence. Fix only that reproducible divergence, then
-rerun the unchanged causal contract on a clean committed binary.
+Checkpoint the same-minute staging-route fix, build a clean SDL3 binary from that commit, and rerun
+`bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
+either reach the natural survivor-return/report/decision pass or preserve the first new
+authoritative blocker.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

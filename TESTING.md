@@ -87,8 +87,12 @@ ID, authoritative owner audit, compact incident JSON, and paired screenshot wher
   identity: `6c1a574ba6+SDL3`.
 - Run `20260807_090025` on that clean binary passed startup, preflight, frontier discovery,
   dispatch, and handoff, but its cohesion audit recorded `assembled=no, abort=no` followed by
-  `assembled=no, abort=yes`. Verdict: `blocked_scout_to_decision_pair_handoff_missing`. Compare it
-  with `20260807_083248` before another change or rerun; the new ingress transaction was not reached.
+  `assembled=no, abort=yes`. Saved state shows terrain-dependent staging positions, no assembly by
+  the production deadline at minute `8410`, and `failed_routes=0`: the fallback assembly motor's
+  path failure was outside authoritative cohesion accounting. The current fix makes first-pass
+  staging orders transactional in the handoff minute. Mac `[local_handoff]` passed 818 assertions
+  in 2 cases; the production watch-adapter case passed 126 assertions. The unchanged live scenario
+  on a clean committed SDL3 binary remains the pending proof.
 
 ## Focused commands
 

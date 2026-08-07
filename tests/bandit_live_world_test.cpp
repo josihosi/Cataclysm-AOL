@@ -8568,8 +8568,10 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         REQUIRE( cohesion.valid );
         CHECK_FALSE( cohesion.snapshot.cohesion_assembled );
         CHECK( cohesion.snapshot.cohesion_deadline_minutes == 110 );
+        REQUIRE( cohesion.reroute_needed );
+        CHECK( cohesion.movement_orders.size() == 2 );
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
-                     site, cohesion, false, false ) );
+                     site, cohesion, true, false ) );
 
         for( std::size_t index = 0; index < reads.size(); ++index ) {
             reads[index].current_position =

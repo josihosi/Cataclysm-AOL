@@ -4976,7 +4976,11 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             snapshot.cohesion_abort_return = true;
             snapshot.phase = scout_phase::returning_home;
             plan.abort_return = true;
-        } else if( current_minutes > outing.local_handoff.committed_minutes ) {
+        } else {
+            // The first cohesion pass owns the staging route.  Waiting for the next game
+            // minute leaves the fallback assembly motor's path failures outside the
+            // authoritative reroute accounting and can reach the rendezvous deadline with
+            // failed_routes still at zero.
             for( const local_cohesion_member_read *read : living_reads ) {
                 if( !read->present || project_to<coords::omt>( read->current_position ) !=
                     snapshot.route_position ) {
