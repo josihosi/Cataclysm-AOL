@@ -54,15 +54,20 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   homeward boundary. The focused schema-10 reproduction showed why: default local A* selected a
   diagonal shortcut through the forbidden watch OMT, the post-route safety check rejected it, and
   every later turn selected the same shortcut again.
+- Checkpoint `caf1844007` supplies that safety rule directly to local A*. Its fixed-seed focused
+  proof is green. Run `20260807_151252` did not reach the repaired homeward seam: at minute 8410
+  each scout was one tile from its assigned staging slot, cohesion emitted no movement order, and
+  the handoff aborted. Movement currently treats adjacency as complete while assembly requires the
+  exact slots.
 
 ## Active claim
 
-Checkpoint the focused homeward-motor repair, then rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged. The repair supplies the existing
-non-reentry contract to local A* as an avoid predicate, so the pair searches around forbidden OMTs
-instead of repeatedly choosing and rejecting the same shortcut. The incident must show the paired
-physical homeward boundary and camp dematerialization before canonical home reconciliation, final
-report, and the authoritative camp decision.
+Make the staging movement and assembly definitions agree without extending the existing guard or
+changing fixture geometry. Prove that the exact pair continues receiving real movement ownership
+until it satisfies the same slot condition used by assembly, then rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
+homeward boundary and camp dematerialization before canonical home reconciliation, final report,
+and the authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

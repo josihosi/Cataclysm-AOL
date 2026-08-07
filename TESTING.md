@@ -57,6 +57,13 @@
   case reproduced the stall: both default local paths crossed the forbidden watch OMT and were
   rejected after selection. Supplying that safety rule to A* as an avoid predicate closes the
   focused motor claim; the unchanged live incident remains pending.
+- Run `20260807_151252` used clean `caf1844007+SDL3`, executable SHA-256
+  `d1c9242a00d0b531f94ce2f3ce0b3ad753cc47a69996ad2ff9ed41935ca1fb2e`. Startup and the feature
+  debug guard were green. At minute 8400 the exact pair received 21 valid staging path steps. At
+  minute 8410 member 4 was `(3936,829,0)->(3936,828,0)` and member 5 was
+  `(3935,828,0)->(3936,829,0)`: both were adjacent, `movement_orders=0`, `assembled=no`, and
+  `abort=yes`. The terminal verdict was `blocked_scout_to_decision_pair_handoff_missing`; no live
+  credit reaches the repaired homeward seam.
 
 ## Pending proof contract
 
