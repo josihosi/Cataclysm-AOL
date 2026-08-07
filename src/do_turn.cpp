@@ -6293,6 +6293,21 @@ live_bandit_pair_boundary_steps(
             tripoint_abs_ms departure;
             tripoint_abs_ms exit;
         };
+        const auto route_rank = []( const npc & member,
+        const tripoint_abs_omt &route_omt ) -> std::optional<std::size_t> {
+            const tripoint_abs_omt current = member.pos_abs_omt();
+            std::size_t rank = 0;
+            for( auto route = member.omt_path.rbegin(); route != member.omt_path.rend(); ++route ) {
+                if( *route == current ) {
+                    continue;
+                }
+                ++rank;
+                if( *route == route_omt ) {
+                    return rank;
+                }
+            }
+            return route_omt == current ? std::optional<std::size_t>( 0 ) : std::nullopt;
+        };
         std::vector<candidate> candidates;
         for( const tripoint_bub_ms &point : here.points_on_zlevel( destination.z() ) ) {
             const tripoint_abs_ms departure = here.get_abs( point );
@@ -6307,8 +6322,7 @@ live_bandit_pair_boundary_steps(
                         continue;
                     }
                     const tripoint_abs_ms exit = departure + point_rel_ms( dx, dy );
-                    if( !here.inbounds( exit ) &&
-                        project_to<coords::omt>( exit ) == destination ) {
+                    if( !here.inbounds( exit ) ) {
                         candidates.push_back( { departure, exit } );
                     }
                 }
@@ -6321,7 +6335,8 @@ live_bandit_pair_boundary_steps(
         } );
 
         std::optional<std::pair<candidate, candidate>> selected;
-        std::tuple<int, int, tripoint_abs_ms, tripoint_abs_ms> selected_score;
+        std::tuple<std::size_t, std::size_t, int, int,
+            tripoint_abs_ms, tripoint_abs_ms> selected_score;
         for( const candidate &first_candidate : candidates ) {
             for( const candidate &second_candidate : candidates ) {
                 if( first_candidate.departure == second_candidate.departure ||
@@ -6330,9 +6345,18 @@ live_bandit_pair_boundary_steps(
                     rl_dist( first_candidate.exit, second_candidate.exit ) > 1 ) {
                     continue;
                 }
+                const std::optional<std::size_t> first_route_rank = route_rank(
+                            *first, project_to<coords::omt>( first_candidate.exit ) );
+                const std::optional<std::size_t> second_route_rank = route_rank(
+                            *second, project_to<coords::omt>( second_candidate.exit ) );
+                if( !first_route_rank || !second_route_rank ) {
+                    continue;
+                }
                 const int first_distance = rl_dist( first->pos_abs(), first_candidate.departure );
                 const int second_distance = rl_dist( second->pos_abs(), second_candidate.departure );
                 const auto score = std::make_tuple(
+                                       std::max( *first_route_rank, *second_route_rank ),
+                                       *first_route_rank + *second_route_rank,
                                        std::max( first_distance, second_distance ),
                                        first_distance + second_distance,
                                        first_candidate.departure, second_candidate.departure );
@@ -6438,13 +6462,36 @@ void complete_live_bandit_homeward_boundary_steps(
             second->pos_abs() != second_step->second.departure ) {
             continue;
         }
+        const std::array<live_bandit_local_handoff_member_backup, 2> backups = { {
+                { overmap_buffer.find_npc( first->getID() ), first->pos_abs(), first->goal,
+                  first->omt_path, first->mission, first->previous_mission,
+                  first->goto_to_this_pos, first->get_ai_guard_pos(), first->path },
+                { overmap_buffer.find_npc( second->getID() ), second->pos_abs(), second->goal,
+                  second->omt_path, second->mission, second->previous_mission,
+                  second->goto_to_this_pos, second->get_ai_guard_pos(), second->path }
+            } };
         first->setpos( first_step->second.exit, false );
         second->setpos( second_step->second.exit, false );
+        if( !live_bandit_route_member_home( *first, site ) ||
+            !live_bandit_route_member_home( *second, site ) ) {
+            for( const live_bandit_local_handoff_member_backup &backup : backups ) {
+                backup.member->setpos( backup.position, false );
+                backup.member->goal = backup.goal;
+                backup.member->omt_path = backup.omt_path;
+                backup.member->mission = backup.mission;
+                backup.member->previous_mission = backup.previous_mission;
+                backup.member->goto_to_this_pos = backup.ordered_position;
+                if( backup.ai_guard_position ) {
+                    backup.member->set_ai_guard_pos( *backup.ai_guard_position );
+                } else {
+                    backup.member->clear_ai_guard_pos();
+                }
+                backup.member->path = backup.local_path;
+            }
+            continue;
+        }
+        const tripoint_abs_omt boundary_omt = first->pos_abs_omt();
         for( npc *member : { first, second } ) {
-            member->goal = npc::no_goal_point;
-            member->omt_path.clear();
-            member->mission = NPC_MISSION_NULL;
-            member->previous_mission = NPC_MISSION_NULL;
             member->goto_to_this_pos = std::nullopt;
             member->clear_ai_guard_pos();
             member->path.clear();
@@ -6455,7 +6502,8 @@ void complete_live_bandit_homeward_boundary_steps(
                                    << " site=" << site.site_id
                                    << " activity=" << outing.activity_id
                                    << " generation=" << outing.generation
-                                   << " route_position=" << site.anchor.to_string()
+                                   << " route_position=" << boundary_omt.to_string()
+                                   << " destination=" << site.anchor.to_string()
                                    << " members=2\n";
     }
 }

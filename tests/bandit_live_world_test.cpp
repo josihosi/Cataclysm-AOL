@@ -8546,7 +8546,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
 
         const tripoint_abs_omt camp = live_site.anchor;
-        g->place_player_overmap( camp + point( -2, -3 ) );
+        g->place_player_overmap( camp + point( -2, -6 ) );
         wipe_map_terrain();
         clear_creatures();
         REQUIRE_FALSE( get_map().inbounds(
@@ -8567,8 +8567,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                         continue;
                     }
                     const tripoint_abs_ms exit = departure + point_rel_ms( dx, dy );
-                    if( !get_map().inbounds( exit ) &&
-                        project_to<coords::omt>( exit ) == camp ) {
+                    if( !get_map().inbounds( exit ) ) {
                         boundary_slots.push_back( { departure, exit } );
                     }
                 }
@@ -8580,22 +8579,29 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                    std::tie( rhs.departure, rhs.exit );
         } );
         std::optional<std::pair<boundary_slot, boundary_slot>> paired_slots;
+        int paired_distance = std::numeric_limits<int>::max();
         for( const boundary_slot &first : boundary_slots ) {
             for( const boundary_slot &second : boundary_slots ) {
                 if( first.departure != second.departure && first.exit != second.exit &&
-                    rl_dist( first.exit, second.exit ) <= 1 ) {
+                    rl_dist( first.exit, second.exit ) <= 1 &&
+                    project_to<coords::omt>( first.exit ) ==
+                    project_to<coords::omt>( second.exit ) ) {
+                    const int distance = rl_dist(
+                                             project_to<coords::omt>( first.exit ), camp );
+                    if( distance >= paired_distance ) {
+                        continue;
+                    }
                     paired_slots = std::make_pair( first, second );
-                    break;
+                    paired_distance = distance;
                 }
-            }
-            if( paired_slots ) {
-                break;
             }
         }
         REQUIRE( paired_slots );
         const std::array<boundary_slot, 2> assigned_slots = {
             paired_slots->first, paired_slots->second
         };
+        const tripoint_abs_omt route_edge = project_to<coords::omt>( assigned_slots[0].exit );
+        REQUIRE( route_edge != camp );
         for( std::size_t index = 0; index < live_ids.size(); ++index ) {
             npc *member = g->find_npc( live_ids[index] );
             REQUIRE( member != nullptr );
@@ -8609,8 +8615,9 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             REQUIRE( member->is_active() );
             REQUIRE( get_map().inbounds( assigned_slots[index].departure ) );
             member->setpos( get_map(), get_map().get_bub( assigned_slots[index].departure ) );
+            REQUIRE( member->pos_abs_omt() != route_edge );
             member->goal = camp;
-            member->omt_path = { camp, member->pos_abs_omt() };
+            member->omt_path = { camp, route_edge, member->pos_abs_omt() };
             member->set_mission( NPC_MISSION_TRAVELLING );
             member->path = { get_map().get_bub( assigned_slots[index].departure ) };
         }
@@ -8621,9 +8628,27 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             REQUIRE( member != nullptr );
             CHECK_FALSE( member->is_active() );
             CHECK_FALSE( get_map().inbounds( member->pos_abs() ) );
-            CHECK( member->pos_abs_omt() == camp );
+            CHECK( member->pos_abs_omt() == route_edge );
+            CHECK( member->goal == camp );
+            CHECK_FALSE( member->omt_path.empty() );
+            CHECK( member->mission == NPC_MISSION_TRAVELLING );
         }
-        REQUIRE( dematerialize_live_bandit_structural_handoffs_for_test() );
+        std::size_t remaining_route_operations = 0;
+        for( const character_id id : live_ids ) {
+            const shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+            REQUIRE( member != nullptr );
+            // Each overmap call can consume or traverse one persisted waypoint.
+            remaining_route_operations = std::max(
+                                             remaining_route_operations,
+                                             member->omt_path.size() * 2 + 1 );
+        }
+        for( std::size_t operation = 0;
+             operation < remaining_route_operations &&
+             live_site.active_outing.owner == bandit_live_world::simulation_owner::local;
+             ++operation ) {
+            process_monsters_and_npcs_turn_for_test();
+            process_overmap_npc_move_for_test();
+        }
         CHECK( live_site.active_outing.owner ==
                bandit_live_world::simulation_owner::abstract );
         CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
