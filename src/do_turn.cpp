@@ -3727,6 +3727,7 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
         std::vector<order_backup> backups;
         bool route_attempted = false;
         bool route_failed = false;
+        int routed_path_steps = 0;
         for( const std::pair<character_id, tripoint_abs_ms> &order : plan.movement_orders ) {
             npc *member = g->find_npc( order.first );
             if( member == nullptr || member->is_dead() || !here.inbounds( member->pos_abs() ) ||
@@ -3740,6 +3741,8 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             route_attempted = true;
             if( !live_bandit_update_local_path( *member, here.get_bub( order.second ) ) ) {
                 route_failed = true;
+            } else {
+                routed_path_steps += static_cast<int>( member->path.size() );
             }
         }
 
@@ -3790,6 +3793,10 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                                    ( site.active_outing.local_handoff.cohesion_assembled ? "yes" : "no" )
                                    << " failed_routes=" <<
                                    site.active_outing.local_handoff.cohesion_reroutes_used
+                                   << " movement_orders=" << plan.movement_orders.size()
+                                   << " route_attempted=" << ( route_attempted ? "yes" : "no" )
+                                   << " route_failed=" << ( route_failed ? "yes" : "no" )
+                                   << " path_steps=" << routed_path_steps
                                    << " abort=" <<
                                    ( site.active_outing.local_handoff.cohesion_abort_return ? "yes" : "no" )
                                    << '\n';

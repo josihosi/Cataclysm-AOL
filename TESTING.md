@@ -94,7 +94,12 @@ ID, authoritative owner audit, compact incident JSON, and paired screenshot wher
   preserved the pair alive under the local owner in `returning_home`; no lifecycle credit. The
   current fix preserves the completed assembly gate during its exact forward-ingress route. Mac
   `[local_handoff]` passed 824 assertions in 2 cases, including the new released-ingress regression.
-  The unchanged live scenario on a clean committed SDL3 binary remains the pending proof.
+  Run `20260807_093242` on clean `67848e5f84+SDL3` committed the handoff but again reached the
+  rendezvous deadline without assembly; its persisted state showed `failed_routes=0` but could not
+  recover whether orders were motor-addressable or whether successful paths went unconsumed. The
+  existing cohesion state-change event now includes movement-order, route-attempt/failure, and path
+  step counts. The unchanged live scenario on a clean committed SDL3 binary is the pending proof;
+  those fields must isolate the first motor divergence without another debug surface.
 
 ## Focused commands
 

@@ -47,11 +47,14 @@ cannibal night-raid lifecycle, and release-relevant performance/save/platform qu
   travel revoked the completed staging gate on every step, oscillated the pair back to staging, and
   eventually forced `returning_home` by the rendezvous deadline. The current fix latches completed
   assembly while the forward ingress motor owns that route. Focused Mac local-handoff tests pass
-  824 assertions.
+  824 assertions. Run `20260807_093242` on clean `67848e5f84+SDL3` regenerated a handoff that
+  reached the same deadline without assembly or a recorded route failure. Its saved abort state no
+  longer contains the transient motor result, so the existing cohesion event now records planned
+  orders, route attempt/failure, and path steps for the next unchanged run.
 
 ## Active claim
 
-Checkpoint the forward-ingress assembly release, build a clean SDL3 binary from that commit, and rerun
+Checkpoint the targeted cohesion motor receipt, build a clean SDL3 binary from that commit, and rerun
 `bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
 either reach the natural survivor-return/report/decision pass or preserve the first new
 authoritative blocker.
