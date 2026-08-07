@@ -6765,7 +6765,7 @@ void monmove()
             if( assembly_order != pair_assembly_orders.end() ) {
                 if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
                     !m.inbounds( assembly_order->second ) ||
-                    rl_dist( guy.pos_abs(), assembly_order->second ) <= 1 ) {
+                    guy.pos_abs() == assembly_order->second ) {
                     guy.move_pause();
                 } else {
                     if( live_bandit_update_local_path(

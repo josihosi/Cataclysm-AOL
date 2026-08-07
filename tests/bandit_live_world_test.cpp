@@ -8346,9 +8346,37 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                         CHECK( rl_dist( g->find_npc( id )->pos_abs(), snapshot.staging_position ) <
                                distance_before_motor.at( id ) );
                     }
-                    g->find_npc( id )->setpos( get_map(), get_map().get_bub(
-                                                  snapshot.staging_position ) );
                 }
+                const bandit_live_world::local_handoff_member_snapshot &leader_snapshot =
+                    live_site.active_outing.local_handoff.members[0];
+                const bandit_live_world::local_handoff_member_snapshot &partner_snapshot =
+                    live_site.active_outing.local_handoff.members[1];
+                npc *leader = g->find_npc( leader_snapshot.npc_id );
+                npc *partner = g->find_npc( partner_snapshot.npc_id );
+                REQUIRE( leader != nullptr );
+                REQUIRE( partner != nullptr );
+                const int staging_dx = leader_snapshot.staging_position.x() -
+                                       partner_snapshot.staging_position.x();
+                const int staging_dy = leader_snapshot.staging_position.y() -
+                                       partner_snapshot.staging_position.y();
+                const tripoint_abs_ms partner_approach =
+                    partner_snapshot.staging_position + point( -staging_dy, staging_dx );
+                REQUIRE( get_map().inbounds( partner_approach ) );
+                REQUIRE( partner_approach != leader_snapshot.staging_position );
+                REQUIRE( partner_approach != partner_snapshot.staging_position );
+                leader->setpos( get_map(), get_map().get_bub(
+                                    partner_snapshot.staging_position ) );
+                partner->setpos( get_map(), get_map().get_bub( partner_approach ) );
+                for( npc *member : { leader, partner } ) {
+                    member->path.clear();
+                    member->set_moves( 100 );
+                }
+                REQUIRE( rl_dist( leader->pos_abs(), leader_snapshot.staging_position ) == 1 );
+                REQUIRE( rl_dist( partner->pos_abs(), partner_snapshot.staging_position ) == 1 );
+                calendar::turn += 1_minutes;
+                process_monsters_and_npcs_turn_for_test();
+                CHECK( leader->pos_abs() == leader_snapshot.staging_position );
+                CHECK( partner->pos_abs() == partner_snapshot.staging_position );
                 maintain_live_bandit_local_pair_cohesion_for_test();
                 REQUIRE( live_site.active_outing.local_handoff.cohesion_assembled );
                 CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );

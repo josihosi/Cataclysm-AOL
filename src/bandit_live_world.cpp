@@ -4995,7 +4995,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
                 return candidate.npc_id == read->npc_id;
             } );
             if( member == snapshot.members.end() ||
-                rl_dist( read->current_position, member->staging_position ) > 1 ) {
+                read->current_position != member->staging_position ) {
                 assembled = false;
                 break;
             }
@@ -5038,7 +5038,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
                     return candidate.npc_id == read->npc_id;
                 } );
                 if( member != snapshot.members.end() &&
-                    rl_dist( read->current_position, member->staging_position ) > 1 ) {
+                    read->current_position != member->staging_position ) {
                     plan.movement_orders.emplace_back( read->npc_id, member->staging_position );
                 }
             }
