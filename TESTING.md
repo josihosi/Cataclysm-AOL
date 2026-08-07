@@ -118,6 +118,15 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   three-hour wait with a bounded five-minute overmap-NPC cadence wait, then audits the whole run for
   the one-shot handoff/cohesion receipt. The harness contract remains green at 139 tests; live proof
   on this repaired footing is pending.
+- Run `20260807_023247` showed that a wait without step-local patterns falls back to one-shot global
+  proof patterns and aborts before the cadence step. Checkpoint `6bf8b190e0` gives both boundary
+  waits a repeatable post-choice performance heartbeat while the whole-run audit exclusively owns
+  handoff/cohesion proof; the 139-test contract remains green.
+- Run `20260807_024225` stopped during the first six-hour wait on upstream
+  `overmap::place_highway_line` debug popup `highway slant pathing out of bounds; falling back to
+  onramp`. The ecology bootstrap already calls `overmap_special_at_existing` and does not generate
+  missing overmaps; no ecology transition was reached and no behavior credit or defect is assigned.
+  The repaired live footing has exhausted its attempts until a return-path code/test change exists.
 
 ### Capped non-credit probes
 
