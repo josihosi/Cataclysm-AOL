@@ -6285,7 +6285,7 @@ live_bandit_pair_boundary_steps(
         npc *second = g->find_npc( outing.member_ids[1] );
         if( here.inbounds( destination_center ) || first == nullptr || second == nullptr ||
             first->is_dead() || second->is_dead() || !first->is_active() ||
-            !second->is_active() || !first->path.empty() || !second->path.empty() ) {
+            !second->is_active() ) {
             continue;
         }
 

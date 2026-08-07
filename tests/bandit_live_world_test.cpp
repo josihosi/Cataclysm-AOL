@@ -8546,9 +8546,11 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
 
         const tripoint_abs_omt camp = live_site.anchor;
-        g->place_player_overmap( camp + point( 0, -3 ) );
+        g->place_player_overmap( camp + point( -2, -3 ) );
         wipe_map_terrain();
         clear_creatures();
+        REQUIRE_FALSE( get_map().inbounds(
+                           project_to<coords::ms>( camp ) + point( SEEX, SEEY ) ) );
         struct boundary_slot {
             tripoint_abs_ms departure;
             tripoint_abs_ms exit;
@@ -8572,6 +8574,11 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 }
             }
         }
+        std::sort( boundary_slots.begin(), boundary_slots.end(),
+        []( const boundary_slot & lhs, const boundary_slot & rhs ) {
+            return std::tie( lhs.departure, lhs.exit ) <
+                   std::tie( rhs.departure, rhs.exit );
+        } );
         std::optional<std::pair<boundary_slot, boundary_slot>> paired_slots;
         for( const boundary_slot &first : boundary_slots ) {
             for( const boundary_slot &second : boundary_slots ) {
@@ -8592,12 +8599,20 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         for( std::size_t index = 0; index < live_ids.size(); ++index ) {
             npc *member = g->find_npc( live_ids[index] );
             REQUIRE( member != nullptr );
+            member->spawn_at_precise( get_avatar().pos_abs() +
+                                      point( static_cast<int>( index ) + 1, 0 ) );
+        }
+        g->load_npcs();
+        for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+            npc *member = g->find_npc( live_ids[index] );
+            REQUIRE( member != nullptr );
+            REQUIRE( member->is_active() );
             REQUIRE( get_map().inbounds( assigned_slots[index].departure ) );
             member->setpos( get_map(), get_map().get_bub( assigned_slots[index].departure ) );
             member->goal = camp;
             member->omt_path = { camp, member->pos_abs_omt() };
             member->set_mission( NPC_MISSION_TRAVELLING );
-            member->path.clear();
+            member->path = { get_map().get_bub( assigned_slots[index].departure ) };
         }
 
         process_monsters_and_npcs_turn_for_test();
