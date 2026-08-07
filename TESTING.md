@@ -63,6 +63,22 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
+- Run `20260807_043746` on clean `5010d98e3d+SDL3` naturally reached exact dispatch and
+  `local_handoff committed ... members=2`. During the ordinary wait it opened the real bandit
+  Pay/Fight dialogue for Giuseppe Bachman before physical return/report/decision; the paired
+  screenshot is `wait_5_minutes_through_real_pair_handoff_cadence.before.png`. This is a gameplay
+  ownership failure, not proof of the vertical or a permission/OCR failure. The footing is
+  exhausted and must not be rerun.
+- The repair requires explicit `toll` intent and, for the new owner, operation kind `shakedown`.
+  A favorable two-person structural scout contact remains `probe`; production-shaped hostile
+  operation tests prove the positive surface and aftermath paths through `active_external_outing()`.
+  All live gate-input, trader/speaker/fight, parley, and defender-aftermath consumers now read the
+  same authoritative external outing. Mac `bandit_live_world.o`/`do_turn.o` plus test rebuild:
+  exit 0. `[approach_gate],[shakedown],[hostile_operation]`: 11 cases / 1,429 assertions, seed
+  `860807`. The first medium review found the legacy-only live consumers; the required re-review
+  found the remaining gate-input and defender-aftermath bypasses. Both findings were accepted and
+  fixed; deterministic closeout replaced another reviewer chain.
+  Live success credit remains pending on a materially different footing.
 - Run `20260807_041806` on clean `38ab88e8cf+SDL3` naturally reached the exact pair's dispatch,
   handoff, repeated `assembled=yes` cohesion, observer selection, and the final six-hour watch. At
   scheduler hour 144 the outing was still active. A safe Shadow EOC popup was acknowledged and its

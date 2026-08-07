@@ -14293,7 +14293,16 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     shakedown_input.local_contact_established = true;
     decision = bandit_live_world::choose_local_gate_posture( site, shakedown_input );
     CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::probe );
+    CHECK_FALSE( decision.shakedown_capable );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+
+    site.active_outing.job_type = "toll";
+    decision = bandit_live_world::choose_local_gate_posture( site, shakedown_input );
+    CHECK( decision.valid );
     CHECK( decision.posture == bandit_live_world::local_gate_posture::open_shakedown );
+    CHECK( decision.shakedown_capable );
     CHECK( decision.opens_shakedown_surface );
     CHECK_FALSE( decision.combat_forward );
 
@@ -19735,7 +19744,8 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player@18,20,0" );
     REQUIRE( plan.valid );
-    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    prepare_hostile_follow_on( site, 2, 1, plan.target_id, plan.target_omt, 100 );
+    apply_test_hostile_dispatch( site, plan, 102 );
 
     bandit_live_world::local_gate_input single_bandit_gate_input;
     single_bandit_gate_input.local_threat = 1;
@@ -19747,10 +19757,6 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     CHECK( single_bandit_gate_decision.posture ==
            bandit_live_world::local_gate_posture::open_shakedown );
     CHECK( single_bandit_gate_decision.opens_shakedown_surface );
-
-    REQUIRE( bandit_live_world::update_member_state( site, character_id( 952 ),
-             bandit_live_world::member_state::outbound, "joins shakedown proof group" ) );
-    site.active_outing.member_ids.push_back( character_id( 952 ) );
 
     bandit_live_world::local_gate_input gate_input;
     gate_input.local_threat = 1;
@@ -19836,6 +19842,34 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     CHECK_FALSE( rolling_surface.valid );
     REQUIRE_FALSE( rolling_surface.notes.empty() );
     CHECK( rolling_surface.notes.front().find( "direct-ambush" ) != std::string::npos );
+
+    const std::vector<character_id> hostile_member_ids =
+        site.active_hostile_operation.reservation.member_ids;
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::rallying, 104,
+                 "hostile shakedown reached rally" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::rallying,
+                 bandit_live_world::hostile_operation_phase::approaching, 105,
+                 "hostile shakedown approached target" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::approaching,
+                 bandit_live_world::hostile_operation_phase::committed_contact, 106,
+                 "hostile shakedown reached local contact" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    for( const character_id member_id : hostile_member_ids ) {
+        CHECK( bandit_live_world::is_active_shakedown_parley_member( world, member_id ) );
+    }
+    CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
+                     world, character_id( 953 ) ) );
+    bandit_live_world::world_state wrong_operation = world;
+    wrong_operation.sites.front().active_hostile_operation.operation_kind =
+        bandit_live_world::hostile_operation_kind::raid;
+    CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
+                     wrong_operation, hostile_member_ids.front() ) );
 }
 
 
@@ -19856,7 +19890,8 @@ TEST_CASE( "bandit_live_world_records_shakedown_aftermath_for_renegotiation_pres
     const bandit_live_world::dispatch_plan plan =
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player@18,20,0" );
     REQUIRE( plan.valid );
-    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    prepare_hostile_follow_on( site, 2, 1, plan.target_id, plan.target_omt, 100 );
+    apply_test_hostile_dispatch( site, plan, 102 );
     site.remembered_threat_estimate = 4;
 
     bandit_live_world::local_gate_input gate_input;

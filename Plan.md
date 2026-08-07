@@ -92,6 +92,13 @@ the existing `IGNORE` response for a complete known-type query when OCR is clear
 recognizes that same partial prompt; unrelated unknown, malformed, stale, and truncated inputs
 remain fail-closed.
 
+Run `20260807_043746` on clean `5010d98e3d+SDL3` naturally reached exact dispatch and committed the
+two-person local handoff, then exposed a gameplay ownership defect: the structural scout pair
+opened the bandit Pay/Fight shakedown dialogue before physical return, report, and camp decision.
+That footing has exhausted its two attempts and receives no success credit. The bounded repair
+requires explicit `toll` intent from the authoritative external outing and, for the new operation
+owner, an actual shakedown operation kind; ordinary scout contact remains a probe.
+
 ## Next milestone
 
 Produce one observer-backed vertical proof from a real naturally generated bandit scout
@@ -100,7 +107,8 @@ fixture boundary, select the real dispatch in the ecology observer, use the exis
 flow with structured popup receipts, and preserve one compact incident chain. The lifecycle row is
 not credited at egress; the same artifact must continue through a surviving physical return,
 report, and decision.
-Repair only a gameplay or tooling seam that directly blocks this proof.
+Checkpoint the scout/shakedown ownership repair, then establish a materially different footing for
+the next proof. Repair only a gameplay or tooling seam that directly blocks this proof.
 
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a

@@ -260,28 +260,32 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
 
     map &here = get_map();
     int closest_member_distance = rl_dist( site.anchor, u.pos_abs_omt() );
-    for( const character_id &member_id : site.active_outing.member_ids ) {
-        if( site.active_outing.member_is_resolved( member_id ) ) {
-            continue;
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing != nullptr ) {
+        for( const character_id &member_id : outing->member_ids ) {
+            if( outing->member_is_resolved( member_id ) ) {
+                continue;
+            }
+            const npc *member_npc = g->find_npc( member_id );
+            if( member_npc == nullptr ) {
+                continue;
+            }
+            const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
+            input.current_exposure |= get_player_view().sees( here, member_pos ) ||
+                                      live_bandit_seen_by_nearby_ally( here, u, member_pos );
+            const bool smoke_on_member = live_bandit_tile_has_smoke( here, member_pos );
+            const bool smoke_on_sightline = live_bandit_smoke_between( here, u.pos_bub( here ),
+                                                member_pos );
+            input.smoke_on_watcher_tile |= smoke_on_member;
+            input.smoke_between_watcher_and_camp |= smoke_on_sightline;
+            input.smoke_obscured_lead |= smoke_on_member || smoke_on_sightline;
+            const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
+            closest_member_distance = std::min( closest_member_distance, distance );
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            const bool saved_local_contact = member != nullptr &&
+                                             member->state == bandit_live_world::member_state::local_contact;
+            input.local_contact_established |= distance <= 1 || saved_local_contact;
         }
-        const npc *member_npc = g->find_npc( member_id );
-        if( member_npc == nullptr ) {
-            continue;
-        }
-        const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
-        input.current_exposure |= get_player_view().sees( here, member_pos ) ||
-                                  live_bandit_seen_by_nearby_ally( here, u, member_pos );
-        const bool smoke_on_member = live_bandit_tile_has_smoke( here, member_pos );
-        const bool smoke_on_sightline = live_bandit_smoke_between( here, u.pos_bub( here ), member_pos );
-        input.smoke_on_watcher_tile |= smoke_on_member;
-        input.smoke_between_watcher_and_camp |= smoke_on_sightline;
-        input.smoke_obscured_lead |= smoke_on_member || smoke_on_sightline;
-        const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
-        closest_member_distance = std::min( closest_member_distance, distance );
-        const bandit_live_world::member_record *member = site.find_member( member_id );
-        const bool saved_local_contact = member != nullptr &&
-                                         member->state == bandit_live_world::member_state::local_contact;
-        input.local_contact_established |= distance <= 1 || saved_local_contact;
     }
     input.standoff_distance = closest_member_distance;
     if( input.local_contact_established && !input.rolling_travel_scene ) {
@@ -475,8 +479,12 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
         const bandit_live_world::local_gate_input &input,
         const bandit_live_world::shakedown_surface &surface, avatar &u )
 {
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return 0;
+    }
     npc *trader = nullptr;
-    for( const character_id &member_id : site.active_outing.member_ids ) {
+    for( const character_id &member_id : outing->member_ids ) {
         if( npc *candidate = g->find_npc( member_id ) ) {
             trader = candidate;
             break;
@@ -547,7 +555,11 @@ bool live_bandit_shakedown_already_opened( const bandit_live_world::site_record 
     if( site.shakedown_reopen_available && !site.shakedown_reopen_used ) {
         return false;
     }
-    for( const character_id &member_id : site.active_outing.member_ids ) {
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return false;
+    }
+    for( const character_id &member_id : outing->member_ids ) {
         const bandit_live_world::member_record *member = site.find_member( member_id );
         if( member != nullptr && member->last_writeback_summary.find( "shakedown_surface" ) !=
             std::string::npos ) {
@@ -628,6 +640,11 @@ void live_bandit_commit_paid_release( bandit_live_world::site_record &site,
 void live_bandit_choose_fight( bandit_live_world::site_record &site,
                                const bandit_live_world::shakedown_surface &surface, const avatar &u )
 {
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return;
+    }
+    const std::vector<character_id> member_ids = outing->member_ids;
     bandit_live_world::shakedown_outcome outcome;
     outcome.fought = true;
     outcome.basecamp_or_camp_scene = surface.includes_basecamp_inventory;
@@ -642,7 +659,7 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
     const std::string summary = string_format( "shakedown_surface fight demanded=%d reachable=%d",
                                 surface.demanded_value, surface.reachable_goods_value );
     DebugLog( D_INFO, DC_ALL ) << summary << '\n';
-    for( const character_id &member_id : site.active_outing.member_ids ) {
+    for( const character_id &member_id : member_ids ) {
         bandit_live_world::update_member_state( site, member_id,
                                                 bandit_live_world::member_state::local_contact, summary );
         if( npc *member_npc = g->find_npc( member_id ) ) {
@@ -653,7 +670,11 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
 
 std::pair<std::string, nc_color> live_bandit_shakedown_speaker( const bandit_live_world::site_record &site )
 {
-    for( const character_id &member_id : site.active_outing.member_ids ) {
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return { _( "Bandit" ), c_red };
+    }
+    for( const character_id &member_id : outing->member_ids ) {
         if( const npc *member_npc = g->find_npc( member_id ) ) {
             return { member_npc->disp_name(), member_npc->basic_symbol_color() };
         }
@@ -1592,7 +1613,8 @@ bool live_bandit_try_fight_advance( npc &member_npc,
 
     DebugLog( D_INFO, DC_ALL ) << "bandit_live_world shakedown_fight_advance"
                                << " site=" << site.site_id
-                               << " active_group=" << site.active_outing.activity_id
+                               << " active_group=" << ( site.active_external_outing() == nullptr ?
+                                      "none" : site.active_external_outing()->activity_id )
                                << " profile=" << bandit_live_world::to_string( site.profile )
                                << " posture=" << bandit_live_world::to_string( gate_decision.posture )
                                << " npc=" << member_npc.getID().get_value()
@@ -1610,20 +1632,88 @@ bool live_bandit_try_fight_advance( npc &member_npc,
     return attacked || moved || path_found || adjacent;
 }
 
+bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_record &site,
+        const avatar &u )
+{
+    bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( site.retired_empty_site || outing == nullptr || !outing->is_active() ||
+        outing != &site.active_hostile_operation.reservation ||
+        site.active_hostile_operation.operation_kind !=
+        bandit_live_world::hostile_operation_kind::shakedown ||
+        outing->owner != bandit_live_world::simulation_owner::local ) {
+        return false;
+    }
+
+    const bool has_loaded_local_contact = std::any_of(
+            outing->member_ids.begin(), outing->member_ids.end(), [&site]( const character_id member_id ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        npc *member_npc = g->find_npc( member_id );
+        return member != nullptr && member->state == bandit_live_world::member_state::local_contact &&
+               member_npc != nullptr && !member_npc->is_dead();
+    } );
+    if( !has_loaded_local_contact ) {
+        return false;
+    }
+
+    bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
+    gate_input.local_contact_established = true;
+    const bandit_live_world::local_gate_decision gate_decision =
+        bandit_live_world::choose_local_gate_posture( site, gate_input );
+    if( gate_decision.combat_forward ) {
+        bool changed = false;
+        for( const character_id member_id : outing->member_ids ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
+                continue;
+            }
+            if( npc *member_npc = g->find_npc( member_id ) ) {
+                changed |= live_bandit_try_fight_advance( *member_npc, site, gate_input,
+                           gate_decision );
+            }
+        }
+        return changed;
+    }
+    if( gate_decision.opens_shakedown_surface ) {
+        return open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
+    }
+    return false;
+}
+
+bool live_bandit_apply_shakedown_defender_aftermath( bandit_live_world::site_record &site,
+        const avatar &u )
+{
+    if( site.retired_empty_site || !site.shakedown_basecamp_defender_observation_pending ) {
+        return false;
+    }
+    const int live_defenders = live_bandit_nearby_basecamp_defender_count( u );
+    const bandit_live_world::shakedown_aftermath_effect defender_effect =
+        bandit_live_world::apply_shakedown_basecamp_defender_observation( site, live_defenders );
+    if( !defender_effect.valid ) {
+        return false;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "bandit shakedown aftermath: basecamp defender strength dropped from "
+            << site.shakedown_basecamp_defenders_at_fight << " to " << live_defenders
+            << "; stronger reopen available="
+            << ( site.shakedown_reopen_available ? "yes" : "no" );
+    return true;
+}
+
 bool note_live_bandit_local_turn_sight_avoid()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
-        if( site.retired_empty_site || !site.active_outing.is_active() ||
-            site.active_outing.owner != bandit_live_world::simulation_owner::local ||
-            site.active_outing.member_ids.empty() ||
-            bandit_live_world::active_outing_requires_homeward_routing( site.active_outing ) ) {
+        const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+        if( site.retired_empty_site || outing == nullptr || !outing->is_active() ||
+            outing->owner != bandit_live_world::simulation_owner::local ||
+            outing->member_ids.empty() ||
+            bandit_live_world::active_outing_requires_homeward_routing( *outing ) ) {
             continue;
         }
 
         bool has_loaded_local_contact_member = false;
-        for( const character_id &member_id : site.active_outing.member_ids ) {
+        for( const character_id &member_id : outing->member_ids ) {
             const bandit_live_world::member_record *member = site.find_member( member_id );
             if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                 continue;
@@ -1647,7 +1737,7 @@ bool note_live_bandit_local_turn_sight_avoid()
                                    gate_decision )
                                    << "- live_existing_active_group=yes\n";
         if( gate_decision.combat_forward ) {
-            for( const character_id &member_id : site.active_outing.member_ids ) {
+            for( const character_id &member_id : outing->member_ids ) {
                 const bandit_live_world::member_record *member = site.find_member( member_id );
                 if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                     continue;
@@ -1667,7 +1757,7 @@ bool note_live_bandit_local_turn_sight_avoid()
             gate_decision.posture != bandit_live_world::local_gate_posture::hold_off ) {
             continue;
         }
-        for( const character_id &member_id : site.active_outing.member_ids ) {
+        for( const character_id &member_id : outing->member_ids ) {
             const bandit_live_world::member_record *member = site.find_member( member_id );
             if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                 continue;
@@ -2559,6 +2649,12 @@ bool note_live_bandit_aftermath()
     bool changed = false;
 
     for( bandit_live_world::site_record &site : state.sites ) {
+        changed |= live_bandit_apply_shakedown_defender_aftermath( site, u );
+        bandit_live_world::active_outing_state *external_outing = site.active_external_outing();
+        if( external_outing != nullptr && external_outing != &site.active_outing ) {
+            changed |= live_bandit_handle_hostile_shakedown_contact( site, u );
+            continue;
+        }
         if( site.retired_empty_site || !site.active_outing.is_active() || site.active_outing.member_ids.empty() ) {
             continue;
         }
@@ -2796,21 +2892,6 @@ bool note_live_bandit_aftermath()
             }
 
             observations.push_back( observation );
-        }
-
-        if( site.shakedown_basecamp_defender_observation_pending ) {
-            const bandit_live_world::shakedown_aftermath_effect defender_effect =
-                bandit_live_world::apply_shakedown_basecamp_defender_observation( site,
-                        live_bandit_nearby_basecamp_defender_count( u ) );
-            if( defender_effect.valid ) {
-                changed = true;
-                DebugLog( D_INFO, DC_ALL )
-                        << "bandit shakedown aftermath: basecamp defender strength dropped from "
-                        << site.shakedown_basecamp_defenders_at_fight << " to "
-                        << live_bandit_nearby_basecamp_defender_count( u )
-                        << "; stronger reopen available="
-                        << ( site.shakedown_reopen_available ? "yes" : "no" );
-            }
         }
 
         const bool scout_phase_outing = site.active_outing.kind ==

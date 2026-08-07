@@ -2,18 +2,17 @@
 
 ## Now
 
-Commit and rebuild the structured activity-query trace seam, then spend the second and final live
-scout-to-decision attempt on that exact binary. Require the real trace to return `action=IGNORE`
-before crediting prompt recovery; do not add another OCR or screenshot classifier.
+Checkpoint the scout/shakedown ownership repair exposed by run `20260807_043746`: structural scout
+contact must remain a probe, while only an authoritative `toll`/shakedown operation may open the
+Pay/Fight surface. Close with focused owner-shaped tests and the accepted review corrections.
 
 ## Immediate follow-ups
 
-1. Preserve the green bounded in-process physical-return/report/decision regression as the lower
-   half control; do not substitute it for the required same-incident live evidence.
-2. Once bandit scout-to-decision is green, continue the same observed owner into the shakedown
-   outcome; do not open a new micro-ledger.
-3. Preserve the capped smoke/light/sound, decoy, and visible-burn fixtures for Josef's later
-   disposable playtest packet without another coordinator-run attempt.
+1. Design a materially different observer footing; do not rerun the exhausted live setup or add
+   more OCR/wait-menu heuristics.
+2. Preserve the green bounded physical-return/report/decision regression as the lower-half control;
+   do not substitute it for the required same-incident live evidence.
+3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.
 
 Do not suppress upstream debug popups, start horde/stalker adapters, add arbitrary editor breadth,
 or resume Phase-6 helper expansion.

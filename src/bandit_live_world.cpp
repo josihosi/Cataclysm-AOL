@@ -15250,7 +15250,13 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
                                         outing == &site.active_hostile_operation.reservation &&
                                         active_job.has_value() &&
                                         cannibal_job_requires_attack_pack( *active_job );
-    decision.shakedown_capable = profile != hostile_site_profile::cannibal_camp &&
+    const bool new_model_shakedown_intent =
+        outing != &site.active_hostile_operation.reservation ||
+        site.active_hostile_operation.operation_kind == hostile_operation_kind::shakedown;
+    const bool bandit_shakedown_intent = profile != hostile_site_profile::cannibal_camp &&
+                                         active_job == bandit_dry_run::job_template::toll &&
+                                         new_model_shakedown_intent;
+    decision.shakedown_capable = bandit_shakedown_intent &&
                                   !input.rolling_travel_scene && decision.dispatch_strength >= 1 &&
                                   decision.pressure_margin >= 2;
     if( decision.shakedown_capable ) {
@@ -15381,8 +15387,7 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
-    if( input.local_contact_established && decision.dispatch_strength >= 1 &&
-        decision.pressure_margin >= 2 ) {
+    if( input.local_contact_established && decision.shakedown_capable ) {
         decision.posture = local_gate_posture::open_shakedown;
         decision.opens_shakedown_surface = true;
         decision.notes.push_back( "contact is established and pressure is strong enough to open the later shakedown surface" );
@@ -17149,10 +17154,11 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool )
 {
     shakedown_surface surface;
+    const active_outing_state *outing = site.active_external_outing();
 
     if( !decision.valid || !decision.opens_shakedown_surface ||
         decision.posture != local_gate_posture::open_shakedown ||
-        !site.active_outing.is_active() ) {
+        outing == nullptr || !outing->is_active() ) {
         surface.notes.push_back( "shakedown blocked: local gate did not open the robbery surface" );
         return surface;
     }
@@ -17207,16 +17213,17 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
     surface.notes.push_back( "pay branch opens the NPC trade UI with the demanded toll as debt before any goods are surrendered" );
     surface.notes.push_back( "fight branch stays explicit whenever this surface is invoked" );
     surface.notes.push_back( "source site " + site.site_id + " opened the surface from " +
-                             site.active_outing.activity_id );
+                             outing->activity_id );
     return surface;
 }
 
 std::string render_shakedown_surface_report( const site_record &site,
         const shakedown_surface &surface )
 {
+    const active_outing_state *outing = site.active_external_outing();
     std::ostringstream out;
     out << "shakedown_surface site=" << site.site_id
-        << " active_group=" << site.active_outing.activity_id
+        << " active_group=" << ( outing == nullptr ? "none" : outing->activity_id )
         << " profile=" << to_string( effective_profile( site ) )
         << " posture=open_shakedown"
         << " valid=" << ( surface.valid ? "yes" : "no" )
@@ -17239,16 +17246,20 @@ std::string render_shakedown_surface_report( const site_record &site,
 bool is_active_shakedown_parley_member( const world_state &state, const character_id npc_id )
 {
     for( const site_record &site : state.sites ) {
-        if( site.retired_empty_site || !site.active_outing.is_active() ||
-            site.active_outing.owner != simulation_owner::local ||
-            site.active_outing.member_ids.empty() || site.active_outing.job_type != "toll" ) {
+        const active_outing_state *outing = site.active_external_outing();
+        const bool new_model_shakedown = outing != &site.active_hostile_operation.reservation ||
+                                        site.active_hostile_operation.operation_kind ==
+                                        hostile_operation_kind::shakedown;
+        if( site.retired_empty_site || outing == nullptr || !outing->is_active() ||
+            outing->owner != simulation_owner::local || outing->member_ids.empty() ||
+            outing->job_type != "toll" || !new_model_shakedown ) {
             continue;
         }
         if( site.last_shakedown_outcome.rfind( "fight", 0 ) == 0 ) {
             continue;
         }
-        if( std::find( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end(),
-                      npc_id ) == site.active_outing.member_ids.end() ) {
+        if( std::find( outing->member_ids.begin(), outing->member_ids.end(), npc_id ) ==
+            outing->member_ids.end() ) {
             continue;
         }
         const member_record *member = site.find_member( npc_id );
