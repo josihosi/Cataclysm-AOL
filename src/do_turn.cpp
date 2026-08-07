@@ -3035,7 +3035,10 @@ bool note_live_bandit_aftermath()
                     << "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
                     << " site=" << site.site_id
                     << " active_group=" << site.active_outing.activity_id << '\n';
-            continue;
+            if( !bandit_live_world::active_outing_requires_homeward_routing(
+                    site.active_outing ) ) {
+                continue;
+            }
         }
 
         if( bandit_live_world::active_outing_requires_homeward_routing(
@@ -6778,6 +6781,11 @@ void overmap_npc_move()
 }
 
 } // namespace
+
+bool process_live_bandit_aftermath_for_test()
+{
+    return note_live_bandit_aftermath();
+}
 
 void process_monsters_and_npcs_turn_for_test()
 {

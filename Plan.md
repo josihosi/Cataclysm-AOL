@@ -65,6 +65,12 @@ The long implementation receipt was compacted in
 `doc/hostile-camp-overmap-ecology-implementation-ledger-v0.md`. The observer product contract
 remains in `doc/ecology-observer-editor-roadmap-and-success-state-v0-2026-08-05.md`.
 
+The first live return blocker from run `20260807_015545` is repaired at the loaded-owner seam:
+an already-homeward pair now validates and repairs stale/non-covert camp routes before the
+target-facing local gate exits, while a deferred homeward phase transition still skips target
+behavior. The focused real-NPC regression and adjacent Mac NPC/bandit slice are green; the same
+observer contract must now prove physical return/report/decision in play.
+
 ## Next milestone
 
 Produce one observer-backed vertical proof from a real naturally generated bandit scout

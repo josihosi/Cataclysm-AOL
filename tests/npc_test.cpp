@@ -1832,6 +1832,74 @@ static std::string serialize_live_world_for_optics_test(
     return out.str();
 }
 
+TEST_CASE( "loaded_returning_pair_repairs_stale_home_routes_before_skipping_local_gate",
+           "[npc][bandit][loaded_covert_return]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    const time_point original_time = calendar::turn;
+    on_out_of_scope restore_time( [original_time]() {
+        set_time( original_time );
+    } );
+    set_time_to_day();
+
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const std::vector<character_id> generated_ids = { scout.getID(), partner.getID() };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    bandit_live_world::site_record &site = live_state.sites.front();
+    site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+    site.active_outing.local_handoff.phase = site.active_outing.phase;
+    const tripoint_abs_omt target_omt = site.active_outing.target_omt;
+    const int minimum_target_distance = *bandit_live_world::target_footprint_watch_distance(
+                                            site.active_outing.selected_watch_omt,
+                                            site.active_outing.target_footprint );
+
+    for( npc *member : { &scout, &partner } ) {
+        member->goal = site.anchor;
+        member->omt_path = { target_omt, site.anchor };
+        member->set_mission( NPC_MISSION_TRAVELLING );
+        REQUIRE( member->is_travelling() );
+        REQUIRE( std::find( member->omt_path.begin(), member->omt_path.end(), target_omt ) !=
+                 member->omt_path.end() );
+    }
+
+    process_live_bandit_aftermath_for_test();
+
+    for( const npc *member : { &scout, &partner } ) {
+        REQUIRE( member->is_travelling() );
+        REQUIRE_FALSE( member->omt_path.empty() );
+        CHECK( member->goal == site.anchor );
+        CHECK( std::find( member->omt_path.begin(), member->omt_path.end(), target_omt ) ==
+               member->omt_path.end() );
+        for( const tripoint_abs_omt &step : member->omt_path ) {
+            const std::optional<int> distance =
+                bandit_live_world::target_footprint_watch_distance(
+                    step, site.active_outing.target_footprint );
+            REQUIRE( distance );
+            CHECK( *distance >= minimum_target_distance );
+        }
+    }
+}
+
 TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",
            "[npc][bandit][covert][visible_defender_power][defender_count]" )
 {

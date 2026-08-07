@@ -126,7 +126,16 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   `overmap::place_highway_line` debug popup `highway slant pathing out of bounds; falling back to
   onramp`. The ecology bootstrap already calls `overmap_special_at_existing` and does not generate
   missing overmaps; no ecology transition was reached and no behavior credit or defect is assigned.
-  The repaired live footing has exhausted its attempts until a return-path code/test change exists.
+  The repaired live footing exhausted its attempts until a return-path code/test change existed.
+- The loaded return repair now has a causal real-NPC regression: both actors begin with nominal camp
+  goals but target-reentering OMT paths, and the authoritative aftermath tick repairs both paths
+  before the local-gate skip. The focused Mac re-review run is green at 1 case / 28 assertions;
+  `[npc][bandit]` is green at 11 cases / 1,000 assertions after one unrelated
+  environmental-visibility test failed in the combined run and passed immediately in isolation.
+  Mac tiles test build/link and `git diff --check` are green. Medium autoreview found one P1 in the
+  initial broad guard removal; the narrowed fix preserves deferred-phase target skipping, and the
+  clean re-review reports `patch is correct (0.94)`. A clean committed SDL3 rebuild and one live
+  observer rerun are next; Linux/Windows runtime are not claimed.
 
 ### Capped non-credit probes
 
