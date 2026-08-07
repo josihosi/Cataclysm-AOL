@@ -508,6 +508,15 @@ struct local_alternate_watch_member_read {
     tripoint_abs_ms current_position;
 };
 
+struct local_route_arrival_member_read {
+    character_id npc_id;
+    bool readable = false;
+    bool dead = false;
+    bool route_confirmed = false;
+    int hp_percent = 0;
+    tripoint_abs_ms current_position;
+};
+
 struct local_alternate_watch_reposition_plan {
     bool valid = false;
     simulation_advance_cursor expected_cursor;
@@ -1741,6 +1750,9 @@ local_handoff_commit_result commit_local_pair_alternate_watch_reposition(
     const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
 local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     site_record &site, const local_alternate_watch_reposition_plan &plan );
+local_handoff_commit_result commit_local_pair_route_arrival(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads );
 bool record_local_pair_member_death( site_record &site,
                                      const simulation_advance_cursor &expected_cursor,
                                      character_id member_id,
@@ -1761,6 +1773,8 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const active_outing_state &outing );
 std::set<character_id> local_pair_homeward_travel_ids( const world_state &state );
 std::map<character_id, tripoint_abs_omt> local_pair_alternate_watch_travel_destinations(
+    const world_state &state );
+std::map<character_id, tripoint_abs_omt> local_pair_ingress_travel_destinations(
     const world_state &state );
 bool is_valid_scout_phase_transition( scout_phase previous_phase, scout_phase next_phase );
 scout_phase scout_phase_after_burned_evacuation( bool concealed_rally_reached );

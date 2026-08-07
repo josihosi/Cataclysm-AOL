@@ -4594,6 +4594,122 @@ local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     return local_handoff_commit_result::applied;
 }
 
+local_handoff_commit_result commit_local_pair_route_arrival(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const int current_minutes,
+    const std::vector<local_route_arrival_member_read> &member_reads )
+{
+    const active_outing_state &outing = site.active_outing;
+    const int destination_waypoint = structural_outing_destination_waypoint( outing );
+    const auto capture_arrivals = [&outing, &member_reads](
+    std::map<character_id, tripoint_abs_ms> &arrival_positions ) {
+        std::set<character_id> matched_ids;
+        for( const character_id member_id : outing.member_ids ) {
+            const auto read = std::find_if( member_reads.begin(), member_reads.end(),
+            [member_id]( const local_route_arrival_member_read & candidate ) {
+                return candidate.npc_id == member_id;
+            } );
+            if( read == member_reads.end() || !read->readable || read->dead ||
+                !read->route_confirmed || read->hp_percent <= 0 || read->hp_percent > 100 ||
+                project_to<coords::omt>( read->current_position ) != outing.selected_watch_omt ||
+                !matched_ids.emplace( member_id ).second ||
+                std::any_of( arrival_positions.begin(), arrival_positions.end(),
+                [&read]( const auto & arrival ) {
+                    return arrival.second == read->current_position;
+                } ) ) {
+                return false;
+            }
+            arrival_positions.emplace( member_id, read->current_position );
+        }
+        return matched_ids.size() == 2 && arrival_positions.size() == 2 &&
+               rl_dist( arrival_positions.begin()->second,
+                        std::next( arrival_positions.begin() )->second ) <=
+               local_pair_cohesion_radius_ms;
+    };
+    const bool common_state_is_valid =
+        outing.kind == outing_kind::structural_sortie && outing.schema_version == 10 &&
+        outing.owner == simulation_owner::local &&
+        simulation_cursor_matches( outing, expected_cursor ) && current_minutes >= 0 &&
+        current_minutes >= outing.last_advanced_minutes &&
+        outing.phase == scout_phase::observing && !outing.alternate_watch_reposition_pending &&
+        outing.member_ids.size() == 2 && outing.local_handoff.members.size() == 2 &&
+        member_reads.size() == 2 && outing.local_handoff.is_active() &&
+        outing.local_handoff.cohesion_assembled &&
+        !outing.local_handoff.cohesion_abort_return && outing.casualty_ids.empty() &&
+        outing.resolved_member_ids.empty() && destination_waypoint >= 0 &&
+        destination_waypoint < static_cast<int>( outing.shared_route.size() ) &&
+        outing.shared_route[static_cast<std::size_t>( destination_waypoint )] ==
+        outing.selected_watch_omt;
+    std::map<character_id, tripoint_abs_ms> arrival_positions;
+    if( !common_state_is_valid || !capture_arrivals( arrival_positions ) ) {
+        return local_handoff_commit_result::rejected;
+    }
+    if( outing.waypoint_index == destination_waypoint &&
+        outing.local_handoff.waypoint_index == destination_waypoint &&
+        outing.local_handoff.route_position == outing.selected_watch_omt ) {
+        return current_minutes == outing.last_advanced_minutes ?
+               local_handoff_commit_result::unchanged :
+               local_handoff_commit_result::rejected;
+    }
+    if( outing.waypoint_index < 0 || outing.waypoint_index + 1 != destination_waypoint ||
+        outing.local_handoff.waypoint_index != outing.waypoint_index ||
+        outing.local_handoff.route_position !=
+        outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ||
+        outing.local_handoff.egress_omt != outing.selected_watch_omt ) {
+        return local_handoff_commit_result::rejected;
+    }
+
+    site_record candidate = site;
+    active_outing_state &next = candidate.active_outing;
+    next.waypoint_index = destination_waypoint;
+    next.last_progress_minutes = current_minutes;
+    next.last_advanced_minutes = current_minutes;
+    next.local_handoff.waypoint_index = destination_waypoint;
+    next.local_handoff.phase = next.phase;
+    next.local_handoff.route_position = next.selected_watch_omt;
+    next.local_handoff.approach_from = next.shared_route[
+                                           static_cast<std::size_t>( destination_waypoint - 1 )];
+    next.local_handoff.egress_omt = destination_waypoint + 1 <
+                                    static_cast<int>( next.shared_route.size() ) ?
+                                    next.shared_route[static_cast<std::size_t>( destination_waypoint + 1 )] :
+                                    next.selected_watch_omt;
+    next.local_handoff.committed_minutes = current_minutes;
+    for( std::size_t index = 0; index < next.local_handoff.members.size(); ++index ) {
+        local_handoff_member_snapshot &snapshot = next.local_handoff.members[index];
+        const auto read = std::find_if( member_reads.begin(), member_reads.end(),
+        [&snapshot]( const local_route_arrival_member_read & candidate_read ) {
+            return candidate_read.npc_id == snapshot.npc_id;
+        } );
+        const auto partner = std::find_if( arrival_positions.begin(), arrival_positions.end(),
+        [&snapshot]( const auto & arrival ) {
+            return arrival.first != snapshot.npc_id;
+        } );
+        snapshot.entry_position = read->current_position;
+        snapshot.staging_position = partner->second;
+        snapshot.exit_position = read->current_position;
+        snapshot.hp_percent = read->hp_percent;
+        snapshot.dead = false;
+        member_record *member = candidate.find_member( snapshot.npc_id );
+        if( member == nullptr ||
+            ( member->state != member_state::outbound &&
+              member->state != member_state::local_contact ) ) {
+            return local_handoff_commit_result::rejected;
+        }
+        member->state = member_state::local_contact;
+        member->wounded_or_unready = snapshot.hp_percent <= 50;
+        member->last_writeback_summary = "local route arrival hp=" +
+                                         std::to_string( snapshot.hp_percent );
+    }
+    if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+        return local_handoff_commit_result::rejected;
+    }
+    site = std::move( candidate );
+    record_scout_phase_transition_event(
+        site.active_outing, scout_phase::observing, scout_phase::observing,
+        "local pair physically reached selected watch", current_minutes );
+    return local_handoff_commit_result::applied;
+}
+
 bool record_local_pair_member_death( site_record &site,
                                      const simulation_advance_cursor &expected_cursor,
                                      const character_id member_id,
@@ -5020,6 +5136,19 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
         outing.local_handoff.members.size() != 2 || outing.member_ids.size() != 2 ) {
         return result;
     }
+    const int destination_waypoint = structural_outing_destination_waypoint( outing );
+    const bool assembled_for_forward_route = outing.schema_version == 10 &&
+            outing.phase == scout_phase::observing &&
+            outing.local_handoff.cohesion_assembled &&
+            outing.waypoint_index >= 0 && outing.waypoint_index < destination_waypoint &&
+            outing.local_handoff.waypoint_index == outing.waypoint_index &&
+            outing.local_handoff.route_position ==
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
+            outing.local_handoff.egress_omt ==
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )];
+    if( assembled_for_forward_route ) {
+        return result;
+    }
     for( const local_handoff_member_snapshot &snapshot : outing.local_handoff.members ) {
         if( snapshot.dead || outing.member_is_resolved( snapshot.npc_id ) ||
             std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(),
@@ -5093,6 +5222,48 @@ std::map<character_id, tripoint_abs_omt> local_pair_alternate_watch_travel_desti
                            snapshot.npc_id ) != outing.casualty_ids.end() ||
                 !result.emplace( snapshot.npc_id,
                                  outing.alternate_watch_omt ).second ) {
+                return {};
+            }
+        }
+    }
+    return result;
+}
+
+std::map<character_id, tripoint_abs_omt> local_pair_ingress_travel_destinations(
+    const world_state &state )
+{
+    std::set<character_id> claimed_members;
+    for( const site_record &site : state.sites ) {
+        if( !claim_local_pair_site_ownership( site, claimed_members ) ) {
+            return {};
+        }
+    }
+
+    std::map<character_id, tripoint_abs_omt> result;
+    for( const site_record &site : state.sites ) {
+        const active_outing_state &outing = site.active_outing;
+        const int destination_waypoint = structural_outing_destination_waypoint( outing );
+        if( site.retired_empty_site || !outing.is_active() ||
+            outing.kind != outing_kind::structural_sortie || outing.schema_version != 10 ||
+            outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+            !simulation_owner_state_is_consistent( outing ) ||
+            !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
+            outing.local_handoff.cohesion_abort_return ||
+            outing.waypoint_index < 0 || outing.waypoint_index >= destination_waypoint ||
+            outing.local_handoff.waypoint_index != outing.waypoint_index ||
+            outing.local_handoff.route_position !=
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ||
+            outing.local_handoff.egress_omt !=
+            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )] ) {
+            continue;
+        }
+        const tripoint_abs_omt destination = outing.shared_route[
+                                                 static_cast<std::size_t>( destination_waypoint )];
+        for( const local_handoff_member_snapshot &snapshot : outing.local_handoff.members ) {
+            if( snapshot.dead || outing.member_is_resolved( snapshot.npc_id ) ||
+                std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(),
+                           snapshot.npc_id ) != outing.casualty_ids.end() ||
+                !result.emplace( snapshot.npc_id, destination ).second ) {
                 return {};
             }
         }

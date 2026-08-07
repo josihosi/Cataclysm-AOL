@@ -15358,6 +15358,121 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK( progressed.sites.front().active_outing.waypoint_index == 1 );
         CHECK( progressed.sites.front().active_outing.shared_route[1] ==
                progressed.sites.front().active_outing.shared_route[3] );
+
+        bandit_live_world::world_state local_ingress_world = progressed;
+        bandit_live_world::site_record &local_ingress_site =
+            local_ingress_world.sites.front();
+        const tripoint_abs_omt ingress_omt =
+            local_ingress_site.active_outing.shared_route[1];
+        const tripoint_abs_omt selected_watch =
+            local_ingress_site.active_outing.selected_watch_omt;
+        const tripoint_abs_ms ingress_origin = project_to<coords::ms>( ingress_omt );
+        std::vector<bandit_live_world::local_handoff_member_read> ingress_handoff_reads;
+        for( std::size_t index = 0;
+             index < local_ingress_site.active_outing.member_ids.size(); ++index ) {
+            const character_id member_id =
+                local_ingress_site.active_outing.member_ids[index];
+            const bandit_live_world::member_record *member =
+                local_ingress_site.find_member( member_id );
+            REQUIRE( member != nullptr );
+            bandit_live_world::local_handoff_member_read read;
+            read.npc_id = member_id;
+            read.bindable = true;
+            read.hp_percent = 90 - static_cast<int>( index ) * 10;
+            read.current_position = member->home_spawn_tile;
+            read.entry_position = tripoint_abs_ms(
+                                      ingress_origin.x() + 8 + static_cast<int>( index ),
+                                      ingress_origin.y() + 8, ingress_origin.z() );
+            read.staging_position = tripoint_abs_ms(
+                                        ingress_origin.x() + 8 + static_cast<int>( index ),
+                                        ingress_origin.y() + 9, ingress_origin.z() );
+            ingress_handoff_reads.push_back( read );
+        }
+        const bandit_live_world::simulation_advance_cursor ingress_abstract_cursor =
+            require_current_simulation_cursor( local_ingress_site );
+        const bandit_live_world::local_handoff_plan ingress_handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                local_ingress_site, ingress_abstract_cursor,
+                ingress_abstract_cursor.last_advanced_minutes, ingress_handoff_reads );
+        REQUIRE( ingress_handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     local_ingress_site, ingress_handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        std::vector<bandit_live_world::local_cohesion_member_read> ingress_cohesion_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+             local_ingress_site.active_outing.local_handoff.members ) {
+            ingress_cohesion_reads.push_back(
+                { snapshot.npc_id, true, false, snapshot.staging_position } );
+        }
+        bandit_live_world::simulation_advance_cursor ingress_local_cursor =
+            require_current_simulation_cursor( local_ingress_site );
+        const int assembled_minutes = ingress_local_cursor.last_advanced_minutes + 1;
+        const bandit_live_world::local_cohesion_plan ingress_cohesion =
+            bandit_live_world::plan_local_pair_cohesion(
+                local_ingress_site, ingress_local_cursor, assembled_minutes,
+                ingress_cohesion_reads );
+        REQUIRE( ingress_cohesion.valid );
+        REQUIRE( ingress_cohesion.snapshot.cohesion_assembled );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     local_ingress_site, ingress_cohesion, false, false ) );
+        CHECK( bandit_live_world::local_pair_assembly_orders(
+                   local_ingress_site.active_outing ).empty() );
+        const std::map<character_id, tripoint_abs_omt> ingress_destinations =
+            bandit_live_world::local_pair_ingress_travel_destinations(
+                local_ingress_world );
+        REQUIRE( ingress_destinations.size() == 2 );
+        for( const character_id member_id : local_ingress_site.active_outing.member_ids ) {
+            CHECK( ingress_destinations.at( member_id ) == selected_watch );
+        }
+
+        const tripoint_abs_ms ingress_watch_origin = project_to<coords::ms>( selected_watch );
+        std::vector<bandit_live_world::local_route_arrival_member_read> arrival_reads;
+        for( std::size_t index = 0;
+             index < local_ingress_site.active_outing.member_ids.size(); ++index ) {
+            arrival_reads.push_back( {
+                local_ingress_site.active_outing.member_ids[index], true, false, true,
+                90 - static_cast<int>( index ) * 10,
+                tripoint_abs_ms( ingress_watch_origin.x() + 8 + static_cast<int>( index ),
+                                 ingress_watch_origin.y() + 8, ingress_watch_origin.z() )
+            } );
+        }
+        ingress_local_cursor = require_current_simulation_cursor( local_ingress_site );
+        const int arrival_minutes = ingress_local_cursor.last_advanced_minutes + 1;
+        std::vector<bandit_live_world::local_route_arrival_member_read> split_arrival_reads =
+            arrival_reads;
+        split_arrival_reads[1].current_position = ingress_handoff_reads[1].staging_position;
+        const std::string before_arrival = serialize_world( local_ingress_world );
+        CHECK( bandit_live_world::commit_local_pair_route_arrival(
+                   local_ingress_site, ingress_local_cursor, arrival_minutes,
+                   split_arrival_reads ) ==
+               bandit_live_world::local_handoff_commit_result::rejected );
+        CHECK( serialize_world( local_ingress_world ) == before_arrival );
+        REQUIRE( bandit_live_world::commit_local_pair_route_arrival(
+                     local_ingress_site, ingress_local_cursor, arrival_minutes,
+                     arrival_reads ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( local_ingress_site.active_outing.waypoint_index == 2 );
+        CHECK( local_ingress_site.active_outing.phase ==
+               bandit_live_world::scout_phase::observing );
+        CHECK( local_ingress_site.active_outing.local_handoff.route_position ==
+               selected_watch );
+        CHECK( local_ingress_site.active_outing.owner ==
+               bandit_live_world::simulation_owner::local );
+        CHECK( bandit_live_world::local_pair_ingress_travel_destinations(
+                   local_ingress_world ).empty() );
+        CHECK( serialize_world( round_trip_world( local_ingress_world ) ) ==
+               serialize_world( local_ingress_world ) );
+        const std::string completed_arrival = serialize_world( local_ingress_world );
+        const bandit_live_world::simulation_advance_cursor completed_cursor =
+            require_current_simulation_cursor( local_ingress_site );
+        CHECK( bandit_live_world::commit_local_pair_route_arrival(
+                   local_ingress_site, completed_cursor, arrival_minutes, arrival_reads ) ==
+               bandit_live_world::local_handoff_commit_result::unchanged );
+        CHECK( serialize_world( local_ingress_world ) == completed_arrival );
+
         const bandit_live_world::structural_outing_result watch_arrival =
             bandit_live_world::advance_structural_bounty_outings(
                 progressed, now_minutes + 5 * 60, threat_lookup );
