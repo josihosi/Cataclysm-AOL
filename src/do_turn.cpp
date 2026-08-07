@@ -7281,7 +7281,10 @@ void overmap_npc_move()
                     }
                 } else {
                     elem->travel_overmap( elem->omt_path.back() );
-                    npcs_need_reload = true;
+                    // A homeward pair that crossed the bubble remains unloaded until its
+                    // complete camp-arrival snapshot can commit below.
+                    npcs_need_reload |=
+                        local_pair_homeward_member_ids.count( elem->getID() ) == 0;
                 }
             }
         }
@@ -7292,6 +7295,7 @@ void overmap_npc_move()
             elem->set_omt_destination();
         }
     }
+    dematerialized_handoffs |= dematerialize_live_bandit_structural_handoffs();
     if( npcs_need_reload || local_pair_needs_reload ) {
         g->reload_npcs();
     }
