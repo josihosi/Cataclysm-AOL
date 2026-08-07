@@ -117,6 +117,14 @@ handoff waypoint. Discovery, dispatch, observation, return, report, and decision
 at the fixture boundary. This is a new loaded-bubble geometry, not a third attempt on the exhausted
 west footing.
 
+Both east-footing attempts are now exhausted. Runs `20260807_052130` and `20260807_053354`
+naturally discovered, dispatched, and committed the same pair locally, but produced no local route
+attempt before the ten- and twenty-minute deadlines respectively. Extending the deadline was
+disproved and reverted. The abstract owner can see both NPCs through the overmap buffer while the
+local motor cannot address them in the active reality bubble; local ownership must not commit at
+that boundary. No further east run is allowed until a deterministic ownership fix is green, and a
+later live proof must use a materially different footing.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may

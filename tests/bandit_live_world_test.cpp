@@ -8423,19 +8423,9 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             bandit_live_world::plan_local_pair_cohesion( site, *cursor, 100, reads );
         REQUIRE( cohesion.valid );
         CHECK_FALSE( cohesion.snapshot.cohesion_assembled );
-        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 120 );
+        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 110 );
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
                      site, cohesion, false, false ) );
-
-        cursor = bandit_live_world::current_external_simulation_cursor( site );
-        REQUIRE( cursor );
-        cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 110, reads );
-        REQUIRE( cohesion.valid );
-        CHECK_FALSE( cohesion.abort_return );
-        CHECK_FALSE( cohesion.snapshot.cohesion_abort_return );
-        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 120 );
-        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
-                     site, cohesion, true, false ) );
 
         for( std::size_t index = 0; index < reads.size(); ++index ) {
             reads[index].current_position =
@@ -8443,7 +8433,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
         cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
-        cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 111, reads );
+        cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 101, reads );
         REQUIRE( cohesion.valid );
         REQUIRE( cohesion.snapshot.cohesion_assembled );
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
@@ -8454,7 +8444,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         REQUIRE( cursor );
         cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 200, reads );
         REQUIRE( cohesion.valid );
-        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 220 );
+        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 210 );
         REQUIRE( cohesion.reroute_needed );
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
                      site, cohesion, true, true ) );
@@ -8477,7 +8467,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         REQUIRE( cursor );
         cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 300, reads );
         REQUIRE( cohesion.valid );
-        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 320 );
+        CHECK( cohesion.snapshot.cohesion_deadline_minutes == 310 );
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
                      site, cohesion, true, true ) );
         cursor = bandit_live_world::current_external_simulation_cursor( site );

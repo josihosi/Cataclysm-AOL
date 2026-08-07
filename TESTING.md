@@ -68,14 +68,15 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   the observer from OMT `(162,35,0)` to `(166,35,0)`. Camp, route, clock, zero-lead/zero-outing
   boundary, and `DEBUG_CLAIRVOYANCE` are inherited; no lifecycle outcome is written. Both JSON
   payloads parse, all 149 harness contracts pass, and `git diff --check` is clean. No live credit.
-- East run `20260807_052130` on clean `a85691bd0c+SDL3` naturally reached terrain discovery,
-  frontier dispatch, and `local_handoff committed ... members=2`. The pair then retained valid
-  routes (`failed_routes=0`) but remained `assembled=no` until the fixed ten-minute rendezvous
-  deadline forced `abort=yes`; verdict `blocked_scout_to_decision_pair_handoff_missing`. This is a
-  bounded staging-window defect, not a permission or OCR failure. The repair keeps the two-failed-
-  route abort but gives valid same-OMT travel twenty minutes; one final east-footing attempt remains.
-  Mac `bandit_live_world.o`/test rebuild: exit 0. `[local_handoff]`: 2 cases / 746 assertions,
-  seed `860807`. Medium autoreview: clean, `patch is correct (0.94)`.
+- East runs `20260807_052130` on clean `a85691bd0c+SDL3` and `20260807_053354` on clean
+  `949a6dbab1+SDL3` naturally reached terrain discovery, frontier dispatch, and
+  `local_handoff committed ... members=2`. Both then repeated `assembled=no`,
+  `failed_routes=0`; the first aborted at ten minutes and the second at twenty. Both verdicts were
+  `blocked_scout_to_decision_pair_handoff_missing`. The second run disproves rendezvous duration as
+  the cause, so the twenty-minute change is reverted. The owner read sees the NPCs through the
+  overmap buffer, while the movement adapter can act only on members in the current map; no route
+  was attempted before timeout. Both east attempts are exhausted. No live success credit and no
+  permission/OCR blocker are assigned.
 - Run `20260807_043746` on clean `5010d98e3d+SDL3` naturally reached exact dispatch and
   `local_handoff committed ... members=2`. During the ordinary wait it opened the real bandit
   Pay/Fight dialogue for Giuseppe Bachman before physical return/report/decision; the paired
