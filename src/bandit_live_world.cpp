@@ -17277,6 +17277,34 @@ scout_assessment_result advance_structural_scout_assessment(
             "second watch made no assessment progress", no_progress_deadline );
         return scout_assessment_result::inconclusive;
     }
+    const bool no_alternate_watch_available =
+        next.alternate_watch_kind == structural_watch_kind::none &&
+        next.alternate_watch_shared_route.empty();
+    if( no_progress_window_elapsed && !next.alternate_watch_attempted &&
+        no_alternate_watch_available ) {
+        next.assessment.readiness_latched = false;
+        next.assessment.threshold_class = scout_assessment_threshold_class::none;
+        next.assessment.next_eligible_minutes = minutes_after_saturated(
+                no_progress_deadline, 12 * 60 );
+        next.assessment.exit_reason =
+            "selected watch made no assessment progress and no alternate was available";
+        next.phase = scout_phase::returning_report;
+        next.last_progress_minutes = no_progress_deadline;
+        next.assessment.last_progress_minutes = no_progress_deadline;
+        if( next.local_handoff.is_active() || next.local_handoff.is_abstract_resume() ) {
+            next.local_handoff.phase = next.phase;
+        }
+        if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+            return scout_assessment_result::rejected;
+        }
+        site = std::move( candidate );
+        record_scout_phase_transition_event(
+            site.active_outing, scout_phase::observing,
+            scout_phase::returning_report,
+            "selected watch made no assessment progress and no alternate was available",
+            no_progress_deadline );
+        return scout_assessment_result::inconclusive;
+    }
     const bool watch_expired =
         !next.alternate_watch_reposition_pending &&
         current_minutes - next.assessment.observation_started_minutes >= 8 * 60;

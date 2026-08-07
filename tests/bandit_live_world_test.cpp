@@ -8386,6 +8386,26 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                     CHECK( live_site.active_outing.owner ==
                            bandit_live_world::simulation_owner::abstract );
                     CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
+                    const int first_assessment_minute =
+                        live_site.active_outing.last_advanced_minutes + 1;
+                    REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                                 live_site, live_site.active_outing.activity_id,
+                                 live_site.active_outing.generation,
+                                 live_site.active_outing.target_lead_revision,
+                                 first_assessment_minute ) ==
+                             bandit_live_world::scout_assessment_result::updated );
+                    const int observation_started =
+                        live_site.active_outing.assessment.observation_started_minutes;
+                    REQUIRE( observation_started == first_assessment_minute );
+                    const bandit_live_world::structural_outing_result empty_watch =
+                        bandit_live_world::advance_structural_bounty_outings(
+                            overmap_buffer.global_state.bandit_live_world,
+                            observation_started + 2 * 60, {} );
+                    CHECK( empty_watch.active_outings_considered == 1 );
+                    CHECK( live_site.active_outing.phase ==
+                           bandit_live_world::scout_phase::returning_report );
+                    CHECK( live_site.active_outing.assessment.exit_reason ==
+                           "selected watch made no assessment progress and no alternate was available" );
                 } else {
                     const point_rel_omt route_direction(
                         route_omt.x() == watch_omt.x() ? 0 : route_omt.x() > watch_omt.x() ? 1 : -1,
@@ -17377,6 +17397,9 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
              bandit_live_world::scout_assessment_result::unchanged );
     CHECK( inconclusive_outing.assessment.certainty == 0 );
     CHECK( inconclusive_outing.assessment.strong_visual_windows == 0 );
+    // The maximum-duration guard remains distinct from the no-progress exit: this case has
+    // recent incomplete assessment progress but still cannot finish before the watch cap.
+    inconclusive_outing.assessment.last_progress_minutes = 660;
     CHECK( bandit_live_world::advance_structural_scout_assessment(
                inconclusive_site, inconclusive_outing.activity_id,
                inconclusive_outing.generation,

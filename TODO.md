@@ -2,7 +2,7 @@
 
 ## Current necessary claim
 
-Relink the Mac game with the focused-proven paired reality-bubble boundary exit, then rerun
+Relink the Mac game with the focused-proven no-alternate no-progress return, then rerun
 `bandit.scout_to_decision_observer_live_mcw` without changing its causal contract. The run must
 prove watch, coherent egress, a surviving physical return, final report, and matching authoritative
 camp decision in one natural incident.

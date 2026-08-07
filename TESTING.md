@@ -44,6 +44,18 @@
   two cases. The added case proves distinct adjacent edge slots, one transactional off-bubble watch
   arrival for both members, inactive physical positions in the watch OMT, and the existing
   local-to-abstract resume commit.
+- Unchanged run `20260807_104736` on commit `1f99097e22`, executable SHA-256
+  `0272fec3d744b84eaa111c31aceb3ebedb48ff1754a9960e277223dfc7bd147c`, committed the paired
+  ingress boundary and local dematerialization at watch `(163,33)`. The watch began at minute 8407;
+  hourly structural visibility continued through minute 8880 with no visible threat. With no
+  alternate watch, production had no transition at its existing minute-8527 no-progress boundary
+  and instead awaited the separate minute-8887 maximum. The run therefore remained red without a
+  physical return, report, or decision.
+- The Mac tests target rebuilt successfully. `tests/cata_test '[local_handoff]'` passes 883
+  assertions in two cases and proves the exact off-bubble abstract-resume pair enters
+  `returning_report` at the existing two-hour no-progress boundary when no alternate exists.
+  `tests/cata_test '[scout_assessment]'` passes 225 assertions in four cases and preserves the
+  eight-hour maximum for incomplete assessment state with recent progress.
 
 ## Pending proof contract
 
@@ -73,10 +85,11 @@ absent carrier; an empty/all-dead return cannot satisfy the survivor artifact; s
 duplicate owner, or mismatched generation/report identity is red.
 
 Time boundaries: the fixture's frontier timing derives from the production scheduler and its
-persisted deadline. Handoff waits follow the scheduler's hourly cadence. The post-observation
-window is the existing production observation/return interval under test: six game hours. The
-controller measures `now_minutes` immediately before the wait and requires a relative advance of
-360 minutes, accepting scheduler overshoot.
+persisted deadline. Handoff waits follow the scheduler's hourly cadence. The unchanged scenario's
+post-observation wait spans the production assessment's existing two-hour no-progress boundary and
+later return cadences; its duration is probe execution space, not a gameplay deadline or acceptance
+substitute. The controller proves the actual relative clock advance and the pass still requires the
+authoritative outcome below.
 
 Pass: a surviving physical return, final non-provisional report, and matching authoritative camp
 decision appear in the same structured incident. Startup, schema validity, dispatch, handoff,

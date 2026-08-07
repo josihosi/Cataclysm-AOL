@@ -46,11 +46,21 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
 - The forward owner now handles that exact reality-bubble seam as a paired adjacent boundary exit.
   The focused `[local_handoff]` gate passes 878 assertions in two cases, including transactional
   watch arrival, unload, and abstract resume when the destination center is off-map.
+- Unchanged run `20260807_104736` on `1f99097e22+SDL3` live-proved that seam: the pair committed
+  watch arrival at `(163,33)`, then committed local dematerialization as the same exact two members.
+  Night visibility yielded no observation, and the selected route had no alternate watch. The
+  assessment had an existing two-hour no-progress boundary but no transition for that state, so it
+  fell through to the eight-hour maximum and missed the scenario's last scheduler tick by seven
+  minutes. No survivor return, report, or decision was proved.
+- A selected watch with no assessment progress and no qualified alternate now returns
+  inconclusive at that existing two-hour boundary. The focused `[local_handoff]` test carries the
+  off-bubble pair through abstract resume into `returning_report`; `[scout_assessment]` preserves
+  the separate eight-hour maximum for incomplete assessments that continue making progress.
 
 ## Active claim
 
-Rerun `bandit.scout_to_decision_observer_live_mcw` unchanged on the executable containing the
-paired reality-bubble boundary exit. The natural incident must carry the same exact pair through
+Relink and rerun `bandit.scout_to_decision_observer_live_mcw` unchanged on the executable containing
+the no-alternate no-progress return. The natural incident must carry the same exact pair through
 watch, egress, survivor return, final report, and authoritative camp decision; the focused owner
 test does not substitute for that outcome.
 
