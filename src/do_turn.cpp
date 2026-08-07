@@ -4188,16 +4188,37 @@ bool materialize_live_bandit_structural_handoffs()
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
+        const bool homeward_candidate = outing.is_active() &&
+                                        outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                                        outing.owner == bandit_live_world::simulation_owner::abstract &&
+                                        bandit_live_world::active_outing_requires_homeward_routing( outing );
+        const auto log_homeward_rejection = [&site, &outing, homeward_candidate](
+        const std::string_view reason ) {
+            if( !homeward_candidate ) {
+                return;
+            }
+            DebugLog( D_INFO, DC_ALL )
+                    << "bandit_live_world homeward materialization rejected"
+                    << " site=" << site.site_id
+                    << " activity=" << outing.activity_id
+                    << " generation=" << outing.generation
+                    << " phase=" << bandit_live_world::to_string( outing.phase )
+                    << " waypoint=" << outing.waypoint_index
+                    << " route_size=" << outing.shared_route.size()
+                    << " reason=" << reason << '\n';
+        };
         if( site.retired_empty_site || !outing.is_active() ||
             outing.kind != bandit_live_world::outing_kind::structural_sortie ||
             outing.owner != bandit_live_world::simulation_owner::abstract ||
             outing.shared_route.empty() || outing.waypoint_index <= 0 ||
             outing.waypoint_index >= static_cast<int>( outing.shared_route.size() ) ) {
+            log_homeward_rejection( "ineligible route cursor" );
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         if( !cursor ) {
+            log_homeward_rejection( "invalid simulation cursor" );
             continue;
         }
 
@@ -4234,6 +4255,7 @@ bool materialize_live_bandit_structural_handoffs()
                 bandit_live_world::nearest_target_footprint_omt(
                     route_position, outing.target_footprint );
             if( !target_facing_omt ) {
+                log_homeward_rejection( "watch target facing unavailable" );
                 continue;
             }
             staging_facing_omt = *target_facing_omt;
@@ -4243,6 +4265,8 @@ bool materialize_live_bandit_structural_handoffs()
                     surviving_member_ids.size(), entry_positions );
         if( entry_positions.size() != surviving_member_ids.size() ||
             staging_positions.size() != surviving_member_ids.size() ) {
+            log_homeward_rejection(
+                "loaded bubble lacks paired entry or staging positions" );
             continue;
         }
 
@@ -4256,6 +4280,9 @@ bool materialize_live_bandit_structural_handoffs()
             shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
             if( !member || member->is_dead() || member->is_active() ) {
                 preflight_failed = true;
+                log_homeward_rejection( !member ? "member unavailable" :
+                                        member->is_dead() ? "member dead" :
+                                        "member already active" );
                 break;
             }
             backups.push_back( { member, member->pos_abs(), member->goal, member->omt_path,
@@ -4278,6 +4305,8 @@ bool materialize_live_bandit_structural_handoffs()
             bandit_live_world::plan_local_pair_handoff(
                 site, *cursor, live_bandit_current_minutes(), reads );
         if( !plan.valid ) {
+            log_homeward_rejection( plan.notes.empty() ? "handoff plan invalid" :
+                                    plan.notes.front() );
             continue;
         }
         const auto find_backup = [&backups]( const character_id member_id ) {
@@ -4288,17 +4317,21 @@ bool materialize_live_bandit_structural_handoffs()
         };
         const bool homeward_handoff =
             bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
-        const auto bind_member = [&find_backup, &backups, &site, homeward_handoff](
+        std::string bind_failure_reason;
+        const auto bind_member = [&find_backup, &backups, &site, homeward_handoff,
+                                  &bind_failure_reason](
         const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
             if( snapshot.dead ) {
                 return true;
             }
             const auto backup = find_backup( snapshot.npc_id );
             if( backup == backups.end() ) {
+                bind_failure_reason = "member backup unavailable";
                 return false;
             }
             shared_ptr_fast<npc> member = overmap_buffer.remove_npc( snapshot.npc_id );
             if( !member || member != backup->member ) {
+                bind_failure_reason = "member ownership changed during bind";
                 if( member ) {
                     overmap_buffer.insert_npc( member );
                 }
@@ -4313,6 +4346,7 @@ bool materialize_live_bandit_structural_handoffs()
             member->clear_ai_guard_pos();
             member->path.clear();
             if( homeward_handoff && !live_bandit_route_member_home( *member, site ) ) {
+                bind_failure_reason = "camp route unavailable after spawn";
                 overmap_buffer.insert_npc( member );
                 return false;
             }
@@ -4347,6 +4381,8 @@ bool materialize_live_bandit_structural_handoffs()
             bandit_live_world::commit_local_pair_handoff(
                 site, plan, bind_member, rollback_member );
         if( result != bandit_live_world::local_handoff_commit_result::applied ) {
+            log_homeward_rejection( bind_failure_reason.empty() ?
+                                    "handoff commit rejected" : bind_failure_reason );
             continue;
         }
         g->load_npcs();
