@@ -6885,6 +6885,16 @@ bool materialize_live_bandit_structural_handoffs_for_test()
     return materialize_live_bandit_structural_handoffs();
 }
 
+void maintain_live_bandit_local_pair_cohesion_for_test()
+{
+    maintain_live_bandit_local_pair_cohesion();
+}
+
+bool dematerialize_live_bandit_structural_handoffs_for_test()
+{
+    return dematerialize_live_bandit_structural_handoffs();
+}
+
 void process_monsters_and_npcs_turn_for_test()
 {
     monmove();

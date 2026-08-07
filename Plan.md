@@ -139,6 +139,16 @@ and writes no lead, dispatch, observation, return, report, or decision. The scen
 evidence contract remains the run contract; all waits, authoritative audits, and pass/fail rules are
 unchanged.
 
+Its first run, `20260807_060258` on clean `de9b904389+SDL3`, naturally reached discovery,
+dispatch, local handoff, observer selection, and the final observation window. The pair then
+oscillated between `assembled=yes` and `assembled=no` before aborting into `returning_home`, so the
+run ended `red_wait_completion_artifact_timeout` with no lifecycle credit. The defect was in the
+authoritative local owner: it re-required exact staging tiles after the one-time rendezvous had
+already succeeded. The current slice latches that success while the living pair remains cohesive
+on its owned route; real separation or leaving the route still restarts bounded assembly. Focused
+production-seam and pure-owner tests, including unload back to the abstract owner, are green. One
+northeast live attempt remains after clean re-review, checkpoint, and an exact clean rebuild.
+
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
 new run. Structured state supersedes OCR. Fixture transforms may establish preconditions but may

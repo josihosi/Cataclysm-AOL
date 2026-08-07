@@ -8305,10 +8305,50 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             if( expect_materialized ) {
                 CHECK( live_site.active_outing.owner ==
                        bandit_live_world::simulation_owner::local );
-                for( const character_id id : live_ids ) {
+                REQUIRE( live_site.active_outing.local_handoff.members.size() == live_ids.size() );
+                for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+                     live_site.active_outing.local_handoff.members ) {
+                    const character_id id = snapshot.npc_id;
                     REQUIRE( g->find_npc( id ) != nullptr );
                     CHECK( g->find_npc( id )->is_active() );
+                    g->find_npc( id )->setpos( get_map(), get_map().get_bub(
+                                                  snapshot.staging_position ) );
                 }
+                maintain_live_bandit_local_pair_cohesion_for_test();
+                REQUIRE( live_site.active_outing.local_handoff.cohesion_assembled );
+                CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
+
+                const tripoint_abs_ms route_center = project_to<coords::ms>( route_omt ) +
+                        point( SEEX, SEEY );
+                for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+                    npc *member = g->find_npc( live_ids[index] );
+                    REQUIRE( member != nullptr );
+                    const tripoint_abs_ms moved_position = route_center +
+                            point( static_cast<int>( index ), 0 );
+                    REQUIRE( get_map().inbounds( moved_position ) );
+                    member->setpos( get_map(), get_map().get_bub( moved_position ) );
+                }
+                maintain_live_bandit_local_pair_cohesion_for_test();
+                CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
+                CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_abort_return );
+                CHECK( live_site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
+
+                for( const character_id id : live_ids ) {
+                    g->remove_npc( id );
+                }
+                const tripoint_abs_omt unload_omt(
+                    route_omt.x() + 4, route_omt.y(), route_omt.z() );
+                g->place_player_overmap( unload_omt );
+                clear_map();
+                for( const character_id id : live_ids ) {
+                    REQUIRE( g->find_npc( id ) != nullptr );
+                    CHECK_FALSE( g->find_npc( id )->is_active() );
+                    CHECK_FALSE( get_map().inbounds( g->find_npc( id )->pos_abs() ) );
+                }
+                CHECK( dematerialize_live_bandit_structural_handoffs_for_test() );
+                CHECK( live_site.active_outing.owner ==
+                       bandit_live_world::simulation_owner::abstract );
+                CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );
             } else {
                 CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
                 CHECK( live_site.active_outing.owner ==
@@ -8555,6 +8595,24 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                      site, cohesion, false, false ) );
         CHECK( site.active_outing.local_handoff.cohesion_deadline_minutes == -1 );
         CHECK( site.active_outing.local_handoff.cohesion_reroutes_used == 0 );
+
+        for( std::size_t index = 0; index < reads.size(); ++index ) {
+            reads[index].current_position = tripoint_abs_ms(
+                                                reads[index].current_position.x() + 3,
+                                                reads[index].current_position.y(),
+                                                reads[index].current_position.z() );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        cohesion = bandit_live_world::plan_local_pair_cohesion( site, *cursor, 202, reads );
+        REQUIRE( cohesion.valid );
+        CHECK( cohesion.snapshot.cohesion_assembled );
+        CHECK_FALSE( cohesion.reroute_needed );
+        CHECK( cohesion.snapshot.cohesion_deadline_minutes == -1 );
+        const std::string coherently_moved = serialize_world( world );
+        CHECK_FALSE( bandit_live_world::commit_local_pair_cohesion(
+                         site, cohesion, false, false ) );
+        CHECK( serialize_world( world ) == coherently_moved );
 
         reads[1].current_position = reads[0].current_position + point( 10, 0 );
         cursor = bandit_live_world::current_external_simulation_cursor( site );

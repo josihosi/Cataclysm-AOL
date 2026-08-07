@@ -69,6 +69,18 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited `DEBUG_CLAIRVOYANCE` are
   unchanged; no lifecycle result is written. Both JSON payloads parse and all 149 harness contracts
   pass. No live credit.
+- Northeast run `20260807_060258` on clean `de9b904389+SDL3` naturally reached discovery,
+  dispatch, local handoff, observer selection, and the final six-hour window, then repeatedly
+  alternated `local_cohesion ... assembled=no/yes` before `abort=yes` and `returning_home`.
+  Verdict: `red_wait_completion_artifact_timeout`; no lifecycle credit and no permission/OCR
+  blocker. The repair treats exact staging as the one-time rendezvous boundary: after it succeeds,
+  coherent same-route movement retains `cohesion_assembled`; real separation or leaving the owned
+  route still reacquires. The real-NPC production regression continues through off-staging unload
+  and an epoch-2 transactional dematerialization to the abstract owner. Mac SDL3/SOUND focused
+  build/link: exit 0; `[local_handoff]`: 2 cases / 809 assertions, seed `860807`. One northeast
+  attempt remains after clean re-review/build identity. The first medium review found the stale
+  staging-only dematerialization gate; the accepted fix extends the production regression through
+  unload/writeback, and the required re-review is clean at `patch is correct (0.94)`.
 - The new fixture `bandit_scout_to_decision_observer_east_v0_2026-08-07` derives from the exhausted
   west fixture with exactly one declared precondition transform: player offset `[96,0,0]`, moving
   the observer from OMT `(162,35,0)` to `(166,35,0)`. Camp, route, clock, zero-lead/zero-outing

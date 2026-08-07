@@ -2,16 +2,15 @@
 
 ## Now
 
-Build the exact clean SDL3 binary for the northeast observer footing, then run its first bounded
-scout-to-decision probe. Require the same naturally dispatched pair to continue through physical
-return, final report, and camp decision; preserve the compact observer incident pair.
+Checkpoint the assembled-cohesion latch exposed by northeast run `20260807_060258`: review the
+focused diff, preserve the deterministic production-seam evidence, and commit the behavior with
+the compact ledger receipt.
 
 ## Immediate follow-ups
 
-1. Build an exact clean SDL3 identity for the new footing only; both prior east attempts are
-   exhausted and must not be rerun on unchanged geometry.
-2. Preserve the green bounded physical-return/report/decision regression as the lower-half control;
-   do not substitute it for the required same-incident live evidence.
+1. Build an exact clean SDL3 identity for the latch checkpoint.
+2. Spend the second and final northeast attempt on the unchanged vertical proof contract; preserve
+   the compact observer incident pair and require physical return, final report, and camp decision.
 3. Once scout-to-decision is green, continue its real decided owner into the shakedown outcome.
 
 Do not suppress upstream debug popups, start horde/stalker adapters, add arbitrary editor breadth,

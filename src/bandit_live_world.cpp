@@ -4002,13 +4002,6 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
         if( !read_iter->dead ) {
             all_survivors_confirmed_homeward_exit =
                 all_survivors_confirmed_homeward_exit && confirmed_homeward_exit;
-            if( snapshot.cohesion_assembled && !snapshot.cohesion_abort_return &&
-                !confirmed_homeward_exit &&
-                rl_dist( read_iter->current_position, member_snapshot.staging_position ) > 1 ) {
-                plan.notes.push_back(
-                    "local dematerialization blocked: survivor left assembled staging" );
-                return plan;
-            }
             surviving_exit_positions.push_back( read_iter->current_position );
         }
         read_member_ids.push_back( read_iter->npc_id );
@@ -4836,7 +4829,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     const bool homeward_assembly_released = snapshot.cohesion_assembled &&
             scout_phase_requires_homeward_only( outing.phase );
     bool assembled = cohesive;
-    if( assembled ) {
+    if( assembled && !snapshot.cohesion_assembled ) {
         for( const local_cohesion_member_read *read : living_reads ) {
             const auto member = std::find_if( snapshot.members.begin(), snapshot.members.end(),
             [read]( const local_handoff_member_snapshot & candidate ) {
