@@ -81,6 +81,18 @@
   wait classifier required the percent or a different word order, it falsely reported a partial
   safe-mode prompt and terminated the run. The preserved screenshot visibly shows ordinary wait
   progress. No return credit is claimed.
+- Run `20260807_113559` on commit `a4a8c2efdb`, executable SHA-256
+  `733366b96bcbd0187633a93e11228ff3254ed3d55da9f72a778cd3f8ca0b9c35`, passed the repaired
+  wait guard and reached `phase=returning_home` local handoff for both scouts at `(164,34)`. The
+  local cohesion trace then fell from two staging orders to one and finally
+  `assembled=no ... abort=yes`; materialization had cleared both camp goals, so the homeward motor
+  could not continue after that rendezvous abort. The required camp-boundary dematerialization,
+  canonical return, report, and decision were absent.
+- The transactional homeward-bind tests target rebuilt successfully. With the recorded stable seed
+  `3003869255`, `[local_handoff]` passes 874 assertions in two cases and proves a homeward bind is
+  immediately coherent, owns both travelers, preserves exact exit checks, and round-trips.
+  `[scout_assessment]` passes 231 assertions in four cases, and the harness fixture contract passes
+  154 tests. The live run remains necessary to prove the prepared routes reach the camp boundary.
 
 ## Pending proof contract
 

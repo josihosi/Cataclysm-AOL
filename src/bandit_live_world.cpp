@@ -3832,6 +3832,12 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         plan.notes.push_back( "local handoff blocked: pair slots are outside cohesion radius" );
         return plan;
     }
+    if( scout_phase_requires_homeward_only( outing.phase ) ) {
+        snapshot.cohesion_assembled = true;
+        snapshot.cohesion_deadline_minutes = -1;
+        snapshot.cohesion_reroutes_used = 0;
+        snapshot.cohesion_abort_return = false;
+    }
     plan.snapshot = std::move( snapshot );
     plan.valid = true;
     plan.notes.push_back( "local handoff preflight captured the complete surviving pair" );

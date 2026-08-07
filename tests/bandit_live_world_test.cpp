@@ -8898,6 +8898,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         bandit_live_world::site_record &site = world.sites.front();
         site.active_outing.waypoint_index =
             static_cast<int>( site.active_outing.shared_route.size() ) - 2;
+        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
         const std::optional<bandit_live_world::simulation_advance_cursor> abstract_cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( abstract_cursor );
@@ -8905,15 +8906,16 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             bandit_live_world::plan_local_pair_handoff(
                 site, *abstract_cursor, 100, make_reads( site ) );
         REQUIRE( handoff.valid );
+        CHECK( handoff.snapshot.cohesion_assembled );
+        CHECK( handoff.snapshot.cohesion_deadline_minutes == -1 );
+        CHECK_FALSE( handoff.snapshot.cohesion_abort_return );
         REQUIRE( bandit_live_world::commit_local_pair_handoff(
                      site, handoff,
         []( const bandit_live_world::local_handoff_member_snapshot & ) {
             return true;
         }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
                  bandit_live_world::local_handoff_commit_result::applied );
-        assemble_pair( site, 100 );
-        site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
-        site.active_outing.local_handoff.phase = bandit_live_world::scout_phase::returning_home;
+        CHECK( bandit_live_world::local_pair_homeward_travel_ids( world ).size() == 2 );
 
         const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
             bandit_live_world::current_external_simulation_cursor( site );
@@ -9081,7 +9083,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( followed_site.active_outing.local_handoff.route_position == next_omt );
         CHECK( bandit_live_world::local_pair_assembly_orders(
                    followed_site.active_outing ).empty() );
-        assemble_pair( followed_site, 103 );
+        CHECK( followed_site.active_outing.local_handoff.cohesion_assembled );
         CHECK( bandit_live_world::local_pair_assembly_orders(
                    followed_site.active_outing ).empty() );
 

@@ -68,6 +68,11 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   percentage as `71-`. The harness acknowledged the structured wilderness-flavor popup and its
   activity query, but misclassified the remaining `Waiting ... Press ... to interrupt` banner as a
   partial safe-mode prompt. This is a harness visibility blocker, not lifecycle evidence.
+- Run `20260807_113559` on `a4a8c2efdb+SDL3` passed that wait guard and proved the exact pair's
+  `returning_home` local handoff at `(164,34)`. The bind cleared their abstract goals and the
+  rendezvous gate treated their adjacent transactional entry as unassembled; one scout reached a
+  staging slot, the other missed the existing rendezvous deadline, and the abort path cleared both
+  routes. No camp-boundary dematerialization or canonical return occurred.
 
 ## Active claim
 

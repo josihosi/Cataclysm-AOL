@@ -4286,7 +4286,9 @@ bool materialize_live_bandit_structural_handoffs()
                 return backup.member->getID() == member_id;
             } );
         };
-        const auto bind_member = [&find_backup, &backups](
+        const bool homeward_handoff =
+            bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
+        const auto bind_member = [&find_backup, &backups, &site, homeward_handoff](
         const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
             if( snapshot.dead ) {
                 return true;
@@ -4310,6 +4312,10 @@ bool materialize_live_bandit_structural_handoffs()
             member->goto_to_this_pos = std::nullopt;
             member->clear_ai_guard_pos();
             member->path.clear();
+            if( homeward_handoff && !live_bandit_route_member_home( *member, site ) ) {
+                overmap_buffer.insert_npc( member );
+                return false;
+            }
             overmap_buffer.insert_npc( member );
             return true;
         };
