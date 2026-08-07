@@ -901,6 +901,29 @@ bool live_bandit_update_local_path( npc &member_npc, const tripoint_bub_ms &dest
     return member_npc.update_path( destination, false, false );
 }
 
+bool live_bandit_update_local_path_avoiding(
+    npc &member_npc, const tripoint_bub_ms &destination,
+    const std::function<bool( const tripoint_bub_ms & )> &additional_avoid )
+{
+    bandit_live_world_probe::scoped_loaded_covert_member member_scope(
+        bandit_live_world_probe::active() );
+    if( destination == member_npc.pos_bub() ) {
+        member_npc.path.clear();
+        return true;
+    }
+    const std::function<bool( const tripoint_bub_ms & )> npc_avoid =
+        member_npc.get_path_avoid();
+    const auto combined_avoid = [&npc_avoid,
+                &additional_avoid]( const tripoint_bub_ms & step ) {
+        return npc_avoid( step ) || additional_avoid( step );
+    };
+    member_npc.path = get_map().route(
+                          member_npc.pos_bub(), pathfinding_target::point( destination ),
+                          member_npc.get_pathfinding_settings( false ),
+                          combined_avoid );
+    return !member_npc.path.empty();
+}
+
 std::vector<tripoint_abs_omt> live_bandit_member_route_to(
     const npc &member_npc, const bandit_live_world::site_record &site,
     const tripoint_abs_omt &destination )
@@ -6889,22 +6912,28 @@ void monmove()
                     }
                     return result;
                 };
-                const auto local_path_respects_nonreentry = [relationship, &m, &guy](
+                const auto local_step_respects_nonreentry = [relationship, &m, &guy](
+                const tripoint_bub_ms & step ) {
+                    if( !relationship ) {
+                        return false;
+                    }
+                    const tripoint_abs_omt step_omt =
+                        project_to<coords::omt>( m.get_abs( step ) );
+                    const std::optional<int> distance =
+                        bandit_live_world::target_footprint_watch_distance(
+                            step_omt, relationship->target_footprint );
+                    return distance && *distance >= relationship->minimum_target_distance &&
+                           ( step_omt == guy.pos_abs_omt() ||
+                             std::find( relationship->forbidden_route_omts.begin(),
+                                        relationship->forbidden_route_omts.end(), step_omt ) ==
+                             relationship->forbidden_route_omts.end() );
+                };
+                const auto local_path_respects_nonreentry = [relationship,
+                            &local_step_respects_nonreentry](
                 const std::vector<tripoint_bub_ms> &candidate_path ) {
                     return relationship && std::all_of(
                                candidate_path.begin(), candidate_path.end(),
-                    [relationship, &m, &guy]( const tripoint_bub_ms & step ) {
-                        const tripoint_abs_omt step_omt =
-                            project_to<coords::omt>( m.get_abs( step ) );
-                        const std::optional<int> distance =
-                            bandit_live_world::target_footprint_watch_distance(
-                                step_omt, relationship->target_footprint );
-                        return distance && *distance >= relationship->minimum_target_distance &&
-                               ( step_omt == guy.pos_abs_omt() ||
-                                 std::find( relationship->forbidden_route_omts.begin(),
-                                            relationship->forbidden_route_omts.end(), step_omt ) ==
-                                 relationship->forbidden_route_omts.end() );
-                    } );
+                               local_step_respects_nonreentry );
                 };
                 const bool immediate_field_hazard = relationship &&
                         guy.sees_dangerous_field( guy.pos_bub( m ) );
@@ -6939,13 +6968,22 @@ void monmove()
                 } else if( homeward_boundary != pair_homeward_boundary_steps.end() ) {
                     if( guy.pos_abs() == homeward_boundary->second.departure ) {
                         guy.move_pause();
-                    } else if( live_bandit_update_local_path(
-                                   guy, m.get_bub( homeward_boundary->second.departure ) ) &&
-                               local_path_respects_nonreentry( guy.path ) ) {
-                        guy.move_to_next();
                     } else {
-                        guy.path.clear();
-                        guy.move_pause();
+                        const auto avoid_nonreentry =
+                        [&local_step_respects_nonreentry]( const tripoint_bub_ms & step ) {
+                            return !local_step_respects_nonreentry( step );
+                        };
+                        const bool route_found = live_bandit_update_local_path_avoiding(
+                                                     guy, m.get_bub( homeward_boundary->second.departure ),
+                                                     avoid_nonreentry );
+                        const bool route_safe = route_found &&
+                                                local_path_respects_nonreentry( guy.path );
+                        if( route_safe ) {
+                            guy.move_to_next();
+                        } else {
+                            guy.path.clear();
+                            guy.move_pause();
+                        }
                     }
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
                            !guy.has_flag( json_flag_CANNOT_MOVE ) ) {

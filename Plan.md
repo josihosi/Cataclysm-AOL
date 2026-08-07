@@ -46,18 +46,23 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
 - Run `20260807_142412` on `c7be851d23+SDL3` proved a valid two-member forward assembly route with
   twenty total local path steps and no route failure, then forced `returning_home` before either
   scout assembled. The focused owner test proves that an ordinary production NPC turn consumes a
-  real staging order, so the remaining distinction is live route geometry versus elapsed-time
-  ownership at that exact handoff.
+  real staging order; exact live positions were still needed to distinguish route geometry from
+  elapsed-time ownership at that handoff.
+- Checkpoint `c846f9d929` added exact cohesion positions. Run `20260807_144329` proved that both
+  scouts physically reached their staging tiles, crossed the forward boundary, completed the
+  watch, and rematerialized together for the home leg. They then stopped before their first
+  homeward boundary. The focused schema-10 reproduction showed why: default local A* selected a
+  diagonal shortcut through the forbidden watch OMT, the post-route safety check rejected it, and
+  every later turn selected the same shortcut again.
 
 ## Active claim
 
-Identify why the exact live observing pair receives valid staging paths but reaches the cohesion
-abort without assembly or a recorded path failure. Use only the committed cohesion receipt for
-the game minute and exact member/stage positions to distinguish an off-route-OMT detour from lost
-movement time. Repair that proved seam, then rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
-bubble exit and camp dematerialization before canonical home reconciliation, final report, and the
-authoritative camp decision.
+Checkpoint the focused homeward-motor repair, then rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. The repair supplies the existing
+non-reentry contract to local A* as an avoid predicate, so the pair searches around forbidden OMTs
+instead of repeatedly choosing and rejecting the same shortcut. The incident must show the paired
+physical homeward boundary and camp dematerialization before canonical home reconciliation, final
+report, and the authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

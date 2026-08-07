@@ -24,12 +24,14 @@
 - Focused owner tests cover roster identity, transactional route/handoff, cohesion,
   unload/writeback, physical return/report, no-progress loss, and report/decision matching. They do
   not close the live lifecycle outcome.
-- `[local_handoff]` passes 942 assertions in two cases on `c7be851d23` plus the focused receipt
-  changes. It proves a pair with
+- `[local_handoff]` passes 950 assertions in two cases with fixed seed `123456` on the current
+  homeward-path repair. It
+  proves a pair with
   existing local paths can leave a bubble several overmap tiles from camp, retain/rebuild physical
   routes, traverse intermediate loaded/unloaded ownership, and dematerialize together at camp. It
   now also proves that the first ordinary NPC turn after real materialization reduces every
-  nontrivial member-to-stage distance.
+  nontrivial member-to-stage distance, and that a schema-10 homeward pair routes around its
+  forbidden watch OMT on its first physical motor turn.
   `WaitStepLedgerContractTest` passes all 38 tests on `c74427ca37`; a completed wait with retained
   wilderness flavor now sends no spurious input, while unknown confirmations remain blocking. The
   full harness fixture contract passes 155 tests.
@@ -41,14 +43,20 @@
   post-window harness behavior, not a gameplay interruption.
 - Run `20260807_140347` on `c74427ca37+SDL3` was inconclusive: the observing handoff committed but
   the exact pair did not assemble within its existing five-minute production guard. It did not
-  exercise the active return seam. The global MSW three-round fuse is exhausted, so the next turn
-  must isolate the route edge rather than retry the scenario unchanged.
+  exercise the active return seam and earned no return credit.
 - Run `20260807_142412` on clean `c7be851d23+SDL3`, executable SHA-256
   `47eacd1f94eb939c573d7852f3bb10faabf1a3219cfd75ed9ae820dd0028bcbd`, committed the observing
   handoff and found two valid staging paths totaling twenty steps with zero failed routes. The next
   cohesion write aborted with no movement order. This is the first live assembly-state blocker.
 - Attempt `20260807_144214` performed no feature steps: the harness correctly rejected the dirty
   runtime source at startup. It earns no gameplay evidence.
+- Run `20260807_144329` on clean `c846f9d929+SDL3`, executable SHA-256
+  `05c198627c625c9a366f173d34bf015bc6a039ad86c939afc91026a312e3456e`, proved exact staging
+  assembly, forward boundary/dematerialization, watch completion, and the paired `returning_home`
+  handoff. It then produced no homeward boundary or camp dematerialization. The focused schema-10
+  case reproduced the stall: both default local paths crossed the forbidden watch OMT and were
+  rejected after selection. Supplying that safety rule to A* as an avoid predicate closes the
+  focused motor claim; the unchanged live incident remains pending.
 
 ## Pending proof contract
 

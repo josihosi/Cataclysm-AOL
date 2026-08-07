@@ -8514,6 +8514,15 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         bandit_live_world::world_state world = make_world( false );
         bandit_live_world::site_record &site = world.sites.front();
         bandit_live_world::active_outing_state &outing = site.active_outing;
+        const tripoint_abs_omt target = outing.target_omt;
+        const tripoint_abs_omt watch = target + point( 0, 3 );
+        const tripoint_abs_omt route_approach = watch + point( 0, 1 );
+        outing.schema_version = 10;
+        outing.target_footprint = { target };
+        outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+        outing.selected_watch_omt = watch;
+        outing.selected_watch_route_cost = 2;
+        outing.shared_route = { site.anchor, route_approach, watch, route_approach, site.anchor };
         outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
         outing.phase = bandit_live_world::scout_phase::returning_home;
         const tripoint_abs_omt approach = outing.shared_route[
@@ -8550,13 +8559,25 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( live_site.active_outing.owner ==
                bandit_live_world::simulation_owner::local );
         CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
+        std::map<character_id, tripoint_abs_ms> positions_before_homeward_motor;
         for( const character_id id : live_ids ) {
             npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
+            REQUIRE( bandit_live_world::read_active_covert_scout_homeward_member(
+                         overmap_buffer.global_state.bandit_live_world, id ) );
             CHECK( member->is_active() );
             CHECK( member->goal == live_site.anchor );
             CHECK_FALSE( member->omt_path.empty() );
             CHECK( member->mission == NPC_MISSION_TRAVELLING );
+            positions_before_homeward_motor.emplace( id, member->pos_abs() );
+        }
+        process_monsters_and_npcs_turn_for_test();
+        for( const character_id id : live_ids ) {
+            shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+            REQUIRE( member != nullptr );
+            REQUIRE( positions_before_homeward_motor.count( id ) == 1 );
+            CHECK( ( !member->is_active() ||
+                     member->pos_abs() != positions_before_homeward_motor.at( id ) ) );
         }
 
         const tripoint_abs_omt camp = live_site.anchor;
