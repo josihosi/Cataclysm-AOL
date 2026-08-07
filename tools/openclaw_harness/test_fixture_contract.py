@@ -3814,6 +3814,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ("8", "6h"),
                 ("5", "1h"),
                 ("7", "3h"),
+                ("3", "5m"),
                 ("8", "6h"),
             ],
         )
@@ -3827,7 +3828,34 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertLess(
             labels.index("wait_3_hours_for_real_pair_handoff"),
+            labels.index("wait_5_minutes_through_real_pair_handoff_cadence"),
+        )
+        self.assertLess(
+            labels.index("wait_5_minutes_through_real_pair_handoff_cadence"),
+            labels.index("audit_real_pair_handoff_and_cohesion"),
+        )
+        self.assertLess(
+            labels.index("audit_real_pair_handoff_and_cohesion"),
             labels.index("select_authoritative_dispatch"),
+        )
+        handoff_wait = steps[labels.index("wait_3_hours_for_real_pair_handoff")]
+        self.assertNotIn("artifact_state_patterns", handoff_wait)
+        boundary_wait = steps[labels.index("wait_5_minutes_through_real_pair_handoff_cadence")]
+        self.assertEqual(boundary_wait["choice_key"], "3")
+        self.assertEqual(boundary_wait["expected_duration"], "5m")
+        self.assertEqual(
+            boundary_wait["proof_deferred_to_label"],
+            "audit_real_pair_handoff_and_cohesion",
+        )
+        self.assertNotIn("artifact_state_patterns", boundary_wait)
+        self.assertIn("whole-run log audit", boundary_wait["failure_rule"])
+        handoff_audit = steps[labels.index("audit_real_pair_handoff_and_cohesion")]
+        self.assertEqual(
+            handoff_audit["required_line_patterns"],
+            [
+                ["bandit_live_world local_handoff committed", "members=2"],
+                ["bandit_live_world local_cohesion", "assembled=yes", "abort=no"],
+            ],
         )
         self.assertLess(
             labels.index("arm_default_capture_and_continue_watch"),

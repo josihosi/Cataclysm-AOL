@@ -2,10 +2,10 @@
 
 ## Now
 
-Execute the committed observer-standoff proof for a real bandit scout through physical return,
-final report, and camp decision. Keep the avatar at `(162,35,0)` off the route, use the existing
-shared ecology view, watch/run-until controls, and incident bundle, and do not rerun the exhausted
-on-route collision footing.
+Execute the cadence-aware, evidence-preserving observer-standoff proof for a real bandit scout
+through physical return, final report, and camp decision. Keep the avatar at `(162,35,0)`, let the
+post-dispatch wait cross the five-minute overmap-NPC cadence, and preserve the incident before the
+return audit. Do not rerun either exhausted pre-repair footing.
 
 ## Immediate follow-ups
 

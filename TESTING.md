@@ -107,6 +107,17 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   so ordinary hostile combat began before cohesion assembled; the run stopped red with only
   `assembled=yes` missing. That footing is exhausted. Moving the observer two OMTs west removes
   the causal collision without changing the camp, route, actors, clock, or production transition.
+- Run `20260807_015545` on committed off-route footing dispatched, handed off, assembled, and then
+  entered ordinary exposure-driven `returning_home`. The pair remained active for the six-hour
+  window without the physical-return receipt. A global return artifact incorrectly aborted before
+  incident/save audit; checkpoint `4520134379` removes only that wait-completion coupling while the
+  same-run log and saved-owner audits still require return.
+- Run `20260807_021525` proved the nominal three-hour wait can return after scheduler hours 139 and
+  140, before the hour-141 materialization turn; `materialization_attempts=0`, so this run is a
+  harness-duration limitation rather than a handoff rejection. The repaired contract follows the
+  three-hour wait with a bounded five-minute overmap-NPC cadence wait, then audits the whole run for
+  the one-shot handoff/cohesion receipt. The harness contract remains green at 139 tests; live proof
+  on this repaired footing is pending.
 
 ### Capped non-credit probes
 
