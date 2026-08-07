@@ -17,6 +17,8 @@ evidence without save archaeology, OCR dependence, a second simulation, or debug
 the behavior being proved.
 
 Completion is exactly the outcome ledger in `SUCCESS.md`.
+The normative player-facing behavior, system ownership, and implementation audit are in
+`doc/bandit-cannibal-hostile-camp-ai-spec.md`.
 
 ## Proven state
 
@@ -54,20 +56,21 @@ Completion is exactly the outcome ledger in `SUCCESS.md`.
   homeward boundary. The focused schema-10 reproduction showed why: default local A* selected a
   diagonal shortcut through the forbidden watch OMT, the post-route safety check rejected it, and
   every later turn selected the same shortcut again.
-- Checkpoint `caf1844007` supplies that safety rule directly to local A*. Its fixed-seed focused
-  proof is green. Run `20260807_151252` did not reach the repaired homeward seam: at minute 8410
-  each scout was one tile from its assigned staging slot, cohesion emitted no movement order, and
-  the handoff aborted. Movement currently treats adjacency as complete while assembly requires the
-  exact slots.
+- Checkpoint `1844bc8324a3` made movement and assembly use the same exact staging definition. Run
+  `20260807_152913` proved the pair on exact assigned tiles, forward travel, watch completion, and a
+  later valid two-member `returning_home` handoff. Early homeward materialization was correctly
+  rejected while the loaded bubble lacked paired entry/staging positions. The later handoff became
+  valid at route position `(164,34,0)`, but no subsequent homeward boundary or camp
+  dematerialization occurred before the incident ended.
 
 ## Active claim
 
-Make the staging movement and assembly definitions agree without extending the existing guard or
-changing fixture geometry. Prove that the exact pair continues receiving real movement ownership
-until it satisfies the same slot condition used by assembly, then rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
-homeward boundary and camp dematerialization before canonical home reconciliation, final report,
-and the authoritative camp decision.
+Close the physical return owner at the first remaining seam proved by run `20260807_152913`.
+Starting from its valid two-member `returning_home` handoff, prove why the pair does not cross the
+next homeward bubble boundary or dematerialize at camp, repair only that owner transition, and
+rerun `bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired
+physical homeward boundary and camp dematerialization before canonical home reconciliation, final
+report, and the authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

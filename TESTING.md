@@ -64,6 +64,12 @@
   `(3935,828,0)->(3936,829,0)`: both were adjacent, `movement_orders=0`, `assembled=no`, and
   `abort=yes`. The terminal verdict was `blocked_scout_to_decision_pair_handoff_missing`; no live
   credit reaches the repaired homeward seam.
+- Checkpoint `1844bc8324a3` closes that exact staging mismatch. Run `20260807_152913` proves exact
+  two-member assembly, forward travel, watch completion, and a later valid `returning_home`
+  handoff at route position `(164,34,0)` with owner epoch 3. Earlier materialization attempts were
+  correctly rejected because the loaded bubble lacked paired entry/staging positions. The valid
+  handoff still produced no later homeward boundary or camp dematerialization through the observed
+  window, so return/report/decision credit remains blocked at the next physical-owner seam.
 
 ## Pending proof contract
 
