@@ -1,0 +1,13 @@
+{
+  "name": "bandit_scout_to_decision_observer_southeast_v0_2026-08-07",
+  "source_fixture": "bandit_scout_to_decision_observer_v0_2026-08-06",
+  "source_profile": "live-debug",
+  "description": "Southeast observer footing for the natural bandit scout-to-decision vertical proof. It preserves the source fixture's camp, route, clock, evidence boundary, and DEBUG_CLAIRVOYANCE mutation, and moves only the player from (162,35,0) to (166,36,0), two OMTs east and one OMT south of the same sector-0 inner route waypoint at (164,35,0). No lead, dispatch, observation, return, report, or decision is injected.",
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [96, 24, 0]
+    }
+  ]
+}

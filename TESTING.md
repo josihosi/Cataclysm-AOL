@@ -63,7 +63,13 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
 
 ### Scout-to-decision vertical — tooling green, live proof pending
 
-- The current fixture `bandit_scout_to_decision_observer_northeast_v0_2026-08-07` derives directly
+- The current fixture `bandit_scout_to_decision_observer_southeast_v0_2026-08-07` derives directly
+  from the original zero-lead source with one transform `[96,24,0]`, moving only the observer from
+  OMT `(162,35,0)` to `(166,36,0)`: two east and one south of waypoint `(164,35,0)`. Camp
+  `(164,39,0)`, target `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited
+  `DEBUG_CLAIRVOYANCE` are unchanged; no lifecycle result is written. Both JSON payloads parse and
+  all 149 harness contracts pass. No live credit.
+- The exhausted fixture `bandit_scout_to_decision_observer_northeast_v0_2026-08-07` derives directly
   from the original zero-lead source with one transform `[96,-24,0]`, moving only the observer from
   OMT `(162,35,0)` to `(166,34,0)`. Camp `(164,39,0)`, route waypoint `(164,35,0)`, target
   `(164,30,0)`, clock, zero-lead/zero-outing boundary, and inherited `DEBUG_CLAIRVOYANCE` are
@@ -77,8 +83,8 @@ cursor, save/reload, replay, public-packet bypass, cap, and confirmed-dead contr
   coherent same-route movement retains `cohesion_assembled`; real separation or leaving the owned
   route still reacquires. The real-NPC production regression continues through off-staging unload
   and an epoch-2 transactional dematerialization to the abstract owner. Mac SDL3/SOUND focused
-  build/link: exit 0; `[local_handoff]`: 2 cases / 809 assertions, seed `860807`. One northeast
-  attempt remains after clean re-review/build identity. The first medium review found the stale
+  build/link: exit 0; `[local_handoff]`: 2 cases / 809 assertions, seed `860807`. This left one
+  northeast attempt, consumed by the final run below. The first medium review found the stale
   staging-only dematerialization gate; the accepted fix extends the production regression through
   unload/writeback, and the required re-review is clean at `patch is correct (0.94)`.
 - Final northeast run `20260807_063000` on clean `7e92528d87+SDL3` naturally reached dispatch,

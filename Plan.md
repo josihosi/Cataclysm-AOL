@@ -146,8 +146,8 @@ run ended `red_wait_completion_artifact_timeout` with no lifecycle credit. The d
 authoritative local owner: it re-required exact staging tiles after the one-time rendezvous had
 already succeeded. The current slice latches that success while the living pair remains cohesive
 on its owned route; real separation or leaving the route still restarts bounded assembly. Focused
-production-seam and pure-owner tests, including unload back to the abstract owner, are green. One
-northeast live attempt remains after clean re-review, checkpoint, and an exact clean rebuild.
+production-seam and pure-owner tests, including unload back to the abstract owner, are green. This
+left one northeast live attempt, consumed by the final run below.
 
 The second and final northeast run, `20260807_063000` on clean `7e92528d87+SDL3`, reproduced the
 same visible failure after the latch/writeback repair: the exact pair assembled, but ordinary NPC
@@ -157,6 +157,19 @@ pair at its selected observation OMT receives only a soft AI guard, so each scou
 independently. The next slice keeps hard staging motor priority while that local pair remains
 non-homeward; a real observation/return phase must still release it through the existing homeward
 path.
+
+The motor-hold repair is checkpointed at `b14b9c9ca9`: assembled ordinary non-homeward pairs keep
+their exact staging orders, while homeward, abort, and pending alternate-watch owners release them.
+The same-turn motor cache refresh follows assessment transitions. Focused Mac evidence is green at
+3 cases / 878 assertions, and the exact clean binary is `b14b9c9ca9+SDL3`.
+
+The next materially distinct footing is
+`bandit_scout_to_decision_observer_southeast_v0_2026-08-07`. It derives directly from the original
+zero-lead source and applies exactly one declared player transform, `[96,24,0]`, placing the
+observer at OMT `(166,36,0)`: two OMTs east and one south of waypoint `(164,35,0)`. It changes the
+loaded-bubble y-axis to the camp side of the waypoint while remaining off the x=164 route, and it
+writes no lead, dispatch, observation, return, report, or decision. The scenario's waits, audits,
+proof rules, and causal boundary remain unchanged.
 
 The proof contract must name claim, preconditions/interventions, causal boundary, production owner
 path, expected transitions, control, deadline, and commit/binary/scenario/tool identities before a
