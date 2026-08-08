@@ -222,6 +222,20 @@
     },
     {
       "kind": "press",
+      "label": "rearm_selected_watch_after_natural_window",
+      "keys": ["a"],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Armed BD-DF9E73"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_post_window_watch_rearm_missing",
+      "abort_reason": "the reopened ecology console did not rearm the exact T01 dispatch identity BD-DF9E73",
+      "expected_visible_fact": "the reopened console rearms the exact T01 dispatch identity before incident publication"
+    },
+    {
+      "kind": "press",
       "label": "record_post_window_ecology_incident",
       "keys": ["r"],
       "delay_ms": 200,

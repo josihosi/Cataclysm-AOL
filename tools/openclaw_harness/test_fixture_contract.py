@@ -4909,8 +4909,25 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
         )
+        reopen_index = labels.index("reopen_console_after_natural_window")
+        rearm_index = labels.index("rearm_selected_watch_after_natural_window")
+        self.assertEqual(rearm_index, reopen_index + 1)
+        rearm_step = steps[rearm_index]
+        self.assertEqual(rearm_step["keys"], ["a"])
+        self.assertTrue(rearm_step["capture_after"])
+        self.assertTrue(rearm_step["extract_text_after_capture"])
+        self.assertEqual(
+            rearm_step["expected_screen_text_after_contains"],
+            ["Armed BD-DF9E73"],
+        )
+        self.assertTrue(rearm_step["abort_on_screen_text_expectation_failure"])
+        self.assertEqual(
+            rearm_step["abort_verdict"],
+            "blocked_scout_to_decision_post_window_watch_rearm_missing",
+        )
         incident_index = labels.index("record_post_window_ecology_incident")
         incident_audit_index = labels.index("audit_fresh_post_window_ecology_incident_pair")
+        self.assertEqual(incident_index, rearm_index + 1)
         self.assertEqual(incident_audit_index, incident_index + 1)
         incident_step = steps[incident_index]
         incident_audit = steps[incident_audit_index]
@@ -4928,6 +4945,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertTrue(incident_audit["abort_on_metadata_failure"])
         self.assertLess(
             incident_audit_index,
+            labels.index("audit_same_run_survivor_physical_return"),
+        )
+        self.assertLess(
+            rearm_index,
             labels.index("audit_same_run_survivor_physical_return"),
         )
         return_audit = steps[labels.index("audit_same_run_survivor_physical_return")]
@@ -4965,7 +4986,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("P", press_keys)
         self.assertNotIn("A", press_keys)
         self.assertNotIn("R", press_keys)
-        self.assertEqual(press_keys.count("a"), 1)
+        self.assertEqual(press_keys.count("a"), 2)
         self.assertEqual(press_keys.count("r"), 1)
         self.assertIn(
             "debug_intervention=false",
