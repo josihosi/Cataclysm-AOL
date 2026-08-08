@@ -4883,6 +4883,28 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("arm_default_capture_and_continue_watch"),
             labels.index("advance_initial_6_hour_post_observation_window"),
         )
+        arm_index = labels.index("arm_default_capture_and_continue_watch")
+        arm_step = steps[arm_index]
+        self.assertEqual(arm_step["keys"], ["a"])
+        self.assertTrue(arm_step["capture_after"])
+        self.assertTrue(arm_step["extract_text_after_capture"])
+        self.assertEqual(
+            arm_step["expected_screen_text_after_contains"],
+            ["Armed BD-DF9E73"],
+        )
+        self.assertTrue(arm_step["abort_on_screen_text_expectation_failure"])
+        self.assertEqual(
+            arm_step["abort_verdict"],
+            "blocked_scout_to_decision_authoritative_watch_arm_missing",
+        )
+        for later_credit_label in (
+            "close_console_before_natural_window",
+            "advance_initial_6_hour_post_observation_window",
+            "record_post_window_ecology_incident",
+            "audit_fresh_post_window_ecology_incident_pair",
+            "audit_same_run_survivor_physical_return",
+        ):
+            self.assertLess(arm_index, labels.index(later_credit_label))
         self.assertLess(
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
@@ -4892,6 +4914,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(incident_audit_index, incident_index + 1)
         incident_step = steps[incident_index]
         incident_audit = steps[incident_audit_index]
+        self.assertEqual(incident_step["keys"], ["r"])
         self.assertTrue(incident_step["record_ecology_incident_baseline"])
         self.assertEqual(
             incident_step["proof_deferred_to_label"],
@@ -4940,8 +4963,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertNotIn("I", press_keys)
         self.assertNotIn("P", press_keys)
-        self.assertEqual(press_keys.count("A"), 1)
-        self.assertEqual(press_keys.count("R"), 1)
+        self.assertNotIn("A", press_keys)
+        self.assertNotIn("R", press_keys)
+        self.assertEqual(press_keys.count("a"), 1)
+        self.assertEqual(press_keys.count("r"), 1)
         self.assertIn(
             "debug_intervention=false",
             scenario["evidence_contract"]["observer_artifact_requirement"],

@@ -178,10 +178,16 @@
     {
       "kind": "press",
       "label": "arm_default_capture_and_continue_watch",
-      "keys": ["A"],
+      "keys": ["a"],
       "delay_ms": 200,
       "settle_seconds": 2,
-      "expected_visible_fact": "the existing selected-phase watch is armed in its default capture-and-continue mode"
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Armed BD-DF9E73"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_authoritative_watch_arm_missing",
+      "abort_reason": "the ecology console did not arm the exact T01 dispatch identity BD-DF9E73",
+      "expected_visible_fact": "the exact T01 dispatch identity BD-DF9E73 is armed in capture-and-continue mode"
     },
     {
       "kind": "press",
@@ -217,7 +223,7 @@
     {
       "kind": "press",
       "label": "record_post_window_ecology_incident",
-      "keys": ["R"],
+      "keys": ["r"],
       "delay_ms": 200,
       "settle_seconds": 3,
       "capture_after": true,
