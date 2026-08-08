@@ -4836,6 +4836,30 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             steps[selection_index]["keys"],
             ["right", "right", "up", "up", "["],
         )
+        reselection_index = labels.index("settled_reselect_authoritative_dispatch")
+        self.assertEqual(reselection_index, selection_index + 1)
+        reselection = steps[reselection_index]
+        self.assertEqual(reselection["keys"], ["["])
+        self.assertTrue(reselection["capture_after"])
+        self.assertTrue(reselection["extract_text_after_capture"])
+        self.assertEqual(
+            reselection["expected_screen_text_after_contains"],
+            ["BD-DF9E73"],
+        )
+        self.assertTrue(reselection["abort_on_screen_text_expectation_failure"])
+        self.assertEqual(
+            reselection["abort_verdict"],
+            "blocked_scout_to_decision_authoritative_dispatch_selection_missing",
+        )
+        for later_credit_label in (
+            "open_console_for_natural_watch",
+            "arm_default_capture_and_continue_watch",
+            "advance_initial_6_hour_post_observation_window",
+            "record_post_window_ecology_incident",
+            "audit_fresh_post_window_ecology_incident_pair",
+            "audit_same_run_survivor_physical_return",
+        ):
+            self.assertLess(reselection_index, labels.index(later_credit_label))
         handoff_wait = steps[labels.index("wait_3_hours_for_real_pair_handoff")]
         self.assertEqual(handoff_wait["artifact_state_patterns"], ["bandit_live_world perf:"])
         boundary_wait = steps[labels.index("wait_5_minutes_through_real_pair_handoff_cadence")]

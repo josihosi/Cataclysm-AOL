@@ -155,6 +155,20 @@
     },
     {
       "kind": "press",
+      "label": "settled_reselect_authoritative_dispatch",
+      "keys": ["["],
+      "delay_ms": 200,
+      "settle_seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["BD-DF9E73"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_authoritative_dispatch_selection_missing",
+      "abort_reason": "the settled overmap redraw did not bind the exact T01 dispatch identity BD-DF9E73",
+      "expected_visible_fact": "the exact T01 dispatch alias BD-DF9E73 is selected after the overmap redraw boundary"
+    },
+    {
+      "kind": "press",
       "label": "open_console_for_natural_watch",
       "keys": ["escape", "}", "C"],
       "delay_ms": 200,
