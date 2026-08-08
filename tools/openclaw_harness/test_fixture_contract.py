@@ -4786,9 +4786,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("wait_5_minutes_through_real_pair_handoff_cadence"),
             labels.index("audit_real_pair_handoff_and_cohesion"),
         )
+        selection_index = labels.index("select_authoritative_dispatch")
         self.assertLess(
             labels.index("audit_real_pair_handoff_and_cohesion"),
-            labels.index("select_authoritative_dispatch"),
+            selection_index,
+        )
+        self.assertEqual(
+            steps[selection_index]["keys"],
+            ["right", "right", "up", "up", "["],
         )
         handoff_wait = steps[labels.index("wait_3_hours_for_real_pair_handoff")]
         self.assertEqual(handoff_wait["artifact_state_patterns"], ["bandit_live_world perf:"])
