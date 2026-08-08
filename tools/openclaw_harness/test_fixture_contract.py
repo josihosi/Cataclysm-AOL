@@ -4834,7 +4834,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertEqual(
             steps[selection_index]["keys"],
-            ["right", "right", "up", "up", "["],
+            ["right", "up", "up", "up", "["],
         )
         reselection_index = labels.index("settled_reselect_authoritative_dispatch")
         self.assertEqual(reselection_index, selection_index + 1)

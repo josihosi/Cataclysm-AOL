@@ -147,7 +147,7 @@
     {
       "kind": "press",
       "label": "select_authoritative_dispatch",
-      "keys": ["right", "right", "up", "up", "["],
+      "keys": ["right", "up", "up", "up", "["],
       "delay_ms": 200,
       "settle_seconds": 2,
       "capture_after": true,
