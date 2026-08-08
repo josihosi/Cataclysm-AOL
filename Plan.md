@@ -62,15 +62,19 @@ The normative player-facing behavior, system ownership, and implementation audit
   rejected while the loaded bubble lacked paired entry/staging positions. The later handoff became
   valid at route position `(164,34,0)`, but no subsequent homeward boundary or camp
   dematerialization occurred before the incident ended.
+- Checkpoint `f46f8f45ca` preserves the canonical off-camp `returning_home` resume when local pair
+  materialization fails. The focused `[local_handoff]` regression passes 974 assertions and proves
+  that the following structural cadence cannot return members, close the outing, or erase the
+  physical resume. This is necessary owner proof, not live lifecycle credit.
 
 ## Active claim
 
-Close the physical return owner at the first remaining seam proved by run `20260807_152913`.
-Starting from its valid two-member `returning_home` handoff, prove why the pair does not cross the
-next homeward bubble boundary or dematerialize at camp, repair only that owner transition, and
-rerun `bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired
-physical homeward boundary and camp dematerialization before canonical home reconciliation, final
-report, and the authoritative camp decision.
+Close T01's remaining changed-executable evidence seam. First require the post-incident harness
+step to publish and identity-check a new structured incident pair; the prior `R` step could produce
+"No incident recorded" without failing. Then relink checkpoint `f46f8f45ca` and rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
+homeward boundary and camp dematerialization before canonical home reconciliation, final report,
+and the authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

@@ -2,13 +2,12 @@
 
 ## Current necessary claim
 
-Repair the proved physical-return seam from run `20260807_152913`: exact staging, forward travel,
-watch completion, and a later valid two-member `returning_home` handoff are green, but the pair
-does not cross a subsequent homeward bubble boundary or dematerialize at camp. Add the smallest
-focused proof for that exact owner transition, then rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged and require paired physical dematerialization
-before report and decision credit.
+Add the smallest positive post-`R` harness assertion that requires a newly published, identity-bound
+incident JSON/screenshot pair. Then relink committed checkpoint `f46f8f45ca` and rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. Require paired physical dematerialization at
+camp before returned-member, final-report, and decision credit.
 
+The focused owner regression is green but cannot substitute for that changed-executable incident.
 Do not extend the production-derived wait, alter fixture geometry, discard the committed ingress
-slice, expand debug tooling without a visibility gap, or start the shakedown/raid lane before this
-physical return is green.
+slice, expand debug tooling beyond the proved incident-publication gap, or start the shakedown/raid
+lane before this physical return is green.

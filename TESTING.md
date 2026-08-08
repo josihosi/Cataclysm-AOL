@@ -73,6 +73,15 @@
   correctly rejected because the loaded bubble lacked paired entry/staging positions. The valid
   handoff still produced no later homeward boundary or camp dematerialization through the observed
   window, so return/report/decision credit remains blocked at the next physical-owner seam.
+- Checkpoint `f46f8f45ca` classifies `returning_home` as a retained physical-resume phase. The
+  focused `[local_handoff]` attack failed before the fix and passes 974 assertions in two cases with
+  seed `123456` after it. Failed pair materialization is byte-inert, the next structural cadence
+  returns zero members, and the canonical off-camp resume survives. No game executable or live
+  incident has exercised this checkpoint yet.
+- Harness audit found that the post-window `R` step in run `20260807_152913` displayed "No incident
+  recorded" and published no incident JSON/screenshot pair without making the step red. Before the
+  next live probe, the harness must positively require a new pair bound to the scenario, run,
+  committed source, and executable, with natural provenance and no debug intervention.
 
 ## Pending proof contract
 
@@ -118,7 +127,7 @@ the pass condition. The next work claim must be necessary to close that exact ga
 Identities: record source commit, executable identity, fixture manifest/hash, scenario name, run
 ID, authoritative owner audit, compact incident JSON, and paired screenshot where UI state matters.
 
-Necessary live validation after the focused owner proof:
+Necessary validation before and through the next live probe:
 
 ```sh
 python3 -m unittest tools.openclaw_harness.test_fixture_contract
@@ -126,9 +135,10 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-Relink the changed Mac executable and run the same causal scenario above. The live pass requires
-the exact pair's `returning_home` local handoff and physical boundary dematerialization before the
-surviving return, final non-provisional report, and matching authoritative camp decision.
+First close the positive incident-publication assertion. Then relink the Mac executable from exact
+committed source and run the same causal scenario above. The live pass requires the exact pair's
+`returning_home` local handoff and physical boundary dematerialization before the surviving return,
+final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.
