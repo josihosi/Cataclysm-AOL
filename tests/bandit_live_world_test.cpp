@@ -9262,20 +9262,33 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         bandit_live_world::world_state guarded_offcamp_world = world;
         bandit_live_world::site_record &guarded_offcamp_site =
             guarded_offcamp_world.sites.front();
-        guarded_offcamp_site.active_outing.local_handoff.route_position = split_exit_omt;
-        guarded_offcamp_site.active_outing.local_handoff.approach_from = route_position;
+        guarded_offcamp_site.active_outing.local_handoff.route_position = route_position;
+        guarded_offcamp_site.active_outing.local_handoff.approach_from =
+            guarded_offcamp_site.active_outing.shared_route[static_cast<std::size_t>(
+                        guarded_offcamp_site.active_outing.waypoint_index - 1 )];
         for( std::size_t index = 0;
              index < guarded_offcamp_site.active_outing.local_handoff.members.size(); ++index ) {
             guarded_offcamp_site.active_outing.local_handoff.members[index].exit_position =
-                tripoint_abs_ms( split_exit_origin.x() + static_cast<int>( index ),
-                                 split_exit_origin.y(), split_exit_origin.z() );
+                guarded_offcamp_site.active_outing.local_handoff.members[index].staging_position;
         }
+        const std::optional<bandit_live_world::simulation_advance_cursor> offcamp_cursor =
+            bandit_live_world::current_external_simulation_cursor( guarded_offcamp_site );
+        REQUIRE( offcamp_cursor );
+        std::vector<bandit_live_world::local_handoff_member_read> failed_materialization_reads =
+            make_reads( guarded_offcamp_site );
+        failed_materialization_reads.pop_back();
+        const std::string before_failed_materialization = serialize_world( guarded_offcamp_world );
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         guarded_offcamp_site, *offcamp_cursor, expected_return_minutes,
+                         failed_materialization_reads ).valid );
+        CHECK( serialize_world( guarded_offcamp_world ) == before_failed_materialization );
         const bandit_live_world::structural_outing_result blocked_offcamp_return =
             bandit_live_world::advance_structural_bounty_outings(
                 guarded_offcamp_world, expected_return_minutes, {} );
         CHECK( blocked_offcamp_return.members_returned == 0 );
         CHECK( guarded_offcamp_site.active_outing.is_active() );
         CHECK( guarded_offcamp_site.active_outing.local_handoff.is_abstract_resume() );
+        CHECK( guarded_offcamp_site.active_outing.local_handoff.route_position == route_position );
         bandit_live_world::world_state contradictory_exit_world = world;
         bandit_live_world::site_record &contradictory_exit_site =
             contradictory_exit_world.sites.front();
