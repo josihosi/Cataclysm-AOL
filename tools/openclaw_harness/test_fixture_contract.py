@@ -157,6 +157,47 @@ class PeekabooPressSequenceContractTest(unittest.TestCase):
             ],
         )
 
+    def test_routes_bracket_after_batched_cursor_movement_as_physical_hotkey(self) -> None:
+        command = mock.Mock(side_effect=lambda args, **_: list(args))
+        interaction = mock.Mock()
+        type_text = mock.Mock()
+        hotkey = mock.Mock()
+        ordered_calls = mock.Mock()
+        ordered_calls.attach_mock(interaction, "interaction")
+        ordered_calls.attach_mock(hotkey, "hotkey")
+        with (
+            mock.patch("startup_harness.peekaboo_command", command),
+            mock.patch("startup_harness.run_peekaboo_interaction", interaction),
+            mock.patch("startup_harness.peekaboo_type_text", type_text),
+            mock.patch("startup_harness.peekaboo_hotkey", hotkey),
+        ):
+            peekaboo_press_sequence(
+                42,
+                ["right", "right", "up", "up", "["],
+                delay_ms=123,
+            )
+
+        expected_command = [
+            "press",
+            "right",
+            "right",
+            "up",
+            "up",
+            "--pid",
+            "42",
+            "--delay",
+            "123",
+        ]
+        command.assert_called_once_with(expected_command, channel="input")
+        self.assertEqual(
+            ordered_calls.mock_calls,
+            [
+                mock.call.interaction(42, expected_command),
+                mock.call.hotkey(42, "[", hold_ms=123),
+            ],
+        )
+        type_text.assert_not_called()
+
     def test_empty_sequence_does_not_issue_input(self) -> None:
         with (
             mock.patch("startup_harness.peekaboo_command") as command,
