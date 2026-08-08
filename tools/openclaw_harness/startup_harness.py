@@ -2778,6 +2778,185 @@ def latest_now_minutes_marker(
     return int(matches[-1].group(1)) if matches else None
 
 
+ECOLOGY_INCIDENT_ARTIFACT_PATTERN = re.compile(
+    r"^ecology_incident_(?P<turn>\d+)\.(?P<extension>json|png)$"
+)
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def ecology_incident_artifact_baseline(run_dir: Path) -> List[str]:
+    """Snapshot direct incident artifacts before the game receives the publish key."""
+
+    if not run_dir.exists():
+        return []
+    return sorted(
+        path.name
+        for path in run_dir.iterdir()
+        if path.is_file() and path.name.startswith("ecology_incident_")
+        and path.suffix.lower() in {".json", ".png"}
+    )
+
+
+def png_header_issue(path: Path) -> str:
+    """Reject empty/non-PNG output without introducing an image-decoder dependency."""
+
+    try:
+        with path.open("rb") as stream:
+            header = stream.read(33)
+    except OSError:
+        return "png_unreadable"
+    if len(header) < 33:
+        return "png_truncated"
+    if header[:8] != PNG_SIGNATURE:
+        return "png_signature_invalid"
+    if int.from_bytes(header[8:12], "big") != 13 or header[12:16] != b"IHDR":
+        return "png_ihdr_invalid"
+    width = int.from_bytes(header[16:20], "big")
+    height = int.from_bytes(header[20:24], "big")
+    if width <= 0 or height <= 0:
+        return "png_dimensions_invalid"
+    return ""
+
+
+def committed_revision_matches(observed: str, expected: str) -> bool:
+    observed_revision = str(observed or "").strip().split("+", 1)[0]
+    expected_revision = str(expected or "").strip().split("+", 1)[0]
+    revision_pattern = re.compile(r"^[0-9a-f]{10,40}$")
+    if not revision_pattern.fullmatch(observed_revision) or not revision_pattern.fullmatch(
+        expected_revision
+    ):
+        return False
+    return observed_revision.startswith(expected_revision) or expected_revision.startswith(
+        observed_revision
+    )
+
+
+def audit_fresh_ecology_incident_pair(
+    run_dir: Path,
+    *,
+    baseline_names: Sequence[str],
+    expected_scenario: str,
+    expected_commit: str,
+    expected_binary: str,
+) -> Dict[str, Any]:
+    """Require one newly published, identity-bound natural incident pair."""
+
+    baseline = {str(name) for name in baseline_names}
+    current_names = ecology_incident_artifact_baseline(run_dir)
+    fresh_names = sorted(name for name in current_names if name not in baseline)
+    issues: List[str] = []
+    fresh_by_stem: Dict[str, Set[str]] = {}
+    turns_by_stem: Dict[str, int] = {}
+    for name in fresh_names:
+        match = ECOLOGY_INCIDENT_ARTIFACT_PATTERN.fullmatch(name)
+        if match is None:
+            issues.append("fresh_incident_filename_invalid")
+            continue
+        stem = Path(name).stem
+        fresh_by_stem.setdefault(stem, set()).add(match.group("extension"))
+        turns_by_stem[stem] = int(match.group("turn"))
+
+    if not fresh_by_stem:
+        issues.append("fresh_incident_pair_missing")
+    elif len(fresh_by_stem) != 1:
+        issues.append("fresh_incident_pair_ambiguous")
+
+    selected_stem = next(iter(fresh_by_stem), "") if len(fresh_by_stem) == 1 else ""
+    extensions = fresh_by_stem.get(selected_stem, set())
+    if selected_stem and "json" not in extensions:
+        issues.append("fresh_incident_json_missing")
+    if selected_stem and "png" not in extensions:
+        issues.append("fresh_incident_png_missing")
+
+    json_path = run_dir / f"{selected_stem}.json" if selected_stem else Path()
+    png_path = run_dir / f"{selected_stem}.png" if selected_stem else Path()
+    payload: Dict[str, Any] = {}
+    if selected_stem and "json" in extensions:
+        try:
+            loaded = json.loads(json_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                payload = loaded
+            else:
+                issues.append("incident_json_not_object")
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            issues.append("incident_json_malformed")
+
+    identity = payload.get("identity") if isinstance(payload.get("identity"), dict) else {}
+    selected = payload.get("selected") if isinstance(payload.get("selected"), dict) else {}
+    token = selected.get("token") if isinstance(selected.get("token"), dict) else {}
+    deltas = payload.get("deltas") if isinstance(payload.get("deltas"), dict) else {}
+    records = deltas.get("records") if isinstance(deltas.get("records"), list) else []
+    interventions = payload.get("interventions")
+
+    if payload:
+        if payload.get("schema") != "c-aol.ecology.incident":
+            issues.append("incident_schema_invalid")
+        if payload.get("version") != 2:
+            issues.append("incident_version_invalid")
+        if not identity:
+            issues.append("incident_identity_missing")
+        if identity.get("scenario") != expected_scenario:
+            issues.append("incident_scenario_mismatch")
+        if identity.get("run_identity") != run_dir.name:
+            issues.append("incident_run_identity_mismatch")
+        if not committed_revision_matches(str(identity.get("commit", "")), expected_commit):
+            issues.append("incident_commit_mismatch")
+        if identity.get("binary") != Path(expected_binary).name:
+            issues.append("incident_binary_mismatch")
+        if selected_stem and identity.get("turn") != turns_by_stem.get(selected_stem):
+            issues.append("incident_turn_filename_mismatch")
+
+        selected_id = str(selected.get("id", "")).strip()
+        canonical_id = str(token.get("canonical_id", "")).strip()
+        if not selected_id or selected_id != canonical_id:
+            issues.append("incident_selection_token_mismatch")
+        if selected.get("provenance") != "natural":
+            issues.append("incident_selection_provenance_not_natural")
+        if deltas.get("schema") != "c-aol.ecology.delta" or deltas.get("version") != 1:
+            issues.append("incident_delta_schema_invalid")
+        if not records:
+            issues.append("incident_delta_records_missing")
+        for record in records:
+            if not isinstance(record, dict):
+                issues.append("incident_delta_record_invalid")
+                continue
+            if record.get("provenance") != "natural":
+                issues.append("incident_delta_provenance_not_natural")
+            if not selected_id or record.get("entity_id") != selected_id:
+                issues.append("incident_delta_entity_mismatch")
+        if not isinstance(interventions, list):
+            issues.append("incident_interventions_invalid")
+        elif interventions:
+            issues.append("incident_interventions_present")
+
+    if selected_stem and "png" in extensions:
+        png_issue = png_header_issue(png_path)
+        if png_issue:
+            issues.append(png_issue)
+
+    issues = list(dict.fromkeys(issues))
+    return {
+        "status": "required_state_present" if not issues else "required_state_missing",
+        "run_dir": str(run_dir),
+        "baseline_names": sorted(baseline),
+        "fresh_names": fresh_names,
+        "artifact_path": str(json_path) if selected_stem else "",
+        "incident_json": str(json_path) if selected_stem else "",
+        "incident_png": str(png_path) if selected_stem else "",
+        "expected_scenario": expected_scenario,
+        "expected_commit": expected_commit,
+        "expected_binary": Path(expected_binary).name,
+        "observed_scenario": str(identity.get("scenario", "")),
+        "observed_commit": str(identity.get("commit", "")),
+        "observed_binary": str(identity.get("binary", "")),
+        "observed_run_identity": str(identity.get("run_identity", "")),
+        "observed_selected_id": str(selected.get("id", "")),
+        "observed_canonical_id": str(token.get("canonical_id", "")),
+        "observed_delta_count": len(records),
+        "missing_required_fields": issues,
+    }
+
+
 def audit_log_contains(
     run_dir: Path,
     label: str,
@@ -12965,6 +13144,9 @@ def execute_probe_steps(
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
     portal_storm_allowed: bool = False,
+    scenario_identity: str = "",
+    runtime_commit: str = "",
+    runtime_binary: str = "",
 ) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for index, step in enumerate(steps, start=1):
@@ -13003,6 +13185,10 @@ def execute_probe_steps(
             if not keys:
                 raise SystemExit(f"Scenario step '{label}' has no keys")
             delay_ms = int(step.get("delay_ms", 200) or 200)
+            if bool(step.get("record_ecology_incident_baseline", False)):
+                report["ecology_incident_artifact_baseline"] = ecology_incident_artifact_baseline(
+                    run_dir
+                )
             peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
             report.update({"keys": keys, "delay_ms": delay_ms})
         elif kind == "type":
@@ -13088,6 +13274,65 @@ def execute_probe_steps(
                 raise SystemExit(f"Scenario step '{label}' needs seconds > 0")
             time.sleep(seconds)
             report["seconds"] = seconds
+        elif kind == "audit_fresh_ecology_incident_pair":
+            publication_step_label = str(step.get("publication_step_label", "") or "").strip()
+            if not reports:
+                raise SystemExit(
+                    f"Scenario step '{label}' requires a preceding incident publication step"
+                )
+            publication_report = reports[-1]
+            if publication_step_label and publication_report.get("label") != publication_step_label:
+                raise SystemExit(
+                    f"Scenario step '{label}' must immediately follow {publication_step_label}"
+                )
+            baseline_recorded = "ecology_incident_artifact_baseline" in publication_report
+            baseline_names = publication_report.get("ecology_incident_artifact_baseline", [])
+            if not isinstance(baseline_names, list):
+                baseline_names = []
+            metadata = audit_fresh_ecology_incident_pair(
+                run_dir,
+                baseline_names=baseline_names,
+                expected_scenario=scenario_identity,
+                expected_commit=runtime_commit,
+                expected_binary=runtime_binary,
+            )
+            if not baseline_recorded:
+                metadata["status"] = "required_state_missing"
+                metadata["missing_required_fields"] = [
+                    "incident_publication_baseline_missing",
+                    *metadata.get("missing_required_fields", []),
+                ]
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report.update({
+                "metadata": metadata,
+                "action_description": "audit the just-published ecology incident JSON/PNG pair",
+                "expected_immediate_state": "one fresh natural incident pair is bound to this run, scenario, runtime, and selected entity",
+                "failure_rule": "missing, stale, orphaned, malformed, mismatched, intervened, or non-natural incident evidence is red",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_fresh_ecology_incident_pair_missing",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "the incident publication did not produce fresh identity-bound natural evidence",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "audit_log_contains":
             patterns = normalize_screen_text_patterns(
                 step.get("required_patterns", step.get("patterns", step.get("required_items", [])))
@@ -17103,6 +17348,21 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         feature_debug_start = feature_debug_log.stat().st_size if feature_debug_log.exists() else 0
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
+    startup_screen = (
+        start_result.get("screen", {})
+        if isinstance(start_result.get("screen"), dict)
+        else {}
+    )
+    runtime_commit = str(startup_screen.get("captured_head", "") or "").strip()
+    runtime_binary = ""
+    plan_path = run_dir / "plan.json"
+    if plan_path.exists():
+        try:
+            plan_payload = json.loads(plan_path.read_text(encoding="utf-8"))
+            if isinstance(plan_payload, dict):
+                runtime_binary = Path(str(plan_payload.get("executable", ""))).name
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            runtime_binary = ""
     step_reports = execute_probe_steps(
         pid,
         run_dir,
@@ -17115,6 +17375,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         filter_debug_noise=filter_debug_noise,
         artifact_patterns=artifact_patterns,
         portal_storm_allowed=bool(portal_storm_policy.get("allowed", False)),
+        scenario_identity=str(scenario.get("name", args.scenario)),
+        runtime_commit=runtime_commit,
+        runtime_binary=runtime_binary,
     )
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")

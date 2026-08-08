@@ -44,6 +44,7 @@ from startup_harness import (  # noqa: E402
     EOC_POPUP_TRACE_READ_CAP_BYTES,
     StartupPlan,
     acknowledge_blocking_interruptions,
+    audit_fresh_ecology_incident_pair,
     audit_saved_bandit_live_world_state,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
@@ -61,6 +62,7 @@ from startup_harness import (  # noqa: E402
     extract_clock_or_turn_evidence,
     execute_long_wait_action,
     execute_probe_steps,
+    ecology_incident_artifact_baseline,
     launch_game,
     latest_now_minutes_marker,
     load_profile_config,
@@ -1833,6 +1835,254 @@ class WaitStepLedgerContractTest(unittest.TestCase):
             [call.args[1] for call in press.call_args_list],
             [["|"], ["w"], ["5"]],
         )
+
+
+class FreshEcologyIncidentPairContractTest(unittest.TestCase):
+    SCENARIO = "bandit.scout_to_decision_observer_live_mcw"
+    COMMIT = "f46f8f45ca"
+    BINARY = "cataclysm-tiles"
+    TURN = 5249094
+    SELECTED_ID = "dispatch/camp/frontier_probe:0/1"
+    VALID_PNG = (
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+    )
+
+    def payload(self, run_identity: str) -> Dict[str, Any]:
+        return {
+            "schema": "c-aol.ecology.incident",
+            "version": 2,
+            "identity": {
+                "turn": self.TURN,
+                "scenario": self.SCENARIO,
+                "commit": self.COMMIT + "+SDL3",
+                "binary": self.BINARY,
+                "run_identity": run_identity,
+            },
+            "selected": {
+                "token": {"canonical_id": self.SELECTED_ID},
+                "id": self.SELECTED_ID,
+                "provenance": "natural",
+            },
+            "deltas": {
+                "schema": "c-aol.ecology.delta",
+                "version": 1,
+                "records": [
+                    {
+                        "entity_id": self.SELECTED_ID,
+                        "provenance": "natural",
+                    }
+                ],
+            },
+            "interventions": [],
+        }
+
+    def write_pair(
+        self,
+        run_dir: Path,
+        *,
+        payload: Optional[Dict[str, Any]] = None,
+        png: Optional[bytes] = None,
+        write_json: bool = True,
+        write_png: bool = True,
+    ) -> None:
+        stem = f"ecology_incident_{self.TURN}"
+        if write_json:
+            (run_dir / f"{stem}.json").write_text(
+                json.dumps(payload if payload is not None else self.payload(run_dir.name)),
+                encoding="utf-8",
+            )
+        if write_png:
+            (run_dir / f"{stem}.png").write_bytes(self.VALID_PNG if png is None else png)
+
+    def audit(self, run_dir: Path, baseline_names: Optional[List[str]] = None) -> Dict[str, Any]:
+        return audit_fresh_ecology_incident_pair(
+            run_dir,
+            baseline_names=baseline_names or [],
+            expected_scenario=self.SCENARIO,
+            expected_commit=self.COMMIT,
+            expected_binary=self.BINARY,
+        )
+
+    def assert_red(self, report: Dict[str, Any], issue: str) -> None:
+        self.assertEqual(report["status"], "required_state_missing")
+        self.assertIn(issue, report["missing_required_fields"])
+
+    def test_accepts_one_fresh_identity_bound_natural_pair(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            self.write_pair(run_dir)
+            report = self.audit(run_dir)
+
+        self.assertEqual(report["status"], "required_state_present")
+        self.assertEqual(report["observed_selected_id"], self.SELECTED_ID)
+        self.assertEqual(report["observed_delta_count"], 1)
+
+    def test_rejects_missing_pair(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            report = self.audit(Path(temp_dir))
+        self.assert_red(report, "fresh_incident_pair_missing")
+
+    def test_rejects_stale_pair_recorded_in_prepublication_baseline(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            self.write_pair(run_dir)
+            baseline = ecology_incident_artifact_baseline(run_dir)
+            report = self.audit(run_dir, baseline)
+        self.assert_red(report, "fresh_incident_pair_missing")
+
+    def test_rejects_orphan_json(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            self.write_pair(run_dir, write_png=False)
+            report = self.audit(run_dir)
+        self.assert_red(report, "fresh_incident_png_missing")
+
+    def test_rejects_malformed_json(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            (run_dir / f"ecology_incident_{self.TURN}.json").write_text("{", encoding="utf-8")
+            (run_dir / f"ecology_incident_{self.TURN}.png").write_bytes(self.VALID_PNG)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_json_malformed")
+
+    def test_rejects_wrong_incident_or_delta_schema_version(self) -> None:
+        mutations = (
+            ("incident_schema", lambda payload: payload.__setitem__("schema", "wrong"), "incident_schema_invalid"),
+            ("incident_version", lambda payload: payload.__setitem__("version", 1), "incident_version_invalid"),
+            ("delta_schema", lambda payload: payload["deltas"].__setitem__("schema", "wrong"), "incident_delta_schema_invalid"),
+            ("delta_version", lambda payload: payload["deltas"].__setitem__("version", 2), "incident_delta_schema_invalid"),
+        )
+        for label, mutate, expected_issue in mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="incident_contract_"
+            ) as temp_dir:
+                run_dir = Path(temp_dir)
+                payload = self.payload(run_dir.name)
+                mutate(payload)
+                self.write_pair(run_dir, payload=payload)
+                report = self.audit(run_dir)
+                self.assert_red(report, expected_issue)
+
+    def test_rejects_wrong_scenario(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["identity"]["scenario"] = "wrong.scenario"
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_scenario_mismatch")
+
+    def test_rejects_wrong_run_identity(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            self.write_pair(run_dir, payload=self.payload("another_run"))
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_run_identity_mismatch")
+
+    def test_rejects_wrong_commit(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["identity"]["commit"] = "0000000000+SDL3"
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_commit_mismatch")
+
+    def test_rejects_wrong_binary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["identity"]["binary"] = "another-binary"
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_binary_mismatch")
+
+    def test_rejects_selected_token_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["selected"]["token"]["canonical_id"] = "dispatch/other"
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_selection_token_mismatch")
+
+    def test_rejects_non_natural_selection_or_delta_provenance(self) -> None:
+        for field in ("selection", "delta"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory(
+                prefix="incident_contract_"
+            ) as temp_dir:
+                run_dir = Path(temp_dir)
+                payload = self.payload(run_dir.name)
+                if field == "selection":
+                    payload["selected"]["provenance"] = "debug_intervention"
+                    expected_issue = "incident_selection_provenance_not_natural"
+                else:
+                    payload["deltas"]["records"][0]["provenance"] = "debug_intervention"
+                    expected_issue = "incident_delta_provenance_not_natural"
+                self.write_pair(run_dir, payload=payload)
+                report = self.audit(run_dir)
+                self.assert_red(report, expected_issue)
+
+    def test_rejects_intervention_bearing_incident(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["interventions"] = [{"debug_intervention": True}]
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+        self.assert_red(report, "incident_interventions_present")
+
+    def test_rejects_invalid_or_empty_png(self) -> None:
+        for png, expected_issue in ((b"x" * 33, "png_signature_invalid"), (b"", "png_truncated")):
+            with self.subTest(png=png), tempfile.TemporaryDirectory(
+                prefix="incident_contract_"
+            ) as temp_dir:
+                run_dir = Path(temp_dir)
+                self.write_pair(run_dir, png=png)
+                report = self.audit(run_dir)
+                self.assert_red(report, expected_issue)
+
+    def test_failed_classifier_aborts_before_later_credit_step(self) -> None:
+        steps = [
+            {
+                "kind": "press",
+                "label": "record_post_window_ecology_incident",
+                "keys": ["R"],
+                "record_ecology_incident_baseline": True,
+            },
+            {
+                "kind": "audit_fresh_ecology_incident_pair",
+                "label": "audit_fresh_post_window_ecology_incident_pair",
+                "publication_step_label": "record_post_window_ecology_incident",
+                "abort_on_metadata_failure": True,
+            },
+            {
+                "kind": "press",
+                "label": "later_return_report_decision_credit",
+                "keys": ["escape"],
+            },
+        ]
+        with (
+            tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir,
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+        ):
+            reports = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                steps,
+                profile="dev-harness",
+                world="McWilliams",
+                scenario_identity=self.SCENARIO,
+                runtime_commit=self.COMMIT,
+                runtime_binary=self.BINARY,
+            )
+
+        self.assertEqual([report["label"] for report in reports], [step["label"] for step in steps[:2]])
+        self.assertEqual(reports[-1]["abort"]["guard"], "metadata")
+        press.assert_called_once_with(42, ["R"], delay_ms=200)
 
 
 class MapEditorFieldIntensityContractTest(unittest.TestCase):
@@ -4566,6 +4816,26 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertLess(
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
+        )
+        incident_index = labels.index("record_post_window_ecology_incident")
+        incident_audit_index = labels.index("audit_fresh_post_window_ecology_incident_pair")
+        self.assertEqual(incident_audit_index, incident_index + 1)
+        incident_step = steps[incident_index]
+        incident_audit = steps[incident_audit_index]
+        self.assertTrue(incident_step["record_ecology_incident_baseline"])
+        self.assertEqual(
+            incident_step["proof_deferred_to_label"],
+            incident_audit["label"],
+        )
+        self.assertEqual(incident_audit["kind"], "audit_fresh_ecology_incident_pair")
+        self.assertEqual(
+            incident_audit["publication_step_label"],
+            incident_step["label"],
+        )
+        self.assertTrue(incident_audit["abort_on_metadata_failure"])
+        self.assertLess(
+            incident_audit_index,
+            labels.index("audit_same_run_survivor_physical_return"),
         )
         return_audit = steps[labels.index("audit_same_run_survivor_physical_return")]
         self.assertEqual(

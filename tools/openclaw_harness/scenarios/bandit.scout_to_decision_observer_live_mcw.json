@@ -207,8 +207,19 @@
       "delay_ms": 200,
       "settle_seconds": 3,
       "capture_after": true,
+      "record_ecology_incident_baseline": true,
+      "proof_deferred_to_label": "audit_fresh_post_window_ecology_incident_pair",
       "expected_visible_fact": "one compact incident JSON and screenshot pair records natural deltas with an empty intervention ledger",
       "failure_rule": "Coordinator artifact inspection must confirm natural provenance, debug_intervention=false, and no intervention ledger entries."
+    },
+    {
+      "kind": "audit_fresh_ecology_incident_pair",
+      "label": "audit_fresh_post_window_ecology_incident_pair",
+      "publication_step_label": "record_post_window_ecology_incident",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_incident_publication_missing",
+      "abort_reason": "the post-window R action did not publish one fresh identity-bound natural incident JSON/PNG pair",
+      "expected_immediate_state": "the current unique run directory contains one newly published same-stem incident JSON/PNG pair bound to this scenario, runtime, selection, and natural delta history"
     },
     {
       "kind": "press",
