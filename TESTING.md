@@ -175,6 +175,21 @@
   `(3937,948,0)`; both remain `at_boundary_departure=no` with `local_path=0`. This rules out
   boundary-completion rollback but does not yet distinguish route-solver/avoid rejection from a
   nonmoving `move_to_next` call.
+- Checkpoints `d1dca64971` and `959f3c0e96` add the hourly/per-member route-result receipt and remove
+  its mistaken dependency on the unrelated performance-profiler session. Exact macOS SDL3 binary
+  SHA-256 for `959f3c0e96` is
+  `017bdfc1021cf4faba7285851317469d9961dd925cbc58088c1c7200f05ffd12`.
+- Run `20260809_060937` reached the local owner but emitted no route receipt because of that wrong
+  profiler gate; run `20260809_062152` did not reach local homeward ownership. Both are non-credit.
+  The third-round fuse run `20260809_063218` reached exact generation-1 epoch 3 and published fresh
+  incident `ecology_incident_5285093.json` (SHA-256
+  `e9fefa414b4d4100adbb26b1b574792da7b9ffc45d4be8d76f6129362189dd58`) and `.png` (SHA-256
+  `1db08b2ada76ca5c8233035185ae8d1ed9fe9d70a6f6ecce719a10547e58aa05`).
+- In that run, member 4 repeatedly solved from `(3936,828,0)` to `(3935,947,0)` with
+  `route_found=no`, `route_safe=no`, `path_before=0`, action `move_pause`, and moves `100 -> 0`.
+  This proves the movement call is not reached. The current combined solve still does not identify
+  whether ordinary terrain/NPC avoidance, covert nonreentry avoidance, or their intersection empties
+  the route.
 
 ## Pending proof contract
 
@@ -228,13 +243,13 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First add one probe-gated, hourly/per-member receipt around the existing homeward-boundary route
-solve and movement call. It must expose route-found and route-safe results, path size, pre/post
-position, and moves spent. Relink the Mac executable from exact committed source and run the same
-causal scenario above unchanged. The receipt must distinguish solver/avoid rejection from
-`move_to_next` nonmovement before any production behavior change. The live pass still requires the
-exact pair's `returning_home` local handoff and camp dematerialization before the surviving return,
-final non-provisional report, and matching authoritative camp decision.
+First add debug-observer-only, hourly/per-member comparison solves to the existing route receipt:
+no extra avoidance, ordinary NPC avoidance only, covert nonreentry avoidance only, and the actual
+combined result. They must target the same selected departure without mutating the actor path.
+Relink the Mac executable from exact committed source and run the same causal scenario unchanged.
+The artifact must select the rejecting constraint before any production behavior change. The live
+pass still requires the exact pair's `returning_home` local handoff and camp dematerialization before
+the surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.
