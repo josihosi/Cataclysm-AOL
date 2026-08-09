@@ -4390,6 +4390,16 @@ bool materialize_live_bandit_structural_handoffs()
                 }
                 if( candidate_entries.size() != surviving_member_ids.size() ||
                     candidate_staging.size() != surviving_member_ids.size() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit_live_world homeward materialization candidate rejected"
+                            << " site=" << site.site_id
+                            << " activity=" << outing.activity_id
+                            << " generation=" << outing.generation
+                            << " phase=" << bandit_live_world::to_string( outing.phase )
+                            << " candidate_route=" << candidate_route.to_string()
+                            << " entry_count=" << candidate_entries.size()
+                            << " staging_count=" << candidate_staging.size()
+                            << " required_survivors=" << surviving_member_ids.size() << '\n';
                     continue;
                 }
 
