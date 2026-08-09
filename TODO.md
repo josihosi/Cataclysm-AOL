@@ -12,3 +12,7 @@ existing complete adjacent boundary candidates and reports whether any candidate
 local routes for both members under the current nonreentry predicate. Do not assign paths or move
 actors. A positive result admits only the smallest route-reachable pair-selection claim; a zero
 result is a material geometry/product choice for Josef.
+
+Every discriminator or live worker command must redirect raw stdout and stderr to a named
+worker-owned artifact file. The worker returns only the fixed-schema DE67 receipt or a requested
+named bounded selector; `--compact-stdout` alone does not prove compact output.

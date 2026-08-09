@@ -16,6 +16,9 @@
   measured separately with the gate closed and open.
 - Apply the global MSW deletion rule to every proposed test and remediation. Once evidence closes a
   claim, repeating it requires a new contract-breaking reason.
+- Redirect raw stdout and stderr from every live probe to a named worker-owned artifact file. The
+  worker returns only the fixed-schema DE67 receipt or a requested named bounded selector;
+  `--compact-stdout` alone is not evidence that the tool boundary stayed compact.
 - Every red item in `doc/bandit-cannibal-hostile-camp-ai-spec.md` maps to an unchecked outcome in
   `SUCCESS.md`. Cross it off only with named changed-source, executable, fixture, run, and artifact
   evidence at the scope claimed; old packet documents and helper-only tests cannot close it.
@@ -277,7 +280,8 @@ Necessary validation before and through the next live probe:
 ```sh
 python3 -m unittest tools.openclaw_harness.test_fixture_contract
 python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
-  bandit.scout_to_decision_observer_live_mcw
+  bandit.scout_to_decision_observer_live_mcw \
+  > build_logs/T01-live-probe.stdout-stderr.log 2>&1
 ```
 
 The one-OMT fallback is focused-green and live-proven through physical progress to the camp-adjacent
