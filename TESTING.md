@@ -235,6 +235,15 @@
   and proves actor positions, actor paths, and serialized world state remain inert. It does not
   classify the exact run: the preserved save predates the loaded members-4/5 handoff and no exact
   complete-candidate receipt exists. The DE67 `T01-DISC` receipt is therefore blocked, not green.
+- Fresh run `20260809_145108` on exact `f878f4f1e6+SDL3` (SHA-256
+  `40d77ab0db3147674d0bffa77f3a91fad4dd8d5472576bc9b5480f2d85b312f2`) supplies the missing
+  production discriminator. Four natural, zero-intervention post-handoff receipts bind site
+  `overmap_special:bandit_camp@164,39,0`, generation 1, and members 4/5; each exhausts the same 128
+  complete pairs with `relationships_complete=yes`, `safe_both=no`, and H0. The accepted selector
+  is `build_logs/de67/T01-ACQ-C1/production_h0_discriminator.selector.json` (SHA-256
+  `29a151c0e98c63fb21624b4c60cac6885606887868a25554d973b7c9f2d56be4`). Local coordinates are
+  observations, not semantic subject identity, so the earlier coordinate-specific rejection is
+  superseded without changing the functional specification.
 
 ## Pending proof contract
 
@@ -289,13 +298,12 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   > build_logs/T01-live-probe.stdout-stderr.log 2>&1
 ```
 
-The one-OMT fallback is focused-green and live-proven through physical progress to the camp-adjacent
-OMT, and the bounded read-only discriminator is focused-green. The exact members-4/5 causal state
-was not preserved after handoff, so the existing artifacts cannot classify H1 versus H0. Resume
-only from an existing exact-state artifact or newly authorized read-only live/replay or exact-state
-fixture construction; do not infer a branch, change selection, or grant lifecycle credit first.
-The live pass still requires the exact pair's camp dematerialization before surviving return, final
-report, and matching decision.
+The one-OMT fallback and bounded discriminator are focused-green, and the natural production route
+now classifies H0. The next focused control must begin with an exhaustive complete-pair H0 state
+and prove that the shared route/cohesion owner advances both scouts safely until ordinary paired
+boundary selection becomes feasible; a debug-assigned path, geometry/timing change, or synthetic
+coordinate replay earns no credit. The live pass still requires the exact pair's camp
+dematerialization before surviving return, final report, and matching decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

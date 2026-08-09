@@ -118,12 +118,16 @@ The normative player-facing behavior, system ownership, and implementation audit
 
 ## Active claim
 
-The bounded complete-pair discriminator is focused-green at `be77732d45`, but the exact
-`20260809_074804` H1/H0 result is unresolved because its preserved save predates the loaded pair
-and its artifacts contain no complete-candidate receipt. Under the current no-live and no-fixture-
-construction authority, T01 is blocked. Resume only from an existing exact-state artifact or new
-authority to execute the read-only discriminator. H1 admits only route-reachable pair selection;
-H0 returns the material geometry/product choice to Josef.
+The bounded complete-pair discriminator is accepted H0 on fresh natural run `20260809_145108`:
+exact source, binary, fixture, scenario, site, generation, and members 4/5 are identity-bound; all
+128 complete pairs were evaluated in four post-handoff receipts and none was safely reachable by
+both scouts. Reproducing the earlier run's local coordinates is not part of the semantic contract
+and is removed from the concrete proof plan.
+
+The next necessary claim stays inside the frozen movement contract: when no complete camp-boundary
+pair is yet reachable by both scouts, the existing shared route/cohesion owner must continue safe
+physical pair progress until the ordinary boundary transaction becomes reachable. Do not alter
+scenario geometry or timing, assign paths from the observer, teleport, or grant return credit.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
