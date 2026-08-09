@@ -9058,6 +9058,214 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
     }
 
+    SECTION( "homeward materialization derives one safe interior route position" ) {
+        clear_avatar();
+        clear_npcs();
+        clear_map();
+        clear_vehicles();
+        set_time_to_day();
+        bandit_live_world::world_state saved_world =
+            overmap_buffer.global_state.bandit_live_world;
+        std::vector<character_id> generated_npc_ids;
+        on_out_of_scope cleanup( [&generated_npc_ids,
+                                  saved_world = std::move( saved_world )]() mutable {
+            for( const character_id id : generated_npc_ids ) {
+                g->remove_npc( id );
+                overmap_buffer.remove_npc( id );
+            }
+            overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+            clear_creatures();
+        } );
+
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        bandit_live_world::active_outing_state &outing = site.active_outing;
+        const tripoint_abs_omt target = outing.target_omt;
+        const tripoint_abs_omt watch = target + point( 0, 3 );
+        const tripoint_abs_omt route_approach = watch + point( 0, 1 );
+        outing.schema_version = 10;
+        outing.target_footprint = { target };
+        outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+        outing.selected_watch_omt = watch;
+        outing.selected_watch_route_cost = 2;
+        outing.shared_route = { site.anchor, route_approach, watch, route_approach, site.anchor };
+        outing.waypoint_index = 2;
+        outing.phase = bandit_live_world::scout_phase::returning_home;
+        const tripoint_abs_omt current_route = outing.shared_route[
+                static_cast<std::size_t>( outing.waypoint_index )];
+        const std::vector<tripoint_abs_omt> final_segment =
+            line_to( route_approach, site.anchor );
+        REQUIRE( final_segment.size() >= 2 );
+        const tripoint_abs_omt derived_route = final_segment[final_segment.size() - 2];
+        REQUIRE( derived_route != site.anchor );
+        g->place_player_overmap( derived_route );
+        wipe_map_terrain();
+        clear_creatures();
+
+        std::vector<tripoint_bub_ms> derived_candidates;
+        for( const tripoint_bub_ms &point : get_map().points_on_zlevel( derived_route.z() ) ) {
+            const tripoint_abs_ms absolute = get_map().get_abs( point );
+            if( project_to<coords::omt>( absolute ) == derived_route &&
+                live_bandit_local_handoff_position_is_motor_addressable(
+                    absolute, get_avatar().pos_abs_sm(), HALF_MAPSIZE - 1 ) ) {
+                derived_candidates.push_back( point );
+            }
+        }
+        std::optional<std::array<tripoint_bub_ms, 4>> safe_block;
+        for( std::size_t first = 0; first < derived_candidates.size() && !safe_block; ++first ) {
+            for( std::size_t second = first + 1;
+                 second < derived_candidates.size() && !safe_block; ++second ) {
+                if( rl_dist( derived_candidates[first], derived_candidates[second] ) > 1 ) {
+                    continue;
+                }
+                for( std::size_t third = 0; third < derived_candidates.size() && !safe_block;
+                     ++third ) {
+                    if( third == first || third == second ) {
+                        continue;
+                    }
+                    for( std::size_t fourth = third + 1; fourth < derived_candidates.size();
+                         ++fourth ) {
+                        if( fourth == first || fourth == second ) {
+                            continue;
+                        }
+                        if( rl_dist( derived_candidates[third],
+                                     derived_candidates[fourth] ) <= 1 ) {
+                            safe_block = std::array<tripoint_bub_ms, 4> {
+                                derived_candidates[first], derived_candidates[second],
+                                derived_candidates[third], derived_candidates[fourth]
+                            };
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        REQUIRE( safe_block );
+        for( const tripoint_bub_ms &point : get_map().points_on_zlevel( derived_route.z() ) ) {
+            const tripoint_abs_omt omt = project_to<coords::omt>( get_map().get_abs( point ) );
+            const bool later_interior = omt != site.anchor &&
+                                        std::find( final_segment.begin(), final_segment.end(), omt ) !=
+                                        final_segment.end();
+            if( omt == current_route || omt == route_approach || later_interior ) {
+                get_map().ter_set( point, ter_id( "t_wall" ) );
+            }
+        }
+        std::vector<tripoint_abs_ms> safe_positions;
+        for( const tripoint_bub_ms &point : *safe_block ) {
+            get_map().ter_set( point, ter_id( "t_grass" ) );
+            safe_positions.push_back( get_map().get_abs( point ) );
+        }
+        get_map().invalidate_map_cache( derived_route.z() );
+        get_map().build_map_cache( derived_route.z(), true );
+
+        const std::vector<character_id> old_ids = outing.member_ids;
+        std::vector<character_id> live_ids;
+        for( const character_id old_id : old_ids ) {
+            shared_ptr_fast<npc> member = make_shared_fast<npc>();
+            member->normalize();
+            member->load_npc_template( npc_template_test_talker );
+            const bandit_live_world::member_record *record = site.find_member( old_id );
+            REQUIRE( record != nullptr );
+            member->spawn_at_precise( record->home_spawn_tile );
+            overmap_buffer.insert_npc( member );
+            live_ids.push_back( member->getID() );
+            generated_npc_ids.push_back( member->getID() );
+        }
+        REQUIRE( live_ids.size() == 2 );
+        for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+            bandit_live_world::member_record *record = site.find_member( old_ids[index] );
+            REQUIRE( record != nullptr );
+            record->npc_id = live_ids[index];
+        }
+        outing.member_ids = live_ids;
+        outing.leader_id = live_ids.front();
+
+        const int setup_minute = outing.last_advanced_minutes;
+        std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_handoff_plan initial_handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *cursor, setup_minute, make_reads( site ) );
+        REQUIRE( initial_handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     site, initial_handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        std::vector<bandit_live_world::local_dematerialization_member_read> resume_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site.active_outing.local_handoff.members ) {
+            resume_reads.push_back( {
+                member.npc_id, true, false, false, member.hp_percent,
+                member.staging_position
+            } );
+        }
+        const bandit_live_world::local_dematerialization_plan resume =
+            bandit_live_world::plan_local_pair_dematerialization(
+                site, *cursor, setup_minute, resume_reads, site.active_outing.cargo );
+        REQUIRE( resume.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     site, resume,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        REQUIRE( site.active_outing.local_handoff.is_abstract_resume() );
+        const std::string activity_id = outing.activity_id;
+        const int generation = outing.generation;
+        const int waypoint_index = outing.waypoint_index;
+        const std::vector<tripoint_abs_omt> shared_route = outing.shared_route;
+        overmap_buffer.global_state.bandit_live_world = std::move( world );
+
+        REQUIRE( materialize_live_bandit_structural_handoffs_for_test() );
+        bandit_live_world::site_record &live_site =
+            overmap_buffer.global_state.bandit_live_world.sites.front();
+        const bandit_live_world::active_outing_state &live_outing = live_site.active_outing;
+        CHECK( live_outing.activity_id == activity_id );
+        CHECK( live_outing.generation == generation );
+        CHECK( live_outing.member_ids == live_ids );
+        CHECK( live_outing.shared_route == shared_route );
+        CHECK( live_outing.waypoint_index == waypoint_index );
+        CHECK( live_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( live_outing.phase == bandit_live_world::scout_phase::returning_home );
+        CHECK( live_outing.local_handoff.route_position == derived_route );
+        CHECK( live_outing.local_handoff.approach_from ==
+               final_segment[final_segment.size() - 3] );
+        CHECK( live_outing.local_handoff.egress_omt == live_site.anchor );
+        REQUIRE( live_outing.local_handoff.members.size() == live_ids.size() );
+        std::vector<tripoint_abs_ms> entry_positions;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_outing.local_handoff.members ) {
+            CHECK( std::find( live_ids.begin(), live_ids.end(), member.npc_id ) != live_ids.end() );
+            CHECK( project_to<coords::omt>( member.entry_position ) == derived_route );
+            CHECK( project_to<coords::omt>( member.staging_position ) == derived_route );
+            CHECK( std::find( safe_positions.begin(), safe_positions.end(),
+                              member.entry_position ) != safe_positions.end() );
+            CHECK( std::find( safe_positions.begin(), safe_positions.end(),
+                              member.staging_position ) != safe_positions.end() );
+            entry_positions.push_back( member.entry_position );
+        }
+        std::sort( entry_positions.begin(), entry_positions.end() );
+        CHECK( std::unique( entry_positions.begin(), entry_positions.end() ) ==
+               entry_positions.end() );
+        const std::optional<int> current_distance =
+            bandit_live_world::target_footprint_watch_distance(
+                current_route, live_outing.target_footprint );
+        const std::optional<int> derived_distance =
+            bandit_live_world::target_footprint_watch_distance(
+                derived_route, live_outing.target_footprint );
+        REQUIRE( current_distance );
+        REQUIRE( derived_distance );
+        CHECK( *derived_distance >= *current_distance );
+        CHECK( live_site.applied_return_generation == 0 );
+        CHECK( live_site.applied_report_generation == 0 );
+        CHECK_FALSE( live_site.current_scout_report.is_present() );
+    }
+
     SECTION( "an in-bounds homeward pair selects a safe path and dematerializes at camp" ) {
         clear_avatar();
         clear_npcs();
