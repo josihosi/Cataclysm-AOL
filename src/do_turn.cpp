@@ -6852,6 +6852,9 @@ void monmove()
     std::map<character_id, live_bandit_pair_boundary_step> pair_ingress_boundary_steps;
     std::map<character_id, live_bandit_pair_boundary_step> pair_homeward_boundary_steps;
     std::set<character_id> profiled_covert_member_ids;
+    std::set<character_id> logged_homeward_route_result_ids;
+    const bool log_homeward_route_result = bandit_live_world_probe::active() &&
+            calendar::once_every( 60_minutes );
     {
         bandit_live_world_probe::scoped_section prepass(
             bandit_live_world_probe::section::loaded_covert_prepass );
@@ -7187,11 +7190,31 @@ void monmove()
                                                      avoid_nonreentry );
                         const bool route_safe = route_found &&
                                                 local_path_respects_nonreentry( guy.path );
+                        const std::size_t path_size_before_movement = guy.path.size();
+                        const tripoint_abs_ms position_before_movement = guy.pos_abs();
+                        const int moves_before_movement = guy.get_moves();
                         if( route_safe ) {
                             guy.move_to_next();
                         } else {
                             guy.path.clear();
                             guy.move_pause();
+                        }
+                        if( log_homeward_route_result &&
+                            logged_homeward_route_result_ids.insert( guy.getID() ).second ) {
+                            DebugLog( D_INFO, DC_ALL )
+                                    << "bandit_live_world homeward_boundary_route_result"
+                                    << " member=" << guy.getID().get_value()
+                                    << " departure=" <<
+                                    homeward_boundary->second.departure.to_string()
+                                    << " exit=" << homeward_boundary->second.exit.to_string()
+                                    << " route_found=" << ( route_found ? "yes" : "no" )
+                                    << " route_safe=" << ( route_safe ? "yes" : "no" )
+                                    << " path_before=" << path_size_before_movement
+                                    << " action=" << ( route_safe ? "move_to_next" : "move_pause" )
+                                    << " pos_before=" << position_before_movement.to_string()
+                                    << " moves_before=" << moves_before_movement
+                                    << " pos_after=" << guy.pos_abs().to_string()
+                                    << " moves_after=" << guy.get_moves() << '\n';
                         }
                     }
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
