@@ -3913,8 +3913,13 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
     next.owner = simulation_owner::local;
     next.handoff_epoch = plan.snapshot.handoff_epoch;
     next.last_advanced_minutes = plan.snapshot.committed_minutes;
-    next.last_progress_minutes = std::max( next.last_progress_minutes,
-                                          plan.snapshot.committed_minutes );
+    const bool preserves_assessment_return_clock = next.schema_version >= 10 &&
+            next.phase == scout_phase::returning_home &&
+            !next.assessment.exit_reason.empty();
+    if( !preserves_assessment_return_clock ) {
+        next.last_progress_minutes = std::max( next.last_progress_minutes,
+                                              plan.snapshot.committed_minutes );
+    }
     next.local_handoff = plan.snapshot;
     next.leader_id = next.local_handoff.cohesion_leader_id;
     if( next.abstract_encounter.active &&
@@ -13817,12 +13822,15 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         }
         if( outing.phase == scout_phase::returning_home ) {
             if( now_minutes >= outing.expected_return_minutes ) {
-                if( outing.local_handoff.is_abstract_resume() &&
-                    !hostile_site_contains_omt( candidate,
-                                                outing.local_handoff.route_position ) ) {
+                const bool has_physical_resume = outing.local_handoff.is_abstract_resume();
+                if( ( outing.schema_version >= 10 && !has_physical_resume ) ||
+                    ( has_physical_resume &&
+                      !hostile_site_contains_omt( candidate,
+                                                  outing.local_handoff.route_position ) ) ) {
                     site = std::move( candidate );
-                    result.notes.push_back(
-                        "structural outing retained off-camp physical return ownership" );
+                    result.notes.push_back( has_physical_resume ?
+                                            "structural outing retained off-camp physical return ownership" :
+                                            "structural outing retained pending physical camp return receipt" );
                     continue;
                 }
                 const std::string lead_id = lead->lead_id;
