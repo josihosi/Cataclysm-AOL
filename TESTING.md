@@ -91,6 +91,14 @@
   `phase=returning_home` local handoff and `(164,39,0)` local dematerialization. The first production
   blocker is repeated in-bubble rejection at route `(163,33,0)` because paired entry/staging tiles
   were unavailable.
+- Checkpoint `9c6b73adff` passes the focused advanced-resume physical-return/camp-dematerialization
+  section with 88 assertions, the owning case with 1,044 assertions, and the motor-boundary
+  negative with 159 assertions at seed `123456`. Its exact relinked macOS SDL3 executable SHA-256 is
+  `5b9a9886687926778ae38a989c86dd55d6d7069d95f916150301b4726e5e28a9`.
+- Unchanged run `20260809_033014` on that executable proves the exact generation-1 pair's
+  `phase=returning_home` local handoff at `(164,34,0)`. It published no incident because the retained
+  watch failed closed with `entity_token_mismatch` when owner changed from abstract to local. The
+  run therefore earns no camp-dematerialization, return, report, or decision credit.
 
 ## Pending proof contract
 
@@ -144,11 +152,11 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First close the exact in-bubble homeward materialization rejection without weakening motor-boundary
-or transactionality guards. Then relink the Mac executable from exact committed source and run the
-same causal scenario above. The live pass requires the exact pair's `returning_home` local handoff
-and camp dematerialization before the surviving return, final non-provisional report, and matching
-authoritative camp decision.
+First preserve the retained operation identity across expected abstract/local ownership transfers
+without weakening world, canonical-ID, generation, authority, or intervention guards. Then relink
+the Mac executable from exact committed source and run the same causal scenario above. The live
+pass requires the exact pair's `returning_home` local handoff and camp dematerialization before the
+surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

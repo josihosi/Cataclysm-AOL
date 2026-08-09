@@ -39,19 +39,22 @@ The normative player-facing behavior, system ownership, and implementation audit
 - Checkpoints `30b27b9d5f` and `a629eb804d` preserve the original terminal observer identity across
   console close/reopen and require one fresh same-run incident JSON/screenshot pair before later
   return, report, or decision checks. Focused harness and `[debug_console]` tests are green.
-- Live run `20260809_030013` on `a629eb804d+SDL3` published the exact natural generation-1
-  `BD-DF9E73` incident pair with an empty intervention ledger. It then failed closed because no
-  `returning_home` local handoff or `(164,39,0)` camp dematerialization occurred. Repeated production
-  logs show the current blocker: abstract homeward materialization at `(163,33,0)` rejects because
-  the loaded bubble lacks paired entry or staging positions, after which abstract
-  `members_returned=2` and `returned home` remain non-credit.
+- Checkpoint `9c6b73adff` advances an abstract-resume homeward pair to the first later safe loaded
+  route waypoint, excluding the final camp, then uses the existing physical motor and camp
+  dematerialization route. Its exact SDL3 focused proof is green; it is not live lifecycle credit.
+- Live run `20260809_033014` on `9c6b73adff+SDL3` proves the exact natural generation-1
+  `BD-DF9E73` pair entered local `returning_home` ownership at `(164,34,0)`. The retained observer
+  then failed closed with `entity_token_mismatch` because the expected abstract-to-local owner
+  transfer was treated as replacement identity, so no fresh incident pair was published and no
+  later return/report/decision credit is accepted.
 
 ## Active claim
 
-Close T01's in-bubble homeward materialization seam. At the exact live geometry—abstract pair route
-position `(163,33,0)`, player `(162,36,0)`, camp `(164,39,0)`—the complete pair must transactionally
-enter local ownership on safe paired tiles without relaxing the motor-boundary negative. The
-unchanged incident must then show the `returning_home` local handoff and camp dematerialization
+Close T01's observer identity seam exposed by the proved physical owner transfer. The stable
+operation identity is world, canonical dispatch ID, generation, and authority token; abstract/local
+owner is mutable lifecycle state and must remain visible without invalidating the retained watch.
+Canonical, generation, authority, world, or intervention-owner mismatches must remain fail-closed.
+Then the unchanged incident must show the `returning_home` local handoff and camp dematerialization
 before canonical home reconciliation, final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
