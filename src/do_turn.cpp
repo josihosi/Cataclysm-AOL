@@ -6585,6 +6585,7 @@ void log_live_bandit_homeward_motor_diagnostics(
             const shared_ptr_fast<npc> persistent_member = overmap_buffer.find_npc( member_id );
             npc *loaded_member = g->find_npc( member_id );
             const npc *member = loaded_member != nullptr ? loaded_member : persistent_member.get();
+            const auto boundary_step = homeward_boundary_steps.find( member_id );
             members << "id=" << member_id.get_value()
                     << ",present=" << ( member != nullptr ? "yes" : "no" )
                     << ",active=" << ( member != nullptr && member->is_active() ? "yes" : "no" )
@@ -6604,7 +6605,15 @@ void log_live_bandit_homeward_motor_diagnostics(
             members << ",homeward_owned=" <<
                     ( homeward_member_ids.count( member_id ) > 0 ? "yes" : "no" )
                     << ",boundary_owned=" <<
-                    ( homeward_boundary_steps.count( member_id ) > 0 ? "yes" : "no" );
+                    ( boundary_step != homeward_boundary_steps.end() ? "yes" : "no" );
+            if( boundary_step != homeward_boundary_steps.end() ) {
+                members << ",boundary_departure=" <<
+                        boundary_step->second.departure.to_string()
+                        << ",boundary_exit=" << boundary_step->second.exit.to_string()
+                        << ",at_boundary_departure=" <<
+                        ( member != nullptr &&
+                          member->pos_abs() == boundary_step->second.departure ? "yes" : "no" );
+            }
         }
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world homeward_motor_diag"
                                    << " site=" << site.site_id
