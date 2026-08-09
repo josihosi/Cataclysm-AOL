@@ -37,6 +37,11 @@
 #include "type_id.h"
 #include "weather_type.h"
 
+std::string live_bandit_homeward_boundary_discriminator_for_test();
+std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
+std::string live_bandit_homeward_partner_route_read_for_test(
+    character_id member_id, character_id partner_id );
+
 namespace
 {
 static const faction_id faction_your_followers( "your_followers" );
@@ -8869,9 +8874,112 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             npc *member = g->find_npc( live_ids[index] );
             REQUIRE( member != nullptr );
             member->spawn_at_precise( get_avatar().pos_abs() +
-                                      point( static_cast<int>( index ) + 1, 0 ) );
+                                      point( static_cast<int>( index ) * 4 + 1, 0 ) );
         }
         g->load_npcs();
+        for( const character_id id : live_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            REQUIRE( member->is_active() );
+            member->goal = camp;
+            member->omt_path = { camp, route_edge, member->pos_abs_omt() };
+            member->set_mission( NPC_MISSION_TRAVELLING );
+            member->path.clear();
+        }
+        const auto discriminator_field = []( const std::string &receipt,
+        const std::string &key ) {
+            const std::string prefix = key + "=";
+            const std::size_t begin = receipt.find( prefix );
+            if( begin == std::string::npos ) {
+                return std::string();
+            }
+            const std::size_t value_begin = begin + prefix.size();
+            const std::size_t end = receipt.find( ' ', value_begin );
+            return receipt.substr( value_begin, end - value_begin );
+        };
+        std::map<character_id, tripoint_abs_ms> discriminator_positions;
+        std::map<character_id, std::vector<tripoint_bub_ms>> discriminator_paths;
+        for( const character_id id : live_ids ) {
+            const npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            discriminator_positions.emplace( id, member->pos_abs() );
+            discriminator_paths.emplace( id, member->path );
+        }
+        const std::string world_before_discriminator = serialize_world(
+                    overmap_buffer.global_state.bandit_live_world );
+        const std::string reachable_receipt =
+            live_bandit_homeward_boundary_discriminator_for_test();
+        const std::string expected_members = std::to_string(
+                    live_ids[0].get_value() ) + ',' +
+                std::to_string( live_ids[1].get_value() );
+        CHECK( discriminator_field( reachable_receipt, "members" ) == expected_members );
+        CHECK( discriminator_field( reachable_receipt,
+                                    "relationships_complete" ) == "yes" );
+        CHECK( discriminator_field( reachable_receipt, "verdict" ) == "H1" );
+        CHECK( discriminator_field( reachable_receipt, "safe_both" ) == "yes" );
+        CHECK( discriminator_field( reachable_receipt, "safe_pair" ) != "none" );
+        CHECK( discriminator_field( reachable_receipt, "complete_pairs" ) != "0" );
+        CHECK_FALSE( discriminator_field( reachable_receipt,
+                                          "complete_identity" ).empty() );
+        const std::string partner_endpoint_receipt =
+            live_bandit_homeward_partner_route_read_for_test(
+                live_ids.front(), live_ids.back() );
+        CHECK( discriminator_field( partner_endpoint_receipt, "available" ) == "yes" );
+        CHECK( discriminator_field( partner_endpoint_receipt,
+                                    "endpoint_avoided" ) == "yes" );
+        CHECK( discriminator_field( partner_endpoint_receipt, "safe" ) == "yes" );
+        CHECK( discriminator_field( partner_endpoint_receipt, "solved" ) == "yes" );
+        CHECK( discriminator_field( partner_endpoint_receipt, "path" ) != "0" );
+
+        for( const character_id id : live_ids ) {
+            const npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            for( const tripoint_bub_ms &point :
+                 get_map().points_in_radius( member->pos_bub(), 1 ) ) {
+                if( point != member->pos_bub() &&
+                    std::none_of( live_ids.begin(), live_ids.end(),
+                [&point]( const character_id other_id ) {
+                    const npc *other = g->find_npc( other_id );
+                    return other != nullptr && other->pos_bub() == point;
+                } ) ) {
+                    get_map().ter_set( point, ter_id( "t_wall" ) );
+                }
+            }
+        }
+        get_map().invalidate_map_cache( camp.z() );
+        get_map().build_map_cache( camp.z(), true );
+        const std::string unreachable_receipt =
+            live_bandit_homeward_boundary_discriminator_for_test();
+        CHECK( discriminator_field( unreachable_receipt, "members" ) == expected_members );
+        CHECK( discriminator_field( unreachable_receipt,
+                                    "relationships_complete" ) == "yes" );
+        CHECK( discriminator_field( unreachable_receipt, "verdict" ) == "H0" );
+        CHECK( discriminator_field( unreachable_receipt, "safe_both" ) == "no" );
+        CHECK( discriminator_field( unreachable_receipt, "safe_pair" ) == "none" );
+        CHECK( discriminator_field( unreachable_receipt, "complete_pairs" ) ==
+               discriminator_field( reachable_receipt, "complete_pairs" ) );
+        CHECK( discriminator_field( unreachable_receipt, "complete_identity" ) ==
+               discriminator_field( reachable_receipt, "complete_identity" ) );
+        CHECK( discriminator_field( unreachable_receipt, "selected_pair" ) ==
+               discriminator_field( reachable_receipt, "selected_pair" ) );
+        CHECK( discriminator_field( unreachable_receipt, "route_pairs_evaluated" ) ==
+               discriminator_field( unreachable_receipt, "complete_pairs" ) );
+        CHECK( std::stoull( discriminator_field( unreachable_receipt, "route_solves" ) ) <
+               std::stoull( discriminator_field( unreachable_receipt,
+                                                 "route_pairs_evaluated" ) ) );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) ==
+               world_before_discriminator );
+        for( const character_id id : live_ids ) {
+            const npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            REQUIRE( discriminator_positions.count( id ) == 1 );
+            REQUIRE( discriminator_paths.count( id ) == 1 );
+            CHECK( member->pos_abs() == discriminator_positions.at( id ) );
+            CHECK( member->path == discriminator_paths.at( id ) );
+        }
+        wipe_map_terrain();
+        get_map().invalidate_map_cache( camp.z() );
+        get_map().build_map_cache( camp.z(), true );
         for( std::size_t index = 0; index < live_ids.size(); ++index ) {
             npc *member = g->find_npc( live_ids[index] );
             REQUIRE( member != nullptr );
@@ -8884,6 +8992,32 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             member->set_mission( NPC_MISSION_TRAVELLING );
             member->path = { get_map().get_bub( assigned_slots[index].departure ) };
         }
+        const std::string world_before_endpoint_control = serialize_world(
+                    overmap_buffer.global_state.bandit_live_world );
+        const std::string unsafe_current_endpoint_receipt =
+            live_bandit_homeward_unsafe_current_route_read_for_test( live_ids.front() );
+        CHECK( discriminator_field( unsafe_current_endpoint_receipt,
+                                    "available" ) == "yes" );
+        CHECK( std::stoi( discriminator_field( unsafe_current_endpoint_receipt,
+                                              "minimum_distance" ) ) ==
+               std::stoi( discriminator_field( unsafe_current_endpoint_receipt,
+                                               "current_distance" ) ) + 1 );
+        CHECK( discriminator_field( unsafe_current_endpoint_receipt, "safe" ) == "no" );
+        CHECK( discriminator_field( unsafe_current_endpoint_receipt, "solved" ) == "no" );
+        CHECK( discriminator_field( unsafe_current_endpoint_receipt, "path" ) == "0" );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) ==
+               world_before_endpoint_control );
+        for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+            const npc *member = g->find_npc( live_ids[index] );
+            REQUIRE( member != nullptr );
+            CHECK( member->pos_abs() == assigned_slots[index].departure );
+            CHECK( member->path == std::vector<tripoint_bub_ms> {
+                get_map().get_bub( assigned_slots[index].departure )
+            } );
+        }
+        SUCCEED( "homeward boundary discriminator controls: " <<
+                 reachable_receipt << "; " << unreachable_receipt << "; " <<
+                 unsafe_current_endpoint_receipt << "; " << partner_endpoint_receipt );
 
         process_monsters_and_npcs_turn_for_test();
         for( const character_id id : live_ids ) {

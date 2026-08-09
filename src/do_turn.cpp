@@ -156,6 +156,11 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 
 #define dbg(x) DebugLog((x),D_GAME) << __FILE__ << ":" << __LINE__ << ": "
 
+std::string live_bandit_homeward_boundary_discriminator_for_test();
+std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
+std::string live_bandit_homeward_partner_route_read_for_test(
+    character_id member_id, character_id partner_id );
+
 bool live_bandit_local_handoff_position_is_motor_addressable(
     const tripoint_abs_ms &position, const tripoint_abs_sm &motor_center,
     const int motor_radius_sm )
@@ -6424,9 +6429,66 @@ struct live_bandit_pair_boundary_step {
     tripoint_abs_ms exit;
 };
 
+bool live_bandit_local_step_respects_nonreentry(
+    const npc &member,
+    const bandit_live_world::covert_scout_relationship_read &relationship,
+    map &here, const tripoint_bub_ms &step )
+{
+    const tripoint_abs_omt step_omt = project_to<coords::omt>( here.get_abs( step ) );
+    const std::optional<int> distance =
+        bandit_live_world::target_footprint_watch_distance(
+            step_omt, relationship.target_footprint );
+    return distance && *distance >= relationship.minimum_target_distance &&
+           ( step_omt == member.pos_abs_omt() ||
+             std::find( relationship.forbidden_route_omts.begin(),
+                        relationship.forbidden_route_omts.end(), step_omt ) ==
+             relationship.forbidden_route_omts.end() );
+}
+
+struct live_bandit_safe_local_route_read {
+    bool safe = false;
+    bool solved = false;
+    std::size_t path_size = 0;
+};
+
+live_bandit_safe_local_route_read live_bandit_safe_local_route_to(
+    npc &member,
+    const bandit_live_world::covert_scout_relationship_read &relationship,
+    map &here, const tripoint_abs_ms &destination )
+{
+    live_bandit_safe_local_route_read read;
+    const tripoint_bub_ms local_destination = here.get_bub( destination );
+    if( member.pos_abs() == destination ) {
+        read.safe = live_bandit_local_step_respects_nonreentry(
+                        member, relationship, here, local_destination );
+        return read;
+    }
+    const std::function<bool( const tripoint_bub_ms & )> npc_avoid =
+        member.get_path_avoid();
+    const auto combined_avoid = [&member, &relationship, &here,
+                                 &npc_avoid]( const tripoint_bub_ms &step ) {
+        return npc_avoid( step ) ||
+               !live_bandit_local_step_respects_nonreentry(
+                   member, relationship, here, step );
+    };
+    const std::vector<tripoint_bub_ms> route = here.route(
+                member.pos_bub(), pathfinding_target::point( local_destination ),
+                member.get_pathfinding_settings( false ), combined_avoid );
+    read.solved = true;
+    read.path_size = route.size();
+    read.safe = !route.empty() &&
+                std::all_of( route.begin(), route.end(),
+    [&member, &relationship, &here]( const tripoint_bub_ms & step ) {
+        return live_bandit_local_step_respects_nonreentry(
+                   member, relationship, here, step );
+    } );
+    return read;
+}
+
 std::map<character_id, live_bandit_pair_boundary_step>
 live_bandit_pair_boundary_steps(
-    const std::map<character_id, tripoint_abs_omt> &destinations )
+    const std::map<character_id, tripoint_abs_omt> &destinations,
+    std::vector<std::string> *route_discriminators = nullptr )
 {
     std::map<character_id, live_bandit_pair_boundary_step> result;
     map &here = get_map();
@@ -6501,6 +6563,7 @@ live_bandit_pair_boundary_steps(
         std::optional<std::pair<candidate, candidate>> selected;
         std::tuple<std::size_t, std::size_t, int, int,
             tripoint_abs_ms, tripoint_abs_ms> selected_score;
+        std::vector<std::pair<candidate, candidate>> complete_pairs;
         for( const candidate &first_candidate : candidates ) {
             for( const candidate &second_candidate : candidates ) {
                 if( first_candidate.departure == second_candidate.departure ||
@@ -6516,6 +6579,9 @@ live_bandit_pair_boundary_steps(
                 if( !first_route_rank || !second_route_rank ) {
                     continue;
                 }
+                if( route_discriminators != nullptr ) {
+                    complete_pairs.emplace_back( first_candidate, second_candidate );
+                }
                 const int first_distance = rl_dist( first->pos_abs(), first_candidate.departure );
                 const int second_distance = rl_dist( second->pos_abs(), second_candidate.departure );
                 const auto score = std::make_tuple(
@@ -6529,6 +6595,111 @@ live_bandit_pair_boundary_steps(
                     selected_score = score;
                 }
             }
+        }
+        if( route_discriminators != nullptr ) {
+            const auto pair_identity = [first, second](
+            const std::pair<candidate, candidate> &pair ) {
+                std::ostringstream identity;
+                identity << first->getID().get_value() << ':'
+                         << pair.first.departure.to_string() << '>'
+                         << pair.first.exit.to_string() << '|'
+                         << second->getID().get_value() << ':'
+                         << pair.second.departure.to_string() << '>'
+                         << pair.second.exit.to_string();
+                return identity.str();
+            };
+            unsigned long long complete_identity = 14695981039346656037ULL;
+            for( const std::pair<candidate, candidate> &pair : complete_pairs ) {
+                const std::string identity = pair_identity( pair );
+                for( const unsigned char byte : identity ) {
+                    complete_identity ^= byte;
+                    complete_identity *= 1099511628211ULL;
+                }
+                complete_identity ^= 0xffU;
+                complete_identity *= 1099511628211ULL;
+            }
+            const std::optional<bandit_live_world::covert_scout_relationship_read>
+            first_relationship = bandit_live_world::read_active_covert_scout_homeward_member(
+                                     overmap_buffer.global_state.bandit_live_world,
+                                     first->getID() );
+            const std::optional<bandit_live_world::covert_scout_relationship_read>
+            second_relationship = bandit_live_world::read_active_covert_scout_homeward_member(
+                                      overmap_buffer.global_state.bandit_live_world,
+                                      second->getID() );
+            std::optional<std::pair<candidate, candidate>> safe_pair;
+            std::size_t route_pairs_evaluated = 0;
+            std::size_t first_route_size = 0;
+            std::size_t second_route_size = 0;
+            std::map<tripoint_abs_ms, live_bandit_safe_local_route_read> first_route_reads;
+            std::map<tripoint_abs_ms, live_bandit_safe_local_route_read> second_route_reads;
+            const auto read_route = [&here](
+            npc &member,
+            const bandit_live_world::covert_scout_relationship_read &relationship,
+            const tripoint_abs_ms &departure,
+            std::map<tripoint_abs_ms, live_bandit_safe_local_route_read> &route_reads ) ->
+            const live_bandit_safe_local_route_read & {
+                const auto found = route_reads.find( departure );
+                if( found != route_reads.end() ) {
+                    return found->second;
+                }
+                return route_reads.emplace(
+                           departure, live_bandit_safe_local_route_to(
+                               member, relationship, here, departure ) ).first->second;
+            };
+            if( first_relationship && second_relationship ) {
+                for( const std::pair<candidate, candidate> &pair : complete_pairs ) {
+                    route_pairs_evaluated++;
+                    const live_bandit_safe_local_route_read &first_route = read_route(
+                                *first, *first_relationship,
+                                pair.first.departure, first_route_reads );
+                    if( !first_route.safe ) {
+                        continue;
+                    }
+                    const live_bandit_safe_local_route_read &second_route = read_route(
+                                *second, *second_relationship,
+                                pair.second.departure, second_route_reads );
+                    if( !second_route.safe ) {
+                        continue;
+                    }
+                    safe_pair = pair;
+                    first_route_size = first_route.path_size;
+                    second_route_size = second_route.path_size;
+                    break;
+                }
+            }
+            const auto solved_count = []( const auto & route_reads ) {
+                return std::count_if( route_reads.begin(), route_reads.end(),
+                []( const auto & entry ) {
+                    return entry.second.solved;
+                } );
+            };
+            std::ostringstream discriminator;
+            discriminator << "site=" << site.site_id
+                          << " generation=" << outing.generation
+                          << " members=" << first->getID().get_value() << ','
+                          << second->getID().get_value()
+                          << " member_positions=" << first->pos_abs().to_string() << ','
+                          << second->pos_abs().to_string()
+                          << " complete_pairs=" << complete_pairs.size()
+                          << " complete_identity=fnv1a:" << complete_identity
+                          << " route_pairs_evaluated=" << route_pairs_evaluated
+                          << " route_reads=" <<
+                          first_route_reads.size() + second_route_reads.size()
+                          << " route_solves=" <<
+                          solved_count( first_route_reads ) + solved_count( second_route_reads )
+                          << " relationships_complete=" <<
+                          ( first_relationship && second_relationship ? "yes" : "no" )
+                          << " safe_both=" << ( safe_pair ? "yes" : "no" )
+                          << " verdict=" <<
+                          ( !first_relationship || !second_relationship ? "unavailable" :
+                            safe_pair ? "H1" : "H0" )
+                          << " selected_pair=" <<
+                          ( selected ? pair_identity( *selected ) : "none" )
+                          << " safe_pair=" <<
+                          ( safe_pair ? pair_identity( *safe_pair ) : "none" )
+                          << " first_route_path=" << first_route_size
+                          << " second_route_path=" << second_route_size;
+            route_discriminators->push_back( discriminator.str() );
         }
         if( selected ) {
             result.emplace( first->getID(), live_bandit_pair_boundary_step{
@@ -6562,7 +6733,7 @@ void log_live_bandit_homeward_motor_diagnostics(
         }
     }
     const std::map<character_id, live_bandit_pair_boundary_step> homeward_boundary_steps =
-        live_bandit_pair_boundary_steps( homeward_destinations );
+        live_bandit_pair_boundary_steps( homeward_destinations, nullptr );
     map &here = get_map();
     for( const bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
@@ -6852,6 +7023,7 @@ void monmove()
     std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
     std::map<character_id, live_bandit_pair_boundary_step> pair_ingress_boundary_steps;
     std::map<character_id, live_bandit_pair_boundary_step> pair_homeward_boundary_steps;
+    std::vector<std::string> homeward_boundary_discriminators;
     std::set<character_id> profiled_covert_member_ids;
     std::set<character_id> logged_homeward_route_result_ids;
     const bool log_homeward_route_result = calendar::once_every( 60_minutes );
@@ -6926,7 +7098,15 @@ void monmove()
             }
         }
         pair_homeward_boundary_steps = live_bandit_pair_boundary_steps(
-                                           pair_homeward_destinations );
+                                           pair_homeward_destinations,
+                                           log_homeward_route_result &&
+                                           u.has_trait( trait_DEBUG_CLAIRVOYANCE ) ?
+                                           &homeward_boundary_discriminators : nullptr );
+        for( const std::string &discriminator : homeward_boundary_discriminators ) {
+            DebugLog( D_INFO, DC_ALL )
+                    << "bandit_live_world homeward_boundary_pair_discriminator "
+                    << discriminator << '\n';
+        }
         if( bandit_live_world_probe::active() ) {
             for( const bandit_live_world::site_record &site :
                  overmap_buffer.global_state.bandit_live_world.sites ) {
@@ -7125,19 +7305,8 @@ void monmove()
                 };
                 const auto local_step_respects_nonreentry = [relationship, &m, &guy](
                 const tripoint_bub_ms & step ) {
-                    if( !relationship ) {
-                        return false;
-                    }
-                    const tripoint_abs_omt step_omt =
-                        project_to<coords::omt>( m.get_abs( step ) );
-                    const std::optional<int> distance =
-                        bandit_live_world::target_footprint_watch_distance(
-                            step_omt, relationship->target_footprint );
-                    return distance && *distance >= relationship->minimum_target_distance &&
-                           ( step_omt == guy.pos_abs_omt() ||
-                             std::find( relationship->forbidden_route_omts.begin(),
-                                        relationship->forbidden_route_omts.end(), step_omt ) ==
-                             relationship->forbidden_route_omts.end() );
+                    return relationship && live_bandit_local_step_respects_nonreentry(
+                               guy, *relationship, m, step );
                 };
                 const auto local_path_respects_nonreentry = [relationship,
                             &local_step_respects_nonreentry](
@@ -7674,6 +7843,82 @@ void overmap_npc_move()
 }
 
 } // namespace
+
+std::string live_bandit_homeward_boundary_discriminator_for_test()
+{
+    const bandit_live_world::world_state &state =
+        overmap_buffer.global_state.bandit_live_world;
+    const std::set<character_id> homeward_member_ids =
+        bandit_live_world::local_pair_homeward_travel_ids( state );
+    std::map<character_id, tripoint_abs_omt> homeward_destinations;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        for( const character_id member_id : site.active_outing.member_ids ) {
+            if( homeward_member_ids.count( member_id ) > 0 ) {
+                homeward_destinations.emplace( member_id, site.anchor );
+            }
+        }
+    }
+    std::vector<std::string> discriminators;
+    live_bandit_pair_boundary_steps( homeward_destinations, &discriminators );
+    if( discriminators.empty() ) {
+        return "discriminator_count=0 verdict=unavailable";
+    }
+    return "discriminator_count=" + std::to_string( discriminators.size() ) + ' ' +
+           discriminators.front();
+}
+
+std::string live_bandit_homeward_unsafe_current_route_read_for_test(
+    const character_id member_id )
+{
+    npc *member = g->find_npc( member_id );
+    std::optional<bandit_live_world::covert_scout_relationship_read> relationship =
+        bandit_live_world::read_active_covert_scout_homeward_member(
+            overmap_buffer.global_state.bandit_live_world, member_id );
+    if( member == nullptr || !relationship ) {
+        return "available=no";
+    }
+    const std::optional<int> current_distance =
+        bandit_live_world::target_footprint_watch_distance(
+            member->pos_abs_omt(), relationship->target_footprint );
+    if( !current_distance || *current_distance == std::numeric_limits<int>::max() ) {
+        return "available=no";
+    }
+    relationship->minimum_target_distance = *current_distance + 1;
+    const live_bandit_safe_local_route_read read = live_bandit_safe_local_route_to(
+                *member, *relationship, get_map(), member->pos_abs() );
+    std::ostringstream receipt;
+    receipt << "available=yes current_distance=" << *current_distance
+            << " minimum_distance=" << relationship->minimum_target_distance
+            << " safe=" << ( read.safe ? "yes" : "no" )
+            << " solved=" << ( read.solved ? "yes" : "no" )
+            << " path=" << read.path_size;
+    return receipt.str();
+}
+
+std::string live_bandit_homeward_partner_route_read_for_test(
+    const character_id member_id, const character_id partner_id )
+{
+    npc *member = g->find_npc( member_id );
+    const npc *partner = g->find_npc( partner_id );
+    const std::optional<bandit_live_world::covert_scout_relationship_read> relationship =
+        bandit_live_world::read_active_covert_scout_homeward_member(
+            overmap_buffer.global_state.bandit_live_world, member_id );
+    if( member == nullptr || partner == nullptr || !relationship ) {
+        return "available=no";
+    }
+    const tripoint_bub_ms partner_position = partner->pos_bub();
+    const std::function<bool( const tripoint_bub_ms & )> npc_avoid =
+        member->get_path_avoid();
+    const live_bandit_safe_local_route_read read = live_bandit_safe_local_route_to(
+                *member, *relationship, get_map(), partner->pos_abs() );
+    std::ostringstream receipt;
+    receipt << "available=yes endpoint_avoided=" <<
+            ( npc_avoid( partner_position ) ? "yes" : "no" )
+            << " safe=" << ( read.safe ? "yes" : "no" )
+            << " solved=" << ( read.solved ? "yes" : "no" )
+            << " path=" << read.path_size;
+    return receipt.str();
+}
 
 bool process_live_bandit_aftermath_for_test()
 {
