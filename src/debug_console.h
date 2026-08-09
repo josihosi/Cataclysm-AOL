@@ -263,6 +263,7 @@ class tab_trace_view : public console_tab_view
         bool take_ecology_pause_request();
         void draw_ecology_body( debug_console &host );
         void record_ecology_incident();
+        const ecology_watch_session *ecology_watch_session_for_test() const;
 
     private:
         void draw_monitors_body( debug_console &host );
@@ -282,7 +283,7 @@ class tab_trace_view : public console_tab_view
         int ecology_watch_preset = 0;
         int ecology_watch_deadline_hours = 6;
         std::string ecology_incident_note;
-        pimpl<ecology_watch_session> ecology_watch;
+        std::shared_ptr<ecology_watch_session> ecology_watch;
 
         // Cached merged feed. Rebuilt only when feed_generation,
         // filter, toggle mask, or log-category mask change.

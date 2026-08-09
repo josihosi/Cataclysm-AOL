@@ -53,6 +53,19 @@ TEST_CASE( "ecology observer console does not require global debug mode", "[debu
     CHECK( debug_menu::ecology_console_access_allowed( true, true ) );
 }
 
+TEST_CASE( "ecology watch session survives trace view reopen", "[debug_console]" )
+{
+    const debug_menu::ecology_watch_session *armed_session = nullptr;
+    {
+        debug_menu::tab_trace_view open_trace;
+        armed_session = open_trace.ecology_watch_session_for_test();
+        REQUIRE( armed_session != nullptr );
+    }
+
+    debug_menu::tab_trace_view reopened_trace;
+    CHECK( reopened_trace.ecology_watch_session_for_test() == armed_session );
+}
+
 TEST_CASE( "all_actions_table_invariants", "[debug_console]" )
 {
     const auto &table = debug_menu::all_actions();

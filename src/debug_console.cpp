@@ -1054,6 +1054,16 @@ class ecology_watch_session
         std::string incident_payload_;
 };
 
+namespace
+{
+std::shared_ptr<ecology_watch_session> shared_ecology_watch_session()
+{
+    static const std::shared_ptr<ecology_watch_session> session =
+        std::make_shared<ecology_watch_session>();
+    return session;
+}
+} // namespace
+
 step_controller::outcome step_controller::tick( input_context &ctxt )
 {
     if( !playing && pending_steps <= 0 ) {
@@ -5774,7 +5784,8 @@ void tab_data_view::draw_faction_browser()
 }
 
 
-tab_trace_view::tab_trace_view()
+tab_trace_view::tab_trace_view() :
+    ecology_watch( shared_ecology_watch_session() )
 {
     log_category_mask.set();
 }
@@ -6410,6 +6421,11 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
 void tab_trace_view::record_ecology_incident()
 {
     ecology_watch->record_incident( ecology_incident_note );
+}
+
+const ecology_watch_session *tab_trace_view::ecology_watch_session_for_test() const
+{
+    return ecology_watch.get();
 }
 
 void tab_trace_view::draw_monitors_body( debug_console &host )
