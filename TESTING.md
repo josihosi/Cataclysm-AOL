@@ -230,6 +230,11 @@
   `omt_fallback` with unchanged positions. The audit correctly withheld camp dematerialization,
   returned-member, report, and decision credit. The three-run fuse is closed; no fourth unchanged
   probe is admissible without the next discriminator.
+- Checkpoint `be77732d45` adds the bounded complete-pair discriminator. Its focused synthetic
+  control distinguishes H1 from H0 across 322 stable ordered candidates, passes 320 assertions,
+  and proves actor positions, actor paths, and serialized world state remain inert. It does not
+  classify the exact run: the preserved save predates the loaded members-4/5 handoff and no exact
+  complete-candidate receipt exists. The DE67 `T01-DISC` receipt is therefore blocked, not green.
 
 ## Pending proof contract
 
@@ -285,11 +290,12 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
 ```
 
 The one-OMT fallback is focused-green and live-proven through physical progress to the camp-adjacent
-OMT. Before another behavior change or live run, count whether any complete adjacent edge pair is
-locally route-reachable for both exact members under the same nonreentry predicate. This must be a
-bounded read-only receipt: it may solve comparison routes but must not assign actor paths, move the
-pair, change geometry, or grant boundary/return credit. The live pass still requires the exact
-pair's camp dematerialization before surviving return, final report, and matching decision.
+OMT, and the bounded read-only discriminator is focused-green. The exact members-4/5 causal state
+was not preserved after handoff, so the existing artifacts cannot classify H1 versus H0. Resume
+only from an existing exact-state artifact or newly authorized read-only live/replay or exact-state
+fixture construction; do not infer a branch, change selection, or grant lifecycle credit first.
+The live pass still requires the exact pair's camp dematerialization before surviving return, final
+report, and matching decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

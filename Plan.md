@@ -118,12 +118,12 @@ The normative player-facing behavior, system ownership, and implementation audit
 
 ## Active claim
 
-The camp-adjacent boundary selector filters passability/occupancy and ranks route OMT plus geometric
-distance, but it does not prove that both scouts can path to its paired departures. Add one bounded,
-read-only discriminator for the exact loaded pair: count whether any complete adjacent boundary
-pair has safe local routes for both members under the existing nonreentry predicate, without
-assigning either path. If alternatives exist, the next behavior claim is route-reachable pair
-selection; if none exist, return the resulting material geometry/product choice to Josef.
+The bounded complete-pair discriminator is focused-green at `be77732d45`, but the exact
+`20260809_074804` H1/H0 result is unresolved because its preserved save predates the loaded pair
+and its artifacts contain no complete-candidate receipt. Under the current no-live and no-fixture-
+construction authority, T01 is blocked. Resume only from an existing exact-state artifact or new
+authority to execute the read-only discriminator. H1 admits only route-reachable pair selection;
+H0 returns the material geometry/product choice to Josef.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
