@@ -4330,21 +4330,21 @@ bool materialize_live_bandit_structural_handoffs()
             }
         }
         const bool resumes_physical_homeward_cursor = outing.local_handoff.is_abstract_resume();
-        const tripoint_abs_omt route_position = resumes_physical_homeward_cursor ?
-                outing.local_handoff.route_position :
-                outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
-        const tripoint_abs_omt approach_from = resumes_physical_homeward_cursor ?
-                outing.local_handoff.approach_from :
-                outing.shared_route[static_cast<std::size_t>( outing.waypoint_index - 1 )];
-        const std::vector<tripoint_abs_ms> entry_positions =
+        tripoint_abs_omt route_position = resumes_physical_homeward_cursor ?
+                                          outing.local_handoff.route_position :
+                                          outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
+        tripoint_abs_omt approach_from = resumes_physical_homeward_cursor ?
+                                         outing.local_handoff.approach_from :
+                                         outing.shared_route[static_cast<std::size_t>( outing.waypoint_index - 1 )];
+        std::vector<tripoint_abs_ms> entry_positions =
             live_bandit_local_handoff_entry_positions( route_position, approach_from,
                     surviving_member_ids.size() );
-        const tripoint_abs_omt egress_omt = resumes_physical_homeward_cursor ?
-                                           outing.shared_route.back() :
-                                           outing.waypoint_index + 1 <
-                                           static_cast<int>( outing.shared_route.size() ) ?
-                                           outing.shared_route[static_cast<std::size_t>(
-                                                   outing.waypoint_index + 1 )] : route_position;
+        tripoint_abs_omt egress_omt = resumes_physical_homeward_cursor ?
+                                      outing.shared_route.back() :
+                                      outing.waypoint_index + 1 <
+                                      static_cast<int>( outing.shared_route.size() ) ?
+                                      outing.shared_route[static_cast<std::size_t>(
+                                              outing.waypoint_index + 1 )] : route_position;
         tripoint_abs_omt staging_facing_omt = egress_omt;
         if( !resumes_physical_homeward_cursor && outing.schema_version >= 10 &&
             outing.phase == bandit_live_world::scout_phase::observing &&
@@ -4359,9 +4359,56 @@ bool materialize_live_bandit_structural_handoffs()
             }
             staging_facing_omt = *target_facing_omt;
         }
-        const std::vector<tripoint_abs_ms> staging_positions =
+        std::vector<tripoint_abs_ms> staging_positions =
             live_bandit_local_handoff_entry_positions( route_position, staging_facing_omt,
                     surviving_member_ids.size(), entry_positions );
+        std::optional<bandit_live_world::site_record> advanced_homeward_site;
+        if( resumes_physical_homeward_cursor &&
+            bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
+            ( entry_positions.size() != surviving_member_ids.size() ||
+              staging_positions.size() != surviving_member_ids.size() ) ) {
+            for( std::size_t route_index = static_cast<std::size_t>( outing.waypoint_index + 1 );
+                 route_index + 1 < outing.shared_route.size(); ++route_index ) {
+                const tripoint_abs_omt candidate_route = outing.shared_route[route_index];
+                if( candidate_route == outing.shared_route[static_cast<std::size_t>(
+                            outing.waypoint_index )] ) {
+                    continue;
+                }
+                const tripoint_abs_omt candidate_approach = outing.shared_route[route_index - 1];
+                std::vector<tripoint_abs_ms> candidate_entries =
+                    live_bandit_local_handoff_entry_positions(
+                        candidate_route, candidate_approach, surviving_member_ids.size() );
+                std::vector<tripoint_abs_ms> candidate_staging =
+                    live_bandit_local_handoff_entry_positions(
+                        candidate_route, outing.shared_route[route_index + 1],
+                        surviving_member_ids.size(), candidate_entries );
+                if( candidate_entries.size() != surviving_member_ids.size() ||
+                    candidate_staging.size() != surviving_member_ids.size() ) {
+                    continue;
+                }
+
+                route_position = candidate_route;
+                approach_from = candidate_approach;
+                egress_omt = outing.shared_route.back();
+                entry_positions = std::move( candidate_entries );
+                staging_positions = std::move( candidate_staging );
+                advanced_homeward_site = site;
+                bandit_live_world::local_handoff_snapshot &resume =
+                    advanced_homeward_site->active_outing.local_handoff;
+                resume.route_position = route_position;
+                resume.approach_from = approach_from;
+                resume.egress_omt = egress_omt;
+                for( bandit_live_world::local_handoff_member_snapshot &member : resume.members ) {
+                    const auto surviving = std::find( surviving_member_ids.begin(),
+                                                      surviving_member_ids.end(), member.npc_id );
+                    if( surviving != surviving_member_ids.end() && !member.dead ) {
+                        member.exit_position = entry_positions[static_cast<std::size_t>(
+                                                   std::distance( surviving_member_ids.begin(), surviving ) )];
+                    }
+                }
+                break;
+            }
+        }
         if( entry_positions.size() != surviving_member_ids.size() ||
             staging_positions.size() != surviving_member_ids.size() ) {
             log_homeward_rejection(
@@ -4402,7 +4449,8 @@ bool materialize_live_bandit_structural_handoffs()
 
         const bandit_live_world::local_handoff_plan plan =
             bandit_live_world::plan_local_pair_handoff(
-                site, *cursor, live_bandit_current_minutes(), reads );
+                advanced_homeward_site ? *advanced_homeward_site : site,
+                *cursor, live_bandit_current_minutes(), reads );
         if( !plan.valid ) {
             log_homeward_rejection( plan.notes.empty() ? "handoff plan invalid" :
                                     plan.notes.front() );
