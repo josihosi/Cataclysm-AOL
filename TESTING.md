@@ -73,15 +73,24 @@
   correctly rejected because the loaded bubble lacked paired entry/staging positions. The valid
   handoff still produced no later homeward boundary or camp dematerialization through the observed
   window, so return/report/decision credit remains blocked at the next physical-owner seam.
-- Checkpoint `f46f8f45ca` classifies `returning_home` as a retained physical-resume phase. The
-  focused `[local_handoff]` attack failed before the fix and passes 974 assertions in two cases with
-  seed `123456` after it. Failed pair materialization is byte-inert, the next structural cadence
-  returns zero members, and the canonical off-camp resume survives. No game executable or live
-  incident has exercised this checkpoint yet.
-- Harness audit found that the post-window `R` step in run `20260807_152913` displayed "No incident
-  recorded" and published no incident JSON/screenshot pair without making the step red. Before the
-  next live probe, the harness must positively require a new pair bound to the scenario, run,
-  committed source, and executable, with natural provenance and no debug intervention.
+- Checkpoint `8f642ddd7a` passes 1,102 `[local_handoff]` assertions with seed `123456`. It proves
+  safe A* selection, byte-inert partial camp arrival, complete loaded pair arrival, and exact camp
+  dematerialization. It does not prove that the live abstract pair can enter local ownership.
+- Checkpoint `30b27b9d5f` removes the destructive post-window rearm. Checkpoint `a629eb804d` shares
+  the ecology watch session across console reopen; `[debug_console]` passes 1,122 assertions in 11
+  cases. The original terminal identity can now publish after its active row disappears.
+- Run `20260809_030013` used clean `a629eb804d+SDL3`, executable SHA-256
+  `31f170ce99d99489ce947652c533c7048c607dbd1be2fecb35b6bdbce90bac4f`. Fresh artifacts are
+  `ecology_incident_5285093.json` (SHA-256 `238382595f0526283653ac1ef90b97b974797780051c5fc326dc5f5ba5df9d28`)
+  and `.png` (SHA-256 `388498156e3652ffeecbd19dec54c1dcc373310a7c2c3d219694ea842f5b91f6`).
+  They bind scenario `bandit.scout_to_decision_observer_live_mcw`, run `20260809_030013`, canonical
+  generation-1 dispatch `BD-DF9E73`, natural provenance, and an empty intervention ledger.
+- That run passed publication and then correctly aborted at
+  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`. It observed abstract
+  `members_returned=2` and `returned home`, but lacked both required physical facts:
+  `phase=returning_home` local handoff and `(164,39,0)` local dematerialization. The first production
+  blocker is repeated in-bubble rejection at route `(163,33,0)` because paired entry/staging tiles
+  were unavailable.
 
 ## Pending proof contract
 
@@ -135,10 +144,11 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First close the positive incident-publication assertion. Then relink the Mac executable from exact
-committed source and run the same causal scenario above. The live pass requires the exact pair's
-`returning_home` local handoff and physical boundary dematerialization before the surviving return,
-final non-provisional report, and matching authoritative camp decision.
+First close the exact in-bubble homeward materialization rejection without weakening motor-boundary
+or transactionality guards. Then relink the Mac executable from exact committed source and run the
+same causal scenario above. The live pass requires the exact pair's `returning_home` local handoff
+and camp dematerialization before the surviving return, final non-provisional report, and matching
+authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

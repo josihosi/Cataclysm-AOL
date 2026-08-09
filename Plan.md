@@ -29,52 +29,30 @@ The normative player-facing behavior, system ownership, and implementation audit
 - Focused tests cover authority, persistence, exact-pair roster ownership, perception,
   route/handoff, cohesion, physical return/report/decision, resource, fairness, and loss controls.
   They do not substitute for a live incident.
-- Committed gameplay checkpoints through `c7be851d23` carry the exact pair through natural
-  discovery, transactional forward ingress, a paired reality-bubble exit, watch completion, and a
-  distance-derived home leg. The focused `[local_handoff]` proof covers an already-populated
-  local path, a camp beyond the loaded bubble, a paired exit onto the persisted overmap route,
-  continued physical travel, and two-member camp dematerialization. The return repair keeps a pair
-  unloaded while its persisted home route is incomplete and gives camp dematerialization a final
-  pre-reload opportunity.
-- Live run `20260807_110822` proved the final non-provisional report and matching
-  `report_awaiting_assessment` decision, but only after an abstract jump home; it therefore earns no
-  physical-return credit.
-- Run `20260807_135056` on `307e43efda+SDL3` reached the exact `returning_home` handoff at
-  `(164,34,0)` and completed the ordinary six-hour game window, but emitted no paired bubble-exit,
-  camp dematerialization, or returned-member event. Its final harness abort was separately proved
-  to be a post-wait flavor-text input error and fixed at `c74427ca37`; it did not erase the full
-  gameplay window. Run `20260807_140347` did not reach this seam because the pair missed the
-  existing assembly guard under accelerated time, so it is inconclusive.
-- Run `20260807_142412` on `c7be851d23+SDL3` proved a valid two-member forward assembly route with
-  twenty total local path steps and no route failure, then forced `returning_home` before either
-  scout assembled. The focused owner test proves that an ordinary production NPC turn consumes a
-  real staging order; exact live positions were still needed to distinguish route geometry from
-  elapsed-time ownership at that handoff.
-- Checkpoint `c846f9d929` added exact cohesion positions. Run `20260807_144329` proved that both
-  scouts physically reached their staging tiles, crossed the forward boundary, completed the
-  watch, and rematerialized together for the home leg. They then stopped before their first
-  homeward boundary. The focused schema-10 reproduction showed why: default local A* selected a
-  diagonal shortcut through the forbidden watch OMT, the post-route safety check rejected it, and
-  every later turn selected the same shortcut again.
-- Checkpoint `1844bc8324a3` made movement and assembly use the same exact staging definition. Run
-  `20260807_152913` proved the pair on exact assigned tiles, forward travel, watch completion, and a
-  later valid two-member `returning_home` handoff. Early homeward materialization was correctly
-  rejected while the loaded bubble lacked paired entry/staging positions. The later handoff became
-  valid at route position `(164,34,0)`, but no subsequent homeward boundary or camp
-  dematerialization occurred before the incident ended.
-- Checkpoint `f46f8f45ca` preserves the canonical off-camp `returning_home` resume when local pair
-  materialization fails. The focused `[local_handoff]` regression passes 974 assertions and proves
-  that the following structural cadence cannot return members, close the outing, or erase the
-  physical resume. This is necessary owner proof, not live lifecycle credit.
+- Gameplay checkpoints through `f46f8f45ca` carry the exact pair through natural discovery,
+  transactional forward ingress, paired reality-bubble exit, watch completion, and a retained
+  physical homeward resume. Focused tests prevent failed materialization from granting abstract
+  return credit.
+- Checkpoint `8f642ddd7a` makes in-bounds homeward A* apply the nonreentry rule during selection and
+  permits a complete active pair physically inside camp to dematerialize transactionally. Its
+  focused `[local_handoff]` proof passes 1,102 assertions; it is not live lifecycle credit.
+- Checkpoints `30b27b9d5f` and `a629eb804d` preserve the original terminal observer identity across
+  console close/reopen and require one fresh same-run incident JSON/screenshot pair before later
+  return, report, or decision checks. Focused harness and `[debug_console]` tests are green.
+- Live run `20260809_030013` on `a629eb804d+SDL3` published the exact natural generation-1
+  `BD-DF9E73` incident pair with an empty intervention ledger. It then failed closed because no
+  `returning_home` local handoff or `(164,39,0)` camp dematerialization occurred. Repeated production
+  logs show the current blocker: abstract homeward materialization at `(163,33,0)` rejects because
+  the loaded bubble lacks paired entry or staging positions, after which abstract
+  `members_returned=2` and `returned home` remain non-credit.
 
 ## Active claim
 
-Close T01's remaining changed-executable evidence seam. First require the post-incident harness
-step to publish and identity-check a new structured incident pair; the prior `R` step could produce
-"No incident recorded" without failing. Then relink checkpoint `f46f8f45ca` and rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged. The incident must show the paired physical
-homeward boundary and camp dematerialization before canonical home reconciliation, final report,
-and the authoritative camp decision.
+Close T01's in-bubble homeward materialization seam. At the exact live geometry—abstract pair route
+position `(163,33,0)`, player `(162,36,0)`, camp `(164,39,0)`—the complete pair must transactionally
+enter local ownership on safe paired tiles without relaxing the motor-boundary negative. The
+unchanged incident must then show the `returning_home` local handoff and camp dematerialization
+before canonical home reconciliation, final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

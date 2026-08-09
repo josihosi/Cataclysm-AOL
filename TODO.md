@@ -2,12 +2,11 @@
 
 ## Current necessary claim
 
-Add the smallest positive post-`R` harness assertion that requires a newly published, identity-bound
-incident JSON/screenshot pair. Then relink committed checkpoint `f46f8f45ca` and rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged. Require paired physical dematerialization at
-camp before returned-member, final-report, and decision credit.
+Fix the exact T01 homeward materialization rejection from run `20260809_030013`: the complete
+generation-1 pair at route position `(163,33,0)` must enter local ownership on safe paired tiles in
+the existing loaded bubble, then physically reach and dematerialize at camp `(164,39,0)`.
 
-The focused owner regression is green but cannot substitute for that changed-executable incident.
-Do not extend the production-derived wait, alter fixture geometry, discard the committed ingress
-slice, expand debug tooling beyond the proved incident-publication gap, or start the shakedown/raid
-lane before this physical return is green.
+Preserve the motor-boundary negative, transactionality, nonreentry rule, and identity. Relink the
+committed repair and rerun `bandit.scout_to_decision_observer_live_mcw` unchanged. Abstract
+`members_returned`/`returned home` remains non-credit until the same run records the returning-home
+local handoff and camp dematerialization before report and decision.
