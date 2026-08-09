@@ -99,6 +99,18 @@
   `phase=returning_home` local handoff at `(164,34,0)`. It published no incident because the retained
   watch failed closed with `entity_token_mismatch` when owner changed from abstract to local. The
   run therefore earns no camp-dematerialization, return, report, or decision credit.
+- Checkpoint `51c6810706` passes the combined watch, delta, and owner-strict intervention slice with
+  506 assertions at seed `123456`. Its exact relinked macOS SDL3 executable SHA-256 is
+  `c31b5de654665aec724a0ea0228797e4deef44b218769327eb912522106ea17b`.
+- Unchanged run `20260809_035926` on that executable published fresh incident
+  `ecology_incident_5285093.json` (SHA-256
+  `20e33a0d5c0be1a7bfa938f4edcde70ba18c40ec77429df42eddb10d10454bdb`) and `.png` (SHA-256
+  `c164ea7b000f58f853ed026e492b99064545d9b6b480e63206480db0dee2324e`). They bind the exact natural
+  generation-1 `BD-DF9E73` identity with four deltas and no interventions, proving the owner-transfer
+  observer seam closed.
+- That run still rejected every `returning_report`/`returning_home` materialization attempt because
+  the loaded bubble lacked a complete entry-plus-staging allocation, then reached abstract
+  `members_returned=2` and `returned home`. It earns no physical return, report, or decision credit.
 
 ## Pending proof contract
 
@@ -152,10 +164,11 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First preserve the retained operation identity across expected abstract/local ownership transfers
-without weakening world, canonical-ID, generation, authority, or intervention guards. Then relink
-the Mac executable from exact committed source and run the same causal scenario above. The live
-pass requires the exact pair's `returning_home` local handoff and camp dematerialization before the
+First let an already-assembled homeward pair use the first complete adjacent safe placement at the
+later non-camp route waypoint without requiring a second disjoint forward-assembly staging pair.
+Keep forward assembly, adjacency, rollback, and final-camp exclusion strict. Then relink the Mac
+executable from exact committed source and run the same causal scenario above. The live pass
+requires the exact pair's `returning_home` local handoff and camp dematerialization before the
 surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident

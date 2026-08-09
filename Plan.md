@@ -47,15 +47,23 @@ The normative player-facing behavior, system ownership, and implementation audit
   then failed closed with `entity_token_mismatch` because the expected abstract-to-local owner
   transfer was treated as replacement identity, so no fresh incident pair was published and no
   later return/report/decision credit is accepted.
+- Checkpoint `51c6810706` keeps world, canonical ID, generation, and authority as stable observer
+  identity while treating abstract/local owner as visible mutable state. Watch, delta, and
+  owner-strict intervention tests pass 506 assertions together.
+- Unchanged run `20260809_035926` on `51c6810706+SDL3` published the fresh natural generation-1
+  `BD-DF9E73` incident pair with no interventions. It then repeatedly rejected homeward
+  materialization because the loaded return waypoint lacked a complete entry-plus-staging
+  allocation and incorrectly reached abstract `members_returned=2`/`returned home`; no physical
+  return credit is accepted.
 
 ## Active claim
 
-Close T01's observer identity seam exposed by the proved physical owner transfer. The stable
-operation identity is world, canonical dispatch ID, generation, and authority token; abstract/local
-owner is mutable lifecycle state and must remain visible without invalidating the retained watch.
-Canonical, generation, authority, world, or intervention-owner mismatches must remain fail-closed.
-Then the unchanged incident must show the `returning_home` local handoff and camp dematerialization
-before canonical home reconciliation, final report, and authoritative camp decision.
+Close T01's homeward placement seam. An already-assembled abstract-resume pair must materialize at
+the first later safe non-camp route waypoint when the loaded map offers one complete adjacent pair
+but no second disjoint assembly-staging pair. Forward assembly, complete-pair adjacency,
+transactional rollback, and the final-camp exclusion remain strict. Then the unchanged incident
+must show the `returning_home` local handoff and camp dematerialization before canonical home
+reconciliation, final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
