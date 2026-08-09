@@ -4956,6 +4956,63 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     }
     snapshot.cohesion_leader_id = plan.leader_id;
 
+    std::optional<tripoint_abs_omt> homeward_route_stage;
+    if( snapshot.cohesion_assembled && outing.phase == scout_phase::returning_home &&
+        !outing.assessment.exit_reason.empty() &&
+        living_reads.size() == 2 && living_reads[0]->present && living_reads[1]->present ) {
+        const tripoint_abs_omt first_omt =
+            project_to<coords::omt>( living_reads[0]->current_position );
+        const tripoint_abs_omt second_omt =
+            project_to<coords::omt>( living_reads[1]->current_position );
+        const std::optional<int> minimum_target_distance =
+            target_footprint_watch_distance(
+                outing.selected_watch_omt, outing.target_footprint );
+        const std::optional<int> stage_target_distance =
+            target_footprint_watch_distance( first_omt, outing.target_footprint );
+        if( first_omt == second_omt && first_omt != snapshot.route_position &&
+            !hostile_site_contains_omt( site, first_omt ) &&
+            omt_chebyshev_distance( first_omt, site.anchor ) == 1 &&
+            rl_dist( living_reads[0]->current_position,
+                     living_reads[1]->current_position ) <= local_pair_cohesion_radius_ms &&
+            minimum_target_distance && stage_target_distance &&
+            *stage_target_distance >= *minimum_target_distance ) {
+            homeward_route_stage = first_omt;
+        }
+    }
+    if( homeward_route_stage ) {
+        const tripoint_abs_omt prior_route_position = snapshot.route_position;
+        const tripoint_abs_ms stage_center =
+            project_to<coords::ms>( *homeward_route_stage ) + point( SEEX, SEEY );
+        const int route_dx = site.anchor.x() - homeward_route_stage->x();
+        const int route_dy = site.anchor.y() - homeward_route_stage->y();
+        const point_rel_ms pair_offset = std::abs( route_dx ) >= std::abs( route_dy ) ?
+                                         point_rel_ms( 0, 1 ) : point_rel_ms( 1, 0 );
+        snapshot.route_position = *homeward_route_stage;
+        snapshot.approach_from = prior_route_position;
+        snapshot.egress_omt = outing.shared_route.back();
+        snapshot.cohesion_assembled = false;
+        for( std::size_t index = 0; index < outing.member_ids.size(); ++index ) {
+            const character_id member_id = outing.member_ids[index];
+            const auto read = std::find_if( living_reads.begin(), living_reads.end(),
+            [member_id]( const local_cohesion_member_read * candidate ) {
+                return candidate->npc_id == member_id;
+            } );
+            const auto member = std::find_if( snapshot.members.begin(), snapshot.members.end(),
+            [member_id]( const local_handoff_member_snapshot & candidate ) {
+                return candidate.npc_id == member_id;
+            } );
+            if( read == living_reads.end() || member == snapshot.members.end() ) {
+                plan.notes.push_back( "local cohesion blocked: route stage lost exact member" );
+                return plan;
+            }
+            member->prior_position = ( *read )->current_position;
+            member->entry_position = ( *read )->current_position;
+            member->staging_position = stage_center +
+                                       pair_offset * static_cast<int>( index );
+            member->exit_position = ( *read )->current_position;
+        }
+    }
+
     const local_cohesion_member_read *leader_read = nullptr;
     bool all_present_on_route = !living_reads.empty();
     for( const local_cohesion_member_read *read : living_reads ) {
@@ -5071,7 +5128,9 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     }
     plan.snapshot = std::move( snapshot );
     plan.valid = true;
-    plan.notes.push_back( assembled ? "complete surviving pair assembled at staging" :
+    plan.notes.push_back( homeward_route_stage ?
+                          "homeward pair advancing through shared route staging" :
+                          assembled ? "complete surviving pair assembled at staging" :
                           plan.abort_return ? "local pair cohesion forced coherent return" :
                           "local pair is rendezvousing at staging" );
     return plan;

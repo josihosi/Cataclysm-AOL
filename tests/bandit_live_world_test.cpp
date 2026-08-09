@@ -9342,6 +9342,154 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( bandit_live_world::local_pair_homeward_travel_ids( world ).empty() );
     }
 
+    SECTION( "an H0 homeward pair advances through the shared cohesion owner" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record &site = world.sites.front();
+        bandit_live_world::active_outing_state &outing = site.active_outing;
+        const tripoint_abs_omt target = outing.target_omt;
+        const tripoint_abs_omt watch = target + point( 0, 3 );
+        const tripoint_abs_omt approach = watch + point( 0, 1 );
+        outing.schema_version = 10;
+        outing.target_footprint = { target };
+        outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+        outing.selected_watch_omt = watch;
+        outing.selected_watch_route_cost = 2;
+        outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+        outing.waypoint_index = 2;
+        outing.phase = bandit_live_world::scout_phase::returning_home;
+        outing.assessment.observation_started_minutes = 0;
+        outing.assessment.last_progress_minutes = 100;
+        outing.assessment.certainty = 80;
+        outing.assessment.readiness_latched = true;
+        outing.assessment.threshold_class =
+            bandit_live_world::scout_assessment_threshold_class::normal;
+        outing.assessment.strong_visual_windows = 3;
+        outing.assessment.pinned_target_revision = outing.target_lead_revision;
+        outing.assessment.next_eligible_minutes = 100 + 48 * 60;
+        outing.assessment.exit_reason = "normal watch assessment complete";
+
+        const std::optional<bandit_live_world::simulation_advance_cursor> abstract_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( abstract_cursor );
+        const bandit_live_world::local_handoff_plan handoff =
+            bandit_live_world::plan_local_pair_handoff(
+                site, *abstract_cursor, 100, make_reads( site ) );
+        REQUIRE( handoff.valid );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     site, handoff,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        REQUIRE( outing.local_handoff.cohesion_assembled );
+
+        const std::string activity_id = outing.activity_id;
+        const int generation = outing.generation;
+        const std::vector<character_id> exact_members = outing.member_ids;
+        const tripoint_abs_omt prior_route_position = outing.local_handoff.route_position;
+        const tripoint_abs_omt camp_adjacent = site.anchor + point( 0, -1 );
+        const tripoint_abs_ms camp_adjacent_origin = project_to<coords::ms>( camp_adjacent );
+        std::vector<bandit_live_world::local_cohesion_member_read> reads;
+        for( std::size_t index = 0; index < exact_members.size(); ++index ) {
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = exact_members[index];
+            read.present = true;
+            read.current_position = camp_adjacent_origin +
+                                    point( 2 + static_cast<int>( index ), 2 );
+            reads.push_back( read );
+        }
+
+        const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( local_cursor );
+        const bandit_live_world::local_cohesion_plan h0_progress =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *local_cursor, 101, reads );
+        REQUIRE( h0_progress.valid );
+        REQUIRE( h0_progress.movement_orders.size() == 2 );
+        CHECK( h0_progress.reroute_needed );
+        CHECK_FALSE( h0_progress.snapshot.cohesion_assembled );
+        CHECK( h0_progress.snapshot.route_position == camp_adjacent );
+        CHECK( h0_progress.snapshot.approach_from == prior_route_position );
+        CHECK( h0_progress.snapshot.egress_omt == site.anchor );
+        CHECK( h0_progress.snapshot.activity_id == activity_id );
+        CHECK( h0_progress.snapshot.activity_generation == generation );
+        std::vector<tripoint_abs_ms> progress_positions;
+        for( const std::pair<character_id, tripoint_abs_ms> &order :
+             h0_progress.movement_orders ) {
+            CHECK( std::find( exact_members.begin(), exact_members.end(), order.first ) !=
+                   exact_members.end() );
+            CHECK( project_to<coords::omt>( order.second ) == camp_adjacent );
+            progress_positions.push_back( order.second );
+        }
+        REQUIRE( progress_positions.size() == 2 );
+        CHECK( progress_positions[0] != progress_positions[1] );
+        CHECK( rl_dist( progress_positions[0], progress_positions[1] ) <= 1 );
+        const std::optional<int> minimum_target_distance =
+            bandit_live_world::target_footprint_watch_distance(
+                watch, outing.target_footprint );
+        REQUIRE( minimum_target_distance );
+        for( const tripoint_abs_ms &position : progress_positions ) {
+            const std::optional<int> distance =
+                bandit_live_world::target_footprint_watch_distance(
+                    project_to<coords::omt>( position ), outing.target_footprint );
+            REQUIRE( distance );
+            CHECK( *distance >= *minimum_target_distance );
+        }
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     site, h0_progress, true, false ) );
+        CHECK( outing.activity_id == activity_id );
+        CHECK( outing.generation == generation );
+        CHECK( outing.member_ids == exact_members );
+        CHECK( outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( site.applied_return_generation == 0 );
+        CHECK( site.applied_report_generation == 0 );
+        CHECK_FALSE( site.current_scout_report.is_present() );
+
+        std::vector<bandit_live_world::local_cohesion_member_read> arrived_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             outing.local_handoff.members ) {
+            bandit_live_world::local_cohesion_member_read read;
+            read.npc_id = member.npc_id;
+            read.present = true;
+            read.current_position = member.staging_position;
+            arrived_reads.push_back( read );
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> arrived_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( arrived_cursor );
+        const bandit_live_world::local_cohesion_plan boundary_ready =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *arrived_cursor, 102, arrived_reads );
+        REQUIRE( boundary_ready.valid );
+        CHECK( boundary_ready.snapshot.cohesion_assembled );
+        CHECK( boundary_ready.movement_orders.empty() );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     site, boundary_ready, false, false ) );
+        CHECK( bandit_live_world::local_pair_assembly_orders( outing ).empty() );
+        const std::set<character_id> boundary_owner_ids =
+            bandit_live_world::local_pair_homeward_travel_ids( world );
+        CHECK( boundary_owner_ids.size() == 2 );
+        for( const character_id member_id : exact_members ) {
+            CHECK( boundary_owner_ids.count( member_id ) == 1 );
+        }
+
+        std::vector<bandit_live_world::local_cohesion_member_read> incomplete_reads = reads;
+        incomplete_reads.pop_back();
+        const std::string before_incomplete = serialize_world( world );
+        const std::optional<bandit_live_world::simulation_advance_cursor> incomplete_cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( incomplete_cursor );
+        const bandit_live_world::local_cohesion_plan incomplete =
+            bandit_live_world::plan_local_pair_cohesion(
+                site, *incomplete_cursor, 103, incomplete_reads );
+        CHECK_FALSE( incomplete.valid );
+        CHECK( serialize_world( world ) == before_incomplete );
+        CHECK( site.applied_return_generation == 0 );
+        CHECK( site.applied_report_generation == 0 );
+        CHECK_FALSE( site.current_scout_report.is_present() );
+    }
+
     SECTION( "duplicate local ownership fails before either site can act" ) {
         bandit_live_world::world_state first = make_world( false );
         bandit_live_world::world_state second = make_world( false );
