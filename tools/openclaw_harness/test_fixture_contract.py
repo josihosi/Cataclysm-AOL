@@ -63,6 +63,7 @@ from startup_harness import (  # noqa: E402
     execute_long_wait_action,
     execute_probe_steps,
     ecology_incident_artifact_baseline,
+    evaluate_screen_text_expectation,
     launch_game,
     latest_now_minutes_marker,
     load_profile_config,
@@ -575,6 +576,92 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(partial["classification"], "partial_portal_storm_notice")
         self.assertEqual(partial["status"], "unknown_prompt")
         self.assertTrue(partial["contaminating"])
+
+
+class ScreenTextExpectationSpatialRowContractTest(unittest.TestCase):
+    EXPECTED = "Armed BD-DF9E73"
+
+    @staticmethod
+    def observation(text: str, x: float, y: float, height: float) -> Dict[str, Any]:
+        return {
+            "text": text,
+            "x": x,
+            "y": y,
+            "w": 0.04,
+            "h": height,
+        }
+
+    def evaluate(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+        identity_line = next(
+            str(observation.get("text", ""))
+            for observation in observations
+            if str(observation.get("text", "")).startswith("BD-")
+        )
+        payload = {
+            "ok": True,
+            "lines": [
+                "Armed",
+                "Fail on trigger",
+                "Inspect",
+                "edit",
+                "selected member",
+                identity_line,
+            ],
+            "text": (
+                "Armed\nFail on trigger\nInspect\nedit\nselected member\n"
+                f"{identity_line}"
+            ),
+            "observations": observations,
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "screen_text.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            return evaluate_screen_text_expectation(
+                {"json_path": str(path)},
+                [self.EXPECTED],
+            )
+
+    def preserved_observations(self, identity: str = "BD-DF9E73") -> List[Dict[str, Any]]:
+        return [
+            self.observation("Armed", 0.3807189548, 0.7325581399, 0.0087209298),
+            self.observation(
+                f"{identity} (selected_phase_change, continue_capture, deadline 8884)",
+                0.4150326929,
+                0.7295138886,
+                0.0118055556,
+            ),
+        ]
+
+    def test_overlapping_left_to_right_observations_match_full_identity_phrase(self) -> None:
+        result = self.evaluate(self.preserved_observations())
+
+        self.assertEqual(result["status"], "matched")
+        self.assertEqual(result["missing"], [])
+        self.assertEqual(result["matches"][0]["source"], "spatial_ocr_row")
+        self.assertIn(self.EXPECTED, result["matches"][0]["line"])
+
+    def test_wrong_identity_does_not_match(self) -> None:
+        result = self.evaluate(self.preserved_observations("BD-OTHER"))
+
+        self.assertEqual(result["status"], "missing")
+        self.assertEqual(result["missing"], [self.EXPECTED])
+
+    def test_non_overlapping_rows_do_not_match(self) -> None:
+        observations = self.preserved_observations()
+        observations[1]["y"] = 0.75
+        result = self.evaluate(observations)
+
+        self.assertEqual(result["status"], "missing")
+        self.assertEqual(result["missing"], [self.EXPECTED])
+
+    def test_reversed_horizontal_order_does_not_match(self) -> None:
+        observations = self.preserved_observations()
+        observations[0]["x"] = 0.5
+        observations[1]["x"] = 0.4
+        result = self.evaluate(observations)
+
+        self.assertEqual(result["status"], "missing")
+        self.assertEqual(result["missing"], [self.EXPECTED])
 
 
 class WaitStepLedgerContractTest(unittest.TestCase):

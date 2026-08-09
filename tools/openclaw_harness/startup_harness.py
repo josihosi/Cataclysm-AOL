@@ -8305,6 +8305,62 @@ def normalize_screen_text_patterns(raw_value: Any) -> List[str]:
     return [str(value).strip() for value in raw_value if str(value).strip()]
 
 
+def normalize_ocr_phrase(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text)).strip().lower()
+
+
+def spatial_ocr_row_texts(payload: Dict[str, Any]) -> List[str]:
+    """Reconstruct OCR rows from overlapping vertical bounding intervals."""
+
+    raw_observations = payload.get("observations", [])
+    if not isinstance(raw_observations, list):
+        return []
+    observations: List[Tuple[float, float, float, int, str]] = []
+    for index, raw_observation in enumerate(raw_observations):
+        if not isinstance(raw_observation, dict):
+            continue
+        text = str(raw_observation.get("text", "")).strip()
+        try:
+            x = float(raw_observation.get("x"))
+            y = float(raw_observation.get("y"))
+            height = float(raw_observation.get("h"))
+        except (TypeError, ValueError):
+            continue
+        if not text or height <= 0:
+            continue
+        observations.append((x, y, y + height, index, text))
+    if len(observations) < 2:
+        return []
+
+    vertical_boundaries = sorted({
+        boundary
+        for _, top, bottom, _, _ in observations
+        for boundary in (top, bottom)
+    })
+    row_texts: List[str] = []
+    seen: Set[str] = set()
+    for lower, upper in zip(vertical_boundaries, vertical_boundaries[1:]):
+        if upper <= lower:
+            continue
+        scanline = (lower + upper) / 2.0
+        row = sorted(
+            (
+                (x, index, text)
+                for x, top, bottom, index, text in observations
+                if top < scanline < bottom
+            ),
+            key=lambda entry: (entry[0], entry[1]),
+        )
+        if len(row) < 2:
+            continue
+        row_text = " ".join(text for _, _, text in row)
+        normalized_row = normalize_ocr_phrase(row_text)
+        if normalized_row and normalized_row not in seen:
+            seen.add(normalized_row)
+            row_texts.append(row_text)
+    return row_texts
+
+
 def find_screen_text_matches(screen_text_report: Dict[str, Any], patterns: List[str]) -> List[Dict[str, str]]:
     if not patterns:
         return []
@@ -8319,14 +8375,25 @@ def find_screen_text_matches(screen_text_report: Dict[str, Any], patterns: List[
     raw_lines = payload.get("lines", []) if isinstance(payload, dict) else []
     lines = [str(line).strip() for line in raw_lines if str(line).strip()] if isinstance(raw_lines, list) else []
     raw_text = str(payload.get("text", "")).strip() if isinstance(payload, dict) else ""
-    haystacks = lines + ([raw_text] if raw_text else [])
+    literal_haystacks = lines + ([raw_text] if raw_text else [])
+    spatial_haystacks = spatial_ocr_row_texts(payload)
     matches: List[Dict[str, str]] = []
     for pattern in patterns:
         needle = pattern.lower()
-        for line in haystacks:
+        for line in literal_haystacks:
             if needle in line.lower():
                 matches.append({"pattern": pattern, "line": line})
                 break
+        else:
+            spatial_needle = normalize_ocr_phrase(pattern)
+            for row_text in spatial_haystacks:
+                if spatial_needle in normalize_ocr_phrase(row_text):
+                    matches.append({
+                        "pattern": pattern,
+                        "line": row_text,
+                        "source": "spatial_ocr_row",
+                    })
+                    break
     return matches
 
 
