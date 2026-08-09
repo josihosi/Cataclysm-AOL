@@ -111,6 +111,16 @@
 - That run still rejected every `returning_report`/`returning_home` materialization attempt because
   the loaded bubble lacked a complete entry-plus-staging allocation, then reached abstract
   `members_returned=2` and `returned home`. It earns no physical return, report, or decision credit.
+- Checkpoint `b998327e91` passes the exact one-adjacent-pair homeward route/motor/camp-dematerialization
+  section with 94 assertions and the full owning case with 1,054 assertions at seed `123456`.
+  Its exact relinked macOS SDL3 executable SHA-256 is
+  `d96514f3ef2a20e22fd75faa082e481a40f43baa357b2367a8141403508c1ea7`.
+- Unchanged run `20260809_042151` on that executable published the fresh natural generation-1
+  identity-bound incident pair and kept startup/debug guards green. It still emitted repeated
+  `loaded bubble lacks paired entry or staging positions` rejections for `returning_report` and
+  `returning_home`, then reached abstract `members_returned=2`/`returned home` without either the
+  required return handoff or `(164,39,0)` dematerialization. The next proof must split that aggregate
+  receipt into exact candidate-route and entry/staging counts before another behavior change.
 
 ## Pending proof contract
 

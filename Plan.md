@@ -55,15 +55,22 @@ The normative player-facing behavior, system ownership, and implementation audit
   materialization because the loaded return waypoint lacked a complete entry-plus-staging
   allocation and incorrectly reached abstract `members_returned=2`/`returned home`; no physical
   return credit is accepted.
+- Checkpoint `b998327e91` lets an already-assembled homeward resume reuse its complete adjacent
+  entry pair as staging only at the first later non-camp route waypoint. Focused route/motor/camp
+  dematerialization proof passes 94 assertions and the owning case passes 1,054 assertions.
+- Unchanged run `20260809_042151` on `b998327e91+SDL3` (SHA-256 `d96514f3ef2a20e22fd75faa082e481a40f43baa357b2367a8141403508c1ea7`)
+  kept the fresh identity-bound incident gate green but still found no complete later-waypoint
+  entry allocation, then incorrectly granted abstract return. The current rejection aggregates
+  entry and staging failure, so it does not yet identify the remaining physical geometry seam.
 
 ## Active claim
 
-Close T01's homeward placement seam. An already-assembled abstract-resume pair must materialize at
-the first later safe non-camp route waypoint when the loaded map offers one complete adjacent pair
-but no second disjoint assembly-staging pair. Forward assembly, complete-pair adjacency,
-transactional rollback, and the final-camp exclusion remain strict. Then the unchanged incident
-must show the `returning_home` local handoff and camp dematerialization before canonical home
-reconciliation, final report, and authoritative camp decision.
+Discriminate T01's remaining homeward placement rejection without changing gameplay state. Each
+failed later-route candidate must report its route and exact entry/staging counts so the live
+artifact distinguishes an absent or incomplete adjacent entry pair from a staging-only failure.
+Then close only the proved geometry seam and require the unchanged incident to show the
+`returning_home` local handoff and camp dematerialization before canonical home reconciliation,
+final report, and authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

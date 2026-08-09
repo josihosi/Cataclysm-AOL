@@ -2,11 +2,10 @@
 
 ## Current necessary claim
 
-Fix the exact T01 homeward placement rejection from run `20260809_035926`: the already-assembled
-generation-1 pair must materialize at the first later safe non-camp route waypoint when that loaded
-OMT has one complete adjacent pair but no second disjoint assembly-staging pair.
+Run `20260809_042151` stayed red after `b998327e91`: every later-waypoint homeward materialization
+attempt still reported the aggregated entry/staging rejection. Add the smallest read-only receipt
+that records each candidate route and exact entry/staging/required counts, relink, and rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged.
 
-Relink the committed repair and rerun `bandit.scout_to_decision_observer_live_mcw` unchanged.
-Preserve forward assembly, adjacency, rollback, and final-camp exclusion. Accept only a fresh
-identity-bound incident pair that records the returning-home local handoff and camp
-dematerialization before report and decision.
+Use that artifact to close only the proved placement seam. Accept no return, report, or decision
+credit before the exact pair's returning-home local handoff and camp dematerialization.
