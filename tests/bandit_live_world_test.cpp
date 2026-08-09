@@ -8360,9 +8360,9 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                                distance_before_motor.at( id ) );
                     }
                 }
-                const bandit_live_world::local_handoff_member_snapshot &leader_snapshot =
+                const bandit_live_world::local_handoff_member_snapshot leader_snapshot =
                     live_site.active_outing.local_handoff.members[0];
-                const bandit_live_world::local_handoff_member_snapshot &partner_snapshot =
+                const bandit_live_world::local_handoff_member_snapshot partner_snapshot =
                     live_site.active_outing.local_handoff.members[1];
                 npc *leader = g->find_npc( leader_snapshot.npc_id );
                 npc *partner = g->find_npc( partner_snapshot.npc_id );
