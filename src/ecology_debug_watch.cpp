@@ -27,7 +27,6 @@ bool same_token( const immutable_entity_token &lhs, const immutable_entity_token
     return lhs.world_identity == rhs.world_identity &&
            lhs.canonical_id == rhs.canonical_id &&
            lhs.generation == rhs.generation &&
-           lhs.owner == rhs.owner &&
            lhs.authority_token == rhs.authority_token;
 }
 

@@ -26,7 +26,7 @@ ecology_debug::selected_projection projection( std::string phase = "observing" )
     result.token.canonical_id = result.marker.id;
     result.token.generation = 1;
     result.token.owner = "local";
-    result.token.authority_token = "site/4:local/42";
+    result.token.authority_token = "bandit_live_world/site/4";
 
     ecology_debug::selected_detail detail;
     detail.entity_id = result.marker.id;
@@ -359,6 +359,63 @@ TEST_CASE( "ecology_watch_identity_policy_and_json_are_stable",
     CHECK( mismatch.status == ecology_debug::watch_status::anomaly );
     CHECK( mismatch.disposition == ecology_debug::trigger_disposition::fail );
     CHECK( mismatch.reason == "entity_token_mismatch" );
+
+    ecology_debug::selected_projection abstract = projection( "returning_home" );
+    abstract.marker.owner = "abstract";
+    abstract.marker.loaded = false;
+    abstract.token.owner = abstract.marker.owner;
+    ecology_debug::selected_projection local = abstract;
+    local.marker.owner = "local";
+    local.marker.loaded = true;
+    local.token.owner = local.marker.owner;
+    const ecology_debug::watch_result materialized = ecology_debug::evaluate_watch(
+                spec( ecology_debug::watch_preset::selected_phase_change ),
+                transition_input( abstract, local ) );
+    CHECK( materialized.status == ecology_debug::watch_status::watching );
+    CHECK( materialized.reason == "watching" );
+
+    ecology_debug::selected_projection resumed = local;
+    resumed.marker.owner = "abstract";
+    resumed.marker.loaded = false;
+    resumed.marker.state = "returning_report";
+    resumed.token.owner = resumed.marker.owner;
+    resumed.detail->phase = resumed.marker.state;
+    const ecology_debug::watch_result dematerialized = ecology_debug::evaluate_watch(
+                spec( ecology_debug::watch_preset::selected_phase_change ),
+                transition_input( local, resumed ) );
+    CHECK( dematerialized.status == ecology_debug::watch_status::triggered );
+    CHECK( dematerialized.reason == "selected_phase_changed" );
+
+    const auto check_identity_mismatch = [&abstract](
+    const ecology_debug::selected_projection & changed ) {
+        const ecology_debug::watch_result rejected = ecology_debug::evaluate_watch(
+                    spec( ecology_debug::watch_preset::selected_phase_change ),
+                    transition_input( abstract, changed ) );
+        CHECK( rejected.status == ecology_debug::watch_status::anomaly );
+        CHECK( rejected.reason == "entity_token_mismatch" );
+    };
+    ecology_debug::selected_projection wrong_world = abstract;
+    wrong_world.token.world_identity = "world/replacement";
+    check_identity_mismatch( wrong_world );
+    ecology_debug::selected_projection wrong_entity = abstract;
+    wrong_entity.marker.id = "dispatch/camp/outing/2";
+    wrong_entity.token.canonical_id = wrong_entity.marker.id;
+    wrong_entity.detail->entity_id = wrong_entity.marker.id;
+    check_identity_mismatch( wrong_entity );
+    ecology_debug::selected_projection wrong_generation = abstract;
+    wrong_generation.marker.generation++;
+    wrong_generation.token.generation = wrong_generation.marker.generation;
+    check_identity_mismatch( wrong_generation );
+    ecology_debug::selected_projection wrong_authority = abstract;
+    wrong_authority.token.authority_token = "bandit_live_world/site/9";
+    check_identity_mismatch( wrong_authority );
+
+    ecology_debug::selected_projection inconsistent_owner = abstract;
+    inconsistent_owner.marker.owner = "local";
+    CHECK( ecology_debug::evaluate_watch(
+               spec( ecology_debug::watch_preset::selected_phase_change ),
+               transition_input( abstract, inconsistent_owner ) ).reason ==
+           "current_token_invalid" );
 
     input.current = after;
     const ecology_debug::watch_spec phase_spec = spec(

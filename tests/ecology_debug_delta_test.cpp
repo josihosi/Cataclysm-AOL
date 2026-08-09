@@ -201,11 +201,52 @@ TEST_CASE( "ecology_debug_delta_fails_closed_on_missing_or_changed_authority",
     ecology_debug::selected_projection owner_changed = before;
     owner_changed.marker.owner = "local";
     owner_changed.token.owner = "local";
-    const ecology_debug::delta_observation_result owner_mismatch = ring.observe( before,
+    const size_t before_owner_transition = ring.records().size();
+    const ecology_debug::delta_observation_result materialized = ring.observe( before,
             owner_changed, context() );
-    REQUIRE( owner_mismatch.emitted == 1 );
-    CHECK( owner_mismatch.anomaly );
-    CHECK( ring.records().back().anomaly_reason == "entity_token_mismatch" );
+    CHECK( materialized.emitted == 0 );
+    CHECK_FALSE( materialized.anomaly );
+    CHECK( ring.records().size() == before_owner_transition );
+
+    ecology_debug::selected_projection owner_resumed = owner_changed;
+    owner_resumed.marker.owner = "abstract";
+    owner_resumed.token.owner = "abstract";
+    owner_resumed.marker.state = "returning_home";
+    owner_resumed.detail->phase = "returning_home";
+    const ecology_debug::delta_observation_result dematerialized = ring.observe(
+                owner_changed, owner_resumed, context() );
+    REQUIRE( dematerialized.emitted == 1 );
+    CHECK_FALSE( dematerialized.anomaly );
+    CHECK( ring.records().back().kind == ecology_debug::delta_kind::phase_changed );
+    REQUIRE( ring.records().back().before );
+    REQUIRE( ring.records().back().after );
+    CHECK( ring.records().back().before->owner == "local" );
+    CHECK( ring.records().back().after->owner == "abstract" );
+    CHECK( ring.records().back().entity_id == before.marker.id );
+
+    const auto check_identity_mismatch = [&ring, &before](
+    const ecology_debug::selected_projection & changed ) {
+        const ecology_debug::delta_observation_result rejected = ring.observe(
+                    before, changed, context() );
+        REQUIRE( rejected.emitted == 1 );
+        CHECK( rejected.anomaly );
+        CHECK( ring.records().back().anomaly_reason == "entity_token_mismatch" );
+    };
+    ecology_debug::selected_projection wrong_world = before;
+    wrong_world.token.world_identity = "world/replacement";
+    check_identity_mismatch( wrong_world );
+    ecology_debug::selected_projection wrong_entity = before;
+    wrong_entity.marker.id = "dispatch/camp/outing/2";
+    wrong_entity.token.canonical_id = wrong_entity.marker.id;
+    wrong_entity.detail->entity_id = wrong_entity.marker.id;
+    check_identity_mismatch( wrong_entity );
+    ecology_debug::selected_projection wrong_generation = before;
+    wrong_generation.marker.generation++;
+    wrong_generation.token.generation = wrong_generation.marker.generation;
+    check_identity_mismatch( wrong_generation );
+    ecology_debug::selected_projection wrong_authority = before;
+    wrong_authority.token.authority_token = "bandit_live_world/site/9";
+    check_identity_mismatch( wrong_authority );
 
     ecology_debug::selected_projection returning = before;
     returning.marker.state = "returning_home";
