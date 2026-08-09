@@ -124,10 +124,15 @@ exact source, binary, fixture, scenario, site, generation, and members 4/5 are i
 both scouts. Reproducing the earlier run's local coordinates is not part of the semantic contract
 and is removed from the concrete proof plan.
 
-The next necessary claim stays inside the frozen movement contract: when no complete camp-boundary
-pair is yet reachable by both scouts, the existing shared route/cohesion owner must continue safe
-physical pair progress until the ordinary boundary transaction becomes reachable. Do not alter
-scenario geometry or timing, assign paths from the observer, teleport, or grant return credit.
+Checkpoint `bcadaf16b1` closes the focused H0 route-owner seam. From exhaustive complete-pair H0,
+the shared production cohesion owner now re-stages both exact scouts at a safe camp-adjacent
+physical cursor and releases the reassembled pair to ordinary homeward boundary ownership without
+altering outing identity, geometry, timing, actor paths, or outcome credit. The focused control and
+full owning case are green; this is not live lifecycle credit.
+
+The next necessary claim is the unchanged natural T01 incident on an exact committed binary:
+ordered paired boundary crossing, camp dematerialization, canonical surviving return, final report,
+and matching authoritative decision. No T02 work begins before that one-run chain is green.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

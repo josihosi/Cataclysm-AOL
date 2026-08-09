@@ -244,6 +244,14 @@
   `29a151c0e98c63fb21624b4c60cac6885606887868a25554d973b7c9f2d56be4`). Local coordinates are
   observations, not semantic subject identity, so the earlier coordinate-specific rejection is
   superseded without changing the functional specification.
+- Checkpoint `bcadaf16b1` advances an assessed exhaustive-H0 pair through the shared production
+  cohesion owner without changing outing/member identity, nonreentry, geometry, actor paths, or
+  outcome credit. The focused red control failed at 16/17 assertions with zero movement orders;
+  green passes 59/59. The full owning case passes 1,354/1,354 assertions, and the redirected macOS
+  SDL3 test build exits zero. Receipt:
+  `build_logs/de67/T01-H0-ROUTE-W3/terminal-receipt.json` (SHA-256
+  `bbe5ed9cf1dcc830ebc8d9831b878e310b5e1ba070c13eaef7ba060fc0810fe3`). This focused result is
+  not live lifecycle credit.
 
 ## Pending proof contract
 
@@ -298,12 +306,12 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   > build_logs/T01-live-probe.stdout-stderr.log 2>&1
 ```
 
-The one-OMT fallback and bounded discriminator are focused-green, and the natural production route
-now classifies H0. The next focused control must begin with an exhaustive complete-pair H0 state
-and prove that the shared route/cohesion owner advances both scouts safely until ordinary paired
-boundary selection becomes feasible; a debug-assigned path, geometry/timing change, or synthetic
-coordinate replay earns no credit. The live pass still requires the exact pair's camp
-dematerialization before surviving return, final report, and matching decision.
+The one-OMT fallback, bounded discriminator, natural H0 classification, and shared H0 route-owner
+progress are focused-green. The next proof is the unchanged natural scenario on an exact committed
+binary; it still requires ordered paired boundary crossing and camp dematerialization before the
+canonical surviving return, final report, and matching decision. A debug-assigned path,
+geometry/timing/fixture change, synthetic coordinate replay, or direct outcome credit earns no
+credit.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.
