@@ -2094,8 +2094,16 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         r"[\s\S]{0,64}\bto\b[\s\S]{0,64}interrupt",
         lowered,
     ) )
+    split_wait_words = set( normalized_ocr_body.split() )
+    split_wait_progress_banner = (
+        "waiting:" in lowered
+        and wait_progress_percentage
+        and {"press", "or", "5", "to"}.issubset( split_wait_words )
+        and bool( re.search( r"\binterrup(?:t(?:ion)?)?\b", normalized_ocr_body ) )
+    )
     fragmented_wait_activity = (
         bounded_fragmented_wait_banner
+        or split_wait_progress_banner
         or (
             "press" in lowered
             and "waiting" in lowered

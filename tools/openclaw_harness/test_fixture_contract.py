@@ -255,6 +255,48 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 self.assertEqual(result["classification"], "wait_activity_in_progress")
                 self.assertEqual(result["response_key"], "")
 
+    def test_split_active_wait_progress_is_clear_without_sending_input(self) -> None:
+        observed_ocr = "Press\nwaiting:\nor\n5\n5%\nto\ninterrup"
+        direct = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+
+        self.assertEqual(direct["status"], "clear")
+        self.assertEqual(direct["classification"], "wait_activity_in_progress")
+        self.assertEqual(direct["response_key"], "")
+
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+            mock.patch(
+                "startup_harness.capture_screen_text_artifact",
+                return_value={"ok": True, "text": observed_ocr},
+            ),
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+        ):
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "wait_contract.split_progress",
+                stop_on_unknown=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 0)
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "wait_activity_in_progress",
+        )
+        press.assert_not_called()
+
+    def test_bare_press_without_active_wait_progress_remains_blocked(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "Press\nAn unfamiliar prompt is waiting for a choice.",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(result["classification"], "partial_safe_mode_spotted_hostile_prompt")
+        self.assertEqual(result["response_key"], "")
+
     def test_genuine_safe_mode_prompts_remain_fail_closed(self) -> None:
         cases = (
             (
