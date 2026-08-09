@@ -144,6 +144,7 @@ static const species_id species_ZOMBIE( "ZOMBIE" );
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
 
+static const trait_id trait_DEBUG_CLAIRVOYANCE( "DEBUG_CLAIRVOYANCE" );
 static const trait_id trait_HAS_NEMESIS( "HAS_NEMESIS" );
 static const trait_id trait_NPC_STATIC_NPC( "NPC_STATIC_NPC" );
 
@@ -7183,23 +7184,54 @@ void monmove()
                         [&local_step_respects_nonreentry]( const tripoint_bub_ms & step ) {
                             return !local_step_respects_nonreentry( step );
                         };
+                        const pathfinding_target boundary_target = pathfinding_target::point(
+                                    m.get_bub( homeward_boundary->second.departure ) );
                         const bool route_found = live_bandit_update_local_path_avoiding(
-                                                     guy, pathfinding_target::point(
-                                                         m.get_bub( homeward_boundary->second.departure ) ),
-                                                     avoid_nonreentry );
+                                                     guy, boundary_target, avoid_nonreentry );
                         const bool route_safe = route_found &&
                                                 local_path_respects_nonreentry( guy.path );
                         const std::size_t path_size_before_movement = guy.path.size();
                         const tripoint_abs_ms position_before_movement = guy.pos_abs();
                         const int moves_before_movement = guy.get_moves();
+                        const bool emit_route_result = log_homeward_route_result &&
+                                logged_homeward_route_result_ids.insert( guy.getID() ).second;
+                        const bool classify_rejection = emit_route_result && !route_found &&
+                                u.has_trait( trait_DEBUG_CLAIRVOYANCE );
+                        std::optional<std::string> rejection_classifier;
+                        if( classify_rejection ) {
+                            const pathfinding_settings &settings =
+                                guy.get_pathfinding_settings( false );
+                            const auto avoid_none = []( const tripoint_bub_ms & ) {
+                                return false;
+                            };
+                            const std::vector<tripoint_bub_ms> baseline_path =
+                                m.route( guy.pos_bub(), boundary_target, settings, avoid_none );
+                            const std::vector<tripoint_bub_ms> npc_avoid_path =
+                                m.route( guy.pos_bub(), boundary_target, settings,
+                                         guy.get_path_avoid() );
+                            const std::vector<tripoint_bub_ms> covert_avoid_path =
+                                m.route( guy.pos_bub(), boundary_target, settings,
+                                         avoid_nonreentry );
+                            std::ostringstream classifier;
+                            classifier << " classifier=enabled"
+                                       << " baseline_found=" <<
+                                       ( baseline_path.empty() ? "no" : "yes" )
+                                       << " baseline_path=" << baseline_path.size()
+                                       << " npc_avoid_found=" <<
+                                       ( npc_avoid_path.empty() ? "no" : "yes" )
+                                       << " npc_avoid_path=" << npc_avoid_path.size()
+                                       << " covert_avoid_found=" <<
+                                       ( covert_avoid_path.empty() ? "no" : "yes" )
+                                       << " covert_avoid_path=" << covert_avoid_path.size();
+                            rejection_classifier = classifier.str();
+                        }
                         if( route_safe ) {
                             guy.move_to_next();
                         } else {
                             guy.path.clear();
                             guy.move_pause();
                         }
-                        if( log_homeward_route_result &&
-                            logged_homeward_route_result_ids.insert( guy.getID() ).second ) {
+                        if( emit_route_result ) {
                             DebugLog( D_INFO, DC_ALL )
                                     << "bandit_live_world homeward_boundary_route_result"
                                     << " member=" << guy.getID().get_value()
@@ -7213,7 +7245,8 @@ void monmove()
                                     << " pos_before=" << position_before_movement.to_string()
                                     << " moves_before=" << moves_before_movement
                                     << " pos_after=" << guy.pos_abs().to_string()
-                                    << " moves_after=" << guy.get_moves() << '\n';
+                                    << " moves_after=" << guy.get_moves()
+                                    << rejection_classifier.value_or( "" ) << '\n';
                         }
                     }
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
