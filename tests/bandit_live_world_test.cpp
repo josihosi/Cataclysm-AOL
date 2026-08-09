@@ -8231,6 +8231,14 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
                          site, *cursor, 100, split_slots ).valid );
 
+        std::vector<bandit_live_world::local_handoff_member_read> forward_reused_staging =
+            make_reads( site );
+        REQUIRE( forward_reused_staging.size() == 2 );
+        forward_reused_staging[0].staging_position =
+            forward_reused_staging[0].entry_position;
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         site, *cursor, 100, forward_reused_staging ).valid );
+
         bandit_live_world::simulation_advance_cursor stale = *cursor;
         stale.last_advanced_minutes--;
         CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
@@ -8563,7 +8571,45 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const tripoint_abs_omt current_route = outing.shared_route[
                 static_cast<std::size_t>( outing.waypoint_index )];
         g->place_player_overmap( current_route + point( -1, 3 ) );
-        clear_map();
+        wipe_map_terrain();
+        clear_creatures();
+
+        std::vector<tripoint_bub_ms> candidate_points;
+        for( const tripoint_bub_ms &point : get_map().points_on_zlevel( route_approach.z() ) ) {
+            const tripoint_abs_ms absolute = get_map().get_abs( point );
+            if( project_to<coords::omt>( absolute ) == route_approach &&
+                live_bandit_local_handoff_position_is_motor_addressable(
+                    absolute, get_avatar().pos_abs_sm(), HALF_MAPSIZE - 1 ) ) {
+                candidate_points.push_back( point );
+            }
+        }
+        std::sort( candidate_points.begin(), candidate_points.end(), []( const tripoint_bub_ms &lhs,
+        const tripoint_bub_ms &rhs ) {
+            return std::make_tuple( lhs.x(), lhs.y(), lhs.z() ) <
+                   std::make_tuple( rhs.x(), rhs.y(), rhs.z() );
+        } );
+        std::optional<std::array<tripoint_bub_ms, 2>> only_safe_pair;
+        for( std::size_t first = 0; first < candidate_points.size() && !only_safe_pair; ++first ) {
+            for( std::size_t second = first + 1; second < candidate_points.size(); ++second ) {
+                if( rl_dist( candidate_points[first], candidate_points[second] ) <= 1 ) {
+                    only_safe_pair = std::array<tripoint_bub_ms, 2> {
+                        candidate_points[first], candidate_points[second]
+                    };
+                    break;
+                }
+            }
+        }
+        REQUIRE( only_safe_pair );
+        for( const tripoint_bub_ms &point : candidate_points ) {
+            get_map().ter_set( point, ter_id( "t_wall" ) );
+        }
+        std::vector<tripoint_abs_ms> only_safe_positions;
+        for( const tripoint_bub_ms &point : *only_safe_pair ) {
+            get_map().ter_set( point, ter_id( "t_grass" ) );
+            only_safe_positions.push_back( get_map().get_abs( point ) );
+        }
+        get_map().invalidate_map_cache( route_approach.z() );
+        get_map().build_map_cache( route_approach.z(), true );
 
         const std::vector<character_id> old_ids = outing.member_ids;
         std::vector<character_id> live_ids;
@@ -8637,6 +8683,13 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( live_site.active_outing.local_handoff.route_position == route_approach );
         CHECK( live_site.active_outing.local_handoff.approach_from == watch );
         CHECK( live_site.active_outing.local_handoff.egress_omt == site.anchor );
+        REQUIRE( live_site.active_outing.local_handoff.members.size() == live_ids.size() );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            CHECK( member.entry_position == member.staging_position );
+            CHECK( std::find( only_safe_positions.begin(), only_safe_positions.end(),
+                              member.entry_position ) != only_safe_positions.end() );
+        }
         std::map<character_id, tripoint_abs_ms> positions_before_homeward_motor;
         for( const character_id id : live_ids ) {
             npc *member = g->find_npc( id );

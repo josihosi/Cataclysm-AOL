@@ -4330,6 +4330,9 @@ bool materialize_live_bandit_structural_handoffs()
             }
         }
         const bool resumes_physical_homeward_cursor = outing.local_handoff.is_abstract_resume();
+        const bool resumes_assembled_homeward_pair = resumes_physical_homeward_cursor &&
+                outing.local_handoff.cohesion_assembled &&
+                bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
         tripoint_abs_omt route_position = resumes_physical_homeward_cursor ?
                                           outing.local_handoff.route_position :
                                           outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
@@ -4363,8 +4366,7 @@ bool materialize_live_bandit_structural_handoffs()
             live_bandit_local_handoff_entry_positions( route_position, staging_facing_omt,
                     surviving_member_ids.size(), entry_positions );
         std::optional<bandit_live_world::site_record> advanced_homeward_site;
-        if( resumes_physical_homeward_cursor &&
-            bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
+        if( resumes_assembled_homeward_pair &&
             ( entry_positions.size() != surviving_member_ids.size() ||
               staging_positions.size() != surviving_member_ids.size() ) ) {
             for( std::size_t route_index = static_cast<std::size_t>( outing.waypoint_index + 1 );
@@ -4382,6 +4384,10 @@ bool materialize_live_bandit_structural_handoffs()
                     live_bandit_local_handoff_entry_positions(
                         candidate_route, outing.shared_route[route_index + 1],
                         surviving_member_ids.size(), candidate_entries );
+                if( candidate_entries.size() == surviving_member_ids.size() &&
+                    candidate_staging.size() != surviving_member_ids.size() ) {
+                    candidate_staging = candidate_entries;
+                }
                 if( candidate_entries.size() != surviving_member_ids.size() ||
                     candidate_staging.size() != surviving_member_ids.size() ) {
                     continue;

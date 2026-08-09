@@ -2635,6 +2635,8 @@ bool local_handoff_snapshot_matches_outing(
     const bool physical_homeward_cursor =
         scout_phase_requires_homeward_only( snapshot.phase ) &&
         snapshot.route_position != canonical_route_position;
+    const bool assembled_physical_homeward_pair = physical_homeward_cursor &&
+            snapshot.cohesion_assembled;
     if( ( outing.owner == simulation_owner::local && !snapshot.is_active() ) ||
         snapshot.activity_id != outing.activity_id ||
         snapshot.activity_generation != outing.generation ||
@@ -2728,7 +2730,8 @@ bool local_handoff_snapshot_matches_outing(
                  physical_homeward_cursor ) ) ||
             std::find( staging_positions.begin(), staging_positions.end(),
                        member.staging_position ) != staging_positions.end() ||
-            ( !member.dead && member.staging_position == member.entry_position ) ||
+            ( !member.dead && member.staging_position == member.entry_position &&
+              !assembled_physical_homeward_pair ) ||
             ( !member.dead &&
               project_to<coords::omt>( member.exit_position ) != snapshot.route_position ) ||
             ( !member.dead &&
@@ -3750,6 +3753,11 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         return plan;
     }
     const bool resumes_physical_homeward_cursor = outing.local_handoff.is_abstract_resume();
+    const bool resumes_assembled_homeward_pair = resumes_physical_homeward_cursor &&
+            outing.local_handoff.cohesion_assembled &&
+            scout_phase_requires_homeward_only( outing.phase ) &&
+            outing.local_handoff.route_position != outing.shared_route[static_cast<std::size_t>(
+                    outing.waypoint_index )];
     if( resumes_physical_homeward_cursor &&
         ( !scout_phase_requires_homeward_only( outing.phase ) ||
           current_minutes <= outing.local_handoff.committed_minutes ) ) {
@@ -3839,7 +3847,8 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
             project_to<coords::omt>( read_iter->staging_position ) != snapshot.route_position ||
             std::find( staging_positions.begin(), staging_positions.end(),
                        read_iter->staging_position ) != staging_positions.end() ||
-            read_iter->staging_position == read_iter->entry_position ) {
+            ( read_iter->staging_position == read_iter->entry_position &&
+              !resumes_assembled_homeward_pair ) ) {
             plan.notes.push_back( "local handoff blocked: member preflight or entry edge is invalid" );
             return plan;
         }
