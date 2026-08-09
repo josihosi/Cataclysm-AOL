@@ -2,11 +2,12 @@
 
 ## Current necessary claim
 
-Run `20260809_043442` proved the exact generation-1 pair's local `returning_home` handoff at
-`(164,34,0)` after `3f781eecf1`, but the loaded pair produced no homeward boundary or camp
-dematerialization through four later scheduler hours. Add the smallest cadence-bounded read-only
-receipt for both members' positions, goals, travel flags, and overmap/local paths, relink, and rerun
-`bandit.scout_to_decision_observer_live_mcw` unchanged.
+Run `20260809_045732` on exact checkpoint `8ab8fcb84b` did not reach local homeward ownership, but
+it credited two returned members after failed materialization and without camp dematerialization.
+Require an exact same-operation abstract-resume receipt physically at the owning camp before the
+schema-10 structural return reconciler can credit returned members, a report, or a decision.
 
-Use that artifact to close only the proved motor seam. Accept no return, report, or decision credit
-before the exact pair's camp dematerialization.
+Prove no-resume and off-camp-resume states retain physical ownership with zero return credit, while
+an at-camp dematerialization receipt reconciles exactly once. Then relink and rerun
+`bandit.scout_to_decision_observer_live_mcw` unchanged. Keep the installed motor receipt until the
+exact pair's physical return and camp dematerialization are proved.

@@ -130,6 +130,16 @@
   homeward boundary, camp dematerialization, abstract return, report, or decision appeared. The
   current logs do not expose member positions or path state, so the next proof is a cadence-bounded
   read-only motor receipt rather than a guessed movement fix.
+- Checkpoint `8ab8fcb84b` adds that hourly/cadence-bounded read-only receipt. It also replaces two
+  test-only references to a handoff object invalidated by transactional vector replacement with
+  value snapshots. Focused `[local_handoff]` proof passes 94 assertions and the owning case passes
+  1,054 assertions. Its exact macOS SDL3 executable SHA-256 is
+  `b96ef49272fef891c4770da18ed50674af67f1d98fc131057f44058107999577`.
+- Unchanged run `20260809_045732` on that executable published the fresh natural identity-bound
+  incident pair, but never created a local `returning_home` owner, so the motor receipt correctly
+  had no subject. After repeated materialization rejection, the abstract reconciler nevertheless
+  credited `members_returned=2`/`returned home` with no camp dematerialization. The current red seam
+  is therefore the return-credit gate, not an unobserved motor guess.
 
 ## Pending proof contract
 
@@ -183,11 +193,11 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First let an already-assembled homeward pair use the first complete adjacent safe placement at the
-later non-camp route waypoint without requiring a second disjoint forward-assembly staging pair.
-Keep forward assembly, adjacency, rollback, and final-camp exclusion strict. Then relink the Mac
-executable from exact committed source and run the same causal scenario above. The live pass
-requires the exact pair's `returning_home` local handoff and camp dematerialization before the
+First require the schema-10 structural return reconciler to retain no-resume and off-camp-resume
+outings with zero returned-member, report, or decision credit. Only an exact same-operation
+abstract-resume receipt at the owning camp may unlock canonical reconciliation once. Then relink
+the Mac executable from exact committed source and run the same causal scenario above. The live
+pass requires the exact pair's `returning_home` local handoff and camp dematerialization before the
 surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident

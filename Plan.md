@@ -68,14 +68,21 @@ The normative player-facing behavior, system ownership, and implementation audit
   generation-1 pair committed local `returning_home` ownership at `(164,34,0)`, then remained
   loaded/local through four observed scheduler hours without a homeward boundary or camp
   dematerialization.
+- Checkpoint `8ab8fcb84b` adds a cadence-bounded read-only homeward motor receipt and repairs two
+  test-only dangling references exposed by its layout; `[local_handoff]` passes 94 assertions and
+  the owning case passes 1,054 assertions. Unchanged run `20260809_045732` on its exact SDL3 binary
+  (SHA-256 `b96ef49272fef891c4770da18ed50674af67f1d98fc131057f44058107999577`) did not reach local
+  homeward ownership. It instead proved that an outing whose earlier forward resume had been
+  consumed could receive abstract return credit with no physical camp dematerialization.
 
 ## Active claim
 
-Discriminate T01's loaded homeward motor without changing gameplay state. At the existing bounded
-scheduler cadence, report the exact local pair's positions, goals, travel/path state, and boundary
-ownership after handoff. Then close only the proved motor seam and require the unchanged incident
-to show camp dematerialization before canonical home reconciliation, final report, and
-authoritative camp decision.
+Close the T01 return-credit owner gap before another physical-motor change. A schema-10 structural
+scout return with no exact abstract-resume receipt at its owning camp must remain active with no
+returned members, report, or decision credit; an off-camp resume must also remain physically owned.
+Only the same operation's camp dematerialization receipt may unlock canonical reconciliation once.
+Then relink and rerun the unchanged incident; the installed read-only motor receipt will
+discriminate the next seam if the exact pair reaches loaded homeward ownership.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
