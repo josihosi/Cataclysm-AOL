@@ -4910,29 +4910,19 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("record_post_window_ecology_incident"),
         )
         reopen_index = labels.index("reopen_console_after_natural_window")
-        rearm_index = labels.index("rearm_selected_watch_after_natural_window")
-        self.assertEqual(rearm_index, reopen_index + 1)
-        rearm_step = steps[rearm_index]
-        self.assertEqual(rearm_step["keys"], ["a"])
-        self.assertTrue(rearm_step["capture_after"])
-        self.assertTrue(rearm_step["extract_text_after_capture"])
-        self.assertEqual(
-            rearm_step["expected_screen_text_after_contains"],
-            ["Armed BD-DF9E73"],
-        )
-        self.assertTrue(rearm_step["abort_on_screen_text_expectation_failure"])
-        self.assertEqual(
-            rearm_step["abort_verdict"],
-            "blocked_scout_to_decision_post_window_watch_rearm_missing",
-        )
+        self.assertNotIn("rearm_selected_watch_after_natural_window", labels)
         incident_index = labels.index("record_post_window_ecology_incident")
         incident_audit_index = labels.index("audit_fresh_post_window_ecology_incident_pair")
-        self.assertEqual(incident_index, rearm_index + 1)
+        self.assertEqual(incident_index, reopen_index + 1)
         self.assertEqual(incident_audit_index, incident_index + 1)
         incident_step = steps[incident_index]
         incident_audit = steps[incident_audit_index]
         self.assertEqual(incident_step["keys"], ["r"])
         self.assertTrue(incident_step["record_ecology_incident_baseline"])
+        self.assertIn(
+            "retained already-armed exact terminal identity",
+            incident_step["expected_visible_fact"],
+        )
         self.assertEqual(
             incident_step["proof_deferred_to_label"],
             incident_audit["label"],
@@ -4947,11 +4937,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             incident_audit_index,
             labels.index("audit_same_run_survivor_physical_return"),
         )
-        self.assertLess(
-            rearm_index,
-            labels.index("audit_same_run_survivor_physical_return"),
-        )
-        return_audit = steps[labels.index("audit_same_run_survivor_physical_return")]
+        return_audit_index = labels.index("audit_same_run_survivor_physical_return")
+        return_audit = steps[return_audit_index]
         self.assertEqual(
             return_audit["required_line_patterns"],
             [
@@ -4968,6 +4955,26 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ],
                 ["structural outing returned home lead=", "frontier_probe:0"],
             ],
+        )
+        self.assertEqual(
+            return_audit["required_any_line_patterns"],
+            [
+                ["bandit_live_world structural maintenance:", "members_returned=1"],
+                ["bandit_live_world structural maintenance:", "members_returned=2"],
+            ],
+        )
+        self.assertTrue(return_audit["abort_on_metadata_failure"])
+        self.assertEqual(
+            return_audit["abort_verdict"],
+            "blocked_scout_to_decision_physical_return_not_reached_in_initial_window",
+        )
+        self.assertLess(
+            return_audit_index,
+            labels.index("audit_player_save_mtime_before_scout_to_decision_save"),
+        )
+        self.assertLess(
+            return_audit_index,
+            labels.index("audit_saved_survivors_home_and_outing_closed"),
         )
         final_wait = steps[
             labels.index("advance_initial_6_hour_post_observation_window")
@@ -4986,7 +4993,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("P", press_keys)
         self.assertNotIn("A", press_keys)
         self.assertNotIn("R", press_keys)
-        self.assertEqual(press_keys.count("a"), 2)
+        self.assertEqual(press_keys.count("a"), 1)
         self.assertEqual(press_keys.count("r"), 1)
         self.assertIn(
             "debug_intervention=false",
