@@ -6853,8 +6853,7 @@ void monmove()
     std::map<character_id, live_bandit_pair_boundary_step> pair_homeward_boundary_steps;
     std::set<character_id> profiled_covert_member_ids;
     std::set<character_id> logged_homeward_route_result_ids;
-    const bool log_homeward_route_result = bandit_live_world_probe::active() &&
-            calendar::once_every( 60_minutes );
+    const bool log_homeward_route_result = calendar::once_every( 60_minutes );
     {
         bandit_live_world_probe::scoped_section prepass(
             bandit_live_world_probe::section::loaded_covert_prepass );
