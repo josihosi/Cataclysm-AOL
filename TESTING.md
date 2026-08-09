@@ -121,6 +121,15 @@
   `returning_home`, then reached abstract `members_returned=2`/`returned home` without either the
   required return handoff or `(164,39,0)` dematerialization. The next proof must split that aggregate
   receipt into exact candidate-route and entry/staging counts before another behavior change.
+- Checkpoint `3f781eecf1` adds only the bounded rejected-candidate counts; its focused route proof
+  passes 94 assertions. Exact macOS SDL3 executable SHA-256 is
+  `c99a87ed828cd90ad99dde5127bc68738fdfceab4d69f2e06cb1e064f207524c`.
+- Unchanged run `20260809_043442` on that executable published the fresh natural identity-bound
+  incident pair and proved the exact generation-1 `phase=returning_home` local handoff at
+  `(164,34,0)`, epoch 3. The pair remained loaded/local through scheduler hours 145-148, while no
+  homeward boundary, camp dematerialization, abstract return, report, or decision appeared. The
+  current logs do not expose member positions or path state, so the next proof is a cadence-bounded
+  read-only motor receipt rather than a guessed movement fix.
 
 ## Pending proof contract
 

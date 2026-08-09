@@ -2,10 +2,11 @@
 
 ## Current necessary claim
 
-Run `20260809_042151` stayed red after `b998327e91`: every later-waypoint homeward materialization
-attempt still reported the aggregated entry/staging rejection. Add the smallest read-only receipt
-that records each candidate route and exact entry/staging/required counts, relink, and rerun
+Run `20260809_043442` proved the exact generation-1 pair's local `returning_home` handoff at
+`(164,34,0)` after `3f781eecf1`, but the loaded pair produced no homeward boundary or camp
+dematerialization through four later scheduler hours. Add the smallest cadence-bounded read-only
+receipt for both members' positions, goals, travel flags, and overmap/local paths, relink, and rerun
 `bandit.scout_to_decision_observer_live_mcw` unchanged.
 
-Use that artifact to close only the proved placement seam. Accept no return, report, or decision
-credit before the exact pair's returning-home local handoff and camp dematerialization.
+Use that artifact to close only the proved motor seam. Accept no return, report, or decision credit
+before the exact pair's camp dematerialization.

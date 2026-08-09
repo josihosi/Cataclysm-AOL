@@ -62,15 +62,20 @@ The normative player-facing behavior, system ownership, and implementation audit
   kept the fresh identity-bound incident gate green but still found no complete later-waypoint
   entry allocation, then incorrectly granted abstract return. The current rejection aggregates
   entry and staging failure, so it does not yet identify the remaining physical geometry seam.
+- Checkpoint `3f781eecf1` adds bounded read-only later-candidate counts. Unchanged run
+  `20260809_043442` on its exact SDL3 binary (SHA-256
+  `c99a87ed828cd90ad99dde5127bc68738fdfceab4d69f2e06cb1e064f207524c`) advanced further: the exact
+  generation-1 pair committed local `returning_home` ownership at `(164,34,0)`, then remained
+  loaded/local through four observed scheduler hours without a homeward boundary or camp
+  dematerialization.
 
 ## Active claim
 
-Discriminate T01's remaining homeward placement rejection without changing gameplay state. Each
-failed later-route candidate must report its route and exact entry/staging counts so the live
-artifact distinguishes an absent or incomplete adjacent entry pair from a staging-only failure.
-Then close only the proved geometry seam and require the unchanged incident to show the
-`returning_home` local handoff and camp dematerialization before canonical home reconciliation,
-final report, and authoritative camp decision.
+Discriminate T01's loaded homeward motor without changing gameplay state. At the existing bounded
+scheduler cadence, report the exact local pair's positions, goals, travel/path state, and boundary
+ownership after handoff. Then close only the proved motor seam and require the unchanged incident
+to show camp dematerialization before canonical home reconciliation, final report, and
+authoritative camp decision.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
