@@ -7229,7 +7229,8 @@ void monmove()
                             guy.move_to_next();
                         } else {
                             guy.path.clear();
-                            guy.move_pause();
+                            live_bandit_move_to_omt_destination_avoiding(
+                                guy, local_path_respects_nonreentry, avoid_nonreentry );
                         }
                         if( emit_route_result ) {
                             DebugLog( D_INFO, DC_ALL )
@@ -7241,7 +7242,7 @@ void monmove()
                                     << " route_found=" << ( route_found ? "yes" : "no" )
                                     << " route_safe=" << ( route_safe ? "yes" : "no" )
                                     << " path_before=" << path_size_before_movement
-                                    << " action=" << ( route_safe ? "move_to_next" : "move_pause" )
+                                    << " action=" << ( route_safe ? "move_to_next" : "omt_fallback" )
                                     << " pos_before=" << position_before_movement.to_string()
                                     << " moves_before=" << moves_before_movement
                                     << " pos_after=" << guy.pos_abs().to_string()

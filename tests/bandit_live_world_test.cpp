@@ -30,6 +30,7 @@
 #include "npc.h"
 #include "omdata.h"
 #include "overmapbuffer.h"
+#include "pathfinding.h"
 #include "player_helpers.h"
 #include "point.h"
 #include "sounds.h"
@@ -8690,28 +8691,124 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             CHECK( std::find( only_safe_positions.begin(), only_safe_positions.end(),
                               member.entry_position ) != only_safe_positions.end() );
         }
+        const tripoint_abs_omt camp = live_site.anchor;
+        const tripoint_abs_omt fallback_observer_omt = current_route + point( -2, 1 );
+        g->place_player_overmap( fallback_observer_omt );
+        wipe_map_terrain();
+        clear_creatures();
+        REQUIRE_FALSE( get_map().inbounds(
+                           project_to<coords::ms>( camp ) + point( SEEX, SEEY ) ) );
+
+        const std::vector<tripoint_abs_omt> fallback_homeward_route = {
+            camp,
+            camp + point( 1, 1 ),
+            camp + point( 1, 2 ),
+            camp + point( 1, 3 ),
+            camp + point( 2, 4 ),
+            camp + point( 3, 4 ),
+            route_approach,
+        };
+        REQUIRE( fallback_homeward_route.back() == route_approach );
+        const std::optional<int> minimum_target_distance =
+            bandit_live_world::target_footprint_watch_distance(
+                watch, live_site.active_outing.target_footprint );
+        REQUIRE( minimum_target_distance );
+        for( const tripoint_abs_omt &route_omt : fallback_homeward_route ) {
+            const std::optional<int> distance =
+                bandit_live_world::target_footprint_watch_distance(
+                    route_omt, live_site.active_outing.target_footprint );
+            REQUIRE( distance );
+            CHECK( *distance >= *minimum_target_distance );
+        }
+
+        const tripoint_abs_ms route_approach_origin =
+            project_to<coords::ms>( route_approach );
+        for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+            shared_ptr_fast<npc> member = overmap_buffer.find_npc( live_ids[index] );
+            REQUIRE( member != nullptr );
+            const tripoint_abs_ms far_position(
+                route_approach_origin.x() + 22 + static_cast<int>( index ),
+                route_approach_origin.y() + 22, route_approach_origin.z() );
+            REQUIRE( project_to<coords::omt>( far_position ) == route_approach );
+            REQUIRE( get_map().inbounds( far_position ) );
+            member->spawn_at_precise( far_position );
+        }
+        g->load_npcs();
+        const tripoint_abs_omt fallback_next_omt =
+            fallback_homeward_route[fallback_homeward_route.size() - 2];
+        const tripoint_abs_ms fallback_next_center =
+            project_to<coords::ms>( fallback_next_omt ) + point( SEEX, SEEY );
+        REQUIRE( get_map().inbounds( fallback_next_center ) );
+        const int route_x_direction = camp.x() < fallback_next_omt.x() ? -1 : 1;
+        const int obstruction_x = fallback_next_center.x() + route_x_direction * 24;
+        int obstruction_tiles = 0;
+        for( const tripoint_bub_ms &point : get_map().points_on_zlevel( camp.z() ) ) {
+            if( get_map().get_abs( point ).x() == obstruction_x ) {
+                get_map().ter_set( point, ter_id( "t_wall" ) );
+                obstruction_tiles++;
+            }
+        }
+        REQUIRE( obstruction_tiles > 0 );
+        get_map().invalidate_map_cache( camp.z() );
+        get_map().build_map_cache( camp.z(), true );
         std::map<character_id, tripoint_abs_ms> positions_before_homeward_motor;
+        std::map<character_id, int> distances_before_homeward_motor;
         for( const character_id id : live_ids ) {
             npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
             REQUIRE( bandit_live_world::read_active_covert_scout_homeward_member(
                          overmap_buffer.global_state.bandit_live_world, id ) );
+            member->goal = camp;
+            member->omt_path = fallback_homeward_route;
+            member->set_mission( NPC_MISSION_TRAVELLING );
+            member->goto_to_this_pos = std::nullopt;
+            member->clear_ai_guard_pos();
+            member->path.clear();
+            member->set_moves( 100 );
+            const std::vector<tripoint_bub_ms> reachable_next_omt_path =
+                get_map().route( member->pos_bub(),
+                                 pathfinding_target::radius(
+                                     get_map().get_bub( fallback_next_center ), 2 ),
+                                 member->get_pathfinding_settings( false ),
+                                 member->get_path_avoid() );
+            REQUIRE_FALSE( reachable_next_omt_path.empty() );
             CHECK( member->is_active() );
             CHECK( member->goal == live_site.anchor );
             CHECK_FALSE( member->omt_path.empty() );
             CHECK( member->mission == NPC_MISSION_TRAVELLING );
             positions_before_homeward_motor.emplace( id, member->pos_abs() );
+            distances_before_homeward_motor.emplace(
+                id, rl_dist( member->pos_abs(), fallback_next_center ) );
         }
         process_monsters_and_npcs_turn_for_test();
+        CHECK( live_site.active_outing.is_active() );
+        CHECK( live_site.active_outing.owner == bandit_live_world::simulation_owner::local );
+        CHECK( live_site.active_outing.local_handoff.is_active() );
+        CHECK( live_site.active_outing.local_handoff.route_position == route_approach );
+        CHECK( live_site.applied_return_generation == 0 );
+        CHECK( live_site.applied_report_generation == 0 );
+        CHECK_FALSE( live_site.current_scout_report.is_present() );
         for( const character_id id : live_ids ) {
             shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
             REQUIRE( member != nullptr );
             REQUIRE( positions_before_homeward_motor.count( id ) == 1 );
-            CHECK( ( !member->is_active() ||
-                     member->pos_abs() != positions_before_homeward_motor.at( id ) ) );
+            REQUIRE( distances_before_homeward_motor.count( id ) == 1 );
+            CHECK( member->is_active() );
+            CHECK( get_map().inbounds( member->pos_abs() ) );
+            CHECK( member->pos_abs() != positions_before_homeward_motor.at( id ) );
+            CHECK( rl_dist( member->pos_abs(), fallback_next_center ) <
+                   distances_before_homeward_motor.at( id ) );
+            for( const tripoint_bub_ms &step : member->path ) {
+                const tripoint_abs_omt step_omt =
+                    project_to<coords::omt>( get_map().get_abs( step ) );
+                const std::optional<int> distance =
+                    bandit_live_world::target_footprint_watch_distance(
+                        step_omt, live_site.active_outing.target_footprint );
+                REQUIRE( distance );
+                CHECK( *distance >= *minimum_target_distance );
+            }
         }
 
-        const tripoint_abs_omt camp = live_site.anchor;
         g->place_player_overmap( camp + point( -2, -6 ) );
         wipe_map_terrain();
         clear_creatures();
