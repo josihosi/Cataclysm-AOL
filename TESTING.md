@@ -159,6 +159,22 @@
   `motor_inbounds=yes`, `homeward_owned=yes`, and `boundary_owned=yes`. The receipt does not expose
   the selected boundary departure/exit, so it cannot yet distinguish arrival rollback from a path
   that never reaches its departure.
+- Checkpoint `501b66c61f` adds only that missing boundary assignment. Its exact macOS SDL3
+  executable SHA-256 is
+  `56914f6692fab6bf40cc4e3f86d044d29854ddb063d186a4e9349799e5614cb9`.
+- Attempt `20260809_054621` stopped before the active seam because OCR split the visibly correct
+  `Armed BD-DF9E73` text across tokens. Its screenshot proves the watch was armed, but the guarded
+  abort earns no feature evidence; one unchanged exact-binary rerun was therefore necessary.
+- Unchanged run `20260809_055430` published fresh incident `ecology_incident_5285093.json`
+  (SHA-256 `121030599bf50f05a98dae123f8cabe97400c0aceb0461d4b6ea8a0fe707a5a4`) and `.png`
+  (SHA-256 `b3dac4704bd34add77beab755a3deaba8eed68c72ce55313f98732247e909af0`). Startup, debug,
+  identity, and intervention guards were green; the exact generation-1 pair committed local
+  `returning_home` epoch 3 at `(164,34,0)`, with no later camp dematerialization or return credit.
+- Five bounded receipts hold member 4 at `(3936,828,0)` before departure `(3935,947,0)` and member
+  5 at `(3936,829,0)` before departure `(3936,947,0)`. Their adjacent exits are `(3936,948,0)` and
+  `(3937,948,0)`; both remain `at_boundary_departure=no` with `local_path=0`. This rules out
+  boundary-completion rollback but does not yet distinguish route-solver/avoid rejection from a
+  nonmoving `move_to_next` call.
 
 ## Pending proof contract
 
@@ -212,13 +228,13 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First extend the existing cadence-bounded motor receipt with the selected homeward boundary
-departure and exit and whether each member is at its departure. Relink the Mac executable from
-exact committed source and run the same causal scenario above unchanged. The receipt must decide
-whether boundary completion rolls back or the pair never reaches its selected departure before any
-production behavior change. The live pass still requires the exact pair's `returning_home` local
-handoff and camp dematerialization before the surviving return, final non-provisional report, and
-matching authoritative camp decision.
+First add one probe-gated, hourly/per-member receipt around the existing homeward-boundary route
+solve and movement call. It must expose route-found and route-safe results, path size, pre/post
+position, and moves spent. Relink the Mac executable from exact committed source and run the same
+causal scenario above unchanged. The receipt must distinguish solver/avoid rejection from
+`move_to_next` nonmovement before any production behavior change. The live pass still requires the
+exact pair's `returning_home` local handoff and camp dematerialization before the surviving return,
+final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

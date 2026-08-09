@@ -85,14 +85,20 @@ The normative player-facing behavior, system ownership, and implementation audit
   members then remained at `(3936,828,0)` and `(3936,829,0)` with travelling goals, six-OMT routes,
   and no local path through four scheduler hours; no homeward boundary or camp dematerialization
   occurred.
+- Checkpoint `501b66c61f` exposes only the selected homeward boundary departure, exit, and exact
+  departure equality. Unchanged run `20260809_055430` on its exact SDL3 binary (SHA-256
+  `56914f6692fab6bf40cc4e3f86d044d29854ddb063d186a4e9349799e5614cb9`) proves both members
+  remain 118--119 map squares short of distinct adjacent departures with `local_path=0` through
+  five scheduler receipts. Boundary completion is never attempted; the red seam is route
+  acquisition or movement to the selected departure.
 
 ## Active claim
 
-Discriminate the remaining T01 homeward boundary seam before changing behavior. Extend the existing
-cadence-bounded motor receipt with each member's selected boundary departure and exit and whether
-the member is at that departure. Relink and rerun the unchanged incident to decide whether boundary
-completion is rolling back or the pair never reaches its departure. The next production claim must
-be the smallest change proved necessary by that receipt.
+Discriminate route acquisition from movement failure before changing behavior. Add one probe-gated,
+hourly/per-member receipt around the existing homeward-boundary route solve and movement call. It
+must expose route-found and route-safe results, path size, pre/post position, and moves spent. Relink
+and rerun the unchanged incident; the next production claim must be the smallest change proved
+necessary by that receipt.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
