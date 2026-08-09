@@ -2,12 +2,13 @@
 
 ## Current necessary claim
 
-Run `20260809_065048` on exact checkpoint `2f916249a0` proves baseline, ordinary-NPC-only,
-covert-only, and combined point routes from member 4 to far departure `(3935,947,0)` are all empty.
-Neither avoidance layer causes the stall; the far boundary point is unreachable to the ordinary
-local solver.
+Final fuse run `20260809_074804` on exact `6287923514+SDL3` proves the one-OMT fallback physically
+advances the exact pair to the camp-adjacent OMT. It then repeatedly selects departures
+`(3935,947,0)` and `(3936,947,0)` for exits into the camp OMT, but ordinary and combined routes are
+empty and both members remain at `(3941,912,0)` / `(3940,912,0)`. No return credit occurs.
 
-On that failure, fall back to the existing physical one-OMT-at-a-time homeward motor with the same
-nonreentry predicate. Focused proof must show ordinary position progress toward the next persisted
-OMT while ownership remains local and no boundary/dematerialization/return credit occurs early.
-Then relink and rerun `bandit.scout_to_decision_observer_live_mcw` unchanged.
+Before changing boundary selection, add one bounded read-only discriminator that evaluates the
+existing complete adjacent boundary candidates and reports whether any candidate pair has safe
+local routes for both members under the current nonreentry predicate. Do not assign paths or move
+actors. A positive result admits only the smallest route-reachable pair-selection claim; a zero
+result is a material geometry/product choice for Josef.

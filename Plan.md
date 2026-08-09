@@ -100,14 +100,30 @@ The normative player-facing behavior, system ownership, and implementation audit
   ordinary-NPC-only, covert-only, and actual combined point routes are all empty. The far selected
   bubble edge is unreachable under ordinary local pathfinding; neither avoidance layer causes the
   rejection.
+- Checkpoint `6287923514` falls back from an unreachable selected boundary point to the existing
+  nonreentry-safe one-OMT motor. Its accepted red control held both members still (132/136
+  assertions), while the repaired focused section moves both toward the next persisted waypoint
+  and later dematerializes at camp (266/266); the full owning case passes 1,241 assertions.
+- Checkpoints `66e137b56a` and `0a124a769b` keep ordinary split wait progress passive and match exact
+  OCR phrases only from left-to-right observations on one overlapping visual row. The owning
+  interruption/wait scope passes 62 tests; wrong identity, separate rows, and reversed order remain
+  red. These are observer proofs, not gameplay credit.
+- Final fuse run `20260809_074804` on exact `6287923514+SDL3` (SHA-256
+  `953947702c6787bdc4a386f51de13999eebff08b1c7162e6b42cb80819378169`) published a fresh natural,
+  intervention-free identity-bound incident pair and committed generation 1 to local
+  `returning_home` epoch 3 at `(164,34,0)`. The fallback physically advanced the scouts from
+  `(3936,828/829,0)` to `(3941/3940,912,0)`, then the selected camp-adjacent departures
+  `(3935/3936,947,0)` remained unreachable and neither scout moved in four hourly receipts. No
+  camp dematerialization, return, report, or decision credit is accepted.
 
 ## Active claim
 
-When the far selected boundary departure has no safe local point route, fall back to the existing
-physical, route-aware one-OMT-at-a-time motor under the same nonreentry predicate. Prove that this
-moves toward the next persisted route OMT without a teleport, premature boundary commit,
-dematerialization, or return credit. Then relink and rerun the unchanged incident; live acceptance
-still requires the exact pair to reach the camp dematerialization transaction.
+The camp-adjacent boundary selector filters passability/occupancy and ranks route OMT plus geometric
+distance, but it does not prove that both scouts can path to its paired departures. Add one bounded,
+read-only discriminator for the exact loaded pair: count whether any complete adjacent boundary
+pair has safe local routes for both members under the existing nonreentry predicate, without
+assigning either path. If alternatives exist, the next behavior claim is route-reachable pair
+selection; if none exist, return the resulting material geometry/product choice to Josef.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

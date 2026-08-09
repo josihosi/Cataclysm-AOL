@@ -205,6 +205,28 @@
   far selected departure is unreachable under ordinary point pathfinding and rules out both
   avoidance layers as the cause. The next proof must exercise route-aware physical progress toward
   the next persisted OMT without prematurely completing the boundary transaction.
+- Checkpoint `6287923514` passes the accepted obstructed-route red-to-green control: before the
+  change, both selected point routes were empty and the only four failures were expected movement
+  assertions (132/136); after the change, both members moved toward the independently reachable
+  next persisted OMT and later physically dematerialized at camp (266/266). The full owning case
+  passes 1,241 assertions, and the changed object/test relink is green with `-Werror`.
+- Checkpoints `66e137b56a` and `0a124a769b` close two observer false negatives without sending game
+  input or weakening identity: split active-wait progress is passive, and exact screen phrases can
+  be reconstructed from overlapping, left-to-right OCR observations. The combined owning scope
+  passes 62 tests; the preserved `20260809_073419` arming artifact matches exact `Armed BD-DF9E73`,
+  while wrong ID, different rows, and reversed order fail.
+- Final proof-round run `20260809_074804` used exact `6287923514+SDL3`, executable SHA-256
+  `953947702c6787bdc4a386f51de13999eebff08b1c7162e6b42cb80819378169`. Fresh incident
+  `ecology_incident_5285093.json` has SHA-256
+  `411d036361611381f290a1bc284e7aadd2e41e58d05abe3dd52f441dc5c9dee8`; its paired PNG is
+  `a2ca4f809ab6ed5fe5ce63379133d6008a921392df69d1a629db06e41870db2d`. The pair binds scenario,
+  run, exact generation-1 canonical identity, four deltas, and an empty intervention ledger.
+- That run committed local `returning_home` epoch 3 at `(164,34,0)` and the fallback advanced the
+  members from `(3936,828/829,0)` to `(3941/3940,912,0)`. Four later hourly receipts selected
+  departures `(3935/3936,947,0)` but reported empty baseline/NPC/covert/combined paths and
+  `omt_fallback` with unchanged positions. The audit correctly withheld camp dematerialization,
+  returned-member, report, and decision credit. The three-run fuse is closed; no fourth unchanged
+  probe is admissible without the next discriminator.
 
 ## Pending proof contract
 
@@ -258,13 +280,12 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First make an unreachable far boundary point fall back to the existing route-aware physical
-one-OMT-at-a-time motor under the same nonreentry predicate. Focused proof must show ordinary
-position progress toward the next persisted OMT while the pair remains locally owned and cannot
-prematurely commit its boundary, dematerialize, or grant return credit. Relink the Mac executable
-from exact committed source and run the same causal scenario unchanged. The live pass still
-requires the exact pair's `returning_home` local handoff and camp dematerialization before the
-surviving return, final non-provisional report, and matching authoritative camp decision.
+The one-OMT fallback is focused-green and live-proven through physical progress to the camp-adjacent
+OMT. Before another behavior change or live run, count whether any complete adjacent edge pair is
+locally route-reachable for both exact members under the same nonreentry predicate. This must be a
+bounded read-only receipt: it may solve comparison routes but must not assign actor paths, move the
+pair, change geometry, or grant boundary/return credit. The live pass still requires the exact
+pair's camp dematerialization before surviving return, final report, and matching decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.
