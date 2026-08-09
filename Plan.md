@@ -95,14 +95,19 @@ The normative player-facing behavior, system ownership, and implementation audit
   live gate. Unchanged run `20260809_063218` on the exact `959f3c0e96+SDL3` binary proves member 4's
   actual combined solve repeatedly returns no route and an empty path, consumes its move budget by
   pausing, and never calls movement. The pair therefore cannot reach the boundary transaction.
+- Checkpoint `2f916249a0` compares bounded diagnostic routes to the same departure without mutating
+  the actor path. Unchanged run `20260809_065048` on its exact SDL3 binary proves baseline,
+  ordinary-NPC-only, covert-only, and actual combined point routes are all empty. The far selected
+  bubble edge is unreachable under ordinary local pathfinding; neither avoidance layer causes the
+  rejection.
 
 ## Active claim
 
-Discriminate the combined path rejection before changing behavior. On the existing hourly route
-receipt, compare bounded read-only solves to the same departure with no extra avoidance, ordinary
-NPC avoidance only, covert nonreentry avoidance only, and the actual combined constraints. Gate the
-extra solves behind `DEBUG_CLAIRVOYANCE`, relink, and rerun the unchanged incident. The next
-production claim must change only the constraint proved to empty the route.
+When the far selected boundary departure has no safe local point route, fall back to the existing
+physical, route-aware one-OMT-at-a-time motor under the same nonreentry predicate. Prove that this
+moves toward the next persisted route OMT without a teleport, premature boundary commit,
+dematerialization, or return credit. Then relink and rerun the unchanged incident; live acceptance
+still requires the exact pair to reach the camp dematerialization transaction.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown

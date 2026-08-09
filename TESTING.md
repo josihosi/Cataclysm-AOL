@@ -190,6 +190,21 @@
   This proves the movement call is not reached. The current combined solve still does not identify
   whether ordinary terrain/NPC avoidance, covert nonreentry avoidance, or their intersection empties
   the route.
+- Checkpoint `2f916249a0` adds `DEBUG_CLAIRVOYANCE`-gated local-vector comparison solves without
+  assigning the actor path. Its exact macOS SDL3 executable SHA-256 is
+  `047cea133e520acfb4bca50bf956da6c9707a5cd12819713823b5e7199998ac9`.
+- Attempt `20260809_064849` stopped during the first wait on a real ordinary-game “zombie spotted”
+  interruption. The controller correctly declined to answer the unmodeled survival prompt; the run
+  never dispatched and earns no ecology evidence.
+- Unchanged retry `20260809_065048` published fresh incident `ecology_incident_5285093.json`
+  (SHA-256 `de931bef55e6cd42290854b83bf37967c78641e413729554a333145fbdcc4e69`) and `.png`
+  (SHA-256 `61655dfd8df6088576b978a3f9bbe9165c672614246d5e6f8691beba5fbb79e1`). It reached exact
+  generation-1 epoch 3 with no camp dematerialization or return credit.
+- Four hourly route receipts on that run report `baseline_found=no`, `npc_avoid_found=no`,
+  `covert_avoid_found=no`, and actual `route_found=no`, with every path size zero. This proves the
+  far selected departure is unreachable under ordinary point pathfinding and rules out both
+  avoidance layers as the cause. The next proof must exercise route-aware physical progress toward
+  the next persisted OMT without prematurely completing the boundary transaction.
 
 ## Pending proof contract
 
@@ -243,13 +258,13 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First add debug-observer-only, hourly/per-member comparison solves to the existing route receipt:
-no extra avoidance, ordinary NPC avoidance only, covert nonreentry avoidance only, and the actual
-combined result. They must target the same selected departure without mutating the actor path.
-Relink the Mac executable from exact committed source and run the same causal scenario unchanged.
-The artifact must select the rejecting constraint before any production behavior change. The live
-pass still requires the exact pair's `returning_home` local handoff and camp dematerialization before
-the surviving return, final non-provisional report, and matching authoritative camp decision.
+First make an unreachable far boundary point fall back to the existing route-aware physical
+one-OMT-at-a-time motor under the same nonreentry predicate. Focused proof must show ordinary
+position progress toward the next persisted OMT while the pair remains locally owned and cannot
+prematurely commit its boundary, dematerialize, or grant return credit. Relink the Mac executable
+from exact committed source and run the same causal scenario unchanged. The live pass still
+requires the exact pair's `returning_home` local handoff and camp dematerialization before the
+surviving return, final non-provisional report, and matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.
