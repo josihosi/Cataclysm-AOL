@@ -140,6 +140,25 @@
   had no subject. After repeated materialization rejection, the abstract reconciler nevertheless
   credited `members_returned=2`/`returned home` with no camp dematerialization. The current red seam
   is therefore the return-credit gate, not an unobserved motor guess.
+- Checkpoint `588cf29c69` passes 1,069 assertions in the full owning case and 152 assertions in the
+  adjacent normal-scout assessment/report case at seed `123456`. The tests use the production
+  handoff and dematerialization APIs to prove that no-resume and off-camp-resume states cannot grant
+  schema-10 return credit, an exact at-camp resume reconciles once, and local ownership does not
+  rebase the strategic return deadline. Its exact macOS SDL3 executable SHA-256 is
+  `4ceec8f8003cb35c12fc9bceedd5d11181022e204a99091ba3cbb82aee05e0c2`.
+- Unchanged run `20260809_053039` on that executable published fresh incident
+  `ecology_incident_5285093.json` (SHA-256
+  `9e8439eb3026d51ee4cbf214d300468e454078b28cb31b9aa3eb144cf104fb10`) and `.png` (SHA-256
+  `fb7aac46ee0bc36a656259c814f56109781c1cd56c729acf621c222ff9b6ff84`). It bound the exact natural
+  generation-1 identity with no intervention, withheld abstract return/report/decision credit,
+  committed the pair to local `returning_home` ownership at `(164,34,0)`, and produced no camp
+  dematerialization.
+- The same run's bounded motor receipt held member 4 at `(3936,828,0)` and member 5 at
+  `(3936,829,0)` for four scheduler hours. Both retained goal `(164,39,0)`, mission 10,
+  `is_travelling=yes`, `has_omt_destination=yes`, `omt_path=6`, `local_path=0`,
+  `motor_inbounds=yes`, `homeward_owned=yes`, and `boundary_owned=yes`. The receipt does not expose
+  the selected boundary departure/exit, so it cannot yet distinguish arrival rollback from a path
+  that never reaches its departure.
 
 ## Pending proof contract
 
@@ -193,12 +212,13 @@ python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
   bandit.scout_to_decision_observer_live_mcw
 ```
 
-First require the schema-10 structural return reconciler to retain no-resume and off-camp-resume
-outings with zero returned-member, report, or decision credit. Only an exact same-operation
-abstract-resume receipt at the owning camp may unlock canonical reconciliation once. Then relink
-the Mac executable from exact committed source and run the same causal scenario above. The live
-pass requires the exact pair's `returning_home` local handoff and camp dematerialization before the
-surviving return, final non-provisional report, and matching authoritative camp decision.
+First extend the existing cadence-bounded motor receipt with the selected homeward boundary
+departure and exit and whether each member is at its departure. Relink the Mac executable from
+exact committed source and run the same causal scenario above unchanged. The receipt must decide
+whether boundary completion rolls back or the pair never reaches its selected departure before any
+production behavior change. The live pass still requires the exact pair's `returning_home` local
+handoff and camp dematerialization before the surviving return, final non-provisional report, and
+matching authoritative camp decision.
 
 Cross-platform performance/save/runtime qualification begins after the natural vertical incident
 is green; until then only the Mac route exercised here is claimed.

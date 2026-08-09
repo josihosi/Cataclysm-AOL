@@ -74,15 +74,25 @@ The normative player-facing behavior, system ownership, and implementation audit
   (SHA-256 `b96ef49272fef891c4770da18ed50674af67f1d98fc131057f44058107999577`) did not reach local
   homeward ownership. It instead proved that an outing whose earlier forward resume had been
   consumed could receive abstract return credit with no physical camp dematerialization.
+- Checkpoint `588cf29c69` requires a schema-10 scout return to retain exact physical ownership until
+  its same-operation resume is physically at the owning camp, and preserves the strategic return
+  clock across local ownership. The full owning case passes 1,069 assertions and the adjacent
+  assessment/report case passes 152 assertions at seed `123456`.
+- Unchanged run `20260809_053039` on the exact `588cf29c69+SDL3` binary (SHA-256
+  `4ceec8f8003cb35c12fc9bceedd5d11181022e204a99091ba3cbb82aee05e0c2`) kept the fresh
+  identity-bound incident gate green, withheld all abstract return/report/decision credit, and
+  committed the exact generation-1 pair to local `returning_home` ownership at `(164,34,0)`. Both
+  members then remained at `(3936,828,0)` and `(3936,829,0)` with travelling goals, six-OMT routes,
+  and no local path through four scheduler hours; no homeward boundary or camp dematerialization
+  occurred.
 
 ## Active claim
 
-Close the T01 return-credit owner gap before another physical-motor change. A schema-10 structural
-scout return with no exact abstract-resume receipt at its owning camp must remain active with no
-returned members, report, or decision credit; an off-camp resume must also remain physically owned.
-Only the same operation's camp dematerialization receipt may unlock canonical reconciliation once.
-Then relink and rerun the unchanged incident; the installed read-only motor receipt will
-discriminate the next seam if the exact pair reaches loaded homeward ownership.
+Discriminate the remaining T01 homeward boundary seam before changing behavior. Extend the existing
+cadence-bounded motor receipt with each member's selected boundary departure and exit and whether
+the member is at that departure. Relink and rerun the unchanged incident to decide whether boundary
+completion is rolling back or the pair never reaches its departure. The next production claim must
+be the smallest change proved necessary by that receipt.
 
 Do not extend a deadline or change geometry merely to force success. Once the natural incident is
 green, the next claim is to continue the decided physical owner through the bandit shakedown
