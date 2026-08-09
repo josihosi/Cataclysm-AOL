@@ -35,7 +35,26 @@ void write_omt( JsonOut &json, const tripoint_abs_omt &omt )
     json.end_array();
 }
 
+void write_ms( JsonOut &json, const tripoint_abs_ms &ms )
+{
+    json.start_array();
+    json.write( ms.x() );
+    json.write( ms.y() );
+    json.write( ms.z() );
+    json.end_array();
+}
+
 void write_optional_int( JsonOut &json, std::string_view name, const std::optional<int> &value )
+{
+    if( value ) {
+        json.member( name, *value );
+    } else {
+        json.null_member( name );
+    }
+}
+
+void write_optional_size( JsonOut &json, std::string_view name,
+                          const std::optional<size_t> &value )
 {
     if( value ) {
         json.member( name, *value );
@@ -127,6 +146,25 @@ void write_selected( JsonOut &json, const selected_projection &projection )
         write_optional_int( json, "hp_percent", member.hp_percent );
         json.member( "status", member.status );
         json.member( "loaded", member.loaded );
+        json.member( "position_ms" );
+        if( member.loaded && member.position_ms ) {
+            write_ms( json, *member.position_ms );
+        } else {
+            json.write_null();
+        }
+        write_optional_int( json, "moves", member.loaded ? member.moves : std::nullopt );
+        json.member( "goal_omt" );
+        if( member.loaded && member.goal_omt ) {
+            write_omt( json, *member.goal_omt );
+        } else {
+            json.write_null();
+        }
+        write_optional_size( json, "local_path_size",
+                             member.loaded ? member.local_path_size : std::nullopt );
+        write_optional_size( json, "omt_path_size",
+                             member.loaded ? member.omt_path_size : std::nullopt );
+        json.member( "movement_state", member.loaded ? member.movement_state : "" );
+        json.member( "movement_blocker", member.loaded ? member.movement_blocker : "" );
         json.end_object();
     }
     json.end_array();

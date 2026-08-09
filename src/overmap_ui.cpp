@@ -440,10 +440,24 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
             if( guy == nullptr ) {
                 return std::optional<ecology_debug::runtime_member_read>();
             }
-            return std::optional<ecology_debug::runtime_member_read>(
-                       ecology_debug::runtime_member_read {
-                           guy->get_name(), guy->hp_percentage(), true
-                       } );
+            ecology_debug::runtime_member_read result;
+            result.name = guy->get_name();
+            result.hp_percent = guy->hp_percentage();
+            result.loaded = true;
+            result.position_ms = guy->pos_abs();
+            result.moves = guy->get_moves();
+            result.goal_omt = guy->goal;
+            result.local_path_size = guy->path.size();
+            result.omt_path_size = guy->omt_path.size();
+            result.movement_state = guy->mission == NPC_MISSION_TRAVELLING ? "travelling" : "other";
+            if( guy->mission != NPC_MISSION_TRAVELLING ) {
+                result.movement_blocker = "not_travelling";
+            } else if( guy->goal.is_invalid() ) {
+                result.movement_blocker = "missing_goal";
+            } else if( guy->path.empty() ) {
+                result.movement_blocker = "missing_local_path";
+            }
+            return std::optional<ecology_debug::runtime_member_read>( std::move( result ) );
         };
         ecology_debug::view_snapshot result = ecology_debug::query_selected_bandit_ecology(
                 overmap_buffer.global_state.bandit_live_world, request, *selected_authority_index );
@@ -469,8 +483,24 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
         if( guy == nullptr ) {
             return std::optional<ecology_debug::runtime_member_read>();
         }
-        return std::optional<ecology_debug::runtime_member_read>(
-                   ecology_debug::runtime_member_read { guy->get_name(), guy->hp_percentage(), true } );
+        ecology_debug::runtime_member_read result;
+        result.name = guy->get_name();
+        result.hp_percent = guy->hp_percentage();
+        result.loaded = true;
+        result.position_ms = guy->pos_abs();
+        result.moves = guy->get_moves();
+        result.goal_omt = guy->goal;
+        result.local_path_size = guy->path.size();
+        result.omt_path_size = guy->omt_path.size();
+        result.movement_state = guy->mission == NPC_MISSION_TRAVELLING ? "travelling" : "other";
+        if( guy->mission != NPC_MISSION_TRAVELLING ) {
+            result.movement_blocker = "not_travelling";
+        } else if( guy->goal.is_invalid() ) {
+            result.movement_blocker = "missing_goal";
+        } else if( guy->path.empty() ) {
+            result.movement_blocker = "missing_local_path";
+        }
+        return std::optional<ecology_debug::runtime_member_read>( std::move( result ) );
     };
     ecology_debug::view_snapshot result = ecology_debug::query_bandit_ecology(
             overmap_buffer.global_state.bandit_live_world, request );

@@ -200,6 +200,23 @@ bool callback_loaded( const query_request &request, character_id member_id )
     return request.member_is_loaded && request.member_is_loaded( member_id );
 }
 
+void apply_runtime_member_read( member_detail &row, const runtime_member_read &runtime )
+{
+    row.name = runtime.name;
+    row.hp_percent = runtime.hp_percent;
+    row.loaded = runtime.loaded;
+    if( !runtime.loaded ) {
+        return;
+    }
+    row.position_ms = runtime.position_ms;
+    row.moves = runtime.moves;
+    row.goal_omt = runtime.goal_omt;
+    row.local_path_size = runtime.local_path_size;
+    row.omt_path_size = runtime.omt_path_size;
+    row.movement_state = runtime.movement_state;
+    row.movement_blocker = runtime.movement_blocker;
+}
+
 bool candidate_is_loaded( const candidate_read &candidate, const query_request &request )
 {
     if( candidate.mobile ) {
@@ -387,9 +404,7 @@ selected_detail make_selected_detail( const candidate_read &candidate,
                     const std::optional<runtime_member_read> runtime =
                         request.read_selected_member( member.npc_id );
                     if( runtime ) {
-                        row.name = runtime->name;
-                        row.hp_percent = runtime->hp_percent;
-                        row.loaded = runtime->loaded;
+                        apply_runtime_member_read( row, *runtime );
                     }
                 }
                 detail.members.push_back( std::move( row ) );
@@ -406,9 +421,7 @@ selected_detail make_selected_detail( const candidate_read &candidate,
                 const std::optional<runtime_member_read> runtime =
                     request.read_selected_member( member_id );
                 if( runtime ) {
-                    row.name = runtime->name;
-                    row.hp_percent = runtime->hp_percent;
-                    row.loaded = runtime->loaded;
+                    apply_runtime_member_read( row, *runtime );
                 }
             }
             if( !row.hp_percent && candidate.outing->local_handoff.is_active() ) {

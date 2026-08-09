@@ -66,9 +66,21 @@ struct query_filters {
 };
 
 struct runtime_member_read {
+    runtime_member_read() = default;
+    runtime_member_read( std::string member_name, std::optional<int> member_hp_percent,
+                         bool member_loaded )
+        : name( member_name ), hp_percent( member_hp_percent ), loaded( member_loaded ) {}
+
     std::string name;
     std::optional<int> hp_percent;
     bool loaded = false;
+    std::optional<tripoint_abs_ms> position_ms;
+    std::optional<int> moves;
+    std::optional<tripoint_abs_omt> goal_omt;
+    std::optional<size_t> local_path_size;
+    std::optional<size_t> omt_path_size;
+    std::string movement_state;
+    std::string movement_blocker;
 };
 
 struct mobile_entity_read {
@@ -116,11 +128,25 @@ struct entity_marker {
 };
 
 struct member_detail {
+    member_detail() = default;
+    member_detail( character_id member_npc_id, std::string member_name,
+                   std::optional<int> member_hp_percent, std::string member_status,
+                   bool member_loaded )
+        : npc_id( member_npc_id ), name( member_name ), hp_percent( member_hp_percent ),
+          status( member_status ), loaded( member_loaded ) {}
+
     character_id npc_id;
     std::string name;
     std::optional<int> hp_percent;
     std::string status;
     bool loaded = false;
+    std::optional<tripoint_abs_ms> position_ms;
+    std::optional<int> moves;
+    std::optional<tripoint_abs_omt> goal_omt;
+    std::optional<size_t> local_path_size;
+    std::optional<size_t> omt_path_size;
+    std::string movement_state;
+    std::string movement_blocker;
 };
 
 struct selected_detail {

@@ -45,6 +45,15 @@ ecology_debug::selected_projection make_projection()
     detail.route = { tripoint_abs_omt( 10, 20, -1 ), tripoint_abs_omt( 2, 3, -1 ) };
     detail.members.push_back( { character_id( 43 ), "Bravo", 64, "returning", false } );
     detail.members.push_back( { character_id( 42 ), "Alpha", 100, "returning", false } );
+    ecology_debug::member_detail &alpha = detail.members.back();
+    alpha.loaded = true;
+    alpha.position_ms = tripoint_abs_ms( 3936, 828, 0 );
+    alpha.moves = 100;
+    alpha.goal_omt = tripoint_abs_omt( 164, 39, 0 );
+    alpha.local_path_size = 0;
+    alpha.omt_path_size = 6;
+    alpha.movement_state = "travelling";
+    alpha.movement_blocker = "missing_local_path";
     result.detail = detail;
     return result;
 }
@@ -160,6 +169,78 @@ TEST_CASE( "ecology_debug_incident_is_deterministic_and_preserves_provenance",
     intervention.allow_omitted_members();
     CHECK( intervention.get_int( "sequence" ) == 1 );
     CHECK( intervention.get_bool( "debug_intervention" ) );
+}
+
+TEST_CASE( "ecology_debug_incident_selected_member_progress_is_exposed",
+           "[ecology_debug][incident][phase4]" )
+{
+    ecology_debug::selected_projection selected = make_projection();
+    ecology_debug::member_detail &unloaded = selected.detail->members.front();
+    unloaded.position_ms = tripoint_abs_ms( 1, 2, 0 );
+    unloaded.moves = 50;
+    unloaded.goal_omt = tripoint_abs_omt( 3, 4, 0 );
+    unloaded.local_path_size = 7;
+    unloaded.omt_path_size = 8;
+    unloaded.movement_state = "fabricated";
+    unloaded.movement_blocker = "fabricated";
+    const ecology_debug::selected_projection selected_before = selected;
+    const ecology_debug::delta_ring deltas = make_delta_ring( selected );
+    const std::string deltas_before = deltas.serialize_compact_json();
+    const ecology_debug::incident_bundle_result first = ecology_debug::serialize_incident_bundle(
+                make_identity(), selected, deltas, std::nullopt, {} );
+    const ecology_debug::incident_bundle_result second = ecology_debug::serialize_incident_bundle(
+                make_identity(), selected, deltas, std::nullopt, {} );
+
+    REQUIRE( first.valid );
+    CHECK( first.payload == second.payload );
+    CHECK( selected.token.canonical_id == selected_before.token.canonical_id );
+    CHECK( selected.token.authority_token == selected_before.token.authority_token );
+    CHECK( selected.detail->route == selected_before.detail->route );
+    CHECK( selected.detail->last_transition_minutes ==
+           selected_before.detail->last_transition_minutes );
+    CHECK( selected.detail->phase == selected_before.detail->phase );
+    CHECK( selected.detail->evidence_id == selected_before.detail->evidence_id );
+    CHECK( deltas.serialize_compact_json() == deltas_before );
+
+    const JsonObject root = json_loader::from_string( first.payload ).get_object();
+    root.allow_omitted_members();
+    const JsonObject serialized_selected = root.get_object( "selected" );
+    serialized_selected.allow_omitted_members();
+    CHECK( serialized_selected.get_string( "id" ) == "dispatch/camp/outing/1" );
+    const JsonObject token = serialized_selected.get_object( "token" );
+    token.allow_omitted_members();
+    CHECK( token.get_string( "canonical_id" ) == "dispatch/camp/outing/1" );
+    CHECK( token.get_string( "authority_token" ) == "site/4:outing/1" );
+    const JsonObject detail = serialized_selected.get_object( "details" );
+    detail.allow_omitted_members();
+    const JsonArray members = detail.get_array( "members" );
+    REQUIRE( members.size() == 2 );
+    JsonObject member = members.get_object( 0 );
+    member.allow_omitted_members();
+    CHECK( member.get_int( "npc_id" ) == 42 );
+    CHECK( member.get_array( "position_ms" ).get_int( 0 ) == 3936 );
+    CHECK( member.get_array( "position_ms" ).get_int( 1 ) == 828 );
+    CHECK( member.get_array( "position_ms" ).get_int( 2 ) == 0 );
+    CHECK( member.get_int( "moves" ) == 100 );
+    CHECK( member.get_array( "goal_omt" ).get_int( 0 ) == 164 );
+    CHECK( member.get_array( "goal_omt" ).get_int( 1 ) == 39 );
+    CHECK( member.get_array( "goal_omt" ).get_int( 2 ) == 0 );
+    CHECK( member.get_int( "local_path_size" ) == 0 );
+    CHECK( member.get_int( "omt_path_size" ) == 6 );
+    CHECK( member.get_string( "movement_state" ) == "travelling" );
+    CHECK( member.get_string( "movement_blocker" ) == "missing_local_path" );
+
+    JsonObject unloaded_member = members.get_object( 1 );
+    unloaded_member.allow_omitted_members();
+    CHECK( unloaded_member.get_int( "npc_id" ) == 43 );
+    CHECK_FALSE( unloaded_member.get_bool( "loaded" ) );
+    CHECK( unloaded_member.get_member( "position_ms" ).test_null() );
+    CHECK( unloaded_member.get_member( "moves" ).test_null() );
+    CHECK( unloaded_member.get_member( "goal_omt" ).test_null() );
+    CHECK( unloaded_member.get_member( "local_path_size" ).test_null() );
+    CHECK( unloaded_member.get_member( "omt_path_size" ).test_null() );
+    CHECK( unloaded_member.get_string( "movement_state" ).empty() );
+    CHECK( unloaded_member.get_string( "movement_blocker" ).empty() );
 }
 
 TEST_CASE( "ecology_debug_incident_applies_exact_note_and_intervention_caps",
