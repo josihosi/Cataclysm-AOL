@@ -42,6 +42,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   reachability and canonical shared-route constructibility one predicate, then prove a viable
   alternate is selected before rerunning the changed clear-day control.
 
+  Task `R002-M3` has the same measured 3,600-second envelope and was dispatched at
+  2026-08-10 23:18:32 CEST with immutable deadline 2026-08-11 00:18:32 CEST. The available worker
+  launcher exposes no cheaper model selector, so the existing role-bounded worker is reused for the
+  localized diff and focused test; the coordinator retains build review and every live verdict.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
