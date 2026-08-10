@@ -71,6 +71,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   `(136,51,0)` acquisition; fallback `(140,52,0)` or unrelated forward `(139,53,0)` is a new
   production finding, not permission for an unchanged retry.
 
+  Exact `R002-M5` run `20260810_235522` ended on time at a changed test premise. Startup, saved
+  site, concrete target, elapsed waits, dispatch, clear light/weather, three sight points, no optics,
+  and error guards passed. Source and the trace together prove `(140,52,0)` was canonical approach
+  waypoint 1 and `(139,53,0)` the exact-ring selected watch at waypoint 2: target-footprint OMTs are
+  appended only when the current OMT is the selected watch. The owner deliberately serializes the
+  outbound stalking and observing arrival transitions, so one overdue hourly call reaches only the
+  approach even when both timestamps are due. Task `R002-M6` retains the measured 3,600-second
+  envelope, corrects the day scenario to prove that first approach hour and spend one further
+  bounded hour reaching the selected watch, then lets the coordinator rerun the unchanged target
+  acquisition audit. No product route change or vehicle scope is authorized.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
