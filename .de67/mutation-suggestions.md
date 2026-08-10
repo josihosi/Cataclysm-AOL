@@ -12,4 +12,22 @@ no-op leaves this scratch ledger intact.
 
 ## Pending suggestions
 
-None.
+### T01 closeout — ledger cleared outside mutation
+
+Source: watcher finding
+
+**Short verdict:** mutation scratch consumed by ordinary task acceptance
+
+The coordinator removed the pending T01-M16 workflow finding while accepting T01, although no
+guarded guideline or DFS-expansion mutation consumed it. Keep pending suggestions until a real
+mutation transaction succeeds; task fixes and DFS completion do not empty the ledger.
+
+### T01 closeout — coordinator stopped instead of refilling
+
+Source: watcher finding
+
+**Short verdict:** coordinator treated one accepted claim as terminal
+
+After accepting R-001, the coordinator exited with other red DFS claims still available instead of
+refilling the work ledger and continuing. A batch completion is a refill boundary, not a workflow
+completion, unless the DFS has no red work or an owner-set stop condition has fired.
