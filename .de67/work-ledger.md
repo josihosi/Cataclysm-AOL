@@ -77,7 +77,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   minutes and the owning focused test about 24 seconds; the remaining time covers verification of
   the already-corrected three-file diff, incremental Mac build, and exact-commit identity check.
 
+  `T01-M6` ended on time with an orphaned-dispatch blocker while the prior coordinator was being
+  stopped. Fresh reinspection kept the owner-corrected three-file diff, and the focused owner test
+  exposed a test-fixture gap: changing only the persisted phase to `observing` left waypoint zero
+  and `local_contact_minutes=-1`, which the existing observing invariant correctly rejects. No
+  source checkpoint or live run followed that invalid setup.
+
+  Trial task `T01-M7` has a 1,800-second estimate from the measured roughly 10-minute unchanged
+  natural probe, roughly 24-second owning test, and the remaining allowance for the localized
+  incremental Mac build, coherent checkpoint, and exact-commit identity check. It was dispatched
+  at 2026-08-10 21:25:01 CEST with immutable deadline 2026-08-10 21:55:01 CEST.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M5` ended with on-time findings and zero cumulative misses. `T01-M6` is
-being prepared from the owner-corrected on-foot diff; `R-001` remains red.
+Open; `T01-M1` through `T01-M6` ended with on-time findings and zero cumulative misses. `T01-M7`
+is running from the reinspected corrected on-foot diff; `R-001` remains red.

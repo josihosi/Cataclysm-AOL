@@ -230,3 +230,29 @@ state that the scouts are on foot and test only the absence of stale passenger s
 Disposition: applied. The vehicle-support branch was deleted before any checkpoint; preserve the
 prior accepted checkpoints and continue only with the corrected on-foot diff under a fresh task
 identity. `R-001` remains red and the DFS does not expand.
+
+### T01-M6 — observing fixture contradicted the persisted outing invariant
+
+Source: worker finding and fresh-coordinator reinspection
+
+Deadline evidence: `T01-M6` received an on-time orphaned-dispatch blocker terminal before its
+2026-08-10 21:49:08 CEST deadline; cumulative misses remained zero. The worker's subsequent focused
+result is supplemental causal evidence and does not rewrite that immutable terminal.
+
+**Short verdict:** test setup did not establish a valid observing outing
+
+**Diagnosis:** The first contradicted premise was that changing only `phase` and the handoff phase
+from `outbound` to `observing` creates a valid persisted observing fixture. The owning test then
+round-tripped waypoint zero and `local_contact_minutes=-1`; current production validation requires
+an observing structural outing to be at its destination waypoint with contact time no earlier than
+its start. The focused test therefore correctly rejected the fixture after 1,577 of 1,578
+assertions passed. This is a test-setup gap, not a source or DFS gap. Direct evidence:
+`build_logs/de67/T01-M6/focused-owner-test.log` and `structural_phase_is_consistent` in
+`src/bandit_live_world.cpp`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Use the existing canonical route and
+timing fields to form the smallest valid observing fixture, keep the corrected on-foot source diff,
+and rerun only the owning test before an unchanged natural probe.
+
+Disposition: applied as a changed test route. Preserve the refrozen on-foot DFS, do not broaden the
+test surface, and retry under `T01-M7`; `R-001` remains red.
