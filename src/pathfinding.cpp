@@ -518,7 +518,7 @@ std::vector<tripoint_bub_ms> map::route( const tripoint_bub_ms &f,
             const int index = flat_index( p.xy() );
 
             // TODO: Remove this and instead have sentinels at the edges
-            if( p.x() < min.x() || p.x() >= max.x() || p.y() < min.y() || p.y() >= max.y() ) {
+            if( p.x() < min.x() || p.x() > max.x() || p.y() < min.y() || p.y() > max.y() ) {
                 continue;
             }
 

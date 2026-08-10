@@ -336,6 +336,44 @@ TEST_CASE( "map_route_player_without_obstacles", "[map][pathfinding]" )
     clear_map_without_vision();
 }
 
+TEST_CASE( "map_route_astar_reaches_the_inclusive_loaded_map_edge", "[map][pathfinding]" )
+{
+    map &m = get_map();
+    clear_map_without_vision();
+    const ter_id t_floor( "t_floor" );
+    for( const tripoint_bub_ms &point : m.points_on_zlevel( 0 ) ) {
+        m.ter_set( point, t_floor );
+    }
+    clear_map_caches( m );
+
+    const tripoint_bub_ms start( MAPSIZE_X / 2, MAPSIZE_Y / 2, 0 );
+    const tripoint_bub_ms avoided_intermediate( start.x(), start.y() + 1, start.z() );
+    const tripoint_bub_ms boundary_target( start.x(), MAPSIZE_Y - 1, start.z() );
+    const tripoint_bub_ms penultimate_target( start.x(), MAPSIZE_Y - 2, start.z() );
+    pathfinding_settings settings;
+    settings.max_dist = MAPSIZE_Y;
+    settings.max_length = MAPSIZE_Y * 4;
+    const auto force_astar = [&avoided_intermediate]( const tripoint_bub_ms & point ) {
+        return point == avoided_intermediate;
+    };
+    const std::vector<tripoint_bub_ms> boundary_route =
+        m.route( start, pathfinding_target::point( boundary_target ), settings, force_astar );
+    const std::vector<tripoint_bub_ms> penultimate_route =
+        m.route( start, pathfinding_target::point( penultimate_target ), settings, force_astar );
+
+    CHECK_FALSE( boundary_route.empty() );
+    if( !boundary_route.empty() ) {
+        CHECK( boundary_route.back() == boundary_target );
+        CHECK( std::find( boundary_route.begin(), boundary_route.end(), avoided_intermediate ) ==
+               boundary_route.end() );
+    }
+    REQUIRE_FALSE( penultimate_route.empty() );
+    CHECK( penultimate_route.back() == penultimate_target );
+    CHECK( std::find( penultimate_route.begin(), penultimate_route.end(), avoided_intermediate ) ==
+           penultimate_route.end() );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "map_route_player_around_obstacles", "[map][pathfinding]" )
 {
     map &m = setup_map_without_obstacles();

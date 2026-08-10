@@ -8574,6 +8574,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         outing.shared_route = { site.anchor, route_approach, watch, route_approach, site.anchor };
         outing.waypoint_index = 2;
         outing.phase = bandit_live_world::scout_phase::returning_home;
+        outing.assessment.exit_reason = "normal watch assessment complete";
         const tripoint_abs_omt current_route = outing.shared_route[
                 static_cast<std::size_t>( outing.waypoint_index )];
         g->place_player_overmap( current_route + point( -1, 3 ) );
@@ -8681,21 +8682,128 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         overmap_buffer.global_state.bandit_live_world = std::move( world );
 
         REQUIRE( materialize_live_bandit_structural_handoffs_for_test() );
-        bandit_live_world::site_record &live_site =
+        bandit_live_world::site_record &materialized_site =
             overmap_buffer.global_state.bandit_live_world.sites.front();
-        CHECK( live_site.active_outing.owner ==
+        CHECK( materialized_site.active_outing.owner ==
                bandit_live_world::simulation_owner::local );
-        CHECK( live_site.active_outing.local_handoff.cohesion_assembled );
-        CHECK( live_site.active_outing.local_handoff.route_position == route_approach );
-        CHECK( live_site.active_outing.local_handoff.approach_from == watch );
-        CHECK( live_site.active_outing.local_handoff.egress_omt == site.anchor );
-        REQUIRE( live_site.active_outing.local_handoff.members.size() == live_ids.size() );
+        CHECK( materialized_site.active_outing.local_handoff.cohesion_assembled );
+        CHECK( materialized_site.active_outing.local_handoff.route_position == route_approach );
+        CHECK( materialized_site.active_outing.local_handoff.approach_from == watch );
+        CHECK( materialized_site.active_outing.local_handoff.egress_omt == site.anchor );
+        REQUIRE( materialized_site.active_outing.local_handoff.members.size() == live_ids.size() );
         for( const bandit_live_world::local_handoff_member_snapshot &member :
-             live_site.active_outing.local_handoff.members ) {
+             materialized_site.active_outing.local_handoff.members ) {
             CHECK( member.entry_position == member.staging_position );
             CHECK( std::find( only_safe_positions.begin(), only_safe_positions.end(),
                               member.entry_position ) != only_safe_positions.end() );
         }
+        const bandit_live_world::world_state materialized_owner_snapshot =
+            overmap_buffer.global_state.bandit_live_world;
+        {
+        bandit_live_world::site_record &live_site =
+            overmap_buffer.global_state.bandit_live_world.sites.front();
+        const tripoint_abs_omt h0_stage = live_site.anchor + point( 0, -1 );
+        g->place_player_overmap( h0_stage );
+        wipe_map_terrain();
+        get_map().invalidate_map_cache( h0_stage.z() );
+        get_map().build_map_cache( h0_stage.z(), true );
+        std::map<character_id, tripoint_abs_ms> assembly_starts;
+        const tripoint_abs_ms h0_stage_center =
+            project_to<coords::ms>( h0_stage ) + point( SEEX, SEEY );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            for( const tripoint_bub_ms &point : get_map().points_on_zlevel( h0_stage.z() ) ) {
+                const tripoint_abs_ms absolute = get_map().get_abs( point );
+                if( project_to<coords::omt>( absolute ) == h0_stage &&
+                    get_map().passable( point ) &&
+                    rl_dist( absolute, h0_stage_center ) >= 6 &&
+                    std::none_of( assembly_starts.begin(), assembly_starts.end(),
+                [&absolute]( const std::pair<const character_id, tripoint_abs_ms> &start ) {
+                    return start.second == absolute;
+                } ) ) {
+                    assembly_starts.emplace( member.npc_id, absolute );
+                    break;
+                }
+            }
+        }
+        REQUIRE( assembly_starts.size() == 2 );
+        std::vector<bandit_live_world::local_cohesion_member_read> unassembled_reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            npc *live_member = g->find_npc( member.npc_id );
+            REQUIRE( live_member != nullptr );
+            REQUIRE( assembly_starts.count( member.npc_id ) == 1 );
+            live_member->setpos( get_map(), get_map().get_bub( assembly_starts.at( member.npc_id ) ) );
+            live_member->path.clear();
+            live_member->set_moves( 100 );
+            unassembled_reads.push_back( { member.npc_id, true, false,
+                                           assembly_starts.at( member.npc_id ) } );
+        }
+        g->load_npcs();
+        for( const character_id id : live_ids ) {
+            npc *live_member = g->find_npc( id );
+            REQUIRE( live_member != nullptr );
+            REQUIRE( live_member->is_active() );
+            live_member->set_moves( 100 );
+        }
+        cursor = bandit_live_world::current_external_simulation_cursor( live_site );
+        REQUIRE( cursor );
+        const bandit_live_world::local_cohesion_plan unassembled_plan =
+            bandit_live_world::plan_local_pair_cohesion(
+                live_site, *cursor, live_site.active_outing.last_advanced_minutes,
+                unassembled_reads );
+        REQUIRE( unassembled_plan.valid );
+        REQUIRE( unassembled_plan.reroute_needed );
+        REQUIRE_FALSE( unassembled_plan.snapshot.cohesion_assembled );
+        maintain_live_bandit_local_pair_cohesion_for_test();
+        CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_assembled );
+        REQUIRE( bandit_live_world::current_external_simulation_cursor( live_site ) );
+        std::set<character_id> claimed_unassembled_members;
+        REQUIRE( bandit_live_world::claim_local_pair_site_ownership(
+                     live_site, claimed_unassembled_members ) );
+        const std::map<character_id, tripoint_abs_ms> unassembled_orders =
+            bandit_live_world::local_pair_assembly_orders( live_site.active_outing );
+        REQUIRE( unassembled_orders.size() == 2 );
+        std::map<character_id, int> assembly_distances_before_motor;
+        std::map<character_id, int> assembly_moves_before_motor;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            npc *live_member = g->find_npc( member.npc_id );
+            REQUIRE( live_member != nullptr );
+            REQUIRE( unassembled_orders.count( member.npc_id ) == 1 );
+            CHECK( unassembled_orders.at( member.npc_id ) == member.staging_position );
+            assembly_distances_before_motor.emplace(
+                member.npc_id, rl_dist( live_member->pos_abs(), member.staging_position ) );
+            assembly_moves_before_motor.emplace( member.npc_id, live_member->get_moves() );
+        }
+        calendar::turn += 1_minutes;
+        process_monsters_and_npcs_turn_for_test();
+        calendar::turn -= 1_minutes;
+        CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_assembled );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            npc *live_member = g->find_npc( member.npc_id );
+            REQUIRE( live_member != nullptr );
+            REQUIRE( assembly_distances_before_motor.count( member.npc_id ) == 1 );
+            REQUIRE( assembly_moves_before_motor.count( member.npc_id ) == 1 );
+            CHECK( rl_dist( live_member->pos_abs(), member.staging_position ) <
+                   assembly_distances_before_motor.at( member.npc_id ) );
+            CHECK( live_member->get_moves() < assembly_moves_before_motor.at( member.npc_id ) );
+        }
+        overmap_buffer.global_state.bandit_live_world = materialized_owner_snapshot;
+        }
+        bandit_live_world::site_record &live_site =
+            overmap_buffer.global_state.bandit_live_world.sites.front();
+        g->place_player_overmap( route_approach );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             live_site.active_outing.local_handoff.members ) {
+            npc *live_member = g->find_npc( member.npc_id );
+            REQUIRE( live_member != nullptr );
+            live_member->setpos( get_map(), get_map().get_bub( member.staging_position ) );
+            live_member->path.clear();
+            live_member->set_moves( 100 );
+        }
+        g->load_npcs();
         const tripoint_abs_omt camp = live_site.anchor;
         const tripoint_abs_omt fallback_observer_omt = current_route + point( -2, 1 );
         g->place_player_overmap( fallback_observer_omt );
@@ -9681,6 +9789,14 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
                      site, h0_progress, true, false ) );
+        const std::map<character_id, tripoint_abs_ms> h0_assembly_orders =
+            bandit_live_world::local_pair_assembly_orders( outing );
+        REQUIRE( h0_assembly_orders.size() == 2 );
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             outing.local_handoff.members ) {
+            REQUIRE( h0_assembly_orders.count( member.npc_id ) == 1 );
+            CHECK( h0_assembly_orders.at( member.npc_id ) == member.staging_position );
+        }
         CHECK( outing.activity_id == activity_id );
         CHECK( outing.generation == generation );
         CHECK( outing.member_ids == exact_members );
