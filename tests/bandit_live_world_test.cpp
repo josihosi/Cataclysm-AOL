@@ -16708,22 +16708,41 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
                    route_anchor, route_watch,
                    { route_watch, target, route_anchor }, { target } ).empty() );
 
-        const tripoint_abs_omt adjacent_anchor( 40, 36, 2 );
-        const tripoint_abs_omt adjacent_watch( 40, 37, 2 );
-        const tripoint_abs_omt viable_watch( 37, 37, 2 );
+        const tripoint_abs_omt adjacent_anchor( 38, 38, 2 );
+        const std::vector<tripoint_abs_omt> adjacent_watches = {
+            tripoint_abs_omt( 37, 37, 2 ), tripoint_abs_omt( 38, 37, 2 ),
+            tripoint_abs_omt( 39, 37, 2 ), tripoint_abs_omt( 37, 38, 2 )
+        };
+        const tripoint_abs_omt viable_watch( 40, 37, 2 );
+        for( const tripoint_abs_omt &adjacent_watch : adjacent_watches ) {
+            CHECK( bandit_live_world::target_footprint_watch_distance(
+                       adjacent_watch, { target } ) == 3 );
+            CHECK( bandit_live_world::make_structural_watch_shared_route(
+                       adjacent_anchor, adjacent_watch,
+                       { adjacent_watch, adjacent_anchor }, { target } ).empty() );
+        }
+        std::vector<tripoint_abs_omt> route_lookups;
         const structural_watch_geography_read viable_after_adjacent =
             bandit_live_world::read_structural_watch_geography(
                 { target }, adjacent_anchor,
-        [adjacent_watch, viable_watch]( const tripoint_abs_omt & candidate,
+        [adjacent_watches, viable_watch]( const tripoint_abs_omt & candidate,
         const std::vector<tripoint_abs_omt> & ) {
-            const bool selected = candidate == adjacent_watch || candidate == viable_watch;
+            const bool selected = std::find( adjacent_watches.begin(), adjacent_watches.end(),
+                                             candidate ) != adjacent_watches.end() ||
+                                  candidate == viable_watch;
             return structural_watch_terrain_read{ selected, selected };
-        }, [target, adjacent_anchor, adjacent_watch,
-        viable_watch]( const tripoint_abs_omt & candidate ) {
-            const std::vector<tripoint_abs_omt> reverse_path = candidate == adjacent_watch ?
-                    std::vector<tripoint_abs_omt> { candidate, adjacent_anchor } :
-                    std::vector<tripoint_abs_omt> { candidate,
-                                                   tripoint_abs_omt( 38, 37, 2 ), adjacent_anchor };
+        }, [target, adjacent_anchor, adjacent_watches, viable_watch,
+        &route_lookups]( const tripoint_abs_omt & candidate ) {
+            route_lookups.push_back( candidate );
+            const bool adjacent = std::find( adjacent_watches.begin(), adjacent_watches.end(),
+                                             candidate ) != adjacent_watches.end();
+            CHECK_FALSE( adjacent );
+            std::vector<tripoint_abs_omt> reverse_path = { candidate, adjacent_anchor };
+            if( !adjacent ) {
+                reverse_path = {
+                    candidate, tripoint_abs_omt( 39, 38, 2 ), adjacent_anchor
+                };
+            }
             const bool constructible = !bandit_live_world::make_structural_watch_shared_route(
                                            adjacent_anchor, candidate, reverse_path, { target } ).empty();
             return structural_watch_route_read{ constructible,
@@ -16731,14 +16750,8 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         } );
         REQUIRE( viable_after_adjacent.selection.valid );
         CHECK( viable_after_adjacent.selection.omt == viable_watch );
-        const auto adjacent_candidate = std::find_if(
-                viable_after_adjacent.routed_candidates.begin(),
-                viable_after_adjacent.routed_candidates.end(),
-        [adjacent_watch]( const auto & candidate ) {
-            return candidate.omt == adjacent_watch;
-        } );
-        REQUIRE( adjacent_candidate != viable_after_adjacent.routed_candidates.end() );
-        CHECK_FALSE( adjacent_candidate->reachable );
+        CHECK( route_lookups == std::vector<tripoint_abs_omt> { viable_watch } );
+        CHECK( viable_after_adjacent.route_reads == 1 );
     }
 
     SECTION( "candidate cap and order are deterministic for a multi-cell footprint" ) {

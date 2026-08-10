@@ -15984,7 +15984,8 @@ structural_watch_geography_read read_structural_watch_geography(
     const int distance, const int cap ) {
         std::vector<const std::pair<tripoint_abs_omt, structural_watch_terrain_read> *> group;
         for( const auto &entry : qualified ) {
-            if( target_footprint_watch_distance( entry.first, read.target_footprint ) == distance ) {
+            if( target_footprint_watch_distance( entry.first, read.target_footprint ) == distance &&
+                omt_chebyshev_distance( route_origin, entry.first ) > 1 ) {
                 group.push_back( &entry );
             }
         }
