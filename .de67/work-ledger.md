@@ -158,7 +158,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   Trial task `T01-M14` has a 1,800-second estimate: the natural probe measured about 10 minutes and
   the owning focused test about 24 seconds; the remaining allowance covers the localized inactive
   in-bounds camp-arrival adapter, its asymmetric arrival control, incremental Mac build, exact
-  identity, and one unchanged natural run.
+  identity, and one unchanged natural run. It was dispatched at 2026-08-10 21:50:40 CEST with
+  immutable deadline 2026-08-10 22:20:40 CEST.
 
 ## Batch result
 
@@ -166,4 +167,5 @@ Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
-classified the first exact post-fix natural camp-arrival gap. `R-001` remains red.
+classified the first exact post-fix natural camp-arrival gap. `T01-M14` is active on that changed
+owner seam; `R-001` remains red.
