@@ -4573,6 +4573,8 @@ bool materialize_live_bandit_structural_handoffs()
                 return false;
             }
             member->spawn_at_precise( snapshot.entry_position );
+            member->in_vehicle = false;
+            member->controlling_vehicle = false;
             member->goal = npc::no_goal_point;
             member->omt_path.clear();
             member->mission = NPC_MISSION_NULL;

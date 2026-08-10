@@ -3680,6 +3680,7 @@ simulation_owner_transition_result transition_external_simulation_owner(
 static void consume_local_pair_resume_receipt( active_outing_state &outing )
 {
     const bool retains_physical_resume =
+        outing.phase == scout_phase::observing ||
         outing.phase == scout_phase::burned_withdrawal ||
         outing.phase == scout_phase::returning_exposed ||
         outing.phase == scout_phase::returning_report ||

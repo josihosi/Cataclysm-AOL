@@ -8319,6 +8319,10 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 const bandit_live_world::member_record *record = site.find_member( old_ids[index] );
                 REQUIRE( record != nullptr );
                 member->spawn_at_precise( record->home_spawn_tile );
+                if( expect_materialized ) {
+                    member->in_vehicle = true;
+                    member->controlling_vehicle = true;
+                }
                 overmap_buffer.insert_npc( member );
                 live_ids.push_back( member->getID() );
                 generated_npc_ids.push_back( member->getID() );
@@ -8354,6 +8358,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                     const character_id id = snapshot.npc_id;
                     REQUIRE( g->find_npc( id ) != nullptr );
                     CHECK( g->find_npc( id )->is_active() );
+                    CHECK_FALSE( g->find_npc( id )->in_vehicle );
+                    CHECK_FALSE( g->find_npc( id )->controlling_vehicle );
                     distance_before_motor.emplace(
                         id, rl_dist( g->find_npc( id )->pos_abs(), snapshot.staging_position ) );
                 }
@@ -10185,6 +10191,12 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
 
         bandit_live_world::world_state observed_loaded = loaded;
         bandit_live_world::site_record &observed_site = observed_loaded.sites.front();
+        observed_site.active_outing.waypoint_index = 1;
+        observed_site.active_outing.local_contact_minutes =
+            observed_site.active_outing.started_minutes;
+        observed_site.active_outing.phase = bandit_live_world::scout_phase::observing;
+        observed_site.active_outing.local_handoff.phase =
+            bandit_live_world::scout_phase::observing;
         const bandit_live_world::sortie_observation observation =
             make_typed_visual_observation(
                 observed_site.active_outing.leader_id,
@@ -10198,13 +10210,13 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 observed_site.active_outing.target_lead_revision, { observation }, 102 );
         REQUIRE( observation_effect.valid );
         CHECK( observed_site.active_outing.last_advanced_minutes == 102 );
-        CHECK_FALSE( observed_site.active_outing.local_handoff.is_abstract_resume() );
-        CHECK( observed_site.active_outing.local_handoff.activity_id.empty() );
+        CHECK( observed_site.active_outing.local_handoff.is_abstract_resume() );
         const std::optional<bandit_live_world::simulation_advance_cursor> observed_cursor =
             bandit_live_world::current_external_simulation_cursor( observed_site );
         REQUIRE( observed_cursor );
-        CHECK( bandit_live_world::plan_local_pair_handoff(
-                   observed_site, *observed_cursor, 102, make_reads( observed_site ) ).valid );
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         observed_site, *observed_cursor, 103,
+                         make_reads( observed_site ) ).valid );
         CHECK( serialize_world( round_trip_world( observed_loaded ) ) ==
                serialize_world( observed_loaded ) );
 
