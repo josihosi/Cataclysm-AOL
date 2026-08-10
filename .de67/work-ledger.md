@@ -21,6 +21,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   cadence, and miss 4 receives ordinary mutation. If four cumulative T01 deadline misses occur while
   `R-001` remains red, stop that run after the miss-4 transaction.
 
+  Trial task `T01-M1` has a 1,800-second estimate: the unchanged natural probe previously took about
+  10 minutes, the two focused owner tests took about 24 seconds, and the remaining allowance covers
+  the narrowly localized source change plus its incremental Mac build. It was dispatched at
+  2026-08-10 20:03:27 CEST with immutable deadline 2026-08-10 20:33:27 CEST.
+
+  `T01-M1` ended on time with a tooling finding: the natural probe stopped before gameplay because
+  the executable embedded `56fb35f144-dirty` while the repository was at docs-only preflight
+  `720e24a00a`. Current-source owner/cohesion and inclusive-edge controls passed, so the next route
+  must first produce a clean exact-HEAD executable and then rerun the unchanged natural scenario.
+
 ## Batch result
 
-Open; no T01 implementation deadline has been started.
+Open; `T01-M1` ended with an on-time tooling finding and zero cumulative misses. `R-001` remains red.

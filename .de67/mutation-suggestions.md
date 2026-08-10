@@ -61,3 +61,28 @@ Reading and rewriting handovers is not progress. One coordinator owns the next c
 another xhigh review requires genuinely new evidence.
 
 Disposition: pending the next mutation round.
+
+### T01-M1 — exact-head binary gate stopped the natural probe
+
+Source: worker finding
+
+Deadline evidence: `T01-M1` reported an on-time `blocker` finding before its
+2026-08-10 20:33:27 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** tooling unchecked / stale executable identity
+
+**Diagnosis:** The first contradicted premise was that the runnable Mac executable represented the
+committed preflight HEAD. The unchanged scenario reached a green gameplay HUD but the harness
+correctly stopped before feature steps because the window identified `56fb35f144-dirty` while the
+repository was at docs-only preflight `720e24a00a`. Source/history review found that current
+`56fb35f144` already follows the jointly safe-pair gate and inclusive loaded-edge route fixes, and
+the focused owner/cohesion and inclusive-edge tests passed. The missing fact is therefore natural
+current-executable evidence, not a newly proved product defect or same-contract DFS gap. Direct
+evidence: `build_logs/de67/T01-M1/natural-probe.log` and
+`.userdata/dev-harness/harness_runs/20260810_200712/startup.result.json`.
+
+**Suggested mutation:** No guideline mutation is due without a deadline incident. Apply the existing
+Tooling check guidance by producing a clean exact-HEAD Mac executable before the next natural probe.
+
+Disposition: applied as a tooling/evidence classification; keep `R-001` red, do not expand the DFS,
+and retry only under a fresh task identity after changing executable identity.
