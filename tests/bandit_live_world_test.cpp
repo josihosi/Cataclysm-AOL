@@ -8758,6 +8758,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         get_map().build_map_cache( camp.z(), true );
         std::map<character_id, tripoint_abs_ms> positions_before_homeward_motor;
         std::map<character_id, int> distances_before_homeward_motor;
+        std::map<character_id, int> moves_before_homeward_motor;
         for( const character_id id : live_ids ) {
             npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
@@ -8765,6 +8766,10 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                          overmap_buffer.global_state.bandit_live_world, id ) );
             member->goal = camp;
             member->omt_path = fallback_homeward_route;
+            member->omt_path.push_back( route_approach );
+            REQUIRE( member->omt_path[member->omt_path.size() - 2] ==
+                     member->pos_abs_omt() );
+            REQUIRE( member->omt_path.back() == member->pos_abs_omt() );
             member->set_mission( NPC_MISSION_TRAVELLING );
             member->goto_to_this_pos = std::nullopt;
             member->clear_ai_guard_pos();
@@ -8784,6 +8789,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             positions_before_homeward_motor.emplace( id, member->pos_abs() );
             distances_before_homeward_motor.emplace(
                 id, rl_dist( member->pos_abs(), fallback_next_center ) );
+            moves_before_homeward_motor.emplace( id, member->get_moves() );
         }
         process_monsters_and_npcs_turn_for_test();
         CHECK( live_site.active_outing.is_active() );
@@ -8798,11 +8804,14 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             REQUIRE( member != nullptr );
             REQUIRE( positions_before_homeward_motor.count( id ) == 1 );
             REQUIRE( distances_before_homeward_motor.count( id ) == 1 );
+            REQUIRE( moves_before_homeward_motor.count( id ) == 1 );
             CHECK( member->is_active() );
             CHECK( get_map().inbounds( member->pos_abs() ) );
-            CHECK( member->pos_abs() == positions_before_homeward_motor.at( id ) );
-            CHECK( rl_dist( member->pos_abs(), fallback_next_center ) ==
+            CHECK( rl_dist( member->pos_abs(), fallback_next_center ) <
                    distances_before_homeward_motor.at( id ) );
+            CHECK( member->get_moves() < moves_before_homeward_motor.at( id ) );
+            REQUIRE_FALSE( member->omt_path.empty() );
+            CHECK( member->omt_path.back() == fallback_next_omt );
             for( const tripoint_bub_ms &step : member->path ) {
                 const tripoint_abs_omt step_omt =
                     project_to<coords::omt>( get_map().get_abs( step ) );
@@ -8907,7 +8916,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             discriminator_positions.emplace( id, member->pos_abs() );
             discriminator_paths.emplace( id, member->path );
             discriminator_omt_paths.emplace( id, member->omt_path );
-            discriminator_moves.emplace( id, member->get_moves() );
+            discriminator_moves.emplace( id, member->get_moves() + member->get_speed() );
         }
         const std::string world_before_discriminator = serialize_world(
                     overmap_buffer.global_state.bandit_live_world );
@@ -9001,7 +9010,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             CHECK( member->pos_abs() == discriminator_positions.at( id ) );
             CHECK( member->path == discriminator_paths.at( id ) );
             CHECK( member->omt_path == discriminator_omt_paths.at( id ) );
-            CHECK( member->get_moves() >= discriminator_moves.at( id ) );
+            CHECK( member->get_moves() == discriminator_moves.at( id ) );
         }
         wipe_map_terrain();
         get_map().invalidate_map_cache( camp.z() );

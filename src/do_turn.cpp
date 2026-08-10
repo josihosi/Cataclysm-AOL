@@ -7463,12 +7463,49 @@ void monmove()
                     }
                 } else if( relationship &&
                            bandit_live_world::scout_phase_requires_homeward_only(
-                               relationship->phase ) &&
-                           !m.inbounds( project_to<coords::ms>( guy.goal ) +
-                                        point( SEEX, SEEY ) ) ) {
-                    // No pair can cross this loaded boundary without violating the route
-                    // contract.  Preserve the exact local state for a later replan.
-                    break;
+                               relationship->phase ) ) {
+                    // A pair may only leave the loaded bubble through a selected safe boundary.
+                    // Before that selection becomes available, the local owner may advance along
+                    // its existing loaded OMT route.  Preflight without changing NPC state so an
+                    // unavailable next local route remains completely inert.
+                    if( !guy.is_travelling() || !guy.has_omt_destination() ||
+                        guy.omt_path.empty() ) {
+                        break;
+                    }
+                    const tripoint_abs_omt current_omt = guy.pos_abs_omt();
+                    auto next_omt = guy.omt_path.rbegin();
+                    while( next_omt != guy.omt_path.rend() && *next_omt == current_omt ) {
+                        ++next_omt;
+                    }
+                    if( next_omt == guy.omt_path.rend() ) {
+                        break;
+                    }
+                    const tripoint_bub_ms next_center = m.get_bub(
+                                project_to<coords::ms>( *next_omt ) ) + point( SEEX, SEEY );
+                    const auto avoid_nonreentry =
+                    [&local_step_respects_nonreentry]( const tripoint_bub_ms & step ) {
+                        return !local_step_respects_nonreentry( step );
+                    };
+                    const pathfinding_target next_target = pathfinding_target::radius( next_center, 2 );
+                    const std::function<bool( const tripoint_bub_ms & )> npc_avoid =
+                        guy.get_path_avoid();
+                    const auto combined_avoid = [&npc_avoid, &avoid_nonreentry](
+                    const tripoint_bub_ms & step ) {
+                        return npc_avoid( step ) || avoid_nonreentry( step );
+                    };
+                    std::vector<tripoint_bub_ms> preflight_path =
+                        m.inbounds( next_center ) ? m.route(
+                            guy.pos_bub(), next_target, guy.get_pathfinding_settings( false ),
+                            combined_avoid ) : std::vector<tripoint_bub_ms>();
+                    if( preflight_path.empty() ||
+                        !local_path_respects_nonreentry( preflight_path ) ) {
+                        break;
+                    }
+                    while( !guy.omt_path.empty() && guy.omt_path.back() == current_omt ) {
+                        guy.omt_path.pop_back();
+                    }
+                    guy.path = std::move( preflight_path );
+                    guy.move_to_next();
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
                            !guy.has_flag( json_flag_CANNOT_MOVE ) ) {
                     const auto avoid_nonreentry =
