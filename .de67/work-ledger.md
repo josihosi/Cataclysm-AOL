@@ -5,7 +5,7 @@ Lineage: `CAOL-hostile-ecology-dev`
 
 ## Active work
 
-- [ ] R-001 — `T01`: complete the natural local-to-abstract return transition.
+- [x] R-001 — `T01`: complete the natural local-to-abstract return transition.
 
   Preserve the unchanged `bandit.scout_to_decision_observer_live_mcw` scenario, McWilliams geometry,
   scenario timing, camp, outing generation, members 4/5, physical crossing, and nonreentry. The local
@@ -211,16 +211,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   minutes and the prior exact Mac build about 52 seconds; the remaining allowance covers the exact
   clean-HEAD rebuild, binary identity check, coordinator-owned single natural proof launch, and
   cleanup. The worker may build and report only; the coordinator launches and judges integrated
-  proof.
+  proof. It was dispatched at 2026-08-10 22:37:29 CEST with immutable deadline
+  2026-08-10 22:57:29 CEST.
+
+  `T01-M18` was accepted on time on exact binary `a46b0b3558+SDL3`, unchanged natural run
+  `20260810_223958`. Members 4/5 completed the paired physical crossing and camp return;
+  authoritative return and `members_returned=2` audits passed. The saved state closed the outing,
+  retained a non-provisional generation-1 final report, entered `report_awaiting_assessment`, and
+  matched the report and decision identities. The generic yellow UI-step classification did not
+  contradict any required metadata audit.
 
 ## Batch result
 
-Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
+Accepted; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
 focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
 `T01-M16` ended on time after authoritative natural return exposed a false-red guard. `T01-M17`
-accepted the focused guard correction at `92c1e699ee`. `R-001` remains red pending the single exact
-natural saved-report and decision proof; `T01-M18` is the active route.
+accepted the focused guard correction at `92c1e699ee`. `T01-M18` then completed the exact natural
+saved-report and matching-decision proof. `R-001` is accepted with zero cumulative misses; no other
+DFS claim is refilled in this trial.

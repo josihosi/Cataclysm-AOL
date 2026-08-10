@@ -150,7 +150,7 @@ flowchart LR
   between adjacent visible tiles while its strategic owner wants to leave.
 - [ ] 🔴 R-003 — Burned-pair evidence, coherent egress, covert neutrality, and identity continuity
   remain unproved through the natural visible-pair route and its quiet control.
-- [ ] 🔴 R-001 — The natural local-to-abstract return handoff is not complete. `T01-M1` through
+- [x] R-001 — The natural local-to-abstract return handoff is not complete. `T01-M1` through
   `T01-M5` preserved generation-1 members 4/5 and the unchanged McWilliams route while moving the
   frontier past safe boundary selection, asymmetric pair travel, and recenter visibility.
   Checkpoint `0d082eda34` bounds the homeward pair; `7495ec5286` exposes the materialization gate.
