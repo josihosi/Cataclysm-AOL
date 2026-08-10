@@ -202,3 +202,29 @@ before the ordinary NPC motor runs. Prove both with focused controls before one 
 Disposition: applied as a changed causal route; keep `R-001` red and do not expand the DFS. The new
 manual stagnation suggestion is acknowledged: another dispatch is admissible only because it changes
 the exact handoff owner and test surface rather than repeating the prior implementation/live route.
+
+### T01-M5 — owner rejected vehicle-support scope
+
+Source: worker finding
+
+Deadline evidence: `T01-M5` reported an on-time `unexpected` finding before its
+2026-08-10 21:40:03 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** owner scope correction / scouts are on foot
+
+**Diagnosis:** The first contradicted premise was that the stale passenger-bit failure authorized
+general vehicle-state reconciliation or preservation. Josef clarified that T01 scouts are on foot;
+`test_rv`, actual-boarded behavior, boardable-vehicle lookup, vehicle fixture/routing, and backup
+preservation are outside the claim. The dirty candidate was reinspected and all such work was
+removed. The remaining three-file diff contains only the source-grounded T01 slice: retain the
+observing-produced resume, clear `in_vehicle` and `controlling_vehicle` unconditionally after the
+bandit abstract-to-loaded spawn, and assert the no-vehicle result in the existing owning handoff
+test. The immutable finding terminal arrived before tests or commit, so this corrected diff is not
+yet accepted evidence.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Keep worker briefs owner-specific:
+state that the scouts are on foot and test only the absence of stale passenger state at this handoff.
+
+Disposition: applied. The vehicle-support branch was deleted before any checkpoint; preserve the
+prior accepted checkpoints and continue only with the corrected on-foot diff under a fresh task
+identity. `R-001` remains red and the DFS does not expand.

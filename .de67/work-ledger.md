@@ -68,7 +68,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   minutes and the owning focused test about 24 seconds; the remaining time covers the two localized
   handoff-adapter fixes, focused controls, incremental Mac build, and exact-commit identity check.
 
+  `T01-M5` ended on time with an owner-correction finding before tests or commit. General vehicle
+  support is out of scope: these scouts are on foot. The corrected dirty diff now retains only the
+  observing-produced resume, unconditionally clears `in_vehicle` and `controlling_vehicle` after
+  the bandit abstract-to-loaded spawn, and adds no-vehicle assertions to the existing owner test.
+
+  Trial task `T01-M6` has a 1,800-second estimate: the unchanged natural probe measured about 10
+  minutes and the owning focused test about 24 seconds; the remaining time covers verification of
+  the already-corrected three-file diff, incremental Mac build, and exact-commit identity check.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M4` ended with on-time findings and zero cumulative misses. `T01-M5` is
-being prepared from changed handoff-adapter evidence; `R-001` remains red.
+Open; `T01-M1` through `T01-M5` ended with on-time findings and zero cumulative misses. `T01-M6` is
+being prepared from the owner-corrected on-foot diff; `R-001` remains red.
