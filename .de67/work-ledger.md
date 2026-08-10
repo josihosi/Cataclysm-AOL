@@ -63,6 +63,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   candidates cannot starve a later constructible exact-ring candidate; only a reviewed green diff
   may advance to an exact committed build and the changed clear-day control. Scouts remain on foot.
 
+  `R002-M4` accepted the route-read prefilter at `73a20fa19e`: the owning regression's pre-fix
+  control spent all four exact-ring reads on source-adjacent candidates, while the accepted owner
+  test invoked only the later constructible watch and passed 139 assertions. Task `R002-M5` retains
+  the measured 3,600-second envelope for an exact clean macOS build and the coordinator-owned
+  changed clear-day probe. Acceptance requires the physical target-facing exact watch and forward
+  `(136,51,0)` acquisition; fallback `(140,52,0)` or unrelated forward `(139,53,0)` is a new
+  production finding, not permission for an unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
