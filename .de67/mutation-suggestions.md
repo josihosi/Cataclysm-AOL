@@ -367,3 +367,23 @@ then build that exact committed Mac HEAD and run the unchanged natural route onc
 
 Disposition: applied as an accepted focused checkpoint plus tooling gate; keep `R-001` red pending
 the integrated production chain.
+
+### T01-M12 — required raw logs dirtied the embedded version
+
+Source: worker finding
+
+Deadline evidence: `T01-M12` reported an on-time `blocker` before its 2026-08-10 22:13:10 CEST
+deadline; cumulative misses remained zero.
+
+**Short verdict:** required untracked evidence contaminated exact binary identity
+
+**Diagnosis:** The Mac game build succeeded from clean tracked HEAD `5553b42773`, but the required
+untracked `build_logs/de67/` directory was visible to version generation and the executable reported
+`5553b42773-dirty+SDL3`. The binary therefore could not enter the natural proof route. This is a
+tooling/identity gap; no product behavior was exercised. Direct evidence:
+`build_logs/de67/T01-M12/exact-build.log`, the T01-M12 identity log, and Git status.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Preserve the raw evidence while
+locally excluding only `build_logs/de67/` from Git status, then rebuild the exact committed HEAD.
+
+Disposition: applied as a changed tooling route; keep `R-001` red.

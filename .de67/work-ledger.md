@@ -134,9 +134,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   coordinator-owned ledgers were tracked-dirty and would have embedded a `-dirty` identity; commit
   the compact coordination state before building and running the unchanged natural route.
 
+  Trial task `T01-M12` had the same evidence-based 1,800-second estimate and was dispatched at
+  2026-08-10 21:43:10 CEST with immutable deadline 2026-08-10 22:13:10 CEST against clean committed
+  HEAD `5553b42773`.
+
+  `T01-M12` ended on time at binary identity verification. The Mac build succeeded, but required
+  untracked `build_logs/de67/` evidence made the executable report `5553b42773-dirty+SDL3` despite a
+  clean tracked tree. Preserve the evidence and exclude only that local output directory from Git's
+  dirty calculation before rebuilding; no natural run occurred.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M11` ended with on-time findings and zero cumulative misses. `T01-M6`
+Open; `T01-M1` through `T01-M12` ended with on-time findings and zero cumulative misses. `T01-M6`
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. The exact natural proof remains;
