@@ -183,7 +183,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   Trial task `T01-M16` has a 1,800-second estimate: the natural probe measured about 10 minutes and
   the owning test about 24 seconds; the remaining allowance covers the localized exact-owned
   inactive camp receipt, a both-inactive in-bounds control, incremental Mac build, exact identity,
-  and one unchanged natural run.
+  and one unchanged natural run. It was dispatched at 2026-08-10 22:16:58 CEST with immutable
+  deadline 2026-08-10 22:46:58 CEST.
 
 ## Batch result
 
@@ -193,4 +194,4 @@ was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-c
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
 focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
-`R-001` is red.
+`T01-M16` is active on that changed owner route. `R-001` is red.
