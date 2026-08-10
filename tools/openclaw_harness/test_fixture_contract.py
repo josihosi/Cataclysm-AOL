@@ -57,9 +57,12 @@ from startup_harness import (  # noqa: E402
     classify_blocking_interruption,
     classify_wait_screen_text,
     classify_wait_step_ledger,
+    cleanup_extracted_overmap,
     debug_map_editor_place_field,
     debug_map_editor_place_item,
+    decode_overmap_layer,
     extract_clock_or_turn_evidence,
+    extract_overmap_payload,
     execute_long_wait_action,
     execute_probe_steps,
     ecology_incident_artifact_baseline,
@@ -69,6 +72,9 @@ from startup_harness import (  # noqa: E402
     load_profile_config,
     load_scenario,
     normalize_fixture_save_transforms,
+    overmap_file_coords_from_abs_omt,
+    overmap_flat_index,
+    overmap_layer_index,
     peekaboo_focus_pid_with_retry,
     peekaboo_press_sequence,
     peekaboo_switch_app_for_pid,
@@ -4777,6 +4783,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertTrue(wait["allow_exact_artifact_meridiem_ambiguity"])
 
     def test_phase4_road_day_serializes_approach_before_exact_watch_visibility(self) -> None:
+        fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
         scenario = load_scenario("bandit.phase4_visibility_road_day_live_mcw")
         steps = list(scenario["steps"])
         labels = [step["label"] for step in steps]
@@ -4786,6 +4794,106 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         approach = steps[labels.index(approach_label)]
         visibility = steps[labels.index(visibility_label)]
         audit = steps[labels.index(audit_label)]
+
+        self.assertEqual(
+            resolved["source_chain"][:3],
+            [
+                ("live-debug", fixture_name),
+                (
+                    "live-debug",
+                    "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+                ),
+                (
+                    "live-debug",
+                    "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+                ),
+            ],
+        )
+        transforms = list(resolved["save_transforms"])
+        last_clear_index = max(
+            index
+            for index, transform in enumerate(transforms)
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        effective_leads = [
+            transform
+            for transform in transforms[last_clear_index + 1 :]
+            if transform["kind"] == "bandit_camp_map_lead"
+        ]
+        self.assertEqual(len(effective_leads), 1)
+        self.assertEqual(
+            effective_leads[0]["lead_id"],
+            "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
+        )
+        self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
+
+        player_omt = [140, 39, 0]
+        horde_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "horde_entity_near_player"
+        ]
+        expected_horde_offsets = [
+            [-72, 240, 0],
+            [-71, 240, 0],
+            [-70, 240, 0],
+        ]
+        self.assertEqual(
+            [transform["offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+        self.assertEqual(
+            [transform["destination_offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+        self.assertEqual(
+            [transform["monster_id"] for transform in horde_transforms],
+            ["mon_zombie"] * 3,
+        )
+        self.assertEqual(
+            [
+                [
+                    (player_omt[axis] * 24 + (12 if axis < 2 else 0) + offset[axis])
+                    // (24 if axis < 2 else 1)
+                    for axis in range(3)
+                ]
+                for offset in expected_horde_offsets
+            ],
+            [[137, 49, 0]] * 3,
+        )
+
+        terrain_points = [
+            (137, 49, 0),
+            (138, 52, 0),
+            (138, 51, 0),
+            (137, 50, 0),
+        ]
+        overmap_x, overmap_y, _ = overmap_file_coords_from_abs_omt(terrain_points[0])
+        overmap_path = (
+            resolved["save_src"]
+            / "McWilliams"
+            / "overmaps"
+            / f"o.{overmap_x}.{overmap_y}.zzip"
+        )
+        plain_path, _version_line, overmap_payload = extract_overmap_payload(overmap_path)
+        try:
+            terrain_layer = decode_overmap_layer(
+                overmap_payload["layers"][overmap_layer_index(0)],
+                context=f"{overmap_path} z=0",
+            )
+            saved_terrain = []
+            for point in terrain_points:
+                point_overmap_x, point_overmap_y, local_point = (
+                    overmap_file_coords_from_abs_omt(point)
+                )
+                self.assertEqual((point_overmap_x, point_overmap_y), (overmap_x, overmap_y))
+                saved_terrain.append(terrain_layer[overmap_flat_index(local_point)])
+        finally:
+            cleanup_extracted_overmap(
+                plain_path,
+                keep=not bool(overmap_payload.get("_created_plain", False)),
+            )
+        self.assertEqual(saved_terrain, ["road_ns", "forest", "field", "road_wn"])
 
         self.assertLess(labels.index(approach_label), labels.index(visibility_label))
         self.assertLess(labels.index(visibility_label), labels.index(audit_label))
@@ -4802,13 +4910,27 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ],
         )
         self.assertIn(
-            "first_forward_omt=(136,51,0)",
+            "first_forward_omt=(137,49,0)",
             audit["required_line_patterns"][1],
         )
         self.assertIn(
             "first_forward_distance=3",
             audit["required_line_patterns"][1],
         )
+        horde_preflight = steps[
+            labels.index("preflight_phase4_visibility_road_day_horde")
+        ]
+        self.assertEqual(
+            horde_preflight["required_hordes"],
+            [
+                {"monster_id": "mon_zombie", "offset_ms": offset}
+                for offset in expected_horde_offsets
+            ],
+        )
+        serialized_scenario = json.dumps(scenario, sort_keys=True)
+        self.assertIn("terrain_opportunity:137,49,0:road", serialized_scenario)
+        self.assertIn("threat_omt=(137,49,0)", serialized_scenario)
+        self.assertNotIn("136,51,0", serialized_scenario)
 
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
         fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"

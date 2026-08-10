@@ -1,9 +1,106 @@
 {
   "name": "bandit_phase4_visibility_road_day_v0_2026-08-04",
-  "source_fixture": "bandit_phase4_visibility_road_horde_common_v0_2026-08-04",
+  "source_fixture": "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
   "source_profile": "live-debug",
-  "description": "Clear-day child of the shared road/horde footing. The turn begins twelve hours before the established local-noon point so the real deterministic scheduler window lands the live observer there; production still derives light and generated remote weather itself.",
+  "description": "Clear-day road/horde footing isolated from the shared twilight/night target. It preserves the idle camp, clear evidence, real player position, three concrete hostile entities, and deterministic scheduler window while using the reachable road target at (137,49,0); production still derives routing, light, and generated remote weather itself.",
   "save_transforms": [
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0"
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_kind": "structural_bounty",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
+      "status": "scout_confirmed",
+      "target_id": "road",
+      "target_omt": [
+        137,
+        49,
+        0
+      ],
+      "radius_omt": 0,
+      "source_key": "fixture_phase4_visibility_road_horde",
+      "source_summary": "fixture-known road bounty used only to put a real abstract pair on a committed route toward a concrete horde target",
+      "first_seen_minutes": -720,
+      "last_seen_minutes": -720,
+      "last_checked_minutes": -720,
+      "last_scouted_minutes": -720,
+      "bounty": 8,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "generated_by_this_camp_routine": true,
+      "last_outcome": "phase4_visibility_road_horde_fixture",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [
+        -72,
+        240,
+        0
+      ],
+      "destination_offset_ms": [
+        -72,
+        240,
+        0
+      ],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [
+        -71,
+        240,
+        0
+      ],
+      "destination_offset_ms": [
+        -71,
+        240,
+        0
+      ],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [
+        -70,
+        240,
+        0
+      ],
+      "destination_offset_ms": [
+        -70,
+        240,
+        0
+      ],
+      "tracking_intensity": 0,
+      "last_processed": 0,
+      "moves": 0
+    },
     {
       "kind": "game_turn",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
