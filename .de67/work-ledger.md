@@ -156,6 +156,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   old loss. A reviewed green harness-only diff may then advance to a clean checkpoint and one changed
   clear-day probe against the already exact source executable.
 
+  `R002-M11` accepted the fixture-fidelity checkpoint at `f82094e027`. The isolated lead now retains
+  its fixture discriminator and exposes `:terrain_fit:road` to the production parser. The focused
+  source-equivalent calculation gives corrected `(137,49,0)` score 543, scanned `(136,51,0)` score
+  537, and marker-free control score 431, proving both the new order and the old failure.
+
+  Task `R002-M12` retains the measured 3,600-second envelope for one coordinator-owned changed
+  clear-day probe against exact runtime source `4aad58190f+SDL3`. Acceptance remains dispatch toward
+  `(137,49,0)`, serialized approach `(139,52,0)` then exact concealed watch `(138,52,0)`, clear
+  weather, no optic, three sight points, forward distance three, and acquired/observed threat at the
+  exact three-zombie target with all existing guards green. Stop at the first changed production
+  divergence; do not wait through an invalidated artifact timeout or retry an unchanged route.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
