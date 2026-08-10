@@ -169,7 +169,8 @@ Lineage: `CAOL-hostile-ecology-dev`
 
   Trial task `T01-M15` has a 1,200-second estimate: the changed source and focused control are
   committed and green, while the unchanged natural probe measured about 10 minutes; the remaining
-  allowance covers the incremental exact Mac build, identity check, and probe cleanup.
+  allowance covers the incremental exact Mac build, identity check, and probe cleanup. It was
+  dispatched at 2026-08-10 21:57:46 CEST with immutable deadline 2026-08-10 22:17:46 CEST.
 
 ## Batch result
 
@@ -178,4 +179,4 @@ was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-c
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
-focused checkpoint accepted, but integrated proof remains. `R-001` is red.
+focused checkpoint accepted. `T01-M15` is active on exact integrated proof; `R-001` is red.
