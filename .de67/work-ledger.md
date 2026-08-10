@@ -198,7 +198,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   the correction only removes the two redundant phase-specific receipt requirements from the
   physical-return abort guard while retaining authoritative return and member-count proof. Under the
   current worker-boundary guideline, the worker returns a diff and focused test only; the
-  coordinator owns acceptance and checkpointing.
+  coordinator owns acceptance and checkpointing. It was dispatched at 2026-08-10 22:34:28 CEST
+  with immutable deadline 2026-08-10 22:44:28 CEST.
 
 ## Batch result
 
@@ -209,4 +210,4 @@ entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a d
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
 focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
 `T01-M16` ended on time after authoritative natural return exposed a false-red guard. `R-001` is red
-pending continued final-report and decision proof.
+pending continued final-report and decision proof; `T01-M17` is active on the focused guard fix.
