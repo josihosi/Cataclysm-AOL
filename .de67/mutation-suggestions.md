@@ -62,6 +62,29 @@ another xhigh review requires genuinely new evidence.
 
 Disposition: pending the next mutation round.
 
+### Manual suggestion — on-time findings bypass mutation cadence
+
+Source: manual
+
+Submitted during the T01 acceptance watch.
+
+**Short verdict:** worker-finding lane became a mutation escape hatch
+
+**Diagnosis:** `T01-M1` through `T01-M4` all ended on time with `R-001` still red and zero miss
+units. The findings were not identical noise—two produced bounded product checkpoints and each named
+a changed causal seam—but the deadline-only mutation cadence therefore cannot fire even after four
+unresolved attempts on the same claim. A coordinator can remain permanently busy and apparently
+healthy by converting every incomplete task into an on-time finding.
+
+**Suggested mutation:** Add a progress-stagnation review independent of deadline misses. A worker
+finding remains useful only when the coordinator names the contradicted premise, preserves any
+accepted frontier, and changes the next causal route. Repeated findings on one red claim without an
+accepted DFS transition must not authorize an unlimited retry loop; use an owner-supplied run fuse
+when one exists, and otherwise require a mutation review before repeating the same route. Do not
+turn incidental metadata or longer handoffs into the progress test.
+
+Disposition: pending the next mutation round.
+
 ### T01-M1 — exact-head binary gate stopped the natural probe
 
 Source: worker finding
