@@ -138,6 +138,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   three-zombie target, and every existing setup/error guard green. Any changed route or first
   divergence is a finding, not permission for an unchanged retry.
 
+  Exact `R002-M10` run `20260811_002836` ended on time at a fixture-fidelity seam. The isolated
+  transform really cleared its inherited lead and installed road target `(137,49,0)` with three
+  colocated zombies, but the production scheduler spent its bounded two route solves on the due
+  frontier probe and the routine-scanned road `(136,51,0)`. The owning scorer derives terrain fit
+  and static risk from the `:terrain_fit:` suffix in `source_key`; the fixture source omitted that
+  production marker, so its real road was scored as unknown terrain (fit 333, risk 300) while the
+  scanned road was scored as road (fit 1000, risk 200). The run was stopped at that contradicted
+  premise before its doomed artifact timeout.
+
+  Task `R002-M11` retains the measured 3,600-second envelope and changes only that owning fixture
+  premise. Give the isolated day lead the same production-readable road terrain-fit marker without
+  changing its identity, coordinates, timestamps, scheduler budgets, scans, frontier cadence, or
+  shared twilight/night fixture. Extend the focused fixture contract to calculate the authoritative
+  unchecked-candidate cheap scores and ordering: the corrected real road must outrank the scanned
+  road `(136,51,0)` after the frontier entry while the stale marker-free control must reproduce the
+  old loss. A reviewed green harness-only diff may then advance to a clean checkpoint and one changed
+  clear-day probe against the already exact source executable.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
