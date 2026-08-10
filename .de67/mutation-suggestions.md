@@ -83,7 +83,9 @@ accepted DFS transition must not authorize an unlimited retry loop; use an owner
 when one exists, and otherwise require a mutation review before repeating the same route. Do not
 turn incidental metadata or longer handoffs into the progress test.
 
-Disposition: pending the next mutation round.
+Disposition: rejected by the owner for this run. On-time findings that change the causal frontier
+remain acceptable; add no fixed worker-run mutation cadence. Preserve this entry only as a warning
+against repeating an unchanged route.
 
 ### T01-M1 — exact-head binary gate stopped the natural probe
 
