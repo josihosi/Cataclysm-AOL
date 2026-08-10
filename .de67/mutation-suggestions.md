@@ -419,3 +419,52 @@ scenario geometry, identities, timing, vehicle behavior, or the pair-transaction
 Disposition: applied as a changed implementation route. The duplicate natural run was terminated;
 preserve the owner-corrected on-foot checkpoints and retry only after the camp-arrival adapter and
 focused control change. `R-001` remains red.
+
+### Manual suggestion — bounded code reconnaissance before task definition
+
+Source: manual
+
+Submitted by Josef during the T01 acceptance watch.
+
+**Short verdict:** complex owner code may be misunderstood before task definition
+
+**Diagnosis:** A coordinator working across a complicated state machine may benefit from cheap,
+read-only code-review agents that explain named functions before it defines the next task. The risk
+is that this becomes another handoff layer: agents summarize agents, nobody checks the decisive
+source, and the coordinator gives away causal ownership.
+
+**Suggested mutation:** Let the coordinator optionally ask cheap agents for compact reconnaissance
+of a named ambiguity: relevant symbols, state transitions, readers and writers, competing owners,
+and the smallest honest proof seam. Reconnaissance agents must not choose the task, test, patch, or
+deadline and must not produce a handoff packet. The coordinator verifies the decisive source and
+retains sole responsibility for the causal diagnosis and worker brief. Use this only when it reduces
+uncertainty on genuinely complex code, not as a mandatory stage.
+
+Disposition: pending the next random mutation review; the reviewer may apply, narrow, or reject it
+against more important observed inefficiencies.
+
+### T01-M14 — camp-arrival adapter checkpoint survived an orphan terminal
+
+Source: worker finding and supplemental result
+
+Deadline evidence: `T01-M14` received an on-time orphaned-dispatch `blocker` before its
+2026-08-10 22:20:40 CEST deadline; cumulative misses remained zero. The later focused result is
+supplemental evidence and does not rewrite the immutable terminal.
+
+**Short verdict:** focused camp-arrival frontier accepted; integrated proof not run
+
+**Diagnosis:** The first contradicted premise in the terminal was procedural: the dispatch was
+closed as orphaned before its worker result arrived. Before receiving the stop, the worker had
+implemented the source-grounded owner change and proved it through the existing route. Commit
+`c3e92ae902` makes an inactive in-bounds reached camp member request reload; the asymmetric control
+keeps its partner active and then observes the existing transactional dematerialization commit. The
+owning test passed all 1,587 assertions. The exact build was interrupted after the stop, and no live
+probe ran. Direct evidence: `build_logs/de67/T01-M14/focused-owner-test.log` and commit
+`c3e92ae902`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Preserve the focused checkpoint,
+commit coordinator state, and use a fresh identity for an exact build plus one unchanged natural
+probe. Do not repeat the focused test or broaden the on-foot contract.
+
+Disposition: applied as an accepted focused checkpoint, not T01 completion. `R-001` remains red
+until the same natural pair returns, reports, and produces the authoritative decision.

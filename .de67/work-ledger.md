@@ -161,11 +161,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   identity, and one unchanged natural run. It was dispatched at 2026-08-10 21:50:40 CEST with
   immutable deadline 2026-08-10 22:20:40 CEST.
 
+  `T01-M14` received an on-time orphaned-dispatch blocker before its worker result arrived. The
+  worker had already changed the source owner, passed the owning case with 1,587 assertions, and
+  checkpointed `c3e92ae902`: an inactive in-bounds owned camp arrival now requests reload before
+  the existing second dematerialization opportunity. The stop interrupted the exact build; no live
+  run occurred under this identity.
+
+  Trial task `T01-M15` has a 1,200-second estimate: the changed source and focused control are
+  committed and green, while the unchanged natural probe measured about 10 minutes; the remaining
+  allowance covers the incremental exact Mac build, identity check, and probe cleanup.
+
 ## Batch result
 
 Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
-classified the first exact post-fix natural camp-arrival gap. `T01-M14` is active on that changed
-owner seam; `R-001` remains red.
+classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
+focused checkpoint accepted, but integrated proof remains. `R-001` is red.
