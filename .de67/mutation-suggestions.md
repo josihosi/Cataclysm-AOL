@@ -86,3 +86,33 @@ Tooling check guidance by producing a clean exact-HEAD Mac executable before the
 
 Disposition: applied as a tooling/evidence classification; keep `R-001` red, do not expand the DFS,
 and retry only under a fresh task identity after changing executable identity.
+
+### T01-M2 — natural homeward motor split the exact pair
+
+Source: worker finding
+
+Deadline evidence: `T01-M2` reported an on-time `unexpected` finding before its
+2026-08-10 20:29:43 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** competing per-member movement escaped pair cohesion
+
+**Diagnosis:** The first contradicted premise was that releasing the assembled pair to the homeward
+motor preserves coherent paired travel until the atomic boundary crossing. On clean exact binary
+`4abe539461+SDL3`, the unchanged scenario naturally dispatched members 4/5, crossed outbound,
+dematerialized, and rematerialized the same return at `(164,34,0)`. The selector then admitted a
+jointly reachable boundary pair, but the ordinary per-member motor moved member 4 roughly 119 map
+squares to its departure while member 5 remained at its original return staging square. Current
+source explicitly treats assembly as a one-time gate and retains `cohesion_assembled` throughout
+homeward travel, so the cohesion planner issues no regroup order after the split. The atomic commit
+correctly refused to fire because both members were not at their departures. This is an
+implementation gap under the existing DFS ownership/cohesion contract, not a DFS specification gap.
+Direct evidence: `build_logs/de67/T01-M2/return-owner.selector.log` and
+`.userdata/dev-harness/harness_runs/20260810_201057/probe.report.json`.
+
+**Suggested mutation:** No guideline mutation is due without a deadline incident. Replan the product
+owner so the exact pair cannot make unbounded independent homeward progress before its atomic
+boundary transition, and add a focused control reproducing the asymmetric-arrival route.
+
+Disposition: applied as an implementation classification; keep `R-001` red, preserve the unchanged
+scenario and identities, and require changed source plus the focused asymmetric-arrival control
+before another natural probe.

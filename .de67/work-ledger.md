@@ -35,7 +35,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   minutes, and current source objects already exist, so the remaining 10 minutes cover the inspected
   version-object relink, exact-identity check, and probe startup/cleanup.
 
+  `T01-M2` ended on time with an unexpected production finding. Exact binary `4abe539461+SDL3`
+  naturally crossed outbound and rematerialized the same members 4/5 homeward, then the per-member
+  motor moved member 4 about 119 map squares to a safe boundary departure while member 5 remained at
+  the return staging square. The atomic boundary commit correctly withheld credit, but no cohesion
+  owner regrouped the split pair. The next route requires changed source and a focused asymmetric-
+  arrival control before the unchanged natural probe.
+
+  Trial task `T01-M3` has a 1,800-second estimate: the natural probe measured about 10 minutes and
+  the focused controls about 24 seconds; the remaining time covers the now-localized cohesion-owner
+  source/test change, its incremental Mac build, and exact-commit identity check.
+
 ## Batch result
 
-Open; `T01-M1` ended with an on-time tooling finding and zero cumulative misses. `T01-M2` is being
-prepared from the changed tooling route; `R-001` remains red.
+Open; `T01-M1` and `T01-M2` ended with on-time findings and zero cumulative misses. `T01-M3` is being
+prepared from changed causal evidence; `R-001` remains red.
