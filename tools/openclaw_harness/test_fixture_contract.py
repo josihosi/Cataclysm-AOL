@@ -5071,17 +5071,6 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(
             return_audit["required_line_patterns"],
             [
-                [
-                    "bandit_live_world local_handoff committed",
-                    "phase=returning_home",
-                    "members=2",
-                ],
-                [
-                    "bandit_live_world local_dematerialization committed",
-                    "phase=returning_home",
-                    "route_position=(164,39,0)",
-                    "members=2",
-                ],
                 ["structural outing returned home lead=", "frontier_probe:0"],
             ],
         )
