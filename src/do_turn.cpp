@@ -6525,7 +6525,8 @@ live_bandit_safe_local_route_read live_bandit_safe_local_route_to(
 std::map<character_id, live_bandit_pair_boundary_step>
 live_bandit_pair_boundary_steps(
     const std::map<character_id, tripoint_abs_omt> &destinations,
-    std::vector<std::string> *route_discriminators = nullptr )
+    std::vector<std::string> *route_discriminators = nullptr,
+    const bool require_safe_routes = false )
 {
     std::map<character_id, live_bandit_pair_boundary_step> result;
     map &here = get_map();
@@ -6616,7 +6617,7 @@ live_bandit_pair_boundary_steps(
                 if( !first_route_rank || !second_route_rank ) {
                     continue;
                 }
-                if( route_discriminators != nullptr ) {
+                if( require_safe_routes || route_discriminators != nullptr ) {
                     complete_pairs.emplace_back( first_candidate, second_candidate );
                 }
                 const int first_distance = rl_dist( first->pos_abs(), first_candidate.departure );
@@ -6633,7 +6634,8 @@ live_bandit_pair_boundary_steps(
                 }
             }
         }
-        if( route_discriminators != nullptr ) {
+        std::optional<std::pair<candidate, candidate>> safe_pair;
+        if( require_safe_routes || route_discriminators != nullptr ) {
             const auto pair_identity = [first, second](
             const std::pair<candidate, candidate> &pair ) {
                 std::ostringstream identity;
@@ -6663,7 +6665,6 @@ live_bandit_pair_boundary_steps(
             second_relationship = bandit_live_world::read_active_covert_scout_homeward_member(
                                       overmap_buffer.global_state.bandit_live_world,
                                       second->getID() );
-            std::optional<std::pair<candidate, candidate>> safe_pair;
             std::size_t route_pairs_evaluated = 0;
             std::size_t first_route_size = 0;
             std::size_t second_route_size = 0;
@@ -6710,40 +6711,44 @@ live_bandit_pair_boundary_steps(
                     return entry.second.solved;
                 } );
             };
-            std::ostringstream discriminator;
-            discriminator << "site=" << site.site_id
-                          << " generation=" << outing.generation
-                          << " members=" << first->getID().get_value() << ','
-                          << second->getID().get_value()
-                          << " member_positions=" << first->pos_abs().to_string() << ','
-                          << second->pos_abs().to_string()
-                          << " complete_pairs=" << complete_pairs.size()
-                          << " complete_identity=fnv1a:" << complete_identity
-                          << " route_pairs_evaluated=" << route_pairs_evaluated
-                          << " route_reads=" <<
-                          first_route_reads.size() + second_route_reads.size()
-                          << " route_solves=" <<
-                          solved_count( first_route_reads ) + solved_count( second_route_reads )
-                          << " relationships_complete=" <<
-                          ( first_relationship && second_relationship ? "yes" : "no" )
-                          << " safe_both=" << ( safe_pair ? "yes" : "no" )
-                          << " verdict=" <<
-                          ( !first_relationship || !second_relationship ? "unavailable" :
-                            safe_pair ? "H1" : "H0" )
-                          << " selected_pair=" <<
-                          ( selected ? pair_identity( *selected ) : "none" )
-                          << " safe_pair=" <<
-                          ( safe_pair ? pair_identity( *safe_pair ) : "none" )
-                          << " first_route_path=" << first_route_size
-                          << " second_route_path=" << second_route_size;
-            route_discriminators->push_back( discriminator.str() );
+            if( route_discriminators != nullptr ) {
+                std::ostringstream discriminator;
+                discriminator << "site=" << site.site_id
+                              << " generation=" << outing.generation
+                              << " members=" << first->getID().get_value() << ','
+                              << second->getID().get_value()
+                              << " member_positions=" << first->pos_abs().to_string() << ','
+                              << second->pos_abs().to_string()
+                              << " complete_pairs=" << complete_pairs.size()
+                              << " complete_identity=fnv1a:" << complete_identity
+                              << " route_pairs_evaluated=" << route_pairs_evaluated
+                              << " route_reads=" <<
+                              first_route_reads.size() + second_route_reads.size()
+                              << " route_solves=" <<
+                              solved_count( first_route_reads ) + solved_count( second_route_reads )
+                              << " relationships_complete=" <<
+                              ( first_relationship && second_relationship ? "yes" : "no" )
+                              << " safe_both=" << ( safe_pair ? "yes" : "no" )
+                              << " verdict=" <<
+                              ( !first_relationship || !second_relationship ? "unavailable" :
+                                safe_pair ? "H1" : "H0" )
+                              << " selected_pair=" <<
+                              ( selected ? pair_identity( *selected ) : "none" )
+                              << " safe_pair=" <<
+                              ( safe_pair ? pair_identity( *safe_pair ) : "none" )
+                              << " first_route_path=" << first_route_size
+                              << " second_route_path=" << second_route_size;
+                route_discriminators->push_back( discriminator.str() );
+            }
         }
-        if( selected ) {
+        const std::optional<std::pair<candidate, candidate>> &transition_pair =
+            require_safe_routes ? safe_pair : selected;
+        if( transition_pair ) {
             result.emplace( first->getID(), live_bandit_pair_boundary_step{
-                selected->first.departure, selected->first.exit
+                transition_pair->first.departure, transition_pair->first.exit
             } );
             result.emplace( second->getID(), live_bandit_pair_boundary_step{
-                selected->second.departure, selected->second.exit
+                transition_pair->second.departure, transition_pair->second.exit
             } );
         }
     }
@@ -6770,7 +6775,7 @@ void log_live_bandit_homeward_motor_diagnostics(
         }
     }
     const std::map<character_id, live_bandit_pair_boundary_step> homeward_boundary_steps =
-        live_bandit_pair_boundary_steps( homeward_destinations, nullptr );
+        live_bandit_pair_boundary_steps( homeward_destinations, nullptr, true );
     map &here = get_map();
     for( const bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
@@ -7138,7 +7143,7 @@ void monmove()
                                            pair_homeward_destinations,
                                            log_homeward_route_result &&
                                            u.has_trait( trait_DEBUG_CLAIRVOYANCE ) ?
-                                           &homeward_boundary_discriminators : nullptr );
+                                           &homeward_boundary_discriminators : nullptr, true );
         for( const std::string &discriminator : homeward_boundary_discriminators ) {
             DebugLog( D_INFO, DC_ALL )
                     << "bandit_live_world homeward_boundary_pair_discriminator "
@@ -7456,6 +7461,14 @@ void monmove()
                                     << rejection_classifier.value_or( "" ) << '\n';
                         }
                     }
+                } else if( relationship &&
+                           bandit_live_world::scout_phase_requires_homeward_only(
+                               relationship->phase ) &&
+                           !m.inbounds( project_to<coords::ms>( guy.goal ) +
+                                        point( SEEX, SEEY ) ) ) {
+                    // No pair can cross this loaded boundary without violating the route
+                    // contract.  Preserve the exact local state for a later replan.
+                    break;
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
                            !guy.has_flag( json_flag_CANNOT_MOVE ) ) {
                     const auto avoid_nonreentry =
@@ -7896,7 +7909,7 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
         }
     }
     std::vector<std::string> discriminators;
-    live_bandit_pair_boundary_steps( homeward_destinations, &discriminators );
+    live_bandit_pair_boundary_steps( homeward_destinations, &discriminators, true );
     if( discriminators.empty() ) {
         return "discriminator_count=0 verdict=unavailable";
     }

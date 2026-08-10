@@ -8800,8 +8800,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             REQUIRE( distances_before_homeward_motor.count( id ) == 1 );
             CHECK( member->is_active() );
             CHECK( get_map().inbounds( member->pos_abs() ) );
-            CHECK( member->pos_abs() != positions_before_homeward_motor.at( id ) );
-            CHECK( rl_dist( member->pos_abs(), fallback_next_center ) <
+            CHECK( member->pos_abs() == positions_before_homeward_motor.at( id ) );
+            CHECK( rl_dist( member->pos_abs(), fallback_next_center ) ==
                    distances_before_homeward_motor.at( id ) );
             for( const tripoint_bub_ms &step : member->path ) {
                 const tripoint_abs_omt step_omt =
@@ -8899,11 +8899,15 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         };
         std::map<character_id, tripoint_abs_ms> discriminator_positions;
         std::map<character_id, std::vector<tripoint_bub_ms>> discriminator_paths;
+        std::map<character_id, std::vector<tripoint_abs_omt>> discriminator_omt_paths;
+        std::map<character_id, int> discriminator_moves;
         for( const character_id id : live_ids ) {
             const npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
             discriminator_positions.emplace( id, member->pos_abs() );
             discriminator_paths.emplace( id, member->path );
+            discriminator_omt_paths.emplace( id, member->omt_path );
+            discriminator_moves.emplace( id, member->get_moves() );
         }
         const std::string world_before_discriminator = serialize_world(
                     overmap_buffer.global_state.bandit_live_world );
@@ -8976,6 +8980,28 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             REQUIRE( discriminator_paths.count( id ) == 1 );
             CHECK( member->pos_abs() == discriminator_positions.at( id ) );
             CHECK( member->path == discriminator_paths.at( id ) );
+        }
+        const bandit_live_world::simulation_owner owner_before_unavailable =
+            live_site.active_outing.owner;
+        const tripoint_abs_omt route_position_before_unavailable =
+            live_site.active_outing.local_handoff.route_position;
+        const int waypoint_before_unavailable = live_site.active_outing.waypoint_index;
+        const int return_before_unavailable = live_site.applied_return_generation;
+        const int report_before_unavailable = live_site.applied_report_generation;
+        process_monsters_and_npcs_turn_for_test();
+        CHECK( live_site.active_outing.owner == owner_before_unavailable );
+        CHECK( live_site.active_outing.local_handoff.route_position ==
+               route_position_before_unavailable );
+        CHECK( live_site.active_outing.waypoint_index == waypoint_before_unavailable );
+        CHECK( live_site.applied_return_generation == return_before_unavailable );
+        CHECK( live_site.applied_report_generation == report_before_unavailable );
+        for( const character_id id : live_ids ) {
+            const npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->pos_abs() == discriminator_positions.at( id ) );
+            CHECK( member->path == discriminator_paths.at( id ) );
+            CHECK( member->omt_path == discriminator_omt_paths.at( id ) );
+            CHECK( member->get_moves() >= discriminator_moves.at( id ) );
         }
         wipe_map_terrain();
         get_map().invalidate_map_cache( camp.z() );
