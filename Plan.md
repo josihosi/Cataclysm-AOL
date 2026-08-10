@@ -22,121 +22,38 @@ The normative player-facing behavior, system ownership, and implementation audit
 
 ## Proven state
 
-- The `DEBUG_CLAIRVOYANCE` ecology observer reads the authoritative camp/dispatch projection for
-  UI, compact JSON, selection/follow, deltas, watches, incident capture, and labelled intervention.
-  Its disabled-cost and save-neutrality proof is checkpointed at `117857f551`; authoritative
-  casualty intervention and reconciliation are checkpointed at `1e6a0924e7`.
-- Focused tests cover authority, persistence, exact-pair roster ownership, perception,
-  route/handoff, cohesion, physical return/report/decision, resource, fairness, and loss controls.
-  They do not substitute for a live incident.
-- Gameplay checkpoints through `f46f8f45ca` carry the exact pair through natural discovery,
-  transactional forward ingress, paired reality-bubble exit, watch completion, and a retained
-  physical homeward resume. Focused tests prevent failed materialization from granting abstract
-  return credit.
-- Checkpoint `8f642ddd7a` makes in-bounds homeward A* apply the nonreentry rule during selection and
-  permits a complete active pair physically inside camp to dematerialize transactionally. Its
-  focused `[local_handoff]` proof passes 1,102 assertions; it is not live lifecycle credit.
-- Checkpoints `30b27b9d5f` and `a629eb804d` preserve the original terminal observer identity across
-  console close/reopen and require one fresh same-run incident JSON/screenshot pair before later
-  return, report, or decision checks. Focused harness and `[debug_console]` tests are green.
-- Checkpoint `9c6b73adff` advances an abstract-resume homeward pair to the first later safe loaded
-  route waypoint, excluding the final camp, then uses the existing physical motor and camp
-  dematerialization route. Its exact SDL3 focused proof is green; it is not live lifecycle credit.
-- Live run `20260809_033014` on `9c6b73adff+SDL3` proves the exact natural generation-1
-  `BD-DF9E73` pair entered local `returning_home` ownership at `(164,34,0)`. The retained observer
-  then failed closed with `entity_token_mismatch` because the expected abstract-to-local owner
-  transfer was treated as replacement identity, so no fresh incident pair was published and no
-  later return/report/decision credit is accepted.
-- Checkpoint `51c6810706` keeps world, canonical ID, generation, and authority as stable observer
-  identity while treating abstract/local owner as visible mutable state. Watch, delta, and
-  owner-strict intervention tests pass 506 assertions together.
-- Unchanged run `20260809_035926` on `51c6810706+SDL3` published the fresh natural generation-1
-  `BD-DF9E73` incident pair with no interventions. It then repeatedly rejected homeward
-  materialization because the loaded return waypoint lacked a complete entry-plus-staging
-  allocation and incorrectly reached abstract `members_returned=2`/`returned home`; no physical
-  return credit is accepted.
-- Checkpoint `b998327e91` lets an already-assembled homeward resume reuse its complete adjacent
-  entry pair as staging only at the first later non-camp route waypoint. Focused route/motor/camp
-  dematerialization proof passes 94 assertions and the owning case passes 1,054 assertions.
-- Unchanged run `20260809_042151` on `b998327e91+SDL3` (SHA-256 `d96514f3ef2a20e22fd75faa082e481a40f43baa357b2367a8141403508c1ea7`)
-  kept the fresh identity-bound incident gate green but still found no complete later-waypoint
-  entry allocation, then incorrectly granted abstract return. The current rejection aggregates
-  entry and staging failure, so it does not yet identify the remaining physical geometry seam.
-- Checkpoint `3f781eecf1` adds bounded read-only later-candidate counts. Unchanged run
-  `20260809_043442` on its exact SDL3 binary (SHA-256
-  `c99a87ed828cd90ad99dde5127bc68738fdfceab4d69f2e06cb1e064f207524c`) advanced further: the exact
-  generation-1 pair committed local `returning_home` ownership at `(164,34,0)`, then remained
-  loaded/local through four observed scheduler hours without a homeward boundary or camp
-  dematerialization.
-- Checkpoint `8ab8fcb84b` adds a cadence-bounded read-only homeward motor receipt and repairs two
-  test-only dangling references exposed by its layout; `[local_handoff]` passes 94 assertions and
-  the owning case passes 1,054 assertions. Unchanged run `20260809_045732` on its exact SDL3 binary
-  (SHA-256 `b96ef49272fef891c4770da18ed50674af67f1d98fc131057f44058107999577`) did not reach local
-  homeward ownership. It instead proved that an outing whose earlier forward resume had been
-  consumed could receive abstract return credit with no physical camp dematerialization.
-- Checkpoint `588cf29c69` requires a schema-10 scout return to retain exact physical ownership until
-  its same-operation resume is physically at the owning camp, and preserves the strategic return
-  clock across local ownership. The full owning case passes 1,069 assertions and the adjacent
-  assessment/report case passes 152 assertions at seed `123456`.
-- Unchanged run `20260809_053039` on the exact `588cf29c69+SDL3` binary (SHA-256
-  `4ceec8f8003cb35c12fc9bceedd5d11181022e204a99091ba3cbb82aee05e0c2`) kept the fresh
-  identity-bound incident gate green, withheld all abstract return/report/decision credit, and
-  committed the exact generation-1 pair to local `returning_home` ownership at `(164,34,0)`. Both
-  members then remained at `(3936,828,0)` and `(3936,829,0)` with travelling goals, six-OMT routes,
-  and no local path through four scheduler hours; no homeward boundary or camp dematerialization
-  occurred.
-- Checkpoint `501b66c61f` exposes only the selected homeward boundary departure, exit, and exact
-  departure equality. Unchanged run `20260809_055430` on its exact SDL3 binary (SHA-256
-  `56914f6692fab6bf40cc4e3f86d044d29854ddb063d186a4e9349799e5614cb9`) proves both members
-  remain 118--119 map squares short of distinct adjacent departures with `local_path=0` through
-  five scheduler receipts. Boundary completion is never attempted; the red seam is route
-  acquisition or movement to the selected departure.
-- Checkpoints `d1dca64971` and `959f3c0e96` add the bounded route-result receipt and correct its
-  live gate. Unchanged run `20260809_063218` on the exact `959f3c0e96+SDL3` binary proves member 4's
-  actual combined solve repeatedly returns no route and an empty path, consumes its move budget by
-  pausing, and never calls movement. The pair therefore cannot reach the boundary transaction.
-- Checkpoint `2f916249a0` compares bounded diagnostic routes to the same departure without mutating
-  the actor path. Unchanged run `20260809_065048` on its exact SDL3 binary proves baseline,
-  ordinary-NPC-only, covert-only, and actual combined point routes are all empty. The far selected
-  bubble edge is unreachable under ordinary local pathfinding; neither avoidance layer causes the
-  rejection.
-- Checkpoint `6287923514` falls back from an unreachable selected boundary point to the existing
-  nonreentry-safe one-OMT motor. Its accepted red control held both members still (132/136
-  assertions), while the repaired focused section moves both toward the next persisted waypoint
-  and later dematerializes at camp (266/266); the full owning case passes 1,241 assertions.
-- Checkpoints `66e137b56a` and `0a124a769b` keep ordinary split wait progress passive and match exact
-  OCR phrases only from left-to-right observations on one overlapping visual row. The owning
-  interruption/wait scope passes 62 tests; wrong identity, separate rows, and reversed order remain
-  red. These are observer proofs, not gameplay credit.
-- Final fuse run `20260809_074804` on exact `6287923514+SDL3` (SHA-256
-  `953947702c6787bdc4a386f51de13999eebff08b1c7162e6b42cb80819378169`) published a fresh natural,
-  intervention-free identity-bound incident pair and committed generation 1 to local
-  `returning_home` epoch 3 at `(164,34,0)`. The fallback physically advanced the scouts from
-  `(3936,828/829,0)` to `(3941/3940,912,0)`, then the selected camp-adjacent departures
-  `(3935/3936,947,0)` remained unreachable and neither scout moved in four hourly receipts. No
-  camp dematerialization, return, report, or decision credit is accepted.
+- The authoritative observer and focused owner tests cover identity, exact-pair roster ownership,
+  perception, route/handoff, cohesion, physical return/report/decision, resource, fairness, and
+  loss controls. Focused proof does not substitute for a natural incident.
+- Exact-head natural run `20260810_004648` used
+  `dev@274c4c1f239b7c68702a0b76321cb271906dd892+SDL3`, binary SHA-256
+  `fbd9351d46c19b868893850b22fd32d73514469f02f82c7cfe17e52a4cea224f`, the unchanged
+  `bandit.scout_to_decision_observer_live_mcw` scenario, generation 1, members 4/5, and zero
+  intervention. The pair physically progressed from OMT `(164,34,0)` to camp-adjacent OMT
+  `(164,38,0)`.
+- Four production attempts each evaluated the same 128 complete boundary pairs with complete
+  relationships and found no pair safely reachable by both scouts. The current local owner still
+  returned the same independently scored unsafe pair; both routes were empty and fallback consumed
+  moves without movement. No paired crossing, camp dematerialization, canonical return, report, or
+  decision credit is accepted.
+- The compact C4 receipt and selector prove a production selection/transition defect. They do not
+  prove the unchanged world geometry genuinely entraps the pair under every valid ownership
+  transition.
 
-## Active claim
+## Active claim — `HC-R01`
 
-The bounded complete-pair discriminator is accepted H0 on fresh natural run `20260809_145108`:
-exact source, binary, fixture, scenario, site, generation, and members 4/5 are identity-bound; all
-128 complete pairs were evaluated in four post-handoff receipts and none was safely reachable by
-both scouts. Reproducing the earlier run's local coordinates is not part of the semantic contract
-and is removed from the concrete proof plan.
+Repair the authoritative reality-bubble/overmap ownership transition without changing geometry,
+fixture, scenario timing, outing/member identity, physical crossing, or nonreentry. While the exact
+pair is loaded, the local owner must choose a route-reachable paired physical boundary transition
+on actual loaded geometry or retain/replan ownership without physical movement, route/ownership
+progress, or outcome credit. Abstract ownership resumes only from the matching committed crossing;
+teleportation, direct path assignment, duplicate ownership, geometry edits, and abstract-return
+shortcuts are non-credit.
 
-Checkpoint `bcadaf16b1` closes the focused H0 route-owner seam. From exhaustive complete-pair H0,
-the shared production cohesion owner now re-stages both exact scouts at a safe camp-adjacent
-physical cursor and releases the reassembled pair to ordinary homeward boundary ownership without
-altering outing identity, geometry, timing, actor paths, or outcome credit. The focused control and
-full owning case are green; this is not live lifecycle credit.
-
-The next necessary claim is the unchanged natural T01 incident on an exact committed binary:
-ordered paired boundary crossing, camp dematerialization, canonical surviving return, final report,
-and matching authoritative decision. No T02 work begins before that one-run chain is green.
-
-Do not extend a deadline or change geometry merely to force success. Once the natural incident is
-green, the next claim is to continue the decided physical owner through the bandit shakedown
-lifecycle.
+Production proof must distinguish a valid alternate/recentered transfer from genuine physical
+entrapment on the unchanged world, then complete the unchanged natural ordered chain: paired
+physical crossing -> camp dematerialization -> canonical surviving return -> eligible final report
+-> matching authoritative decision. `HC-R01` remains stable; no subordinate red ID is required.
 
 ## Boundaries
 

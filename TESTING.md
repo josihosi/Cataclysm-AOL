@@ -25,293 +25,65 @@
 
 ## Latest relevant evidence
 
-- Observer performance/save neutrality is checkpointed at `117857f551`; authoritative casualty
-  intervention and both-faction reconciliation are checkpointed at `1e6a0924e7`.
-- Focused owner tests cover roster identity, transactional route/handoff, cohesion,
-  unload/writeback, physical return/report, no-progress loss, and report/decision matching. They do
-  not close the live lifecycle outcome.
-- `[local_handoff]` passes 950 assertions in two cases with fixed seed `123456` on the current
-  homeward-path repair. It
-  proves a pair with
-  existing local paths can leave a bubble several overmap tiles from camp, retain/rebuild physical
-  routes, traverse intermediate loaded/unloaded ownership, and dematerialize together at camp. It
-  now also proves that the first ordinary NPC turn after real materialization reduces every
-  nontrivial member-to-stage distance, and that a schema-10 homeward pair routes around its
-  forbidden watch OMT on its first physical motor turn.
-  `WaitStepLedgerContractTest` passes all 38 tests on `c74427ca37`; a completed wait with retained
-  wilderness flavor now sends no spurious input, while unknown confirmations remain blocking. The
-  full harness fixture contract passes 155 tests.
-- Run `20260807_135056` used `307e43efda+SDL3`, executable SHA-256
-  `fd7f9d5ee742957f66e63173dee8125b5fc99038f744d310d9525531a2182fae`. It proved the forward
-  handoff/ingress/dematerialization, normal watch report, and exact `returning_home` handoff at
-  `(164,34,0)`. The full six-hour post-observation window then produced no homeward boundary,
-  dematerialization, or returned-member event. The later `SPACE`/unknown-command abort was
-  post-window harness behavior, not a gameplay interruption.
-- Run `20260807_140347` on `c74427ca37+SDL3` was inconclusive: the observing handoff committed but
-  the exact pair did not assemble within its existing five-minute production guard. It did not
-  exercise the active return seam and earned no return credit.
-- Run `20260807_142412` on clean `c7be851d23+SDL3`, executable SHA-256
-  `47eacd1f94eb939c573d7852f3bb10faabf1a3219cfd75ed9ae820dd0028bcbd`, committed the observing
-  handoff and found two valid staging paths totaling twenty steps with zero failed routes. The next
-  cohesion write aborted with no movement order. This is the first live assembly-state blocker.
-- Attempt `20260807_144214` performed no feature steps: the harness correctly rejected the dirty
-  runtime source at startup. It earns no gameplay evidence.
-- Run `20260807_144329` on clean `c846f9d929+SDL3`, executable SHA-256
-  `05c198627c625c9a366f173d34bf015bc6a039ad86c939afc91026a312e3456e`, proved exact staging
-  assembly, forward boundary/dematerialization, watch completion, and the paired `returning_home`
-  handoff. It then produced no homeward boundary or camp dematerialization. The focused schema-10
-  case reproduced the stall: both default local paths crossed the forbidden watch OMT and were
-  rejected after selection. Supplying that safety rule to A* as an avoid predicate closes the
-  focused motor claim; the unchanged live incident remains pending.
-- Run `20260807_151252` used clean `caf1844007+SDL3`, executable SHA-256
-  `d1c9242a00d0b531f94ce2f3ce0b3ad753cc47a69996ad2ff9ed41935ca1fb2e`. Startup and the feature
-  debug guard were green. At minute 8400 the exact pair received 21 valid staging path steps. At
-  minute 8410 member 4 was `(3936,829,0)->(3936,828,0)` and member 5 was
-  `(3935,828,0)->(3936,829,0)`: both were adjacent, `movement_orders=0`, `assembled=no`, and
-  `abort=yes`. The terminal verdict was `blocked_scout_to_decision_pair_handoff_missing`; no live
-  credit reaches the repaired homeward seam.
-- Checkpoint `1844bc8324a3` closes that exact staging mismatch. Run `20260807_152913` proves exact
-  two-member assembly, forward travel, watch completion, and a later valid `returning_home`
-  handoff at route position `(164,34,0)` with owner epoch 3. Earlier materialization attempts were
-  correctly rejected because the loaded bubble lacked paired entry/staging positions. The valid
-  handoff still produced no later homeward boundary or camp dematerialization through the observed
-  window, so return/report/decision credit remains blocked at the next physical-owner seam.
-- Checkpoint `8f642ddd7a` passes 1,102 `[local_handoff]` assertions with seed `123456`. It proves
-  safe A* selection, byte-inert partial camp arrival, complete loaded pair arrival, and exact camp
-  dematerialization. It does not prove that the live abstract pair can enter local ownership.
-- Checkpoint `30b27b9d5f` removes the destructive post-window rearm. Checkpoint `a629eb804d` shares
-  the ecology watch session across console reopen; `[debug_console]` passes 1,122 assertions in 11
-  cases. The original terminal identity can now publish after its active row disappears.
-- Run `20260809_030013` used clean `a629eb804d+SDL3`, executable SHA-256
-  `31f170ce99d99489ce947652c533c7048c607dbd1be2fecb35b6bdbce90bac4f`. Fresh artifacts are
-  `ecology_incident_5285093.json` (SHA-256 `238382595f0526283653ac1ef90b97b974797780051c5fc326dc5f5ba5df9d28`)
-  and `.png` (SHA-256 `388498156e3652ffeecbd19dec54c1dcc373310a7c2c3d219694ea842f5b91f6`).
-  They bind scenario `bandit.scout_to_decision_observer_live_mcw`, run `20260809_030013`, canonical
-  generation-1 dispatch `BD-DF9E73`, natural provenance, and an empty intervention ledger.
-- That run passed publication and then correctly aborted at
-  `blocked_scout_to_decision_physical_return_not_reached_in_initial_window`. It observed abstract
-  `members_returned=2` and `returned home`, but lacked both required physical facts:
-  `phase=returning_home` local handoff and `(164,39,0)` local dematerialization. The first production
-  blocker is repeated in-bubble rejection at route `(163,33,0)` because paired entry/staging tiles
-  were unavailable.
-- Checkpoint `9c6b73adff` passes the focused advanced-resume physical-return/camp-dematerialization
-  section with 88 assertions, the owning case with 1,044 assertions, and the motor-boundary
-  negative with 159 assertions at seed `123456`. Its exact relinked macOS SDL3 executable SHA-256 is
-  `5b9a9886687926778ae38a989c86dd55d6d7069d95f916150301b4726e5e28a9`.
-- Unchanged run `20260809_033014` on that executable proves the exact generation-1 pair's
-  `phase=returning_home` local handoff at `(164,34,0)`. It published no incident because the retained
-  watch failed closed with `entity_token_mismatch` when owner changed from abstract to local. The
-  run therefore earns no camp-dematerialization, return, report, or decision credit.
-- Checkpoint `51c6810706` passes the combined watch, delta, and owner-strict intervention slice with
-  506 assertions at seed `123456`. Its exact relinked macOS SDL3 executable SHA-256 is
-  `c31b5de654665aec724a0ea0228797e4deef44b218769327eb912522106ea17b`.
-- Unchanged run `20260809_035926` on that executable published fresh incident
-  `ecology_incident_5285093.json` (SHA-256
-  `20e33a0d5c0be1a7bfa938f4edcde70ba18c40ec77429df42eddb10d10454bdb`) and `.png` (SHA-256
-  `c164ea7b000f58f853ed026e492b99064545d9b6b480e63206480db0dee2324e`). They bind the exact natural
-  generation-1 `BD-DF9E73` identity with four deltas and no interventions, proving the owner-transfer
-  observer seam closed.
-- That run still rejected every `returning_report`/`returning_home` materialization attempt because
-  the loaded bubble lacked a complete entry-plus-staging allocation, then reached abstract
-  `members_returned=2` and `returned home`. It earns no physical return, report, or decision credit.
-- Checkpoint `b998327e91` passes the exact one-adjacent-pair homeward route/motor/camp-dematerialization
-  section with 94 assertions and the full owning case with 1,054 assertions at seed `123456`.
-  Its exact relinked macOS SDL3 executable SHA-256 is
-  `d96514f3ef2a20e22fd75faa082e481a40f43baa357b2367a8141403508c1ea7`.
-- Unchanged run `20260809_042151` on that executable published the fresh natural generation-1
-  identity-bound incident pair and kept startup/debug guards green. It still emitted repeated
-  `loaded bubble lacks paired entry or staging positions` rejections for `returning_report` and
-  `returning_home`, then reached abstract `members_returned=2`/`returned home` without either the
-  required return handoff or `(164,39,0)` dematerialization. The next proof must split that aggregate
-  receipt into exact candidate-route and entry/staging counts before another behavior change.
-- Checkpoint `3f781eecf1` adds only the bounded rejected-candidate counts; its focused route proof
-  passes 94 assertions. Exact macOS SDL3 executable SHA-256 is
-  `c99a87ed828cd90ad99dde5127bc68738fdfceab4d69f2e06cb1e064f207524c`.
-- Unchanged run `20260809_043442` on that executable published the fresh natural identity-bound
-  incident pair and proved the exact generation-1 `phase=returning_home` local handoff at
-  `(164,34,0)`, epoch 3. The pair remained loaded/local through scheduler hours 145-148, while no
-  homeward boundary, camp dematerialization, abstract return, report, or decision appeared. The
-  current logs do not expose member positions or path state, so the next proof is a cadence-bounded
-  read-only motor receipt rather than a guessed movement fix.
-- Checkpoint `8ab8fcb84b` adds that hourly/cadence-bounded read-only receipt. It also replaces two
-  test-only references to a handoff object invalidated by transactional vector replacement with
-  value snapshots. Focused `[local_handoff]` proof passes 94 assertions and the owning case passes
-  1,054 assertions. Its exact macOS SDL3 executable SHA-256 is
-  `b96ef49272fef891c4770da18ed50674af67f1d98fc131057f44058107999577`.
-- Unchanged run `20260809_045732` on that executable published the fresh natural identity-bound
-  incident pair, but never created a local `returning_home` owner, so the motor receipt correctly
-  had no subject. After repeated materialization rejection, the abstract reconciler nevertheless
-  credited `members_returned=2`/`returned home` with no camp dematerialization. The current red seam
-  is therefore the return-credit gate, not an unobserved motor guess.
-- Checkpoint `588cf29c69` passes 1,069 assertions in the full owning case and 152 assertions in the
-  adjacent normal-scout assessment/report case at seed `123456`. The tests use the production
-  handoff and dematerialization APIs to prove that no-resume and off-camp-resume states cannot grant
-  schema-10 return credit, an exact at-camp resume reconciles once, and local ownership does not
-  rebase the strategic return deadline. Its exact macOS SDL3 executable SHA-256 is
-  `4ceec8f8003cb35c12fc9bceedd5d11181022e204a99091ba3cbb82aee05e0c2`.
-- Unchanged run `20260809_053039` on that executable published fresh incident
-  `ecology_incident_5285093.json` (SHA-256
-  `9e8439eb3026d51ee4cbf214d300468e454078b28cb31b9aa3eb144cf104fb10`) and `.png` (SHA-256
-  `fb7aac46ee0bc36a656259c814f56109781c1cd56c729acf621c222ff9b6ff84`). It bound the exact natural
-  generation-1 identity with no intervention, withheld abstract return/report/decision credit,
-  committed the pair to local `returning_home` ownership at `(164,34,0)`, and produced no camp
-  dematerialization.
-- The same run's bounded motor receipt held member 4 at `(3936,828,0)` and member 5 at
-  `(3936,829,0)` for four scheduler hours. Both retained goal `(164,39,0)`, mission 10,
-  `is_travelling=yes`, `has_omt_destination=yes`, `omt_path=6`, `local_path=0`,
-  `motor_inbounds=yes`, `homeward_owned=yes`, and `boundary_owned=yes`. The receipt does not expose
-  the selected boundary departure/exit, so it cannot yet distinguish arrival rollback from a path
-  that never reaches its departure.
-- Checkpoint `501b66c61f` adds only that missing boundary assignment. Its exact macOS SDL3
-  executable SHA-256 is
-  `56914f6692fab6bf40cc4e3f86d044d29854ddb063d186a4e9349799e5614cb9`.
-- Attempt `20260809_054621` stopped before the active seam because OCR split the visibly correct
-  `Armed BD-DF9E73` text across tokens. Its screenshot proves the watch was armed, but the guarded
-  abort earns no feature evidence; one unchanged exact-binary rerun was therefore necessary.
-- Unchanged run `20260809_055430` published fresh incident `ecology_incident_5285093.json`
-  (SHA-256 `121030599bf50f05a98dae123f8cabe97400c0aceb0461d4b6ea8a0fe707a5a4`) and `.png`
-  (SHA-256 `b3dac4704bd34add77beab755a3deaba8eed68c72ce55313f98732247e909af0`). Startup, debug,
-  identity, and intervention guards were green; the exact generation-1 pair committed local
-  `returning_home` epoch 3 at `(164,34,0)`, with no later camp dematerialization or return credit.
-- Five bounded receipts hold member 4 at `(3936,828,0)` before departure `(3935,947,0)` and member
-  5 at `(3936,829,0)` before departure `(3936,947,0)`. Their adjacent exits are `(3936,948,0)` and
-  `(3937,948,0)`; both remain `at_boundary_departure=no` with `local_path=0`. This rules out
-  boundary-completion rollback but does not yet distinguish route-solver/avoid rejection from a
-  nonmoving `move_to_next` call.
-- Checkpoints `d1dca64971` and `959f3c0e96` add the hourly/per-member route-result receipt and remove
-  its mistaken dependency on the unrelated performance-profiler session. Exact macOS SDL3 binary
-  SHA-256 for `959f3c0e96` is
-  `017bdfc1021cf4faba7285851317469d9961dd925cbc58088c1c7200f05ffd12`.
-- Run `20260809_060937` reached the local owner but emitted no route receipt because of that wrong
-  profiler gate; run `20260809_062152` did not reach local homeward ownership. Both are non-credit.
-  The third-round fuse run `20260809_063218` reached exact generation-1 epoch 3 and published fresh
-  incident `ecology_incident_5285093.json` (SHA-256
-  `e9fefa414b4d4100adbb26b1b574792da7b9ffc45d4be8d76f6129362189dd58`) and `.png` (SHA-256
-  `1db08b2ada76ca5c8233035185ae8d1ed9fe9d70a6f6ecce719a10547e58aa05`).
-- In that run, member 4 repeatedly solved from `(3936,828,0)` to `(3935,947,0)` with
-  `route_found=no`, `route_safe=no`, `path_before=0`, action `move_pause`, and moves `100 -> 0`.
-  This proves the movement call is not reached. The current combined solve still does not identify
-  whether ordinary terrain/NPC avoidance, covert nonreentry avoidance, or their intersection empties
-  the route.
-- Checkpoint `2f916249a0` adds `DEBUG_CLAIRVOYANCE`-gated local-vector comparison solves without
-  assigning the actor path. Its exact macOS SDL3 executable SHA-256 is
-  `047cea133e520acfb4bca50bf956da6c9707a5cd12819713823b5e7199998ac9`.
-- Attempt `20260809_064849` stopped during the first wait on a real ordinary-game “zombie spotted”
-  interruption. The controller correctly declined to answer the unmodeled survival prompt; the run
-  never dispatched and earns no ecology evidence.
-- Unchanged retry `20260809_065048` published fresh incident `ecology_incident_5285093.json`
-  (SHA-256 `de931bef55e6cd42290854b83bf37967c78641e413729554a333145fbdcc4e69`) and `.png`
-  (SHA-256 `61655dfd8df6088576b978a3f9bbe9165c672614246d5e6f8691beba5fbb79e1`). It reached exact
-  generation-1 epoch 3 with no camp dematerialization or return credit.
-- Four hourly route receipts on that run report `baseline_found=no`, `npc_avoid_found=no`,
-  `covert_avoid_found=no`, and actual `route_found=no`, with every path size zero. This proves the
-  far selected departure is unreachable under ordinary point pathfinding and rules out both
-  avoidance layers as the cause. The next proof must exercise route-aware physical progress toward
-  the next persisted OMT without prematurely completing the boundary transaction.
-- Checkpoint `6287923514` passes the accepted obstructed-route red-to-green control: before the
-  change, both selected point routes were empty and the only four failures were expected movement
-  assertions (132/136); after the change, both members moved toward the independently reachable
-  next persisted OMT and later physically dematerialized at camp (266/266). The full owning case
-  passes 1,241 assertions, and the changed object/test relink is green with `-Werror`.
-- Checkpoints `66e137b56a` and `0a124a769b` close two observer false negatives without sending game
-  input or weakening identity: split active-wait progress is passive, and exact screen phrases can
-  be reconstructed from overlapping, left-to-right OCR observations. The combined owning scope
-  passes 62 tests; the preserved `20260809_073419` arming artifact matches exact `Armed BD-DF9E73`,
-  while wrong ID, different rows, and reversed order fail.
-- Final proof-round run `20260809_074804` used exact `6287923514+SDL3`, executable SHA-256
-  `953947702c6787bdc4a386f51de13999eebff08b1c7162e6b42cb80819378169`. Fresh incident
-  `ecology_incident_5285093.json` has SHA-256
-  `411d036361611381f290a1bc284e7aadd2e41e58d05abe3dd52f441dc5c9dee8`; its paired PNG is
-  `a2ca4f809ab6ed5fe5ce63379133d6008a921392df69d1a629db06e41870db2d`. The pair binds scenario,
-  run, exact generation-1 canonical identity, four deltas, and an empty intervention ledger.
-- That run committed local `returning_home` epoch 3 at `(164,34,0)` and the fallback advanced the
-  members from `(3936,828/829,0)` to `(3941/3940,912,0)`. Four later hourly receipts selected
-  departures `(3935/3936,947,0)` but reported empty baseline/NPC/covert/combined paths and
-  `omt_fallback` with unchanged positions. The audit correctly withheld camp dematerialization,
-  returned-member, report, and decision credit. The three-run fuse is closed; no fourth unchanged
-  probe is admissible without the next discriminator.
-- Checkpoint `be77732d45` adds the bounded complete-pair discriminator. Its focused synthetic
-  control distinguishes H1 from H0 across 322 stable ordered candidates, passes 320 assertions,
-  and proves actor positions, actor paths, and serialized world state remain inert. It does not
-  classify the exact run: the preserved save predates the loaded members-4/5 handoff and no exact
-  complete-candidate receipt exists. The DE67 `T01-DISC` receipt is therefore blocked, not green.
-- Fresh run `20260809_145108` on exact `f878f4f1e6+SDL3` (SHA-256
-  `40d77ab0db3147674d0bffa77f3a91fad4dd8d5472576bc9b5480f2d85b312f2`) supplies the missing
-  production discriminator. Four natural, zero-intervention post-handoff receipts bind site
-  `overmap_special:bandit_camp@164,39,0`, generation 1, and members 4/5; each exhausts the same 128
-  complete pairs with `relationships_complete=yes`, `safe_both=no`, and H0. The accepted selector
-  is `build_logs/de67/T01-ACQ-C1/production_h0_discriminator.selector.json` (SHA-256
-  `29a151c0e98c63fb21624b4c60cac6885606887868a25554d973b7c9f2d56be4`). Local coordinates are
-  observations, not semantic subject identity, so the earlier coordinate-specific rejection is
-  superseded without changing the functional specification.
-- Checkpoint `bcadaf16b1` advances an assessed exhaustive-H0 pair through the shared production
-  cohesion owner without changing outing/member identity, nonreentry, geometry, actor paths, or
-  outcome credit. The focused red control failed at 16/17 assertions with zero movement orders;
-  green passes 59/59. The full owning case passes 1,354/1,354 assertions, and the redirected macOS
-  SDL3 test build exits zero. Receipt:
-  `build_logs/de67/T01-H0-ROUTE-W3/terminal-receipt.json` (SHA-256
-  `bbe5ed9cf1dcc830ebc8d9831b878e310b5e1ba070c13eaef7ba060fc0810fe3`). This focused result is
-  not live lifecycle credit.
+- Exact-head natural run `20260810_004648` used
+  `dev@274c4c1f239b7c68702a0b76321cb271906dd892+SDL3`, executable SHA-256
+  `fbd9351d46c19b868893850b22fd32d73514469f02f82c7cfe17e52a4cea224f`, unchanged scenario
+  `bandit.scout_to_decision_observer_live_mcw`, generation 1, members 4/5, and zero intervention.
+- The pair materialized at OMT `(164,34,0)` and physically reached camp-adjacent OMT
+  `(164,38,0)`. Four production attempts each evaluated the same 128 complete adjacent boundary
+  pairs with complete relationships; every attempt reported `safe_both=no`.
+- Production nevertheless returned the same independently scored unsafe pair. Both baseline paths
+  were empty and fallback consumed moves without movement. No paired boundary crossing, camp
+  dematerialization, canonical return, final report, or decision occurred.
+- Compact evidence:
+  `build_logs/de67/T01-LIVE-C4/terminal-receipt.json` (SHA-256
+  `97964cc90e373d99f931cf9c422fe25f018e80a578b27e50ba25237be6efaa0a`) and
+  `build_logs/de67/T01-LIVE-C4/boundary-rejection-reasons.selector.json` (SHA-256
+  `3a1688c630b670447b7c296d3875ca49bcec805def2cdad6967e17471fe82656`).
+- C4 proves the production selection/transition defect. It does not prove geometry impossibility or
+  genuine physical entrapment under every valid ownership transition.
 
-## Pending proof contract
+## Pending production proof contract — `HC-R01`
 
-Claim: one real bandit camp naturally creates terrain knowledge, dispatches its exact scout pair,
-travels and watches, completes or burns coherently, physically returns at least one survivor,
-creates one eligible final report, and enters the authoritative camp decision owner in one run.
+`preconditions -> authoritative owner -> transition -> observable fact -> artifact -> pass/fail`
 
-Preconditions and interventions: derive the southwest fixture from the original idle McWilliams
-source; retain the five-member camp at `(164,39,0)`, road-connected target `(164,30,0)`, zero leads,
-no active outing, deterministic clock, and `DEBUG_CLAIRVOYANCE`. The sole player transform is
-`[0,24,0]`, moving the observer to OMT `(162,36,0)`, two west and one south of the handoff waypoint
-`(164,35,0)`. Record transform receipts. Do not inject any claimed ecology transition.
+Preconditions: exact committed source and binary; unchanged southwest McWilliams fixture, five-member
+camp at `(164,39,0)`, road-connected target at `(164,30,0)`, zero leads, no active outing,
+deterministic production clock, unchanged player transform and scenario timing,
+`DEBUG_CLAIRVOYANCE`, natural generation and exact member identities, and zero ecology
+intervention. Harness setup stops before the first ordinary wait and may not inject a claimed
+transition.
 
-Causal boundary: the loaded idle camp with zero leads and no active outing immediately before the
-first ordinary wait.
+Authoritative owner: the matching-generation local ecology movement owner plus the single
+reality-bubble/overmap handoff adapter. Ordinary NPC/LLM movement and the abstract outing cursor
+yield while the local owner is active. No duplicate owner may advance the pair.
 
-Real path: hourly structural scheduler -> bounded terrain discovery -> exact-pair dispatch ->
-ordinary overmap route/handoff/cohesion -> watch and egress -> physical return owner -> canonical
-return packet and report -> camp assessment/decision.
+Transition: on actual loaded geometry, choose only a route-reachable paired physical boundary
+transition that preserves nonreentry, then commit the crossing before atomically resuming the
+matching abstract outing. If no valid current transition exists, retain/replan local ownership with
+no physical movement, route/ownership progress, or return/report/decision credit.
 
-Expected transition: the observer follows the same stable camp, outing generation, pair, route,
-survivor, report, and decision identities through one compact incident without a debug ecology
-intervention.
+Required discriminator: preserve the C4 unsafe-pair selection as a failing control; prove a valid
+alternate/recentered ownership transfer can cross physically when one exists; and prove a genuinely
+unavailable transition stays non-credit and is classified rather than forced. The proof must
+distinguish ownership-scope failure from physical entrapment without changing the map or assigning
+an actor path directly.
 
-Negative controls required by the claim: preflight zero lead/outing; no report knowledge from an
-absent carrier; an empty/all-dead return cannot satisfy the survivor artifact; stale selection,
-duplicate owner, or mismatched generation/report identity is red.
+Observable fact: the unchanged natural pair keeps camp, outing, generation, epoch, and member
+identity through paired physical boundary crossing, camp dematerialization, canonical surviving
+return, eligible final report, and matching authoritative decision. A retained/replanned failure
+must expose the first classified blocker with no movement or lifecycle credit.
 
-Time boundaries: the fixture's frontier timing derives from the production scheduler and its
-persisted deadline. Handoff waits follow the scheduler's hourly cadence. The unchanged scenario's
-post-observation wait spans the production assessment's existing two-hour no-progress boundary and
-later return cadences; its duration is probe execution space, not a gameplay deadline or acceptance
-substitute. The controller proves the actual relative clock advance and the pass still requires the
-authoritative outcome below.
+Artifacts: identity-bound focused-test receipt, boundary-transition selector, compact incident JSON,
+and paired screenshot where UI state matters, all bound to source, executable, fixture, scenario,
+run, camp, outing, generation, epoch, and members. Raw build/live streams remain redirected to
+worker-owned evidence files.
 
-Pass: a surviving physical return, final non-provisional report, and matching authoritative camp
-decision appear in the same structured incident. Startup, schema validity, dispatch, handoff,
-assembly, or visible wait completion alone is non-credit.
+Pass: the ordered production chain completes on the unchanged natural scenario and the focused
+controls prove reachable crossing plus inert failure behavior. Fail: an unreachable pair is
+selected or pursued; physical position, route/ownership progress, or outcomes change without
+crossing; identity or owner duplicates; geometry, fixture, or timing changes; teleportation;
+direct path assignment; abstract-return shortcut; or retained ownership remains unclassified.
 
-Failure: preserve the run and name the first reproducible production or visibility seam that blocks
-the pass condition. The next work claim must be necessary to close that exact gap.
-
-Identities: record source commit, executable identity, fixture manifest/hash, scenario name, run
-ID, authoritative owner audit, compact incident JSON, and paired screenshot where UI state matters.
-
-Necessary validation before and through the next live probe:
-
-```sh
-python3 -m unittest tools.openclaw_harness.test_fixture_contract
-python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout \
-  bandit.scout_to_decision_observer_live_mcw \
-  > build_logs/T01-live-probe.stdout-stderr.log 2>&1
-```
-
-The one-OMT fallback, bounded discriminator, natural H0 classification, and shared H0 route-owner
-progress are focused-green. The next proof is the unchanged natural scenario on an exact committed
-binary; it still requires ordered paired boundary crossing and camp dematerialization before the
-canonical surviving return, final report, and matching decision. A debug-assigned path,
-geometry/timing/fixture change, synthetic coordinate replay, or direct outcome credit earns no
-credit.
-
-Cross-platform performance/save/runtime qualification begins after the natural vertical incident
-is green; until then only the Mac route exercised here is claimed.
+Cross-platform performance, save, runtime, and packaging qualification remains downstream of the
+green natural vertical incident.
