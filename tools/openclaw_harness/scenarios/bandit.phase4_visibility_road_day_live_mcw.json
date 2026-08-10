@@ -167,7 +167,7 @@
           "sight_points=3",
           "forward_candidates=1",
           "first_forward_omt=(136,51,0)",
-          "first_forward_distance=1",
+          "first_forward_distance=3",
           "first_forward_acquired=yes",
           "outcome=observed",
           "threat_omt=(136,51,0)"

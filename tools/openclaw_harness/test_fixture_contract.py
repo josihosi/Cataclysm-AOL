@@ -4805,6 +4805,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "first_forward_omt=(136,51,0)",
             audit["required_line_patterns"][1],
         )
+        self.assertIn(
+            "first_forward_distance=3",
+            audit["required_line_patterns"][1],
+        )
 
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
         fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"
