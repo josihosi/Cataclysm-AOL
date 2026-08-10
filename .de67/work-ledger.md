@@ -14,6 +14,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   The exact `a46b0b3558+SDL3` executable matches current runtime-relevant source; commits after it
   change only `.de67` state.
 
+  Task `R002-M1` has a 3,600-second estimate derived from prior successful visibility/quiet rows of
+  roughly 1.5–2.25 minutes each and the historically noisy structural-signal row's observed upper
+  runtime of roughly 18 minutes. It covers narrow fixture checks, the ordered live matrix, and the
+  first-divergence diagnosis. It was dispatched at 2026-08-10 23:00:59 CEST with immutable deadline
+  2026-08-11 00:00:59 CEST. The worker owns focused contract checks only; the coordinator owns every
+  live probe and verdict.
+
+  `R002-M1` ended on time with a test-definition finding. Exact quiet run `20260810_230140`
+  advanced from 3:59:53 PM to 6:59:53 and emitted `now_minutes=8160,8220,8280`; the camp stayed idle
+  with only `structural_routine` leads. OCR omitted the after-clock meridiem, so the wait ledger chose
+  a 15-hour wrap despite computing the correct 10,800-second alternative. The quiet scenario alone
+  omitted the existing guarded exact-artifact meridiem-ambiguity opt-in used by peer Phase-4 rows.
+  Change that contract and its focused test before rerunning.
+
+  Task `R002-M2` has the same 3,600-second measured envelope and was dispatched at
+  2026-08-10 23:04:37 CEST with immutable deadline 2026-08-11 00:04:37 CEST. It first guards the
+  quiet-row ambiguity contract, then resumes the ordered live matrix only after the focused test and
+  coordinator diff review pass.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
