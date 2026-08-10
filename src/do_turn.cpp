@@ -5873,6 +5873,12 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         route.route_cost = bandit_live_world::normalize_structural_live_round_trip_cost_omt(
                                watch_path.cost, source_node_cost, diagonal_departure );
         route.reachable = route.route_cost >= 0 && route.route_cost <= 18;
+        if( !route.reachable ||
+            bandit_live_world::make_structural_watch_shared_route(
+                site.anchor, candidate, watch_path.points, target_footprint ).empty() ) {
+            route.reachable = false;
+            return route;
+        }
         watch_paths.emplace_back( candidate, watch_path.points );
         return route;
     };
