@@ -116,3 +116,34 @@ boundary transition, and add a focused control reproducing the asymmetric-arriva
 Disposition: applied as an implementation classification; keep `R-001` red, preserve the unchanged
 scenario and identities, and require changed source plus the focused asymmetric-arrival control
 before another natural probe.
+
+### T01-M3 — homeward abstract resume never reacquired the loaded owner
+
+Source: worker finding
+
+Deadline evidence: `T01-M3` reported an on-time `unexpected` finding before its
+2026-08-10 20:54:05 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** homeward materialization/recenter gate remained unresolved
+
+**Diagnosis:** The first contradicted premise was that the unchanged initial window would hand the
+assessed exact pair back from abstract return to a loaded homeward owner after the new bounded-pair
+motor passed focused proof. Exact commit `0d082eda34` naturally completed the observing handoff,
+paired ingress crossing, and observing dematerialization, then entered `returning_report` and
+`returning_home`; however every remaining production attempt rejected materialization with `loaded
+bubble lacks paired entry or staging positions`. The same rejection preceded the later successful
+handoff in T01-M2, so the new cohesion patch is not source evidence of an observing regression.
+Current source can scan a later route/recenter candidate only behind resume-state predicates, while
+the terminal rejection does not emit those predicates or the initial entry/staging counts. This is
+an implementation plus tooling gap already covered by the DFS recentered-transfer proof route, not
+a new DFS mechanism. Direct evidence: `build_logs/de67/T01-M3/live-owner.selector.log` and
+`.userdata/dev-harness/harness_runs/20260810_203544/probe.report.json`.
+
+**Suggested mutation:** No guideline mutation is due without a deadline incident. Preserve the
+focused bounded-pair candidate, add the smallest materialization discriminator for resume flags and
+pair counts, and fix the normal assessed-return recenter gate only if those source-grounded facts
+uniquely identify it before rerunning the unchanged scenario.
+
+Disposition: applied as an implementation/tooling classification; keep `R-001` red and retain
+`0d082eda34` as a coherent checkpoint because it closes the independently reproduced pair-split
+mechanism without claiming the natural T01 verdict.

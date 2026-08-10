@@ -46,7 +46,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   the focused controls about 24 seconds; the remaining time covers the now-localized cohesion-owner
   source/test change, its incremental Mac build, and exact-commit identity check.
 
+  `T01-M3` ended on time with an unexpected production finding after checkpointing `0d082eda34`.
+  Its focused asymmetric-arrival control passed, but the unchanged live route entered abstract
+  `returning_home` and repeatedly rejected loaded materialization because no paired entry/staging
+  positions were exposed before the initial window ended. The next route preserves that bounded-pair
+  checkpoint, exposes the resume predicates and counts at this rejection, and changes the normal
+  assessed-return recenter gate only when that discriminator uniquely supports it.
+
+  Trial task `T01-M4` has a 1,800-second estimate: the unchanged natural probe measured about 10
+  minutes, focused tests about 24 seconds, and the remaining time covers the localized
+  materialization discriminator/fix, incremental Mac build, and exact-commit identity check.
+
 ## Batch result
 
-Open; `T01-M1` and `T01-M2` ended with on-time findings and zero cumulative misses. `T01-M3` is being
-prepared from changed causal evidence; `R-001` remains red.
+Open; `T01-M1` through `T01-M3` ended with on-time findings and zero cumulative misses. `T01-M4` is
+being prepared from changed materialization evidence; `R-001` remains red.
