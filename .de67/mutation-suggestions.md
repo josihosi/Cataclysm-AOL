@@ -31,3 +31,16 @@ Source: watcher finding
 After accepting R-001, the coordinator exited with other red DFS claims still available instead of
 refilling the work ledger and continuing. A batch completion is a refill boundary, not a workflow
 completion, unless the DFS has no red work or an owner-set stop condition has fired.
+
+### R-002 staffing audit — strong model used for every worker
+
+Source: watcher finding
+
+**Short verdict:** wrong worker or model / cheap lane unavailable
+
+Mac thread state records sixteen spawned DE-67 workers from T01 through the current R-002 preflight,
+all using `gpt-5.6-sol` at `high`, including understood build, operator, fixture, and focused-test
+tasks. The current coordinator spawned Huygens on the same strong lane. Apply the existing weakest-
+sufficient rule concretely when a cheaper model is available; reserve Sol/high for real causal
+ambiguity and Sol/xhigh for independent mutation review. If no cheap lane is exposed, record that
+availability fact once rather than pretending worker selection occurred.
