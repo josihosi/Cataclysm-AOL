@@ -4776,6 +4776,36 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertTrue(wait["allow_exact_artifact_meridiem_ambiguity"])
 
+    def test_phase4_road_day_serializes_approach_before_exact_watch_visibility(self) -> None:
+        scenario = load_scenario("bandit.phase4_visibility_road_day_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+        approach_label = "wait_first_1_hour_for_phase4_visibility_road_day_approach"
+        visibility_label = "wait_second_1_hour_for_phase4_visibility_road_day_observer"
+        audit_label = "audit_phase4_visibility_road_day_artifact"
+        approach = steps[labels.index(approach_label)]
+        visibility = steps[labels.index(visibility_label)]
+        audit = steps[labels.index(audit_label)]
+
+        self.assertLess(labels.index(approach_label), labels.index(visibility_label))
+        self.assertLess(labels.index(visibility_label), labels.index(audit_label))
+        self.assertEqual(
+            approach["artifact_state_patterns"],
+            ["scheduler_hour=156", "now_minutes=9360"],
+        )
+        self.assertEqual(
+            visibility["artifact_state_patterns"],
+            [
+                "scheduler_hour=157",
+                "now_minutes=9420",
+                "bandit_live_world structural_visibility:",
+            ],
+        )
+        self.assertIn(
+            "first_forward_omt=(136,51,0)",
+            audit["required_line_patterns"][1],
+        )
+
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
         fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"
         resolved = resolve_fixture_payload(
