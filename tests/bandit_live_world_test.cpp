@@ -16602,7 +16602,7 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
 
     const auto concealed_clear = []( const tripoint_abs_omt &,
     const std::vector<tripoint_abs_omt> & ) {
-        return structural_watch_terrain_read{ true, true };
+        return structural_watch_terrain_read{ true, true, {} };
     };
 
     SECTION( "exact and fallback consume real callback reads with explicit abandonment" ) {
@@ -16632,7 +16632,7 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         const std::vector<tripoint_abs_omt> & ) {
             const int distance = std::max( std::abs( candidate.x() - target.x() ),
                                            std::abs( candidate.y() - target.y() ) );
-            return structural_watch_terrain_read{ distance == 4, distance == 4 };
+            return structural_watch_terrain_read{ distance == 4, distance == 4, {} };
         }, []( const tripoint_abs_omt & ) {
             return structural_watch_route_read{ true, 3 };
         } );
@@ -16730,7 +16730,7 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
             const bool selected = std::find( adjacent_watches.begin(), adjacent_watches.end(),
                                              candidate ) != adjacent_watches.end() ||
                                   candidate == viable_watch;
-            return structural_watch_terrain_read{ selected, selected };
+            return structural_watch_terrain_read{ selected, selected, {} };
         }, [target, adjacent_anchor, adjacent_watches, viable_watch,
         &route_lookups]( const tripoint_abs_omt & candidate ) {
             route_lookups.push_back( candidate );
@@ -16752,6 +16752,45 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK( viable_after_adjacent.selection.omt == viable_watch );
         CHECK( route_lookups == std::vector<tripoint_abs_omt> { viable_watch } );
         CHECK( viable_after_adjacent.route_reads == 1 );
+
+        const tripoint_abs_omt forest_lane_watch( 37, 39, 2 );
+        const tripoint_abs_omt observable_watch( 37, 40, 2 );
+        const oter_str_id field( "field" );
+        const oter_str_id forest( "forest" );
+        REQUIRE( field.is_valid() );
+        REQUIRE( forest.is_valid() );
+        const int field_see_cost = static_cast<int>( field->get_see_cost() );
+        const int forest_see_cost = static_cast<int>( forest->get_see_cost() );
+        REQUIRE( field_see_cost == 0 );
+        REQUIRE( forest_see_cost == 4 );
+        std::vector<tripoint_abs_omt> observable_route_lookups;
+        const structural_watch_geography_read observable_after_forest_lane =
+            bandit_live_world::read_structural_watch_geography(
+                { target }, route_anchor,
+        [forest_lane_watch, observable_watch, field_see_cost,
+        forest_see_cost]( const tripoint_abs_omt & candidate,
+        const std::vector<tripoint_abs_omt> & ) {
+            if( candidate == forest_lane_watch ) {
+                return structural_watch_terrain_read{ true, true,
+                    { forest_see_cost, field_see_cost }
+                };
+            }
+            if( candidate == observable_watch ) {
+                return structural_watch_terrain_read{ true, true,
+                    { field_see_cost, field_see_cost }
+                };
+            }
+            return structural_watch_terrain_read{};
+        }, [forest_lane_watch, &observable_route_lookups]( const tripoint_abs_omt & candidate ) {
+            observable_route_lookups.push_back( candidate );
+            return structural_watch_route_read{ true,
+                    candidate == forest_lane_watch ? 1 : 2 };
+        } );
+        REQUIRE( observable_after_forest_lane.selection.valid );
+        CHECK( observable_after_forest_lane.selection.omt == observable_watch );
+        CHECK( observable_route_lookups ==
+               std::vector<tripoint_abs_omt> { observable_watch } );
+        CHECK( observable_after_forest_lane.route_reads == 1 );
     }
 
     SECTION( "candidate cap and order are deterministic for a multi-cell footprint" ) {
@@ -16789,7 +16828,7 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
                 bandit_live_world::target_footprint_watch_distance(
                     candidate, target_footprint );
             return structural_watch_terrain_read{
-                distance == 4, distance == 4
+                distance == 4, distance == 4, {}
             };
         }, route );
         REQUIRE( fallback.selection.valid );
@@ -16862,7 +16901,7 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
                 bandit_live_world::read_structural_watch_geography(
                     footprint, route_site.anchor,
             []( const tripoint_abs_omt &, const std::vector<tripoint_abs_omt> & ) {
-                return structural_watch_terrain_read{ true, true };
+                return structural_watch_terrain_read{ true, true, {} };
             }, []( const tripoint_abs_omt & candidate ) {
                 static_cast<void>( candidate );
                 return structural_watch_route_read{ true, 3 };

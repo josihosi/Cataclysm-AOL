@@ -1101,6 +1101,7 @@ struct watch_selection_result {
 struct structural_watch_terrain_read {
     bool concealed = false;
     bool intervening_omts_clear = false;
+    std::vector<int> intervening_see_costs;
 };
 
 struct structural_watch_route_read {

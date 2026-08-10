@@ -66,6 +66,7 @@ constexpr std::size_t max_structural_watch_distance_five_terrain_reads = 64;
 constexpr int max_structural_watch_exact_route_reads = 4;
 constexpr int max_structural_watch_distance_four_route_reads = 2;
 constexpr int max_structural_watch_distance_five_route_reads = 2;
+constexpr int structural_watch_clear_day_sight_points = 3;
 constexpr std::size_t max_abstract_threat_ids = 16;
 constexpr int max_observed_defender_count = 32;
 constexpr std::size_t max_abstract_threat_id_length = 128;
@@ -15975,7 +15976,9 @@ structural_watch_geography_read read_structural_watch_geography(
         const structural_watch_terrain_read terrain = terrain_lookup(
                     candidate, read.target_footprint );
         read.terrain_reads++;
-        if( terrain.concealed && terrain.intervening_omts_clear ) {
+        if( terrain.concealed && terrain.intervening_omts_clear &&
+            structural_observer_route_is_visible(
+                structural_watch_clear_day_sight_points, terrain.intervening_see_costs ) ) {
             qualified.emplace_back( candidate, terrain );
         }
     }

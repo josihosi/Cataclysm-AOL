@@ -5839,13 +5839,17 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         if( approach.size() < 3 ) {
             return terrain;
         }
-        terrain.intervening_omts_clear = std::all_of(
-                approach.begin(), std::prev( approach.end() ),
-        [&footprint, &npc_route]( const tripoint_abs_omt & omt ) {
-            return std::find( footprint.begin(), footprint.end(), omt ) == footprint.end() &&
-                   npc_route.get_cost(
-                       overmap_buffer.ter( omt )->get_travel_cost_type() ) >= 0;
-        } );
+        terrain.intervening_omts_clear = true;
+        for( auto omt = approach.begin(); omt != std::prev( approach.end() ); ++omt ) {
+            const oter_id &omt_terrain = overmap_buffer.ter( *omt );
+            if( std::find( footprint.begin(), footprint.end(), *omt ) != footprint.end() ||
+                npc_route.get_cost( omt_terrain->get_travel_cost_type() ) < 0 ) {
+                terrain.intervening_omts_clear = false;
+                break;
+            }
+            terrain.intervening_see_costs.push_back(
+                static_cast<int>( omt_terrain->get_see_cost() ) );
+        }
         return terrain;
     };
     const auto watch_route_lookup = [&site, &npc_route, &source_node_cost, &target_footprint,
