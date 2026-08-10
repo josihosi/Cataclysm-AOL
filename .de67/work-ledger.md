@@ -82,6 +82,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   bounded hour reaching the selected watch, then lets the coordinator rerun the unchanged target
   acquisition audit. No product route change or vehicle scope is authorized.
 
+  `R002-M6` accepted the serialized-arrival harness checkpoint at `d9423c758a`; JSON validation and
+  its focused contract test passed, while the exact target and no-optic audits stayed unchanged.
+  Task `R002-M7` uses the same measured 3,600-second envelope for the coordinator-owned changed day
+  row against the exact runtime-source executable. It must produce the second-hour selected-watch
+  visibility line with forward `(136,51,0)`, acquired/observed threat, and every existing negative
+  control green; any other first divergence is a new finding and changes the next route.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
