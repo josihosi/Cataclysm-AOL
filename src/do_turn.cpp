@@ -4069,12 +4069,20 @@ bool dematerialize_live_bandit_structural_handoffs()
             shared_ptr_fast<npc> member = overmap_buffer.find_npc( snapshot.npc_id );
             const bool stable_unloaded = member && !member->is_active() &&
                                          !here.inbounds( member->pos_abs() );
+            const bool inactive_homeward_arrival = member && !member->is_active() &&
+                    here.inbounds( member->pos_abs() ) &&
+                    bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
+                    !outing.member_is_resolved( snapshot.npc_id ) &&
+                    std::find( outing.member_ids.begin(), outing.member_ids.end(),
+                               snapshot.npc_id ) != outing.member_ids.end() &&
+                    site_contains_omt( site, member->pos_abs_omt() );
             const bool loaded_homeward_arrival = member && member->is_active() &&
                     here.inbounds( member->pos_abs() ) &&
                     bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
                     site_contains_omt( site, member->pos_abs_omt() );
             if( persisted_member == nullptr || casualty_recorded || !member ||
-                member->is_dead() || ( !stable_unloaded && !loaded_homeward_arrival ) ) {
+                member->is_dead() || ( !stable_unloaded && !inactive_homeward_arrival &&
+                                       !loaded_homeward_arrival ) ) {
                 preflight_failed = true;
                 break;
             }
@@ -4111,12 +4119,21 @@ bool dematerialize_live_bandit_structural_handoffs()
             }
             const bool stable_unloaded = !backup->member->is_active() &&
                                          !here.inbounds( backup->member->pos_abs() );
+            const bool inactive_homeward_arrival = !backup->member->is_active() &&
+                    here.inbounds( backup->member->pos_abs() ) &&
+                    bandit_live_world::scout_phase_requires_homeward_only(
+                        site.active_outing.phase ) &&
+                    !site.active_outing.member_is_resolved( snapshot.npc_id ) &&
+                    std::find( site.active_outing.member_ids.begin(),
+                               site.active_outing.member_ids.end(), snapshot.npc_id ) !=
+                    site.active_outing.member_ids.end() &&
+                    site_contains_omt( site, backup->member->pos_abs_omt() );
             const bool loaded_homeward_arrival = backup->member->is_active() &&
                     here.inbounds( backup->member->pos_abs() ) &&
                     bandit_live_world::scout_phase_requires_homeward_only(
                         site.active_outing.phase ) &&
                     site_contains_omt( site, backup->member->pos_abs_omt() );
-            if( !stable_unloaded && !loaded_homeward_arrival ) {
+            if( !stable_unloaded && !inactive_homeward_arrival && !loaded_homeward_arrival ) {
                 return false;
             }
             backup->member->goal = npc::no_goal_point;
