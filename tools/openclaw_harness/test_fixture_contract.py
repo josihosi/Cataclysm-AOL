@@ -4770,6 +4770,12 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
 
+    def test_phase4_quiet_wait_allows_exact_artifact_meridiem_ambiguity(self) -> None:
+        scenario = load_scenario("bandit.phase4_quiet_former_radar_live_mcw")
+        wait = next(step for step in scenario["steps"] if step["kind"] == "long_wait")
+
+        self.assertTrue(wait["allow_exact_artifact_meridiem_ambiguity"])
+
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
         fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"
         resolved = resolve_fixture_payload(

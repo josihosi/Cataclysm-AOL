@@ -56,6 +56,7 @@
       "choice_key": "7",
       "expected_duration": "3h",
       "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
       "pre_menu_choice_key": "w",
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the three-hour duration",
       "completion_wait_seconds": 45.0,
