@@ -186,6 +186,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   and one unchanged natural run. It was dispatched at 2026-08-10 22:16:58 CEST with immutable
   deadline 2026-08-10 22:46:58 CEST.
 
+  `T01-M16` ended on time with an unexpected tooling verdict after checkpoint `63d875555f`, a green
+  1,798-assertion owning test, and exact run `20260810_222228`. The same members 4/5 naturally
+  returned, and production emitted both `structural outing returned home lead=frontier_probe:0` and
+  `members_returned=2`. The scenario guard nevertheless aborted before final save/report/decision
+  proof because it additionally required two phase-specific handoff/dematerialization strings. The
+  authoritative return facts were already matched in the same identity-bound audit; this is a
+  false-red harness selector, not another product transition gap.
+
+  Trial task `T01-M17` has a 600-second estimate: the unchanged scenario contract test is local and
+  the correction only removes the two redundant phase-specific receipt requirements from the
+  physical-return abort guard while retaining authoritative return and member-count proof. Under the
+  current worker-boundary guideline, the worker returns a diff and focused test only; the
+  coordinator owns acceptance and checkpointing.
+
 ## Batch result
 
 Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
@@ -194,4 +208,5 @@ was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-c
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
 focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
-`T01-M16` is active on that changed owner route. `R-001` is red.
+`T01-M16` ended on time after authoritative natural return exposed a false-red guard. `R-001` is red
+pending continued final-report and decision proof.
