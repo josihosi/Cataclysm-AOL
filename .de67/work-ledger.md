@@ -56,6 +56,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   candidates before they consume route reads. Terminal window 21 made random cycle 1 due on the
   stored `test-and-task-guidelines.md` lane, blocking further product dispatch until resolution.
 
+  Task `R002-M4` has the same 3,600-second measured envelope and changes the causal route before any
+  new live probe. The bounded geography owner must reject source-adjacent exact-ring candidates
+  before invoking or charging the route callback, while preserving M3's canonical-path
+  constructibility check. Its focused owner test must prove that four impossible adjacent
+  candidates cannot starve a later constructible exact-ring candidate; only a reviewed green diff
+  may advance to an exact committed build and the changed clear-day control. Scouts remain on foot.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
