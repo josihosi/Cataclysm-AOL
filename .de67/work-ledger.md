@@ -89,6 +89,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   visibility line with forward `(136,51,0)`, acquired/observed threat, and every existing negative
   control green; any other first divergence is a new finding and changes the next route.
 
+  Exact `R002-M7` run `20260811_000420` ended on time after reaching the intended watch. Both
+  serialized transitions, current watch `(139,53,0)`, forward target `(136,51,0)`, clear weather,
+  three sight points, no optics, and error guards passed, but the target was not acquired. Direct
+  read-only decoding of the saved overmap and the owning `line_to` route proved why: the watch is
+  forest, and its target line crosses forest `(138,53,0)` and `(137,52,0)` before road target
+  `(136,51,0)`. Each intervening forest costs four sight points, while the agreed ordinary clear-day
+  budget is three. The live watch adapter qualifies concealment and foot-passability but not an
+  observation lane, so it can select a physically reachable watch that cannot watch.
+
+  Task `R002-M8` retains the measured 3,600-second envelope and changes that owning production
+  premise before another probe. Candidate qualification must reject a target-facing line whose
+  intervening terrain already exceeds the DFS-agreed three-point clear-day terrain budget, without
+  removing concealed watch tiles, fallback rings, bounded reads, canonical route construction, or
+  on-foot behavior. A focused regression must show that a cheaper concealed/passable forest-blocked
+  candidate cannot consume selection ahead of a later observable candidate. Only a reviewed green
+  owner test may advance to a committed exact build and a changed clear-day probe; the stale
+  distance-one scenario expectation must be corrected to the accepted exact-ring distance three.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
