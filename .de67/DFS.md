@@ -1,7 +1,7 @@
 # Bandit and Cannibal Hostile-Camp AI Specification
 
-Status: Frozen for DE-67 phase 3 against preflight source baseline
-`dev@56fb35f144f460ffe5f3c7e283f39836ecadc5ae`.
+Status: Refrozen for DE-67 phase 3 after the owner on-foot scout clarification, against preflight
+source baseline `dev@56fb35f144f460ffe5f3c7e283f39836ecadc5ae`.
 Comparison baseline: `port/cdda-master` at `660057ff728b`; this refinement inspects `dev` at
 `274c4c1f239b7c68702a0b76321cb271906dd892`.
 
@@ -47,6 +47,10 @@ withdraws coherently when discovered, receives only information carried home by 
 decides whether it has enough strength and opportunity to act. A favorable bandit decision creates
 a new shakedown party. A favorable cannibal decision creates a new attack party which waits for
 true darkness. Neither faction knows the avatar's coordinates or camp contents by fiat.
+
+Routine scouts travel on foot in this version. Vehicle transport, boarding, routing, fixtures, and
+future vehicle compatibility are outside this DFS. A local/abstract scout handoff clears impossible
+passenger or driver state instead of adding or preserving vehicle behavior.
 
 The player-facing success path is:
 
@@ -128,6 +132,9 @@ flowchart LR
 
 - [x] The strategic operation has one simulation owner at a time: abstract overmap or local loaded
   NPCs. Handoff epoch and generation checks reject stale or duplicate advancement.
+- Routine scouts are on foot for their entire operation. The handoff adapter must bind them as
+  on-foot NPCs with `in_vehicle == false` and `controlling_vehicle == false`; no vehicle-aware branch
+  is required or permitted by this version.
 - [x] A scout pair has a leader, escort, common route, assigned staging tiles, cohesion rules,
   regroup behavior, bounded recovery, and casualty-aware continuation.
 - [x] The target camp footprint and a watch position remain distinct. Normal stalking observes from
@@ -143,13 +150,15 @@ flowchart LR
   between adjacent visible tiles while its strategic owner wants to leave.
 - [ ] 🔴 R-003 — Burned-pair evidence, coherent egress, covert neutrality, and identity continuity
   remain unproved through the natural visible-pair route and its quiet control.
-- [ ] 🔴 R-001 — The natural local-to-abstract return handoff is not complete. Exact-head natural run
-  `20260810_004648` physically brought generation-1 members 4/5 to camp-adjacent OMT `(164,38,0)`.
-  Four production attempts each evaluated the same 128 complete boundary pairs and found none
-  safely reachable by both scouts, yet the local owner returned the same independently scored
-  unsafe pair. Both routes were empty and fallback consumed moves without movement. The active
-  defect is the ownership transition: geometry, fixture, scenario timing, outing/member identity,
-  physical crossing, and nonreentry remain unchanged.
+- [ ] 🔴 R-001 — The natural local-to-abstract return handoff is not complete. `T01-M1` through
+  `T01-M5` preserved generation-1 members 4/5 and the unchanged McWilliams route while moving the
+  frontier past safe boundary selection, asymmetric pair travel, and recenter visibility.
+  Checkpoint `0d082eda34` bounds the homeward pair; `7495ec5286` exposes the materialization gate.
+  The current handoff must retain the observing-produced physical resume until its homeward
+  consumer and bind both scouts on foot with impossible vehicle state cleared. `T01-M5` was stopped
+  before acceptance when its candidate added out-of-scope vehicle preservation. The same natural
+  route must still complete physical crossing, camp dematerialization, canonical return, report,
+  and decision; the incident chronology remains in `.de67/mutation-suggestions.md`.
 
 ### 5. Report, assessment, and response decision
 
