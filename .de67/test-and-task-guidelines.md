@@ -8,6 +8,9 @@ review.
 Read the exact working tree, affected DFS claim, current owner path, relevant tests, and current tool
 state. Choose the smallest task whose deletion would leave that claim unmet or unproven. Name real
 dependencies and likely collision surfaces before parallel dispatch.
+Keep the work ledger at the current causal frontier; durable deadline state owns closed-task timing
+and terminal chronology. Acceptance of one claim is a refill boundary whenever DFS red work remains,
+not a stop condition.
 
 ## Tooling check
 
@@ -29,6 +32,8 @@ direct evidence when a blocker or unexpected production result invalidates a tas
 Use the weakest sufficient available worker for understood implementation. Use a stronger
 implementation-capable model for ambiguous ownership, causal diagnosis, or risky cross-cutting work.
 Change the route or worker only when evidence supports the change.
+Treat model choice as a capability check: when the launcher exposes no cheaper selector, record that
+fact once until tool state changes and bound the worker's role; do not describe reuse as model selection.
 Keep each worker role-bounded: an implementation worker returns its diff and test evidence, but must
 not commit or accept that checkpoint, edit `.de67/`, dispatch a successor, or launch integrated proof.
 
@@ -47,6 +52,8 @@ passes only the claim it exercises. Preserve concise evidence paths; do not enco
 nested receipts. A blocker or unexpected result is evidence for causal review, never proof that the
 claim passed or automatic authority to weaken its test. Do not rerun an unchanged failing route
 without changed source, tooling, or causal evidence.
+Task acceptance, checkpointing, DFS status updates, and ledger refill never consume mutation
+suggestions; only a successful guarded mutation transaction does.
 
 ## Deadline estimation
 
