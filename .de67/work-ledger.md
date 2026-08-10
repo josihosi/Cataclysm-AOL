@@ -168,6 +168,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   exact three-zombie target with all existing guards green. Stop at the first changed production
   divergence; do not wait through an invalidated artifact timeout or retry an unchanged route.
 
+  Exact `R002-M12` run `20260811_004100` ended on time with the corrected production order and
+  natural dispatch: the real lead scored 543, outranked the scanned road, and became the active
+  outing goal `(137,49,0)`. The harness then exhausted its bounded completion poll because three day
+  scenario assertions still named an impossible `terrain_opportunity:137,49,0:road` lead rather
+  than the fixture's and runtime's `#lead:structural_bounty:road@137,49,0`; consequently it aborted
+  before the approach/watch waits. This is a proof-contract finding, not a product regression.
+
+  Task `R002-M13` retains the measured 3,600-second envelope and changes only those stale exact-lead
+  assertions in the isolated day scenario. Bind the evidence contract, dispatch wait, and later
+  dispatch audit to the already resolved structural-bounty lead ID, and strengthen the focused day
+  contract to require that exact ID while rejecting the impossible terrain-opportunity spelling.
+  Preserve all timings, coordinates, target/horde facts, product source, and other scenarios. A
+  reviewed green JSON/focused-test diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
