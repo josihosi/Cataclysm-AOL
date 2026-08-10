@@ -125,6 +125,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   terrain lane to match those coordinates, and no changes to the twilight/night/shared fixtures.
   Only then may the coordinator build the exact source checkpoint and run the changed day row.
 
+  `R002-M9` accepted the isolated clear-day fixture at `1003abc510`. Its resolved transforms contain
+  one effective road lead and exactly three zombies colocated at `(137,49,0)` from the unchanged
+  player, while direct base-save RLE proof pins road target `(137,49,0)`, concealed forest watch
+  `(138,52,0)`, and zero-cost field/road intervening OMTs `(138,51,0)` / `(137,50,0)`.
+  The shared common, twilight, and night files remained unchanged.
+
+  Task `R002-M10` retains the measured 3,600-second envelope for one exact clean macOS build followed
+  by the coordinator-owned changed clear-day probe. Acceptance requires dispatch toward
+  `(137,49,0)`, the serialized approach `(139,52,0)` then exact watch `(138,52,0)`, clear weather,
+  no optic, three sight points, forward distance three, acquisition/observation of the exact
+  three-zombie target, and every existing setup/error guard green. Any changed route or first
+  divergence is a finding, not permission for an unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
