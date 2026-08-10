@@ -29,6 +29,8 @@ direct evidence when a blocker or unexpected production result invalidates a tas
 Use the weakest sufficient available worker for understood implementation. Use a stronger
 implementation-capable model for ambiguous ownership, causal diagnosis, or risky cross-cutting work.
 Change the route or worker only when evidence supports the change.
+Keep each worker role-bounded: an implementation worker returns its diff and test evidence, but must
+not commit or accept that checkpoint, edit `.de67/`, dispatch a successor, or launch integrated proof.
 
 ## Test definition
 
