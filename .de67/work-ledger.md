@@ -57,7 +57,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   minutes, focused tests about 24 seconds, and the remaining time covers the localized
   materialization discriminator/fix, incremental Mac build, and exact-commit identity check.
 
+  `T01-M4` ended on time with an unexpected production finding after checkpointing the recenter
+  discriminator at `7495ec5286`. The unchanged run proved that observing-phase maintenance consumed
+  the prior physical resume before `returning_report`; a later canonical homeward handoff then bound
+  an NPC whose serialized `in_vehicle` flag did not match the entry tile, and its first motor step
+  raised `map::unboard_vehicle: vehicle not found`. The next route changes this exact handoff adapter
+  and adds focused resume-retention and vehicle-state controls before the unchanged natural probe.
+
+  Trial task `T01-M5` has a 1,800-second estimate: the unchanged natural probe measured about 10
+  minutes and the owning focused test about 24 seconds; the remaining time covers the two localized
+  handoff-adapter fixes, focused controls, incremental Mac build, and exact-commit identity check.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M3` ended with on-time findings and zero cumulative misses. `T01-M4` is
-being prepared from changed materialization evidence; `R-001` remains red.
+Open; `T01-M1` through `T01-M4` ended with on-time findings and zero cumulative misses. `T01-M5` is
+being prepared from changed handoff-adapter evidence; `R-001` remains red.

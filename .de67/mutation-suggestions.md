@@ -170,3 +170,35 @@ uniquely identify it before rerunning the unchanged scenario.
 Disposition: applied as an implementation/tooling classification; keep `R-001` red and retain
 `0d082eda34` as a coherent checkpoint because it closes the independently reproduced pair-split
 mechanism without claiming the natural T01 verdict.
+
+### T01-M4 — return resume was consumed and rebound vehicle state contradicted the map
+
+Source: worker finding
+
+Deadline evidence: `T01-M4` reported an on-time `unexpected` finding before its
+2026-08-10 21:18:22 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** handoff adapter dropped resume and preserved stale local vehicle state
+
+**Diagnosis:** The first contradicted premise was that the local/abstract handoff adapter preserves
+all physical state needed by the next loaded return owner. Checkpoint `7495ec5286` proved the
+existing recenter search when its predicates are present. In the unchanged run, the discriminator
+showed the observing dematerialization's resume had been cleared before `returning_report`; current
+source excludes `observing` from `consume_local_pair_resume_receipt` retention even though observing
+is the phase that just produced the physical resume. A later ordinary homeward handoff still bound
+the exact pair, but `spawn_at_precise` preserved an NPC `in_vehicle` flag at an entry tile with no
+vehicle; the first bounded motor step called `map::unboard_vehicle` and raised `vehicle not found`.
+Both facts belong to the same production handoff adapter and are implementation gaps under the
+existing ownership contract, not new DFS mechanisms. Direct evidence:
+`build_logs/de67/T01-M4/live-owner.selector.log`, the backtrace in
+`.userdata/dev-harness/harness_runs/20260810_205614/probe.artifacts.log`, and current
+`consume_local_pair_resume_receipt` / materialization bind code.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Preserve the bounded-pair and
+discriminator checkpoints; retain the observing-produced physical resume until a homeward consumer
+can use it, and make the bind adapter reconcile passenger flags with the actual loaded entry tile
+before the ordinary NPC motor runs. Prove both with focused controls before one unchanged live run.
+
+Disposition: applied as a changed causal route; keep `R-001` red and do not expand the DFS. The new
+manual stagnation suggestion is acknowledged: another dispatch is admissible only because it changes
+the exact handoff owner and test surface rather than repeating the prior implementation/live route.
