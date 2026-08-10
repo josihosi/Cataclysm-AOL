@@ -109,8 +109,35 @@ Lineage: `CAOL-hostile-ecology-dev`
   invalid consumer setup, then proceed through focused proof, checkpoint, exact Mac build, and one
   unchanged natural run if each predecessor is green.
 
+  `T01-M9` ended on time with a tooling finding. The changed focused test now uses the schema-10
+  structural assessment transition and ordinary handoff consumer, but a direct `make -C tests`
+  invocation omitted the parent Makefile's C++17/Mac flags and failed before a test verdict. The
+  shell-quoted finding text also expanded the bad command once; that repeated only the same build
+  failure and changed no source. The next route must use the repository's root Mac make contract.
+
+  Trial task `T01-M10` has the same evidence-based 1,800-second estimate and was dispatched at
+  2026-08-10 21:38:32 CEST with immutable deadline 2026-08-10 22:08:32 CEST. Its tooling route is
+  bound to the root Makefile with the Mac flags derived from `just_build_macos.sh`.
+
+  `T01-M10` ended on time with a second tooling finding. The root command targeted the existing file
+  `tests/cata_test`, which has no root dependency edge, so make reported no work even though the
+  changed test source was newer than its object and binary. The repository's dependency-aware root
+  target is the phony `tests` target, which exports the same Mac flags into the tests sub-Makefile.
+
+  Trial task `T01-M11` has the same evidence-based 1,800-second estimate and was dispatched at
+  2026-08-10 21:40:25 CEST with immutable deadline 2026-08-10 22:10:25 CEST, using the exact root
+  `tests` target before the focused verdict.
+
+  `T01-M11` ended on time after the root `tests` target rebuilt the changed object and binary and
+  the owning handoff test passed all 1,583 assertions. The coherent product/test frontier is
+  checkpointed through `8d586632a3` and `08470fa60f`. Exact game build stopped because the
+  coordinator-owned ledgers were tracked-dirty and would have embedded a `-dirty` identity; commit
+  the compact coordination state before building and running the unchanged natural route.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M8` ended with on-time findings and zero cumulative misses. `T01-M6`
+Open; `T01-M1` through `T01-M11` ended with on-time findings and zero cumulative misses. `T01-M6`
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
-`T01-M9` is running the changed real-owner consumer route; `R-001` remains red.
+`T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
+entrypoint, and `T01-M11` accepted the focused checkpoint. The exact natural proof remains;
+`R-001` is red.

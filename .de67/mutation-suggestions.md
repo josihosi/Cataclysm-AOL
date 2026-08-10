@@ -303,3 +303,67 @@ the existing structural assessment/return owner seam, then verify that consumer 
 retained resume.
 
 Disposition: applied as a changed test route; preserve the product slice and keep `R-001` red.
+
+### T01-M9 — direct tests make omitted the parent Mac build contract
+
+Source: worker finding
+
+Deadline evidence: `T01-M9` reported an on-time `blocker` before its 2026-08-10 22:02:34 CEST
+deadline; cumulative misses remained zero.
+
+**Short verdict:** tooling command bypassed repository C++17/Mac flags
+
+**Diagnosis:** The changed test now produces the consumer through the existing schema-10 assessment
+transition, but the worker invoked the tests sub-Makefile directly without the flags exported by the
+root Makefile. Compilation failed on C++17 library features before the owning test ran. While
+recording the finding, backticks inside shell-quoted evidence expanded and repeated the same bad
+command once; the immutable evidence is noisy, but no source changed and no product verdict was
+claimed. Direct evidence: `build_logs/de67/T01-M9/focused-build.log` and the root/test Makefiles.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Invoke the focused target from the
+root with the Mac variables used by `just_build_macos.sh`, then run the owning test.
+
+Disposition: applied as a tooling gap; keep `R-001` red and preserve the changed test candidate.
+
+### T01-M10 — file target bypassed the tests dependency graph
+
+Source: worker finding
+
+Deadline evidence: `T01-M10` reported an on-time `blocker` before its 2026-08-10 22:08:32 CEST
+deadline; cumulative misses remained zero.
+
+**Short verdict:** wrong root make target produced a stale no-op
+
+**Diagnosis:** The Mac variables were correct, but the command named the existing file
+`tests/cata_test`. The root Makefile has no dependency rule for that path, so make returned success
+without invoking the tests sub-Makefile even though `tests/bandit_live_world_test.cpp` was newer than
+its object and binary. The dependency-aware root target is the phony `tests` rule, which exports the
+root flags and invokes the sub-Makefile. Direct evidence: `build_logs/de67/T01-M10/focused-build.log`,
+file mtimes, and `Makefile:1686`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Use the same Mac variables with root
+target `tests`, then run the owning test only.
+
+Disposition: applied as a changed tooling route; keep `R-001` red.
+
+### T01-M11 — focused checkpoint accepted; tracked ledgers blocked exact identity
+
+Source: worker finding
+
+Deadline evidence: `T01-M11` reported an on-time `blocker` before its 2026-08-10 22:10:25 CEST
+deadline; cumulative misses remained zero.
+
+**Short verdict:** accepted focused frontier / coordinator state blocked exact binary
+
+**Diagnosis:** The dependency-aware Mac test build rebuilt the changed object and test binary, and
+the owning handoff test passed all 1,583 assertions. The product source and real-owner test are
+checkpointed at `8d586632a3` and `08470fa60f`. The next exact game build correctly stopped because
+the coordinator-owned tracked ledgers were still dirty, which would embed `08470fa60f-dirty` rather
+than an exact committed identity. Direct evidence: `build_logs/de67/T01-M11/focused-build.log`,
+`build_logs/de67/T01-M11/focused-owner-test.log`, and Git status.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Commit the compact coordinator state,
+then build that exact committed Mac HEAD and run the unchanged natural route once.
+
+Disposition: applied as an accepted focused checkpoint plus tooling gate; keep `R-001` red pending
+the integrated production chain.
