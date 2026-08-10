@@ -33,6 +33,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   quiet-row ambiguity contract, then resumes the ordered live matrix only after the focused test and
   coordinator diff review pass.
 
+  `R002-M2` accepted the quiet harness correction at `31d9d2cabe`; exact run `20260810_230640`
+  then produced green feature-path no-radar evidence. The following clear-day road run
+  `20260810_230816` ended on time with a production finding before dispatch: the route adapter
+  advertised the cheapest exact-ring watch as reachable from cost alone, but its adjacent
+  `[watch,camp]` path could not produce the canonical shared route's distinct approach OMT, yielding
+  `watch_geography_contract_rejected` / `watch_shared_route_was_malformed`. The next route must make
+  reachability and canonical shared-route constructibility one predicate, then prove a viable
+  alternate is selected before rerunning the changed clear-day control.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
