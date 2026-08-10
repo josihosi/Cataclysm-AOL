@@ -9416,6 +9416,13 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
                  bandit_live_world::local_handoff_commit_result::applied );
         REQUIRE( site.active_outing.local_handoff.is_abstract_resume() );
+        REQUIRE( site.active_outing.local_handoff.cohesion_assembled );
+        REQUIRE( bandit_live_world::scout_phase_requires_homeward_only(
+                     site.active_outing.phase ) );
+        REQUIRE( site.active_outing.member_ids.size() == 2 );
+        REQUIRE( site.active_outing.local_handoff.route_position ==
+                 site.active_outing.shared_route[static_cast<std::size_t>(
+                     site.active_outing.waypoint_index )] );
         const std::string activity_id = outing.activity_id;
         const int generation = outing.generation;
         const int waypoint_index = outing.waypoint_index;

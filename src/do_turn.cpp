@@ -4373,16 +4373,18 @@ bool materialize_live_bandit_structural_handoffs()
         std::vector<tripoint_abs_ms> staging_positions =
             live_bandit_local_handoff_entry_positions( route_position, staging_facing_omt,
                     surviving_member_ids.size(), entry_positions );
+        const std::size_t initial_entry_count = entry_positions.size();
+        const std::size_t initial_staging_count = staging_positions.size();
+        const std::optional<int> current_target_distance =
+            bandit_live_world::target_footprint_watch_distance(
+                outing.local_handoff.route_position, outing.target_footprint );
+        const bool assessed_homeward_cursor = resumes_physical_homeward_cursor &&
+                outing.local_handoff.route_position ==
+                outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
         std::optional<bandit_live_world::site_record> advanced_homeward_site;
         if( resumes_assembled_homeward_pair && surviving_member_ids.size() == 2 &&
             ( entry_positions.size() != surviving_member_ids.size() ||
               staging_positions.size() != surviving_member_ids.size() ) ) {
-            const std::optional<int> current_target_distance =
-                bandit_live_world::target_footprint_watch_distance(
-                    outing.local_handoff.route_position, outing.target_footprint );
-            const bool assessed_homeward_cursor =
-                outing.local_handoff.route_position ==
-                outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
             for( std::size_t route_index = static_cast<std::size_t>( outing.waypoint_index + 1 );
                  route_index + 1 < outing.shared_route.size(); ++route_index ) {
                 std::vector<tripoint_abs_omt> candidate_routes = {
@@ -4472,8 +4474,33 @@ bool materialize_live_bandit_structural_handoffs()
         }
         if( entry_positions.size() != surviving_member_ids.size() ||
             staging_positions.size() != surviving_member_ids.size() ) {
-            log_homeward_rejection(
-                "loaded bubble lacks paired entry or staging positions" );
+            if( homeward_candidate ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit_live_world homeward materialization rejected"
+                        << " site=" << site.site_id
+                        << " activity=" << outing.activity_id
+                        << " generation=" << outing.generation
+                        << " phase=" << bandit_live_world::to_string( outing.phase )
+                        << " waypoint=" << outing.waypoint_index
+                        << " route_size=" << outing.shared_route.size()
+                        << " route_position=" << route_position.to_string()
+                        << " abstract_resume=" << ( resumes_physical_homeward_cursor ? "yes" : "no" )
+                        << " cohesion_assembled=" <<
+                           ( outing.local_handoff.cohesion_assembled ? "yes" : "no" )
+                        << " homeward_phase=" <<
+                           ( bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ?
+                             "yes" : "no" )
+                        << " survivor_pair=" << ( surviving_member_ids.size() == 2 ? "yes" : "no" )
+                        << " recenter_gate=" << ( resumes_assembled_homeward_pair ? "yes" : "no" )
+                        << " assessed_cursor=" << ( assessed_homeward_cursor ? "yes" : "no" )
+                        << " target_distance_known=" << ( current_target_distance ? "yes" : "no" )
+                        << " initial_entry_count=" << initial_entry_count
+                        << " initial_staging_count=" << initial_staging_count
+                        << " final_entry_count=" << entry_positions.size()
+                        << " final_staging_count=" << staging_positions.size()
+                        << " required_survivors=" << surviving_member_ids.size()
+                        << " reason=loaded bubble lacks paired entry or staging positions\n";
+            }
             continue;
         }
 
