@@ -172,6 +172,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   allowance covers the incremental exact Mac build, identity check, and probe cleanup. It was
   dispatched at 2026-08-10 21:57:46 CEST with immutable deadline 2026-08-10 22:17:46 CEST.
 
+  `T01-M15` ended on time with an unexpected production finding on exact binary
+  `b3595cff57+SDL3`, run `20260810_220256`. Members 4/5 completed the outbound handoff,
+  dematerialization, and watch assessment. The new adapter enabled camp-position dematerializations,
+  but natural return then left both members inactive and in bounds at camp. The hourly owner
+  eventually advanced `returning_report` to `returning_home`; however the dematerialization
+  preflight accepts only inactive out-of-bounds or active in-bounds members, so the exact physical
+  camp pair never produced its receipt, final report, or decision.
+
+  Trial task `T01-M16` has a 1,800-second estimate: the natural probe measured about 10 minutes and
+  the owning test about 24 seconds; the remaining allowance covers the localized exact-owned
+  inactive camp receipt, a both-inactive in-bounds control, incremental Mac build, exact identity,
+  and one unchanged natural run.
+
 ## Batch result
 
 Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
@@ -179,4 +192,5 @@ was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-c
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
-focused checkpoint accepted. `T01-M15` is active on exact integrated proof; `R-001` is red.
+focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
+`R-001` is red.

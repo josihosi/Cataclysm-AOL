@@ -468,3 +468,34 @@ probe. Do not repeat the focused test or broaden the on-foot contract.
 
 Disposition: applied as an accepted focused checkpoint, not T01 completion. `R-001` remains red
 until the same natural pair returns, reports, and produces the authoritative decision.
+
+### T01-M15 — exact camp pair remained inactive inside the bubble
+
+Source: worker finding and coordinator source review
+
+Deadline evidence: `T01-M15` reported an on-time `unexpected` finding before its
+2026-08-10 22:17:46 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** natural both-inactive camp arrival still lacked an admissible receipt
+
+**Diagnosis:** The first contradicted premise was that reloading an inactive in-bounds camp arrival
+would make the natural complete pair admissible to the existing loaded-arrival path. Exact run
+`20260810_220256` naturally completed outbound ownership, observation, and multiple physical camp
+dematerializations, then left both exact members inactive at in-bounds camp positions. The hourly
+owner eventually advanced the phase to `returning_home`, but the members stayed inactive and the
+dematerialization preflight continued to accept only inactive out-of-bounds or active in-bounds
+members. The M14 asymmetric control kept one partner active and therefore did not model this natural
+both-inactive state. This is an implementation and focused-control gap at the same exact owner seam,
+not a DFS expansion. Direct evidence:
+`.userdata/dev-harness/harness_runs/20260810_220256/probe.feature_debug.log`, commit
+`c3e92ae902`, and the preflight/quiesce predicates in `src/do_turn.cpp`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Admit an inactive in-bounds member
+only when the authoritative local structural owner, exact member identity, homeward-only phase, and
+physical camp footprint all agree; quiesce it without generic routing. Add the smallest control with
+both exact members inactive and in bounds at camp. Do not change vehicle behavior, timing, scenario,
+or pair atomicity.
+
+Disposition: applied as a changed implementation route. Preserve the on-foot and camp-reload
+checkpoints; retry only after the exact-owned inactive camp receipt and both-inactive control change.
+`R-001` remains red.
