@@ -201,6 +201,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   coordinator owns acceptance and checkpointing. It was dispatched at 2026-08-10 22:34:28 CEST
   with immutable deadline 2026-08-10 22:44:28 CEST.
 
+  `T01-M17` was accepted on time at checkpoint `92c1e699ee`. Source reinspection confirmed that
+  `structural outing returned home` and the same maintenance result's `members_returned=2` occur
+  only after the exact activity/generation report delivery, reservation release, and report-to-
+  decision acceptance path. The focused scenario contract passed after removing only the two
+  redundant phase-specific receipt strings; the saved-state report/decision identity audit remains.
+
+  Trial task `T01-M18` has a 1,200-second estimate: the unchanged natural probe measured about 10
+  minutes and the prior exact Mac build about 52 seconds; the remaining allowance covers the exact
+  clean-HEAD rebuild, binary identity check, coordinator-owned single natural proof launch, and
+  cleanup. The worker may build and report only; the coordinator launches and judges integrated
+  proof.
+
 ## Batch result
 
 Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
@@ -209,5 +221,6 @@ was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-c
 entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
 classified the first exact post-fix natural camp-arrival gap. `T01-M14` ended on time with its
 focused checkpoint accepted. `T01-M15` ended on time at the both-inactive camp receipt seam;
-`T01-M16` ended on time after authoritative natural return exposed a false-red guard. `R-001` is red
-pending continued final-report and decision proof; `T01-M17` is active on the focused guard fix.
+`T01-M16` ended on time after authoritative natural return exposed a false-red guard. `T01-M17`
+accepted the focused guard correction at `92c1e699ee`. `R-001` remains red pending the single exact
+natural saved-report and decision proof; `T01-M18` is the active route.
