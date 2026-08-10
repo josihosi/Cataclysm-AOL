@@ -93,8 +93,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   serialized transitions, current watch `(139,53,0)`, forward target `(136,51,0)`, clear weather,
   three sight points, no optics, and error guards passed, but the target was not acquired. Direct
   read-only decoding of the saved overmap and the owning `line_to` route proved why: the watch is
-  forest, and its target line crosses forest `(138,53,0)` and `(137,52,0)` before road target
-  `(136,51,0)`. Each intervening forest costs four sight points, while the agreed ordinary clear-day
+  forest, and its target line crosses forest `(138,53,0)` and field `(137,52,0)` before road target
+  `(136,51,0)`. That intervening forest costs four sight points, while the agreed ordinary clear-day
   budget is three. The live watch adapter qualifies concealment and foot-passability but not an
   observation lane, so it can select a physically reachable watch that cannot watch.
 
