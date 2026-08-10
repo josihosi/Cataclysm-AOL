@@ -31,6 +31,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   `720e24a00a`. Current-source owner/cohesion and inclusive-edge controls passed, so the next route
   must first produce a clean exact-HEAD executable and then rerun the unchanged natural scenario.
 
+  Trial task `T01-M2` has a 1,200-second estimate: the unchanged natural probe measured about 10
+  minutes, and current source objects already exist, so the remaining 10 minutes cover the inspected
+  version-object relink, exact-identity check, and probe startup/cleanup.
+
 ## Batch result
 
-Open; `T01-M1` ended with an on-time tooling finding and zero cumulative misses. `R-001` remains red.
+Open; `T01-M1` ended with an on-time tooling finding and zero cumulative misses. `T01-M2` is being
+prepared from the changed tooling route; `R-001` remains red.
