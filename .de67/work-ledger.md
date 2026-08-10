@@ -107,6 +107,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   owner test may advance to a committed exact build and a changed clear-day probe; the stale
   distance-one scenario expectation must be corrected to the accepted exact-ring distance three.
 
+  `R002-M8` accepted the terrain-visibility qualifier at `9a7f29cd01`: the live adapter now supplies
+  intervening see costs, the bounded owner rejects a four-point forest lane against the authoritative
+  three-point clear-day budget before route reads, and the focused owner test selects only the later
+  observable candidate while passing 147 assertions. Exact-ring harness distance three is guarded at
+  `a7a9c4e176`. No live retry followed: exhaustive read-only decoding of the preserved target's real
+  rings proved that `(136,51,0)` has no concealed candidate with a clear observation lane at any
+  permitted ring 3–5, so the corrected product would honestly abandon that fixture premise.
+
+  Task `R002-M9` retains the measured 3,600-second envelope and changes only the clear-day proof
+  premise before building or probing. Isolate the day fixture from the shared stale target and use the
+  existing road `(137,49,0)`, whose exact concealed forest watch `(138,52,0)` has field
+  `(138,51,0)` and road `(137,50,0)` as its two zero-cost intervening OMTs. Move the fixture-known
+  three-zombie target and exact lead together, keep the player and camp unchanged, and update every
+  day-row target/horde assertion plus the focused fixture contract. Acceptance requires resolved
+  transform metadata to prove one target and three entities at the same real OMT, the source-overmap
+  terrain lane to match those coordinates, and no changes to the twilight/night/shared fixtures.
+  Only then may the coordinator build the exact source checkpoint and run the changed day row.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
