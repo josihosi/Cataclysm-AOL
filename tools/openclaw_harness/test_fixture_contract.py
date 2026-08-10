@@ -4968,7 +4968,16 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ],
         )
         serialized_scenario = json.dumps(scenario, sort_keys=True)
-        self.assertIn("terrain_opportunity:137,49,0:road", serialized_scenario)
+        exact_dispatch_lead = (
+            "lead=overmap_special:bandit_camp@140,51,0"
+            "#lead:structural_bounty:road@137,49,0"
+        )
+        impossible_dispatch_lead = (
+            "lead=overmap_special:bandit_camp@140,51,0"
+            ":terrain_opportunity:137,49,0:road"
+        )
+        self.assertEqual(serialized_scenario.count(exact_dispatch_lead), 3)
+        self.assertNotIn(impossible_dispatch_lead, serialized_scenario)
         self.assertIn("threat_omt=(137,49,0)", serialized_scenario)
         self.assertNotIn("136,51,0", serialized_scenario)
 
