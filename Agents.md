@@ -1,14 +1,15 @@
 # Agents
 Follow all instructions in this file.
-Read `Plan.md` first and treat it as the canonical roadmap.
-Then read `SUCCESS.md` for the explicit exit criteria of the current roadmap item.
-The first unchecked row in the active success-state block is the default next target; do not invent a different chunk unless you first update the ledger to explain why.
-Keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned with reality, but keep them lean:
-- `Plan.md` = roadmap / active target
-- `SUCCESS.md` = success-state ledger / crossed-off exit criteria
-- `TODO.md` = short current execution queue only
-- `TESTING.md` = current validation policy, latest relevant evidence, pending probes
-- remove finished fluff from `TODO.md` / `TESTING.md` instead of building a graveyard of crossed-off chores
+Read `.de67/DFS.md` first and treat it as the canonical functional contract and stable red-claim
+ledger. Then read `.de67/test-and-task-guidelines.md`, `.de67/orchestrator-guidelines.md`,
+`.de67/work-ledger.md`, and `.de67/mutation-suggestions.md` before coordinating phase-3 work.
+The active item in `.de67/work-ledger.md` is the default next target; do not invent a different
+chunk. Keep the project-local phase-3 state aligned with reality:
+- `.de67/DFS.md` = frozen contract, ownership, precedence, proof routes, and stable red claims
+- `.de67/work-ledger.md` = current projection of still-red claims only
+- the two guideline files = mutable task/test and orchestration guidance under the mutation cadence
+- `.de67/mutation-suggestions.md` = append-only diagnoses, manual suggestions, and dispositions
+- `.de67/state/` = ignored machine clock state; the Markdown files are tracked project artifacts
 Read and follow `COMMIT_POLICY.md` so the repo does not turn into one giant dirty-tree soup.
 When you add a new complicated mechanic, add a brief durable explanation to `TechnicalTome.md`.
 
@@ -55,7 +56,10 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 ### Porting orchestrator usage
 - Use `tools/porting/orchestrate_ports.ps1` for port branch upstream merges, AOL source sync, destructive fallback only when approved, and build checks.
 - Start it from `master` only; it errors out on other branches by design.
-- Treat `master` as the source of truth for shared auxiliary files: `README.md`, `Plan.md`, `TechnicalTome.md`, `Agents.md`, `AGENTS.md`, and `tools/porting/orchestrate_ports.ps1`. Port branches should sync these from `master` instead of carrying branch-local edits.
+- Treat `master` as the source of truth for shared auxiliary files: `README.md`, the tracked
+  `.de67/*.md` state, `TechnicalTome.md`, `Agents.md`, `AGENTS.md`, and
+  `tools/porting/orchestrate_ports.ps1`. Port branches should sync these from `master` instead of
+  carrying branch-local edits.
 - Run audit mode before changing port branches when planning a release refresh:
   - `.\tools\porting\orchestrate_ports.ps1 -AuditMode -Targets cdda-master -NoBackup`
 - For the first release target, prefer `cdda-master` with the default `delta-cherry-pick` AOL lane unless the audit shows a clean native merge.
@@ -103,7 +107,8 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - Use unit tests where applicable.
 - For gameplay changes, use the in-game debug menu, harness tools, or direct agent-side probing first.
 - Josef should be asked for product judgment / feel / priority calls or genuinely human-only interaction, not for tiny technical checks the agent can do.
-- Josef being unavailable is not a stop-work order; move to the next best unblocked target from `Plan.md`.
+- Josef being unavailable is not a stop-work order; move to the next authorized unblocked target
+  from `.de67/work-ledger.md`.
 - For code or build-script changes, choose validation proportional to risk:
   - docs-only -> no compile
   - small local code change -> narrow relevant compile/test only
@@ -137,4 +142,4 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   `make -j$(nproc) TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 TESTS=0`
 For the full, canonical guidance, see `doc/CONTRIBUTING.md`.
 
-read README.md and Plan.md.
+read README.md and .de67/DFS.md.

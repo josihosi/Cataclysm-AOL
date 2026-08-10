@@ -39,10 +39,11 @@ Avoid bundling broad roadmap rewrites into this commit unless the behavior genui
 
 ### 2. Ledger/doc alignment commit
 Contains only:
-- `Plan.md`
-- `SUCCESS.md`
-- `TODO.md`
-- `TESTING.md`
+- `.de67/DFS.md`
+- `.de67/work-ledger.md`
+- `.de67/test-and-task-guidelines.md`
+- `.de67/orchestrator-guidelines.md`
+- `.de67/mutation-suggestions.md`
 - maybe a small related note/doc file
 
 Use this when the truth of the active target or test packet changed, but no further code change is required.
@@ -62,7 +63,8 @@ Do not hide this kind of change inside an unrelated behavior diff.
 
 - Do not keep appending docs and code to the same uncommitted tree across many cron runs.
 - Do not mix unrelated movement/Basecamp/locker work in one checkpoint commit.
-- Do not rewrite `Plan.md`, `TODO.md`, and `TESTING.md` after every tiny rerun if the state did not materially change.
+- Do not rewrite `.de67/DFS.md` or `.de67/work-ledger.md` after every tiny rerun if the accepted
+  frontier or active claim did not materially change.
 - Do not use Josef handoff timing as an excuse to keep everything uncommitted.
 - Do not let formatting churn dominate a behavior diff.
 
@@ -80,7 +82,8 @@ That means ideally:
 Before committing a behavior/probe checkpoint:
 - run `git diff --check`
 - run the narrowest honest validation for the slice
-- make sure `Plan.md`, `TODO.md`, and `TESTING.md` reflect the new truth if the active state actually changed
+- make sure the tracked `.de67/*.md` state reflects the new truth if the accepted frontier, active
+  work, or mutation disposition actually changed
 
 ## CI checkpoint / linking rule
 
@@ -92,12 +95,13 @@ For any reviewable code checkpoint that could affect GitHub Actions, the handoff
 
 Do not write “tested” when the relevant CI-shaped gate is merely hoped for.  Link the gate.  Name the red thing.  This is bureaucracy only in the sense that a kitchen has labels so nobody serves floor cleaner as soup.
 
-## Interaction with Plan / SUCCESS / TODO / TESTING
+## Interaction with DE-67 project state
 
-- `Plan.md` tells you what the active target is.
-- `SUCCESS.md` says what "done" means for that target and what remains unchecked.
-- `TODO.md` is the short queue for moving that target forward.
-- `TESTING.md` says what evidence still matters.
+- `.de67/DFS.md` defines the contract, proof, and stable red claims.
+- `.de67/work-ledger.md` names the current active projection.
+- `.de67/test-and-task-guidelines.md` and `.de67/orchestrator-guidelines.md` govern execution and
+  evidence review.
+- `.de67/mutation-suggestions.md` records incident diagnoses, manual suggestions, and dispositions.
 - `COMMIT_POLICY.md` tells you when to checkpoint the work instead of letting it rot in the tree.
 
 If the active target changes, or the blocker changes, or the missing evidence changes, update the docs.

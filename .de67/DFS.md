@@ -1,31 +1,34 @@
 # Bandit and Cannibal Hostile-Camp AI Specification
 
-Status: normative design contract and implementation audit for the isolated Mac `dev` lane.
+Status: Frozen for DE-67 phase 3 against preflight source baseline
+`dev@56fb35f144f460ffe5f3c7e283f39836ecadc5ae`.
 Comparison baseline: `port/cdda-master` at `660057ff728b`; this refinement inspects `dev` at
 `274c4c1f239b7c68702a0b76321cb271906dd892`.
 
 This document defines what the feature must do in play, how the implementation is divided between
-game systems, and which parts of the current `dev` diff are complete, partial, or absent. It is not
-a second task roadmap: `Plan.md` and `SUCCESS.md` still determine execution order.
+game systems, and which parts of the inspected `dev` source are complete, partial, or absent. The
+current implementation projection is `.de67/work-ledger.md`; this DFS remains normative.
 
 ## Document authority and supersession
 
-- `Plan.md` is the sole roadmap, this file is the normative functional/technical contract,
-  `SUCCESS.md` is the outcome ledger, `TODO.md` is only the next execution claim, and `TESTING.md`
-  owns current proof policy/evidence.
+- `.de67/DFS.md` owns the functional contract, mechanisms, authority, precedence, proof routes, and
+  stable red claims. `.de67/work-ledger.md` projects only the current work from those claims.
+- `.de67/test-and-task-guidelines.md` and `.de67/orchestrator-guidelines.md` own mutable phase-3
+  guidance. `.de67/mutation-suggestions.md` owns the append-only diagnosis and suggestion history.
 - Older dated bandit/cannibal packet, audit, and proof documents are implementation archaeology.
   They may explain why a seam exists, but they cannot add requirements, declare success, or
   override this contract and current source evidence.
 - `TechnicalTome.md` is chronological mechanic history, not a second current-state specification.
   If its historical wording conflicts with this file, this file and the inspected game path win.
-- Do not recreate a phase ledger or parallel roadmap. Close work by crossing the matching red item
-  here and the corresponding outcome in `SUCCESS.md`, then reduce `TODO.md` to the next necessary
-  claim.
+- Do not recreate a parallel roadmap. Close a claim only after accepted evidence and the phase-3
+  mutation guard validates the exact status transition, then remove its projection from the work
+  ledger.
 
 Status markers:
 
 - `[x]` is present in the game path and has proportionate source/test evidence.
-- `[ ] 🔴` is wrong, incomplete, or unproved. When closed, replace it with `[x]` and add the proof.
+- `[ ] 🔴 R-NNN —` is a stable wrong, incomplete, or unproved primary claim. When accepted, change
+  only that marker to `[x] R-NNN —` through the phase-3 mutation guard.
 - A unit-tested state structure is not considered implemented if no production game path invokes it.
 
 ### Evidence-bound amendment and refreeze policy
@@ -33,7 +36,7 @@ Status markers:
 Failed production evidence may add or clarify a stable red claim only when deleting the amendment
 would leave the requested outcome unclassified or unprovable. During implementation, non-material
 evidence and proof refinements may be recorded and refrozen. Material behavior, geometry, balance,
-or authority choices return through the user-facing agent to a fresh Gate S specification pass.
+or authority choices return to the user through DE-67 phase 2 for a fresh specification pass.
 No refinement may weaken the requested outcome or legitimize an implementation shortcut.
 
 ## Functional contract
@@ -95,9 +98,9 @@ flowchart LR
 - [x] Camp leads carry provenance, observation time, confidence/uncertainty, threat, bounty,
   approximate position, and aging. Active operations pin referenced evidence so ordinary pruning
   cannot invalidate a live mission.
-- [ ] 🔴 Player-camp opportunity is not yet a renewable authoritative value. Repeated shakedowns
-  must require both the existing cooldown and genuinely renewed camp value from stored goods,
-  population, or activity. A timer alone must not regenerate loot or authorize repeated demands.
+- See `R-008`: player-camp opportunity is not yet a renewable authoritative value. Repeated
+  shakedowns require both the existing cooldown and genuinely renewed camp value from stored goods,
+  population, or activity; a timer alone cannot regenerate loot or authorize repeated demands.
 
 ### 3. Perception and discovery
 
@@ -118,6 +121,8 @@ flowchart LR
   route data.
 - [x] Danger has soft and hard effects: risk can increase route cost, while an observed overwhelming
   threat can reroute, abort, or force immediate self-defense.
+- [ ] 🔴 R-002 — Ordinary-play bounded-discovery fairness and absence of hidden-state radar remain
+  unproved through the natural changed-executable controls named below.
 
 ### 4. Physical movement, stalking, and exposure
 
@@ -136,7 +141,9 @@ flowchart LR
   after attack, refusal/escalation, or committed combat.
 - [x] A burned party has a persistent route out of the target OMT. It is not constrained to pace
   between adjacent visible tiles while its strategic owner wants to leave.
-- [ ] 🔴 The natural local-to-abstract return handoff is not complete. Exact-head natural run
+- [ ] 🔴 R-003 — Burned-pair evidence, coherent egress, covert neutrality, and identity continuity
+  remain unproved through the natural visible-pair route and its quiet control.
+- [ ] 🔴 R-001 — The natural local-to-abstract return handoff is not complete. Exact-head natural run
   `20260810_004648` physically brought generation-1 members 4/5 to camp-adjacent OMT `(164,38,0)`.
   Four production attempts each evaluated the same 128 complete boundary pairs and found none
   safely reachable by both scouts, yet the local owner returned the same independently scored
@@ -158,7 +165,9 @@ flowchart LR
 - [x] A follow-on response selects and reserves a fresh party from current survivors rather than
   reusing the scout reservation. The current planner preserves the report revision and operation
   generation.
-- [ ] 🔴 The production scheduler never calls `plan_hostile_operation`; current calls are confined
+- [ ] 🔴 R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
+  release remain unproved through the natural authoritative death and return routes.
+- [ ] 🔴 R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
   to tests. `transition_hostile_operation_phase` is likewise exercised by tests and origin-recall
   cleanup, not by a complete live response lifecycle. The follow-on owner is therefore scaffolding,
   not an implemented player-facing feature.
@@ -168,17 +177,17 @@ flowchart LR
 Bandits and cannibals share exploration and assessment. They diverge only after a returned report
 authorizes a response.
 
-- [ ] 🔴 **Bandit shakedown:** reserve a fresh response party, travel physically, rally outside the
+- [ ] 🔴 R-006 — **Bandit shakedown:** reserve a fresh response party, travel physically, rally outside the
   camp at a plausible two-to-three-OMT planning distance, approach openly, suppress premature
   patrol combat, demand a share of currently reachable camp storage, and resolve payment, refusal,
   player attack, withdrawal, casualties, and return.
   The parley-neutrality hook exists, but no natural scout-to-shakedown run proves the lifecycle.
-- [ ] 🔴 **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
+- [ ] 🔴 R-007 — **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
   travel physically, rally in concealment at a plausible two-to-three-OMT planning distance, wait
   for true local darkness, and attack the avatar plus all loaded camp defenders. Cannibals never
   open the payment interface. No invisible offscreen defender deaths are permitted. The state
   vocabulary exists, but the live lifecycle is not wired or proved.
-- [ ] 🔴 Aftermath must update the attacking camp's casualties, readiness, target alertness,
+- [ ] 🔴 R-008 — Aftermath must update the attacking camp's casualties, readiness, target alertness,
   outcome memory, payment/plunder, and future eligibility. A bandit may repeat only after cooldown
   plus renewed target opportunity; a cannibal may reassess survivors rather than replaying an
   obsolete report.
@@ -192,13 +201,13 @@ authorizes a response.
 - [x] `DEBUG_CLAIRVOYANCE` provides a read-only ecology view, selection, bounded watches, compact
   deltas, incident capture, and one labelled casualty intervention through the authoritative death
   route. The observer is not a gameplay owner.
-- [ ] 🔴 Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
+- [ ] 🔴 R-009 — Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
   shakedown contact, and cannibal darkness wait—must be proved with the changed executable.
-- [ ] 🔴 Mac performance/save measurements for the observer and early ecology are not final
+- [ ] 🔴 R-010 — Mac performance/save measurements for the observer and early ecology are not final
   qualification for the completed feature. Before integration, measure the full production path
   on macOS, Linux/WSL, and Windows, including scheduler cost, loaded-NPC cost, save-size growth, and
   save/load latency. Do not run global work every avatar turn merely to satisfy a test.
-- [ ] 🔴 Release qualification remains blocked until the natural scout-to-decision incident,
+- See `R-010`: release qualification remains blocked until the natural scout-to-decision incident,
   bandit shakedown, cannibal night raid, persistence boundaries, and relevant platform routes are
   green. `port/cdda-master` remains untouched meanwhile.
 
@@ -307,72 +316,52 @@ What is right in `dev`:
 
 What is incomplete or currently wrong:
 
-- [ ] 🔴 The local owner still returns a known-unreachable boundary pair instead of committing a
+- `R-001`: the local owner still returns a known-unreachable boundary pair instead of committing a
   reachable physical crossing or retaining/replanning ownership inertly.
-- [ ] 🔴 The fresh hostile-operation planner and phase machine are not invoked by the production
+- `R-005`: the fresh hostile-operation planner and phase machine are not invoked by the production
   scheduler, so bandit and cannibal consequences remain test-only scaffolding.
-- [ ] 🔴 Renewable player-camp opportunity and complete aftermath/repeat rules are absent.
-- [ ] 🔴 Full live save/load, performance/save-growth, and three-platform qualification remain
-  open and must follow the completed gameplay path rather than isolated helper success.
+- `R-008`: renewable player-camp opportunity and complete aftermath/repeat rules are absent.
+- `R-009` and `R-010`: full live save/load, performance/save-growth, and three-platform
+  qualification remain open and must follow the completed gameplay path rather than isolated helper
+  success.
 
 ## Acceptance ledger
 
 The feature is complete when these user-visible contracts are crossed off with changed-executable
 evidence. Existing focused tests may support a row but cannot replace its stated live route.
 
-- [ ] 🔴 One natural bandit camp dispatches its exact pair, watches or burns, commits a
+- `R-001`: one natural bandit camp dispatches its exact pair, watches or burns, commits a
   route-reachable paired physical boundary crossing on unchanged geometry, physically returns at
   least one survivor, applies a final report, and enters the matching camp decision without a
   teleported or abstract-jump return.
-- [ ] 🔴 A burned visible pair gains evidence, exits the target OMT without dancing or false anger,
+- `R-003`: a burned visible pair gains evidence, exits the target OMT without dancing or false anger,
   and preserves its route/report identities.
-- [ ] 🔴 Killing both scouts prevents an informed response; one survivor produces only a partial
+- `R-004`: killing both scouts prevents an informed response; one survivor produces only a partial
   report; a later survivor revises rather than duplicates it.
-- [ ] 🔴 A decided bandit response reserves a fresh party, reaches the camp, performs a real
+- `R-006`: a decided bandit response reserves a fresh party, reaches the camp, performs a real
   shakedown, and resolves payment, refusal/combat, return, and aftermath.
-- [ ] 🔴 A decided cannibal response reserves a fresh party, waits for true darkness, attacks all
+- `R-007`: a decided cannibal response reserves a fresh party, waits for true darkness, attacks all
   loaded defenders without a payment UI, and causes no offscreen defender deaths.
-- [ ] 🔴 Two camps cannot double-harvest one finite site; a repeated bandit shakedown requires
+- `R-008`: two camps cannot double-harvest one finite site; a repeated bandit shakedown requires
   cooldown plus demonstrably renewed player-camp opportunity.
-- [ ] 🔴 Quiet play inside the old radar radius remains undiscovered; clear day/dusk/unlit night,
+- `R-002`: quiet play inside the old radar radius remains undiscovered; clear day/dusk/unlit night,
   forest/weather/optics, decoy signals, target relocation, and zombie-heavy route cases follow the
   bounded perception contract.
-- [ ] 🔴 Save/load preserves authority and causality at every phase; full-feature performance and
-  save growth remain acceptable on macOS, Linux/WSL, and Windows.
+- `R-009` and `R-010`: save/load preserves authority and causality at every phase; full-feature
+  performance and save growth remain acceptable on macOS, Linux/WSL, and Windows.
 
-## Agent-coordination projection (DE67 v0.6 Prompt A)
+## Proof routes for remaining claims
 
-This is a coordination projection of the red contracts above, not another roadmap. It is bound to
-`dev` from Gate S input `274c4c1f239b7c68702a0b76321cb271906dd892`, uses one fresh xhigh
-contract-first coordinator, and has the DE67 requester-set ten-slot ceiling. Why now: C4 proves the
-unchanged natural pair physically reaches the camp-adjacent OMT but the current local owner returns
-a boundary pair it already classified unreachable. The intended player path remains natural scout
-discovery -> committed paired physical crossing -> physical return -> survivor report -> camp
-decision -> physical faction response. A helper-green, debug-written, teleported, or abstract-jump
-outcome is false completion. No material owner choice is left open by this projection.
+Focused proof may isolate an authoritative seam, but only the named natural or integrated route can
+close a claim that requires player-facing production behavior. Evidence must preserve the exact
+source, binary, fixture, scenario, camp, operation, generation, epoch, and member identities that
+matter to the verdict. Incidental artifact metadata is not part of a verdict unless it can change
+identity, the claim result, or a false-green control.
 
-Stable IDs below only name existing red claims; they add no requirements:
-
-| Red ID | Existing unresolved contract |
-|---|---|
-| `HC-R01` | Authoritative reachable local/abstract physical return and the unchanged natural scout-to-decision incident. |
-| `HC-R02` | Ordinary-play bounded-discovery fairness and absence of hidden-state radar. |
-| `HC-R03` | Burned-pair evidence, coherent egress, covert neutrality, and identity continuity. |
-| `HC-R04` | Dead/missing/split-survivor knowledge, report revision, and mission-slot release. |
-| `HC-R05` | Production scheduling of a fresh response and arbitration against duplicate movement owners. |
-| `HC-R06` | Complete physical bandit shakedown lifecycle. |
-| `HC-R07` | Complete physical cannibal darkness-raid lifecycle. |
-| `HC-R08` | Authoritative aftermath, finite-resource contention, renewable opportunity, and replay-safe repeat. |
-| `HC-R09` | Changed-executable save/load at every named live lifecycle boundary. |
-| `HC-R10` | Full-path performance, three-platform runtime/package qualification, and release gate. |
-
-### Active red claim proof route
-
-`HC-R01` remains the stable active red claim; C4 clarifies it without creating a subordinate stable
-claim.
+### R-001 — Natural local-to-abstract return
 
 ```text
-proof(HC-R01) =
+proof(R-001) =
   preconditions: exact committed source/binary; unchanged natural McWilliams fixture, geometry,
                  scenario timing, camp, outing generation, members, and zero intervention
   -> authoritative owner: matching-generation local ecology movement plus the single
@@ -393,58 +382,55 @@ proof(HC-R01) =
                 shortcut, or an unclassified retained stall
 ```
 
-### Acceptance and execution policy (`S.A`)
+The integrated proof is the unchanged natural
+`bandit.scout_to_decision_observer_live_mcw` incident on the exact accepted committed binary. It
+must show paired physical boundary crossing -> camp dematerialization -> canonical surviving return
+-> eligible final report -> matching authoritative decision in one identity chain. The focused
+owner proof must make the known unsafe-selection control fail, show a reachable paired transition
+crossing without violating nonreentry, and show that no valid current transition retains or replans
+without physical movement, route/ownership progress, or outcome credit.
 
-- `S.A.integrated_proof` is the unchanged natural
-  `bandit.scout_to_decision_observer_live_mcw` incident on the exact accepted committed binary. It
-  must show paired physical boundary crossing -> camp dematerialization -> canonical surviving
-  return -> eligible final report -> matching authoritative decision in one identity chain.
-- The applicable MSW fuse is the repository-authoritative three rounds on the causal parent claim;
-  relabeling the same ownership transition or adding visibility does not create a new round. A
-  claim visible in one round but first raised in the next is rejected.
-- The DE67 requester-set slot ceiling is ten. The initial implementation window is one because the
-  active production owner, write set, executable, fixture, and proof artifacts overlap; this is a
-  derived serialization constraint, not a work target.
-- After separate explicit Gate C consent, the coordinator may propose per-slot `edit`,
-  `test_build`, `live`, and `commit` acts. No act is implied by this Gate S freeze. Push, merge,
-  port, release, tag, password access, and T02+ remain outside the active slot and require their
-  own authority or green dependency.
+### R-002 through R-010
 
-`W` is the likely write set, `O` the authoritative owner set, and `P` mutable proof artifacts.
-Unknown intersections serialize. Tests and review belong to the slot whose contract they prove;
-there is no generic test or review slot.
+- `R-002`: ordinary-play controls distinguish quiet play inside the old radius from a credible
+  signal; clear day, dusk, and unlit night; road from forest/weather with and without optics; decoy
+  from real signal; relocation; and unseen from legitimately observed zombie danger. No exact
+  avatar, inventory, defender, storage, or hidden-zombie fact may enter the owner.
+- `R-003`: one natural visible-burn incident plus a quiet, unattacked control distinguishes burned
+  evidence and committed egress from ordinary covert neutrality. It must show no pacing, false
+  anger, or route/report identity replacement.
+- `R-004`: both scouts dead yields no informed response and no wedged slot; one survivor yields a
+  partial/provisional report; and a later survivor revises rather than duplicates it. Stable
+  operation, member, and report identities and authoritative deaths are required.
+- `R-005`: a focused owner control rejects stale or duplicate generations and reuse of the scout
+  reservation. A changed-executable incident naturally turns the matching final decision into one
+  fresh response and advances it through its first production transition, with one strategic owner
+  and no LLM-created ecology truth.
+- `R-006`: one paid branch and one refusal-or-attack branch distinguish real demand/payment from
+  premature combat and escalation/combat/return from dialogue-only success. Both physically rally,
+  close casualties and survivors, return, and write back exactly once; teleportation, invisible
+  payment, broad patrol neutrality, and missing replay-safe closure fail.
+- `R-007`: a pre-darkness hold and a later true-dark attack in the same causal route distinguish
+  darkness policy from elapsed-time attack. The incident engages the avatar and all loaded
+  defenders, exposes no payment UI, causes no offscreen defender death, physically reconciles
+  survivors and casualties, and contains no bandit-policy leakage or debug-triggered contact.
+- `R-008`: two camps contesting one site distinguishes global consumption from duplicated private
+  belief. Repeat attempts before and after real stored-goods, population, or activity renewal
+  distinguish cooldown-only replay from renewed opportunity. Faction aftermath applies exactly
+  once; timer-created value, stale-report replay, and duplicate writeback fail.
+- `R-009`: one save/reload at each named boundary—local/abstract handoff, split return, shakedown
+  contact, and cannibal darkness wait—preserves generation, epoch, member, and application identity
+  and resumes through production. Schema-only or raw-save-rewrite evidence does not close it.
+- `R-010`: the same completed production path has named CPU/scheduler, retained-memory,
+  save-size/load-latency, runtime, and packaging evidence on macOS, Linux/WSL, and Windows. Final
+  promotion uses the reviewed orchestrator route and requires fresh explicit authority before
+  touching `port/cdda-master`; no red predecessor may remain. It adds no generic final live run,
+  adversarial review, or full-diff review beyond the explicitly named specification and platform
+  proofs.
 
-| Slot / dependencies / red IDs | Primary production owner; bounded worker job; profile | Likely `W`; authoritative `O`; mutable `P` | Parallel condition | Necessary merge proof and coordinator checkpoint |
-|---|---|---|---|---|
-| `T01` / none / `HC-R01` | `do_turn.cpp` local/abstract handoff adapter. Repair the authoritative transition so the local owner yields only a route-reachable paired crossing on actual loaded geometry or retains/replans inertly; preserve geometry, timing, identity, physical crossing, and nonreentry. **Terra high.** | `W`: `src/do_turn.cpp` and `tests/bandit_live_world_test.cpp`; another named handoff interface only if evidence proves it owns the same transition. `O`: outing cursor, handoff epoch, overmap NPC storage, local ecology movement, canonical return/report owner. `P`: changed Mac executable, unchanged McWilliams fixture/scenario working copy, focused-test and incident artifacts. | Round 1: only this slot. Later parallelism requires disjoint `W/O/P` re-proof. | Focused production-owner proof must make the C4 unsafe-selection control red, prove a reachable paired transition crosses without violating nonreentry, and prove no valid current transition retains/replans without physical movement, route/ownership progress, or outcome credit. It must discriminate alternate/recentered transfer from genuine entrapment without editing the map. The unchanged natural incident must then order paired physical boundary -> camp dematerialization -> canonical return -> final report -> matching decision. Coordinator accepts only this owner transition and identity chain; otherwise it returns `T01`. |
-| `T02` / `T01` / `HC-R02` | `bandit_live_world` bounded perception/frontier and private-lead owner. Close only missing ordinary-play fairness evidence or the first production seam it reveals. **Luna high.** | `W`: `src/bandit_live_world.{cpp,h}`, a physical-emitter producer only if causally implicated, and owning natural-test/scenario files; harness code only for a proved visibility gap. `O`: physical observations, bounded visibility/risk query, private camp lead. `P`: changed executable and the existing quiet/visibility/signal/relocation route fixtures and run artifacts. | Not with any slot sharing `bandit_live_world`, the executable, fixture mutations, or harness output; unknown producer overlap serializes. | Retain only controls that distinguish an explicit contract variable: quiet inside the old radius versus a credible signal; clear day/dusk/unlit night; road versus forest/weather with and without optics; decoy versus real signal; relocation; unseen versus legitimately observed zombie danger. Coordinator checks that no exact avatar, inventory, defender, storage, or hidden-zombie fact enters the owner; duplicate matrix cells fail MSW and are removed. |
-| `T03` / `T01` / `HC-R03` | Loaded ecology movement/derived-attitude owner for the exact reserved pair. Close burned egress without creating a faction-state shortcut. **Terra high.** | `W`: `src/do_turn.cpp`, `src/npc.{cpp,h}`, `src/npcmove.cpp`, implicated route/evidence code in `src/bandit_live_world.*`, and the owning burn proof. `O`: reciprocal visual contact, persisted egress route, next-action ecology intent, ordinary survival/combat precedence. `P`: changed executable, visible-burn fixture, incident artifacts. | Not with `T01`, `T02`, `T04`, or response slots unless all movement, state, binary, and fixture intersections are proved empty. | One natural visible-burn incident plus a quiet/unattacked control is necessary to distinguish burned evidence/committed egress from ordinary covert neutrality; it must show no pacing, false anger, or route/report identity replacement. Coordinator returns any diff that persists a fake faction change or lets debug state create the burn. |
-| `T04` / `T01` / `HC-R04` | `bandit_live_world` casualty reconciliation and report/application-watermark owner. Close survivor-scoped knowledge and slot release through the authoritative death route. **Luna high.** | `W`: `src/bandit_live_world.{cpp,h}`, `src/do_turn.cpp` only if death reconciliation is implicated, and the owning casualty/report proof. `O`: roster state, outing resolution, survivor evidence, report revision, application keys. `P`: changed executable, casualty fixture copies, incident artifacts. | Serialize against any slot sharing roster/report state, the executable, casualty fixtures, or harness output. | The minimal discriminating packet is: both dead -> no informed response and no wedged slot; one survivor -> partial/provisional report; later survivor -> revision rather than duplicate. Each branch distinguishes an explicit knowledge outcome, so deleting one leaves `HC-R04` unproved. Coordinator verifies stable operation/member/report identities and authoritative deaths before closure. |
-| `T05` / `T01` / `HC-R05` | Hourly hostile-camp scheduler plus fresh-operation reservation owner. Wire `plan_hostile_operation` and the first real phase transition without duplicating strategic or NPC movement. **Terra high.** | `W`: `src/do_turn.cpp`, `src/bandit_live_world.{cpp,h}`, `src/npc.cpp`/`src/npcmove.cpp` only for a proved yield seam, and owning scheduler tests/probe. `O`: camp decision, fresh reservation, generation/epoch cursor, ordinary NPC/optional-LLM yield. `P`: changed executable and natural decision-to-reservation artifacts. | Only after `T01`; serialize with slots sharing scheduler, reservation, movement, executable, or fixture state. | A focused owner control must reject stale/duplicate generation and reuse of the scout reservation; a changed-executable incident must naturally turn the matching final decision into one fresh response and advance it through its first production transition. The two proofs distinguish owner arbitration from test-only planner scaffolding. Coordinator accepts only one strategic owner and returns double advancement or LLM-created ecology truth. |
-| `T06` / `T05` / `HC-R06` | Bandit policy within `active_hostile_operation`; ordinary dialogue/combat/storage remain subordinate contact owners. Complete rally, open demand, outcome, physical return, and writeback. **Terra high.** | `W`: `src/bandit_live_world.*`, `src/do_turn.cpp`, implicated `src/npc*`, `src/npctalk.cpp`, `src/basecamp.*`, and owning shakedown proofs. `O`: shakedown phase/reservation, narrow parley neutrality, reachable storage/payment, committed combat, return. `P`: changed executable, shakedown fixtures, paid and refusal/combat incident artifacts. | After `T05`; not parallel with other response/aftermath slots while strategic, movement, contact, binary, or fixture sets intersect. | One paid branch and one refusal-or-attack branch are the minimum controls that distinguish a real demand/payment path from premature combat and distinguish escalation/combat/return from dialogue-only success. Both must rally physically, close casualties/survivors, return, and write back exactly once. Coordinator returns teleport, invisible payment, broad patrol neutrality, or missing replay-safe closure. |
-| `T07` / `T05` / `HC-R07` | Cannibal policy within `active_hostile_operation`; ordinary loaded combat owns committed contact. Complete physical rally, true-dark wait, attack, return, and writeback. **Terra high.** | `W`: `src/bandit_live_world.*`, `src/do_turn.cpp`, implicated `src/npc*`, and owning raid proofs; no payment UI path. `O`: raid reservation/phase, local darkness, loaded defender set, committed combat, return. `P`: changed executable, cannibal fixture, day-wait and darkness-attack artifacts. | After `T05`; serialize with response/aftermath slots sharing strategic, movement, combat, executable, or fixture state. | A pre-darkness hold and later true-dark attack in the same causal route are both necessary to distinguish a darkness policy from elapsed-time attack. The incident must engage the avatar and all loaded defenders, expose no payment UI, cause no offscreen defender death, and physically reconcile survivors/casualties. Coordinator returns any bandit-policy leakage or debug-triggered contact. |
-| `T08` / `T06`,`T07` / `HC-R08` | `bandit_live_world` aftermath/resource/opportunity and idempotent application owner. Implement authoritative renewal and faction-specific future eligibility. **Terra high.** | `W`: `src/bandit_live_world.{cpp,h}`, implicated `src/basecamp.*` opportunity producer, and owning resource/repeat proofs. `O`: global finite bounty, private estimates, outcome memory, payment/plunder, cooldown plus renewed opportunity, application watermarks. `P`: changed executable, two-camp contention and before/after-renewal fixtures/artifacts. | Only after both response policies settle their outcome packets; serialize with slots sharing aftermath, resources, opportunity, binary, or fixtures. | Two camps contesting one site distinguishes global consumption from duplicated private belief; repeat attempts before and after a real stored-goods/population/activity renewal distinguish cooldown-only replay from renewed opportunity. Faction aftermath must apply once. Coordinator rejects timer-created value, stale-report replay, or duplicate writeback. |
-| `T09` / `T01`,`T06`,`T07`,`T08` / `HC-R09` | `bandit_live_world` serializers plus the active production owner on each boundary. Prove, and repair only if first-seam evidence requires, save/load causality at the named live boundaries. **Sol medium.** | `W`: `src/bandit_live_world.{cpp,h}`, implicated `src/game_io.cpp`, and the owning boundary tests/scenarios/fixtures only. `O`: serialized camp/operation identity and local/abstract, split-return, shakedown-contact, and darkness-wait owners. `P`: changed executable, exact pre/post-save fixture copies and artifacts. | Dependencies must be green; cross-boundary persistence, executable, and fixture intersections otherwise serialize. | One save/reload at each explicitly named boundary is necessary because each distinguishes a different owner transfer: local/abstract handoff, split return, shakedown contact, cannibal darkness wait. Each must preserve generation/epoch/member/application identity and resume via production. Coordinator returns schema-only or raw-save-rewrite evidence. |
-| `T10` / `T01`-`T09` / `HC-R10` | Platform runtime/package qualification and, only with new owner authority, the porting-orchestrator release owner. Measure the completed path. **Sol medium.** | `W`: no gameplay change unless a measured failure reopens its owning slot; only implicated portable build/package/workflow files. `O`: macOS, Linux/WSL, Windows scheduler/loaded cost and save behavior; project packaging and release-branch flow. `P`: exact per-platform binaries, metrics, saves, packages, and candidate-playtest artifacts. | Final dependency gate; no concurrency with an open implementation or persistence slot. | The same completed production path needs named CPU/scheduler, retained-memory, save-size/load-latency, runtime, and packaging evidence on each required platform; deleting a platform route leaves the platform contract unproved. T10 adds no generic final live run, adversarial review, or full-diff review beyond the explicitly named specification and platform proofs. Final promotion must use the reviewed orchestrator path and requires fresh explicit authority before touching `port/cdda-master`. Coordinator closes only a clean, identity-matched candidate with no red predecessor. |
+### Proof integrity
 
-### Round-1 concurrency and worker-follow protocol
-
-The evidence-derived maximum safe round-1 concurrency is **one**, and the only qualifying slot is
-`T01`. It is the active physical-return blocker. Every other slot either depends on it or has a
-known/unknown intersection with its `W`, authoritative movement/report owners in `O`, or its Mac
-executable/harness/fixture artifacts in `P`. Thus
-`parallel(i,j)` is allowed only when `W_i ∩ W_j = ∅`, `O_i ∩ O_j = ∅`, and
-`P_i ∩ P_j = ∅`; unknown intersections serialize. Recompute this before every later launch.
-
-Worker follow is finite and same-slot: assignment receipt -> bounded progress evidence -> returned
-diff and artifacts -> coordinator checks the slot's contract-specific proof -> same-slot remediation
-or closure. A finding, test, or review enters only when deleting it would leave that slot materially
-unproved; it never creates task eleven or a detached test-writing program.
-
-At every slot closure, the coordinator applies this proof-integrity gate:
-exact source, binary, and fixture identities match; staged setup ends before the asserted behavior;
-no helper, mock, raw-save transform, debug setter, teleport, or handwritten artifact manufactures
-the outcome; the transition comes from the authoritative production owner; positive/negative
-controls distinguish the claimed mechanism; and test-only code is never credited as gameplay.
-Under MSW, only an identity or evidence-integrity finding whose deletion would leave the contract
-falsely green reopens the same slot.
+Staged setup ends before the asserted behavior. No helper, mock, raw-save transform, debug setter,
+teleport, handwritten artifact, or test-only code may manufacture gameplay credit. The transition
+comes from the authoritative production owner, and positive or negative controls exist only when
+they distinguish the claimed mechanism.
