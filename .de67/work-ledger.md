@@ -182,6 +182,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   Preserve all timings, coordinates, target/horde facts, product source, and other scenarios. A
   reviewed green JSON/focused-test diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M13` accepted the exact lead-identity correction at `7c53a4f3f5`: all three day-scenario
+  dispatch assertions now name the runtime structural-bounty lead, and the focused contract requires
+  those three occurrences while rejecting the impossible terrain-opportunity spelling. Terminal
+  window 31 then triggered random cycle 2 on `DFS.md`. The independent review found that accepted
+  R-001's retained historical prose remains misleading, but the installed guard could not admit the
+  additive clarification without inventing protected structure and new red work; the exact guarded
+  DFS no-op resolved the cycle, and the diagnosis remains pending at `e34abafc49`. The next causal
+  R-002 frontier is one changed clear-day probe through approach, exact watch, and visibility using
+  the already exact `4aad58190f+SDL3` executable; M12's successful natural dispatch must not be
+  re-diagnosed or weakened.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
