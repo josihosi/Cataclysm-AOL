@@ -387,3 +387,35 @@ tooling/identity gap; no product behavior was exercised. Direct evidence:
 locally excluding only `build_logs/de67/` from Git status, then rebuild the exact committed HEAD.
 
 Disposition: applied as a changed tooling route; keep `R-001` red.
+
+### T01-M13 — inactive in-bounds camp arrival escaped the pair receipt
+
+Source: worker production result and coordinator repetition stop
+
+Deadline evidence: `T01-M13` received an on-time `blocker` terminal before its
+2026-08-10 22:15:34 CEST deadline; cumulative misses remained zero. The terminal stopped a second
+unchanged natural run and classifies the first exact post-fix run as the causal evidence.
+
+**Short verdict:** camp arrival straddled the loaded/unloaded receipt adapter
+
+**Diagnosis:** The first contradicted premise was that ordinary overmap travel hands every complete
+physical camp arrival to the transactional dematerialization owner. Exact run `20260810_213549`
+proved members 4/5 crossed and dematerialized outbound, rematerialized in `returning_report` without
+the stale vehicle crash, and committed the paired homeward boundary. At the next overmap movement,
+both persisted NPCs reached camp OMT `(164,39,0)`, but one inactive NPC's precise position was still
+inside the loaded map. `dematerialize_live_bandit_structural_handoffs` accepts an unloaded member
+only when it is also out of bounds, and accepts an in-bounds camp arrival only when active. The
+overmap loop's reached-destination hold does not set `local_pair_needs_reload` for this inactive
+in-bounds arrival, so the pair remains local-owned with no admissible complete snapshot. Direct
+evidence: `.userdata/dev-harness/harness_runs/20260810_213549/probe.feature_debug.log` at the
+homeward-boundary commit and subsequent motor diagnostics, plus the dematerialization preflight and
+reached-owned-destination branches in `src/do_turn.cpp`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. At the existing overmap owner seam,
+request reload for an inactive in-bounds owned camp arrival before the second dematerialization
+opportunity, and add one focused asymmetric loaded/unloaded camp-arrival control. Do not change
+scenario geometry, identities, timing, vehicle behavior, or the pair-transaction contract.
+
+Disposition: applied as a changed implementation route. The duplicate natural run was terminated;
+preserve the owner-corrected on-foot checkpoints and retry only after the camp-arrival adapter and
+focused control change. `R-001` remains red.

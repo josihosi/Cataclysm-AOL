@@ -143,10 +143,27 @@ Lineage: `CAOL-hostile-ecology-dev`
   clean tracked tree. Preserve the evidence and exclude only that local output directory from Git's
   dirty calculation before rebuilding; no natural run occurred.
 
+  Trial task `T01-M13` had the same evidence-based 1,800-second estimate and was dispatched at
+  2026-08-10 21:45:34 CEST with immutable deadline 2026-08-10 22:15:34 CEST.
+
+  `T01-M13` ended on time when the coordinator stopped an unchanged duplicate natural run. The
+  first exact post-fix run, `20260810_213549` on `04cb500a3b+SDL3`, already supplied the changed
+  product evidence: members 4/5 crossed, dematerialized, rematerialized without stale vehicle state,
+  and committed the homeward boundary at `(163,39,0)`. The next overmap movement put both members
+  physically in camp OMT `(164,39,0)`, but one inactive member was in loaded-map bounds. Current
+  dematerialization accepts only active in-bounds or inactive out-of-bounds members, while the
+  overmap owner holds an inactive camp arrival without requesting reload. The complete-pair receipt
+  therefore never commits, and no report or decision follows.
+
+  Trial task `T01-M14` has a 1,800-second estimate: the natural probe measured about 10 minutes and
+  the owning focused test about 24 seconds; the remaining allowance covers the localized inactive
+  in-bounds camp-arrival adapter, its asymmetric arrival control, incremental Mac build, exact
+  identity, and one unchanged natural run.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M12` ended with on-time findings and zero cumulative misses. `T01-M6`
+Open; `T01-M1` through `T01-M13` ended with on-time findings and zero cumulative misses. `T01-M6`
 was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
 `T01-M9` replaced those clones; `T01-M9` and `T01-M10` then localized the correct Mac test-build
-entrypoint, and `T01-M11` accepted the focused checkpoint. The exact natural proof remains;
-`R-001` is red.
+entrypoint, and `T01-M11` accepted the focused checkpoint. `T01-M13` stopped a duplicate run and
+classified the first exact post-fix natural camp-arrival gap. `R-001` remains red.
