@@ -9677,7 +9677,15 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             camp_arrival_positions.emplace( id, member->pos_abs() );
         }
 
-        REQUIRE( dematerialize_live_bandit_structural_handoffs_for_test() );
+        g->remove_npc( live_ids.front() );
+        shared_ptr_fast<npc> inactive_arrival = overmap_buffer.find_npc( live_ids.front() );
+        REQUIRE( inactive_arrival != nullptr );
+        REQUIRE_FALSE( inactive_arrival->is_active() );
+        REQUIRE( get_map().inbounds( inactive_arrival->pos_abs() ) );
+        REQUIRE( g->find_npc( live_ids.back() ) != nullptr );
+        REQUIRE( g->find_npc( live_ids.back() )->is_active() );
+
+        process_overmap_npc_move_for_test();
         CHECK( live_site.active_outing.owner ==
                bandit_live_world::simulation_owner::abstract );
         CHECK( live_site.active_outing.local_handoff.is_abstract_resume() );

@@ -7804,6 +7804,10 @@ void overmap_npc_move()
         if( locally_owned_travel_member && reached_owned_destination ) {
             // Hold an early arrival for the complete-pair transaction.  The generic travelling
             // fallback would clear its reached camp goal and may assign an unrelated destination.
+            // An inactive arrival inside the current bubble must first be reloaded so the second
+            // dematerialization opportunity can snapshot the complete pair transactionally.
+            local_pair_needs_reload |= !npc_to_add->is_active() &&
+                                       get_map().inbounds( npc_to_add->pos_abs() );
             continue;
         }
         if( ( !npc_to_add->is_active() ||
