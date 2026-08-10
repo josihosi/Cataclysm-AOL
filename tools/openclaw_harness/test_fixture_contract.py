@@ -4826,6 +4826,46 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
         )
         self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
+        self.assertEqual(
+            effective_leads[0]["source_key"],
+            "fixture_phase4_visibility_road_horde:terrain_fit:road",
+        )
+
+        def unchecked_camp_score(target_omt: List[int], source_key: str) -> int:
+            marker = ":terrain_fit:"
+            marker_at = source_key.find(marker)
+            terrain = "unknown" if marker_at < 0 else source_key[marker_at + len(marker) :]
+            terrain_fit = 1000 if terrain == "road" else 333
+            static_risk = 200 if terrain == "road" else 300
+            distance = max(abs(target_omt[0] - 140), abs(target_omt[1] - 51))
+            route_quality = max(0, min(1000, 1000 - distance * 1000 // 18))
+            weighted_score = (
+                300 * 333
+                + 250 * 1000
+                + 150 * 0
+                + 100 * 1000
+                + 100 * route_quality
+                + 100 * terrain_fit
+                - 450 * static_risk
+                - 150 * 0
+            )
+            return max(0, min(1000, weighted_score // 1000))
+
+        corrected_score = unchecked_camp_score(
+            effective_leads[0]["target_omt"], effective_leads[0]["source_key"]
+        )
+        scanned_road_score = unchecked_camp_score(
+            [136, 51, 0], "terrain_opportunity:terrain_fit:road"
+        )
+        stale_control_score = unchecked_camp_score(
+            effective_leads[0]["target_omt"], "fixture_phase4_visibility_road_horde"
+        )
+        self.assertEqual(
+            (corrected_score, scanned_road_score, stale_control_score),
+            (543, 537, 431),
+        )
+        self.assertGreater(corrected_score, scanned_road_score)
+        self.assertLess(stale_control_score, scanned_road_score)
 
         player_omt = [140, 39, 0]
         horde_transforms = [

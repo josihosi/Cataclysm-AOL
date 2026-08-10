@@ -32,7 +32,7 @@
         0
       ],
       "radius_omt": 0,
-      "source_key": "fixture_phase4_visibility_road_horde",
+      "source_key": "fixture_phase4_visibility_road_horde:terrain_fit:road",
       "source_summary": "fixture-known road bounty used only to put a real abstract pair on a committed route toward a concrete horde target",
       "first_seen_minutes": -720,
       "last_seen_minutes": -720,
