@@ -160,6 +160,8 @@ std::string live_bandit_homeward_boundary_discriminator_for_test();
 std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
 std::string live_bandit_homeward_partner_route_read_for_test(
     character_id member_id, character_id partner_id );
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_homeward_boundary_steps_for_test();
 
 bool live_bandit_local_handoff_position_is_motor_addressable(
     const tripoint_abs_ms &position, const tripoint_abs_sm &motor_center,
@@ -7062,6 +7064,7 @@ void monmove()
     // evidence recording can never delay an incomplete pair's safety update.
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders;
     std::set<character_id> pair_homeward_travel_ids;
+    std::map<character_id, character_id> pair_homeward_partner_ids;
     std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
     std::map<character_id, live_bandit_pair_boundary_step> pair_ingress_boundary_steps;
     std::map<character_id, live_bandit_pair_boundary_step> pair_homeward_boundary_steps;
@@ -7133,6 +7136,14 @@ void monmove()
         std::map<character_id, tripoint_abs_omt> pair_homeward_destinations;
         for( const bandit_live_world::site_record &site :
              overmap_buffer.global_state.bandit_live_world.sites ) {
+            if( site.active_outing.member_ids.size() == 2 &&
+                pair_homeward_travel_ids.count( site.active_outing.member_ids[0] ) > 0 &&
+                pair_homeward_travel_ids.count( site.active_outing.member_ids[1] ) > 0 ) {
+                pair_homeward_partner_ids.emplace( site.active_outing.member_ids[0],
+                                                   site.active_outing.member_ids[1] );
+                pair_homeward_partner_ids.emplace( site.active_outing.member_ids[1],
+                                                   site.active_outing.member_ids[0] );
+            }
             for( const character_id member_id : site.active_outing.member_ids ) {
                 if( pair_homeward_travel_ids.count( member_id ) > 0 ) {
                     pair_homeward_destinations.emplace( member_id, site.anchor );
@@ -7254,6 +7265,15 @@ void monmove()
                 const std::optional<bandit_live_world::covert_scout_relationship_read>
                 relationship = bandit_live_world::read_active_covert_scout_homeward_member(
                                    overmap_buffer.global_state.bandit_live_world, guy.getID() );
+                const auto partner_id = pair_homeward_partner_ids.find( guy.getID() );
+                npc *partner = partner_id == pair_homeward_partner_ids.end() ? nullptr :
+                               g->find_npc( partner_id->second );
+                const auto step_preserves_pair_cohesion = [&m, partner](
+                const tripoint_bub_ms & step ) {
+                    return partner == nullptr ||
+                           rl_dist( m.get_abs( step ), partner->pos_abs() ) <=
+                           bandit_live_world::local_pair_cohesion_radius();
+                };
                 Creature *threat = guy.current_target();
                 const auto is_adjacent_non_camp_threat = [&]( const Creature *candidate ) {
                     return relationship && candidate != nullptr && candidate != &guy &&
@@ -7401,6 +7421,9 @@ void monmove()
                                                      guy, boundary_target, avoid_nonreentry );
                         const bool route_safe = route_found &&
                                                 local_path_respects_nonreentry( guy.path );
+                        const bool next_step_cohesive = partner == nullptr || guy.path.empty() ||
+                                                        step_preserves_pair_cohesion(
+                                                            guy.path.front() );
                         const std::size_t path_size_before_movement = guy.path.size();
                         const tripoint_abs_ms position_before_movement = guy.pos_abs();
                         const int moves_before_movement = guy.get_moves();
@@ -7436,8 +7459,10 @@ void monmove()
                                        << " covert_avoid_path=" << covert_avoid_path.size();
                             rejection_classifier = classifier.str();
                         }
-                        if( route_safe ) {
+                        if( route_safe && next_step_cohesive ) {
                             guy.move_to_next();
+                        } else if( route_safe ) {
+                            guy.move_pause();
                         } else {
                             guy.path.clear();
                             live_bandit_move_to_omt_destination_avoiding(
@@ -7500,6 +7525,10 @@ void monmove()
                     if( preflight_path.empty() ||
                         !local_path_respects_nonreentry( preflight_path ) ) {
                         break;
+                    }
+                    if( !step_preserves_pair_cohesion( preflight_path.front() ) ) {
+                        guy.move_pause();
+                        continue;
                     }
                     while( !guy.omt_path.empty() && guy.omt_path.back() == current_omt ) {
                         guy.omt_path.pop_back();
@@ -7952,6 +7981,31 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
     }
     return "discriminator_count=" + std::to_string( discriminators.size() ) + ' ' +
            discriminators.front();
+}
+
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_homeward_boundary_steps_for_test()
+{
+    const bandit_live_world::world_state &state =
+        overmap_buffer.global_state.bandit_live_world;
+    const std::set<character_id> homeward_member_ids =
+        bandit_live_world::local_pair_homeward_travel_ids( state );
+    std::map<character_id, tripoint_abs_omt> homeward_destinations;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        for( const character_id member_id : site.active_outing.member_ids ) {
+            if( homeward_member_ids.count( member_id ) > 0 ) {
+                homeward_destinations.emplace( member_id, site.anchor );
+            }
+        }
+    }
+    const std::map<character_id, live_bandit_pair_boundary_step> steps =
+        live_bandit_pair_boundary_steps( homeward_destinations, nullptr, true );
+    std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>> result;
+    for( const auto &step : steps ) {
+        result.emplace( step.first,
+                        std::make_pair( step.second.departure, step.second.exit ) );
+    }
+    return result;
 }
 
 std::string live_bandit_homeward_unsafe_current_route_read_for_test(

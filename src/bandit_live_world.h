@@ -1771,6 +1771,7 @@ bool claim_local_pair_site_ownership( const site_record &site,
                                       std::set<character_id> &claimed_members );
 std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const active_outing_state &outing );
+int local_pair_cohesion_radius();
 std::set<character_id> local_pair_homeward_travel_ids( const world_state &state );
 std::map<character_id, tripoint_abs_omt> local_pair_alternate_watch_travel_destinations(
     const world_state &state );

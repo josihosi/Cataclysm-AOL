@@ -41,6 +41,8 @@ std::string live_bandit_homeward_boundary_discriminator_for_test();
 std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
 std::string live_bandit_homeward_partner_route_read_for_test(
     character_id member_id, character_id partner_id );
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_homeward_boundary_steps_for_test();
 
 namespace
 {
@@ -9158,6 +9160,62 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 get_map().get_bub( assigned_slots[index].departure )
             } );
         }
+
+        const auto selected_steps = live_bandit_homeward_boundary_steps_for_test();
+        REQUIRE( selected_steps.size() == live_ids.size() );
+        const tripoint_abs_ms first_departure = selected_steps.at( live_ids.front() ).first;
+        const tripoint_abs_ms second_departure = selected_steps.at( live_ids.back() ).first;
+        std::optional<tripoint_abs_ms> asymmetric_second_start;
+        int asymmetric_distance = -1;
+        for( const tripoint_bub_ms &candidate : get_map().points_in_radius(
+                 get_map().get_bub( second_departure ),
+                 bandit_live_world::local_pair_cohesion_radius() ) ) {
+            const tripoint_abs_ms absolute = get_map().get_abs( candidate );
+            const int pair_distance = rl_dist( first_departure, absolute );
+            const int route_distance = rl_dist( second_departure, absolute );
+            if( absolute == first_departure || absolute == second_departure ||
+                !get_map().passable( candidate ) || pair_distance >
+                bandit_live_world::local_pair_cohesion_radius() || route_distance < 4 ) {
+                continue;
+            }
+            const std::vector<tripoint_bub_ms> route = get_map().route(
+                        candidate, pathfinding_target::point(
+                            get_map().get_bub( second_departure ) ),
+                        g->find_npc( live_ids.back() )->get_pathfinding_settings( false ),
+                        g->find_npc( live_ids.back() )->get_path_avoid() );
+            if( !route.empty() && route_distance > asymmetric_distance ) {
+                asymmetric_second_start = absolute;
+                asymmetric_distance = route_distance;
+            }
+        }
+        REQUIRE( asymmetric_second_start );
+        npc *first_member = g->find_npc( live_ids.front() );
+        npc *second_member = g->find_npc( live_ids.back() );
+        REQUIRE( first_member != nullptr );
+        REQUIRE( second_member != nullptr );
+        first_member->setpos( get_map(), get_map().get_bub( first_departure ) );
+        second_member->setpos( get_map(), get_map().get_bub( *asymmetric_second_start ) );
+        for( npc *member : { first_member, second_member } ) {
+            member->goal = camp;
+            member->omt_path = { camp, route_edge, member->pos_abs_omt() };
+            member->set_mission( NPC_MISSION_TRAVELLING );
+            member->path.clear();
+        }
+        first_member->set_moves( 1000 );
+        second_member->set_moves( 0 );
+        const tripoint_abs_ms first_wait_position = first_member->pos_abs();
+        process_monsters_and_npcs_turn_for_test();
+        first_member = g->find_npc( live_ids.front() );
+        second_member = g->find_npc( live_ids.back() );
+        REQUIRE( first_member != nullptr );
+        REQUIRE( second_member != nullptr );
+        CHECK( first_member->is_active() );
+        CHECK( second_member->is_active() );
+        CHECK( first_member->pos_abs() == first_wait_position );
+        CHECK( rl_dist( first_member->pos_abs(), second_member->pos_abs() ) <=
+               bandit_live_world::local_pair_cohesion_radius() );
+        CHECK( second_member->pos_abs() != *asymmetric_second_start );
+        second_member->set_moves( 1000 );
         SUCCEED( "homeward boundary discriminator controls: " <<
                  reachable_receipt << "; " << unreachable_receipt << "; " <<
                  unsafe_current_endpoint_receipt << "; " << partner_endpoint_receipt );

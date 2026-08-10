@@ -5057,8 +5057,11 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
             snapshot.egress_omt ==
             outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )];
-    const bool homeward_assembly_released = snapshot.cohesion_assembled &&
-            scout_phase_requires_homeward_only( outing.phase );
+    const bool cohesive_homeward_release = snapshot.cohesion_assembled &&
+            scout_phase_requires_homeward_only( outing.phase ) &&
+            living_reads.size() == 2 && living_reads[0]->present && living_reads[1]->present &&
+            rl_dist( living_reads[0]->current_position,
+                     living_reads[1]->current_position ) <= local_pair_cohesion_radius_ms;
     bool assembled = cohesive;
     if( assembled && !snapshot.cohesion_assembled ) {
         for( const local_cohesion_member_read *read : living_reads ) {
@@ -5074,10 +5077,10 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         }
     }
 
-    // Assembly is a gate before route travel, not a tether to the staging squares.
-    // Once released, the ingress or homeward motor owns movement until the complete pair
-    // can be snapshotted across the boundary.
-    assembled = assembled || forward_assembly_released || homeward_assembly_released;
+    // Forward travel owns the pair after assembly because its overmap boundary transition
+    // is immediate.  Homeward travel remains physically cohesive: a split pair reopens the
+    // rendezvous owner instead of letting one member keep travelling alone.
+    assembled = assembled || forward_assembly_released || cohesive_homeward_release;
     snapshot.cohesion_assembled = assembled;
     snapshot.cohesion_abort_return = false;
     if( assembled ) {
@@ -5288,6 +5291,11 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
         }
     }
     return result;
+}
+
+int local_pair_cohesion_radius()
+{
+    return local_pair_cohesion_radius_ms;
 }
 
 std::set<character_id> local_pair_homeward_travel_ids( const world_state &state )
