@@ -256,3 +256,50 @@ and rerun only the owning test before an unchanged natural probe.
 
 Disposition: applied as a changed test route. Preserve the refrozen on-foot DFS, do not broaden the
 test surface, and retry under `T01-M7`; `R-001` remains red.
+
+### T01-M7 — phase-only observing control again failed persisted-owner validation
+
+Source: worker finding
+
+Deadline evidence: `T01-M7` reported an on-time `unexpected` finding before its
+2026-08-10 21:55:01 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** focused test setup contradicted persisted owner invariants
+
+**Diagnosis:** The first contradicted premise was unchanged from the supplemental M6 test evidence:
+changing only the outing and snapshot phase from outbound to observing does not create a valid
+observing resume. The test left the structural outing at waypoint zero without recorded local
+contact, so save/load correctly rejected it before resume retention could be proved. Source review
+confirms the three-file product slice remains limited to observing-resume retention and unconditional
+on-foot flag clearing. Direct evidence: `build_logs/de67/T01-M7/focused-owner-test.log` and
+`structural_phase_is_consistent` in `src/bandit_live_world.cpp`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Replace the phase-only setup with a
+consistent observing abstract resume through the existing owner seam, then rerun the same focused
+test before checkpoint/build/live proof.
+
+Disposition: applied as a test-definition gap; keep `R-001` red, do not expand the DFS, and preserve
+the corrected product slice.
+
+### T01-M8 — phase-only homeward consumer was rejected
+
+Source: worker finding
+
+Deadline evidence: `T01-M8` reported an on-time `unexpected` finding before its
+2026-08-10 21:59:38 CEST deadline; cumulative misses remained zero.
+
+**Short verdict:** focused homeward consumer bypassed its structural owner transition
+
+**Diagnosis:** The valid waypoint/contact correction made the observing resume persist, closing the
+M7 test contradiction. The test then changed only outing/snapshot phase to `returning_report` and
+called the handoff consumer. Planning could form a snapshot, but commit rejected the state under the
+owner consistency checks because the structural assessment transition had not produced it. This is
+a second focused-test setup gap, not a product or DFS gap. Direct evidence:
+`build_logs/de67/T01-M8/focused-owner-test.log` and `commit_local_pair_handoff` in
+`src/bandit_live_world.cpp`.
+
+**Suggested mutation:** No deadline-guideline mutation is due. Produce `returning_report` through
+the existing structural assessment/return owner seam, then verify that consumer uses and clears the
+retained resume.
+
+Disposition: applied as a changed test route; preserve the product slice and keep `R-001` red.

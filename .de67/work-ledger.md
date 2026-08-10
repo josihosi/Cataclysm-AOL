@@ -88,7 +88,29 @@ Lineage: `CAOL-hostile-ecology-dev`
   incremental Mac build, coherent checkpoint, and exact-commit identity check. It was dispatched
   at 2026-08-10 21:25:01 CEST with immutable deadline 2026-08-10 21:55:01 CEST.
 
+  `T01-M7` ended on time at the focused owner test. The product slice remained scope-clean, but the
+  test manufactured an observing state by changing only phase fields on an outbound waypoint-zero
+  outing; save/load correctly rejected that invalid persisted owner. The next route must create the
+  observing abstract resume through a consistent existing owner seam, then test the same two product
+  facts before checkpoint/build/live proof.
+
+  Trial task `T01-M8` has a 1,800-second estimate from the same measured natural probe and owning
+  test, with the remaining allowance for the localized valid-observing setup, incremental Mac build,
+  coherent checkpoint, and exact-commit identity check. It was dispatched at 2026-08-10 21:29:38
+  CEST with immutable deadline 2026-08-10 21:59:38 CEST.
+
+  `T01-M8` ended on time after the valid observing state persisted, closing the M7 contradiction.
+  The test then manually cloned that state to `returning_report`; the handoff plan formed, but commit
+  correctly rejected the inconsistent phase-only consumer. The next route must use the existing
+  structural assessment/return owner transition to produce the homeward consumer.
+
+  Trial task `T01-M9` has the same evidence-based 1,800-second estimate. It was dispatched at
+  2026-08-10 21:32:34 CEST with immutable deadline 2026-08-10 22:02:34 CEST to replace only the
+  invalid consumer setup, then proceed through focused proof, checkpoint, exact Mac build, and one
+  unchanged natural run if each predecessor is green.
+
 ## Batch result
 
-Open; `T01-M1` through `T01-M6` ended with on-time findings and zero cumulative misses. `T01-M7`
-is running from the reinspected corrected on-foot diff; `R-001` remains red.
+Open; `T01-M1` through `T01-M8` ended with on-time findings and zero cumulative misses. `T01-M6`
+was orphaned bookkeeping; `T01-M7` and `T01-M8` localized two artificial phase-clone test gaps.
+`T01-M9` is running the changed real-owner consumer route; `R-001` remains red.
