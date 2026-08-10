@@ -47,6 +47,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   launcher exposes no cheaper model selector, so the existing role-bounded worker is reused for the
   localized diff and focused test; the coordinator retains build review and every live verdict.
 
+  `R002-M3` accepted the canonical-path reachability checkpoint at `5b6612629d`; the owner test
+  passed 130 assertions and exact run `20260810_232809` then dispatched the road lead. It ended on
+  time at the next production seam: bounded exact-ring route reads were consumed by candidates
+  adjacent to camp that cannot contain the canonical route's distinct approach OMT, so production
+  selected fallback watch `(140,52,0)` and observed forward `(139,53,0)` instead of target
+  `(136,51,0)`. Preserve M3; the next source route must exclude provably nonconstructible adjacent
+  candidates before they consume route reads. Terminal window 21 made random cycle 1 due on the
+  stored `test-and-task-guidelines.md` lane, blocking further product dispatch until resolution.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
