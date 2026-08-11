@@ -12,17 +12,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   signal provenance, player relocation without target drag, and legitimately observed versus unseen
   zombie danger. Commits after the runtime checkpoint change harness or durable DE-67 state only.
 
-  Task `R002-M36` uses the durable 3,600-second R-002 envelope already derived from the prior
-  changed-executable rows. Before another live probe, correct the structural-signal proof footing
-  against current source: the old scenario still asserts the pre-M8
-  `terrain_opportunity:136,51,0` route even though the accepted selector rejects that target's
-  unwatchable geography, and its fixture lead predates the production-readable terrain marker.
-  Reuse one already viable route footing across the real-signal and empty-decoy contrast where the
-  contract permits; preserve physical smoke/light/sound production, exact non-player provenance,
-  survivor-carried return, and three returned-report leads. Exercise the actual normalized matcher
-  on representative required and forbidden artifact lines. This task may change only the relevant
-  fixture/scenario and focused harness contracts; it may not change product source, run the live
-  probe, edit `.de67/`, commit, or claim R-002.
+  `R002-M36` stopped on time without edits or a live probe. Current schema-10 watch routes exclude
+  the target footprint, but the return validator accepts signal observations only when both source
+  and receiver belong to the shared route. The live adapter legitimately observes a target-footprint
+  source through its bounded forward OMTs, then the camp discards that same fact at survivor return.
+  This is an implementation gap in the existing R-002 contract, not fixture authority to fake a
+  route source and not a DFS gap.
+
+  Task `R002-M37` retains the durable 3,600-second R-002 envelope. Make the smallest source/test
+  correction: a returned structural signal may use a source OMT on the committed shared route or in
+  the outing's persisted target footprint, while its receiver must remain on the shared route and all
+  existing schema, sense, identity, revision, time, expiry, share, observer, and survivor checks stay
+  intact. Add focused schema-10 watch-route coverage proving a target-footprint source survives into
+  returned-report leads and controls rejecting a source outside both route and footprint and a
+  receiver outside the route. This task may change only `src/bandit_live_world.cpp` and the owning
+  focused C++ test; it may not edit the fixture/scenario, `.de67/`, or README, run a live probe,
+  commit, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
