@@ -59,14 +59,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   it also has no bounded safe watch geography; no selected watch or route cost exists, so it earned
   no discovery credit.
 
-  Next route: extend the read-only analyzer to expose the production scheduler's remaining naturally
-  seeded non-frontier candidate set instead of stopping at the single best deterministic plan. Each
-  record must bind the lead, target, selector, outcome, and any selected watch/route cost without
-  mutating scheduler state or product selection. A rejected candidate reset its watch-path budget
-  for every row even though production shares one eight-read budget across the maintenance route
-  lookup; that candidate was discarded. The next analyzer must share the production budget across
-  its rows and prove the exhaustion control before live use. Then use the exact committed binary and
-  proved bridge transport to find a selector-valid footing before running the same-footing empty and
+  Accepted analyzer checkpoint `65e09b3751` exposes the production scheduler's naturally seeded
+  non-frontier candidate order without mutating scheduler state or product selection. Each normalized
+  record binds site, lead, target, selector, outcome, and any selected watch/route cost. Production
+  debug traversal and the direct C++ control share one eight-read budget across all candidate rows:
+  the first row consumes the measured allowance and a second identical row rejects after exhaustion,
+  so resetting the budget per row would fail the control. Changed `do_turn`, planner, and test objects
+  compiled, three source-shaped Python parser tests passed, and `git diff --check` passed.
+
+  Next route: build the exact `65e09b3751` Mac executable and use the proved bridge transport to run
+  the read-only analyzer on the installed naturally seeded leads. Accept only an identity-bound
+  `selector=non_frontier` row with a selected watch and route cost as a footing; candidate rejection
+  remains truthful negative evidence. Once a valid footing exists, run the same-footing empty and
   real physical-signal rows. Do not hand-author a lead, retry either rejected target, weaken the
   selector, drag the target with the player, or alter world geometry to fit the fixture.
 
