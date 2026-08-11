@@ -443,6 +443,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   the accepted clear-day child, road fixtures, product source, and unrelated harness behavior. A
   reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M30` accepted the generated-weather forest replay at `7347c8c127`. The fog child now
+  inherits the accepted one-cell forest transform, binocular roster, terrain-opportunity target,
+  and three-zombie footing while preserving turn `5360400`. It serializes dispatch hour 180,
+  approach hour 181, and exact watch hour 182, where the same line must expose runtime-derived
+  weather, penalty, sight budget, acquisition, and outcome fields without assumed values.
+
+  Task `R002-M31` retains the measured 3,600-second envelope for one coordinator-owned changed
+  generated-weather forest/optic probe against exact runtime source `4aad58190f+SDL3`. Acceptance
+  requires the one-cell transform receipt, real terrain-opportunity dispatch, approach at hour 181,
+  exact watch `(138,52,0)` at hour 182, actual optic, target `(137,49,0)` at distance three, and
+  nonempty runtime weather, sight penalty, sight points, acquisition, and outcome fields, with every
+  step/error guard green. Record the exact values as the authoritative next premise; do not credit a
+  fog contrast unless the measured penalty and forest-screen result actually establish it. Stop at
+  the first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
