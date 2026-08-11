@@ -7726,8 +7726,10 @@ void overmap_npc_move()
     }
     const std::map<character_id, tripoint_abs_omt> local_pair_alternate_destinations =
         bandit_live_world::local_pair_alternate_watch_travel_destinations( bandit_state );
-    std::map<character_id, tripoint_abs_omt> local_pair_forward_destinations =
+    const std::map<character_id, tripoint_abs_omt> local_pair_ingress_destinations =
         bandit_live_world::local_pair_ingress_travel_destinations( bandit_state );
+    std::map<character_id, tripoint_abs_omt> local_pair_forward_destinations =
+        local_pair_ingress_destinations;
     local_pair_forward_destinations.insert( local_pair_alternate_destinations.begin(),
                                             local_pair_alternate_destinations.end() );
     // A locally owned pair that has not released staging ownership must not fall through to
@@ -7891,7 +7893,47 @@ void overmap_npc_move()
         }
     }
     bool npcs_need_reload = false;
+    std::set<character_id> blocked_ingress_members;
+    for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( outing.member_ids.size() != 2 ) {
+            continue;
+        }
+        const auto first_destination = local_pair_ingress_destinations.find(
+                                           outing.member_ids[0] );
+        const auto second_destination = local_pair_ingress_destinations.find(
+                                            outing.member_ids[1] );
+        if( first_destination == local_pair_ingress_destinations.end() ||
+            second_destination == local_pair_ingress_destinations.end() ||
+            first_destination->second != second_destination->second ) {
+            continue;
+        }
+        const auto member_is_eligible = [&travelling_npcs,
+                                        &local_pair_ingress_destinations](
+                                            const character_id member_id ) {
+            const auto member = std::find_if( travelling_npcs.begin(), travelling_npcs.end(),
+            [&member_id]( const npc *candidate ) {
+                return candidate != nullptr && candidate->getID() == member_id;
+            } );
+            if( member == travelling_npcs.end() ) {
+                return false;
+            }
+            const npc *candidate = *member;
+            const auto destination = local_pair_ingress_destinations.find( member_id );
+            return destination != local_pair_ingress_destinations.end() &&
+                   candidate->is_travelling() && !candidate->has_flag( json_flag_CANNOT_MOVE ) &&
+                   candidate->has_omt_destination() && candidate->goal == destination->second &&
+                   !candidate->omt_path.empty();
+        };
+        if( !member_is_eligible( outing.member_ids[0] ) ||
+            !member_is_eligible( outing.member_ids[1] ) ) {
+            blocked_ingress_members.insert( outing.member_ids.begin(), outing.member_ids.end() );
+        }
+    }
     for( npc *&elem : travelling_npcs ) {
+        if( blocked_ingress_members.count( elem->getID() ) > 0 ) {
+            continue;
+        }
         const bandit_live_world::site_record *local_owner = nullptr;
         const auto alternate_destination = local_pair_alternate_destinations.find(
                                                elem->getID() );
