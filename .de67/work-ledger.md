@@ -15,21 +15,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   Current causal frontier: the natural production assembly-to-ingress path can split the exact pair
   across OMTs and then abort after the remaining member oscillates. Evidence is
   `.userdata/dev-harness/harness_runs/20260811_191731/probe.artifacts.log:868-968,1044` and
-  `probe.report.json:16339-16355`. `R002-M59` showed that revoking persisted
-  `cohesion_assembled` after a split makes the focused test green, but its test manually injected the
-  split and its source change left `overmap_npc_move` collecting and advancing `travelling_npcs` one
-  member at a time. That candidate was rejected and removed: post-split detection is not the required
-  paired ingress commit.
+  `probe.report.json:16339-16355`. Revoking persisted `cohesion_assembled` after a split made a
+  focused test green, but manually injected the split and left `overmap_npc_move` collecting and
+  advancing `travelling_npcs` one member at a time. That candidate was rejected and removed:
+  post-split detection is not the required paired ingress commit. `R002-M60` moved the preflight into
+  that production loop and compiled, but
+  its new controls polluted the enclosing multi-section fixture: the rebuilt owning filter left two
+  existing homeward cases local, then exposed invalid-looking owner/route state and crashed. The
+  two-file candidate was rejected and removed because this evidence cannot distinguish a product
+  regression from test-state contamination.
 
-  Next required slice: drive both assembled scouts through the real `overmap_npc_move` ingress loop
-  in one focused control, with one member made independently ineligible through the same production
-  selectors that built `travelling_npcs`. The positive row must advance both or neither; the negative
-  row must leave both on the route OMT with ingress ownership intact and no progress credit. Change
-  the overmap ingress owner so it preflights and commits the exact pair coherently instead of invoking
-  `travel_overmap` independently. A manual position split or a fix that only notices the split on the
-  next cohesion pass is insufficient. Run the narrow owning test and changed-object compile. Do not
-  rerun the full structural-signal probe until this production-order control passes. R-002 remains
-  red; the signal-return, relocation, and observed-versus-unseen zombie rows remain afterward.
+  Next required slice: isolate the production-order ingress controls from the existing multi-section
+  fixture and prove the unchanged source fails the independently-ineligible negative row without
+  contaminating the established homeward rows. Then change `overmap_npc_move` so an assembled exact
+  pair passes the same `travelling_npcs` eligibility preflight and commits both ingress steps or
+  neither. The positive row must advance both; the negative row must leave both on the route OMT with
+  ingress ownership intact and no progress credit. A manual position split or next-pass split
+  detection is insufficient. The full owning filter and changed-object compile must pass before the
+  structural-signal probe is rerun. R-002 remains red; the signal-return, relocation, and
+  observed-versus-unseen zombie rows remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
