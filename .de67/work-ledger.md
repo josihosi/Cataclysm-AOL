@@ -516,6 +516,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   `(137,49,0)` at distance three unacquired, no visible threat, no threat OMT, and every step/error
   guard green. Stop at the first changed production divergence; no unchanged retry.
 
+  Exact `R002-M35` run `20260811_131323` is accepted. The one-cell transformed-forest route reached
+  approach hour 156 and exact watch `(138,52,0)` at hour 157 in clear weather. With penalty one, no
+  optic, and three sight points, target `(137,49,0)` remained unacquired at distance three with no
+  visible threat and no threat OMT. All nine step-local rows and the debug guard passed, and PID
+  56548 was terminated cleanly. Together with M29, this proves that the same clear forest target is
+  acquired with binoculars and screened without them. Terminal window 53 requires random cycle 3
+  on `orchestrator-guidelines.md`; no further work item may dispatch before that transaction retires
+  this coordinator.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
