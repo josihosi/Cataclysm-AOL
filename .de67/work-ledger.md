@@ -69,13 +69,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   196-test fixture-contract suite passed. The accepted runtime remains exact because this checkpoint
   changes scenario/tests only.
 
-  Task `R002-M44` retains the durable 3,600-second R-002 envelope because it reruns the established
-  scenario only after the causal isometric staging correction. The coordinator must require the full
-  M42 contract, beginning with exact minute-10080 source `(137,49,0)` to watch `(138,52,0)` smoke,
-  light, and sound facts, then natural observer artifacts, pre-return absence, physical two-survivor
-  return, exactly three non-player returned-report leads, and persisted saved ownership. Inspect the
-  actual step ledger, artifact matches, owner metadata, and image/pair. Stop at the first new broken
-  premise; do not edit during the run, claim the empty-decoy contrast, or claim R-002.
+  `R002-M44` stopped on time in run `20260811_150253`. Prompt handling and both editor actions stayed
+  operational, but the physical field/light and explosion originated at `(138,48,0)`, exactly the
+  world result of the first 18 LEFT actions alone; the following mixed DOWN block did not move the
+  brush. Exact watch `(138,52,0)` correctly rejected the off-footprint sound and observations remained
+  zero. Current input bindings register `b` and `1` as `LEFTDOWN`; current isometric rotation maps that
+  diagonal screen action directly to world west `(-1,0)`. No signal row was credited.
+
+  Task `R002-M45` retains the durable 3,600-second R-002 envelope. Replace both mixed special-key
+  target paths with the direct registered printable `LEFTDOWN` binding repeated for the exact
+  36-world-tile west delta, and make the focused contract derive the binding and isometric transform
+  from the current key/action semantics. Keep every non-staging assertion unchanged. Run focused and
+  full fixture-contract tests. Do not edit product or generic harness source, fixture transforms,
+  `.de67/`, README, commit, launch a live scenario, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
