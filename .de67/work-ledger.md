@@ -224,6 +224,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   Stop at the first changed production divergence; do not re-diagnose the direct bounty route or run
   an unchanged retry.
 
+  Exact `R002-M16` run `20260811_113229` is accepted. The real terrain-opportunity lead dispatched,
+  the first hour reached approach `(139,51,0)` without acquisition, and the second reached concealed
+  watch `(138,52,0)` and acquired/observed the three zombies at `(137,49,0)` from distance three with
+  clear weather, no optic, and three sight points. All ten step-local rows and the error guard passed.
+
+  Task `R002-M17` retains the measured 3,600-second envelope and corrects the twilight proof premise
+  before any live row. Its current scenario inconsistently expects a terrain-opportunity ID while
+  preflighting a structural-bounty kind, inherits the direct-harvest route, and observes from distance
+  one, which cannot distinguish the agreed two-point twilight budget. Rebase only the twilight fixture
+  on M16's accepted terrain-opportunity target/watch lane, preserve its twilight turn, and add the
+  serialized approach/watch hour. At exact watch `(138,52,0)`, the forward target `(137,49,0)` must
+  remain unacquired at distance three with clear weather, no optic, and sight points two. Extend a
+  focused contract over source chain, semantic lead identity, three-zombie footing, ordered waits,
+  and the negative visibility artifact. Preserve day, night, common fixtures, and product source.
+  A reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
