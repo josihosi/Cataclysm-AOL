@@ -12181,6 +12181,11 @@ bool returned_structural_signal_observation_is_eligible( const site_record &site
 {
     const active_outing_state &outing = site.active_outing;
     const member_record *observer = site.find_member( observation.observer_id );
+    const bool source_is_permitted =
+        std::find( outing.shared_route.begin(), outing.shared_route.end(),
+                   observation.source_omt ) != outing.shared_route.end() ||
+        std::find( outing.target_footprint.begin(), outing.target_footprint.end(),
+                   observation.source_omt ) != outing.target_footprint.end();
     const bool private_observer_returned =
         observation.share_state == sortie_observation_share_state::observer_private &&
         observer != nullptr && observer->state == member_state::outbound &&
@@ -12198,8 +12203,7 @@ bool returned_structural_signal_observation_is_eligible( const site_record &site
            observation.expiry_minutes >= now_minutes && !observation.source_id.empty() &&
            std::find( outing.member_ids.begin(), outing.member_ids.end(), observation.observer_id ) !=
            outing.member_ids.end() &&
-           std::find( outing.shared_route.begin(), outing.shared_route.end(),
-                      observation.source_omt ) != outing.shared_route.end() &&
+           source_is_permitted &&
            std::find( outing.shared_route.begin(), outing.shared_route.end(),
                       observation.receiver_omt ) != outing.shared_route.end();
 }
