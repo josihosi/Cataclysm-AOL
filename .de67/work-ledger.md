@@ -372,6 +372,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   Preserve the fog child, road fixtures, product source, and unrelated harness behavior. A reviewed
   green harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M26` stopped on time without edits because the preserved forest target has no legal bounded
+  watch. Its only concealed distance-three candidates are screened at costs four or nine against the
+  selector's fixed clear-day budget three; its distance-four and distance-five rings contain only
+  unconcealed road/field terrain. A terrain-opportunity lead at `(138,52,0)` therefore never reaches
+  route lookup, so serializing a watch for it would be fictitious.
+
+  Task `R002-M27` retains the measured 3,600-second envelope and may replace only the clear-day
+  forest/optic child's target with another existing forest OMT in the authoritative base overmap.
+  Preserve the shared common and fog child byte-for-byte. Derive a nearby target whose bounded
+  watch geography has at least one concealed, clear-intervening, route-eligible candidate under the
+  current selector; clear the inherited direct lead in the day child, add one terrain-opportunity
+  lead and three concrete zombies at that exact target, and retain the real binocular inventory.
+  Serialize the two post-dispatch owner hours. Bind only coordinates and route facts provable from
+  current source plus fixture terrain; a generic same-run watch token is acceptable if the production
+  pathfinder is the remaining authority. Require clear day, optic yes, six sight points, a forest
+  target screen, acquisition, and observed threat. Preserve product source, road fixtures, and
+  unrelated harness behavior. A reviewed green harness-only diff may be checkpointed; no live probe
+  belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
