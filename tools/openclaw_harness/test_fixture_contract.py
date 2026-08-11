@@ -5333,7 +5333,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("current_omt=(139,51,0)", serialized_scenario)
         self.assertNotIn("first_forward_distance=1", serialized_scenario)
 
-    def test_phase4_forest_optic_fog_replays_transformed_forest_without_assumed_result(self) -> None:
+    def test_phase4_forest_optic_fog_binds_accepted_exact_result(self) -> None:
         fixture_name = "bandit_phase4_visibility_forest_optic_fog_v0_2026-08-04"
         day_fixture_name = "bandit_phase4_visibility_forest_optic_day_v0_2026-08-04"
         road_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
@@ -5449,14 +5449,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         approach_label = "wait_first_1_hour_for_phase4_visibility_forest_optic_fog_approach"
         visibility_label = "wait_second_1_hour_for_phase4_visibility_forest_optic_fog_observer"
         audit_label = "audit_phase4_visibility_forest_optic_fog_artifact"
-        guard_label = (
-            "audit_phase4_visibility_forest_optic_fog_requires_nonempty_dynamic_values"
-        )
         dispatch = steps[labels.index(dispatch_label)]
         approach = steps[labels.index(approach_label)]
         visibility = steps[labels.index(visibility_label)]
         audit = steps[labels.index(audit_label)]
-        guard = steps[labels.index(guard_label)]
         self.assertEqual(first_wait["artifact_state_patterns"], [
             "scheduler_hour=174",
             "now_minutes=10440",
@@ -5479,31 +5475,58 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertLess(labels.index(dispatch_label), labels.index(approach_label))
         self.assertLess(labels.index(approach_label), labels.index(visibility_label))
         self.assertLess(labels.index(visibility_label), labels.index(audit_label))
-        self.assertLess(labels.index(audit_label), labels.index(guard_label))
-
-        exact_visibility = audit["required_line_patterns"][1]
-        for required in (
+        self.assertEqual(
+            audit["required_line_patterns"],
+            [
+                [
+                    "structural maintenance dispatched site="
+                    "overmap_special:bandit_camp@140,51,0",
+                    exact_dispatch_lead,
+                ],
+                [
+                    "bandit_live_world structural_visibility:",
+                    "site=overmap_special:bandit_camp@140,51,0",
+                    "current_omt=(138,52,0)",
+                    "weather=fog",
+                    "sight_penalty=1.7",
+                    "optic=yes",
+                    "sight_points=3",
+                    "first_forward_omt=(137,49,0)",
+                    "first_forward_distance=3",
+                    "first_forward_acquired=no",
+                    "outcome=no_visible_threat",
+                    "threat_omt=none",
+                ],
+            ],
+        )
+        expected_artifact_patterns = [
+            "structural maintenance dispatched site="
+            "overmap_special:bandit_camp@140,51,0",
+            exact_dispatch_lead,
+            "bandit_live_world structural_visibility:",
             "current_omt=(138,52,0)",
-            "weather=",
-            "sight_penalty=",
+            "weather=fog",
+            "sight_penalty=1.7",
             "optic=yes",
-            "sight_points=",
+            "sight_points=3",
             "first_forward_omt=(137,49,0)",
             "first_forward_distance=3",
+            "first_forward_acquired=no",
+            "outcome=no_visible_threat",
+            "threat_omt=none",
+        ]
+        self.assertEqual(scenario["artifact_patterns"], expected_artifact_patterns)
+        exact_visibility = audit["required_line_patterns"][1]
+        for generic_prefix in (
+            "weather=",
+            "sight_penalty=",
+            "sight_points=",
             "first_forward_acquired=",
             "outcome=",
         ):
-            self.assertIn(required, exact_visibility)
-        self.assertEqual(
-            [group[-1] for group in guard["forbidden_line_patterns"]],
-            [
-                "weather= ",
-                "sight_penalty= ",
-                "sight_points= ",
-                "first_forward_acquired= ",
-                "outcome= ",
-            ],
-        )
+            self.assertNotIn(generic_prefix, exact_visibility)
+            self.assertNotIn(generic_prefix, scenario["artifact_patterns"])
+        self.assertNotIn("audit_log_not_contains", [step["kind"] for step in steps])
 
         serialized_scenario = json.dumps(scenario, sort_keys=True)
         for stale_assumption in (
@@ -5511,12 +5534,6 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "current_omt=(139,51,0)",
             "first_forward_omt=(138,52,0)",
             "first_forward_distance=1",
-            "weather=fog",
-            "sight_penalty=1.7",
-            "sight_points=3",
-            "first_forward_acquired=no",
-            "outcome=no_visible_threat",
-            "threat_omt=none",
         ):
             self.assertNotIn(stale_assumption, serialized_scenario)
 
