@@ -77,14 +77,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   Source review establishes that hourly structural maintenance persists its bounded terrain scan and
   immediately route-solves and may dispatch those candidates in the same call. A selected candidate
   becomes active outside pressure before a later manual analyzer action can inspect it, while rejected
-  leads remain visible. Next route: emit the same normalized site, lead, target, selector, outcome,
-  selected-watch, and route-cost record from the observer-gated production route-lookup callback while
-  the scheduler evaluates each candidate, before application or dispatch. Prove the formatter/parser
-  and selected-versus-rejected controls without changing scheduling or world state. Then build the
-  exact committed binary, install the existing zero-lead natural fixture, advance one real hourly
-  cadence, and audit the scheduler-emitted rows. Do not hand-author a lead, retry either rejected
-  target, weaken the selector, drag the target with the player, or alter world geometry to fit the
-  fixture.
+  leads remain visible. Accepted scheduler checkpoint `c74f0c88e4` now emits the same normalized site,
+  lead, target, selector, outcome, selected-watch, and route-cost record from the observer-gated
+  production route-lookup callback before application or dispatch. Manual and production paths share
+  one side-effect-free formatter; route ordering, the shared eight-read budget, scheduling, and world
+  state are unchanged. Changed objects compiled, four parser controls passed, `git diff --check`
+  passed, and structured local Codex review found no actionable defect.
+
+  Next route: build the current clean `dev` HEAD containing `c74f0c88e4`, install the existing
+  zero-lead natural McWilliams fixture, advance one real hourly structural cadence, and audit every
+  scheduler-emitted row. A new `selector=non_frontier` selected row with watch and route cost establishes
+  the footing; an all-rejected or empty candidate set is truthful negative evidence and stops the run.
+  Do not hand-author a lead, retry either rejected target, weaken the selector, drag the target with the
+  player, or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
