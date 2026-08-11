@@ -66,8 +66,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   selector counts also prove that merely correcting the matcher cannot make this footing viable.
   This remains a task/fixture proof gap, not a DFS or product-owner change.
 
-  Latest nonaccepted feasibility finding: `R002-M72` made no edits and kept
-  `dev@10c96e6b03` clean. A read-only whole-save scan using the current sight, concealment,
+  Superseded nonaccepted feasibility evidence made no edits and kept `dev@10c96e6b03` clean.
+  A read-only whole-save scan using the current sight, concealment,
   adjacency, travel-cost, target-avoidance, and route-cap facts found no McWilliams arrangement that
   satisfied both the watch lane and route predicates. The only lane-qualified candidate found used
   camp `(126,19,0)`, frontier target `(126,10,0)`, and watch `(123,13,0)`; its six field OMTs plus a
@@ -75,20 +75,33 @@ Lineage: `CAOL-hostile-ecology-dev`
   normalized false-green matcher test passed. This diagnostic did not claim source-exact route
   equivalence or alter the tree.
 
-  `R002-M72` first contradicted premise: saved-overmap inspection alone cannot prove the decisive
+  Its first contradicted premise: saved-overmap inspection alone cannot prove the decisive
   route predicate. Exact eligibility is owned by C++ `overmap_buffer.get_travel_path` with the live
   `npc_route`, target-footprint exclusions, route normalization, and cap handling; the fixture layer
   has no source-owned save-loading equivalent. This is a tooling/evidence gap, not a product-owner
   failure or DFS gap.
 
-  Next route: add the smallest read-only source-owned feasibility analyzer that exercises those same
-  C++ owners against installed natural geometry without editing terrain or strategic state. Its
-  focused controls must prove one eligible arrangement and reject the known `(164,30,0)` footing,
-  and the harness parser/matcher must distinguish selected, rejected, and false-selected output
-  after normalization. If it identifies a viable natural footing, bind the actual target footprint,
-  concealed and visible lane, nonadjacency, target-avoiding route, and normalized route cost into the
-  fixture contract, then run one clean non-credited selector gate. Do not weaken the selector or
-  alter world geometry to fit the fixture.
+  Latest nonaccepted tooling finding: `R002-M73` left a seven-file dirty candidate that adds a
+  `DEBUG_CLAIRVOYANCE` read-only feasibility action over the production frontier targets and emits
+  normalized selected/rejected route facts. Changed C++ objects compiled, two focused harness
+  matcher tests passed, and `git diff --check` passed. The worker then correctly withdrew its
+  owner-proof claim: its Catch2 control fabricates `structural_route_read` and exercises only the
+  formatter, not the TU-private `live_bandit_structural_route_read`, `get_travel_path`, or
+  `read_structural_watch_geography`. The candidate has no accepted product or fixture credit.
+
+  `R002-M73` first contradicted premise: the narrow test route cannot execute the actual owner against
+  installed McWilliams geometry. The repository has no read-only installed-save loader at that seam,
+  and compile-only or handwritten formatter output cannot prove either an eligible arrangement or
+  the known `(164,30,0)` rejection. This is a tooling/test gap, not a DFS or product-owner change.
+
+  Next route: independently inspect the dirty candidate, expose the smallest test-only seam around
+  the actual `live_bandit_structural_route_read`, and execute it on controlled overmap geometry with
+  one selected case and the known McWilliams-shaped rejected case. The control must traverse the real
+  NPC route, target-footprint exclusion, normalization, route-cap, and watch-geography owners; a
+  fabricated `structural_route_read` is not evidence. Only after that discriminator actually runs may
+  the analyzer candidate be accepted and checkpointed. Then build the exact committed binary and run
+  the read-only action against the installed save before binding any natural footing or starting
+  another gameplay wait. Do not weaken the selector or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
