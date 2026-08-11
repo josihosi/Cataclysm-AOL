@@ -24,26 +24,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   scanned alternative exceeds the owner's normalized 18-OMT route cap. Saved-overmap inspection
   cannot decide the exact NPC route, target-footprint exclusion, normalization, and cap owners.
 
-  Latest nonaccepted implementation finding: `R002-M74` replaced the fabricated formatter control
-  with a test-only wrapper that directly invoked `live_bandit_structural_route_read` on restored
-  controlled overmap geometry. `do_turn.cpp` compiled, `git diff --check` passed, and the focused
-  Catch2 case passed 19 assertions: one field/forest arrangement selected a target-avoiding watch
-  route at normalized cost 14, while an intervening `forest_thick` tile produced zero qualified
-  candidates and the production no-safe-geography rejection.
+  Latest nonaccepted implementation finding: `R002-M75` preserved the direct
+  `live_bandit_structural_route_read` wrapper and 19-assertion selected/rejected Catch2 control, then
+  added a read-only `DEBUG_CLAIRVOYANCE` analyzer action and a normalized harness matcher. The changed
+  objects compiled, `git diff --check` passed, and the focused C++ and Python tests passed.
 
-  Its first contradicted premise: proving the private owner was necessary but not sufficient for the
-  analyzer checkpoint. The candidate removed the `DEBUG_CLAIRVOYANCE` button, analyzer implementation,
-  formatter, and harness matcher, leaving only the test wrapper and Catch2 case. An exact committed
-  binary therefore has no read-only installed-save feasibility action to run. This is an implementation
-  gap, not a DFS or product-owner change, and no analyzer checkpoint was accepted.
+  Its first contradicted premise: the matcher test did not represent the analyzer's real log shape.
+  The implementation emits site/target/outcome, selected watch/cost, and summary through separate
+  `DebugLog` calls, while `DebugLog` begins every call with a new prefixed record. The parser requires
+  those fields on one normalized line, and its focused test handwrites that combined line. The real
+  analyzer output therefore cannot satisfy the matcher. This is an implementation/test gap, not a DFS
+  or product-owner change, and no analyzer checkpoint was accepted.
 
-  Next route: independently preserve the direct-owner selected/rejected discriminator while restoring
-  the smallest read-only `DEBUG_CLAIRVOYANCE` analyzer over the production frontier targets. Its output
-  must come from the same `live_bandit_structural_route_read` result and remain representable by the
-  harness matcher without fabricating route facts. After the changed objects, focused Catch2 owner
-  control, and focused matcher pass, checkpoint the analyzer, build that exact committed binary, and
-  run the action against the installed save before binding a natural footing or starting another
-  gameplay wait. Do not weaken the selector or alter world geometry to fit the fixture.
+  Next route: retain the current owner call, UI/harness action, and selected/rejected semantics, but
+  emit each analyzer result through one `DebugLog` record and make the focused matcher control reject
+  the actual fragmented shape while accepting the single normalized row. After the changed objects,
+  direct-owner Catch2 control, and source-shaped matcher checks pass, checkpoint the analyzer, build
+  that exact committed binary, and run the action against the installed save before binding a natural
+  footing or starting another gameplay wait. Do not weaken the selector or alter world geometry to fit
+  the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
