@@ -503,6 +503,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   Preserve all accepted road, optical forest, fog, transform, and product files byte-for-byte. A
   reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M34` accepted the clear-day no-optic forest control at `ff0220e09b`. Its only child transform
+  changes target `(137,49,0)` to real `forest`; it inherits the accepted terrain-opportunity lead,
+  three zombies, roster, route, and clocks without assigning binoculars. The focused contract binds
+  exact watch `(138,52,0)`, clear weather, three sight points, distance-three non-acquisition, no
+  visible threat, and no threat OMT while preserving all accepted comparison artifacts.
+
+  Task `R002-M35` retains the measured 3,600-second envelope for one coordinator-owned changed
+  clear-day no-optic forest probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires
+  the one-cell transform receipt, real terrain-opportunity dispatch, approach hour 156, exact watch
+  `(138,52,0)` hour 157, clear weather with penalty one, optic no, three sight points, target
+  `(137,49,0)` at distance three unacquired, no visible threat, no threat OMT, and every step/error
+  guard green. Stop at the first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
