@@ -354,6 +354,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   wilderness popup if it recurs, and every step/error guard green. Stop at the first changed
   production divergence; no unchanged retry.
 
+  Exact `R002-M25` run `20260811_121326` is accepted. The real terrain-opportunity pair reached
+  approach and exact watch on separate owner hours; at `(138,52,0)` it measured generated light
+  drizzle, penalty `1.01`, no optic, and zero sight points, leaving the distance-three target
+  unacquired with no visible threat. All ten step-local rows and the error guard passed, and the
+  process was terminated cleanly.
+
+  Task `R002-M26` retains the measured 3,600-second envelope and corrects the clear-day forest/optic
+  proof premise before any live row. The current forest fixture still supplies a fixture-confirmed
+  direct structural bounty, so production bypasses bounded watch geography and observes at distance
+  one. Rebase the shared forest footing to a terrain-opportunity lead on the existing exact forest
+  target and three-zombie footing, preserving its real binocular inventory. Let current production
+  select its bounded watch and add the serialized approach/watch hour required by that route. Bind a
+  focused contract to the exact deterministic route derived from current fixture terrain, clear-day
+  weather, actual optic, six sight points, the forest see-cost screen, and acquisition of the exact
+  hostile target; do not guess any coordinate or clock that the source/fixture cannot establish.
+  Preserve the fog child, road fixtures, product source, and unrelated harness behavior. A reviewed
+  green harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
