@@ -39,8 +39,10 @@ Lineage: `CAOL-hostile-ecology-dev`
   runtime-relevant diffs were empty. Current harness source and its owning regression require every
   dirty build to remain unproved. The next wave must produce a clean exact-current-HEAD executable,
   confirm its runtime title is not dirty, and then rerun the unchanged scenario with
-  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`; derive its immutable estimate after checking the clean-build
-  route and retaining the scenario's explicit 2585.29-second execution bound.
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. `R002-M68` owns that proof-only route with an immutable
+  2736.29-second estimate: the scenario's explicit 2585.29-second execution bound plus the measured
+  151-second interval from the current `version.o` to linked `cataclysm-tiles`; bridge permissions,
+  `glslangValidator`, and the pinned shader tool were green before dispatch.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
