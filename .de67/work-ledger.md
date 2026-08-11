@@ -46,13 +46,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   passed without changing product scheduling, perception, route ownership, or fixture state.
 
   The installed McWilliams camp currently has no persisted intelligence-map leads, so `(164,35,0)`
-  is not yet a non-frontier selector input, so that attempt earned no discovery credit. Its live
-  invocation was also blocked when the harness reported missing Peekaboo Accessibility despite the
-  direct bridge reporting it granted, while direct SDL launch opened no window.
+  is not yet a non-frontier selector input, so that attempt earned no discovery credit. The GUI
+  transport is now proved with `/opt/homebrew/bin/peekaboo` 3.9.4 and explicit bridge input/capture:
+  the exact-PID app-switch fallback targeted the local game, `?` visibly opened Keybindings, Escape
+  restored the HUD, and the worker cleaned up the process. The resulting startup yellow was only an
+  honest runtime mismatch because the available binary still identified `8253882abf-dirty+SDL3`.
 
-  Next route: restore a working GUI input channel, then let the unchanged production scheduler seed
-  the natural terrain lead on the existing road footing and invoke the analyzer immediately after
-  that lead exists, before any long outing wait. The empty and real-signal rows must share this
+  Next route: build the exact committed `dev` binary, use `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge` and
+  `CAOL_PEEKABOO_CAPTURE_TRANSPORT=bridge`, then let the unchanged production scheduler seed the
+  natural terrain lead on the existing road footing and invoke the analyzer immediately after that
+  lead exists, before any long outing wait. The empty and real-signal rows must share this
   site/roster/clock/road footing and differ only by ordinary physical signal provenance. A selected
   record must remain identity-bound and include its watch and route cost; another rejection is
   footing evidence, not discovery credit. Do not hand-author the lead, weaken the selector, drag the
