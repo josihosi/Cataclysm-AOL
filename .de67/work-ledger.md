@@ -54,14 +54,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   four tests, the surrounding 68 tests, full 196-test fixture-contract suite, `py_compile`, and diff
   checks passed. The accepted runtime remains exact because this checkpoint changes harness only.
 
-  Task `R002-M42` retains the durable 3,600-second R-002 envelope because it reruns the established
-  43-step scenario only after the causal harness change. The coordinator must require all M40 guards
-  plus successful physical fire/C-4 staging, exact minute-10080 target-to-watch smoke/light/sound,
-  the natural observer artifact pair, no pre-return lead, physical two-survivor return, exactly three
-  non-player returned-report leads, and saved-state persistence. Inspect the actual step ledger,
-  normalized artifact matches, saved owner state, and observer image/pair before acceptance. Stop on
-  the first new premise-breaking observation; do not edit during the run, claim the empty-decoy
-  contrast, or claim R-002.
+  `R002-M42` stopped on time in run `20260811_144908`. Both editor interactions completed without the
+  M40 false Space input, proving M41 in the live route. At minute 10080 production reached exact watch
+  `(138,52,0)`, but the physical field/light and explosion originated at `(137,47,0)`, not target
+  `(137,49,0)`; sound was correctly rejected, observations remained zero, and the guarded wait timed
+  out. Current `EDITMAP` source applies isometric rotation: 36 screen-left actions mean world delta
+  `(-36,-36)`. The intended world delta `(-36,0)` requires 18 left plus 18 down actions. No signal
+  row was credited.
+
+  Task `R002-M43` retains the durable 3,600-second R-002 envelope. Correct only the structural-signal
+  scenario's physical fire and active-C-4 editor paths to the source-exact isometric key composition
+  for target abs-ms `(3300,1187,0)`, and strengthen the focused fixture contract to apply current
+  `rotate_direction_cw` semantics rather than counting nominal left keys. Preserve every lead, watch,
+  clock, signal, return, provenance, and later decoy assertion. Run focused and full fixture-contract
+  tests. Do not edit product or generic harness source, fixture transforms, `.de67/`, README, commit,
+  launch a live scenario, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
