@@ -5333,6 +5333,193 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("current_omt=(139,51,0)", serialized_scenario)
         self.assertNotIn("first_forward_distance=1", serialized_scenario)
 
+    def test_phase4_forest_optic_fog_replays_transformed_forest_without_assumed_result(self) -> None:
+        fixture_name = "bandit_phase4_visibility_forest_optic_fog_v0_2026-08-04"
+        day_fixture_name = "bandit_phase4_visibility_forest_optic_day_v0_2026-08-04"
+        road_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
+        scenario = load_scenario("bandit.phase4_visibility_forest_optic_fog_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+
+        self.assertEqual(
+            resolved["source_chain"][:4],
+            [
+                ("live-debug", fixture_name),
+                ("live-debug", day_fixture_name),
+                ("live-debug", road_fixture_name),
+                (
+                    "live-debug",
+                    "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+                ),
+            ],
+        )
+        manifest_path = (
+            HARNESS_DIR
+            / "fixtures"
+            / "saves"
+            / "live-debug"
+            / fixture_name
+            / "manifest.json"
+        )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["source_fixture"], day_fixture_name)
+        self.assertEqual(manifest["save_transforms"], [{
+            "kind": "game_turn",
+            "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+            "turn": 5360400,
+            "shift_queued_eocs": True,
+        }])
+
+        transforms = list(resolved["save_transforms"])
+        terrain_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "overmap_terrain_id_at_abs_omt"
+        ]
+        self.assertEqual(terrain_transforms, [{
+            "kind": "overmap_terrain_id_at_abs_omt",
+            "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+            "abs_omt": [137, 49, 0],
+            "terrain_id": "forest",
+        }])
+        inventory_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "basecamp_assigned_npc_items"
+        ]
+        self.assertEqual(
+            [transform["npc_id"] for transform in inventory_transforms],
+            list(range(4, 9)),
+        )
+        self.assertTrue(all(
+            transform["items"] == [{"typeid": "binoculars", "count": 1}]
+            for transform in inventory_transforms
+        ))
+
+        last_clear_index = max(
+            index
+            for index, transform in enumerate(transforms)
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        effective_leads = [
+            transform
+            for transform in transforms[last_clear_index + 1 :]
+            if transform["kind"] == "bandit_camp_map_lead"
+        ]
+        self.assertEqual(len(effective_leads), 1)
+        self.assertEqual(effective_leads[0]["kind_value"], "terrain_opportunity")
+        self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
+        exact_dispatch_lead = (
+            "lead=overmap_special:bandit_camp@140,51,0"
+            ":terrain_opportunity:137,49,0:road"
+        )
+        self.assertEqual(effective_leads[0]["lead_id"], exact_dispatch_lead[5:])
+
+        expected_horde_offsets = [[-72, 240, 0], [-71, 240, 0], [-70, 240, 0]]
+        horde_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "horde_entity_near_player"
+        ]
+        self.assertEqual(
+            [transform["offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+        horde_preflight = steps[
+            labels.index("preflight_phase4_visibility_forest_optic_fog_horde")
+        ]
+        self.assertEqual(
+            horde_preflight["required_hordes"],
+            [
+                {"monster_id": "mon_zombie", "offset_ms": offset}
+                for offset in expected_horde_offsets
+            ],
+        )
+        site_preflight = steps[
+            labels.index("preflight_phase4_visibility_forest_optic_fog_site")
+        ]
+        self.assertEqual(site_preflight["required_lead_kind"], "terrain_opportunity")
+        self.assertEqual(site_preflight["required_lead_target_id"], "road")
+
+        first_wait = steps[
+            labels.index("wait_first_6_hours_toward_phase4_visibility_forest_optic_fog_due")
+        ]
+        dispatch_label = "wait_second_6_hours_for_phase4_visibility_forest_optic_fog_dispatch"
+        approach_label = "wait_first_1_hour_for_phase4_visibility_forest_optic_fog_approach"
+        visibility_label = "wait_second_1_hour_for_phase4_visibility_forest_optic_fog_observer"
+        audit_label = "audit_phase4_visibility_forest_optic_fog_artifact"
+        guard_label = (
+            "audit_phase4_visibility_forest_optic_fog_requires_nonempty_dynamic_values"
+        )
+        dispatch = steps[labels.index(dispatch_label)]
+        approach = steps[labels.index(approach_label)]
+        visibility = steps[labels.index(visibility_label)]
+        audit = steps[labels.index(audit_label)]
+        guard = steps[labels.index(guard_label)]
+        self.assertEqual(first_wait["artifact_state_patterns"], [
+            "scheduler_hour=174",
+            "now_minutes=10440",
+        ])
+        self.assertEqual(dispatch["artifact_state_patterns"], [
+            "scheduler_hour=180",
+            "now_minutes=10800",
+            "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+            exact_dispatch_lead,
+        ])
+        self.assertEqual(approach["artifact_state_patterns"], [
+            "scheduler_hour=181",
+            "now_minutes=10860",
+        ])
+        self.assertEqual(visibility["artifact_state_patterns"], [
+            "scheduler_hour=182",
+            "now_minutes=10920",
+            "bandit_live_world structural_visibility:",
+        ])
+        self.assertLess(labels.index(dispatch_label), labels.index(approach_label))
+        self.assertLess(labels.index(approach_label), labels.index(visibility_label))
+        self.assertLess(labels.index(visibility_label), labels.index(audit_label))
+        self.assertLess(labels.index(audit_label), labels.index(guard_label))
+
+        exact_visibility = audit["required_line_patterns"][1]
+        for required in (
+            "current_omt=(138,52,0)",
+            "weather=",
+            "sight_penalty=",
+            "optic=yes",
+            "sight_points=",
+            "first_forward_omt=(137,49,0)",
+            "first_forward_distance=3",
+            "first_forward_acquired=",
+            "outcome=",
+        ):
+            self.assertIn(required, exact_visibility)
+        self.assertEqual(
+            [group[-1] for group in guard["forbidden_line_patterns"]],
+            [
+                "weather= ",
+                "sight_penalty= ",
+                "sight_points= ",
+                "first_forward_acquired= ",
+                "outcome= ",
+            ],
+        )
+
+        serialized_scenario = json.dumps(scenario, sort_keys=True)
+        for stale_assumption in (
+            "#lead:structural_bounty:forest@138,52,0",
+            "current_omt=(139,51,0)",
+            "first_forward_omt=(138,52,0)",
+            "first_forward_distance=1",
+            "weather=fog",
+            "sight_penalty=1.7",
+            "sight_points=3",
+            "first_forward_acquired=no",
+            "outcome=no_visible_threat",
+            "threat_omt=none",
+        ):
+            self.assertNotIn(stale_assumption, serialized_scenario)
+
     def test_phase4_road_twilight_reuses_exact_watch_for_negative_budget(self) -> None:
         fixture_name = "bandit_phase4_visibility_road_twilight_v0_2026-08-04"
         day_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
