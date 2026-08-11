@@ -35,6 +35,10 @@ Lineage: `CAOL-hostile-ecology-dev`
   structural-signal probe is rerun. R-002 remains red; the signal-return, relocation, and
   observed-versus-unseen zombie rows remain afterward.
 
+  `R002-M61` estimate: 2700 seconds. The ready focused-test binary and changed-object cache remove
+  setup work; the last adjacent R-002 checkpoint intervals were 14–24 minutes, so this deadline
+  covers an isolated discriminator, the paired-owner correction, rebuild, and owning filter.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
