@@ -10871,6 +10871,121 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
     }
 }
 
+TEST_CASE( "hostile_camp_local_pair_assembly_blocks_stale_overmap_travel",
+           "[bandit][live_world][structural_bounty][local_handoff][ownership]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map();
+    clear_vehicles();
+    set_time_to_day();
+    bandit_live_world::world_state saved_world =
+        overmap_buffer.global_state.bandit_live_world;
+    std::vector<character_id> generated_npc_ids;
+    on_out_of_scope cleanup( [&generated_npc_ids,
+                              saved_world = std::move( saved_world )]() mutable {
+        for( const character_id id : generated_npc_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        clear_creatures();
+    } );
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 3; ++index ) {
+        add_bandit_camp_member( world, index, 19600 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt target( site.anchor.x() + 4, site.anchor.y(), site.anchor.z() );
+    const bandit_live_world::structural_bounty_read read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                    site.site_id, target, "forest" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
+    const bandit_live_world::structural_outing_result progressed =
+        bandit_live_world::advance_structural_bounty_outings( world, 100 + 4 * 60, {} );
+    REQUIRE( progressed.active_outings_considered == 1 );
+    REQUIRE( site.active_outing.waypoint_index == 1 );
+
+    const std::vector<character_id> old_ids = site.active_outing.member_ids;
+    std::vector<character_id> live_ids;
+    for( const character_id old_id : old_ids ) {
+        shared_ptr_fast<npc> member = make_shared_fast<npc>();
+        member->normalize();
+        member->load_npc_template( npc_template_test_talker );
+        const bandit_live_world::member_record *record = site.find_member( old_id );
+        REQUIRE( record != nullptr );
+        member->spawn_at_precise( record->home_spawn_tile );
+        overmap_buffer.insert_npc( member );
+        live_ids.push_back( member->getID() );
+        generated_npc_ids.push_back( member->getID() );
+    }
+    REQUIRE( live_ids.size() == 2 );
+    for( std::size_t index = 0; index < live_ids.size(); ++index ) {
+        bandit_live_world::member_record *record = site.find_member( old_ids[index] );
+        REQUIRE( record != nullptr );
+        record->npc_id = live_ids[index];
+    }
+    site.active_outing.member_ids = live_ids;
+    site.active_outing.leader_id = live_ids.front();
+    const tripoint_abs_omt route_position = site.active_outing.shared_route[1];
+    g->place_player_overmap( route_position );
+    clear_map();
+    overmap_buffer.global_state.bandit_live_world = std::move( world );
+
+    REQUIRE( materialize_live_bandit_structural_handoffs_for_test() );
+    bandit_live_world::site_record &live_site =
+        overmap_buffer.global_state.bandit_live_world.sites.front();
+    REQUIRE( bandit_live_world::local_pair_assembly_orders(
+                 live_site.active_outing ).size() == 2 );
+
+    std::map<character_id, tripoint_abs_omt> stale_goals;
+    std::map<character_id, tripoint_abs_omt> positions_before;
+    for( const character_id id : live_ids ) {
+        g->remove_npc( id );
+        shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+        REQUIRE( member != nullptr );
+        const tripoint_abs_omt stale_goal = route_position + point( 12, 0 );
+        member->goal = stale_goal;
+        member->omt_path = { stale_goal, member->pos_abs_omt() };
+        member->set_mission( NPC_MISSION_TRAVELLING );
+        member->previous_mission = NPC_MISSION_TRAVELLING;
+        stale_goals.emplace( id, stale_goal );
+        positions_before.emplace( id, member->pos_abs_omt() );
+    }
+
+    process_overmap_npc_move_for_test();
+
+    for( const character_id id : live_ids ) {
+        shared_ptr_fast<npc> member = overmap_buffer.find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->pos_abs_omt() == positions_before.at( id ) );
+        CHECK( member->goal == npc::no_goal_point );
+        CHECK( member->omt_path.empty() );
+        CHECK( member->mission == NPC_MISSION_NULL );
+        CHECK( member->previous_mission == NPC_MISSION_NULL );
+        CHECK( stale_goals.at( id ) != member->goal );
+    }
+    CHECK( bandit_live_world::local_pair_assembly_orders(
+               live_site.active_outing ).size() == 2 );
+
+    live_site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
+    live_site.active_outing.local_handoff.phase =
+        bandit_live_world::scout_phase::returning_home;
+    live_site.active_outing.local_handoff.cohesion_assembled = true;
+    CHECK( bandit_live_world::local_pair_assembly_orders(
+               live_site.active_outing ).empty() );
+    CHECK( bandit_live_world::local_pair_homeward_travel_ids(
+               overmap_buffer.global_state.bandit_live_world ).size() == 2 );
+}
+
 TEST_CASE( "bandit_live_world_releases_every_matching_external_owner_without_resurrecting_losses",
            "[bandit][live_world][reservation][release_paths]" )
 {

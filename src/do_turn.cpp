@@ -7730,6 +7730,38 @@ void overmap_npc_move()
         bandit_live_world::local_pair_ingress_travel_destinations( bandit_state );
     local_pair_forward_destinations.insert( local_pair_alternate_destinations.begin(),
                                             local_pair_alternate_destinations.end() );
+    // A locally owned pair that has not released staging ownership must not fall through to
+    // ordinary overmap travel.  In particular, a stale goal/path from before materialization can
+    // otherwise advance one member (or rewrite the pair's route) while the loaded cohesion motor
+    // is still assembling it.  Build this view only after the ownership preflight so malformed or
+    // aliased outings fail closed with the same owner used by the local motor.
+    std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders;
+    std::set<character_id> assembly_claimed_members;
+    bool assembly_ownership_preflight_failed = false;
+    for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+        if( !bandit_live_world::claim_local_pair_site_ownership(
+                site, assembly_claimed_members ) ) {
+            assembly_ownership_preflight_failed = true;
+            break;
+        }
+    }
+    if( !assembly_ownership_preflight_failed ) {
+        for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+            for( const auto &order : bandit_live_world::local_pair_assembly_orders(
+                     site.active_outing ) ) {
+                if( !local_pair_assembly_orders.emplace( order ).second ) {
+                    assembly_ownership_preflight_failed = true;
+                    break;
+                }
+            }
+            if( assembly_ownership_preflight_failed ) {
+                break;
+            }
+        }
+    }
+    if( assembly_ownership_preflight_failed ) {
+        local_pair_assembly_orders.clear();
+    }
     const auto local_pair_member_reached_camp = [](
     const bandit_live_world::world_state & state, const character_id member_id,
     const tripoint_abs_omt & position ) {
@@ -7754,6 +7786,20 @@ void overmap_npc_move()
             continue;
         }
         npc *npc_to_add = elem.get();
+        const auto assembly_order = local_pair_assembly_orders.find( npc_to_add->getID() );
+        if( assembly_order != local_pair_assembly_orders.end() ) {
+            // Assembly owns both members until the authoritative state exposes ingress,
+            // alternate reposition, or homeward routing.  Drop incompatible generic travel
+            // state so this NPC cannot advance or rewrite a route between local turns.
+            npc_to_add->goto_to_this_pos = std::nullopt;
+            npc_to_add->clear_ai_guard_pos();
+            npc_to_add->path.clear();
+            npc_to_add->goal = npc::no_goal_point;
+            npc_to_add->omt_path.clear();
+            npc_to_add->mission = NPC_MISSION_NULL;
+            npc_to_add->previous_mission = NPC_MISSION_NULL;
+            continue;
+        }
         const auto alternate_destination = local_pair_alternate_destinations.find(
                                                npc_to_add->getID() );
         const auto forward_destination = local_pair_forward_destinations.find(
