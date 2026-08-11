@@ -12,28 +12,26 @@ Lineage: `CAOL-hostile-ecology-dev`
   signal provenance, player relocation without target drag, and legitimately observed versus unseen
   zombie danger. Commits after the runtime checkpoint change harness or durable DE-67 state only.
 
-  Current causal frontier: checkpoint `dbb85cfe1f` makes local assembly ownership exclusive over
-  stale generic travel state until the existing assembled-ingress, alternate-reposition, or
-  homeward owner takes over. Checkpoint `3ea3ecd289` makes member-scoped best staging distances
-  renew the rendezvous deadline only for monotonic pair progress, while two-position pacing still expires.
-  Every supported handoff schema and staging rewrite now initializes the serialized progress state.
-  A freshly linked focused test passed one case and 1,878 assertions, including progress beyond the
-  former ten-minute deadline, the oscillation discriminator, and schema-3 save/load promotion.
-  `R002-M57` built release SDL3 binary `3ea3ecd289+SDL3` with SHA-256
-  `a170cfdafecf5eb13af03b5e6c4d0355f494866e996f64df7001a6d7ea9358d6`, then stopped before
-  gameplay because unchanged harness input/focus defaults to local Peekaboo and local Accessibility
-  is unavailable. The signed bridge still reports Accessibility, Screen Recording, and event
-  synthesis granted. This is a transport/tooling finding, not feature-path evidence.
+  Current causal frontier: `R002-M58` ran the unchanged structural-signal probe against exact
+  `3ea3ecd289+SDL3` binary SHA-256
+  `a170cfdafecf5eb13af03b5e6c4d0355f494866e996f64df7001a6d7ea9358d6` with signed-bridge input.
+  Focus/startup, autonomous hour-166 dispatch, and the pre-return no-lead guard passed. During the
+  production assembly-to-ingress transition, members 4/5 approached their assigned staging tiles,
+  then split across OMTs at minute 10021; member 5 oscillated while member 4 stayed off-route, and
+  minute 10030 committed `movement_orders=0 ... abort=yes`. Hour 168 consequently reported
+  `active_outings=0`; physical smoke/light packets existed but no active outing consumed them.
+  Evidence is `.userdata/dev-harness/harness_runs/20260811_191731/probe.artifacts.log:868-968,1044`
+  and `probe.report.json:16339-16355`. This disproves that the synthetic monotonic-distance test and
+  stale generic-overmap-owner test cover the natural assembly-to-ingress release.
 
-  Next required slice: rerun the unchanged
-  `bandit.phase4_structural_signal_matrix_live_mcw` probe against that exact binary with
-  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`; do not edit the fixture or scenario. Accept only if bridge
-  input proves normal focus/startup, the exact generation-1 pair reaches canonical approach
-  `(139,51,0)` and watch `(138,52,0)` without a cohesion abort, repeated empty-signal controls stay
-  empty, physical target fire/light/explosion create only their source-bound facts, and
-  returned-report leads appear only after physical return without player-coordinate leakage. Stop
-  with a finding if bridge input cannot prove focus. R-002 remains red; relocation and
-  observed-versus-unseen zombie controls remain afterward even if this signal-return row passes.
+  Next required slice: reproduce the natural assembled-to-ingress release through the production
+  loaded/overmap call order in a focused regression, identify the competing transition that lets one
+  member leave the route OMT without its partner, and make the matching owner commit only a coherent
+  paired transition. The discriminator must keep an independently moved or oscillating member red;
+  a synthetic position-only sequence is insufficient. Run the narrow owning test and changed-object
+  compile. Do not rerun the full structural-signal probe until that focused production-order control
+  passes. R-002 remains red; the signal-return, relocation, and observed-versus-unseen zombie rows
+  remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
