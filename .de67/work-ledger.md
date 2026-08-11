@@ -16,12 +16,27 @@ Lineage: `CAOL-hostile-ecology-dev`
   preflight in `overmap_npc_move`. The isolated negative control failed on the unchanged owner because
   both members advanced when one was independently ineligible; after the fix it and the positive row
   passed 105 assertions, the established homeward filter passed 1878 assertions, and both changed
-  objects compiled. This clears the production assembly-to-ingress blocker without closing R-002.
+  objects compiled. `R002-M62` rebuilt exact `dev@1cc7f3f792` successfully as binary
+  `d2784eeeda43233baff4160c2995e868f882b8eaac99e3bafefac49eedca4efe`, and five focused harness
+  contract checks passed, but neither live contrast earned credit.
 
-  Next required slice: build the exact `168b57868d` checkpoint and rerun the natural structural-signal
-  route. Prove real versus empty signal provenance without fixture mutation or hidden target facts;
-  retain the signal result only if the exact pair clears ingress and reaches the production observer.
-  Player relocation and legitimately observed versus unseen zombie danger remain afterward.
+  Current production blocker: in the unchanged real-signal route, local cohesion moved the exact pair
+  toward its two staging tiles through minute 10029, then recorded `movement_orders=0`, `abort=yes` at
+  minute 10030 and immediately applied `unreachable return -> orphaned`. The later minute-10080 signal
+  scan saw physical smoke/light but had `active_outings=0`, so no active scout could own the typed
+  observations or return their provenance. Repair the competing loaded/overmap movement ownership that
+  displaces or invalidates an assembling member after valid approach progress. The focused regression
+  must distinguish sustained monotonic paired staging progress from non-advancing movement and prove
+  that neither member is orphaned while a valid route remains.
+
+  Independent tooling prerequisite: the decoy fixture fails before gameplay because
+  `apply_bandit_camp_map_lead_transform` writes legacy top-level `active_group_id`,
+  `active_target_id`, and `active_member_ids` while clearing pressure in a schema-12 save. The current
+  loader consumes those keys only for legacy schemas and correctly rejects them as unread. Make the
+  transform clear canonical nested ownership and remove, rather than recreate, legacy active fields;
+  prove the installed current-schema fixture loads through the changed executable. Then rerun both
+  natural contrasts. Player relocation and legitimately observed versus unseen zombie danger remain
+  afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
