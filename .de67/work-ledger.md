@@ -76,12 +76,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   zero. Current input bindings register `b` and `1` as `LEFTDOWN`; current isometric rotation maps that
   diagonal screen action directly to world west `(-1,0)`. No signal row was credited.
 
-  Task `R002-M45` retains the durable 3,600-second R-002 envelope. Replace both mixed special-key
-  target paths with the direct registered printable `LEFTDOWN` binding repeated for the exact
-  36-world-tile west delta, and make the focused contract derive the binding and isometric transform
-  from the current key/action semantics. Keep every non-staging assertion unchanged. Run focused and
-  full fixture-contract tests. Do not edit product or generic harness source, fixture transforms,
-  `.de67/`, README, commit, launch a live scenario, or claim R-002.
+  `R002-M45` is accepted at `657f93f519`. Both signal stages now use exactly 36 lowercase `b`
+  bindings. The focused contract reads the current `LEFTDOWN` keyboard bindings, applies current
+  isometric rotation, and proves direct world delta `(-36,0)`, source abs-ms `(3300,1187,0)`, and
+  target OMT `(137,49,0)`. Focused two tests and the full 196-test fixture-contract suite passed. The
+  accepted runtime remains exact because this checkpoint changes scenario/tests only.
+
+  Task `R002-M46` retains the durable 3,600-second R-002 envelope because it reruns the established
+  scenario only after replacing the failed mixed-key route with one direct registered action. Require
+  all M44 proof gates, beginning with three exact minute-10080 target `(137,49,0)` to watch
+  `(138,52,0)` facts and continuing through observer artifacts, pre-return absence, physical
+  two-survivor return, exactly three non-player returned-report leads, and saved-state persistence.
+  Stop at the first new broken premise; do not edit during the run, claim the empty-decoy contrast,
+  or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
