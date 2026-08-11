@@ -14,20 +14,26 @@ Lineage: `CAOL-hostile-ecology-dev`
 
   Current causal frontier: checkpoint `dbb85cfe1f` makes local assembly ownership exclusive over
   stale generic travel state until the existing assembled-ingress, alternate-reposition, or
-  homeward owner takes over. `R002-M56` is accepted: member-scoped best staging distances renew the
-  rendezvous deadline only for monotonic pair progress, while two-position pacing still expires.
+  homeward owner takes over. Checkpoint `3ea3ecd289` makes member-scoped best staging distances
+  renew the rendezvous deadline only for monotonic pair progress, while two-position pacing still expires.
   Every supported handoff schema and staging rewrite now initializes the serialized progress state.
   A freshly linked focused test passed one case and 1,878 assertions, including progress beyond the
   former ten-minute deadline, the oscillation discriminator, and schema-3 save/load promotion.
+  `R002-M57` built release SDL3 binary `3ea3ecd289+SDL3` with SHA-256
+  `a170cfdafecf5eb13af03b5e6c4d0355f494866e996f64df7001a6d7ea9358d6`, then stopped before
+  gameplay because unchanged harness input/focus defaults to local Peekaboo and local Accessibility
+  is unavailable. The signed bridge still reports Accessibility, Screen Recording, and event
+  synthesis granted. This is a transport/tooling finding, not feature-path evidence.
 
-  Next required slice: build the exact release SDL3 binary from this accepted source and rerun the
-  unchanged `bandit.phase4_structural_signal_matrix_live_mcw` probe through the signed Peekaboo
-  bridge. Accept only if focus/startup remain green, the exact generation-1 pair reaches canonical
-  approach `(139,51,0)` and watch `(138,52,0)` without a cohesion abort, repeated empty-signal
-  controls stay empty, physical target fire/light/explosion create only their source-bound facts,
-  and returned-report leads appear only after physical return without player-coordinate leakage.
-  Do not edit the fixture or scenario. R-002 remains red; relocation and observed-versus-unseen
-  zombie controls remain afterward even if this signal-return row passes.
+  Next required slice: rerun the unchanged
+  `bandit.phase4_structural_signal_matrix_live_mcw` probe against that exact binary with
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`; do not edit the fixture or scenario. Accept only if bridge
+  input proves normal focus/startup, the exact generation-1 pair reaches canonical approach
+  `(139,51,0)` and watch `(138,52,0)` without a cohesion abort, repeated empty-signal controls stay
+  empty, physical target fire/light/explosion create only their source-bound facts, and
+  returned-report leads appear only after physical return without player-coordinate leakage. Stop
+  with a finding if bridge input cannot prove focus. R-002 remains red; relocation and
+  observed-versus-unseen zombie controls remain afterward even if this signal-return row passes.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
