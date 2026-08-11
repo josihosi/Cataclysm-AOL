@@ -486,6 +486,23 @@ Lineage: `CAOL-hostile-ecology-dev`
   three unacquired, no visible threat, no threat OMT, and every step/error guard green. Stop at the
   first changed production divergence; no unchanged retry.
 
+  Exact `R002-M33` run `20260811_130411` is accepted. The one-cell transformed-forest route reached
+  exact watch `(138,52,0)` at hour 182 in fog; penalty `1.7` reduced the actual binocular observer to
+  three sight points, leaving target `(137,49,0)` unacquired at distance three with no visible threat.
+  All nine step-local rows and the error guard passed, and the process was terminated cleanly. With
+  M29 this proves the same optical forest target is acquired in clear day and screened by fog.
+
+  Task `R002-M34` retains the measured 3,600-second envelope and creates the missing clear-day
+  no-optic forest control without changing product code. Add one new fixture child of M16's accepted
+  road-day terrain-opportunity footing that applies only M28's one-cell target transform to
+  `(137,49,0)=forest` and inherits no binocular assignment. Add its live scenario by preserving M16's
+  dispatch hour 155, approach hour 156, exact watch `(138,52,0)` hour 157, target/entities, and clear
+  weather while requiring optic no, sight points three, distance-three non-acquisition, no visible
+  threat, and no threat OMT. A focused contract must prove the source chain contains exactly one
+  terrain transform, no assigned-optic transform, exact clocks/geometry, and same-line negative.
+  Preserve all accepted road, optical forest, fog, transform, and product files byte-for-byte. A
+  reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
