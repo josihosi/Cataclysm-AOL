@@ -267,6 +267,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   and product source. A reviewed green harness-only diff may be checkpointed; no live probe belongs
   to this task.
 
+  `R002-M19` accepted the one-hour twilight clock correction at `ab4e782512`. The fixture turn and
+  all four scenario endpoints now place exact-watch arrival at scheduler hour 148 / minute 8880,
+  while the accepted terrain-opportunity route and distance-three negative remain unchanged.
+
+  Task `R002-M20` retains the measured 3,600-second envelope for one coordinator-owned changed
+  twilight probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires dispatch at
+  hour 146, approach at hour 147, exact watch `(138,52,0)` at hour 148, clear weather, no optic,
+  sight points two, forward `(137,49,0)` at distance three, no acquisition, no visible threat, and
+  every setup/error guard green. Stop at the first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
