@@ -23,17 +23,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   shared route or persisted target footprint, while the receiver remains route-only and every other
   provenance/survivor gate is unchanged. The exact final diff passed an incremental macOS test
   rebuild, the new schema-10 watch-return case (45 assertions), and the adjacent physical-return
-  regression (180 assertions). No live signal row has yet proved this changed source.
+  regression (180 assertions).
 
-  Task `R002-M38` retains the durable 3,600-second R-002 envelope. Rebase only the real structural-
-  signal fixture/scenario and focused harness contracts onto an already source-proved viable watch
-  footing. Derive the target lead identity/terrain marker, target footprint, approach/watch route,
-  player-to-source editor offsets, scheduler clocks, and physical-return clocks together from current
-  source and resolved fixture data. Preserve actual in-game smoke/light/explosion production at the
-  watched target, exact non-player provenance, one active pair, survivor-carried return, three
-  returned-report leads, and the later empty-decoy contrast. Exercise the actual normalized matcher
-  on representative required and forbidden artifact lines. This task may not edit product source,
-  `.de67/`, README, unrelated fixtures/scenarios, run a live probe, commit, or claim R-002.
+  `R002-M38` is accepted at `e0ca2f03ca`. The real structural-signal fixture and scenario now use
+  source-proved schema-10 lead `(137,49,0)`, approach `(139,51,0)`, and watch `(138,52,0)`, with the
+  target loaded and watch abstract. Exact scheduler ordering stages the physical fire and active C-4
+  after minute 10075 so the minute-10080 watch pass consumes all three target-footprint signals.
+  Resolved fixture geometry, score order, clocks, and actual normalized positive/forbidden matchers
+  passed the focused three tests and full 192-test fixture-contract suite. Live interaction remains
+  unproved.
+
+  Task `R002-M39` retains the durable 3,600-second R-002 envelope because it is a local exact-runtime
+  prerequisite using the established release build route. Produce a clean macOS SDL3 release binary
+  from the current accepted source/harness checkpoint, preserving the exact Git identity needed by
+  the live harness feature gate. Run the smallest relevant post-link identity/startup check and report
+  the binary version plus first hard build error if blocked. Do not edit source, fixtures, scenarios,
+  `.de67/`, README, commit, launch a live scenario, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
