@@ -391,6 +391,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   unrelated harness behavior. A reviewed green harness-only diff may be checkpointed; no live probe
   belongs to this task.
 
+  `R002-M27` stopped on time without edits after a source-exact bounded scan. All 32 actual forest
+  targets inside the production cap-derived bound were checked. Fifteen target/watch pairs passed
+  concealment and intervening visibility geometry, but every route exceeded the cap; the nearest
+  optimistic normalized cost was 26 against the production maximum 18. No existing target can
+  support this natural watch row in the authoritative snapshot.
+
+  Task `R002-M28` retains the measured 3,600-second envelope and introduces the smallest deterministic
+  fixture terrain seam needed for the forest/optic control. Add one narrowly validated save transform
+  that changes a single explicit absolute OMT terrain ID in the real saved overmap, failing closed on
+  invalid coordinates, missing payload/layer, or invalid terrain IDs. Rebase only the clear-day
+  forest child on M16's accepted road-day terrain-opportunity target `(137,49,0)`, exact zombies,
+  approach, and watch; apply the new transform to make that target a real `forest` OMT and assign
+  binoculars to its deterministic roster. The target-only change leaves watch selection geometry
+  intact while the production LOS must consume the forest see cost. Bind the two owner hours and
+  require clear weather, optic yes, sight points six, exact watch `(138,52,0)`, distance-three
+  acquisition, and observed threat. Preserve the shared forest common, both fog files, road fixtures,
+  and product source byte-for-byte. Add focused transform and scenario contracts. A reviewed green
+  harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
