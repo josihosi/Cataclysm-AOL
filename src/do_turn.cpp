@@ -6392,8 +6392,13 @@ void run_live_bandit_structural_route_analyzer_for_debug()
     const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int now_minutes = live_bandit_current_minutes();
     for( const bandit_live_world::site_record &site : state.sites ) {
-        const bandit_live_world::structural_outing_plan plan =
-            bandit_live_world::plan_frontier_outing( site, now_minutes );
+        bandit_live_world::structural_outing_plan plan =
+            bandit_live_world::plan_structural_bounty_outing( site, now_minutes );
+        std::string selector = "non_frontier";
+        if( !plan.valid ) {
+            plan = bandit_live_world::plan_frontier_outing( site, now_minutes );
+            selector = "frontier";
+        }
         if( !plan.valid ) {
             continue;
         }
@@ -6416,6 +6421,7 @@ void run_live_bandit_structural_route_analyzer_for_debug()
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world structural_route_analyzer"
                                    << " site=" << site.site_id
                                    << " target=" << plan.target_omt
+                                   << " selector=" << selector
                                    << " outcome=" << ( selected ? "selected" : "rejected" )
                                    << selected_fields
                                    << " summary=" << read.summary << '\n';
