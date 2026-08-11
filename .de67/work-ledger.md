@@ -458,6 +458,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   fog contrast unless the measured penalty and forest-screen result actually establish it. Stop at
   the first changed production divergence; no unchanged retry.
 
+  Exact `R002-M31` run `20260811_125728` stopped on time with nine of ten rows green because the
+  generic nonempty negative guard was not representable through the harness matcher: its trailing-
+  space probes normalized to field prefixes and falsely matched every valid value. The runtime route
+  itself reached exact watch `(138,52,0)` and measured fog, penalty `1.7`, actual binoculars, three
+  sight points, and distance-three forest non-acquisition with no visible threat. The debug guard
+  passed and the process was terminated cleanly.
+
+  Task `R002-M32` retains the measured 3,600-second envelope and changes only the fog scenario plus
+  its focused contract. Remove the invalid nonempty negative guard and bind M31's exact deterministic
+  watch values: `weather=fog`, `sight_penalty=1.7`, optic yes, sight points three, target
+  `(137,49,0)` at distance three, no acquisition, no visible threat, and no threat OMT. Retain the
+  accepted source chain, transform, binoculars, entities, and clocks, and add exact-list assertions
+  that prevent generic prefix or stale distance-one matches from substituting for the measured line.
+  Preserve the clear-day child, road fixtures, transform implementation, and product source. A
+  reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
