@@ -19,15 +19,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   This is an implementation gap in the existing R-002 contract, not fixture authority to fake a
   route source and not a DFS gap.
 
-  Task `R002-M37` retains the durable 3,600-second R-002 envelope. Make the smallest source/test
-  correction: a returned structural signal may use a source OMT on the committed shared route or in
-  the outing's persisted target footprint, while its receiver must remain on the shared route and all
-  existing schema, sense, identity, revision, time, expiry, share, observer, and survivor checks stay
-  intact. Add focused schema-10 watch-route coverage proving a target-footprint source survives into
-  returned-report leads and controls rejecting a source outside both route and footprint and a
-  receiver outside the route. This task may change only `src/bandit_live_world.cpp` and the owning
-  focused C++ test; it may not edit the fixture/scenario, `.de67/`, or README, run a live probe,
-  commit, or claim R-002.
+  `R002-M37` is accepted at `10e3c89ebd`. A returned structural signal source may now belong to the
+  shared route or persisted target footprint, while the receiver remains route-only and every other
+  provenance/survivor gate is unchanged. The exact final diff passed an incremental macOS test
+  rebuild, the new schema-10 watch-return case (45 assertions), and the adjacent physical-return
+  regression (180 assertions). No live signal row has yet proved this changed source.
+
+  Task `R002-M38` retains the durable 3,600-second R-002 envelope. Rebase only the real structural-
+  signal fixture/scenario and focused harness contracts onto an already source-proved viable watch
+  footing. Derive the target lead identity/terrain marker, target footprint, approach/watch route,
+  player-to-source editor offsets, scheduler clocks, and physical-return clocks together from current
+  source and resolved fixture data. Preserve actual in-game smoke/light/explosion production at the
+  watched target, exact non-player provenance, one active pair, survivor-carried return, three
+  returned-report leads, and the later empty-decoy contrast. Exercise the actual normalized matcher
+  on representative required and forbidden artifact lines. This task may not edit product source,
+  `.de67/`, README, unrelated fixtures/scenarios, run a live probe, commit, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
