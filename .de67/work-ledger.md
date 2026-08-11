@@ -67,6 +67,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   decisive; otherwise local TCC permission is the external prerequisite. Then rerun the unchanged
   non-credited diagnostic to obtain the production selector counts.
 
+  Current dispatch: `R002-M71` owns that exact tooling/diagnostic slice. Use bridge input only after
+  its own permission/app-routing preflight shows this Mac GUI host, then require the existing
+  PID-active focus gate during the unchanged probe. Build clean current `HEAD`, reject any dirty or
+  mismatched runtime identity, and stop once the production `watch_geography_preflight` selector
+  line is captured or the first transport/fixture premise is contradicted. Its 2,731-second estimate
+  reuses `R002-M70`'s immediately preceding exact-scope clean-build/probe allowance; the only added
+  work is the bounded same-transport host/focus preflight.
+
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
   current-schema regression and related contract subset passed; the installed decoy fixture retained
