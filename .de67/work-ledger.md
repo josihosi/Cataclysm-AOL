@@ -43,16 +43,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   while the established forest see cost is four, so the old continuous-road assertion cannot prove
   a valid footing.
 
-  Current causal target: this remains a task/fixture proof gap, not a DFS change. Build the exact
-  committed checkpoint and run one non-credited exact-current diagnostic route to capture the new
-  preflight counts for the installed fixture. If the selector names a viable natural watch OMT, bind
-  that footing and its source-exact predicate facts into the fixture contract. If it rejects every
-  candidate, replace the fixture with one natural camp/target/player footing proved by the same
-  production selector; do not change geometry during the credited scenario. Only after the gate
-  selects a valid footing may the unchanged causal route earn credit and use the accepted cohesion
-  probe to distinguish valid pair progress, pacing, or a missing member read.
+  Current causal target: this remains a task/fixture tooling gap, not a DFS change. The next
+  checkpoint must expose a read-only source-owned feasibility route that invokes the same live
+  watch-geography and NPC route predicates before another GUI run. Only after that route identifies
+  one natural existing-world camp/target/player footing may the fixture contract bind its exact
+  facts and the unchanged causal route earn credit.
 
-  Latest nonaccepted diagnostic: `R002-M71` built clean `dev@8fde31de12` as
+  Superseded exact-current diagnostic: clean `dev@8fde31de12` built as
   `8fde31de12+SDL3`, binary
   `ccf9dc466e9b145e6bdf5e32afb70e70656b3b113b65c9bff80c7f8b0e34d122`. Bridge input reported this
   Mac GUI host with Accessibility and Screen Recording granted, listed the local apps, and preserved
@@ -63,19 +60,35 @@ Lineage: `CAOL-hostile-ecology-dev`
   route origin, so `nonadjacent=0`, `route_reads=0`, and no selection. The report is
   `.userdata/dev-harness/harness_runs/20260811_224353/probe.report.json`.
 
-  First contradicted premise: the fixture contract required `footprint=4` for the ordinary frontier
+  Its first contradicted premise: the fixture contract required `footprint=4` for the ordinary frontier
   target at `(164,30,0)`, but the manifest's four-OMT footprint belongs to the hostile source camp at
   `(164,39,0)` and the production owner correctly read the frontier target as one OMT. The measured
   selector counts also prove that merely correcting the matcher cannot make this footing viable.
   This remains a task/fixture proof gap, not a DFS or product-owner change.
 
-  Next route: replace the old footing with one natural camp/target/player arrangement on existing
-  world geometry, proved read-only against the production selector predicates before another live
-  run. The target footprint must match the actual target; at least one candidate must be concealed,
-  have a clear intervening lane within the production sight budget, be nonadjacent to the route
-  origin, and have a target-avoiding reachable route. Bind those exact facts into the fixture
-  contract and its false-green matcher, then run one clean non-credited selector gate. Do not alter
-  world geometry during the credited scenario or weaken the selector to fit this rejected fixture.
+  Latest nonaccepted feasibility finding: `R002-M72` made no edits and kept
+  `dev@10c96e6b03` clean. A read-only whole-save scan using the current sight, concealment,
+  adjacency, travel-cost, target-avoidance, and route-cap facts found no McWilliams arrangement that
+  satisfied both the watch lane and route predicates. The only lane-qualified candidate found used
+  camp `(126,19,0)`, frontier target `(126,10,0)`, and watch `(123,13,0)`; its six field OMTs plus a
+  farm structure exceeded the owner's normalized 18-OMT route cap. `git diff --check` and the focused
+  normalized false-green matcher test passed. This diagnostic did not claim source-exact route
+  equivalence or alter the tree.
+
+  `R002-M72` first contradicted premise: saved-overmap inspection alone cannot prove the decisive
+  route predicate. Exact eligibility is owned by C++ `overmap_buffer.get_travel_path` with the live
+  `npc_route`, target-footprint exclusions, route normalization, and cap handling; the fixture layer
+  has no source-owned save-loading equivalent. This is a tooling/evidence gap, not a product-owner
+  failure or DFS gap.
+
+  Next route: add the smallest read-only source-owned feasibility analyzer that exercises those same
+  C++ owners against installed natural geometry without editing terrain or strategic state. Its
+  focused controls must prove one eligible arrangement and reject the known `(164,30,0)` footing,
+  and the harness parser/matcher must distinguish selected, rejected, and false-selected output
+  after normalization. If it identifies a viable natural footing, bind the actual target footprint,
+  concealed and visible lane, nonadjacency, target-avoiding route, and normalized route cost into the
+  fixture contract, then run one clean non-credited selector gate. Do not weaken the selector or
+  alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
