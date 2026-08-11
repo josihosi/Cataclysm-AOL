@@ -1,0 +1,14 @@
+{
+  "name": "bandit_phase4_visibility_forest_no_optic_day_v0_2026-08-04",
+  "source_fixture": "bandit_phase4_visibility_road_day_v0_2026-08-04",
+  "source_profile": "live-debug",
+  "description": "Clear-day no-optic forest control on the accepted road-day route. The sole child transform changes target (137,49,0) to real forest while inheriting the exact terrain-opportunity lead, three-zombie footing, roster, and clocks without assigning binoculars or any other items.",
+  "save_transforms": [
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [137, 49, 0],
+      "terrain_id": "forest"
+    }
+  ]
+}
