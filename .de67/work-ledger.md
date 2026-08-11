@@ -89,14 +89,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   `ASCIITiles`, so directional actions are not isometrically rotated and every observed source across
   M42/M44/M46 matches the real transform plus key path. No signal row was credited.
 
-  Task `R002-M47` retains the durable 3,600-second R-002 envelope. Correct the structural-signal
-  fixture offset against the full ancestor transform chain so installed player abs-ms is exactly
-  `(3336,1187,0)`, restore both editor paths to 36 orthographic LEFT actions for exact source
-  `(3300,1187,0)`, and make the focused contract derive the installed player from ordered transforms
-  plus the profile's current non-isometric tileset rather than raw save state. Preserve target, watch,
-  clocks, signals, return, observer, provenance, and decoy assertions. Run focused and full fixture-
-  contract tests. Do not edit product or generic harness source, `.de67/`, README, commit, launch a
-  live scenario, or claim R-002.
+  `R002-M47` is accepted at `c5b6464a21`. The corrected child offset `[-36,239,0]` follows the
+  inherited near-special relocation and installs player `(3336,1187,0)`. The focused contract applies
+  both actual transform functions, resolves the inherited `ASCIITiles` profile as non-isometric, and
+  proves both restored 36-LEFT paths land at source `(3300,1187,0)` / target OMT `(137,49,0)` while
+  preserving reality geometry. Focused two tests and the full 196-test fixture-contract suite passed.
+  The accepted runtime remains exact because this checkpoint changes fixture/scenario/tests only.
+
+  Task `R002-M48` retains the durable 3,600-second R-002 envelope because it reruns the established
+  scenario only after correcting the installed player footing itself. Require all M46 proof gates:
+  exact three-fact minute-10080 observation, natural observer artifacts, no pre-return signal lead,
+  physical two-survivor return, exactly three non-player returned-report leads, and persisted saved
+  owner state. Inspect full step/artifact/image evidence. Stop at the first new broken premise; do not
+  edit during the run, claim the empty-decoy contrast, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
