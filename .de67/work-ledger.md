@@ -30,11 +30,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   Catch2 control passed 19 assertions, and three source-shaped Python matcher tests passed, including
   rejection of the former fragmented multi-record output.
 
-  Next route: build the exact `b8e2317b39` binary and run the analyzer action against the installed
-  McWilliams save before binding a natural footing or starting another gameplay wait. The artifact
-  must identify the real site, target, selected or rejected outcome, optional selected watch/cost,
-  and owner summary on one normalized record. Do not weaken the selector or alter world geometry to
-  fit the fixture.
+  Accepted exact `df805c1bf4+SDL3` Mac binary
+  `61861ffd0a8ab9b9e81608a078f06323f033ad11ed9e6adb0c370c139f960950` analyzer run
+  `20260812_001343` emitted one normalized production-owner record for
+  `overmap_special:bandit_camp@164,39,0` and target `(164,30,0)`. It truthfully rejected the route:
+  96 candidates yielded zero visible or qualified watches and no bounded safe watch geography.
+  This rules out another natural wait on that installed target without changing the world or
+  selector.
+
+  Next route: bind the remaining real-versus-empty signal contrast to a different natural,
+  selector-valid footing. Start from the existing road opportunity around `(164,35,0)`, use only
+  ordinary physical signal provenance, and run the read-only production analyzer before any long
+  gameplay wait. A selected record must remain identity-bound and include its watch and route cost;
+  another rejection is footing evidence, not discovery credit. Do not weaken the selector, drag the
+  target with the player, or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
