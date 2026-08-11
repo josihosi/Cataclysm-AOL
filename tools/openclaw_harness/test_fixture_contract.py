@@ -5304,8 +5304,42 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ),
             (37, 37, 61),
         )
-        for setup_label in ("stage_physical_fire_on_target_omt", "stage_active_explosive_on_target_omt"):
-            self.assertEqual(steps[labels.index(setup_label)]["target_keys"], ["left"] * 36)
+        screen_direction_delta = {
+            "left": (-1, 0),
+            "down": (0, 1),
+        }
+        rotate_direction_vec = (1, 2, 5, 0, 4, 8, 3, 6, 7)
+
+        def isometric_world_delta(keys: List[str]) -> tuple[int, int]:
+            world_x = 0
+            world_y = 0
+            for key in keys:
+                screen_x, screen_y = screen_direction_delta[key]
+                direction_number = (screen_y + 1) * 3 + screen_x + 1
+                rotated = rotate_direction_vec[direction_number]
+                world_x += rotated % 3 - 1
+                world_y += rotated // 3 - 1
+            return world_x, world_y
+
+        for setup_label in (
+            "stage_physical_fire_on_target_omt",
+            "stage_active_explosive_on_target_omt",
+        ):
+            setup = steps[labels.index(setup_label)]
+            world_delta = isometric_world_delta(setup["target_keys"])
+            placed_abs_ms = [
+                player_abs_ms[0] + world_delta[0],
+                player_abs_ms[1] + world_delta[1],
+                player_abs_ms[2],
+            ]
+            placed_omt = tuple(value // 24 for value in placed_abs_ms[:2]) + (0,)
+            self.assertEqual(world_delta, (-36, 0))
+            self.assertEqual(placed_abs_ms, source_abs_ms)
+            self.assertEqual(placed_omt, target)
+            self.assertIn(
+                "18 screen-left plus 18 screen-down isometric EDITMAP actions",
+                setup["expected_visible_fact"],
+            )
 
         expected_clocks = {
             "wait_1_hour_for_schema10_signal_approach": ("scheduler_hour=167", "now_minutes=10020"),
