@@ -353,6 +353,67 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertFalse(result["release_blocking"])
         self.assertFalse(result["contaminating"])
 
+    def test_howling_wind_wilderness_flavor_popup_is_exact_and_fail_closed(self) -> None:
+        exact_text = "The wind sure is howling tonight"
+        exact = classify_blocking_interruption({"ok": True, "text": exact_text})
+        partial = classify_blocking_interruption({
+            "ok": True,
+            "text": "The wind sure is howling",
+        })
+        unknown_confirmation = classify_blocking_interruption({
+            "ok": True,
+            "text": f"{exact_text}\nApply changes? (y/n)",
+        })
+
+        self.assertEqual(exact["status"], "known_prompt")
+        self.assertEqual(
+            exact["classification"],
+            "shadow_warning_wilderness_flavor_popup",
+        )
+        self.assertEqual(exact["response_key"], "space")
+        self.assertFalse(exact["release_blocking"])
+        self.assertFalse(exact["contaminating"])
+        self.assertEqual(partial["status"], "clear")
+        self.assertEqual(partial["classification"], "no_known_prompt")
+        self.assertEqual(partial["response_key"], "")
+        self.assertEqual(unknown_confirmation["status"], "unknown_prompt")
+        self.assertEqual(
+            unknown_confirmation["classification"],
+            "unhandled_blocking_menu",
+        )
+        self.assertEqual(unknown_confirmation["response_key"], "")
+
+    def test_howling_wind_wilderness_flavor_popup_acknowledges_with_space(self) -> None:
+        screen_reads = iter([
+            {"ok": True, "text": "The wind sure is howling tonight"},
+            {"ok": True, "text": ""},
+        ])
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+            mock.patch(
+                "startup_harness.capture_screen_text_artifact",
+                side_effect=lambda *_args, **_kwargs: next(screen_reads),
+            ),
+            mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            mock.patch("startup_harness.time.sleep"),
+        ):
+            result = acknowledge_blocking_interruptions(
+                42,
+                Path(temp_dir),
+                "wait_contract.howling_wind",
+                stop_on_unknown=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertEqual(
+            result["acknowledgements"][0]["classification"]["classification"],
+            "shadow_warning_wilderness_flavor_popup",
+        )
+        self.assertEqual(result["acknowledgements"][0]["response_key"], "space")
+        press.assert_called_once_with(42, ["space"], delay_ms=200)
+
     def test_partial_lifeless_grass_wilderness_flavor_remains_unknown(self) -> None:
         result = classify_blocking_interruption({
             "ok": True,
@@ -5176,7 +5237,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("first_forward_acquired=yes", serialized_scenario)
         self.assertNotIn("outcome=observed", serialized_scenario)
 
-    def test_phase4_road_night_reuses_exact_watch_without_predeclared_weather(self) -> None:
+    def test_phase4_road_night_binds_measured_light_drizzle_exact_watch(self) -> None:
         fixture_name = "bandit_phase4_visibility_road_night_v0_2026-08-04"
         day_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
         resolved = resolve_fixture_payload(fixture_name, "live-debug")
@@ -5339,10 +5400,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                     "bandit_live_world structural_visibility:",
                     "site=overmap_special:bandit_camp@140,51,0",
                     "current_omt=(138,52,0)",
-                    "weather=",
-                    "sight_penalty=1",
+                    "weather=light_drizzle",
+                    "sight_penalty=1.01",
                     "optic=no",
-                    "sight_points=1",
+                    "sight_points=0",
                     "forward_candidates=1",
                     "first_forward_omt=(137,49,0)",
                     "first_forward_distance=3",
@@ -5352,10 +5413,16 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ],
             ],
         )
+        visibility_patterns = audit["required_line_patterns"][1]
+        self.assertIn("sight_penalty=1.01", visibility_patterns)
+        self.assertNotIn("sight_penalty=1", visibility_patterns)
+        self.assertIn("sight_points=0", visibility_patterns)
+        self.assertNotIn("sight_points=1", visibility_patterns)
         serialized_scenario = json.dumps(scenario, sort_keys=True)
         self.assertEqual(serialized_scenario.count(exact_dispatch_lead), 3)
-        self.assertIn("weather=", serialized_scenario)
-        self.assertIn("sight_penalty=1", serialized_scenario)
+        self.assertIn("weather=light_drizzle", serialized_scenario)
+        self.assertIn("sight_penalty=1.01", serialized_scenario)
+        self.assertIn("sight_points=0", serialized_scenario)
         self.assertNotIn("weather=cloudy", serialized_scenario)
         self.assertNotIn("136,51,0", serialized_scenario)
         self.assertNotIn("first_forward_acquired=yes", serialized_scenario)

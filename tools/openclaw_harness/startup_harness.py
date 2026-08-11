@@ -2051,6 +2051,7 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "night feels longer than usual",
             "yearn for a beautiful sunrise",
             "wind faintly cries into the night",
+            "the wind sure is howling tonight",
             "darkness makes you nervous",
         )
         if marker in lowered
