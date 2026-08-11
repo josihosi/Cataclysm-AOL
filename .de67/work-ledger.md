@@ -425,6 +425,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   concrete zombies observed at that exact forest OMT, with every step/error guard green. Stop at the
   first changed production divergence; no unchanged retry.
 
+  Exact `R002-M29` run `20260811_124746` is accepted. Its install receipt changed only target
+  `(137,49,0)` from `road_ns` to `forest`. The real terrain-opportunity pair reached approach at
+  hour 156 and exact watch `(138,52,0)` at hour 157; clear weather, penalty one, actual binoculars,
+  and six sight points acquired and observed the three-zombie forest target at distance three. All
+  ten step-local rows and the error guard passed, and the process was terminated cleanly.
+
+  Task `R002-M30` retains the measured 3,600-second envelope and corrects the fog forest/optic proof
+  premise before any live row. Rebase only the fog child on M28's accepted transformed-forest route,
+  preserve its existing fog-search start turn, and add separate approach/watch owner hours. The old
+  `weather=fog`, penalty `1.7`, and three-point fact belongs to the former direct-bounty origin
+  `(139,51,0)` at hour 181; do not transfer it to exact watch `(138,52,0)` at hour 182. Require the
+  exact-watch line to expose generated `weather=`, `sight_penalty=`, and `sight_points=` tokens while
+  binding the terrain-opportunity dispatch, real optic, transformed target `(137,49,0)`, distance
+  three, and a visibility outcome. Extend the focused contract over source chain, target-only terrain
+  transform, binocular inventory, entities, clocks, and identity-agnostic weather tokens. Preserve
+  the accepted clear-day child, road fixtures, product source, and unrelated harness behavior. A
+  reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
