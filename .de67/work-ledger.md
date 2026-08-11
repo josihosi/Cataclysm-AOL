@@ -410,6 +410,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   and product source byte-for-byte. Add focused transform and scenario contracts. A reviewed green
   harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M28` accepted the deterministic forest seam at `24759b1f20`. A fail-closed transform changes
+  only absolute OMT `(137,49,0)` in the installed saved overmap to real `forest`; the clear-day child
+  otherwise inherits the accepted terrain-opportunity lead, three zombies, approach/watch route, and
+  clocks, and assigns binoculars to the deterministic roster. Focused contracts prove one-cell
+  round-trip mutation, malformed/missing/unknown-input rejection, protected fixture preservation,
+  and the exact optical forest scenario.
+
+  Task `R002-M29` retains the measured 3,600-second envelope for one coordinator-owned changed
+  clear-day forest/optic probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires
+  transform receipt proving only target `(137,49,0)` changed from road to forest, the real terrain-
+  opportunity dispatch, approach at hour 156, exact watch `(138,52,0)` at hour 157, clear weather,
+  no weather penalty, optic yes, six sight points, target distance three acquired, and the three
+  concrete zombies observed at that exact forest OMT, with every step/error guard green. Stop at the
+  first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
