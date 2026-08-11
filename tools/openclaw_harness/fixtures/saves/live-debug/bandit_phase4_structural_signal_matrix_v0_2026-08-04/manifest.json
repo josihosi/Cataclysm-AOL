@@ -2,7 +2,7 @@
   "name": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
   "source_fixture": "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
   "source_profile": "live-debug",
-  "description": "Phase-4 smoke/light/sound observer footing without inherited horde entities. It shapes the canonical idle five-member camp, replaces the old forest lead with the exact four-OMT-west road lead, moves a debug-cloaked passive player 60 map squares west of that target so mapgen wildlife cannot interrupt bounded waits while the target remains at the live source-scan boundary and the observer pretarget stays outside the reality bubble, and sets the established turn twelve hours before the autonomous night dispatch. Physical fire and active-explosive placement remain explicit scenario setup; production owns terrain-opportunity accumulation, dispatch, route position, typed observations, physical return, and returned-report leads.",
+  "description": "Phase-4 smoke/light/sound observer footing without inherited horde entities. It shapes the canonical idle five-member camp, replaces the old forest lead with the source-proved terrain-opportunity road lead at (137,49,0), and places the debug-cloaked passive player at abs_ms (3336,1187,0). From there the target source is 36 map squares west, the canonical approach and camp are inside loaded reality, and exact watch (138,52,0) remains one map square beyond it. Physical fire and active-explosive placement remain explicit scenario setup; production owns target-footprint derivation, watch selection, routing, typed observations, physical return, and returned-report leads.",
   "save_transforms": [
     {
       "kind": "bandit_site_roster_shape",
@@ -22,13 +22,13 @@
       "kind": "bandit_camp_map_lead",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:bandit_camp@140,51,0",
-      "lead_kind": "structural_bounty",
-      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@136,51,0",
+      "lead_kind": "terrain_opportunity",
+      "lead_id": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
       "status": "scout_confirmed",
       "target_id": "road",
-      "target_omt": [136, 51, 0],
+      "target_omt": [137, 49, 0],
       "radius_omt": 0,
-      "source_key": "fixture_phase4_structural_signal_matrix_road",
+      "source_key": "fixture_phase4_structural_signal_matrix:terrain_fit:road",
       "source_summary": "fixture-known road bounty used only to commit a real abstract pair to the signal-source route; no signal fact or returned report is injected",
       "first_seen_minutes": -720,
       "last_seen_minutes": -720,
@@ -46,7 +46,7 @@
     {
       "kind": "player_location_offset_ms",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "offset_ms": [-168, 288, 0]
+      "offset_ms": [-36, 191, 0]
     },
     {
       "kind": "player_mutations",

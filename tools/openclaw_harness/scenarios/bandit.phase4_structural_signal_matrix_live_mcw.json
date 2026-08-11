@@ -1,6 +1,6 @@
 {
   "name": "bandit.phase4_structural_signal_matrix_live_mcw",
-  "description": "Phase-4 live smoke/light/sound matrix plus a comfort-first ecology-observer incident on one production-owned structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward a fixture-known road target. The passive player remains 60 map squares west; scenario setup places one real active explosive and one physical fire on the target at the loaded-bubble edge shortly before the pair reaches its hourly observation point. Production must retain three typed route facts and create three returned_report leads only after physical return.",
+  "description": "Phase-4 live smoke/light/sound matrix plus a comfort-first ecology-observer incident on one production-owned schema-10 structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward source-proved terrain-opportunity road target (137,49,0), approaches through (139,51,0), and watches from (138,52,0). The passive player at abs_ms (3336,1187,0) keeps the target and return route in loaded reality while the watch remains out of bounds; scenario setup places one real active explosive and one physical fire 36 map squares west on the target. Production must retain three typed target-to-watch facts and create exactly three returned_report leads only after physical return.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
@@ -50,9 +50,9 @@
       "required_active_target_id_exact": "",
       "required_min_leads": 1,
       "required_max_leads": 1,
-      "required_lead_kind": "structural_bounty",
+      "required_lead_kind": "terrain_opportunity",
       "required_lead_target_id": "road",
-      "required_lead_source_contains": "fixture_phase4_structural_signal_matrix_road",
+      "required_lead_source_contains": "fixture_phase4_structural_signal_matrix:terrain_fit:road",
       "required_lead_status": "scout_confirmed",
       "required_lead_bounty": 8,
       "required_lead_threat": 0,
@@ -97,7 +97,7 @@
         "scheduler_hour=166",
         "now_minutes=9960",
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"
+        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
       ],
       "expected_visible_fact": "the second six-hour simulation reaches the exact autonomous night dispatch after real drive accumulation",
       "failure_rule": "If the bounded wait does not dispatch the exact pair, later signal evidence is not creditable."
@@ -117,7 +117,7 @@
       "label": "audit_exact_phase4_structural_signal_dispatch",
       "required_line_patterns": [
         ["scheduler_hour=166", "dispatches_applied=1"],
-        ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:136,51,0:road"]
+        ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0", "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_structural_signal_dispatch_missing",
@@ -135,7 +135,21 @@
     },
     {
       "kind": "long_wait",
-      "label": "wait_30_minutes_with_abstract_pair",
+      "label": "wait_1_hour_for_schema10_signal_approach",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
+      "completion_wait_seconds": 2,
+      "completion_artifact_timeout_seconds": 60,
+      "artifact_state_patterns": ["scheduler_hour=167", "now_minutes=10020", "structural outing stalking check kept arrival open lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"],
+      "expected_visible_fact": "the first production owner hour reaches canonical approach OMT (139,51,0) without entering target footprint or selected watch",
+      "failure_rule": "If the first post-dispatch hour lacks the exact approach transition, source timing is not creditable."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_30_minutes_toward_schema10_watch_boundary",
       "choice_key": "4",
       "expected_duration": "30m",
       "allow_artifact_elapsed_without_menu_ocr": true,
@@ -144,12 +158,11 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
-      "expected_visible_fact": "the abstract pair advances within its hour without crossing the next ownership boundary",
-      "failure_rule": "If the bounded wait does not complete, source timing is not creditable."
+      "expected_visible_fact": "the pair remains on canonical approach while the clock advances from minute 10020 to 10050"
     },
     {
       "kind": "long_wait",
-      "label": "wait_first_5_minutes_with_abstract_pair",
+      "label": "wait_first_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
       "expected_duration": "5m",
       "allow_artifact_elapsed_without_menu_ocr": true,
@@ -158,11 +171,11 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
-      "expected_visible_fact": "five real minutes advance without crossing the next ownership boundary"
+      "expected_visible_fact": "the pair remains on canonical approach through minute 10055"
     },
     {
       "kind": "long_wait",
-      "label": "wait_second_5_minutes_with_abstract_pair",
+      "label": "wait_second_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
       "expected_duration": "5m",
       "allow_artifact_elapsed_without_menu_ocr": true,
@@ -171,11 +184,11 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
-      "expected_visible_fact": "ten total real minutes advance without crossing the next ownership boundary"
+      "expected_visible_fact": "the pair remains on canonical approach through minute 10060"
     },
     {
       "kind": "long_wait",
-      "label": "wait_third_5_minutes_with_abstract_pair",
+      "label": "wait_third_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
       "expected_duration": "5m",
       "allow_artifact_elapsed_without_menu_ocr": true,
@@ -184,11 +197,11 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
-      "expected_visible_fact": "fifteen total real minutes advance without crossing the next ownership boundary"
+      "expected_visible_fact": "the pair remains on canonical approach through minute 10065"
     },
     {
       "kind": "long_wait",
-      "label": "wait_fourth_5_minutes_with_abstract_pair",
+      "label": "wait_fourth_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
       "expected_duration": "5m",
       "allow_artifact_elapsed_without_menu_ocr": true,
@@ -197,27 +210,57 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
-      "expected_visible_fact": "twenty total real minutes advance without crossing the next ownership boundary"
+      "expected_visible_fact": "the pair remains on canonical approach through minute 10070"
     },
     {
-      "kind": "debug_map_editor_place_item",
-      "label": "stage_active_explosive_on_target_omt",
-      "item_query": "C-4 explosive (active)",
+      "kind": "long_wait",
+      "label": "wait_fifth_5_minutes_to_stage_schema10_watch_boundary",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
+      "completion_wait_seconds": 2,
+      "completion_artifact_timeout_seconds": 60,
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "expected_visible_fact": "minute 10075 is the final five-minute overmap boundary before the source-derived watch transition"
+    },
+    {
+      "kind": "debug_map_editor_place_field",
+      "label": "stage_physical_fire_on_target_omt",
+      "field_query": "fd_fire",
+      "field_intensity": 3,
       "target_keys": [
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left"
       ],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed 60 calibrated screen-right editor actions from centered abs_ms (3204,1236,0) onto target OMT 136 ten minutes before the hourly scan with its engine countdown running",
-      "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
+      "expected_visible_fact": "one real intense fd_fire field is placed 36 calibrated screen-left editor actions from player abs_ms (3336,1187,0) onto source abs_ms (3300,1187,0) in target OMT (137,49,0); production projects both physical smoke and light from that source",
+      "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
+    },
+    {
+      "kind": "debug_map_editor_place_item",
+      "label": "stage_active_explosive_on_target_omt",
+      "item_query": "C-4 explosive (active)",
+      "target_keys": [
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left"
+      ],
+      "delay_ms": 45,
+      "type_delay_ms": 20,
+      "menu_settle_seconds": 0.45,
+      "prompt_settle_seconds": 0.25,
+      "capture_after": true,
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed on the same physical target just after the minute-10075 overmap boundary, leaving its semantic explosion queued until the minute-10080 watch pass",
+      "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
       "kind": "press",
@@ -227,76 +270,22 @@
       "settle_seconds": 5,
       "capture_after": true,
       "expected_visible_fact": "normal turns let the real active explosive reach its countdown action on target OMT",
-      "failure_rule": "If the countdown does not emit a semantic explosion, the following sound-observation guard is red.",
-      "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
+      "failure_rule": "If the countdown does not emit a semantic explosion before the next five-minute boundary, the three-fact guard is red.",
+      "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
       "kind": "long_wait",
-      "label": "wait_5_minutes_to_consume_active_explosion_sound",
+      "label": "wait_5_minutes_for_three_active_signal_facts",
       "choice_key": "3",
       "expected_duration": "5m",
       "allow_artifact_elapsed_without_menu_ocr": true,
       "pre_menu_choice_key": "w",
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
-      "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": [
-        "bandit_live_world sound_observation",
-        "active=1",
-        "callbacks=1",
-        "recorded=1",
-        "facts=1"
-      ],
-      "expected_visible_fact": "the next five-minute overmap cadence consumes and records the explosion's significant-sound queue before the hourly scan",
-      "proof_deferred_to_label": "audit_phase4_structural_sound_recorded_off_cadence"
-    },
-    {
-      "kind": "audit_log_contains",
-      "label": "audit_phase4_structural_sound_recorded_off_cadence",
-      "required_line_patterns": [
-        ["bandit_live_world sound_adapter event", "source_omt=(136,51,0)", "current_omt=(140,51,0)", "supported=yes", "permitted=yes"],
-        ["bandit_live_world sound_observation", "active=1", "callbacks=1", "recorded=1", "facts=1"]
-      ],
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_phase4_structural_semantic_sound_not_recorded",
-      "abort_reason": "the real active-explosive countdown did not produce one accepted structural sound fact",
-      "expected_immediate_state": "the active abstract pair has recorded one semantic explosion fact after its dispatch cursor"
-    },
-    {
-      "kind": "debug_map_editor_place_field",
-      "label": "stage_physical_fire_on_target_omt",
-      "field_query": "fd_fire",
-      "field_intensity": 3,
-      "target_keys": [
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
-        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
-      ],
-      "delay_ms": 45,
-      "type_delay_ms": 20,
-      "menu_settle_seconds": 0.45,
-      "prompt_settle_seconds": 0.25,
-      "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed 60 calibrated screen-right editor actions from centered abs_ms (3204,1236,0) onto target OMT 136 minutes before the hourly scan; production projects both physical smoke and light from that source",
-      "proof_deferred_to_label": "audit_exact_phase4_structural_smoke_light_sound_matrix"
-    },
-    {
-      "kind": "long_wait",
-      "label": "wait_1_hour_for_three_active_signal_facts",
-      "choice_key": "5",
-      "expected_duration": "1h",
-      "allow_artifact_elapsed_without_menu_ocr": true,
-      "allow_exact_artifact_meridiem_ambiguity": true,
-      "pre_menu_choice_key": "w",
-      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
-      "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 240,
       "artifact_state_patterns": [
-        "scheduler_hour=167",
-        "now_minutes=10020",
+        "scheduler_hour=168",
+        "now_minutes=10080",
         "bandit_live_world signal scan: signal_packet=yes",
         "smoke_packets=1",
         "light_packets=1",
@@ -305,21 +294,22 @@
         "sense=light",
         "sense=sound"
       ],
-      "expected_visible_fact": "the next hourly production pass reads the still-burning physical fire and retains the earlier semantic explosion fact",
-      "failure_rule": "If the hourly boundary lacks all three active facts, the matrix is red."
+      "expected_visible_fact": "the next overmap move is simultaneously the second owner hour: production reaches exact watch (138,52,0), appends target footprint, reads physical smoke/light, and consumes the queued semantic explosion",
+      "failure_rule": "If the exact minute-10080 boundary lacks all three active facts, the matrix is red.",
+      "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
       "kind": "audit_log_contains",
       "label": "audit_phase4_three_active_signal_facts",
       "required_line_patterns": [
-        ["bandit_live_world signal_adapter request", "current_omt=(137,51,0)", "current_inbounds=no", "field_signals=2", "sound_events=0"],
-        ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(137,51,0)", "sense=smoke", "share=shared"],
-        ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(137,51,0)", "sense=light", "share=shared"],
-        ["observation scope=active", "source_omt=(136,51,0)", "receiver_omt=(140,51,0)", "source_id=structural-explosion@(136,51,0)", "sense=sound", "share=shared"]
+        ["bandit_live_world signal_adapter request", "current_omt=(138,52,0)", "current_inbounds=no", "field_signals=2", "sound_events=1"],
+        ["observation scope=active", "source_omt=(137,49,0)", "receiver_omt=(138,52,0)", "sense=smoke", "share=shared"],
+        ["observation scope=active", "source_omt=(137,49,0)", "receiver_omt=(138,52,0)", "sense=light", "share=shared"],
+        ["observation scope=active", "source_omt=(137,49,0)", "receiver_omt=(138,52,0)", "source_id=structural-explosion@(137,49,0)", "sense=sound", "share=shared"]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_three_active_signal_facts_missing",
-      "abort_reason": "same-run evidence did not show the two exact target-to-pretarget visual facts plus the earlier exact target-to-camp sound fact",
+      "abort_reason": "same-run evidence did not show three exact target-footprint-to-watch signal facts",
       "expected_immediate_state": "production has three carried route facts, but camp knowledge has not changed"
     },
     {
@@ -337,16 +327,16 @@
       "keys": ["m"],
       "delay_ms": 200,
       "settle_seconds": 2,
-      "expected_visible_fact": "the ordinary overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay while the production-owned dispatch remains at OMT 137",
+      "expected_visible_fact": "the ordinary overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay while the production-owned dispatch remains at exact watch OMT (138,52,0)",
       "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
     },
     {
       "kind": "press",
       "label": "move_ecology_cursor_to_natural_dispatch",
-      "keys": ["right", "right"],
+      "keys": ["left", "down", "down", "down"],
       "delay_ms": 250,
       "settle_seconds": 1,
-      "expected_visible_fact": "the overmap cursor moves from player OMT 135 to the natural dispatch at OMT 137 without moving the avatar",
+      "expected_visible_fact": "the overmap cursor moves from player OMT (139,49,0) to natural dispatch watch OMT (138,52,0) without moving the avatar",
       "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
     },
     {
@@ -356,7 +346,7 @@
       "delay_ms": 200,
       "settle_seconds": 2,
       "capture_after": true,
-      "expected_visible_fact": "the visible ecology details select the real bandit dispatch carrying three natural signal facts at OMT 137",
+      "expected_visible_fact": "the visible ecology details select the real bandit dispatch carrying three natural signal facts at watch OMT (138,52,0)",
       "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
     },
     {
@@ -421,9 +411,39 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 240,
-      "artifact_state_patterns": ["scheduler_hour=168", "now_minutes=10080", "observation scope=active", "sense=smoke", "sense=light", "sense=sound"],
-      "expected_visible_fact": "one production hour retains all three facts during return",
+      "artifact_state_patterns": ["scheduler_hour=169", "now_minutes=10140", "observation scope=active", "sense=smoke", "sense=light", "sense=sound"],
+      "expected_visible_fact": "one production hour retains all three facts at the selected watch without publishing camp knowledge",
       "failure_rule": "If the bounded wait loses a carried fact, the matrix is red."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_second_1_hour_for_signal_pair_report_transition",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
+      "completion_wait_seconds": 2,
+      "completion_artifact_timeout_seconds": 240,
+      "artifact_state_patterns": ["scheduler_hour=170", "now_minutes=10200", "observation scope=active", "sense=smoke", "sense=light", "sense=sound"],
+      "expected_visible_fact": "the source-derived two-hour watch window closes into an inconclusive carried report without publishing a returned lead",
+      "failure_rule": "If the bounded wait loses a carried fact or publishes camp knowledge, the matrix is red."
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_third_1_hour_for_signal_pair_homeward_transition",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
+      "completion_wait_seconds": 2,
+      "completion_artifact_timeout_seconds": 240,
+      "artifact_state_patterns": ["scheduler_hour=171", "now_minutes=10260", "structural outing secured its normal watch report and began return lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"],
+      "expected_visible_fact": "the production pair leaves watch through canonical approach (139,51,0), entering loaded reality for physical return",
+      "failure_rule": "If the exact pair does not begin homeward travel on its source-derived clock, physical-return proof is blocked."
     },
     {
       "kind": "long_wait",
@@ -436,17 +456,21 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 1h",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 240,
-      "artifact_state_patterns": ["scheduler_hour=169", "now_minutes=10140", "structural outing returned signal leads=3", "members_returned=2", "origin=returned_report"],
-      "expected_visible_fact": "the next production hour physically returns the exact pair and publishes its three reports",
+      "artifact_state_patterns": ["scheduler_hour=172", "now_minutes=10320", "structural outing returned signal leads=3", "members_returned=2", "origin=returned_report"],
+      "expected_visible_fact": "the next owner hour physically returns the exact survivor pair and atomically publishes its three reports",
       "failure_rule": "If physical return does not publish all three reports, the matrix is red."
     },
     {
       "kind": "audit_log_contains",
       "label": "audit_phase4_structural_signal_physical_return",
       "required_line_patterns": [
-        ["structural outing returned home lead="],
+        ["scheduler_hour=172", "members_returned=2"],
+        ["structural outing returned home lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"],
         ["structural outing returned signal leads=3"],
-        ["lead id=", "origin=returned_report"]
+        ["site id=overmap_special:bandit_camp@140,51,0", "leads_total=4"],
+        ["lead id=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0", "last_known_omt=(137,49,0)", "origin=returned_report", "source_key=structural-signal:structural-smoke@(137,49,0)"],
+        ["lead id=overmap_special:bandit_camp@140,51,0#lead:light_signal:structural-light@(137,49,0)@137,49,0", "last_known_omt=(137,49,0)", "origin=returned_report", "source_key=structural-signal:structural-light@(137,49,0)"],
+        ["lead id=overmap_special:bandit_camp@140,51,0#lead:sound_signal:structural-explosion@(137,49,0)@137,49,0", "last_known_omt=(137,49,0)", "origin=returned_report", "source_key=structural-signal:structural-explosion@(137,49,0)"]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_structural_signal_physical_return_missing",
@@ -513,8 +537,8 @@
       "required_min_leads": 4,
       "required_lead_kind": "smoke_signal",
       "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-smoke@(136,51,0)",
-      "required_lead_source_contains": "structural-signal:structural-smoke@(136,51,0)",
+      "required_lead_target_id": "structural-smoke@(137,49,0)",
+      "required_lead_source_contains": "structural-signal:structural-smoke@(137,49,0)",
       "required_lead_status": "suspected",
       "required_lead_last_outcome": "returned_structural_smoke_report",
       "abort_on_metadata_failure": true,
@@ -535,8 +559,8 @@
       "required_min_leads": 4,
       "required_lead_kind": "light_signal",
       "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-light@(136,51,0)",
-      "required_lead_source_contains": "structural-signal:structural-light@(136,51,0)",
+      "required_lead_target_id": "structural-light@(137,49,0)",
+      "required_lead_source_contains": "structural-signal:structural-light@(137,49,0)",
       "required_lead_status": "suspected",
       "required_lead_last_outcome": "returned_structural_light_report",
       "abort_on_metadata_failure": true,
@@ -557,8 +581,8 @@
       "required_min_leads": 4,
       "required_lead_kind": "sound_signal",
       "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-explosion@(136,51,0)",
-      "required_lead_source_contains": "structural-signal:structural-explosion@(136,51,0)",
+      "required_lead_target_id": "structural-explosion@(137,49,0)",
+      "required_lead_source_contains": "structural-signal:structural-explosion@(137,49,0)",
       "required_lead_status": "suspected",
       "required_lead_last_outcome": "returned_structural_sound_report",
       "abort_on_metadata_failure": true,
@@ -569,10 +593,10 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_structural_signal_matrix_live_mcw",
   "evidence_contract": {
-    "claim": "one autonomous abstract scout pair reads physical smoke, light, and a semantic explosion only along its committed route, appears in a same-run natural ecology-observer screenshot/incident pair before return, retains typed facts without creating camp knowledge early, and creates three bounded returned_report leads only after physical return",
-    "setup_boundary": "passive debug-cloaked player relocation, the known road lead, one physical fire, and one real SPAWN_ACTIVE explosive are inherited fixture/scenario footing; the derived fixture adds only DEBUG_CLAIRVOYANCE and its transform report must name that mutation; no typed observation, signal lead, camp report, observer route position, or return is injected",
+    "claim": "one autonomous schema-10 abstract scout pair reaches its selected watch, reads physical smoke, light, and a semantic explosion from the committed target footprint, appears in a same-run natural ecology-observer screenshot/incident pair before return, retains typed facts without creating camp knowledge early, and creates exactly three bounded returned_report leads only after physical return",
+    "setup_boundary": "passive debug-cloaked player relocation, the source-proved road lead, one physical fire, and one real SPAWN_ACTIVE explosive are fixture/scenario footing; the derived observer child adds only DEBUG_CLAIRVOYANCE and its transform report must name that mutation; no typed observation, signal lead, target footprint, watch selection, route position, camp report, or return is injected",
     "load_only_verdict": "load/setup proof only / inconclusive for the structural signal matrix",
     "observer_artifact_requirement": "The same harness run must contain a natural-provenance ecology_incident JSON and its atomic PNG pair plus the selected-dispatch overmap capture. File payload and pairing verification is coordinator artifact inspection, not a new harness parser.",
-    "failure_rule": "No Phase-4 matrix credit unless exact dispatch, bubble-edge source/abstract receiver observations, off-cadence semantic sound recording, pre-return no-lead state, the same-run natural observer screenshot/incident pair, physical return, and three exact persisted returned-report leads are separately green."
+    "failure_rule": "No Phase-4 matrix credit unless exact dispatch and approach clocks, target-loaded/watch-abstract geometry, the exact minute-10080 target-footprint-to-watch smoke/light/explosion observations, pre-return no-lead state, the same-run natural observer screenshot/incident pair, physical return, and three exact persisted returned-report leads are separately green."
   }
 }

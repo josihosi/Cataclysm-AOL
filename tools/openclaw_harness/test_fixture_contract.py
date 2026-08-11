@@ -47,6 +47,8 @@ from startup_harness import (  # noqa: E402
     StartupPlan,
     acknowledge_blocking_interruptions,
     audit_fresh_ecology_incident_pair,
+    audit_log_contains,
+    audit_log_not_contains,
     audit_saved_bandit_live_world_state,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
@@ -73,8 +75,10 @@ from startup_harness import (  # noqa: E402
     evaluate_screen_text_expectation,
     launch_game,
     latest_now_minutes_marker,
+    load_player_abs_omt,
     load_profile_config,
     load_scenario,
+    normalize_screen_text_patterns,
     normalize_fixture_save_transforms,
     overmap_file_coords_from_abs_omt,
     overmap_flat_index,
@@ -4913,7 +4917,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "record_natural_phase4_ecology_incident",
             "close_ecology_console_before_signal_return",
         ]
-        observer_keys = ["m", "right", "right", "[", "escape", "}", "C", "A", "R", "escape"]
+        observer_keys = [
+            "m", "left", "down", "down", "down", "[", "escape", "}", "C", "A", "R", "escape"
+        ]
 
         self.assertEqual(
             scenario["fixture"],
@@ -4956,13 +4962,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["observer_artifact_requirement"],
         )
         return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
+        self.assertIn(["scheduler_hour=172", "members_returned=2"], return_audit["required_line_patterns"])
+        self.assertIn(["structural outing returned signal leads=3"], return_audit["required_line_patterns"])
         self.assertEqual(
-            return_audit["required_line_patterns"],
-            [
-                ["structural outing returned home lead="],
-                ["structural outing returned signal leads=3"],
-                ["lead id=", "origin=returned_report"],
-            ],
+            sum(
+                "origin=returned_report" in group
+                for group in return_audit["required_line_patterns"]
+            ),
+            3,
         )
         for label in (
             "audit_saved_returned_smoke_lead",
@@ -4970,6 +4977,222 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "audit_saved_returned_sound_lead",
         ):
             self.assertLess(labels.index(return_audit["label"]), labels.index(label))
+
+    def test_phase4_signal_matrix_derives_schema10_watch_footing_and_clocks(self) -> None:
+        fixture_name = "bandit_phase4_ecology_observer_handoff_v0_2026-08-05"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
+        scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
+        transforms = list(resolved["save_transforms"])
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+
+        last_clear_index = max(
+            index
+            for index, transform in enumerate(transforms)
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        effective_leads = [
+            transform
+            for transform in transforms[last_clear_index + 1 :]
+            if transform["kind"] == "bandit_camp_map_lead"
+        ]
+        self.assertEqual(len(effective_leads), 1)
+        lead = effective_leads[0]
+        self.assertEqual(
+            (
+                lead["kind_value"],
+                lead["lead_id"],
+                lead["target_omt"],
+                lead["source_key"],
+            ),
+            (
+                "terrain_opportunity",
+                "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
+                [137, 49, 0],
+                "fixture_phase4_structural_signal_matrix:terrain_fit:road",
+            ),
+        )
+
+        def unchecked_camp_score(target_omt: List[int], source_key: str) -> int:
+            marker = ":terrain_fit:"
+            marker_at = source_key.find(marker)
+            terrain = "unknown" if marker_at < 0 else source_key[marker_at + len(marker) :]
+            terrain_fit = 1000 if terrain == "road" else 333
+            static_risk = 200 if terrain == "road" else 300
+            distance = max(abs(target_omt[0] - 140), abs(target_omt[1] - 51))
+            route_quality = max(0, min(1000, 1000 - distance * 1000 // 18))
+            weighted_score = (
+                300 * 333
+                + 250 * 1000
+                + 100 * 1000
+                + 100 * route_quality
+                + 100 * terrain_fit
+                - 450 * static_risk
+            )
+            return max(0, min(1000, weighted_score // 1000))
+
+        score_order = (
+            unchecked_camp_score(lead["target_omt"], lead["source_key"]),
+            unchecked_camp_score([136, 51, 0], "terrain_opportunity:terrain_fit:road"),
+            unchecked_camp_score(lead["target_omt"], "fixture_phase4_structural_signal_matrix"),
+        )
+        self.assertEqual(score_order, (543, 537, 431))
+
+        terrain_points = [(137, 49, 0), (138, 52, 0), (139, 51, 0)]
+        overmap_x, overmap_y, _ = overmap_file_coords_from_abs_omt(terrain_points[0])
+        overmap_path = (
+            resolved["save_src"]
+            / "McWilliams"
+            / "overmaps"
+            / f"o.{overmap_x}.{overmap_y}.zzip"
+        )
+        plain_path, _version_line, overmap_payload = extract_overmap_payload(overmap_path)
+        try:
+            terrain_layer = decode_overmap_layer(
+                overmap_payload["layers"][overmap_layer_index(0)],
+                context=f"{overmap_path} z=0",
+            )
+            saved_terrain = []
+            for point in terrain_points:
+                point_overmap_x, point_overmap_y, local_point = overmap_file_coords_from_abs_omt(point)
+                self.assertEqual((point_overmap_x, point_overmap_y), (overmap_x, overmap_y))
+                saved_terrain.append(terrain_layer[overmap_flat_index(local_point)])
+        finally:
+            cleanup_extracted_overmap(
+                plain_path,
+                keep=not bool(overmap_payload.get("_created_plain", False)),
+            )
+        self.assertEqual(saved_terrain, ["road_ns", "forest", "field"])
+
+        camp = (140, 51, 0)
+        target = (137, 49, 0)
+        watch = (138, 52, 0)
+        approach = (139, 51, 0)
+        target_footprint = {target}
+        shared_route = [camp, approach, watch, approach, camp]
+        self.assertEqual(max(abs(target[0] - watch[0]), abs(target[1] - watch[1])), 3)
+        self.assertTrue(target_footprint.isdisjoint(shared_route))
+        self.assertEqual(max(abs(approach[0] - watch[0]), abs(approach[1] - watch[1])), 1)
+
+        player_save = "#Wm9yYWlkYSBWaWNr.sav.zzip"
+        base_player_omt, base_player_abs_ms = load_player_abs_omt(
+            resolved["save_src"] / "McWilliams", player_save
+        )
+        location_offsets = [
+            transform["offset_ms"]
+            for transform in transforms
+            if transform["kind"] == "player_location_offset_ms"
+        ]
+        self.assertEqual((base_player_omt, base_player_abs_ms), ((140, 41, 0), [3372, 996, 0]))
+        self.assertEqual(location_offsets, [[-36, 191, 0]])
+        player_abs_ms = [
+            base_player_abs_ms[axis] + location_offsets[0][axis]
+            for axis in range(3)
+        ]
+        source_abs_ms = [player_abs_ms[0] - 36, player_abs_ms[1], player_abs_ms[2]]
+        self.assertEqual((player_abs_ms, source_abs_ms), ([3336, 1187, 0], [3300, 1187, 0]))
+        self.assertEqual(tuple(value // 24 for value in source_abs_ms[:2]) + (0,), target)
+
+        def distance_to_omt(point_ms: List[int], omt: tuple[int, int, int]) -> int:
+            distances = []
+            for axis in range(2):
+                lower = omt[axis] * 24
+                upper = lower + 23
+                distances.append(max(lower - point_ms[axis], point_ms[axis] - upper, 0))
+            return max(distances)
+
+        self.assertEqual(
+            (
+                distance_to_omt(player_abs_ms, approach),
+                distance_to_omt(player_abs_ms, camp),
+                distance_to_omt(player_abs_ms, watch),
+            ),
+            (37, 37, 61),
+        )
+        for setup_label in ("stage_physical_fire_on_target_omt", "stage_active_explosive_on_target_omt"):
+            self.assertEqual(steps[labels.index(setup_label)]["target_keys"], ["left"] * 36)
+
+        expected_clocks = {
+            "wait_1_hour_for_schema10_signal_approach": ("scheduler_hour=167", "now_minutes=10020"),
+            "wait_5_minutes_for_three_active_signal_facts": ("scheduler_hour=168", "now_minutes=10080"),
+            "wait_1_hour_with_three_carried_signal_facts": ("scheduler_hour=169", "now_minutes=10140"),
+            "wait_second_1_hour_for_signal_pair_report_transition": ("scheduler_hour=170", "now_minutes=10200"),
+            "wait_third_1_hour_for_signal_pair_homeward_transition": ("scheduler_hour=171", "now_minutes=10260"),
+            "wait_final_1_hour_for_signal_pair_physical_return": ("scheduler_hour=172", "now_minutes=10320"),
+        }
+        for label, clock_patterns in expected_clocks.items():
+            patterns = steps[labels.index(label)]["artifact_state_patterns"]
+            self.assertTrue(all(pattern in patterns for pattern in clock_patterns))
+        staging_wait_minutes = sum(
+            {"30m": 30, "5m": 5}[steps[labels.index(label)]["expected_duration"]]
+            for label in labels
+            if label.endswith("toward_schema10_watch_boundary")
+            or label == "wait_fifth_5_minutes_to_stage_schema10_watch_boundary"
+        )
+        self.assertEqual(staging_wait_minutes, 55)
+        self.assertLess(labels.index("stage_active_explosive_on_target_omt"), labels.index("wait_5_minutes_for_three_active_signal_facts"))
+        self.assertLess(labels.index("audit_no_returned_signal_lead_before_physical_return"), labels.index("wait_final_1_hour_for_signal_pair_physical_return"))
+        self.assertNotIn("136,51,0", json.dumps(scenario, sort_keys=True))
+
+    def test_phase4_signal_matrix_log_groups_use_normalized_runner_matchers(self) -> None:
+        scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
+        steps = {step["label"]: step for step in scenario["steps"]}
+        positive_step = steps["audit_phase4_three_active_signal_facts"]
+        positive_groups = [
+            normalize_screen_text_patterns(group)
+            for group in positive_step["required_line_patterns"]
+        ]
+        positive_lines = [
+            "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=2 sound_events=1",
+            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) sense=smoke share=shared",
+            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) sense=light share=shared",
+            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) source_id=structural-explosion@(137,49,0) sense=sound share=shared",
+        ]
+        forbidden_groups = [
+            normalize_screen_text_patterns(group)
+            for group in steps["audit_phase4_returned_signal_leads_have_no_player_token"][
+                "forbidden_line_patterns"
+            ]
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("\n".join(positive_lines) + "\n", encoding="utf-8")
+            positive = audit_log_contains(
+                run_dir,
+                "positive",
+                artifact_log=artifact_log,
+                artifact_baseline=0,
+                patterns=[],
+                required_line_patterns=positive_groups,
+            )
+            clean_negative = audit_log_not_contains(
+                run_dir,
+                "clean_negative",
+                artifact_log=artifact_log,
+                artifact_baseline=0,
+                patterns=[],
+                forbidden_line_patterns=forbidden_groups,
+            )
+            with artifact_log.open("a", encoding="utf-8") as stream:
+                stream.write("lead origin=returned_report source_key=player@139,49,0\n")
+            forbidden = audit_log_not_contains(
+                run_dir,
+                "forbidden",
+                artifact_log=artifact_log,
+                artifact_baseline=0,
+                patterns=[],
+                forbidden_line_patterns=forbidden_groups,
+            )
+
+        self.assertEqual(positive["status"], "required_state_present")
+        self.assertEqual(clean_negative["status"], "required_state_present")
+        self.assertEqual(forbidden["status"], "required_state_missing")
+        self.assertEqual(
+            forbidden["observed_forbidden_items"],
+            ["origin=returned_report && player@"],
+        )
 
     def test_phase4_quiet_wait_allows_exact_artifact_meridiem_ambiguity(self) -> None:
         scenario = load_scenario("bandit.phase4_quiet_former_radar_live_mcw")
