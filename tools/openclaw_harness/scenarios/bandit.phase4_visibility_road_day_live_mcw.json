@@ -14,7 +14,7 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-    "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
+    "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
     "bandit_live_world structural_visibility:",
     "site=overmap_special:bandit_camp@140,51,0",
     "weather=clear",
@@ -49,7 +49,7 @@
       "required_active_group_id_exact": "",
       "required_active_target_id_exact": "",
       "required_min_leads": 1,
-      "required_lead_kind": "structural_bounty",
+      "required_lead_kind": "terrain_opportunity",
       "required_lead_target_id": "road",
       "required_lead_source_contains": "fixture_phase4_visibility_road_horde",
       "required_lead_status": "scout_confirmed",
@@ -108,7 +108,7 @@
         "scheduler_hour=155",
         "now_minutes=9300",
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-        "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0"
+        "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
       ],
       "expected_visible_fact": "the real hourly cadence crosses this camp's deterministic 11-hour due boundary and dispatches an exact pair toward the naturally confirmed road target",
       "failure_rule": "If the bounded wait lacks the exact dispatch artifact, the row is red/inconclusive."
@@ -156,7 +156,7 @@
       "required_line_patterns": [
         [
           "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-          "lead=overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0"
+          "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
         ],
         [
           "bandit_live_world structural_visibility:",

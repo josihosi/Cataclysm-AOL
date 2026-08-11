@@ -4821,9 +4821,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             if transform["kind"] == "bandit_camp_map_lead"
         ]
         self.assertEqual(len(effective_leads), 1)
+        self.assertEqual(effective_leads[0]["kind_value"], "terrain_opportunity")
         self.assertEqual(
             effective_leads[0]["lead_id"],
-            "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
+            "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
+        )
+        self.assertNotIn(
+            "#lead:structural_bounty:road@137,49,0",
+            json.dumps(effective_leads, sort_keys=True),
         )
         self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
         self.assertEqual(
@@ -4967,17 +4972,21 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 for offset in expected_horde_offsets
             ],
         )
+        site_preflight = steps[
+            labels.index("preflight_phase4_visibility_road_day_site")
+        ]
+        self.assertEqual(site_preflight["required_lead_kind"], "terrain_opportunity")
         serialized_scenario = json.dumps(scenario, sort_keys=True)
         exact_dispatch_lead = (
             "lead=overmap_special:bandit_camp@140,51,0"
-            "#lead:structural_bounty:road@137,49,0"
-        )
-        impossible_dispatch_lead = (
-            "lead=overmap_special:bandit_camp@140,51,0"
             ":terrain_opportunity:137,49,0:road"
         )
+        stale_bounty_dispatch_lead = (
+            "lead=overmap_special:bandit_camp@140,51,0"
+            "#lead:structural_bounty:road@137,49,0"
+        )
         self.assertEqual(serialized_scenario.count(exact_dispatch_lead), 3)
-        self.assertNotIn(impossible_dispatch_lead, serialized_scenario)
+        self.assertNotIn(stale_bounty_dispatch_lead, serialized_scenario)
         self.assertIn("threat_omt=(137,49,0)", serialized_scenario)
         self.assertNotIn("136,51,0", serialized_scenario)
 

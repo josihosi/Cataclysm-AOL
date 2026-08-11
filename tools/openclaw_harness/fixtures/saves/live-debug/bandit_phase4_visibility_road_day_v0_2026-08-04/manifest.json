@@ -22,8 +22,8 @@
       "kind": "bandit_camp_map_lead",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "site_id": "overmap_special:bandit_camp@140,51,0",
-      "lead_kind": "structural_bounty",
-      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:road@137,49,0",
+      "lead_kind": "terrain_opportunity",
+      "lead_id": "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
       "status": "scout_confirmed",
       "target_id": "road",
       "target_omt": [
