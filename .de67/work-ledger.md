@@ -474,6 +474,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   Preserve the clear-day child, road fixtures, transform implementation, and product source. A
   reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M32` accepted the exact fog forest contrast at `61740af91f`. The invalid generic negative
+  guard is gone; one exact watch line must now contain fog, penalty `1.7`, actual binoculars, three
+  sight points, transformed target `(137,49,0)` at distance three, no acquisition, no visible threat,
+  and no threat OMT. Exact-list contracts reject generic prefixes and stale distance-one/origin rows.
+
+  Task `R002-M33` retains the measured 3,600-second envelope for one coordinator-owned changed fog
+  forest/optic probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires the one-cell
+  transform receipt, real terrain-opportunity dispatch, approach hour 181, exact watch `(138,52,0)`
+  hour 182, fog with penalty `1.7`, actual optic, three sight points, target `(137,49,0)` at distance
+  three unacquired, no visible threat, no threat OMT, and every step/error guard green. Stop at the
+  first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
