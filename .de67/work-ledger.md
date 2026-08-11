@@ -27,10 +27,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   return the typed observations. Source review found that the authoritative planner already persists
   per-member best staging distances, refreshes its deadline only for non-regressing pair progress
   with at least one strictly closer member, and has the required long-route and oscillation controls.
-  The natural artifact did not record those authoritative reads, stored best distances, or deadline
-  evolution, so visible movement cannot yet distinguish valid planner progress from pacing or a
-  missing member read. Add the smallest production probe for those exact facts before proposing
-  another ownership mutation, then rerun the real-signal route.
+  Accepted probe checkpoint `80e3e8a78d` now records those exact authoritative reads, current and
+  stored best staging distances, and the cohesion deadline before and after planning without
+  changing ownership behavior. Rerun the unchanged real-signal route and use that evidence to
+  distinguish valid planner progress from pacing or a missing member read before proposing another
+  ownership mutation.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
