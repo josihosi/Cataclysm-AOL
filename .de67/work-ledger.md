@@ -103,14 +103,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   assemble at the edge of loaded reality before the bounded cohesion abort. Production therefore
   had no active receiver at minute 10080, observations remained zero, and no signal row was credited.
 
-  Task `R002-M49` retains the durable 3,600-second R-002 envelope because it changes only scenario
-  footing needed to keep the canonical approach abstract while preserving real loaded source and
-  return geometry. Install the passive player at abs-ms `(3336,1163,0)`, stage both signals at
-  `(3300,1187,0)` through the orthographic delta `(-36,+24)`, and prove from actual ordered fixture
-  transforms plus current map dimensions that the target and camp-return edge remain loaded while
-  approach `(139,51,0)` and watch remain abstract. Run the focused and full fixture-contract tests;
-  do not change production code, run the live scenario, claim the empty-decoy contrast, or claim
-  R-002.
+  Task `R002-M49` retains the durable 3,600-second R-002 envelope because it closes the production
+  ownership leak exposed by the intended loaded approach. Before cohesion assembles, the exact local
+  pair belongs to neither the homeward set nor the assembled-ingress destination map, so the generic
+  travelling-NPC pass advances the same NPCs while the cohesion motor is routing them to staging.
+  Preserve the loaded-reality fixture and make every valid local assembly owner suppress generic
+  overmap travel until assembly releases it. Add a regression for incomplete pair ownership and keep
+  existing assembled-ingress and homeward routing behavior unchanged. Run the narrow relevant tests
+  and compile; do not change fixture geometry, run the live scenario, claim the empty-decoy contrast,
+  or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
