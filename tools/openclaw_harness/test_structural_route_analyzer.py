@@ -41,6 +41,22 @@ class StructuralRouteAnalyzerTests(unittest.TestCase):
             "target=(164,30,0) outcome=selected"
         ))
 
+    def test_parser_accepts_normalized_scheduler_rows_and_rejects_incomplete_selected(self) -> None:
+        scheduler_row = parse_structural_route_analyzer_line(
+            "INFO : bandit_live_world structural_route_analyzer site=camp-a "
+            "lead=lead-a target=(164,30,0) selector=non_frontier outcome=selected "
+            "watch=(161,30,0) route_cost=14 "
+            "summary=live structural route solve accepted; watch geography selected"
+        )
+        self.assertEqual(scheduler_row["selector"], "non_frontier")
+        self.assertEqual(scheduler_row["watch"], "(161,30,0)")
+        self.assertEqual(scheduler_row["route_cost"], "14")
+        self.assertIsNone(parse_structural_route_analyzer_line(
+            "INFO : bandit_live_world structural_route_analyzer site=camp-a "
+            "lead=lead-a target=(164,30,0) selector=non_frontier outcome=selected "
+            "summary=live structural route solve accepted"
+        ))
+
     def test_audit_matches_both_outcomes_after_log_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

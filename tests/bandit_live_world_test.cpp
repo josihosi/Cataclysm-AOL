@@ -69,6 +69,7 @@ TEST_CASE( "live structural watch route read uses overmap geography",
     site.site_id = "test:live_structural_watch";
     site.anchor = anchor;
     bandit_live_world::structural_outing_plan plan;
+    plan.lead_id = "frontier:0";
     plan.target_omt = target;
     plan.frontier_sector = 0;
 
@@ -95,6 +96,15 @@ TEST_CASE( "live structural watch route read uses overmap geography",
     CHECK( selected.watch_shared_route[2] == watch );
     CHECK( bandit_live_world::structural_watch_route_avoids_target_footprint(
                selected.watch_shared_route, selected.target_footprint ) );
+    const int budget_after_selected_read = selected_budget;
+    const std::string selected_record = live_bandit_structural_route_analyzer_record_for_test(
+                                            site, plan, "frontier", selected );
+    CHECK( selected_budget == budget_after_selected_read );
+    CHECK( selected_record.find( "site=test:live_structural_watch lead=frontier:0" ) !=
+           std::string::npos );
+    CHECK( selected_record.find( "selector=frontier outcome=selected watch=" +
+                                watch.to_string() + " route_cost=" ) != std::string::npos );
+    CHECK( selected_record.find( "summary=live structural route" ) != std::string::npos );
 
     const int route_reads_used = 8 - selected_budget;
     REQUIRE( route_reads_used > 0 );
@@ -110,6 +120,14 @@ TEST_CASE( "live structural watch route read uses overmap geography",
     CHECK( exhausted_candidate.watch_candidates.empty() );
     CHECK( exhausted_candidate.summary ==
            "live structural route abandoned: no bounded safe watch geography" );
+    const std::string rejected_record = live_bandit_structural_route_analyzer_record_for_test(
+                                             site, plan, "frontier", exhausted_candidate );
+    CHECK( rejected_record.find( "site=test:live_structural_watch lead=frontier:0" ) !=
+           std::string::npos );
+    CHECK( rejected_record.find( "selector=frontier outcome=rejected" ) != std::string::npos );
+    CHECK( rejected_record.find( " watch=" ) == std::string::npos );
+    CHECK( rejected_record.find( " route_cost=" ) == std::string::npos );
+    CHECK( rejected_record.find( "summary=live structural route" ) != std::string::npos );
 
     overmap_buffer.ter_set( intervening, oter_id( "forest_thick" ) );
     int rejected_budget = 8;

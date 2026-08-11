@@ -4,6 +4,7 @@
 
 #include "coordinates.h"
 
+#include <string>
 #include <vector>
 
 namespace bandit_live_world
@@ -29,6 +30,11 @@ live_bandit_structural_route_analyzer_reads_for_test(
     const bandit_live_world::site_record &site,
     const std::vector<bandit_live_world::structural_outing_plan> &plans,
     int &watch_path_budget );
+std::string live_bandit_structural_route_analyzer_record_for_test(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::structural_outing_plan &plan,
+    const std::string &selector,
+    const bandit_live_world::structural_route_read &read );
 bool live_bandit_local_handoff_position_is_motor_addressable(
     const tripoint_abs_ms &position, const tripoint_abs_sm &motor_center,
     int motor_radius_sm );
