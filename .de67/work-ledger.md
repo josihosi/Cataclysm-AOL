@@ -38,14 +38,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   `30477cef65+SDL3`, `+tiles`, `+sound`, SHA-256
   `3233c36ebc5e11c07ae65c474375baeb668a9bb3fc0934a6a07a8a4e8f6f681e`, and a clean tracked tree.
 
-  Task `R002-M40` retains the durable 3,600-second R-002 envelope because it exercises the established
-  43-step GUI harness against that exact runtime. The coordinator must run the changed structural-
-  signal scenario once and judge its full artifact route: autonomous dispatch and approach, exact
-  target-footprint-to-watch smoke/light/explosion observations at minute 10080, no returned signal
-  lead before return, the natural observer artifact pair, physical two-survivor return, exactly three
-  non-player returned-report leads, and saved-state persistence. Stop at the first premise-breaking
-  observation and preserve the run artifacts. Do not edit or weaken source, fixture, scenario, matcher,
-  or `.de67` assertions during the run, and do not claim the later empty-decoy contrast or R-002.
+  `R002-M40` stopped on time in run `20260811_143333` after 16 green steps. Exact-runtime startup,
+  fixture preflight, dispatch, approach, and every wait through minute 10075 were green. The physical-
+  fire editor completed its input sequence, but the generic post-step interruption scan mistook a
+  wilderness-warning sentence retained in the ordinary message log for an active popup, sent Space,
+  then aborted on the resulting `Unknown command: "SPACE" (32)`. The final screenshot proves normal
+  gameplay rather than an active warning prompt. No signal row was credited and an unchanged rerun is
+  forbidden.
+
+  Task `R002-M41` retains the durable 3,600-second R-002 envelope. Repair only the harness interruption
+  boundary so post-interaction scans with current structured EOC trace evidence do not acknowledge
+  retained wilderness-warning text as an active popup, while a genuinely active structured warning,
+  unsafe confirmation, safe-mode prompt, and unknown prompt remain fail-closed. Use the existing
+  current-run OCR/trace shape as the regression and pass the structured trace into the completed-
+  interaction scan with a run-bounded offset. Run focused interruption tests plus the full fixture-
+  contract suite. Do not edit product source, fixture/scenario assertions, `.de67/`, README, commit,
+  launch a live scenario, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
