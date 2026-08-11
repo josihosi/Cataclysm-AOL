@@ -240,6 +240,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   and the negative visibility artifact. Preserve day, night, common fixtures, and product source.
   A reviewed green harness-only diff may be checkpointed; no live probe belongs to this task.
 
+  `R002-M17` accepted the twilight watch contrast at `25e9467aee`. The twilight-only child preserves
+  its calendar turn while inheriting the accepted terrain-opportunity lane, exact target/entities,
+  approach/watch route, and no-optic footing. Its focused contract now requires the two serialized
+  hours and the exact distance-three negative at two sight points.
+
+  Task `R002-M18` retains the measured 3,600-second envelope for one coordinator-owned changed
+  twilight probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires the real
+  terrain-opportunity dispatch, approach at scheduler hour 148, concealed watch `(138,52,0)` at hour
+  149, clear weather, no optic, sight points two, forward target `(137,49,0)` at distance three,
+  `first_forward_acquired=no`, and `outcome=no_visible_threat`, with every setup/error guard green.
+  Stop at the first changed production divergence and do not run an unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
