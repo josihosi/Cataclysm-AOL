@@ -13,18 +13,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   zombie danger. Commits after the runtime checkpoint change harness or durable DE-67 state only.
 
   Current causal frontier: checkpoint `dbb85cfe1f` makes local assembly ownership exclusive over
-  stale generic `goal`, `omt_path`, mission, local path, guard, and ordered-position state until the
-  existing assembled-ingress, alternate-reposition, or homeward owner takes over. Its real
-  `overmap_npc_move` regression and the existing handoff/reposition controls are green. This removes
-  the duplicate-owner blocker but does not itself add changed-executable live evidence.
+  stale generic travel state until the existing assembled-ingress, alternate-reposition, or
+  homeward owner takes over. `R002-M52` built exact release SDL3 binary `2f9ced5dcd` (SHA-256
+  `efd3732265b8e618f279f82404ed6ed175aca4ab532778e7794fa375ba9a87ad`) but the probe stopped before
+  gameplay: the harness defaulted input permission checks to local Peekaboo, where Accessibility is
+  unavailable, while the signed bridge reports Accessibility and Screen Recording granted. This is
+  a tooling result, not changed-executable feature evidence.
 
-  Next required slice: build the exact accepted macOS SDL3 executable and run the existing
-  `bandit.phase4_structural_signal_matrix_live_mcw` probe without fixture or scenario edits. Accept
-  only if the production pair crosses canonical approach `(139,51,0)` to watch `(138,52,0)`, the
-  repeated empty-signal controls remain empty, the physical target fire/light/explosion produce the
-  three source-bound facts, and returned-report leads appear only after physical return without
-  player-coordinate leakage. Stop with a finding if the corrected owner still cannot reach that
-  path. Do not claim R-002; relocation and observed-versus-unseen zombie rows remain afterward.
+  Next required slice: run the unchanged
+  `bandit.phase4_structural_signal_matrix_live_mcw` probe against that exact binary with
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`; do not edit the fixture or scenario. Accept only if normal
+  focus checks stay green, the production pair crosses canonical approach `(139,51,0)` to watch
+  `(138,52,0)`, repeated empty-signal controls remain empty, physical target fire/light/explosion
+  produce the three source-bound facts, and returned-report leads appear only after physical return
+  without player-coordinate leakage. Stop with a finding if bridge input cannot prove focus or the
+  corrected owner still cannot reach that path. Do not claim R-002; relocation and
+  observed-versus-unseen zombie rows remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
