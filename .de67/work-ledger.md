@@ -46,14 +46,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   gameplay rather than an active warning prompt. No signal row was credited and an unchanged rerun is
   forbidden.
 
-  Task `R002-M41` retains the durable 3,600-second R-002 envelope. Repair only the harness interruption
-  boundary so post-interaction scans with current structured EOC trace evidence do not acknowledge
-  retained wilderness-warning text as an active popup, while a genuinely active structured warning,
-  unsafe confirmation, safe-mode prompt, and unknown prompt remain fail-closed. Use the existing
-  current-run OCR/trace shape as the regression and pass the structured trace into the completed-
-  interaction scan with a run-bounded offset. Run focused interruption tests plus the full fixture-
-  contract suite. Do not edit product source, fixture/scenario assertions, `.de67/`, README, commit,
-  launch a live scenario, or claim R-002.
+  `R002-M41` is accepted at `82d7dd1051`. Completed-interaction scans now receive the feature-debug
+  trace and exact run-start offset. Recognized warning OCR is suppressed only when that bounded trace
+  is fully readable and has no active EOC popup; active structured warnings are acknowledged, while
+  unsafe confirmations, safe-mode fragments, and unknown prompts remain fail-closed. The regression
+  reproduces the exact returned-warning/editor/retained-OCR lifecycle with zero Space input. Focused
+  four tests, the surrounding 68 tests, full 196-test fixture-contract suite, `py_compile`, and diff
+  checks passed. The accepted runtime remains exact because this checkpoint changes harness only.
+
+  Task `R002-M42` retains the durable 3,600-second R-002 envelope because it reruns the established
+  43-step scenario only after the causal harness change. The coordinator must require all M40 guards
+  plus successful physical fire/C-4 staging, exact minute-10080 target-to-watch smoke/light/sound,
+  the natural observer artifact pair, no pre-return lead, physical two-survivor return, exactly three
+  non-player returned-report leads, and saved-state persistence. Inspect the actual step ledger,
+  normalized artifact matches, saved owner state, and observer image/pair before acceptance. Stop on
+  the first new premise-breaking observation; do not edit during the run, claim the empty-decoy
+  contrast, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
