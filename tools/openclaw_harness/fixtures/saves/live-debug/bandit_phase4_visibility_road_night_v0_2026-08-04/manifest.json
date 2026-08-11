@@ -1,8 +1,8 @@
 {
   "name": "bandit_phase4_visibility_road_night_v0_2026-08-04",
-  "source_fixture": "bandit_phase4_visibility_road_horde_common_v0_2026-08-04",
+  "source_fixture": "bandit_phase4_visibility_road_day_v0_2026-08-04",
   "source_profile": "live-debug",
-  "description": "Generated cloudy neutral-weather night child of the shared road/horde footing. The initial turn gives production twelve hours to dispatch and one further hourly tick to reach the established local-midnight turn. The production observer must derive sight_penalty=1 and the one-point ordinary night budget, and may only see the one-OMT forward road target.",
+  "description": "Night child of the accepted clear-day terrain-opportunity footing. The child preserves the night calendar turn while production owns dispatch, serialized approach and exact-watch arrival, generated weather identity, and the negative one-point visibility read.",
   "save_transforms": [
     {
       "kind": "game_turn",
