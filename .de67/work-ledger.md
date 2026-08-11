@@ -33,12 +33,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   passed the focused three tests and full 192-test fixture-contract suite. Live interaction remains
   unproved.
 
-  Task `R002-M39` retains the durable 3,600-second R-002 envelope because it is a local exact-runtime
-  prerequisite using the established release build route. Produce a clean macOS SDL3 release binary
-  from the current accepted source/harness checkpoint, preserving the exact Git identity needed by
-  the live harness feature gate. Run the smallest relevant post-link identity/startup check and report
-  the binary version plus first hard build error if blocked. Do not edit source, fixtures, scenarios,
-  `.de67/`, README, commit, launch a live scenario, or claim R-002.
+  `R002-M39` is accepted at `30477cef65`. The clean macOS arm64 SDL3 release build completed in
+  169.81 seconds without a hard error; the coordinator independently rechecked executable identity
+  `30477cef65+SDL3`, `+tiles`, `+sound`, SHA-256
+  `3233c36ebc5e11c07ae65c474375baeb668a9bb3fc0934a6a07a8a4e8f6f681e`, and a clean tracked tree.
+
+  Task `R002-M40` retains the durable 3,600-second R-002 envelope because it exercises the established
+  43-step GUI harness against that exact runtime. The coordinator must run the changed structural-
+  signal scenario once and judge its full artifact route: autonomous dispatch and approach, exact
+  target-footprint-to-watch smoke/light/explosion observations at minute 10080, no returned signal
+  lead before return, the natural observer artifact pair, physical two-survivor return, exactly three
+  non-player returned-report leads, and saved-state persistence. Stop at the first premise-breaking
+  observation and preserve the run artifacts. Do not edit or weaken source, fixture, scenario, matcher,
+  or `.de67` assertions during the run, and do not claim the later empty-decoy contrast or R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
