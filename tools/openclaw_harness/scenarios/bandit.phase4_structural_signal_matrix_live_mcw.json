@@ -231,16 +231,16 @@
       "field_query": "fd_fire",
       "field_intensity": 3,
       "target_keys": [
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b",
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b",
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b"
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left"
       ],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed by 36 repeated lowercase b printable bindings, each resolving to isometric LEFTDOWN and direct world west, from player abs_ms (3336,1187,0) onto source abs_ms (3300,1187,0) in target OMT (137,49,0); production projects both physical smoke and light from that source",
+      "expected_visible_fact": "one real intense fd_fire field is placed by 36 screen-left non-isometric EDITMAP actions from player abs_ms (3336,1187,0) onto source abs_ms (3300,1187,0) in target OMT (137,49,0); production projects both physical smoke and light from that source",
       "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
@@ -248,16 +248,16 @@
       "label": "stage_active_explosive_on_target_omt",
       "item_query": "C-4 explosive (active)",
       "target_keys": [
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b",
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b",
-        "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b", "b"
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
+        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left"
       ],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed by the same 36 repeated lowercase b printable bindings resolving to isometric LEFTDOWN and direct world west onto source abs_ms (3300,1187,0) in target OMT (137,49,0) just after the minute-10075 overmap boundary, leaving its semantic explosion queued until the minute-10080 watch pass",
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed by the same 36 screen-left non-isometric EDITMAP actions onto source abs_ms (3300,1187,0) in target OMT (137,49,0) just after the minute-10075 overmap boundary, leaving its semantic explosion queued until the minute-10080 watch pass",
       "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {

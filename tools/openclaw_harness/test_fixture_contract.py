@@ -95,6 +95,7 @@ from startup_harness import (  # noqa: E402
     resolve_fixture_payload,
     resolve_game_runtime_python,
     resolve_profile_name,
+    resolve_profile_snapshot_payload,
     resolve_scenario_profile_option_overrides,
     resolve_startup_config_profile,
     run_launch_only_handoff,
@@ -5270,20 +5271,37 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(max(abs(approach[0] - watch[0]), abs(approach[1] - watch[1])), 1)
 
         player_save = "#Wm9yYWlkYSBWaWNr.sav.zzip"
-        base_player_omt, base_player_abs_ms = load_player_abs_omt(
-            resolved["save_src"] / "McWilliams", player_save
-        )
-        location_offsets = [
-            transform["offset_ms"]
+        positioning_transforms = [
+            transform
             for transform in transforms
-            if transform["kind"] == "player_location_offset_ms"
+            if transform["kind"] in {
+                "player_near_overmap_special",
+                "player_location_offset_ms",
+            }
         ]
-        self.assertEqual((base_player_omt, base_player_abs_ms), ((140, 41, 0), [3372, 996, 0]))
-        self.assertEqual(location_offsets, [[-36, 191, 0]])
-        player_abs_ms = [
-            base_player_abs_ms[axis] + location_offsets[0][axis]
-            for axis in range(3)
-        ]
+        self.assertEqual(
+            [transform["kind"] for transform in positioning_transforms],
+            ["player_near_overmap_special", "player_location_offset_ms"],
+        )
+        self.assertEqual(positioning_transforms[0]["offset_omt"], [0, -12, 0])
+        self.assertEqual(positioning_transforms[1]["offset_ms"], [-36, 239, 0])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installed_world = Path(temp_dir) / "McWilliams"
+            shutil.copytree(resolved["save_src"] / "McWilliams", installed_world)
+            self.assertEqual(
+                load_player_abs_omt(installed_world, player_save),
+                ((140, 41, 0), [3372, 996, 0]),
+            )
+            apply_fixture_save_transforms(installed_world, [positioning_transforms[0]])
+            self.assertEqual(
+                load_player_abs_omt(installed_world, player_save),
+                ((140, 39, 0), [3372, 948, 0]),
+            )
+            apply_fixture_save_transforms(installed_world, [positioning_transforms[1]])
+            installed_player_omt, player_abs_ms = load_player_abs_omt(
+                installed_world, player_save
+            )
+        self.assertEqual((installed_player_omt, player_abs_ms), ((139, 49, 0), [3336, 1187, 0]))
         source_abs_ms = [player_abs_ms[0] - 36, player_abs_ms[1], player_abs_ms[2]]
         self.assertEqual((player_abs_ms, source_abs_ms), ([3336, 1187, 0], [3300, 1187, 0]))
         self.assertEqual(tuple(value // 24 for value in source_abs_ms[:2]) + (0,), target)
@@ -5304,39 +5322,53 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ),
             (37, 37, 61),
         )
-        keybinding_records = json.loads(
-            (HARNESS_DIR.parents[1] / "data" / "raw" / "keybindings.json").read_text(
-                encoding="utf-8"
+        resolved_profile = resolve_profile_snapshot_payload(
+            scenario["profile_snapshot"], scenario["profile_snapshot_profile"]
+        )
+        profile_options = {
+            str(entry["name"]): str(entry["value"])
+            for entry in json.loads(
+                (resolved_profile["snapshot_dir"] / "config" / "options.json").read_text(
+                    encoding="utf-8"
+                )
             )
-        )
-        leftdown_binding = next(
-            record
-            for record in keybinding_records
-            if record.get("type") == "keybinding" and record.get("id") == "LEFTDOWN"
-        )
-        leftdown_keyboard_keys = {
-            str(binding["key"])
-            for binding in leftdown_binding["bindings"]
-            if binding.get("input_method") == "keyboard_any"
         }
-        self.assertEqual(leftdown_keyboard_keys, {"b", "1"})
-        action_direction_delta = {
-            "LEFTDOWN": (-1, 1),
+        profile_options.update(resolve_scenario_profile_option_overrides(scenario))
+        self.assertEqual(profile_options["TILES"], "ASCIITiles")
+        matching_tilesets = []
+        for tileset_path in (resolved_profile["snapshot_dir"] / "gfx").glob("*/tileset.txt"):
+            metadata = {
+                key.strip(): value.strip()
+                for line in tileset_path.read_text(encoding="utf-8").splitlines()
+                if ":" in line and not line.lstrip().startswith("#")
+                for key, value in [line.split(":", 1)]
+            }
+            if metadata.get("VIEW") == profile_options["TILES"]:
+                matching_tilesets.append((tileset_path.parent, metadata))
+        self.assertEqual(len(matching_tilesets), 1)
+        tileset_dir, tileset_metadata = matching_tilesets[0]
+        tileset_config = json.loads(
+            (tileset_dir / tileset_metadata["JSON"]).read_text(encoding="utf-8")
+        )
+        is_tileset_isometric = bool(tileset_config["tile_info"][-1].get("iso", False))
+        self.assertFalse(is_tileset_isometric)
+        screen_direction_delta = {
+            "left": (-1, 0),
         }
         rotate_direction_vec = (1, 2, 5, 0, 4, 8, 3, 6, 7)
 
-        def isometric_world_delta(keys: List[str]) -> tuple[int, int]:
+        def profile_world_delta(keys: List[str]) -> tuple[int, int]:
             world_x = 0
             world_y = 0
             for key in keys:
-                if key not in leftdown_keyboard_keys:
-                    self.fail(f"target key is not a LEFTDOWN keyboard binding: {key}")
-                action = str(leftdown_binding["id"])
-                screen_x, screen_y = action_direction_delta[action]
-                direction_number = (screen_y + 1) * 3 + screen_x + 1
-                rotated = rotate_direction_vec[direction_number]
-                world_x += rotated % 3 - 1
-                world_y += rotated // 3 - 1
+                screen_x, screen_y = screen_direction_delta[key]
+                if is_tileset_isometric:
+                    direction_number = (screen_y + 1) * 3 + screen_x + 1
+                    rotated = rotate_direction_vec[direction_number]
+                    screen_x = rotated % 3 - 1
+                    screen_y = rotated // 3 - 1
+                world_x += screen_x
+                world_y += screen_y
             return world_x, world_y
 
         for setup_label in (
@@ -5345,8 +5377,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ):
             setup = steps[labels.index(setup_label)]
             self.assertEqual(len(setup["target_keys"]), 36)
-            self.assertEqual(set(setup["target_keys"]), {"b"})
-            world_delta = isometric_world_delta(setup["target_keys"])
+            self.assertEqual(set(setup["target_keys"]), {"left"})
+            world_delta = profile_world_delta(setup["target_keys"])
             placed_abs_ms = [
                 player_abs_ms[0] + world_delta[0],
                 player_abs_ms[1] + world_delta[1],
@@ -5357,7 +5389,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             self.assertEqual(placed_abs_ms, source_abs_ms)
             self.assertEqual(placed_omt, target)
             self.assertIn(
-                "36 repeated lowercase b printable bindings",
+                "36 screen-left non-isometric EDITMAP actions",
                 setup["expected_visible_fact"],
             )
 
