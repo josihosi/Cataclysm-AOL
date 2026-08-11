@@ -12,21 +12,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   signal provenance, player relocation without target drag, and legitimately observed versus unseen
   zombie danger. Commits after the runtime checkpoint change harness or durable DE-67 state only.
 
-  Current causal frontier: the accepted loaded-reality fixture reaches canonical approach
-  `(139,51,0)`, but the exact pair is double-owned before cohesion assembly. The local cohesion motor
-  owns staging while stale or generic `goal` / `omt_path` state can still let `overmap_npc_move`
-  advance or rewrite those members. A prior skip-only candidate was rejected because it preserved
-  physical position while competing travel state was rewritten and it regressed assembled-ingress
-  and homeward controls.
+  Current causal frontier: checkpoint `dbb85cfe1f` makes local assembly ownership exclusive over
+  stale generic `goal`, `omt_path`, mission, local path, guard, and ordered-position state until the
+  existing assembled-ingress, alternate-reposition, or homeward owner takes over. Its real
+  `overmap_npc_move` regression and the existing handoff/reposition controls are green. This removes
+  the duplicate-owner blocker but does not itself add changed-executable live evidence.
 
-  Task `R002-M51` starts from accepted `HEAD`. Make local assembly ownership exclusive for every valid
-  incomplete pair, including neutralizing incompatible generic travel state, then release ownership
-  exactly to assembled ingress, alternate reposition, or homeward routing. Add a focused regression
-  that proves the incomplete pair follows staging without generic OMT advancement or route rewrite,
-  while existing assembled-ingress and homeward routes remain green. Run the narrow relevant tests
-  and incremental compile. Preserve fixture geometry; do not run the live scenario or claim R-002.
-  The 3,600-second estimate reuses M49's measured two-file ownership/test/compile envelope for this
-  corrected route; the source and test objects are already warm.
+  Next required slice: build the exact accepted macOS SDL3 executable and run the existing
+  `bandit.phase4_structural_signal_matrix_live_mcw` probe without fixture or scenario edits. Accept
+  only if the production pair crosses canonical approach `(139,51,0)` to watch `(138,52,0)`, the
+  repeated empty-signal controls remain empty, the physical target fire/light/explosion produce the
+  three source-bound facts, and returned-report leads appear only after physical return without
+  player-coordinate leakage. Stop with a finding if the corrected owner still cannot reach that
+  path. Do not claim R-002; relocation and observed-versus-unseen zombie rows remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
