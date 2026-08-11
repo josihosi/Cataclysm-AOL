@@ -20,29 +20,30 @@ Lineage: `CAOL-hostile-ecology-dev`
   `d2784eeeda43233baff4160c2995e868f882b8eaac99e3bafefac49eedca4efe`, and five focused harness
   contract checks passed, but neither live contrast earned credit.
 
-  Current evidence gap: in the unchanged real-signal route, local cohesion visibly moved the exact
-  pair toward its staging tiles through minute 10029, then recorded `movement_orders=0`, `abort=yes`
-  at minute 10030 and immediately applied `unreachable return -> orphaned`. The later minute-10080
-  signal scan saw physical smoke/light but had `active_outings=0`, so no active scout could own or
-  return the typed observations. Source review found that the authoritative planner already persists
-  per-member best staging distances, refreshes its deadline only for non-regressing pair progress
-  with at least one strictly closer member, and has the required long-route and oscillation controls.
-  Accepted probe checkpoint `80e3e8a78d` now records those exact authoritative reads, current and
-  stored best staging distances, and the cohesion deadline before and after planning without
-  changing ownership behavior. Rerun the unchanged real-signal route and use that evidence to
-  distinguish valid planner progress from pacing or a missing member read before proposing another
-  ownership mutation. The exact bridge-routed Peekaboo input and capture preflight is now green,
-  including Accessibility and Screen Recording. The unchanged probe correctly stopped before feature
-  steps because the runtime title was `0b4cc44a7d-dirty+SDL3` while repository HEAD was ledger-only
-  `0b88e12002`, so the fail-closed identity gate returned
-  `startup_load_only_runtime_version_mismatch` even though both committed and worktree
-  runtime-relevant diffs were empty. Current harness source and its owning regression require every
-  dirty build to remain unproved. The next wave must produce a clean exact-current-HEAD executable,
-  confirm its runtime title is not dirty, and then rerun the unchanged scenario with
-  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. `R002-M68` owns that proof-only route with an immutable
-  2736.29-second estimate: the scenario's explicit 2585.29-second execution bound plus the measured
-  151-second interval from the current `version.o` to linked `cataclysm-tiles`; bridge permissions,
-  `glslangValidator`, and the pinned shader tool were green before dispatch.
+  Current evidence gap: accepted probe checkpoint `80e3e8a78d` records the authoritative pair reads,
+  current and stored best staging distances, and cohesion deadline around the prior minute-10030
+  abort, but the clean exact-current rerun could not reach that owner. `R002-M68` built clean
+  `dev@2e34ff937a` as binary
+  `4317a3b0084adb2a7cbc93b38f8a2f6157340112195fcd37984af5711f1e6b8c` with runtime title
+  `2e34ff937a+SDL3`; startup identity and bridge permissions were green. At minute 8280 the unchanged
+  scenario rejected both `frontier_probe:0` and its road candidate with
+  `watch_geography_contract_rejected` /
+  `live_structural_route_abandoned:_no_bounded_safe_watch_geography`, leaving
+  `dispatches_applied=0`, `active_outings=0`, and no typed signal owner or cohesion reads. The live report is
+  `.userdata/dev-harness/harness_runs/20260811_215708/probe.report.json`.
+
+  Causal disposition: this is a task/fixture proof gap, not a DFS change. The production adapter
+  requires a concealed candidate, visible and traversable intervening OMTs, and a canonical
+  target-avoiding route. The fixture contract checks the transformed camp/player coordinates and a
+  continuous road but never exercises that source-exact selector; a road-connected target therefore
+  did not prove a valid bounded watch footing after `9a7f29cd01` enforced real intervening see costs.
+  Before another credited live run, the next wave must exercise the actual selector against the
+  installed fixture and current source. It must either identify one natural viable camp/target/player
+  footing without changing geometry during the credited scenario, or add the smallest read-only
+  diagnostic/preflight needed to expose why every bounded candidate fails, then bind the fixture and
+  contract test to that proven footing. Only after this gate is green may the unchanged causal route
+  rerun and use the accepted cohesion probe to distinguish valid pair progress, pacing, or a missing
+  member read.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
