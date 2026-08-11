@@ -293,6 +293,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   ordered clocks, and the negative visibility artifact. Preserve day, twilight, common fixtures, and
   product source. A reviewed green harness-only diff may be checkpointed; no live probe belongs here.
 
+  `R002-M21` stopped on time without edits because exact-watch hour 168 weather was not source-proved.
+  The existing scenario's `weather=cloudy` fact belongs to hour 167 and a different observer OMT;
+  `live_bandit_remote_weather_at` derives a new value from both origin and calendar turn. Exact weather
+  identity is incidental unless it changes the authoritative sight penalty; guessing it would make the
+  proof contract fake.
+
+  Task `R002-M22` retains the measured 3,600-second envelope and applies the night watch correction
+  without inventing weather identity. Rebase only the night fixture on M16's accepted terrain-
+  opportunity target/watch footing, preserve turn `5310000`, and add approach hour 167 / minute 10020
+  plus exact-watch hour 168 / minute 10080. Require the exact visibility line to expose a generated
+  `weather=` value while gating `sight_penalty=1`, no optic, sight points one, forward `(137,49,0)` at
+  distance three, no acquisition, and no visible threat. Extend a focused contract over inheritance,
+  turn, lead semantics, entities, ordered clocks, and this identity-agnostic weather gate. Preserve
+  day, twilight, common fixtures, and product source. A reviewed green harness-only diff may be
+  checkpointed; no live probe belongs to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
