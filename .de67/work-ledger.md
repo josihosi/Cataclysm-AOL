@@ -193,6 +193,37 @@ Lineage: `CAOL-hostile-ecology-dev`
   the already exact `4aad58190f+SDL3` executable; M12's successful natural dispatch must not be
   re-diagnosed or weakened.
 
+  Exact `R002-M14` run `20260811_112140` ended on time at the fixture's lead-semantics premise.
+  Startup, site and three-zombie footing, both six-hour waits, exact lead dispatch, both hourly waits,
+  clear weather, no optic, three sight points, target acquisition, and error guards passed. Production
+  observed `(137,49,0)` first from direct-route OMT `(138,50,0)` at distance one and then from the
+  target itself, not from the required exact-ring watch `(138,52,0)` at distance three. Current source
+  and commit `2606701d4e` prove that the live route adapter deliberately bypasses watch geography for
+  `structural_bounty` leads while terrain-opportunity, frontier, and returned-signal scouts use it.
+  The distance-one result is bounded but cannot distinguish the agreed three-point clear-day range.
+
+  Task `R002-M15` retains the measured 3,600-second envelope and changes only the isolated clear-day
+  fixture's semantic lead kind and matching identity from direct-harvest `structural_bounty` to
+  watch-routed `terrain_opportunity`. Keep road target `(137,49,0)`, concealed watch `(138,52,0)`,
+  intervening lane, three concrete zombies, source terrain-fit marker and score ordering, scheduler
+  windows, and shared fixtures unchanged. Update every day-row lead assertion and the focused
+  contract to require the real terrain-opportunity identity/kind and reject the stale bounty identity.
+  A reviewed green harness-only diff may be checkpointed; no product-source change or live probe
+  belongs to this task.
+
+  `R002-M15` accepted the terrain-opportunity proof correction at `01e2b52e32`. The isolated day
+  fixture now enters the production watch-geography lane with the matching terrain-opportunity
+  identity; the focused contract preserves the accepted road target, lane, entities, score order,
+  timings, and shared-fixture boundaries while rejecting the stale direct-bounty identity.
+
+  Task `R002-M16` retains the measured 3,600-second envelope for one coordinator-owned changed
+  clear-day probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires the corrected
+  terrain-opportunity dispatch toward `(137,49,0)`, serialized approach `(139,52,0)` then exact
+  concealed watch `(138,52,0)`, clear weather, no optic, three sight points, forward distance three,
+  and acquired/observed threat at the exact three-zombie target with all setup and error guards green.
+  Stop at the first changed production divergence; do not re-diagnose the direct bounty route or run
+  an unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
