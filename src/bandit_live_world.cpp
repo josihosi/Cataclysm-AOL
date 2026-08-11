@@ -16101,12 +16101,26 @@ structural_watch_geography_read read_structural_watch_geography(
         const structural_watch_terrain_read terrain = terrain_lookup(
                     candidate, read.target_footprint );
         read.terrain_reads++;
-        if( terrain.concealed && terrain.intervening_omts_clear &&
-            structural_observer_route_is_visible(
-                structural_watch_clear_day_sight_points, terrain.intervening_see_costs ) ) {
+        if( terrain.concealed ) {
+            read.concealed_candidates++;
+        }
+        if( terrain.concealed && terrain.intervening_omts_clear ) {
+            read.clear_intervening_candidates++;
+        }
+        const bool intervening_visible = terrain.concealed && terrain.intervening_omts_clear &&
+                                         structural_observer_route_is_visible(
+                                             structural_watch_clear_day_sight_points,
+                                             terrain.intervening_see_costs );
+        if( intervening_visible ) {
+            read.visible_intervening_candidates++;
             qualified.emplace_back( candidate, terrain );
         }
     }
+    read.qualified_candidates = static_cast<int>( qualified.size() );
+    read.nonadjacent_qualified_candidates = static_cast<int>( std::count_if(
+            qualified.begin(), qualified.end(), [&route_origin]( const auto & entry ) {
+        return omt_chebyshev_distance( route_origin, entry.first ) > 1;
+    } ) );
 
     const auto route_distance_group = [&read, &qualified, &route_lookup, &route_origin](
     const int distance, const int cap ) {

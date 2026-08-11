@@ -6739,6 +6739,21 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "road-connected sector-0 outer target (164,30,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
+        self.assertEqual(
+            scenario["evidence_contract"]["fixture_feasibility_gate"],
+            "Before this row can receive causal credit, the production selector must emit "
+            "bandit_live_world watch_geography_preflight for the installed fixture; its "
+            "bounded-candidate predicate counts, rather than the continuous-road assertion, "
+            "decide whether a natural watch footing exists.",
+        )
+        production_owner = (HARNESS_DIR.parent.parent / "src" / "do_turn.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("bandit_live_world watch_geography_preflight", production_owner)
+        self.assertIn("visible=", production_owner)
+        self.assertIn("route_reachable=", production_owner)
+        self.assertIn("selected_omt=", production_owner)
+        self.assertIn("outcome=", production_owner)
         self.assertIn(
             "moves only the player observer from (162,35,0) to (162,36,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
@@ -6767,13 +6782,50 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ("8", "6h"),
             ],
         )
-        self.assertTrue(
-            any(
-                exact_target in pattern
-                for pattern in steps[
-                    labels.index("wait_1_hour_for_real_frontier_dispatch")
-                ]["artifact_state_patterns"]
-            )
+        dispatch_wait = steps[labels.index("wait_1_hour_for_real_frontier_dispatch")]
+        self.assertEqual(
+            dispatch_wait["artifact_state_patterns"],
+            ["bandit_live_world watch_geography_preflight"],
+        )
+        watch_preflight = steps[labels.index("audit_watch_geography_fixture_preflight")]
+        self.assertEqual(
+            watch_preflight["required_line_patterns"],
+            [[
+                "bandit_live_world watch_geography_preflight",
+                "site=overmap_special:bandit_camp@164,39,0",
+                "target=(164,30,0)",
+                "footprint=4",
+                "candidates=",
+                "visible=",
+                "route_reachable=",
+                "selected_omt=",
+                "selected_route_cost=",
+            ]],
+        )
+        self.assertEqual(
+            watch_preflight["required_any_line_patterns"],
+            [["outcome=selected"], ["outcome=no_bounded_safe_watch_geography"]],
+        )
+        self.assertTrue(watch_preflight["abort_on_metadata_failure"])
+        self.assertLess(
+            labels.index("wait_1_hour_for_real_frontier_dispatch"),
+            labels.index("audit_watch_geography_fixture_preflight"),
+        )
+        false_selected = steps[
+            labels.index("audit_watch_geography_preflight_rejects_false_selected_route")
+        ]
+        self.assertEqual(
+            false_selected["forbidden_line_patterns"],
+            [[
+                "bandit_live_world watch_geography_preflight",
+                "outcome=selected",
+                "selected_omt=none",
+            ]],
+        )
+        self.assertTrue(false_selected["abort_on_metadata_failure"])
+        self.assertLess(
+            labels.index("audit_watch_geography_fixture_preflight"),
+            labels.index("audit_watch_geography_preflight_rejects_false_selected_route"),
         )
         self.assertLess(
             labels.index("wait_3_hours_for_real_pair_handoff"),
@@ -6963,6 +7015,83 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "not by the bounded wait-menu completion token",
             scenario["evidence_contract"]["pass_fail_rule"],
         )
+
+    def test_scout_to_decision_watch_geography_preflight_matcher_rejects_false_green(self) -> None:
+        scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
+        steps = {step["label"]: step for step in scenario["steps"]}
+        preflight = steps["audit_watch_geography_fixture_preflight"]
+        false_selected = steps[
+            "audit_watch_geography_preflight_rejects_false_selected_route"
+        ]
+        required_groups = [
+            normalize_screen_text_patterns(group)
+            for group in preflight["required_line_patterns"]
+        ]
+        required_any_groups = [
+            normalize_screen_text_patterns(group)
+            for group in preflight["required_any_line_patterns"]
+        ]
+        forbidden_groups = [
+            normalize_screen_text_patterns(group)
+            for group in false_selected["forbidden_line_patterns"]
+        ]
+        selected_line = (
+            "bandit_live_world watch_geography_preflight "
+            "site=overmap_special:bandit_camp@164,39,0 target=(164,30,0) "
+            "footprint=4 candidates=256 concealed=8 clear=8 visible=1 qualified=1 "
+            "nonadjacent=1 route_reads=1 route_reachable=1 selected_omt=(161,27,0) "
+            "selected_route_cost=8 outcome=selected"
+        )
+        rejected_line = (
+            "bandit_live_world watch_geography_preflight "
+            "site=overmap_special:bandit_camp@164,39,0 target=(164,30,0) "
+            "footprint=4 candidates=256 concealed=8 clear=8 visible=0 qualified=0 "
+            "nonadjacent=0 route_reads=0 route_reachable=0 selected_omt=none "
+            "selected_route_cost=-1 outcome=no_bounded_safe_watch_geography"
+        )
+        false_green_line = selected_line.replace(
+            "selected_omt=(161,27,0)", "selected_omt=none"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text(selected_line + "\n", encoding="utf-8")
+            selected = audit_log_contains(
+                run_dir, "selected", artifact_log=artifact_log, artifact_baseline=0,
+                patterns=[], required_line_patterns=required_groups,
+                required_any_line_patterns=required_any_groups,
+            )
+            selected_clean = audit_log_not_contains(
+                run_dir, "selected_clean", artifact_log=artifact_log, artifact_baseline=0,
+                patterns=[], forbidden_line_patterns=forbidden_groups,
+            )
+            artifact_log.write_text(rejected_line + "\n", encoding="utf-8")
+            rejected = audit_log_contains(
+                run_dir, "rejected", artifact_log=artifact_log, artifact_baseline=0,
+                patterns=[], required_line_patterns=required_groups,
+                required_any_line_patterns=required_any_groups,
+            )
+            artifact_log.write_text(false_green_line + "\n", encoding="utf-8")
+            false_green = audit_log_not_contains(
+                run_dir, "false_green", artifact_log=artifact_log, artifact_baseline=0,
+                patterns=[], forbidden_line_patterns=forbidden_groups,
+            )
+            artifact_log.write_text(
+                selected_line.replace("outcome=selected", "outcome=unknown") + "\n",
+                encoding="utf-8",
+            )
+            missing_outcome = audit_log_contains(
+                run_dir, "missing_outcome", artifact_log=artifact_log, artifact_baseline=0,
+                patterns=[], required_line_patterns=required_groups,
+                required_any_line_patterns=required_any_groups,
+            )
+
+        self.assertEqual(selected["status"], "required_state_present")
+        self.assertEqual(selected_clean["status"], "required_state_present")
+        self.assertEqual(rejected["status"], "required_state_present")
+        self.assertEqual(false_green["status"], "required_state_missing")
+        self.assertEqual(missing_outcome["status"], "required_state_missing")
 
     def test_phase4_target_relocation_observes_same_authoritative_dispatch(self) -> None:
         scenario = load_scenario("bandit.phase4_target_relocation_observer_live_mcw")

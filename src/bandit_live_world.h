@@ -1115,6 +1115,11 @@ struct structural_watch_geography_read {
     bool candidate_enumeration_truncated = false;
     int candidate_omts_considered = 0;
     int terrain_reads = 0;
+    int concealed_candidates = 0;
+    int clear_intervening_candidates = 0;
+    int visible_intervening_candidates = 0;
+    int qualified_candidates = 0;
+    int nonadjacent_qualified_candidates = 0;
     int route_reads = 0;
     std::vector<tripoint_abs_omt> target_footprint;
     std::vector<watch_selection_candidate> routed_candidates;

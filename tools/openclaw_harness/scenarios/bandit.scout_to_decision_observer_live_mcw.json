@@ -89,11 +89,44 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing one hour",
       "completion_wait_seconds": 60.0,
       "completion_artifact_timeout_seconds": 240.0,
-      "artifact_state_patterns": [
-        "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
-        "lead=frontier_probe:0"
+      "artifact_state_patterns": ["bandit_live_world watch_geography_preflight"],
+      "expected_visible_fact": "production reaches the ID-derived deadline and records the selector facts that decide whether this fixture can dispatch the exact pair"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_watch_geography_fixture_preflight",
+      "required_line_patterns": [[
+        "bandit_live_world watch_geography_preflight",
+        "site=overmap_special:bandit_camp@164,39,0",
+        "target=(164,30,0)",
+        "footprint=4",
+        "candidates=",
+        "visible=",
+        "route_reachable=",
+        "selected_omt=",
+        "selected_route_cost="
+      ]],
+      "required_any_line_patterns": [
+        ["outcome=selected"],
+        ["outcome=no_bounded_safe_watch_geography"]
       ],
-      "expected_visible_fact": "production reaches the ID-derived deadline and dispatches the exact pair on frontier sector zero"
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_watch_geography_preflight_missing",
+      "abort_reason": "the production selector did not record the installed fixture's bounded watch-geography facts",
+      "expected_immediate_state": "the selector has recorded either a selected natural watch footing or the predicate facts that reject every bounded candidate"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_watch_geography_preflight_rejects_false_selected_route",
+      "forbidden_line_patterns": [[
+        "bandit_live_world watch_geography_preflight",
+        "outcome=selected",
+        "selected_omt=none"
+      ]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scout_to_decision_watch_geography_preflight_false_selected_route",
+      "abort_reason": "the selector labeled a missing watch footing as selected",
+      "expected_immediate_state": "a selected outcome names a concrete watch OMT; a rejected outcome names none"
     },
     {
       "kind": "long_wait",
@@ -325,6 +358,7 @@
     "claim": "from an idle zero-lead camp on the continuous x=164 road, production naturally discovers terrain, reaches its ID-derived frontier deadline, dispatches and physically hands off an exact pair, exposes that authoritative pair to the shared observer, records one natural incident, and returns at least one scout carrier home",
     "preconditions_and_interventions": "the source fixture establishes only the idle five-member camp at (164,39,0), zero evidence, the road-connected sector-0 outer target (164,30,0), and deterministic clock; the southwest derived fixture preserves DEBUG_CLAIRVOYANCE and moves only the player observer from (162,35,0) to (162,36,0), two OMTs west and one OMT south of the same route waypoint at (164,35,0); the scenario performs no ecology edit",
     "causal_boundary": "fixture installation ends before terrain discovery, dispatch, local handoff, observation, assessment, egress, return, report, or decision",
+    "fixture_feasibility_gate": "Before this row can receive causal credit, the production selector must emit bandit_live_world watch_geography_preflight for the installed fixture; its bounded-candidate predicate counts, rather than the continuous-road assertion, decide whether a natural watch footing exists.",
     "real_code_path": "hourly structural terrain scan and scheduler -> exact-pair dispatch -> route/local handoff and cohesion -> production observation and assessment -> return ownership -> report delivery and camp decision acceptance",
     "expected_transition": "idle/no-lead -> natural terrain memory -> due frontier lead -> exact local pair -> meaningful selected-entity delta -> at-least-one-survivor physical return -> final report -> report-awaiting-assessment decision",
     "negative_control": "preflight requires zero leads and zero outing; the incident must report natural provenance, debug_intervention=false, and an empty intervention ledger",

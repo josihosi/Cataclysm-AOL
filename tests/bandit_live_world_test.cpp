@@ -17255,6 +17255,10 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK( exact.selection.footprint_distance == 3 );
         CHECK( exact.route_reads <= 4 );
         CHECK( exact.terrain_reads == exact.candidate_omts_considered );
+        CHECK( exact.concealed_candidates == exact.candidate_omts_considered );
+        CHECK( exact.clear_intervening_candidates == exact.candidate_omts_considered );
+        CHECK( exact.visible_intervening_candidates == exact.candidate_omts_considered );
+        CHECK( exact.qualified_candidates == exact.candidate_omts_considered );
 
         const structural_watch_geography_read fallback =
             bandit_live_world::read_structural_watch_geography(
@@ -17285,6 +17289,11 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         CHECK_FALSE( abandoned.selection.valid );
         CHECK( abandoned.selection.outcome ==
                watch_selection_outcome::abandoned_no_safe_candidate );
+        CHECK( abandoned.concealed_candidates == 0 );
+        CHECK( abandoned.clear_intervening_candidates == 0 );
+        CHECK( abandoned.visible_intervening_candidates == 0 );
+        CHECK( abandoned.qualified_candidates == 0 );
+        CHECK( abandoned.nonadjacent_qualified_candidates == 0 );
         CHECK( abandoned.route_reads == 0 );
 
         const structural_watch_geography_read wrong_z =
@@ -17419,6 +17428,11 @@ TEST_CASE( "bandit_live_world_production_watch_geography_adapter_is_bounded_and_
         } );
         REQUIRE( observable_after_forest_lane.selection.valid );
         CHECK( observable_after_forest_lane.selection.omt == observable_watch );
+        CHECK( observable_after_forest_lane.concealed_candidates == 2 );
+        CHECK( observable_after_forest_lane.clear_intervening_candidates == 2 );
+        CHECK( observable_after_forest_lane.visible_intervening_candidates == 1 );
+        CHECK( observable_after_forest_lane.qualified_candidates == 1 );
+        CHECK( observable_after_forest_lane.nonadjacent_qualified_candidates == 1 );
         CHECK( observable_route_lookups ==
                std::vector<tripoint_abs_omt> { observable_watch } );
         CHECK( observable_after_forest_lane.route_reads == 1 );

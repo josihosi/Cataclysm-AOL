@@ -5947,6 +5947,28 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     read.watch_geography_supplied = true;
     read.target_footprint = watch.target_footprint;
     read.watch_candidates = watch.routed_candidates;
+    const int reachable_watch_candidates = static_cast<int>( std::count_if(
+            watch.routed_candidates.begin(), watch.routed_candidates.end(),
+    []( const bandit_live_world::watch_selection_candidate & candidate ) {
+        return candidate.reachable;
+    } ) );
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world watch_geography_preflight"
+                               << " site=" << site.site_id
+                               << " target=" << plan.target_omt
+                               << " footprint=" << watch.target_footprint.size()
+                               << " candidates=" << watch.candidate_omts_considered
+                               << " concealed=" << watch.concealed_candidates
+                               << " clear=" << watch.clear_intervening_candidates
+                               << " visible=" << watch.visible_intervening_candidates
+                               << " qualified=" << watch.qualified_candidates
+                               << " nonadjacent=" << watch.nonadjacent_qualified_candidates
+                               << " route_reads=" << watch.route_reads
+                               << " route_reachable=" << reachable_watch_candidates
+                               << " selected_omt=" << ( watch.selection.valid ?
+                                       watch.selection.omt.to_string() : "none" )
+                               << " selected_route_cost=" << watch.selection.route_cost
+                               << " outcome=" << ( watch.selection.valid ? "selected" :
+                                       "no_bounded_safe_watch_geography" ) << '\n';
     if( !watch.selection.valid ) {
         read.reachable = false;
         read.summary = "live structural route abandoned: no bounded safe watch geography";
