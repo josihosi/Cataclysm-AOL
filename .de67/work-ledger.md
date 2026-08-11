@@ -52,28 +52,30 @@ Lineage: `CAOL-hostile-ecology-dev`
   selects a valid footing may the unchanged causal route earn credit and use the accepted cohesion
   probe to distinguish valid pair progress, pacing, or a missing member read.
 
-  Latest nonaccepted diagnostic: `R002-M70` built source `137d7e8dd6` successfully, but the
-  coordinator's pre-build ledger edit made the embedded runtime identity
-  `137d7e8dd6-dirty+SDL3`. The probe then stopped before launch and emitted no selector line because
-  the harness's local input preflight reported Accessibility missing. The first contradicted premise
-  is exact transport parity: the pre-dispatch permission check used Peekaboo's signed bridge, while
-  `peekaboo_command` defaults input to local `--no-remote`; the local command reports Accessibility
-  and Screen Recording false while the bridge reports both true. This is a task/tooling preparation
-  gap, not a DFS change or fixture verdict.
+  Latest nonaccepted diagnostic: `R002-M71` built clean `dev@8fde31de12` as
+  `8fde31de12+SDL3`, binary
+  `ccf9dc466e9b145e6bdf5e32afb70e70656b3b113b65c9bff80c7f8b0e34d122`. Bridge input reported this
+  Mac GUI host with Accessibility and Screen Recording granted, listed the local apps, and preserved
+  the harness's decisive PID-active focus gate. The unchanged non-credited run then reached the
+  production selector and stopped honestly. For target `(164,30,0)` it recorded `footprint=1`, 96
+  candidates, zero visible/qualified candidates and no selection. For the road opportunity at
+  `(164,35,0)` it recorded one visible/qualified candidate, but that candidate was adjacent to the
+  route origin, so `nonadjacent=0`, `route_reads=0`, and no selection. The report is
+  `.userdata/dev-harness/harness_runs/20260811_224353/probe.report.json`.
 
-  Next route: checkpoint the ledger before rebuilding so the binary has a clean exact identity, and
-  preflight the same input transport that the harness will use. The supported bridge override is
-  admissible only after confirming it targets this GUI host and leaves the harness's focus gate
-  decisive; otherwise local TCC permission is the external prerequisite. Then rerun the unchanged
-  non-credited diagnostic to obtain the production selector counts.
+  First contradicted premise: the fixture contract required `footprint=4` for the ordinary frontier
+  target at `(164,30,0)`, but the manifest's four-OMT footprint belongs to the hostile source camp at
+  `(164,39,0)` and the production owner correctly read the frontier target as one OMT. The measured
+  selector counts also prove that merely correcting the matcher cannot make this footing viable.
+  This remains a task/fixture proof gap, not a DFS or product-owner change.
 
-  Current dispatch: `R002-M71` owns that exact tooling/diagnostic slice. Use bridge input only after
-  its own permission/app-routing preflight shows this Mac GUI host, then require the existing
-  PID-active focus gate during the unchanged probe. Build clean current `HEAD`, reject any dirty or
-  mismatched runtime identity, and stop once the production `watch_geography_preflight` selector
-  line is captured or the first transport/fixture premise is contradicted. Its 2,731-second estimate
-  reuses `R002-M70`'s immediately preceding exact-scope clean-build/probe allowance; the only added
-  work is the bounded same-transport host/focus preflight.
+  Next route: replace the old footing with one natural camp/target/player arrangement on existing
+  world geometry, proved read-only against the production selector predicates before another live
+  run. The target footprint must match the actual target; at least one candidate must be concealed,
+  have a clear intervening lane within the production sight budget, be nonadjacent to the route
+  origin, and have a target-avoiding reachable route. Bind those exact facts into the fixture
+  contract and its false-green matcher, then run one clean non-credited selector gate. Do not alter
+  world geometry during the credited scenario or weaken the selector to fit this rejected fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
