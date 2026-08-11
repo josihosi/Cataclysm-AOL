@@ -5304,9 +5304,24 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ),
             (37, 37, 61),
         )
-        screen_direction_delta = {
-            "left": (-1, 0),
-            "down": (0, 1),
+        keybinding_records = json.loads(
+            (HARNESS_DIR.parents[1] / "data" / "raw" / "keybindings.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        leftdown_binding = next(
+            record
+            for record in keybinding_records
+            if record.get("type") == "keybinding" and record.get("id") == "LEFTDOWN"
+        )
+        leftdown_keyboard_keys = {
+            str(binding["key"])
+            for binding in leftdown_binding["bindings"]
+            if binding.get("input_method") == "keyboard_any"
+        }
+        self.assertEqual(leftdown_keyboard_keys, {"b", "1"})
+        action_direction_delta = {
+            "LEFTDOWN": (-1, 1),
         }
         rotate_direction_vec = (1, 2, 5, 0, 4, 8, 3, 6, 7)
 
@@ -5314,7 +5329,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             world_x = 0
             world_y = 0
             for key in keys:
-                screen_x, screen_y = screen_direction_delta[key]
+                if key not in leftdown_keyboard_keys:
+                    self.fail(f"target key is not a LEFTDOWN keyboard binding: {key}")
+                action = str(leftdown_binding["id"])
+                screen_x, screen_y = action_direction_delta[action]
                 direction_number = (screen_y + 1) * 3 + screen_x + 1
                 rotated = rotate_direction_vec[direction_number]
                 world_x += rotated % 3 - 1
@@ -5326,6 +5344,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "stage_active_explosive_on_target_omt",
         ):
             setup = steps[labels.index(setup_label)]
+            self.assertEqual(len(setup["target_keys"]), 36)
+            self.assertEqual(set(setup["target_keys"]), {"b"})
             world_delta = isometric_world_delta(setup["target_keys"])
             placed_abs_ms = [
                 player_abs_ms[0] + world_delta[0],
@@ -5337,7 +5357,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             self.assertEqual(placed_abs_ms, source_abs_ms)
             self.assertEqual(placed_omt, target)
             self.assertIn(
-                "18 screen-left plus 18 screen-down isometric EDITMAP actions",
+                "36 repeated lowercase b printable bindings",
                 setup["expected_visible_fact"],
             )
 
