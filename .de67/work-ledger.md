@@ -82,13 +82,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   target OMT `(137,49,0)`. Focused two tests and the full 196-test fixture-contract suite passed. The
   accepted runtime remains exact because this checkpoint changes scenario/tests only.
 
-  Task `R002-M46` retains the durable 3,600-second R-002 envelope because it reruns the established
-  scenario only after replacing the failed mixed-key route with one direct registered action. Require
-  all M44 proof gates, beginning with three exact minute-10080 target `(137,49,0)` to watch
-  `(138,52,0)` facts and continuing through observer artifacts, pre-return absence, physical
-  two-survivor return, exactly three non-player returned-report leads, and saved-state persistence.
-  Stop at the first new broken premise; do not edit during the run, claim the empty-decoy contrast,
-  or claim R-002.
+  `R002-M46` stopped on time in run `20260811_151704` with source `(137,48,0)`. Its current-run
+  `fixture_install` receipt proves the inherited near-special transform first moves the player from
+  `(3372,996,0)` to `(3372,948,0)`; the child offset `[-36,191,0]` therefore installs actual player
+  `(3336,1139,0)`, not the test-assumed `(3336,1187,0)`. The active profile uses orthographic
+  `ASCIITiles`, so directional actions are not isometrically rotated and every observed source across
+  M42/M44/M46 matches the real transform plus key path. No signal row was credited.
+
+  Task `R002-M47` retains the durable 3,600-second R-002 envelope. Correct the structural-signal
+  fixture offset against the full ancestor transform chain so installed player abs-ms is exactly
+  `(3336,1187,0)`, restore both editor paths to 36 orthographic LEFT actions for exact source
+  `(3300,1187,0)`, and make the focused contract derive the installed player from ordered transforms
+  plus the profile's current non-isometric tileset rather than raw save state. Preserve target, watch,
+  clocks, signals, return, observer, provenance, and decoy assertions. Run focused and full fixture-
+  contract tests. Do not edit product or generic harness source, `.de67/`, README, commit, launch a
+  live scenario, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
