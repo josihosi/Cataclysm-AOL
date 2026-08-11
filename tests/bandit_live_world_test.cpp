@@ -44,6 +44,67 @@ std::string live_bandit_homeward_partner_route_read_for_test(
 std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
 live_bandit_homeward_boundary_steps_for_test();
 
+TEST_CASE( "live structural watch route read uses overmap geography",
+           "[bandit_live_world][structural_bounty]" )
+{
+    const tripoint_abs_omt target = get_player_character().pos_abs_omt() + tripoint( 20, 20, 0 );
+    const tripoint_abs_omt anchor = target + tripoint( -4, -4, 0 );
+    const tripoint_abs_omt watch = target + tripoint( -3, 0, 0 );
+    const tripoint_abs_omt intervening = target + tripoint( -2, 0, 0 );
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> previous_terrain;
+    for( int y = -5; y <= 5; ++y ) {
+        for( int x = -5; x <= 5; ++x ) {
+            const tripoint_abs_omt omt = target + tripoint( x, y, 0 );
+            previous_terrain.emplace_back( omt, overmap_buffer.ter( omt ) );
+            overmap_buffer.ter_set( omt, oter_id( "field" ) );
+        }
+    }
+    on_out_of_scope restore_terrain( [&previous_terrain]() {
+        for( const std::pair<tripoint_abs_omt, oter_id> &entry : previous_terrain ) {
+            overmap_buffer.ter_set( entry.first, entry.second );
+        }
+    } );
+
+    bandit_live_world::site_record site;
+    site.site_id = "test:live_structural_watch";
+    site.anchor = anchor;
+    bandit_live_world::structural_outing_plan plan;
+    plan.target_omt = target;
+    plan.frontier_sector = 0;
+
+    overmap_buffer.ter_set( watch, oter_id( "forest" ) );
+    int selected_budget = 8;
+    const bandit_live_world::structural_route_read selected =
+        live_bandit_structural_route_read_for_test( site, plan, selected_budget );
+    CAPTURE( selected.summary, selected.complete_route_cost, selected_budget,
+             selected.watch_candidates.size() );
+    REQUIRE( selected.reachable );
+    REQUIRE( selected.watch_geography_supplied );
+    CHECK( selected.target_footprint == std::vector<tripoint_abs_omt> { target } );
+    CHECK( selected.complete_route_cost >= 0 );
+    CHECK( selected.complete_route_cost <= 18 );
+    REQUIRE( selected.watch_candidates.size() == 1 );
+    CHECK( selected.watch_candidates.front().omt == watch );
+    CHECK( selected.watch_candidates.front().reachable );
+    CHECK( selected_budget < 8 );
+    CHECK( selected.watch_shared_route.size() == 5 );
+    CHECK( selected.watch_shared_route.front() == anchor );
+    CHECK( selected.watch_shared_route[2] == watch );
+    CHECK( bandit_live_world::structural_watch_route_avoids_target_footprint(
+               selected.watch_shared_route, selected.target_footprint ) );
+
+    overmap_buffer.ter_set( intervening, oter_id( "forest_thick" ) );
+    int rejected_budget = 8;
+    const bandit_live_world::structural_route_read rejected =
+        live_bandit_structural_route_read_for_test( site, plan, rejected_budget );
+    CHECK_FALSE( rejected.reachable );
+    REQUIRE( rejected.watch_geography_supplied );
+    CHECK( rejected.watch_candidates.empty() );
+    CHECK( rejected.watch_shared_route.empty() );
+    CHECK( rejected_budget == 8 );
+    CHECK( rejected.summary == "live structural route abandoned: no bounded safe watch geography" );
+}
+
 namespace
 {
 static const faction_id faction_your_followers( "your_followers" );

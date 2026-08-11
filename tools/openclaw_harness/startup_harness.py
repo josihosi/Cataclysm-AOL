@@ -3041,6 +3041,88 @@ def audit_log_contains(
     }
 
 
+def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
+    """Parse one normalized owner route-analyzer line, if present."""
+    marker = "bandit_live_world structural_route_analyzer "
+    normalized = " ".join(str(line).split())
+    marker_index = normalized.find(marker)
+    if marker_index < 0:
+        return None
+    fields: Dict[str, str] = {}
+    body = normalized[marker_index + len(marker):]
+    for token in body.split():
+        if "=" not in token:
+            continue
+        key, value = token.split("=", 1)
+        if key in {"site", "target", "outcome", "watch", "route_cost", "summary"}:
+            fields[key] = value
+    summary_marker = " summary="
+    if summary_marker in body:
+        fields["summary"] = body.split( summary_marker, 1 )[1].strip()
+    if not fields.get("site") or not fields.get("target"):
+        return None
+    outcome = fields.get("outcome", "")
+    if not fields.get("summary", "").startswith("live structural route"):
+        return None
+    if outcome == "selected" and (not fields.get("watch") or not fields.get("route_cost")):
+        return None
+    if outcome not in {"selected", "rejected"}:
+        return None
+    return fields
+
+
+def audit_structural_route_analyzer(
+    run_dir: Path,
+    label: str,
+    *,
+    artifact_log: Optional[Path],
+    artifact_baseline: int,
+    required_outcomes: List[str],
+    required_site: str = "",
+    required_target: str = "",
+    filter_debug_noise: bool = False,
+) -> Dict[str, Any]:
+    required = [outcome for outcome in required_outcomes if outcome in {"selected", "rejected"}]
+    if artifact_log is None:
+        return {
+            "status": "failed",
+            "reason": "artifact_log_not_configured",
+            "required_outcomes": required,
+            "missing_required_outcomes": required,
+            "source_log": "",
+        }
+    text = read_log_delta(artifact_log, artifact_baseline, filter_debug_noise=filter_debug_noise)
+    parsed: List[Dict[str, str]] = []
+    for line in text.splitlines():
+        entry = parse_structural_route_analyzer_line(line)
+        if entry is None:
+            continue
+        if required_site and entry.get("site") != required_site:
+            continue
+        if required_target and entry.get("target") != required_target:
+            continue
+        parsed.append(entry)
+    observed = {entry["outcome"] for entry in parsed}
+    missing = [outcome for outcome in required if outcome not in observed]
+    artifact_path = run_dir / f"{label}.metadata.json"
+    metadata = {
+        "status": "required_state_present" if required and not missing else (
+            "required_state_missing" if required else "scanned"
+        ),
+        "source_log": str(artifact_log),
+        "artifact_path": str(artifact_path),
+        "start_size": artifact_baseline,
+        "end_size": artifact_log.stat().st_size if artifact_log.exists() else artifact_baseline,
+        "required_outcomes": required,
+        "required_site": required_site,
+        "required_target": required_target,
+        "missing_required_outcomes": missing,
+        "matches": parsed,
+    }
+    write_json(artifact_path, metadata)
+    return metadata
+
+
 def audit_log_not_contains(
     run_dir: Path,
     label: str,
@@ -6536,6 +6618,21 @@ def debug_force_temperature(
         delay_ms=delay_ms,
         type_delay_ms=type_delay_ms,
         settle_seconds=prompt_settle_seconds,
+    )
+
+
+def debug_run_structural_route_analyzer(
+    pid: int,
+    *,
+    delay_ms: int = 200,
+    menu_settle_seconds: float = 0.45,
+) -> None:
+    """Invoke the read-only DEBUG_CLAIRVOYANCE frontier route analyzer."""
+    run_debug_menu_shortcut_path(
+        pid,
+        ["escape", "}", "C", "v"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
     )
 
 
@@ -13897,6 +13994,46 @@ def execute_probe_steps(
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "T"],
                 "selection_path": ["down", "enter"],
+            })
+        elif kind == "debug_run_structural_route_analyzer":
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            debug_run_structural_route_analyzer(
+                pid,
+                delay_ms=delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report.update({
+                "delay_ms": delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "debug_menu_path": ["escape", "}", "C", "v"],
+                "action_description": "invoke the read-only production frontier route analyzer",
+                "expected_immediate_state": "the artifact log contains owner-derived selected or rejected route lines bound to site and target",
+                "failure_rule": "missing or identity-free analyzer output does not prove the production frontier route",
+            })
+        elif kind == "audit_structural_route_analyzer":
+            raw_outcomes = step.get("required_outcomes", step.get("outcomes", ["selected", "rejected"]))
+            if isinstance(raw_outcomes, str):
+                required_outcomes = [value.strip() for value in raw_outcomes.split(",") if value.strip()]
+            elif isinstance(raw_outcomes, list):
+                required_outcomes = [str(value).strip() for value in raw_outcomes if str(value).strip()]
+            else:
+                required_outcomes = []
+            metadata = audit_structural_route_analyzer(
+                run_dir,
+                label,
+                artifact_log=artifact_log,
+                artifact_baseline=artifact_baseline,
+                required_outcomes=required_outcomes,
+                required_site=str(step.get("required_site", "") or "").strip(),
+                required_target=str(step.get("required_target", "") or "").strip(),
+                filter_debug_noise=filter_debug_noise,
+            )
+            report.update({
+                "metadata": metadata,
+                "action_description": "parse normalized owner route-analyzer lines and match selected/rejected outcomes",
+                "expected_immediate_state": "the requested owner-derived route outcomes are present and bound to site/target identity",
+                "failure_rule": "missing, malformed, or identity-mismatched analyzer output is not proof",
             })
         elif kind == "debug_map_editor_place_furniture":
             furniture_query = str(

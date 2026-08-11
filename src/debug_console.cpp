@@ -54,6 +54,7 @@
 #include "ecology_debug_intervention.h"
 #include "ecology_debug_watch.h"
 #include "dialogue.h"
+#include "do_turn.h"
 #include "effect.h"
 #include "effect_on_condition.h"
 #include "event.h"
@@ -6333,6 +6334,9 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
         ImGui::IsKeyPressed( ImGuiKey_R, false ) ) {
         host.defer_ecology_incident();
     }
+    if( shortcuts_available && ImGui::IsKeyPressed( ImGuiKey_V, false ) ) {
+        run_live_bandit_structural_route_analyzer_for_debug();
+    }
 
     host.export_bar( "ecology snapshot",
     []() {
@@ -6363,6 +6367,13 @@ void tab_trace_view::draw_ecology_body( debug_console &host )
     if( ImGui::IsItemHovered() ) {
         ImGui::SetTooltip( "%s",
                            "Select a camp or dispatch on the overmap first; the watch binds its exact owner" );
+    }
+    if( ImGui::Button( "Analyze frontier routes" ) ) {
+        run_live_bandit_structural_route_analyzer_for_debug();
+    }
+    if( ImGui::IsItemHovered() ) {
+        ImGui::SetTooltip( "%s",
+                           "Read-only production route and watch-geography check; shortcut V" );
     }
     ImGui::SameLine();
     if( ImGui::Button( "Arm + play" ) && arm_selected_watch() ) {

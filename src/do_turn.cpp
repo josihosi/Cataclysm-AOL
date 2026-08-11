@@ -6376,6 +6376,52 @@ int advance_live_bandit_local_scout_assessments()
 
 } // namespace
 
+bandit_live_world::structural_route_read live_bandit_structural_route_read_for_test(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::structural_outing_plan &plan, int &watch_path_budget )
+{
+    return live_bandit_structural_route_read( site, plan, watch_path_budget );
+}
+
+void run_live_bandit_structural_route_analyzer_for_debug()
+{
+    if( !get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE ) ) {
+        return;
+    }
+
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int now_minutes = live_bandit_current_minutes();
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::structural_outing_plan plan =
+            bandit_live_world::plan_frontier_outing( site, now_minutes );
+        if( !plan.valid ) {
+            continue;
+        }
+
+        int watch_path_budget = 8;
+        const bandit_live_world::structural_route_read read =
+            live_bandit_structural_route_read( site, plan, watch_path_budget );
+        const auto selected_watch = std::find_if( read.watch_candidates.begin(),
+        read.watch_candidates.end(), [&read](
+        const bandit_live_world::watch_selection_candidate &candidate ) {
+            return read.watch_shared_route.size() > 2 && read.watch_shared_route[2] == candidate.omt;
+        } );
+        const bool selected = read.reachable && selected_watch != read.watch_candidates.end() &&
+                              !read.watch_shared_route.empty();
+        std::string selected_fields;
+        if( selected ) {
+            selected_fields = " watch=" + selected_watch->omt.to_string() +
+                              " route_cost=" + std::to_string( selected_watch->route_cost );
+        }
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world structural_route_analyzer"
+                                   << " site=" << site.site_id
+                                   << " target=" << plan.target_omt
+                                   << " outcome=" << ( selected ? "selected" : "rejected" )
+                                   << selected_fields
+                                   << " summary=" << read.summary << '\n';
+    }
+}
+
 namespace bandit_live_world
 {
 int burn_live_covert_scouts()
