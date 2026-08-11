@@ -1431,6 +1431,143 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         )
         press.assert_called_once()
 
+    def test_returned_structured_shadow_popup_text_is_suppressed_without_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text("before current run\n", encoding="utf-8")
+            run_start_offset = trace_log.stat().st_size
+            message = "You have a vague feeling of being watched."
+            open_line = (
+                "openclaw_harness_ui_trace: component=eoc_popup event=open "
+                f"message={json.dumps(message)} truncated=no popup_flag=0\n"
+            )
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(open_line)
+                stream.write(open_line.replace("event=open", "event=return"))
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={
+                        "ok": True,
+                        "text": f"Weather: Clear\n{message}\nMove: 100",
+                    },
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "completed_editor_interaction",
+                    stop_on_unknown=True,
+                    suppress_inactive_structured_shadow_warning=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=run_start_offset,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 0)
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "inactive_structured_popup_text_retained_on_hud",
+        )
+        self.assertEqual(
+            result["final_classification"]["provenance"],
+            "bounded_structured_eoc_popup_trace",
+        )
+        self.assertEqual(
+            result["final_classification"]["structured_popup_trace_start_offset"],
+            run_start_offset,
+        )
+        press.assert_not_called()
+
+    def test_active_structured_shadow_popup_is_acknowledged_before_retained_text_suppression(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            trace_log.write_text("before current run\n", encoding="utf-8")
+            run_start_offset = trace_log.stat().st_size
+            message = "You have a vague feeling of being watched."
+            open_line = (
+                "openclaw_harness_ui_trace: component=eoc_popup event=open "
+                f"message={json.dumps(message)} truncated=no popup_flag=0\n"
+            )
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(open_line)
+
+            def press_and_return(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                self.assertEqual(keys, ["space"])
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    stream.write(open_line.replace("event=open", "event=return"))
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": message},
+                ),
+                mock.patch(
+                    "startup_harness.peekaboo_press_sequence",
+                    side_effect=press_and_return,
+                ) as press,
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                result = acknowledge_blocking_interruptions(
+                    42,
+                    run_dir,
+                    "completed_editor_interaction",
+                    stop_on_unknown=True,
+                    suppress_inactive_structured_shadow_warning=True,
+                    structured_popup_trace_log=trace_log,
+                    structured_popup_trace_start_offset=run_start_offset,
+                )
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["acknowledgement_count"], 1)
+        self.assertEqual(
+            result["acknowledgements"][0]["classification"]["provenance"],
+            "structured_eoc_popup_trace",
+        )
+        self.assertEqual(
+            result["final_classification"]["classification"],
+            "inactive_structured_popup_text_retained_on_hud",
+        )
+        press.assert_called_once()
+
+    def test_inactive_structured_shadow_suppression_keeps_other_prompts_fail_closed(self) -> None:
+        cases = (
+            ("Save and quit?\nThe wind sure is howling tonight.", "blocked_unsafe_prompt"),
+            ("SAFE MODE\nThe wind sure is howling tonight.", "blocked_unknown_prompt"),
+            ("Apply changes? (y/n)\nThe wind sure is howling tonight.", "blocked_unknown_prompt"),
+        )
+        for body, expected_status in cases:
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as temp_dir:
+                run_dir = Path(temp_dir)
+                trace_log = run_dir / "debug.log"
+                trace_log.write_text("current run has no active EOC popup\n", encoding="utf-8")
+                with (
+                    mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        return_value={"ok": True, "text": body},
+                    ),
+                    mock.patch("startup_harness.peekaboo_press_sequence") as press,
+                ):
+                    result = acknowledge_blocking_interruptions(
+                        42,
+                        run_dir,
+                        "completed_editor_interaction",
+                        stop_on_unknown=True,
+                        suppress_inactive_structured_shadow_warning=True,
+                        structured_popup_trace_log=trace_log,
+                    )
+
+                self.assertEqual(result["status"], expected_status)
+                self.assertEqual(result["acknowledgement_count"], 0)
+                press.assert_not_called()
+
     def test_structured_lifeless_grass_popup_resolves_partial_ocr(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
@@ -2401,6 +2538,64 @@ class MapEditorFieldIntensityContractTest(unittest.TestCase):
             ["down", "down"],
             [call.args[1] for call in input_calls.press.call_args_list],
         )
+
+    def test_completed_field_interaction_uses_run_bounded_returned_eoc_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "probe.feature_debug.log"
+            trace_log.write_text("startup trace before run boundary\n", encoding="utf-8")
+            run_start_offset = trace_log.stat().st_size
+            message = "You have a vague feeling of being watched."
+            open_line = (
+                "openclaw_harness_ui_trace: component=eoc_popup event=open "
+                f"message={json.dumps(message)} truncated=no popup_flag=0\n"
+            )
+            with trace_log.open("a", encoding="utf-8") as stream:
+                stream.write(open_line)
+                stream.write(open_line.replace("event=open", "event=return"))
+
+            with (
+                mock.patch("startup_harness.debug_map_editor_place_field") as place_field,
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={
+                        "ok": True,
+                        "text": f"Weather: Clear\n{message}\nMove: 100",
+                    },
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                reports = execute_probe_steps(
+                    42,
+                    run_dir,
+                    [{
+                        "kind": "debug_map_editor_place_field",
+                        "label": "stage_physical_fire_on_target_omt",
+                        "field_query": "fd_fire",
+                        "field_intensity": 3,
+                    }],
+                    profile="dev-harness",
+                    world="McWilliams",
+                    action_trace_log=trace_log,
+                    action_trace_baseline=run_start_offset,
+                )
+
+        self.assertEqual(len(reports), 1)
+        self.assertNotIn("abort", reports[0])
+        interruption = reports[0]["interruption_handling"]
+        self.assertEqual(interruption["status"], "clear")
+        self.assertEqual(interruption["acknowledgement_count"], 0)
+        self.assertEqual(
+            interruption["final_classification"]["classification"],
+            "inactive_structured_popup_text_retained_on_hud",
+        )
+        self.assertEqual(
+            interruption["final_classification"]["structured_popup_trace_start_offset"],
+            run_start_offset,
+        )
+        place_field.assert_called_once()
+        press.assert_not_called()
 
     def test_centers_cursor_before_field_target_keys(self) -> None:
         report, input_calls = self.execute_field_step({

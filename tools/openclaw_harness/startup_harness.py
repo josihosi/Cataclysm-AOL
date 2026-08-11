@@ -8071,6 +8071,7 @@ def acknowledge_blocking_interruptions(
     continue_after_contaminating: bool = False,
     persist_clear_scan: bool = False,
     suppress_retained_shadow_warning: bool = False,
+    suppress_inactive_structured_shadow_warning: bool = False,
     structured_popup_trace_log: Optional[Path] = None,
     structured_popup_trace_start_offset: int = 0,
 ) -> Dict[str, Any]:
@@ -8098,10 +8099,18 @@ def acknowledge_blocking_interruptions(
                 structured_popup_trace_log,
                 structured_popup_trace_start_offset,
             )
+            structured_popup_trace_is_bounded = (
+                structured_popup_trace_log is not None
+                and structured_popup_trace_log.exists()
+                and 0 <= structured_popup_trace_start_offset <=
+                structured_popup_trace_log.stat().st_size
+                and structured_popup_trace_log.stat().st_size -
+                structured_popup_trace_start_offset <= EOC_POPUP_TRACE_READ_CAP_BYTES
+            )
             structured_popup_ocr_compatible = (
                 str(classification.get("status", "")) in {"clear", "unobservable"}
-                or str(classification.get("classification", ""))
-                == "partial_lifeless_grass_wilderness_flavor_popup"
+                or str(classification.get("classification", "")) in
+                shadow_warning_family
             )
             if structured_popup is not None and structured_popup_ocr_compatible:
                 structured_classification = classify_blocking_interruption({
@@ -8188,6 +8197,23 @@ def acknowledge_blocking_interruptions(
                     }
             status = str(classification.get("status", "unobservable"))
             classification_name = str(classification.get("classification", ""))
+            if suppress_inactive_structured_shadow_warning and \
+                    structured_popup_trace_is_bounded and structured_popup is None and \
+                    classification_name in shadow_warning_family:
+                classification = {
+                    **classification,
+                    "status": "clear",
+                    "classification": "inactive_structured_popup_text_retained_on_hud",
+                    "response_key": "",
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "suppressed_classification": classification_name,
+                    "provenance": "bounded_structured_eoc_popup_trace",
+                    "structured_popup_trace_start_offset":
+                    structured_popup_trace_start_offset,
+                }
+                status = "clear"
+                classification_name = str(classification["classification"])
             if suppress_retained_shadow_warning_once and \
                     classification_name in shadow_warning_family:
                 classification = {
@@ -13322,6 +13348,7 @@ def execute_probe_steps(
     world: str,
     artifact_log: Optional[Path] = None,
     action_trace_log: Optional[Path] = None,
+    action_trace_baseline: int = 0,
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
@@ -15100,13 +15127,20 @@ def execute_probe_steps(
                 ),
                 stop_on_unknown=True,
                 continue_after_contaminating=portal_storm_allowed,
+                suppress_inactive_structured_shadow_warning=True,
+                structured_popup_trace_log=action_trace_log,
+                structured_popup_trace_start_offset=action_trace_baseline,
             )
             report["portal_storm_allowed"] = portal_storm_allowed
             if interruption_handling.get("acknowledgement_count") or interruption_handling.get("status") in {
                 "blocked_unsafe_prompt",
                 "blocked_unknown_prompt",
                 "blocked_acknowledgement_limit",
-            }:
+            } or str(
+                interruption_handling.get("final_classification", {}).get(
+                    "classification", ""
+                )
+            ) == "inactive_structured_popup_text_retained_on_hud":
                 report["interruption_handling"] = interruption_handling
             release_blocking = bool(interruption_handling.get("release_blocking", False))
             contaminating = bool(interruption_handling.get("contaminating", False))
@@ -17553,6 +17587,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         world=world,
         artifact_log=artifact_log,
         action_trace_log=feature_debug_log,
+        action_trace_baseline=feature_debug_start,
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
         artifact_patterns=artifact_patterns,
