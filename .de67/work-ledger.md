@@ -277,6 +277,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   sight points two, forward `(137,49,0)` at distance three, no acquisition, no visible threat, and
   every setup/error guard green. Stop at the first changed production divergence; no unchanged retry.
 
+  Exact `R002-M20` run `20260811_114646` is accepted. The pair dispatched on the real
+  terrain-opportunity lead, reached approach at hour 147 and exact concealed watch `(138,52,0)` at
+  hour 148, and the clear/no-optic observer derived two sight points without acquiring the distance-
+  three target. All ten step-local rows and the error guard passed.
+
+  Task `R002-M21` retains the measured 3,600-second envelope and corrects the night proof premise
+  before any live row. Like the pre-M17 twilight row, the current night scenario inherits a direct
+  structural-bounty route while naming a terrain-opportunity identity and observes at distance one,
+  which cannot distinguish the agreed one-point unlit-night budget. Rebase only the night fixture on
+  M16's accepted terrain-opportunity target/watch footing, preserve its night turn, and add the
+  serialized approach/watch hour. At exact watch `(138,52,0)`, forward `(137,49,0)` must remain
+  unacquired at distance three with no optic and sight points one; bind the generated neutral-weather
+  inputs honestly. Extend a focused contract over inheritance, lead semantics, three-zombie footing,
+  ordered clocks, and the negative visibility artifact. Preserve day, twilight, common fixtures, and
+  product source. A reviewed green harness-only diff may be checkpointed; no live probe belongs here.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
