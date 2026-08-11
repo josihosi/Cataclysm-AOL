@@ -52,14 +52,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   restored the HUD, and the worker cleaned up the process. The resulting startup yellow was only an
   honest runtime mismatch because the available binary still identified `8253882abf-dirty+SDL3`.
 
-  Next route: build the exact committed `dev` binary, use `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge` and
-  `CAOL_PEEKABOO_CAPTURE_TRANSPORT=bridge`, then let the unchanged production scheduler seed the
-  natural terrain lead on the existing road footing and invoke the analyzer immediately after that
-  lead exists, before any long outing wait. The empty and real-signal rows must share this
-  site/roster/clock/road footing and differ only by ordinary physical signal provenance. A selected
-  record must remain identity-bound and include its watch and route cost; another rejection is
-  footing evidence, not discovery credit. Do not hand-author the lead, weaken the selector, drag the
-  target with the player, or alter world geometry to fit the fixture.
+  Exact `796f0fbb3f+SDL3` Mac binary
+  `89c0991d6418a438f40cd0ba40f17491fca77a96bde23cdbcef55f146653c3f4` run
+  `20260812_004841` naturally seeded the `(164,35,0)` road lead and invoked the analyzer before the
+  frontier deadline. Its identity-bound `selector=non_frontier` record rejected that target because
+  it also has no bounded safe watch geography; no selected watch or route cost exists, so it earned
+  no discovery credit.
+
+  Next route: extend the read-only analyzer to expose the production scheduler's remaining naturally
+  seeded non-frontier candidate set instead of stopping at the single best deterministic plan. Each
+  record must bind the lead, target, selector, outcome, and any selected watch/route cost without
+  mutating scheduler state or product selection. Then use the exact committed binary and proved
+  bridge transport to find a selector-valid footing before running the same-footing empty and real
+  physical-signal rows. Do not hand-author a lead, retry either rejected target, weaken the selector,
+  drag the target with the player, or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
