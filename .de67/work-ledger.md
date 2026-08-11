@@ -34,6 +34,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   accepted. R-002 remains red; the signal-return row, relocation row, and observed-versus-unseen
   zombie row still remain afterward.
 
+  `R002-M54` confirmed that a progress-sensitive deadline is the right owner seam but its candidate
+  treated any position change as progress, so a two-tile oscillation could refresh the deadline
+  indefinitely while never assembling. The next owner slice must use monotonic progress toward the
+  assigned staging positions or equivalent route-grounded advancement, preserve bounded no-progress
+  and repeated-route-failure aborts, and add an oscillating/non-advancing negative control alongside
+  the long valid-route positive control.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.

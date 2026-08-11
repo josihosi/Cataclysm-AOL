@@ -26,6 +26,8 @@ Describe the desired outcome in natural language, bind it to one red DFS claim a
 surface, state material boundaries, and name the evidence that will decide acceptance. Do not demand
 a fixed receipt shape. Ask the worker to stop and report expected versus observed behavior with
 direct evidence when a blocker or unexpected production result invalidates a task premise.
+When a task refreshes a timeout or lease from “progress,” define progress in route/ownership terms
+and name movement that must not refresh it, such as alternating or pacing tiles.
 
 ## Worker and model selection
 
@@ -44,6 +46,10 @@ negative controls only when they distinguish a real competing explanation. Do no
 volume for coverage of the requested behavior. Separate the mechanism verdict from incidental
 metadata or receipt formatting; an incidental mismatch is fatal only when it can change identity,
 the verdict, or a false-green control.
+Deadline or lease regressions require paired controls: valid monotonic route advancement that
+survives the prior deadline, and movement-changing but non-advancing oscillation that remains
+bounded. The non-advancing control must distinguish the rejected progress predicate; immobility
+alone is not enough.
 
 ## Test checking
 
@@ -52,6 +58,9 @@ passes only the claim it exercises. Preserve concise evidence paths; do not enco
 nested receipts. A blocker or unexpected result is evidence for causal review, never proof that the
 claim passed or automatic authority to weaken its test. Do not rerun an unchanged failing route
 without changed source, tooling, or causal evidence.
+Before accepting a focused progress regression, verify that its non-advancing control would fail
+under the rejected implementation; compile success, diff inspection, and assertion count are not
+substitutes for that discriminator.
 Task acceptance, checkpointing, DFS status updates, and ledger refill never consume mutation
 suggestions; only a successful guarded mutation transaction does.
 
