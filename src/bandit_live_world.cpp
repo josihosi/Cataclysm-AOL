@@ -13098,6 +13098,12 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     return plan_structural_bounty_outing_impl( site, lead, now_minutes, true );
 }
 
+std::vector<structural_outing_plan> plan_structural_bounty_outing_candidates(
+    const site_record &site, const int now_minutes, const bool require_exact_pair )
+{
+    return cheap_structural_outing_candidates( site, now_minutes, require_exact_pair );
+}
+
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, const int now_minutes )
 {
     const std::vector<structural_outing_plan> cheap_candidates =

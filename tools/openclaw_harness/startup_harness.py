@@ -3054,12 +3054,12 @@ def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
         if "=" not in token:
             continue
         key, value = token.split("=", 1)
-        if key in {"site", "target", "selector", "outcome", "watch", "route_cost", "summary"}:
+        if key in {"site", "lead", "target", "selector", "outcome", "watch", "route_cost", "summary"}:
             fields[key] = value
     summary_marker = " summary="
     if summary_marker in body:
         fields["summary"] = body.split( summary_marker, 1 )[1].strip()
-    if not fields.get("site") or not fields.get("target"):
+    if not fields.get("site") or not fields.get("lead") or not fields.get("target"):
         return None
     outcome = fields.get("outcome", "")
     if not fields.get("summary", "").startswith("live structural route"):

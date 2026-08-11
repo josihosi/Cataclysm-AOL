@@ -74,8 +74,11 @@ TEST_CASE( "live structural watch route read uses overmap geography",
 
     overmap_buffer.ter_set( watch, oter_id( "forest" ) );
     int selected_budget = 8;
-    const bandit_live_world::structural_route_read selected =
-        live_bandit_structural_route_read_for_test( site, plan, selected_budget );
+    const std::vector<bandit_live_world::structural_route_read> selected_reads =
+        live_bandit_structural_route_analyzer_reads_for_test(
+            site, { plan }, selected_budget );
+    REQUIRE( selected_reads.size() == 1 );
+    const bandit_live_world::structural_route_read &selected = selected_reads.front();
     CAPTURE( selected.summary, selected.complete_route_cost, selected_budget,
              selected.watch_candidates.size() );
     REQUIRE( selected.reachable );
@@ -92,6 +95,21 @@ TEST_CASE( "live structural watch route read uses overmap geography",
     CHECK( selected.watch_shared_route[2] == watch );
     CHECK( bandit_live_world::structural_watch_route_avoids_target_footprint(
                selected.watch_shared_route, selected.target_footprint ) );
+
+    const int route_reads_used = 8 - selected_budget;
+    REQUIRE( route_reads_used > 0 );
+    int shared_budget = route_reads_used;
+    const std::vector<bandit_live_world::structural_route_read> candidate_reads =
+        live_bandit_structural_route_analyzer_reads_for_test(
+            site, { plan, plan }, shared_budget );
+    REQUIRE( candidate_reads.size() == 2 );
+    REQUIRE( candidate_reads.front().reachable );
+    CHECK( shared_budget == 0 );
+    const bandit_live_world::structural_route_read &exhausted_candidate = candidate_reads.back();
+    CHECK_FALSE( exhausted_candidate.reachable );
+    CHECK( exhausted_candidate.watch_candidates.empty() );
+    CHECK( exhausted_candidate.summary ==
+           "live structural route abandoned: no bounded safe watch geography" );
 
     overmap_buffer.ter_set( intervening, oter_id( "forest_thick" ) );
     int rejected_budget = 8;

@@ -6383,6 +6383,20 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read_for_t
     return live_bandit_structural_route_read( site, plan, watch_path_budget );
 }
 
+std::vector<bandit_live_world::structural_route_read>
+live_bandit_structural_route_analyzer_reads_for_test(
+    const bandit_live_world::site_record &site,
+    const std::vector<bandit_live_world::structural_outing_plan> &plans,
+    int &watch_path_budget )
+{
+    std::vector<bandit_live_world::structural_route_read> reads;
+    reads.reserve( plans.size() );
+    for( const bandit_live_world::structural_outing_plan &plan : plans ) {
+        reads.push_back( live_bandit_structural_route_read( site, plan, watch_path_budget ) );
+    }
+    return reads;
+}
+
 void run_live_bandit_structural_route_analyzer_for_debug()
 {
     if( !get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE ) ) {
@@ -6391,40 +6405,55 @@ void run_live_bandit_structural_route_analyzer_for_debug()
 
     const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int now_minutes = live_bandit_current_minutes();
+    static constexpr int structural_watch_path_budget = 8;
+    int watch_paths_remaining = structural_watch_path_budget;
     for( const bandit_live_world::site_record &site : state.sites ) {
-        bandit_live_world::structural_outing_plan plan =
-            bandit_live_world::plan_structural_bounty_outing( site, now_minutes );
-        std::string selector = "non_frontier";
-        if( !plan.valid ) {
-            plan = bandit_live_world::plan_frontier_outing( site, now_minutes );
-            selector = "frontier";
-        }
-        if( !plan.valid ) {
+        const std::vector<bandit_live_world::structural_outing_plan> candidates =
+            bandit_live_world::plan_structural_bounty_outing_candidates( site, now_minutes, false );
+        auto log_plan = [&site](
+            const bandit_live_world::structural_outing_plan &plan,
+            const std::string &selector,
+            const bandit_live_world::structural_route_read &read ) {
+            const auto selected_watch = std::find_if( read.watch_candidates.begin(),
+            read.watch_candidates.end(), [&read](
+            const bandit_live_world::watch_selection_candidate &candidate ) {
+                return read.watch_shared_route.size() > 2 &&
+                       read.watch_shared_route[2] == candidate.omt;
+            } );
+            const bool selected = read.reachable && selected_watch != read.watch_candidates.end() &&
+                                  !read.watch_shared_route.empty();
+            std::string selected_fields;
+            if( selected ) {
+                selected_fields = " watch=" + selected_watch->omt.to_string() +
+                                  " route_cost=" + std::to_string( selected_watch->route_cost );
+            }
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world structural_route_analyzer"
+                                       << " site=" << site.site_id
+                                       << " lead=" << plan.lead_id
+                                       << " target=" << plan.target_omt
+                                       << " selector=" << selector
+                                       << " outcome=" << ( selected ? "selected" : "rejected" )
+                                       << selected_fields
+                                       << " summary=" << read.summary << '\n';
+        };
+        if( !candidates.empty() ) {
+            const std::vector<bandit_live_world::structural_route_read> reads =
+                live_bandit_structural_route_analyzer_reads_for_test(
+                    site, candidates, watch_paths_remaining );
+            for( std::size_t index = 0; index < candidates.size(); ++index ) {
+                log_plan( candidates[index], "non_frontier", reads[index] );
+            }
             continue;
         }
 
-        int watch_path_budget = 8;
-        const bandit_live_world::structural_route_read read =
-            live_bandit_structural_route_read( site, plan, watch_path_budget );
-        const auto selected_watch = std::find_if( read.watch_candidates.begin(),
-        read.watch_candidates.end(), [&read](
-        const bandit_live_world::watch_selection_candidate &candidate ) {
-            return read.watch_shared_route.size() > 2 && read.watch_shared_route[2] == candidate.omt;
-        } );
-        const bool selected = read.reachable && selected_watch != read.watch_candidates.end() &&
-                              !read.watch_shared_route.empty();
-        std::string selected_fields;
-        if( selected ) {
-            selected_fields = " watch=" + selected_watch->omt.to_string() +
-                              " route_cost=" + std::to_string( selected_watch->route_cost );
+        const bandit_live_world::structural_outing_plan frontier =
+            bandit_live_world::plan_frontier_outing( site, now_minutes );
+        if( frontier.valid ) {
+            const std::vector<bandit_live_world::structural_route_read> reads =
+                live_bandit_structural_route_analyzer_reads_for_test(
+                    site, { frontier }, watch_paths_remaining );
+            log_plan( frontier, "frontier", reads.front() );
         }
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world structural_route_analyzer"
-                                   << " site=" << site.site_id
-                                   << " target=" << plan.target_omt
-                                   << " selector=" << selector
-                                   << " outcome=" << ( selected ? "selected" : "rejected" )
-                                   << selected_fields
-                                   << " summary=" << read.summary << '\n';
     }
 }
 

@@ -21,19 +21,21 @@ class StructuralRouteAnalyzerTests(unittest.TestCase):
     def test_parser_keeps_selected_and_rejected_identity(self) -> None:
         selected = parse_structural_route_analyzer_line(
             "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-            "target=(164,30,0) selector=non_frontier outcome=selected watch=(161,30,0) route_cost=14 "
+            "lead=lead-a target=(164,30,0) selector=non_frontier outcome=selected watch=(161,30,0) route_cost=14 "
             "summary=live structural route solve accepted"
         )
         rejected = parse_structural_route_analyzer_line(
             "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-            "target=(164,30,0) selector=frontier outcome=rejected "
+            "lead=frontier:0 target=(164,30,0) selector=frontier outcome=rejected "
             "summary=live structural route abandoned: no bounded safe watch geography"
         )
         self.assertEqual(selected["outcome"], "selected")
         self.assertEqual(selected["site"], "camp-a")
+        self.assertEqual(selected["lead"], "lead-a")
         self.assertEqual(selected["target"], "(164,30,0)")
         self.assertEqual(selected["selector"], "non_frontier")
         self.assertEqual(rejected["outcome"], "rejected")
+        self.assertEqual(rejected["lead"], "frontier:0")
         self.assertIsNone(parse_structural_route_analyzer_line(
             "INFO : bandit_live_world structural_route_analyzer site=camp-a "
             "target=(164,30,0) outcome=selected"
@@ -46,10 +48,10 @@ class StructuralRouteAnalyzerTests(unittest.TestCase):
             log.write_text(
                 "INFO : ignored startup line\n"
                 "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-                "target=(164,30,0) selector=non_frontier outcome=selected watch=(161,30,0) route_cost=14 "
+                "lead=lead-a target=(164,30,0) selector=non_frontier outcome=selected watch=(161,30,0) route_cost=14 "
                 "summary=live structural route solve accepted\n"
                 "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-                "target=(164,30,0) selector=frontier outcome=rejected "
+                "lead=frontier:0 target=(164,30,0) selector=frontier outcome=rejected "
                 "summary=live structural route abandoned: no bounded safe watch geography\n",
                 encoding="utf-8",
             )
@@ -72,11 +74,11 @@ class StructuralRouteAnalyzerTests(unittest.TestCase):
             log = root / "debug.log"
             log.write_text(
                 "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-                "target=(164,30,0) selector=non_frontier outcome=selected\n"
+                "lead=lead-a target=(164,30,0) selector=non_frontier outcome=selected\n"
                 "INFO : watch=(161,30,0) route_cost=14\n"
                 "INFO : summary=live structural route solve accepted\n"
                 "INFO : bandit_live_world structural_route_analyzer site=camp-a "
-                "target=(164,30,0) selector=frontier outcome=rejected\n"
+                "lead=frontier:0 target=(164,30,0) selector=frontier outcome=rejected\n"
                 "INFO : summary=live structural route abandoned: no bounded safe watch geography\n",
                 encoding="utf-8",
             )

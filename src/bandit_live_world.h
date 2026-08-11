@@ -1587,6 +1587,8 @@ structural_bounty_scan_result advance_structural_bounty_scan( world_state &state
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup );
 structural_outing_plan plan_structural_bounty_outing( const site_record &site,
         const camp_map_lead &lead, int now_minutes );
+std::vector<structural_outing_plan> plan_structural_bounty_outing_candidates(
+    const site_record &site, int now_minutes, bool require_exact_pair = true );
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
 structural_outing_plan plan_frontier_outing( const site_record &site, int now_minutes );
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
