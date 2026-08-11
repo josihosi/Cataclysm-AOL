@@ -19,6 +19,14 @@ dispatching. Treat setup uncertainty as work to resolve, not as invisible worker
 Validate brittle flags, dates, fixtures, and output paths before they consume an implementation
 deadline. When repeated runs cannot expose the needed production fact, stop rerunning the product
 task and add the smallest useful logging or probe capability.
+For a fixture-backed or live-owner proof, preflight the complete evidence chain before dispatch:
+install the exact fixture into the harness profile, launch the exact changed executable, perform the
+actual local input or scenario action, and verify that the named authoritative owner can emit and
+the matcher can consume the required identity-bound result. Read-only feasibility must cover each
+named positive selector and its required contrast on the installed geometry, including route,
+terrain, clock, and watch constraints. Where evidence is parsed from logs, validate the emitted
+record boundaries and normalized matcher representation with representative accepted and rejected
+owner output; a source-only, bridge-only, or synthetic-log pass does not establish that chain.
 
 ## Task definition
 
