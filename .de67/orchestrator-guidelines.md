@@ -29,6 +29,14 @@ same-contract refinement; task, test, tooling, evidence, and external-authority 
 
 When the current batch is empty, project no more than ten necessary still-red DFS claims into the
 work ledger. Re-read code and define tests at planning time. Keep task mechanics out of the frozen DFS.
+Before dispatching a fixture or live-proof row, make one source-exact feasibility pass over its hard
+selector, route, terrain, clock, and assertion constraints, and enumerate the minimal contrast rows
+needed by the DFS. Reject premises that current code or fixture state disproves read-only, reuse one
+viable footing across its contrasts, and do not discover a named counterfactual only after accepting
+its positive row.
+Keep only the immediate causal frontier in the work ledger. Once a terminal task is reconciled,
+compact its timer and step-by-step narrative while retaining accepted prerequisites and evidence that
+can still change the next task; durable deadline state and Git own terminal chronology and diffs.
 
 ## Coordinate workers
 
@@ -39,6 +47,10 @@ external integrity boundary actually requires them. The coordinator remains resp
 next causal decision; reading or rewriting a predecessor handoff is not product progress. Add an
 independent high-reasoning review only when a deadline incident or genuinely new ambiguity requires
 one, and give it the smallest evidence that can change the decision.
+Before accepting a proof-only checkpoint that gates a live run, exercise the actual harness parser
+and matcher on representative passing and forbidden artifact lines after the same normalization used
+by the runner. Scenario syntax alone does not prove that a positive, negative, or nonempty predicate
+is representable.
 
 ## Accept work and update DFS
 
