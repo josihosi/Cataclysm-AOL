@@ -32,18 +32,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   `dispatches_applied=0`, `active_outings=0`, and no typed signal owner or cohesion reads. The live report is
   `.userdata/dev-harness/harness_runs/20260811_215708/probe.report.json`.
 
-  Causal disposition: this is a task/fixture proof gap, not a DFS change. The production adapter
-  requires a concealed candidate, visible and traversable intervening OMTs, and a canonical
-  target-avoiding route. The fixture contract checks the transformed camp/player coordinates and a
-  continuous road but never exercises that source-exact selector; a road-connected target therefore
-  did not prove a valid bounded watch footing after `9a7f29cd01` enforced real intervening see costs.
-  Before another credited live run, the next wave must exercise the actual selector against the
-  installed fixture and current source. It must either identify one natural viable camp/target/player
-  footing without changing geometry during the credited scenario, or add the smallest read-only
-  diagnostic/preflight needed to expose why every bounded candidate fails, then bind the fixture and
-  contract test to that proven footing. Only after this gate is green may the unchanged causal route
-  rerun and use the accepted cohesion probe to distinguish valid pair progress, pacing, or a missing
-  member read.
+  Accepted fixture-feasibility frontier: probe checkpoint `41576a7732` preserves the production
+  selector while recording bounded candidate counts for concealment, intervening traversal and
+  visibility, qualification, non-adjacency, route reads, and reachability. The live owner emits the
+  same read-only `watch_geography_preflight` line for selected and rejected outcomes, and the scenario
+  now matches that owner output while rejecting a selected outcome without a concrete watch OMT.
+  Three focused harness contract/matcher tests passed, the three changed C++ objects compiled, and
+  the focused owner test passed 147 assertions. Inspection of the installed R002-M68 world found the
+  target on `road_ns` but its watch lanes on `forest_thick`; the clear-day selector budget is three
+  while the established forest see cost is four, so the old continuous-road assertion cannot prove
+  a valid footing.
+
+  Current causal target: this remains a task/fixture proof gap, not a DFS change. Build the exact
+  committed checkpoint and run one non-credited exact-current diagnostic route to capture the new
+  preflight counts for the installed fixture. If the selector names a viable natural watch OMT, bind
+  that footing and its source-exact predicate facts into the fixture contract. If it rejects every
+  candidate, replace the fixture with one natural camp/target/player footing proved by the same
+  production selector; do not change geometry during the credited scenario. Only after the gate
+  selects a valid footing may the unchanged causal route earn credit and use the accepted cohesion
+  probe to distinguish valid pair progress, pacing, or a missing member read.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
