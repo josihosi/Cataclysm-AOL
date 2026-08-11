@@ -340,6 +340,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   every other fixture. A reviewed green harness-only diff may be checkpointed; no live probe belongs
   to this task.
 
+  `R002-M24` accepted the measured night correction at `3d65fbe6a4`. The bounded interruption
+  classifier now acknowledges the exact observed howling-wind wilderness text with Space while
+  partial text and confirmation-bearing variants remain fail-closed. The night artifact now binds
+  deterministic light drizzle, penalty `1.01`, and zero sight points without weakening its exact
+  watch, no-optic, distance-three non-acquisition, or no-visible-threat controls.
+
+  Task `R002-M25` retains the measured 3,600-second envelope for one coordinator-owned changed
+  night probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires the real terrain-
+  opportunity dispatch, approach at hour 167, exact watch `(138,52,0)` at hour 168, generated light
+  drizzle with sight penalty `1.01`, no optic, zero sight points, forward target `(137,49,0)` at
+  distance three, no acquisition, no visible threat, safe bounded acknowledgement of the measured
+  wilderness popup if it recurs, and every step/error guard green. Stop at the first changed
+  production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
