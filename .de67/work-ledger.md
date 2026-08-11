@@ -322,6 +322,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   `(137,49,0)` at distance three, no acquisition, no visible threat, and every setup/error guard
   green. Stop at the first changed production divergence; no unchanged retry.
 
+  Exact `R002-M23` run `20260811_120247` stopped on time during the second one-hour wait. A natural
+  wilderness flavor popup, “The wind sure is howling tonight,” was not in the harness's bounded safe
+  classifications, so the screen guard rejected it with seven of eight step rows green; the process
+  was terminated cleanly. The runtime log nevertheless reached the intended watch and measured
+  `weather=light_drizzle`, `sight_penalty=1.01`, `sight_points=0`, no optic, and the distance-three
+  target unacquired with no visible threat. This invalidates M23's guessed exact one-point premise
+  while preserving the bounded-discovery result.
+
+  Task `R002-M24` retains the measured 3,600-second envelope and changes only the proof harness.
+  Add the exact observed howling-wind flavor text to the existing bounded wilderness-popup family,
+  with focused classification/acknowledgement coverage that proves a space acknowledgement and does
+  not broaden unknown-prompt handling. Bind the deterministic night fixture's exact watch to the
+  now-measured light-drizzle inputs, penalty `1.01`, and zero sight points while preserving its
+  distance-three non-acquisition, target, route, clocks, and no-optic footing. Strengthen the focused
+  night contract against the former substring-only penalty assertion. Preserve product source and
+  every other fixture. A reviewed green harness-only diff may be checkpointed; no live probe belongs
+  to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
