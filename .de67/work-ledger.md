@@ -67,13 +67,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   so resetting the budget per row would fail the control. Changed `do_turn`, planner, and test objects
   compiled, three source-shaped Python parser tests passed, and `git diff --check` passed.
 
-  Next route: build the current clean `dev` HEAD containing exact analyzer checkpoint `65e09b3751`,
-  record its embedded version and binary hash, and use the proved bridge transport to run the
-  read-only analyzer on the installed naturally seeded leads. Accept only an identity-bound
-  `selector=non_frontier` row with a selected watch and route cost as a footing; candidate rejection
-  remains truthful negative evidence. Once a valid footing exists, run the same-footing empty and
-  real physical-signal rows. Do not hand-author a lead, retry either rejected target, weaken the
-  selector, drag the target with the player, or alter world geometry to fit the fixture.
+  Exact `c99d672129+SDL3` Mac binary
+  `57709e64670619d73f92efefaafe36c9de4b81104ea010a870499fb76790a483` and bridge-backed run
+  `20260812_013154` proved the current analyzer action, normalized parser, and GUI transport. The one
+  emitted row was the already-known `frontier_probe:0` rejection at `(164,30,0)`. Authoritative saved
+  state showed the ready camp's `intelligence_map.leads` was empty, so no non-frontier candidate was
+  available; no unchanged rerun is admissible.
+
+  Source review establishes that hourly structural maintenance persists its bounded terrain scan and
+  immediately route-solves and may dispatch those candidates in the same call. A selected candidate
+  becomes active outside pressure before a later manual analyzer action can inspect it, while rejected
+  leads remain visible. Next route: emit the same normalized site, lead, target, selector, outcome,
+  selected-watch, and route-cost record from the observer-gated production route-lookup callback while
+  the scheduler evaluates each candidate, before application or dispatch. Prove the formatter/parser
+  and selected-versus-rejected controls without changing scheduling or world state. Then build the
+  exact committed binary, install the existing zero-lead natural fixture, advance one real hourly
+  cadence, and audit the scheduler-emitted rows. Do not hand-author a lead, retry either rejected
+  target, weaken the selector, drag the target with the player, or alter world geometry to fit the
+  fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
