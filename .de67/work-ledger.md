@@ -67,8 +67,9 @@ Lineage: `CAOL-hostile-ecology-dev`
   so resetting the budget per row would fail the control. Changed `do_turn`, planner, and test objects
   compiled, three source-shaped Python parser tests passed, and `git diff --check` passed.
 
-  Next route: build the exact `65e09b3751` Mac executable and use the proved bridge transport to run
-  the read-only analyzer on the installed naturally seeded leads. Accept only an identity-bound
+  Next route: build the current clean `dev` HEAD containing exact analyzer checkpoint `65e09b3751`,
+  record its embedded version and binary hash, and use the proved bridge transport to run the
+  read-only analyzer on the installed naturally seeded leads. Accept only an identity-bound
   `selector=non_frontier` row with a selected watch and route cost as a footing; candidate rejection
   remains truthful negative evidence. Once a valid footing exists, run the same-footing empty and
   real physical-signal rows. Do not hand-author a lead, retry either rejected target, weaken the
