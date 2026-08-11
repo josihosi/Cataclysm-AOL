@@ -24,25 +24,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   scanned alternative exceeds the owner's normalized 18-OMT route cap. Saved-overmap inspection
   cannot decide the exact NPC route, target-footprint exclusion, normalization, and cap owners.
 
-  Latest nonaccepted implementation finding: `R002-M75` preserved the direct
-  `live_bandit_structural_route_read` wrapper and 19-assertion selected/rejected Catch2 control, then
-  added a read-only `DEBUG_CLAIRVOYANCE` analyzer action and a normalized harness matcher. The changed
-  objects compiled, `git diff --check` passed, and the focused C++ and Python tests passed.
+  Accepted analyzer checkpoint `b8e2317b39` (`R002-M76`) retains the production owner call,
+  read-only `DEBUG_CLAIRVOYANCE` action, harness route, and selected/rejected semantics while emitting
+  each result as one identity-bound `DebugLog` record. The changed objects compiled, the direct-owner
+  Catch2 control passed 19 assertions, and three source-shaped Python matcher tests passed, including
+  rejection of the former fragmented multi-record output.
 
-  Its first contradicted premise: the matcher test did not represent the analyzer's real log shape.
-  The implementation emits site/target/outcome, selected watch/cost, and summary through separate
-  `DebugLog` calls, while `DebugLog` begins every call with a new prefixed record. The parser requires
-  those fields on one normalized line, and its focused test handwrites that combined line. The real
-  analyzer output therefore cannot satisfy the matcher. This is an implementation/test gap, not a DFS
-  or product-owner change, and no analyzer checkpoint was accepted.
-
-  Next route: retain the current owner call, UI/harness action, and selected/rejected semantics, but
-  emit each analyzer result through one `DebugLog` record and make the focused matcher control reject
-  the actual fragmented shape while accepting the single normalized row. After the changed objects,
-  direct-owner Catch2 control, and source-shaped matcher checks pass, checkpoint the analyzer, build
-  that exact committed binary, and run the action against the installed save before binding a natural
-  footing or starting another gameplay wait. Do not weaken the selector or alter world geometry to fit
-  the fixture.
+  Next route: build the exact `b8e2317b39` binary and run the analyzer action against the installed
+  McWilliams save before binding a natural footing or starting another gameplay wait. The artifact
+  must identify the real site, target, selected or rejected outcome, optional selected watch/cost,
+  and owner summary on one normalized record. Do not weaken the selector or alter world geometry to
+  fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
