@@ -252,6 +252,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   `first_forward_acquired=no`, and `outcome=no_visible_threat`, with every setup/error guard green.
   Stop at the first changed production divergence and do not run an unchanged retry.
 
+  Exact `R002-M18` run `20260811_114110` ended on time at the twilight clock premise. The corrected
+  route, lead, entities, waits, geometry, clear weather, no optic, and error guards passed. Approach
+  hour 148 was genuinely twilight with `remote_light=9.19379` and sight points two, but exact-watch
+  hour 149 had crossed into daylight with `remote_light=67.6718` and sight points three, so the pair
+  correctly acquired the target. The added serialized owner hour invalidated the preserved start turn.
+
+  Task `R002-M19` retains the measured 3,600-second envelope and changes only the twilight fixture
+  clock plus its exact scheduler assertions. Move the start one measured owner hour earlier, from turn
+  `5241600` to `5238000`, so the exact watch is reached at scheduler hour 148 / minute 8880, where M18
+  directly measured the two-point twilight state. Update the preceding expected hours/minutes by the
+  same sixty minutes and strengthen the focused contract over the exact turn and all four wait clocks.
+  Preserve the accepted lead, target, route, entities, negative visibility artifact, other fixtures,
+  and product source. A reviewed green harness-only diff may be checkpointed; no live probe belongs
+  to this task.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
