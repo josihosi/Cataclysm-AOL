@@ -82,7 +82,7 @@
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 6-hour duration menu",
       "completion_wait_seconds": 2.0,
       "completion_artifact_timeout_seconds": 300.0,
-      "artifact_state_patterns": ["scheduler_hour=141", "now_minutes=8460"],
+      "artifact_state_patterns": ["scheduler_hour=140", "now_minutes=8400"],
       "expected_visible_fact": "six real game hours pass while production initializes the exact camp's routine activation clock",
       "failure_rule": "If the first bounded wait does not complete, the deterministic dispatch window is not reached."
     },
@@ -98,8 +98,8 @@
       "completion_wait_seconds": 2.0,
       "completion_artifact_timeout_seconds": 420.0,
       "artifact_state_patterns": [
-        "scheduler_hour=147",
-        "now_minutes=8820",
+        "scheduler_hour=146",
+        "now_minutes=8760",
         "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
         "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
       ],
@@ -117,9 +117,9 @@
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 1-hour duration menu",
       "completion_wait_seconds": 2.0,
       "completion_artifact_timeout_seconds": 180.0,
-      "artifact_state_patterns": ["scheduler_hour=148", "now_minutes=8880"],
+      "artifact_state_patterns": ["scheduler_hour=147", "now_minutes=8820"],
       "expected_visible_fact": "the first real post-dispatch hour advances the pair to its canonical approach OMT; approach and exact-watch arrival remain separate owner transitions",
-      "failure_rule": "If the first bounded post-dispatch wait does not reach scheduler hour 148 at minute 8880, the serialized approach transition is red/inconclusive."
+      "failure_rule": "If the first bounded post-dispatch wait does not reach scheduler hour 147 at minute 8820, the serialized approach transition is red/inconclusive."
     },
     {
       "kind": "long_wait",
@@ -132,9 +132,9 @@
       "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the 1-hour duration menu",
       "completion_wait_seconds": 2.0,
       "completion_artifact_timeout_seconds": 180.0,
-      "artifact_state_patterns": ["scheduler_hour=149", "now_minutes=8940", "bandit_live_world structural_visibility:"],
+      "artifact_state_patterns": ["scheduler_hour=148", "now_minutes=8880", "bandit_live_world structural_visibility:"],
       "expected_visible_fact": "the second real post-dispatch hour reaches the selected exact watch and runs the production two-point twilight visibility read",
-      "failure_rule": "If the second bounded post-dispatch wait lacks a visibility artifact at scheduler hour 149 and minute 8940, the row is red/inconclusive."
+      "failure_rule": "If the second bounded post-dispatch wait lacks a visibility artifact at scheduler hour 148 and minute 8880, the row is red/inconclusive."
     },
     {
       "kind": "audit_log_contains",

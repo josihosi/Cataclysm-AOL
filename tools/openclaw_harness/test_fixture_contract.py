@@ -5025,7 +5025,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 {
                     "kind": "game_turn",
                     "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-                    "turn": 5241600,
+                    "turn": 5238000,
                     "shift_queued_eocs": True,
                 }
             ],
@@ -5103,10 +5103,12 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ],
         )
 
+        first_wait_label = "wait_first_6_hours_toward_phase4_visibility_road_twilight_due"
         dispatch_label = "wait_second_6_hours_for_phase4_visibility_road_twilight_dispatch"
         approach_label = "wait_first_1_hour_for_phase4_visibility_road_twilight_approach"
         visibility_label = "wait_second_1_hour_for_phase4_visibility_road_twilight_observer"
         audit_label = "audit_phase4_visibility_road_twilight_artifact"
+        self.assertLess(labels.index(first_wait_label), labels.index(dispatch_label))
         self.assertLess(labels.index(dispatch_label), labels.index(approach_label))
         self.assertLess(labels.index(approach_label), labels.index(visibility_label))
         self.assertLess(labels.index(visibility_label), labels.index(audit_label))
@@ -5115,23 +5117,27 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ":terrain_opportunity:137,49,0:road"
         )
         self.assertEqual(
+            steps[labels.index(first_wait_label)]["artifact_state_patterns"],
+            ["scheduler_hour=140", "now_minutes=8400"],
+        )
+        self.assertEqual(
             steps[labels.index(dispatch_label)]["artifact_state_patterns"],
             [
-                "scheduler_hour=147",
-                "now_minutes=8820",
+                "scheduler_hour=146",
+                "now_minutes=8760",
                 "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
                 exact_dispatch_lead,
             ],
         )
         self.assertEqual(
             steps[labels.index(approach_label)]["artifact_state_patterns"],
-            ["scheduler_hour=148", "now_minutes=8880"],
+            ["scheduler_hour=147", "now_minutes=8820"],
         )
         self.assertEqual(
             steps[labels.index(visibility_label)]["artifact_state_patterns"],
             [
-                "scheduler_hour=149",
-                "now_minutes=8940",
+                "scheduler_hour=148",
+                "now_minutes=8880",
                 "bandit_live_world structural_visibility:",
             ],
         )
