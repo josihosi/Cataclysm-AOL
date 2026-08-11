@@ -19,7 +19,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   physical position while competing travel state was rewritten and it regressed assembled-ingress
   and homeward controls.
 
-  Task `R002-M50` starts from accepted `HEAD`. Make local assembly ownership exclusive for every valid
+  Task `R002-M51` starts from accepted `HEAD`. Make local assembly ownership exclusive for every valid
   incomplete pair, including neutralizing incompatible generic travel state, then release ownership
   exactly to assembled ingress, alternate reposition, or homeward routing. Add a focused regression
   that proves the incomplete pair follows staging without generic OMT advancement or route rewrite,
