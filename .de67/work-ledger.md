@@ -16,27 +16,29 @@ Lineage: `CAOL-hostile-ecology-dev`
   preflight in `overmap_npc_move`. The isolated negative control failed on the unchanged owner because
   both members advanced when one was independently ineligible; after the fix it and the positive row
   passed 105 assertions, the established homeward filter passed 1878 assertions, and both changed
-  objects compiled. `R002-M62` rebuilt exact `dev@1cc7f3f792` successfully as binary
+  objects compiled. The accepted rebuild of exact `dev@1cc7f3f792` produced binary
   `d2784eeeda43233baff4160c2995e868f882b8eaac99e3bafefac49eedca4efe`, and five focused harness
   contract checks passed, but neither live contrast earned credit.
 
-  Current production blocker: in the unchanged real-signal route, local cohesion moved the exact pair
-  toward its two staging tiles through minute 10029, then recorded `movement_orders=0`, `abort=yes` at
-  minute 10030 and immediately applied `unreachable return -> orphaned`. The later minute-10080 signal
-  scan saw physical smoke/light but had `active_outings=0`, so no active scout could own the typed
-  observations or return their provenance. Repair the competing loaded/overmap movement ownership that
-  displaces or invalidates an assembling member after valid approach progress. The focused regression
-  must distinguish sustained monotonic paired staging progress from non-advancing movement and prove
-  that neither member is orphaned while a valid route remains.
+  Current evidence gap: in the unchanged real-signal route, local cohesion visibly moved the exact
+  pair toward its staging tiles through minute 10029, then recorded `movement_orders=0`, `abort=yes`
+  at minute 10030 and immediately applied `unreachable return -> orphaned`. The later minute-10080
+  signal scan saw physical smoke/light but had `active_outings=0`, so no active scout could own or
+  return the typed observations. Source review found that the authoritative planner already persists
+  per-member best staging distances, refreshes its deadline only for non-regressing pair progress
+  with at least one strictly closer member, and has the required long-route and oscillation controls.
+  The natural artifact did not record those authoritative reads, stored best distances, or deadline
+  evolution, so visible movement cannot yet distinguish valid planner progress from pacing or a
+  missing member read. Add the smallest production probe for those exact facts before proposing
+  another ownership mutation, then rerun the real-signal route.
 
-  Independent tooling prerequisite: the decoy fixture fails before gameplay because
-  `apply_bandit_camp_map_lead_transform` writes legacy top-level `active_group_id`,
-  `active_target_id`, and `active_member_ids` while clearing pressure in a schema-12 save. The current
-  loader consumes those keys only for legacy schemas and correctly rejects them as unread. Make the
-  transform clear canonical nested ownership and remove, rather than recreate, legacy active fields;
-  prove the installed current-schema fixture loads through the changed executable. Then rerun both
-  natural contrasts. Player relocation and legitimately observed versus unseen zombie danger remain
-  afterward.
+  Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
+  nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
+  current-schema regression and related contract subset passed; the installed decoy fixture retained
+  the exact returned smoke lead with all five members at home and loaded through accepted binary
+  `d2784eeeda43233baff4160c2995e868f882b8eaac99e3bafefac49eedca4efe` to a clean gameplay HUD with
+  zero popup/errors. The decoy lifecycle may now rerun after the real-signal probe route. Player
+  relocation and legitimately observed versus unseen zombie danger remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,

@@ -12666,17 +12666,62 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         )
 
     site_id = str(selected_site.get("site_id", ""))
-    old_active_member_ids = list(selected_site.get("active_member_ids", [])) if isinstance(
-        selected_site.get("active_member_ids", []), list
-    ) else []
+    active_outing = selected_site.get("active_outing")
+    canonical_active_member_ids = (
+        list(active_outing.get("member_ids", []))
+        if isinstance(active_outing, dict) and isinstance(active_outing.get("member_ids", []), list)
+        else []
+    )
+    legacy_active_member_ids = selected_site.get("active_member_ids", [])
+    old_active_member_ids = (
+        canonical_active_member_ids
+        if canonical_active_member_ids
+        else list(legacy_active_member_ids) if isinstance(legacy_active_member_ids, list) else []
+    )
     if bool(transform.get("clear_active_pressure", True)):
-        selected_site["active_group_id"] = ""
-        selected_site["active_target_id"] = ""
-        selected_site["active_target_omt"] = [0, 0, 0]
-        selected_site["active_job_type"] = ""
-        selected_site["active_member_ids"] = []
-        selected_site["active_sortie_started_minutes"] = -1
-        selected_site["active_sortie_local_contact_minutes"] = -1
+        if isinstance(active_outing, dict):
+            selected_site["active_outing"] = {
+                "schema_version": 5,
+                "kind": "none",
+                "activity_id": "",
+                "camp_id": "",
+                "generation": 0,
+                "member_ids": [],
+                "leader_id": -1,
+                "shared_route": [],
+                "waypoint_index": 0,
+                "target_id": "",
+                "target_omt": [0, 0, 0],
+                "job_type": "",
+                "target_lead_id": "",
+                "target_lead_revision": 0,
+                "phase": "outbound",
+                "observations": [],
+                "cargo": {"supply_units": 0, "trade_value": 0},
+                "casualty_ids": [],
+                "resolved_member_ids": [],
+                "started_minutes": -1,
+                "local_contact_minutes": -1,
+                "last_progress_minutes": -1,
+                "expected_return_minutes": -1,
+                "missing_deadline_minutes": -1,
+                "simulation_owner": "abstract",
+                "handoff_epoch": 0,
+                "last_advanced_minutes": -1,
+                "return_application_key": "",
+                "report_application_key": "",
+                "cargo_application_key": "",
+            }
+        for legacy_active_field in (
+            "active_group_id",
+            "active_target_id",
+            "active_target_omt",
+            "active_job_type",
+            "active_member_ids",
+            "active_sortie_started_minutes",
+            "active_sortie_local_contact_minutes",
+        ):
+            selected_site.pop(legacy_active_field, None)
         mark_unready = bool(transform.get("mark_cleared_active_members_unready", True))
         old_active_id_set = {str(value) for value in old_active_member_ids}
         for member in selected_site.get("members", []):

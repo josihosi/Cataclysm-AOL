@@ -50,6 +50,7 @@ from startup_harness import (  # noqa: E402
     audit_log_contains,
     audit_log_not_contains,
     audit_saved_bandit_live_world_state,
+    apply_bandit_camp_map_lead_transform,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
     apply_fixture_save_transforms,
@@ -7062,6 +7063,93 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             if transform["kind"] == "bandit_clear_site_evidence"
         )
         self.assertEqual(clear["site_id"], "overmap_special:bandit_camp@140,51,0")
+
+    def test_phase4_decoy_transform_clears_current_schema_outing_and_legacy_pressure(self) -> None:
+        resolved = resolve_fixture_payload(
+            "bandit_phase4_decoy_empty_signal_v0_2026-08-05",
+            "live-debug",
+        )
+        signal = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "bandit_camp_map_lead"
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            shutil.copytree(resolved["save_src"] / "McWilliams", world_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            version_line, _, payload_text = dimension_path.read_text(encoding="utf-8").partition("\n")
+            payload = json.loads(payload_text)
+            site = payload["overmapbuffer"]["bandit_live_world"]["sites"][0]
+            self.assertEqual(site["schema_version"], 12)
+            site["active_outing"].update({
+                "kind": "structural_sortie",
+                "activity_id": "camp#scout:1",
+                "camp_id": site["site_id"],
+                "generation": 1,
+                "member_ids": [4, 5],
+                "leader_id": 4,
+                "target_id": "old-target",
+                "target_omt": [135, 51, 0],
+                "job_type": "scout",
+                "started_minutes": 100,
+                "local_contact_minutes": 120,
+                "last_progress_minutes": 120,
+                "last_advanced_minutes": 120,
+            })
+            site["members"][0]["state"] = "outbound"
+            site["members"][1]["state"] = "local_contact"
+            for key, value in {
+                "active_group_id": "legacy-group",
+                "active_target_id": "legacy-target",
+                "active_target_omt": [135, 51, 0],
+                "active_job_type": "scout",
+                "active_member_ids": [4, 5],
+                "active_sortie_started_minutes": 100,
+                "active_sortie_local_contact_minutes": 120,
+            }.items():
+                site[key] = value
+            dimension_path.write_text(
+                version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8",
+            )
+
+            apply_bandit_camp_map_lead_transform(world_dir, signal)
+
+            _, _, transformed_text = dimension_path.read_text(encoding="utf-8").partition("\n")
+            transformed = json.loads(transformed_text)
+            transformed_site = transformed["overmapbuffer"]["bandit_live_world"]["sites"][0]
+            active_outing = transformed_site["active_outing"]
+            self.assertEqual(active_outing["schema_version"], 5)
+            self.assertEqual(active_outing["kind"], "none")
+            self.assertEqual(active_outing["activity_id"], "")
+            self.assertEqual(active_outing["generation"], 0)
+            self.assertEqual(active_outing["member_ids"], [])
+            self.assertEqual(active_outing["target_id"], "")
+            self.assertEqual(active_outing["started_minutes"], -1)
+            self.assertEqual(active_outing["local_contact_minutes"], -1)
+            for legacy_key in (
+                "active_group_id",
+                "active_target_id",
+                "active_target_omt",
+                "active_job_type",
+                "active_member_ids",
+                "active_sortie_started_minutes",
+                "active_sortie_local_contact_minutes",
+            ):
+                self.assertNotIn(legacy_key, transformed_site)
+            self.assertEqual(
+                [member["state"] for member in transformed_site["members"][:2]],
+                ["at_home", "at_home"],
+            )
+            lead = next(
+                lead for lead in transformed_site["intelligence_map"]["leads"]
+                if lead["lead_id"] == signal["lead_id"]
+            )
+            self.assertEqual(lead["kind"], "smoke_signal")
+            self.assertEqual(lead["target_id"], "structural-smoke@(136,51,0)")
+            self.assertEqual(lead["omt"], [136, 51, 0])
+            self.assertEqual(lead["bounty"], 0)
 
     def test_phase5_visible_burn_producer_fixture_is_uncloaked_target_footing(self) -> None:
         resolved = resolve_fixture_payload(
