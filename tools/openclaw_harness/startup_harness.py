@@ -9323,6 +9323,29 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "overmap_terrain_id_at_abs_omt":
+            abs_omt_raw = raw.get("abs_omt")
+            if not isinstance(abs_omt_raw, list) or len(abs_omt_raw) != 3 or any(
+                    isinstance(value, bool) or not isinstance(value, int)
+                    for value in abs_omt_raw):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_terrain_id_at_abs_omt "
+                    f"needs abs_omt=[integer x, integer y, integer z] in {manifest_path}"
+                )
+            terrain_id = str(raw.get("terrain_id", "") or "").strip()
+            if not terrain_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_terrain_id_at_abs_omt "
+                    f"needs terrain_id in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "abs_omt": list(abs_omt_raw),
+                "terrain_id": terrain_id,
+            })
+            continue
+
         if kind == "seed_overmap_special_near_player":
             special_id = str(raw.get("special_id", "")).strip()
             source_special_id = str(raw.get("source_special_id", special_id)).strip() or special_id
@@ -9996,7 +10019,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
+            "overmap_terrain_id_at_abs_omt, seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
@@ -10547,6 +10570,84 @@ def overmap_flat_index(point: Tuple[int, int, int]) -> int:
     if x < 0 or x >= OMAPX or y < 0 or y >= OMAPY:
         raise SystemExit(f"Overmap point out of bounds for transform: {point}")
     return y * OMAPX + x
+
+
+
+def apply_overmap_terrain_id_at_abs_omt_transform(
+    world_dir: Path,
+    transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    abs_omt_raw = transform.get("abs_omt")
+    if not isinstance(abs_omt_raw, list) or len(abs_omt_raw) != 3 or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in abs_omt_raw):
+        raise SystemExit(
+            "Fixture overmap terrain transform needs abs_omt=[integer x, integer y, integer z]"
+        )
+    abs_omt = (abs_omt_raw[0], abs_omt_raw[1], abs_omt_raw[2])
+    terrain_id = str(transform.get("terrain_id", "") or "").strip()
+    if not terrain_id:
+        raise SystemExit("Fixture overmap terrain transform needs terrain_id")
+
+    overmap_x, overmap_y, local_omt = overmap_file_coords_from_abs_omt(abs_omt)
+    overmap_path = world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+    if not overmap_path.exists():
+        raise SystemExit(
+            f"Fixture overmap terrain transform target payload not found: {overmap_path}"
+        )
+
+    plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+    keep_plain = not bool(payload.get("_created_plain", False))
+    try:
+        layers = payload.get("layers")
+        if not isinstance(layers, list):
+            raise SystemExit(
+                f"Fixture overmap terrain transform payload has no layers array: {overmap_path}"
+            )
+        layer_index = overmap_layer_index(abs_omt[2])
+        if layer_index >= len(layers):
+            raise SystemExit(
+                f"Fixture overmap terrain transform layer z={abs_omt[2]} is missing: {overmap_path}"
+            )
+
+        known_terrain_ids: Set[str] = set()
+        for raw_layer in layers:
+            if not isinstance(raw_layer, list):
+                continue
+            for entry in raw_layer:
+                if isinstance(entry, list) and len(entry) >= 2:
+                    saved_terrain_id = str(entry[0]).strip()
+                    if saved_terrain_id:
+                        known_terrain_ids.add(saved_terrain_id)
+        if terrain_id not in known_terrain_ids:
+            raise SystemExit(
+                f"Fixture overmap terrain transform terrain_id '{terrain_id}' is not present "
+                f"in the authoritative saved overmap vocabulary: {overmap_path}"
+            )
+
+        terrain_layer = decode_overmap_layer(
+            layers[layer_index],
+            context=f"{overmap_path} z={abs_omt[2]}",
+        )
+        flat_index = overmap_flat_index(local_omt)
+        previous_terrain_id = terrain_layer[flat_index]
+        terrain_layer[flat_index] = terrain_id
+        layers[layer_index] = encode_overmap_layer(terrain_layer)
+        write_overmap_payload(plain_path, version_line, payload)
+    except BaseException:
+        cleanup_extracted_overmap(plain_path, keep=keep_plain)
+        raise
+
+    return {
+        "kind": "overmap_terrain_id_at_abs_omt",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "") or "").strip(),
+        "abs_omt": list(abs_omt),
+        "local_omt": list(local_omt),
+        "overmap": str(overmap_path.relative_to(world_dir)),
+        "previous_terrain_id": previous_terrain_id,
+        "terrain_id": terrain_id,
+    }
 
 
 
@@ -13031,6 +13132,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "player_near_overmap_special":
             reports.append(apply_player_near_overmap_special_transform(world_dir, transform))
+            continue
+        if kind == "overmap_terrain_id_at_abs_omt":
+            reports.append(apply_overmap_terrain_id_at_abs_omt_transform(world_dir, transform))
             continue
         if kind == "seed_overmap_special_near_player":
             reports.append(apply_seed_overmap_special_near_player_transform(world_dir, transform))

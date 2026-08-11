@@ -42,6 +42,8 @@ RELEASE_GATE_SCENARIOS = (
 
 from startup_harness import (  # noqa: E402
     EOC_POPUP_TRACE_READ_CAP_BYTES,
+    OMAPX,
+    OMAPY,
     StartupPlan,
     acknowledge_blocking_interruptions,
     audit_fresh_ecology_incident_pair,
@@ -50,6 +52,7 @@ from startup_harness import (  # noqa: E402
     apply_bandit_clone_site_transform,
     apply_fixture_save_transforms,
     apply_game_turn_to_payload,
+    apply_overmap_terrain_id_at_abs_omt_transform,
     apply_option_overrides_to_file,
     apply_player_mutations_transform,
     apply_repair_basecamp_npc_assignments_transform,
@@ -61,6 +64,7 @@ from startup_harness import (  # noqa: E402
     debug_map_editor_place_field,
     debug_map_editor_place_item,
     decode_overmap_layer,
+    encode_overmap_layer,
     extract_clock_or_turn_evidence,
     extract_overmap_payload,
     execute_long_wait_action,
@@ -3708,6 +3712,136 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
         self.assertFalse(cloned["shakedown_reopen_available"])
 
 
+class OvermapTerrainIdAtAbsOmtTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def _payload_with_surface_target() -> Dict[str, Any]:
+        surface = ["field"] * (OMAPX * OMAPY)
+        surface[0] = "forest"
+        surface[overmap_flat_index((137, 49, 0))] = "road_ns"
+        layers = [[["field", OMAPX * OMAPY]] for _ in range(overmap_layer_index(0) + 1)]
+        layers[overmap_layer_index(0)] = encode_overmap_layer(surface)
+        return {"layers": layers, "_created_plain": True}
+
+    def test_round_trip_changes_only_one_exact_absolute_omt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            overmaps_dir = world_dir / "overmaps"
+            overmaps_dir.mkdir()
+            overmap_path = overmaps_dir / "o.0.0.zzip"
+            overmap_path.touch()
+            plain_path = world_dir / "o.0.0"
+            payload = self._payload_with_surface_target()
+            before = decode_overmap_layer(
+                payload["layers"][overmap_layer_index(0)],
+                context="before",
+            )
+            normalized = normalize_fixture_save_transforms(
+                [{
+                    "kind": "overmap_terrain_id_at_abs_omt",
+                    "player_save": "survivor.sav.zzip",
+                    "abs_omt": [137, 49, 0],
+                    "terrain_id": "forest",
+                }],
+                manifest_path=world_dir / "manifest.json",
+            )
+
+            with (
+                mock.patch(
+                    "startup_harness.extract_overmap_payload",
+                    return_value=(plain_path, "# version 39", payload),
+                ),
+                mock.patch("startup_harness.write_overmap_payload") as write_payload,
+            ):
+                reports = apply_fixture_save_transforms(world_dir, normalized)
+
+            written_payload = write_payload.call_args.args[2]
+            after = decode_overmap_layer(
+                written_payload["layers"][overmap_layer_index(0)],
+                context="after",
+            )
+
+        target_index = overmap_flat_index((137, 49, 0))
+        self.assertEqual(reports, [{
+            "kind": "overmap_terrain_id_at_abs_omt",
+            "world": world_dir.name,
+            "player_save": "survivor.sav.zzip",
+            "abs_omt": [137, 49, 0],
+            "local_omt": [137, 49, 0],
+            "overmap": "overmaps/o.0.0.zzip",
+            "previous_terrain_id": "road_ns",
+            "terrain_id": "forest",
+        }])
+        self.assertEqual(before[target_index], "road_ns")
+        self.assertEqual(after[target_index], "forest")
+        self.assertEqual(
+            [index for index, pair in enumerate(zip(before, after)) if pair[0] != pair[1]],
+            [target_index],
+        )
+
+    def test_normalization_rejects_malformed_coordinates_and_empty_terrain(self) -> None:
+        invalid_coordinates = (
+            None,
+            [137, 49],
+            [137, 49, 0, 1],
+            ["137", 49, 0],
+            [True, 49, 0],
+        )
+        for abs_omt in invalid_coordinates:
+            with self.subTest(abs_omt=abs_omt), self.assertRaisesRegex(
+                    SystemExit, "needs abs_omt=\\[integer x, integer y, integer z\\]"):
+                normalize_fixture_save_transforms(
+                    [{
+                        "kind": "overmap_terrain_id_at_abs_omt",
+                        "player_save": "survivor.sav.zzip",
+                        "abs_omt": abs_omt,
+                        "terrain_id": "forest",
+                    }],
+                    manifest_path=Path("manifest.json"),
+                )
+        with self.assertRaisesRegex(SystemExit, "needs terrain_id"):
+            normalize_fixture_save_transforms(
+                [{
+                    "kind": "overmap_terrain_id_at_abs_omt",
+                    "player_save": "survivor.sav.zzip",
+                    "abs_omt": [137, 49, 0],
+                    "terrain_id": "",
+                }],
+                manifest_path=Path("manifest.json"),
+            )
+
+    def test_apply_fails_closed_for_missing_layer_and_unknown_terrain(self) -> None:
+        failure_cases = (
+            ({}, "has no layers array"),
+            ({"layers": [[["field", OMAPX * OMAPY]]], "_created_plain": True}, "layer z=0 is missing"),
+            (self._payload_with_surface_target(), "is not present in the authoritative saved overmap vocabulary"),
+        )
+        for payload, expected_error in failure_cases:
+            with self.subTest(expected_error=expected_error), tempfile.TemporaryDirectory() as temp_dir:
+                world_dir = Path(temp_dir)
+                overmaps_dir = world_dir / "overmaps"
+                overmaps_dir.mkdir()
+                (overmaps_dir / "o.0.0.zzip").touch()
+                original_payload = json.dumps(payload, sort_keys=True)
+                with (
+                    mock.patch(
+                        "startup_harness.extract_overmap_payload",
+                        return_value=(world_dir / "o.0.0", "# version 39", payload),
+                    ),
+                    mock.patch("startup_harness.write_overmap_payload") as write_payload,
+                    self.assertRaisesRegex(SystemExit, expected_error),
+                ):
+                    apply_overmap_terrain_id_at_abs_omt_transform(
+                        world_dir,
+                        {
+                            "player_save": "survivor.sav.zzip",
+                            "abs_omt": [137, 49, 0],
+                            "terrain_id": "not_a_real_saved_terrain",
+                        },
+                    )
+                write_payload.assert_not_called()
+                self.assertEqual(json.dumps(payload, sort_keys=True), original_payload)
+
+
 class BanditRosterShapeTransformContractTest(unittest.TestCase):
     def test_can_clear_inherited_spawn_heads_without_inflating_roster(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -5050,6 +5184,154 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn(stale_bounty_dispatch_lead, serialized_scenario)
         self.assertIn("threat_omt=(137,49,0)", serialized_scenario)
         self.assertNotIn("136,51,0", serialized_scenario)
+
+    def test_phase4_forest_optic_day_reuses_accepted_route_with_target_only_forest(self) -> None:
+        fixture_name = "bandit_phase4_visibility_forest_optic_day_v0_2026-08-04"
+        road_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
+        scenario = load_scenario("bandit.phase4_visibility_forest_optic_day_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+
+        self.assertEqual(
+            resolved["source_chain"][:3],
+            [
+                ("live-debug", fixture_name),
+                ("live-debug", road_fixture_name),
+                (
+                    "live-debug",
+                    "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+                ),
+            ],
+        )
+        manifest_path = (
+            HARNESS_DIR
+            / "fixtures"
+            / "saves"
+            / "live-debug"
+            / fixture_name
+            / "manifest.json"
+        )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["source_fixture"], road_fixture_name)
+        self.assertEqual(
+            [transform["kind"] for transform in manifest["save_transforms"]],
+            ["overmap_terrain_id_at_abs_omt"] + ["basecamp_assigned_npc_items"] * 5,
+        )
+
+        transforms = list(resolved["save_transforms"])
+        terrain_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "overmap_terrain_id_at_abs_omt"
+        ]
+        self.assertEqual(terrain_transforms, [{
+            "kind": "overmap_terrain_id_at_abs_omt",
+            "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+            "abs_omt": [137, 49, 0],
+            "terrain_id": "forest",
+        }])
+        forest_definitions = json.loads(
+            (
+                HARNESS_DIR.parents[1]
+                / "data"
+                / "json"
+                / "overmap"
+                / "overmap_terrain"
+                / "overmap_terrain_hardcoded.json"
+            ).read_text(encoding="utf-8")
+        )
+        forest_definition = next(
+            entry for entry in forest_definitions
+            if entry.get("type") == "overmap_terrain" and entry.get("id") == "forest"
+        )
+        self.assertEqual(forest_definition["see_cost"], "spaced_high")
+
+        inventory_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "basecamp_assigned_npc_items"
+        ]
+        self.assertEqual([transform["npc_id"] for transform in inventory_transforms], list(range(4, 9)))
+        self.assertEqual(
+            [transform["offset_ms"] for transform in inventory_transforms],
+            [[offset, 288, 0] for offset in range(5)],
+        )
+        self.assertTrue(all(
+            transform["items"] == [{"typeid": "binoculars", "count": 1}]
+            for transform in inventory_transforms
+        ))
+
+        last_clear_index = max(
+            index
+            for index, transform in enumerate(transforms)
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        effective_leads = [
+            transform
+            for transform in transforms[last_clear_index + 1 :]
+            if transform["kind"] == "bandit_camp_map_lead"
+        ]
+        self.assertEqual(len(effective_leads), 1)
+        self.assertEqual(effective_leads[0]["kind_value"], "terrain_opportunity")
+        self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
+        self.assertEqual(
+            effective_leads[0]["lead_id"],
+            "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
+        )
+        horde_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "horde_entity_near_player"
+        ]
+        expected_horde_offsets = [[-72, 240, 0], [-71, 240, 0], [-70, 240, 0]]
+        self.assertEqual(
+            [transform["offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+
+        dispatch = steps[
+            labels.index("wait_second_6_hours_for_phase4_visibility_forest_optic_day_dispatch")
+        ]
+        approach_label = "wait_first_1_hour_for_phase4_visibility_forest_optic_day_approach"
+        visibility_label = "wait_second_1_hour_for_phase4_visibility_forest_optic_day_observer"
+        audit_label = "audit_phase4_visibility_forest_optic_day_artifact"
+        approach = steps[labels.index(approach_label)]
+        visibility = steps[labels.index(visibility_label)]
+        audit = steps[labels.index(audit_label)]
+        self.assertEqual(dispatch["artifact_state_patterns"][:2], [
+            "scheduler_hour=155",
+            "now_minutes=9300",
+        ])
+        self.assertEqual(approach["artifact_state_patterns"], [
+            "scheduler_hour=156",
+            "now_minutes=9360",
+        ])
+        self.assertEqual(visibility["artifact_state_patterns"], [
+            "scheduler_hour=157",
+            "now_minutes=9420",
+            "bandit_live_world structural_visibility:",
+        ])
+        self.assertLess(labels.index(approach_label), labels.index(visibility_label))
+        self.assertLess(labels.index(visibility_label), labels.index(audit_label))
+        exact_visibility = audit["required_line_patterns"][1]
+        for required in (
+            "current_omt=(138,52,0)",
+            "weather=clear",
+            "sight_penalty=1",
+            "optic=yes",
+            "sight_points=6",
+            "first_forward_omt=(137,49,0)",
+            "first_forward_distance=3",
+            "first_forward_acquired=yes",
+            "outcome=observed",
+            "threat_omt=(137,49,0)",
+        ):
+            self.assertIn(required, exact_visibility)
+        serialized_scenario = json.dumps(scenario, sort_keys=True)
+        self.assertNotIn("#lead:structural_bounty:forest@138,52,0", serialized_scenario)
+        self.assertNotIn("current_omt=(139,51,0)", serialized_scenario)
+        self.assertNotIn("first_forward_distance=1", serialized_scenario)
 
     def test_phase4_road_twilight_reuses_exact_watch_for_negative_budget(self) -> None:
         fixture_name = "bandit_phase4_visibility_road_twilight_v0_2026-08-04"
