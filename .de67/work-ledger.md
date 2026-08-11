@@ -31,15 +31,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   stored best staging distances, and the cohesion deadline before and after planning without
   changing ownership behavior. Rerun the unchanged real-signal route and use that evidence to
   distinguish valid planner progress from pacing or a missing member read before proposing another
-  ownership mutation. `R002-M66` rebuilt exact `dev@0b4cc44a7d` successfully as executable
-  `55bc5f6cfa1cfce776455e8122b15b9da9d3d339640f2b8449d7500a2b1283df`, but the unchanged probe
-  stopped before game startup because the harness's default local Peekaboo input preflight lacked
-  Accessibility. The same worker's direct bridge-routed permission check reported Accessibility
-  granted, and current harness source exposes `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. The next wave
-  should preflight that exact bridge input route, then rerun the unchanged scenario with only that
-  transport override. Estimate `R002-M67` at 2586 seconds, the scenario's 2585.29 seconds of explicit
-  artifact timeout, wait/settle, and key-delay bounds rounded to the next whole clock second; no
-  rebuild is needed while the executable and HEAD remain exact.
+  ownership mutation. The exact bridge-routed Peekaboo input and capture preflight is now green,
+  including Accessibility and Screen Recording. The unchanged probe correctly stopped before feature
+  steps because the runtime title was `0b4cc44a7d-dirty+SDL3` while repository HEAD was ledger-only
+  `0b88e12002`, so the fail-closed identity gate returned
+  `startup_load_only_runtime_version_mismatch` even though both committed and worktree
+  runtime-relevant diffs were empty. Current harness source and its owning regression require every
+  dirty build to remain unproved. The next wave must produce a clean exact-current-HEAD executable,
+  confirm its runtime title is not dirty, and then rerun the unchanged scenario with
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`; derive its immutable estimate after checking the clean-build
+  route and retaining the scenario's explicit 2585.29-second execution bound.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
