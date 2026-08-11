@@ -14,32 +14,20 @@ Lineage: `CAOL-hostile-ecology-dev`
 
   Current causal frontier: checkpoint `dbb85cfe1f` makes local assembly ownership exclusive over
   stale generic travel state until the existing assembled-ingress, alternate-reposition, or
-  homeward owner takes over. `R002-M53` ran exact release SDL3 binary `2f9ced5dcd` (SHA-256
-  `efd3732265b8e618f279f82404ed6ed175aca4ab532778e7794fa375ba9a87ad`) through the signed Peekaboo
-  bridge. Focus and startup stayed green, 167 empty-signal controls stayed empty, and generation-1
-  members 4/5 reached canonical approach `(139,51,0)` with watch candidate `(138,52,0)`. The first
-  production divergence is minute 10030: local cohesion still had valid routes and
-  `failed_routes=0`, but the fixed ten-minute rendezvous deadline alone set `abort=yes`; the
-  downstream owner logged `unreachable return -> orphaned` and cleared the outing before any active
-  smoke/light/sound fact. Later physical signals remained ownerless, with no returned report or
-  player-coordinate leakage.
+  homeward owner takes over. `R002-M56` is accepted: member-scoped best staging distances renew the
+  rendezvous deadline only for monotonic pair progress, while two-position pacing still expires.
+  Every supported handoff schema and staging rewrite now initializes the serialized progress state.
+  A freshly linked focused test passed one case and 1,878 assertions, including progress beyond the
+  former ten-minute deadline, the oscillation discriminator, and schema-3 save/load promotion.
 
-  Next required slice: correct the local cohesion owner so a valid physically progressing assembly
-  route is not classified as unreachable solely because its geometry takes longer than the fixed
-  rendezvous window. Preserve bounded failure for genuinely stalled, missing, or repeatedly failed
-  routes, the exact pair/generation/epoch, and exclusive ownership over ordinary loaded and abstract
-  NPC movement. Add the smallest focused regression that distinguishes valid progress past the
-  present deadline from a genuinely failed route, then run its narrow compile/test. Do not edit the
-  fixture or live scenario and do not rerun the integrated probe until this owner regression is
-  accepted. R-002 remains red; the signal-return row, relocation row, and observed-versus-unseen
-  zombie row still remain afterward.
-
-  `R002-M54` confirmed that a progress-sensitive deadline is the right owner seam but its candidate
-  treated any position change as progress, so a two-tile oscillation could refresh the deadline
-  indefinitely while never assembling. The next owner slice must use monotonic progress toward the
-  assigned staging positions or equivalent route-grounded advancement, preserve bounded no-progress
-  and repeated-route-failure aborts, and add an oscillating/non-advancing negative control alongside
-  the long valid-route positive control.
+  Next required slice: build the exact release SDL3 binary from this accepted source and rerun the
+  unchanged `bandit.phase4_structural_signal_matrix_live_mcw` probe through the signed Peekaboo
+  bridge. Accept only if focus/startup remain green, the exact generation-1 pair reaches canonical
+  approach `(139,51,0)` and watch `(138,52,0)` without a cohesion abort, repeated empty-signal
+  controls stay empty, physical target fire/light/explosion create only their source-bound facts,
+  and returned-report leads appear only after physical return without player-coordinate leakage.
+  Do not edit the fixture or scenario. R-002 remains red; relocation and observed-versus-unseen
+  zombie controls remain afterward even if this signal-return row passes.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,

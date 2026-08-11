@@ -2695,6 +2695,15 @@ bool local_handoff_snapshot_matches_outing(
             snapshot.phase != scout_phase::returning_home ) ) ) {
         return false;
     }
+    if( snapshot.schema_version >= 4 &&
+        ( snapshot.cohesion_best_staging_distances.size() != snapshot.members.size() ||
+          std::any_of( snapshot.cohesion_best_staging_distances.begin(),
+                       snapshot.cohesion_best_staging_distances.end(),
+    []( const int distance ) {
+        return distance < 0;
+    } ) ) ) {
+        return false;
+    }
 
     std::vector<character_id> snapshot_member_ids;
     std::vector<tripoint_abs_ms> entry_positions;
@@ -2786,6 +2795,7 @@ bool local_handoff_snapshots_equal(
         lhs.cohesion_leader_id != rhs.cohesion_leader_id ||
         lhs.cohesion_deadline_minutes != rhs.cohesion_deadline_minutes ||
         lhs.cohesion_reroutes_used != rhs.cohesion_reroutes_used ||
+        lhs.cohesion_best_staging_distances != rhs.cohesion_best_staging_distances ||
         lhs.cohesion_assembled != rhs.cohesion_assembled ||
         lhs.cohesion_abort_return != rhs.cohesion_abort_return ||
         lhs.members.size() != rhs.members.size() ) {
@@ -3878,6 +3888,11 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         snapshot.cohesion_reroutes_used = 0;
         snapshot.cohesion_abort_return = false;
     }
+    snapshot.cohesion_best_staging_distances.reserve( snapshot.members.size() );
+    for( const local_handoff_member_snapshot &member : snapshot.members ) {
+        snapshot.cohesion_best_staging_distances.push_back(
+            rl_dist( member.entry_position, member.staging_position ) );
+    }
     plan.snapshot = std::move( snapshot );
     plan.valid = true;
     plan.notes.push_back( "local handoff preflight captured the complete surviving pair" );
@@ -3991,7 +4006,7 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     const tripoint_abs_omt prior_local_route_position = snapshot.route_position;
     const tripoint_abs_omt prior_local_approach = snapshot.approach_from;
     const tripoint_abs_omt prior_local_egress = snapshot.egress_omt;
-    snapshot.schema_version = 3;
+    snapshot.schema_version = 4;
     snapshot.handoff_epoch = outing.handoff_epoch + 1;
     snapshot.waypoint_index = outing.waypoint_index;
     snapshot.phase = outing.phase;
@@ -4005,6 +4020,8 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     snapshot.cargo = cargo;
     snapshot.casualty_ids = outing.casualty_ids;
     snapshot.committed_minutes = current_minutes;
+    snapshot.cohesion_best_staging_distances.clear();
+    snapshot.cohesion_best_staging_distances.reserve( snapshot.members.size() );
 
     std::vector<character_id> read_member_ids;
     std::vector<tripoint_abs_ms> surviving_exit_positions;
@@ -4049,6 +4066,8 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
         member_snapshot.exit_position = read_iter->current_position;
         member_snapshot.hp_percent = read_iter->hp_percent;
         member_snapshot.dead = read_iter->dead;
+        snapshot.cohesion_best_staging_distances.push_back(
+            rl_dist( member_snapshot.exit_position, member_snapshot.staging_position ) );
         if( !read_iter->dead ) {
             all_survivors_confirmed_homeward_exit =
                 all_survivors_confirmed_homeward_exit && confirmed_homeward_exit;
@@ -4434,6 +4453,13 @@ local_alternate_watch_reposition_plan plan_local_pair_alternate_watch_reposition
             arrival_positions[( index + 1 ) % arrival_positions.size()];
         snapshot.members[index].exit_position = arrival_positions[index];
     }
+    snapshot.schema_version = 4;
+    snapshot.cohesion_best_staging_distances.clear();
+    snapshot.cohesion_best_staging_distances.reserve( snapshot.members.size() );
+    for( const local_handoff_member_snapshot &member : snapshot.members ) {
+        snapshot.cohesion_best_staging_distances.push_back(
+            rl_dist( member.entry_position, member.staging_position ) );
+    }
 
     plan.expected_target_revision = outing.target_lead_revision;
     plan.expected_member_ids = outing.member_ids;
@@ -4725,6 +4751,9 @@ local_handoff_commit_result commit_local_pair_route_arrival(
                                     next.shared_route[static_cast<std::size_t>( destination_waypoint + 1 )] :
                                     next.selected_watch_omt;
     next.local_handoff.committed_minutes = current_minutes;
+    next.local_handoff.schema_version = 4;
+    next.local_handoff.cohesion_best_staging_distances.assign(
+        next.local_handoff.members.size(), 0 );
     for( std::size_t index = 0; index < next.local_handoff.members.size(); ++index ) {
         local_handoff_member_snapshot &snapshot = next.local_handoff.members[index];
         const auto read = std::find_if( member_reads.begin(), member_reads.end(),
@@ -4740,6 +4769,8 @@ local_handoff_commit_result commit_local_pair_route_arrival(
         snapshot.exit_position = read->current_position;
         snapshot.hp_percent = read->hp_percent;
         snapshot.dead = false;
+        next.local_handoff.cohesion_best_staging_distances[index] =
+            rl_dist( snapshot.entry_position, snapshot.staging_position );
         member_record *member = candidate.find_member( snapshot.npc_id );
         if( member == nullptr ||
             ( member->state != member_state::outbound &&
@@ -4897,7 +4928,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     local_handoff_snapshot snapshot = outing.local_handoff;
     plan.leader_id = outing.leader_id;
     if( snapshot.schema_version < 3 ) {
-        snapshot.schema_version = 3;
+        snapshot.schema_version = 4;
         snapshot.cohesion_leader_id = outing.leader_id;
         snapshot.cohesion_deadline_minutes = current_minutes;
         snapshot.cohesion_reroutes_used = local_pair_reroute_cap;
@@ -4905,6 +4936,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         snapshot.cohesion_abort_return = true;
         snapshot.phase = scout_phase::returning_home;
         snapshot.committed_minutes = current_minutes;
+        snapshot.cohesion_best_staging_distances.assign( snapshot.members.size(), 0 );
         plan.snapshot = std::move( snapshot );
         plan.abort_return = true;
         plan.valid = true;
@@ -4957,6 +4989,21 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         plan.leader_id = *replacement;
     }
     snapshot.cohesion_leader_id = plan.leader_id;
+
+    if( snapshot.schema_version < 4 ) {
+        snapshot.schema_version = 4;
+        snapshot.cohesion_best_staging_distances.clear();
+        snapshot.cohesion_best_staging_distances.reserve( snapshot.members.size() );
+        for( const local_handoff_member_snapshot &member : snapshot.members ) {
+            const auto read = std::find_if( living_reads.begin(), living_reads.end(),
+            [&member]( const local_cohesion_member_read * candidate ) {
+                return candidate->npc_id == member.npc_id;
+            } );
+            snapshot.cohesion_best_staging_distances.push_back(
+                read == living_reads.end() ? 0 :
+                rl_dist( ( *read )->current_position, member.staging_position ) );
+        }
+    }
 
     std::optional<tripoint_abs_omt> homeward_route_stage;
     if( snapshot.cohesion_assembled && outing.phase == scout_phase::returning_home &&
@@ -5012,6 +5059,8 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             member->staging_position = stage_center +
                                        pair_offset * static_cast<int>( index );
             member->exit_position = ( *read )->current_position;
+            snapshot.cohesion_best_staging_distances[index] =
+                rl_dist( member->entry_position, member->staging_position );
         }
     }
 
@@ -5089,6 +5138,47 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         snapshot.cohesion_deadline_minutes = -1;
         snapshot.cohesion_reroutes_used = 0;
     } else {
+        bool staging_progressed = !living_reads.empty();
+        bool strictly_closer = false;
+        for( std::size_t index = 0; index < snapshot.members.size(); ++index ) {
+            const local_handoff_member_snapshot &member = snapshot.members[index];
+            if( member.dead ) {
+                continue;
+            }
+            const auto read = std::find_if( living_reads.begin(), living_reads.end(),
+            [&member]( const local_cohesion_member_read * candidate ) {
+                return candidate->npc_id == member.npc_id;
+            } );
+            if( read == living_reads.end() ) {
+                staging_progressed = false;
+                break;
+            }
+            const int current_distance =
+                rl_dist( ( *read )->current_position, member.staging_position );
+            if( current_distance > snapshot.cohesion_best_staging_distances[index] ) {
+                staging_progressed = false;
+                break;
+            }
+            strictly_closer = strictly_closer ||
+                              current_distance < snapshot.cohesion_best_staging_distances[index];
+        }
+        staging_progressed = staging_progressed && strictly_closer;
+        if( staging_progressed ) {
+            for( std::size_t index = 0; index < snapshot.members.size(); ++index ) {
+                const local_handoff_member_snapshot &member = snapshot.members[index];
+                if( member.dead ) {
+                    continue;
+                }
+                const auto read = std::find_if( living_reads.begin(), living_reads.end(),
+                [&member]( const local_cohesion_member_read * candidate ) {
+                    return candidate->npc_id == member.npc_id;
+                } );
+                snapshot.cohesion_best_staging_distances[index] =
+                    rl_dist( ( *read )->current_position, member.staging_position );
+            }
+            snapshot.cohesion_deadline_minutes = minutes_after_saturated(
+                    current_minutes, local_pair_rendezvous_minutes );
+        }
         if( snapshot.cohesion_deadline_minutes < 0 ) {
             snapshot.cohesion_deadline_minutes = minutes_after_saturated(
                     current_minutes, local_pair_rendezvous_minutes );
@@ -6644,7 +6734,15 @@ void local_handoff_snapshot::clear()
 
 bool local_handoff_snapshot::is_active() const
 {
-    return schema_version >= 1 && schema_version <= 3 && !activity_id.empty() &&
+    if( schema_version >= 4 &&
+        ( cohesion_best_staging_distances.size() != members.size() ||
+          std::any_of( cohesion_best_staging_distances.begin(),
+                       cohesion_best_staging_distances.end(), []( const int distance ) {
+        return distance < 0;
+    } ) ) ) {
+        return false;
+    }
+    return schema_version >= 1 && schema_version <= 4 && !activity_id.empty() &&
            activity_generation > 0 &&
            handoff_epoch > 0 && handoff_epoch % 2 == 1 && committed_minutes >= 0 &&
            !members.empty() && members.size() <= 2;
@@ -6652,7 +6750,15 @@ bool local_handoff_snapshot::is_active() const
 
 bool local_handoff_snapshot::is_abstract_resume() const
 {
-    return schema_version >= 2 && schema_version <= 3 && !activity_id.empty() &&
+    if( schema_version >= 4 &&
+        ( cohesion_best_staging_distances.size() != members.size() ||
+          std::any_of( cohesion_best_staging_distances.begin(),
+                       cohesion_best_staging_distances.end(), []( const int distance ) {
+        return distance < 0;
+    } ) ) ) {
+        return false;
+    }
+    return schema_version >= 2 && schema_version <= 4 && !activity_id.empty() &&
            handoff_epoch > 0 && handoff_epoch % 2 == 0 && committed_minutes >= 0 &&
            members.size() == 2;
 }
@@ -6683,6 +6789,9 @@ void local_handoff_snapshot::serialize( JsonOut &json ) const
         json.member( "cohesion_reroutes_used", cohesion_reroutes_used );
         json.member( "cohesion_assembled", cohesion_assembled );
         json.member( "cohesion_abort_return", cohesion_abort_return );
+    }
+    if( schema_version >= 4 ) {
+        json.member( "cohesion_best_staging_distances", cohesion_best_staging_distances );
     }
     json.member( "committed_minutes", std::max( -1, committed_minutes ) );
     json.end_object();
@@ -6738,6 +6847,18 @@ void local_handoff_snapshot::deserialize( const JsonObject &jo )
             ( candidate.cohesion_abort_return &&
               candidate.phase != scout_phase::returning_home ) ) {
             jo.throw_error( "local handoff snapshot has malformed cohesion state" );
+        }
+    }
+    if( candidate.schema_version >= 4 ) {
+        jo.read( "cohesion_best_staging_distances",
+                 candidate.cohesion_best_staging_distances );
+        if( candidate.cohesion_best_staging_distances.size() != candidate.members.size() ||
+            std::any_of( candidate.cohesion_best_staging_distances.begin(),
+                         candidate.cohesion_best_staging_distances.end(),
+        []( const int distance ) {
+            return distance < 0;
+        } ) ) {
+            jo.throw_error( "local handoff snapshot has malformed staging progress state" );
         }
     }
     jo.read( "committed_minutes", candidate.committed_minutes );

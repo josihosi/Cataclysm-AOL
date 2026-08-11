@@ -10136,6 +10136,177 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK_FALSE( site.active_outing.local_handoff.cohesion_assembled );
     }
 
+    SECTION( "only new monotonic staging progress refreshes the local rendezvous deadline" ) {
+        const auto initialize_pair = [&make_world, &make_reads](
+        bandit_live_world::world_state & world, bandit_live_world::site_record *& site ) {
+            world = make_world( true );
+            site = &world.sites.front();
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( *site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_handoff_plan handoff =
+                bandit_live_world::plan_local_pair_handoff( *site, *cursor, 100,
+                        make_reads( *site ) );
+            REQUIRE( handoff.valid );
+            REQUIRE( bandit_live_world::commit_local_pair_handoff( *site, handoff,
+            []( const bandit_live_world::local_handoff_member_snapshot & ) {
+                return true;
+            }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                     bandit_live_world::local_handoff_commit_result::applied );
+            const tripoint_abs_ms route_origin = project_to<coords::ms>(
+                    site->active_outing.local_handoff.route_position );
+            for( std::size_t index = 0;
+                 index < site->active_outing.local_handoff.members.size(); ++index ) {
+                bandit_live_world::local_handoff_member_snapshot &member =
+                    site->active_outing.local_handoff.members[index];
+                member.entry_position = route_origin + point( 2 + static_cast<int>( index ), 2 );
+                member.exit_position = member.entry_position;
+                member.staging_position = route_origin + point( 20 + static_cast<int>( index ), 20 );
+                site->active_outing.local_handoff.cohesion_best_staging_distances[index] =
+                    rl_dist( member.entry_position, member.staging_position );
+            }
+        };
+        const auto make_cohesion_reads = []( const bandit_live_world::site_record & site ) {
+            std::vector<bandit_live_world::local_cohesion_member_read> reads;
+            for( const bandit_live_world::local_handoff_member_snapshot &member :
+                 site.active_outing.local_handoff.members ) {
+                reads.push_back( { member.npc_id, true, false, member.entry_position } );
+            }
+            return reads;
+        };
+        const auto advance_toward_staging = []( const tripoint_abs_ms & position,
+        const tripoint_abs_ms & target ) {
+            return tripoint_abs_ms( position.x() + ( position.x() < target.x() ? 1 :
+                                     position.x() > target.x() ? -1 : 0 ),
+                                     position.y() + ( position.y() < target.y() ? 1 :
+                                     position.y() > target.y() ? -1 : 0 ), position.z() );
+        };
+        const auto plan_and_commit = []( bandit_live_world::site_record & site, const int minute,
+        const std::vector<bandit_live_world::local_cohesion_member_read> & reads ) {
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_cohesion_plan plan =
+                bandit_live_world::plan_local_pair_cohesion( site, *cursor, minute, reads );
+            REQUIRE( plan.valid );
+            REQUIRE( bandit_live_world::commit_local_pair_cohesion( site, plan, true, false ) );
+        };
+
+        SECTION( "a long route remains live after the original deadline" ) {
+            bandit_live_world::world_state world;
+            bandit_live_world::site_record *site = nullptr;
+            initialize_pair( world, site );
+            std::vector<bandit_live_world::local_cohesion_member_read> reads =
+                make_cohesion_reads( *site );
+            plan_and_commit( *site, 100, reads );
+            CHECK( site->active_outing.local_handoff.cohesion_deadline_minutes == 110 );
+            for( std::size_t index = 0; index < reads.size(); ++index ) {
+                reads[index].current_position = advance_toward_staging(
+                        reads[index].current_position,
+                        site->active_outing.local_handoff.members[index].staging_position );
+            }
+            plan_and_commit( *site, 109, reads );
+            CHECK( site->active_outing.local_handoff.cohesion_deadline_minutes == 119 );
+            for( std::size_t index = 0; index < reads.size(); ++index ) {
+                reads[index].current_position = advance_toward_staging(
+                        reads[index].current_position,
+                        site->active_outing.local_handoff.members[index].staging_position );
+            }
+            plan_and_commit( *site, 111, reads );
+            CHECK_FALSE( site->active_outing.local_handoff.cohesion_abort_return );
+            CHECK( site->active_outing.local_handoff.cohesion_deadline_minutes == 121 );
+        }
+
+        SECTION( "two-position pacing cannot renew the deadline" ) {
+            bandit_live_world::world_state world;
+            bandit_live_world::site_record *site = nullptr;
+            initialize_pair( world, site );
+            std::vector<bandit_live_world::local_cohesion_member_read> reads =
+                make_cohesion_reads( *site );
+            plan_and_commit( *site, 100, reads );
+            for( std::size_t index = 0; index < reads.size(); ++index ) {
+                reads[index].current_position = advance_toward_staging(
+                        reads[index].current_position,
+                        site->active_outing.local_handoff.members[index].staging_position );
+            }
+            plan_and_commit( *site, 109, reads );
+            const std::vector<bandit_live_world::local_cohesion_member_read> closer_reads = reads;
+            for( std::size_t index = 0; index < reads.size(); ++index ) {
+                reads[index].current_position =
+                    site->active_outing.local_handoff.members[index].entry_position;
+            }
+            plan_and_commit( *site, 110, reads );
+            CHECK( site->active_outing.local_handoff.cohesion_deadline_minutes == 119 );
+            plan_and_commit( *site, 118, closer_reads );
+            CHECK( site->active_outing.local_handoff.cohesion_deadline_minutes == 119 );
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( *site );
+            REQUIRE( cursor );
+            const bandit_live_world::local_cohesion_plan timeout =
+                bandit_live_world::plan_local_pair_cohesion( *site, *cursor, 119, closer_reads );
+            REQUIRE( timeout.valid );
+            CHECK( timeout.abort_return );
+        }
+    }
+
+    SECTION( "a schema-3 local handoff promotes its staging progress on dematerialization" ) {
+        bandit_live_world::world_state world = make_world( false );
+        bandit_live_world::site_record *site = &world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( *site );
+        REQUIRE( cursor );
+        REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                     *site, bandit_live_world::plan_local_pair_handoff(
+                         *site, *cursor, 100, make_reads( *site ) ),
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        site->active_outing.local_handoff.schema_version = 3;
+        site->active_outing.local_handoff.cohesion_best_staging_distances.clear();
+        site->active_outing.local_handoff.cohesion_assembled = true;
+        const std::string legacy_bytes = serialize_world( world );
+        world = round_trip_world( world );
+        site = &world.sites.front();
+        CHECK( serialize_world( world ) == legacy_bytes );
+        REQUIRE( site->active_outing.local_handoff.schema_version == 3 );
+        const std::string activity_id = site->active_outing.activity_id;
+        const int generation = site->active_outing.generation;
+        const std::vector<character_id> member_ids = site->active_outing.member_ids;
+        std::vector<bandit_live_world::local_dematerialization_member_read> reads;
+        for( const bandit_live_world::local_handoff_member_snapshot &member :
+             site->active_outing.local_handoff.members ) {
+            reads.push_back( { member.npc_id, true, false, false, 75,
+                               member.staging_position } );
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
+            bandit_live_world::current_external_simulation_cursor( *site );
+        REQUIRE( local_cursor );
+        const bandit_live_world::local_dematerialization_plan dematerialization =
+            bandit_live_world::plan_local_pair_dematerialization(
+                *site, *local_cursor, 101, reads, {} );
+        REQUIRE( dematerialization.valid );
+        CHECK( dematerialization.resume_snapshot.schema_version == 4 );
+        CHECK( dematerialization.resume_snapshot.cohesion_best_staging_distances.size() ==
+               dematerialization.resume_snapshot.members.size() );
+        CHECK( std::all_of(
+                   dematerialization.resume_snapshot.cohesion_best_staging_distances.begin(),
+                   dematerialization.resume_snapshot.cohesion_best_staging_distances.end(),
+        []( const int distance ) {
+            return distance >= 0;
+        } ) );
+        REQUIRE( bandit_live_world::commit_local_pair_dematerialization(
+                     *site, dematerialization,
+        []( const bandit_live_world::local_handoff_member_snapshot & ) {
+            return true;
+        }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( site->active_outing.activity_id == activity_id );
+        CHECK( site->active_outing.generation == generation );
+        CHECK( site->active_outing.member_ids == member_ids );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    }
+
     SECTION( "a complete local pair snapshots out and abstract work resumes once" ) {
         bandit_live_world::world_state world = make_world( false );
         bandit_live_world::site_record &site = world.sites.front();

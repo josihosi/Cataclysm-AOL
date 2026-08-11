@@ -412,7 +412,7 @@ struct local_handoff_member_snapshot {
 };
 
 struct local_handoff_snapshot {
-    int schema_version = 3;
+    int schema_version = 4;
     std::string activity_id;
     int activity_generation = 0;
     int handoff_epoch = -1;
@@ -427,6 +427,7 @@ struct local_handoff_snapshot {
     character_id cohesion_leader_id;
     int cohesion_deadline_minutes = -1;
     int cohesion_reroutes_used = 0;
+    std::vector<int> cohesion_best_staging_distances;
     bool cohesion_assembled = false;
     bool cohesion_abort_return = false;
     int committed_minutes = -1;
