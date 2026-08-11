@@ -62,13 +62,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   `(-36,-36)`. The intended world delta `(-36,0)` requires 18 left plus 18 down actions. No signal
   row was credited.
 
-  Task `R002-M43` retains the durable 3,600-second R-002 envelope. Correct only the structural-signal
-  scenario's physical fire and active-C-4 editor paths to the source-exact isometric key composition
-  for target abs-ms `(3300,1187,0)`, and strengthen the focused fixture contract to apply current
-  `rotate_direction_cw` semantics rather than counting nominal left keys. Preserve every lead, watch,
-  clock, signal, return, provenance, and later decoy assertion. Run focused and full fixture-contract
-  tests. Do not edit product or generic harness source, fixture transforms, `.de67/`, README, commit,
-  launch a live scenario, or claim R-002.
+  `R002-M43` is accepted at `e7d07147b0`. Both physical-signal editor paths now use 18 isometric
+  screen-left plus 18 screen-down actions. The focused contract applies current
+  `rotate_direction_cw` semantics and proves world delta `(-36,0)`, exact source abs-ms
+  `(3300,1187,0)`, and target OMT `(137,49,0)` for both steps. Focused two tests and the full
+  196-test fixture-contract suite passed. The accepted runtime remains exact because this checkpoint
+  changes scenario/tests only.
+
+  Task `R002-M44` retains the durable 3,600-second R-002 envelope because it reruns the established
+  scenario only after the causal isometric staging correction. The coordinator must require the full
+  M42 contract, beginning with exact minute-10080 source `(137,49,0)` to watch `(138,52,0)` smoke,
+  light, and sound facts, then natural observer artifacts, pre-return absence, physical two-survivor
+  return, exactly three non-player returned-report leads, and persisted saved ownership. Inspect the
+  actual step ledger, artifact matches, owner metadata, and image/pair. Stop at the first new broken
+  premise; do not edit during the run, claim the empty-decoy contrast, or claim R-002.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
