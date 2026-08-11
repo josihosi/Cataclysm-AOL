@@ -24,7 +24,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   scanned alternative exceeds the owner's normalized 18-OMT route cap. Saved-overmap inspection
   cannot decide the exact NPC route, target-footprint exclusion, normalization, and cap owners.
 
-  Accepted analyzer checkpoint `b8e2317b39` (`R002-M76`) retains the production owner call,
+  Accepted analyzer checkpoint `b8e2317b39` retains the production owner call,
   read-only `DEBUG_CLAIRVOYANCE` action, harness route, and selected/rejected semantics while emitting
   each result as one identity-bound `DebugLog` record. The changed objects compiled, the direct-owner
   Catch2 control passed 19 assertions, and three source-shaped Python matcher tests passed, including
@@ -38,11 +38,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   This rules out another natural wait on that installed target without changing the world or
   selector.
 
-  Next route: bind the remaining real-versus-empty signal contrast to a different natural,
-  selector-valid footing. Start from the existing road opportunity around `(164,35,0)`, use only
-  ordinary physical signal provenance, and run the read-only production analyzer before any long
-  gameplay wait. A selected record must remain identity-bound and include its watch and route cost;
-  another rejection is footing evidence, not discovery credit. Do not weaken the selector, drag the
+  Accepted read-only analyzer extension `4fa2455149` now evaluates the existing non-frontier
+  structural planner before its frontier fallback and emits `selector=non_frontier|frontier` on the
+  same identity-bound record. The parser rejects records without that discriminator and still
+  requires selected watch and route cost. Three parser controls, the direct planner-owner control
+  with 22 assertions, a forced `do_turn.o` compile, discriminator negatives, and `git diff --check`
+  passed without changing product scheduling, perception, route ownership, or fixture state.
+
+  The installed McWilliams camp currently has no persisted intelligence-map leads, so `(164,35,0)`
+  is not yet a non-frontier selector input, so that attempt earned no discovery credit. Its live
+  invocation was also blocked when the harness reported missing Peekaboo Accessibility despite the
+  direct bridge reporting it granted, while direct SDL launch opened no window.
+
+  Next route: restore a working GUI input channel, then let the unchanged production scheduler seed
+  the natural terrain lead on the existing road footing and invoke the analyzer immediately after
+  that lead exists, before any long outing wait. The empty and real-signal rows must share this
+  site/roster/clock/road footing and differ only by ordinary physical signal provenance. A selected
+  record must remain identity-bound and include its watch and route cost; another rejection is
+  footing evidence, not discovery credit. Do not hand-author the lead, weaken the selector, drag the
   target with the player, or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
