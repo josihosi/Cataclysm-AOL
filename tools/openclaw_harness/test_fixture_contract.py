@@ -4990,6 +4990,186 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertIn("threat_omt=(137,49,0)", serialized_scenario)
         self.assertNotIn("136,51,0", serialized_scenario)
 
+    def test_phase4_road_twilight_reuses_exact_watch_for_negative_budget(self) -> None:
+        fixture_name = "bandit_phase4_visibility_road_twilight_v0_2026-08-04"
+        day_fixture_name = "bandit_phase4_visibility_road_day_v0_2026-08-04"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
+        scenario = load_scenario("bandit.phase4_visibility_road_twilight_live_mcw")
+        steps = list(scenario["steps"])
+        labels = [step["label"] for step in steps]
+
+        self.assertEqual(
+            resolved["source_chain"][:3],
+            [
+                ("live-debug", fixture_name),
+                ("live-debug", day_fixture_name),
+                (
+                    "live-debug",
+                    "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+                ),
+            ],
+        )
+        fixture_manifest_path = (
+            HARNESS_DIR
+            / "fixtures"
+            / "saves"
+            / "live-debug"
+            / fixture_name
+            / "manifest.json"
+        )
+        fixture_manifest = json.loads(fixture_manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(fixture_manifest["source_fixture"], day_fixture_name)
+        self.assertEqual(
+            fixture_manifest["save_transforms"],
+            [
+                {
+                    "kind": "game_turn",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "turn": 5241600,
+                    "shift_queued_eocs": True,
+                }
+            ],
+        )
+
+        transforms = list(resolved["save_transforms"])
+        last_clear_index = max(
+            index
+            for index, transform in enumerate(transforms)
+            if transform["kind"] == "bandit_clear_site_evidence"
+        )
+        effective_leads = [
+            transform
+            for transform in transforms[last_clear_index + 1 :]
+            if transform["kind"] == "bandit_camp_map_lead"
+        ]
+        self.assertEqual(len(effective_leads), 1)
+        self.assertEqual(effective_leads[0]["kind_value"], "terrain_opportunity")
+        self.assertEqual(
+            effective_leads[0]["lead_id"],
+            "overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
+        )
+        self.assertEqual(effective_leads[0]["target_omt"], [137, 49, 0])
+        self.assertEqual(
+            effective_leads[0]["source_key"],
+            "fixture_phase4_visibility_road_horde:terrain_fit:road",
+        )
+        self.assertNotIn(
+            "#lead:structural_bounty:road@137,49,0",
+            json.dumps(effective_leads, sort_keys=True),
+        )
+
+        expected_horde_offsets = [
+            [-72, 240, 0],
+            [-71, 240, 0],
+            [-70, 240, 0],
+        ]
+        horde_transforms = [
+            transform
+            for transform in transforms
+            if transform["kind"] == "horde_entity_near_player"
+        ]
+        self.assertEqual(
+            [transform["offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+        self.assertEqual(
+            [transform["destination_offset_ms"] for transform in horde_transforms],
+            expected_horde_offsets,
+        )
+        self.assertEqual(
+            [transform["monster_id"] for transform in horde_transforms],
+            ["mon_zombie"] * 3,
+        )
+        player_omt = [140, 39, 0]
+        self.assertEqual(
+            [
+                [
+                    (player_omt[axis] * 24 + (12 if axis < 2 else 0) + offset[axis])
+                    // (24 if axis < 2 else 1)
+                    for axis in range(3)
+                ]
+                for offset in expected_horde_offsets
+            ],
+            [[137, 49, 0]] * 3,
+        )
+        horde_preflight = steps[
+            labels.index("preflight_phase4_visibility_road_twilight_horde")
+        ]
+        self.assertEqual(
+            horde_preflight["required_hordes"],
+            [
+                {"monster_id": "mon_zombie", "offset_ms": offset}
+                for offset in expected_horde_offsets
+            ],
+        )
+
+        dispatch_label = "wait_second_6_hours_for_phase4_visibility_road_twilight_dispatch"
+        approach_label = "wait_first_1_hour_for_phase4_visibility_road_twilight_approach"
+        visibility_label = "wait_second_1_hour_for_phase4_visibility_road_twilight_observer"
+        audit_label = "audit_phase4_visibility_road_twilight_artifact"
+        self.assertLess(labels.index(dispatch_label), labels.index(approach_label))
+        self.assertLess(labels.index(approach_label), labels.index(visibility_label))
+        self.assertLess(labels.index(visibility_label), labels.index(audit_label))
+        exact_dispatch_lead = (
+            "lead=overmap_special:bandit_camp@140,51,0"
+            ":terrain_opportunity:137,49,0:road"
+        )
+        self.assertEqual(
+            steps[labels.index(dispatch_label)]["artifact_state_patterns"],
+            [
+                "scheduler_hour=147",
+                "now_minutes=8820",
+                "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+                exact_dispatch_lead,
+            ],
+        )
+        self.assertEqual(
+            steps[labels.index(approach_label)]["artifact_state_patterns"],
+            ["scheduler_hour=148", "now_minutes=8880"],
+        )
+        self.assertEqual(
+            steps[labels.index(visibility_label)]["artifact_state_patterns"],
+            [
+                "scheduler_hour=149",
+                "now_minutes=8940",
+                "bandit_live_world structural_visibility:",
+            ],
+        )
+        site_preflight = steps[
+            labels.index("preflight_phase4_visibility_road_twilight_site")
+        ]
+        self.assertEqual(site_preflight["required_lead_kind"], "terrain_opportunity")
+        audit = steps[labels.index(audit_label)]
+        self.assertEqual(
+            audit["required_line_patterns"],
+            [
+                [
+                    "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+                    exact_dispatch_lead,
+                ],
+                [
+                    "bandit_live_world structural_visibility:",
+                    "site=overmap_special:bandit_camp@140,51,0",
+                    "current_omt=(138,52,0)",
+                    "weather=clear",
+                    "optic=no",
+                    "sight_points=2",
+                    "forward_candidates=1",
+                    "first_forward_omt=(137,49,0)",
+                    "first_forward_distance=3",
+                    "first_forward_acquired=no",
+                    "outcome=no_visible_threat",
+                    "threat_omt=none",
+                ],
+            ],
+        )
+        serialized_scenario = json.dumps(scenario, sort_keys=True)
+        self.assertEqual(serialized_scenario.count(exact_dispatch_lead), 3)
+        self.assertNotIn("#lead:structural_bounty:road@137,49,0", serialized_scenario)
+        self.assertNotIn("136,51,0", serialized_scenario)
+        self.assertNotIn("first_forward_acquired=yes", serialized_scenario)
+        self.assertNotIn("outcome=observed", serialized_scenario)
+
     def test_scout_to_decision_observer_fixture_stops_before_natural_lead(self) -> None:
         fixture_name = "bandit_scout_to_decision_observer_southwest_v0_2026-08-07"
         resolved = resolve_fixture_payload(

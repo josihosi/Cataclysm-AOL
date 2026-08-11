@@ -1,8 +1,8 @@
 {
   "name": "bandit_phase4_visibility_road_twilight_v0_2026-08-04",
-  "source_fixture": "bandit_phase4_visibility_road_horde_common_v0_2026-08-04",
+  "source_fixture": "bandit_phase4_visibility_road_day_v0_2026-08-04",
   "source_profile": "live-debug",
-  "description": "Twilight child of the shared road/horde footing. The initial turn gives production twelve hours to dispatch and one further hourly tick to reach the previously observed McWilliams twilight interval; the live trace, not this description, is the credit gate.",
+  "description": "Twilight child of the accepted clear-day terrain-opportunity footing. The child preserves the twilight calendar turn while production owns dispatch, serialized approach and exact-watch arrival, and the negative two-point visibility read.",
   "save_transforms": [
     {
       "kind": "game_turn",
