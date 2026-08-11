@@ -309,6 +309,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   day, twilight, common fixtures, and product source. A reviewed green harness-only diff may be
   checkpointed; no live probe belongs to this task.
 
+  `R002-M22` accepted the night watch contrast at `939af7ab6e`. The night-only child now inherits
+  the accepted terrain-opportunity target/watch footing, reaches approach at hour 167 and exact
+  watch `(138,52,0)` at hour 168, and gates the runtime-exposed weather through its authoritative
+  one-point sight penalty rather than guessing an identity. Its focused contract requires the
+  distance-three non-acquisition and no-visible-threat artifact.
+
+  Task `R002-M23` retains the measured 3,600-second envelope for one coordinator-owned changed
+  night probe against exact runtime source `4aad58190f+SDL3`. Acceptance requires the real terrain-
+  opportunity dispatch, approach at scheduler hour 167, exact watch `(138,52,0)` at hour 168, a
+  runtime-exposed weather value with sight penalty one, no optic, sight points one, forward target
+  `(137,49,0)` at distance three, no acquisition, no visible threat, and every setup/error guard
+  green. Stop at the first changed production divergence; no unchanged retry.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
