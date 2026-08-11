@@ -3734,6 +3734,9 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
     struct pending_cohesion {
         bandit_live_world::site_record *site = nullptr;
         bandit_live_world::local_cohesion_plan plan;
+        int cohesion_minutes = 0;
+        int cohesion_deadline_before = -1;
+        std::string cohesion_reads;
     };
     std::vector<pending_cohesion> pending;
     std::set<character_id> claimed_members;
@@ -3773,13 +3776,49 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             }
             reads.push_back( read );
         }
+        const int cohesion_minutes = live_bandit_current_minutes();
+        const int cohesion_deadline_before =
+            outing.local_handoff.cohesion_deadline_minutes;
+        std::ostringstream cohesion_reads;
+        for( std::size_t index = 0; index < outing.local_handoff.members.size(); ++index ) {
+            const bandit_live_world::local_handoff_member_snapshot &snapshot =
+                outing.local_handoff.members[index];
+            const auto read = std::find_if( reads.begin(), reads.end(),
+            [&snapshot]( const bandit_live_world::local_cohesion_member_read &candidate ) {
+                return candidate.npc_id == snapshot.npc_id;
+            } );
+            const int best_distance = index <
+                                      outing.local_handoff.cohesion_best_staging_distances.size() ?
+                                      outing.local_handoff.cohesion_best_staging_distances[index] : -1;
+            cohesion_reads << ( index == 0 ? "" : ";" )
+                           << snapshot.npc_id.get_value()
+                           << ":present=" << ( read != reads.end() && read->present ? "yes" : "no" )
+                           << ",dead=" << ( read != reads.end() && read->dead ? "yes" : "no" )
+                           << ",current=" << ( read != reads.end() ?
+                                                 read->current_position.to_string() : "missing" )
+                           << ",staging=" << snapshot.staging_position.to_string()
+                           << ",distance=" << ( read != reads.end() ?
+                                                 rl_dist( read->current_position,
+                                                          snapshot.staging_position ) : -1 )
+                           << ",best_before=" << best_distance;
+        }
         const bandit_live_world::local_cohesion_plan plan =
             bandit_live_world::plan_local_pair_cohesion(
-                site, *cursor, live_bandit_current_minutes(), reads );
+                site, *cursor, cohesion_minutes, reads );
         if( !plan.valid ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_cohesion"
+                                       << " site=" << site.site_id
+                                       << " activity=" << site.active_outing.activity_id
+                                       << " minute=" << cohesion_minutes
+                                       << " plan_valid=no"
+                                       << " deadline_before=" << cohesion_deadline_before
+                                       << " deadline_after=" << cohesion_deadline_before
+                                       << " cohesion_reads=" << cohesion_reads.str()
+                                       << '\n';
             continue;
         }
-        pending.push_back( { &site, plan } );
+        pending.push_back( { &site, plan, cohesion_minutes, cohesion_deadline_before,
+                             cohesion_reads.str() } );
     }
     if( ownership_preflight_failed ) {
         return {};
@@ -3868,10 +3907,21 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                                  << "->" << snapshot.staging_position.to_string();
             }
         }
+        std::ostringstream cohesion_best_after;
+        for( std::size_t index = 0; index < plan.snapshot.members.size(); ++index ) {
+            const bandit_live_world::local_handoff_member_snapshot &snapshot =
+                plan.snapshot.members[index];
+            const int best_distance = index < plan.snapshot.cohesion_best_staging_distances.size() ?
+                                       plan.snapshot.cohesion_best_staging_distances[index] : -1;
+            cohesion_best_after << ( index == 0 ? "" : ";" )
+                                << snapshot.npc_id.get_value()
+                                << ":staging=" << snapshot.staging_position.to_string()
+                                << ",best=" << best_distance;
+        }
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_cohesion"
                                    << " site=" << site.site_id
                                    << " activity=" << site.active_outing.activity_id
-                                   << " minute=" << live_bandit_current_minutes()
+                                   << " minute=" << work.cohesion_minutes
                                    << " leader=" << site.active_outing.leader_id.get_value()
                                    << " assembled=" <<
                                    ( site.active_outing.local_handoff.cohesion_assembled ? "yes" : "no" )
@@ -3882,6 +3932,11 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                                    << " route_failed=" << ( route_failed ? "yes" : "no" )
                                    << " path_steps=" << routed_path_steps
                                    << " member_positions=" << member_positions.str()
+                                   << " plan_valid=yes"
+                                   << " deadline_before=" << work.cohesion_deadline_before
+                                   << " deadline_after=" << plan.snapshot.cohesion_deadline_minutes
+                                   << " cohesion_reads=" << work.cohesion_reads
+                                   << " cohesion_best_after=" << cohesion_best_after.str()
                                    << " abort=" <<
                                    ( site.active_outing.local_handoff.cohesion_abort_return ? "yes" : "no" )
                                    << '\n';
