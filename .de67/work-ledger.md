@@ -6,38 +6,22 @@ Lineage: `CAOL-hostile-ecology-dev`
 ## Active work
 
 - [ ] R-002 — Prove bounded ordinary discovery and absence of hidden-state radar on the accepted
-  runtime source. Accepted exact `4aad58190f+SDL3` evidence now covers the quiet former-radar
+  runtime source. Accepted exact `4aad58190f+SDL3` evidence covers the quiet former-radar
   control, clear road range, twilight and night screening, and the same transformed forest target
   with optics, fog, and no-optic contrasts. The remaining minimal contrast rows are real versus empty
   signal provenance, player relocation without target drag, and legitimately observed versus unseen
-  zombie danger. Commits after the runtime checkpoint change harness or durable DE-67 state only.
+  zombie danger.
 
-  Current causal frontier: the natural production assembly-to-ingress path can split the exact pair
-  across OMTs and then abort after the remaining member oscillates. Evidence is
-  `.userdata/dev-harness/harness_runs/20260811_191731/probe.artifacts.log:868-968,1044` and
-  `probe.report.json:16339-16355`. Revoking persisted `cohesion_assembled` after a split made a
-  focused test green, but manually injected the split and left `overmap_npc_move` collecting and
-  advancing `travelling_npcs` one member at a time. That candidate was rejected and removed:
-  post-split detection is not the required paired ingress commit. `R002-M60` moved the preflight into
-  that production loop and compiled, but
-  its new controls polluted the enclosing multi-section fixture: the rebuilt owning filter left two
-  existing homeward cases local, then exposed invalid-looking owner/route state and crashed. The
-  two-file candidate was rejected and removed because this evidence cannot distinguish a product
-  regression from test-state contamination.
+  Accepted causal frontier: `168b57868d` makes assembled ingress use one exact-pair eligibility
+  preflight in `overmap_npc_move`. The isolated negative control failed on the unchanged owner because
+  both members advanced when one was independently ineligible; after the fix it and the positive row
+  passed 105 assertions, the established homeward filter passed 1878 assertions, and both changed
+  objects compiled. This clears the production assembly-to-ingress blocker without closing R-002.
 
-  Next required slice: isolate the production-order ingress controls from the existing multi-section
-  fixture and prove the unchanged source fails the independently-ineligible negative row without
-  contaminating the established homeward rows. Then change `overmap_npc_move` so an assembled exact
-  pair passes the same `travelling_npcs` eligibility preflight and commits both ingress steps or
-  neither. The positive row must advance both; the negative row must leave both on the route OMT with
-  ingress ownership intact and no progress credit. A manual position split or next-pass split
-  detection is insufficient. The full owning filter and changed-object compile must pass before the
-  structural-signal probe is rerun. R-002 remains red; the signal-return, relocation, and
-  observed-versus-unseen zombie rows remain afterward.
-
-  `R002-M61` estimate: 2700 seconds. The ready focused-test binary and changed-object cache remove
-  setup work; the last adjacent R-002 checkpoint intervals were 14–24 minutes, so this deadline
-  covers an isolated discriminator, the paired-owner correction, rebuild, and owning filter.
+  Next required slice: build the exact `168b57868d` checkpoint and rerun the natural structural-signal
+  route. Prove real versus empty signal provenance without fixture mutation or hidden target facts;
+  retain the signal result only if the exact pair clears ingress and reaches the production observer.
+  Player relocation and legitimately observed versus unseen zombie danger remain afterward.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
