@@ -13505,6 +13505,30 @@ bool credit_structural_return_cargo( site_record &candidate, const int now_minut
     return true;
 }
 
+void append_structural_observer_forward_omts( const active_outing_state &outing,
+        const int target_index, structural_threat_observer_request &request )
+{
+    for( int index = outing.waypoint_index + 1;
+         index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
+        request.visible_forward_omts.push_back(
+            outing.shared_route[static_cast<std::size_t>( index )] );
+    }
+    if( outing.selected_watch_kind == structural_watch_kind::none ||
+        request.current_omt != outing.selected_watch_omt ) {
+        return;
+    }
+    for( const tripoint_abs_omt &target_omt : outing.target_footprint ) {
+        if( request.visible_forward_omts.size() >= 3 ) {
+            break;
+        }
+        if( target_omt.z() == request.current_omt.z() &&
+            std::find( request.visible_forward_omts.begin(), request.visible_forward_omts.end(),
+                       target_omt ) == request.visible_forward_omts.end() ) {
+            request.visible_forward_omts.push_back( target_omt );
+        }
+    }
+}
+
 bool make_static_structural_observer_request( const site_record &site,
         structural_threat_observer_request &request )
 {
@@ -13534,11 +13558,7 @@ bool make_static_structural_observer_request( const site_record &site,
     request.observation_window_start_minutes = outing.last_advanced_minutes;
     request.party_power = structural_outing_party_power( site );
     const int target_index = structural_outing_destination_waypoint( outing );
-    for( int index = outing.waypoint_index + 1;
-         index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
-        request.visible_forward_omts.push_back(
-            outing.shared_route[static_cast<std::size_t>( index )] );
-    }
+    append_structural_observer_forward_omts( outing, target_index, request );
     return request.party_power > 0;
 }
 } // namespace
@@ -13804,26 +13824,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             request.party_power = structural_outing_party_power( candidate );
             const int target_index = structural_outing_destination_waypoint(
                                          pre_advance_outing );
-            for( int index = pre_advance_outing.waypoint_index + 1;
-                 index <= target_index && request.visible_forward_omts.size() < 3; ++index ) {
-                request.visible_forward_omts.push_back(
-                    pre_advance_outing.shared_route[static_cast<std::size_t>( index )] );
-            }
-            if( pre_advance_outing.selected_watch_kind != structural_watch_kind::none &&
-                request.current_omt == pre_advance_outing.selected_watch_omt ) {
-                for( const tripoint_abs_omt &target_omt :
-                     pre_advance_outing.target_footprint ) {
-                    if( request.visible_forward_omts.size() >= 3 ) {
-                        break;
-                    }
-                    if( target_omt.z() == request.current_omt.z() &&
-                        std::find( request.visible_forward_omts.begin(),
-                                   request.visible_forward_omts.end(), target_omt ) ==
-                        request.visible_forward_omts.end() ) {
-                        request.visible_forward_omts.push_back( target_omt );
-                    }
-                }
-            }
+            append_structural_observer_forward_omts( pre_advance_outing, target_index, request );
             add_structural_observer_retained_track( candidate, request, now_minutes );
             abstract_threat_read abstract_read;
             if( abstract_threat_lookup ) {

@@ -13440,6 +13440,56 @@ TEST_CASE( "hostile_camp_watch_target_signals_become_leads_only_with_route_recei
     CHECK( count_returned_smoke_leads( receiver_outside_world.sites.front() ) == 0 );
 }
 
+TEST_CASE( "hostile_camp_static_watch_target_signal_records_target_footprint",
+           "[bandit][live_world][phase4_signal_observation]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 16140 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    const tripoint_abs_omt target_omt = outing.target_omt;
+    const tripoint_abs_omt watch_omt( target_omt.x(), target_omt.y() + 3, target_omt.z() );
+    const tripoint_abs_omt approach_omt( watch_omt.x(), watch_omt.y() + 1, watch_omt.z() );
+    outing.schema_version = 10;
+    outing.target_footprint = { target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = watch_omt;
+    outing.selected_watch_route_cost = 8;
+    outing.shared_route = { site.anchor, approach_omt, watch_omt, approach_omt, site.anchor };
+    outing.waypoint_index = 2;
+    REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                 outing.shared_route, site.anchor, watch_omt, outing.target_footprint ) );
+    REQUIRE( std::find( outing.shared_route.begin(), outing.shared_route.end(), target_omt ) ==
+             outing.shared_route.end() );
+
+    int signal_callbacks = 0;
+    const bandit_live_world::structural_signal_record_result recorded =
+        bandit_live_world::record_structural_signal_observations(
+            world, 221,
+    [&signal_callbacks, target_omt, watch_omt]( const bandit_live_world::site_record &,
+            const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        signal_callbacks++;
+        CHECK( request.current_omt == watch_omt );
+        REQUIRE( std::find( request.visible_forward_omts.begin(),
+                           request.visible_forward_omts.end(), target_omt ) !=
+                 request.visible_forward_omts.end() );
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_signal_read(
+                bandit_live_world::sortie_observation_sense::smoke,
+                target_omt, 5, 75, 2 )
+        };
+    } );
+    CHECK( recorded.callbacks_invoked == 1 );
+    CHECK( recorded.sites_recorded == 1 );
+    CHECK( recorded.facts_recorded == 1 );
+    CHECK( signal_callbacks == 1 );
+    REQUIRE( site.active_outing.observations.size() == 1 );
+    const bandit_live_world::sortie_observation &observation =
+        site.active_outing.observations.front();
+    CHECK( observation.source_omt == target_omt );
+    CHECK( observation.receiver_omt == watch_omt );
+}
+
 TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
            "[bandit][live_world][phase4_decoy_signal_control][scheduler][save]" )
 {
