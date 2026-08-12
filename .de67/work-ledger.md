@@ -115,14 +115,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   would violate the required natural provenance. Saved-state audit and the production route analyzer can
   inspect camp, lead, watch, and route state only after that missing bridge.
 
-  Accepted natural-world oracle `db366a18eb` keeps all scan mutation in an in-memory copy of the
-  ordinarily generated bandit site and leaves the durable world unchanged. Seed `830204914` produced
-  all 12 authoritative near-ring samples and 12 natural leads. The planner exposed six non-frontier
-  candidates, and the oracle evaluated only the first two allowed by the production per-site route-solve
-  cap. Both selected under one shared eight-read budget: target `(207,31,0)` used watch `(210,29,0)` at
-  normalized route cost 10, and target `(211,27,0)` used watch `(209,30,0)` at cost 10. The focused
-  macOS binary passed 49 assertions. Structured review caught and closed an earlier false-green that had
-  evaluated candidates beyond the production prefix; generated test artifacts were removed.
+  Accepted natural-world oracle `db366a18eb`, corrected at `05f44bf535`, keeps all scan mutation in an
+  in-memory copy of the ordinarily generated bandit site and leaves the durable world unchanged. The
+  corrected oracle applies both product seed owners and asserts no loaded cardinal neighbor around the
+  ordinary `(1,0)` generation boundary. Raw seed `830205018` produced both hostile camp kinds, all 12
+  authoritative near-ring samples, and 12 natural leads. The planner exposed six non-frontier candidates
+  and evaluated only the first two allowed by the production per-site route-solve cap. Both selected
+  under one shared eight-read budget: target `(217,30,0)` used watch `(218,27,0)` at normalized route
+  cost 8, and target `(214,25,0)` used watch `(217,27,0)` at cost 12. The focused macOS binary passed
+  53 assertions. Structured review rejected the former single-seed-owner oracle and generated test
+  artifacts were removed.
 
   Accepted live-bridge ownership audit found no current end-to-end route. Product `--seed` hashes a string
   and applies before static-data load; ordinary new-game setup then consumes RNG while creating the
@@ -132,14 +134,23 @@ Lineage: `CAOL-hostile-ecology-dev`
   within 40 OMT and the current analyzer action is observer-trait gated. CLI seed alone, raw seed alone,
   a test-created save, and GUI Play Now plus audit each omit a necessary provenance or determinism owner.
 
-  Next route: add a distinct harness-only raw numeric seed at an explicit ordinary-overmap-generation
-  boundary, named fresh normal-world creation through existing worldfactory/setup/NOW/start-game owners,
-  and a non-persisting feasibility report for natural camp identity, player distance, the first two
-  production-prefix candidates, selected watch/cost, and the shared eight-read budget. Extend harness argv,
-  save-marker, and unchanged capture wiring around that product seam. Acceptance requires the same named
-  normal world and character save on two fresh invocations, the accepted natural camp and two selected
-  rows, player bootstrap reach, no ecology-state delta from preflight, and no special, terrain, location,
-  roster, camp, observer-trait, or lead transform.
+  Accepted fresh-world bridge `05f44bf535` adds hidden exact argv for a named absent NORMAL world and raw
+  numeric seed, applies raw `830205018` to both product seed owners before ordinary `(1,0)` overmap
+  generation, and fails closed if the oracle's no-neighbor topology is violated. Existing
+  worldfactory/setup/NOW/start-game/save owners create the character save; the harness requires clean
+  process exit, a newer save marker, no debug errors, and an exact product-written run-ownership marker.
+  Failed or timed-out runs remove only a marker-owned world after the child is confirmed stopped. The
+  focused macOS route compiled and linked, the parser passed 12 assertions, the corrected natural oracle
+  passed 53 assertions, all 316 discovered Python harness tests passed, and generated artifacts were
+  removed. No fixture, special, terrain, location, roster, camp, observer-trait, or lead transform entered
+  this seam.
+
+  Next route: build the accepted product and execute the hidden bridge twice under two fresh profiles with
+  the same raw seed and distinct absent world names. Compare the saved ordinary overmap/camp identity,
+  player bootstrap distance, first two production-prefix candidates, selected watch/cost, shared read
+  budget, and preflight ecology-state delta. Acceptance requires matching natural results on both runs,
+  player reach, no persisted preflight mutation, and no transform or ownership marker left in either
+  successful world.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
