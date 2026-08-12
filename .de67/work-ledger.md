@@ -115,13 +115,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   would violate the required natural provenance. Saved-state audit and the production route analyzer can
   inspect camp, lead, watch, and route state only after that missing bridge.
 
-  Next route: extend the authoritative deterministic natural-world test into a read-only feasibility
-  oracle over its unchanged generated overmap. It must identify the natural bandit-camp footprint and
-  production terrain-scan candidates, evaluate the current see-cost, shared watch-read budget, and
-  normalized 18-OMT route owner without applying a lead to a saved world, and report whether any
-  non-frontier candidate selects. If the accepted seed has no valid footing, prove that exact negative
-  before choosing another product-seeded world; do not invent retry counts. Only after unchanged natural
-  geometry is selector-valid should the harness gain the minimum deterministic fresh-world/capture bridge.
+  Accepted natural-world oracle `db366a18eb` keeps all scan mutation in an in-memory copy of the
+  ordinarily generated bandit site and leaves the durable world unchanged. Seed `830204914` produced
+  all 12 authoritative near-ring samples and 12 natural leads. The planner exposed six non-frontier
+  candidates, and the oracle evaluated only the first two allowed by the production per-site route-solve
+  cap. Both selected under one shared eight-read budget: target `(207,31,0)` used watch `(210,29,0)` at
+  normalized route cost 10, and target `(211,27,0)` used watch `(209,30,0)` at cost 10. The focused
+  macOS binary passed 49 assertions. Structured review caught and closed an earlier false-green that had
+  evaluated candidates beyond the production prefix; generated test artifacts were removed.
+
+  Next route: add the minimum deterministic fresh-world/capture bridge that can reproduce this ordinary
+  generation path in a disposable live profile without special, terrain, player-location, or lead
+  transforms. Preserve the distinction between the test's direct RNG seed and the product CLI's hashed
+  `--seed` input and earlier RNG consumption; do not assume the numeric test seed is a live CLI preimage.
+  The bridge must create and select a normal saved world, prove the natural bandit camp and the two
+  selector-valid production-prefix candidates from saved/runtime owners, then capture that unchanged
+  world for the observer-gated scheduler proof.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
