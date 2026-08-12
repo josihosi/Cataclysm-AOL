@@ -350,7 +350,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   route without moving or editing ecology actors. The owning fixture-contract tests and JSON checks
   must prove the revised causal ordering before another clean live run. Its 900-second estimate is
   derived from the comparable `R002-M117` scenario/test task's measured 393-second checkpoint span,
-  with additional allowance for the loaded-boundary and return-route guards.
+  with additional allowance for the loaded-boundary and return-route guards. Accepted checkpoint
+  `7e93f04dea` explicitly moves the avatar three OMT west before approach, keeps the unchanged source
+  36 map squares east, rejects any local handoff through the positive fact boundary, and moves the
+  avatar east only after those facts to reload the physical return route. The owning 48 scenario
+  fixture-contract tests, JSON parse, and `git diff --check` pass.
+
+  Active task `R002-M120` builds exact clean checkpoint `7e93f04dea` and reruns the compact
+  structural-signal matrix through the signed bridge. It accepts only exact runtime identity; the
+  unchanged scheduler dispatch/target/pair; no local handoff from the west relocation through the
+  positive boundary; real target-source smoke/light/sound observations at the selected watch; no
+  pre-return lead; ordinary physical return after the explicit east relocation; exactly three
+  approximate returned-report leads; no player token; and zero debug errors. Its 3,600-second
+  estimate reuses the measured `R002-M118` clean-build/live-route estimate because only bounded
+  scenario ordering changed.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
