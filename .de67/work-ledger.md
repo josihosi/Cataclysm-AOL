@@ -461,14 +461,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   omitted that field. The harness stopped before east relocation and return, so no downstream credit is
   claimed. The first contradicted premise is matcher contiguity, not production behavior or the DFS.
 
-  Active task `R002-M135` makes only the request matcher resilient to production's intervening
-  `map_origin_omt` while preserving exact watch OMT, `current_inbounds=no`, zero field signals, one sound
-  event, minute-10085, and the one-fact recorder gate. Its normalized source-shaped control must accept the
-  exact production row and reject wrong watch, inbounds, field count, sound count, or absent recorder
-  completion. The later detailed observation, no-early-lead, physical-return, returned-source, and
-  no-player-token gates remain byte-identical. Three focused fixture-contract controls, JSON parsing, and
-  `git diff --check` decide acceptance. Its 900-second estimate reuses the measured comparable matcher task;
-  no product build or live run belongs in this task.
+  Accepted checkpoint `a007262df8` splits the literal request predicate around production's intervening
+  `map_origin_omt` while retaining exact watch OMT, `current_inbounds=no`, zero field signals, one sound
+  event, minute-10085, and the one-fact recorder gate. The exact production-shaped row passes; wrong watch,
+  inbounds, field count, sound count, and missing recorder completion each fail. Three focused controls
+  passed in 0.079 seconds, the scenario JSON parsed, and `git diff --check` passed. The later detailed
+  observation, no-early-lead, physical-return, returned-source, and no-player-token gates are unchanged.
+
+  Active task `R002-M136` builds the exact clean checkpoint and reruns that matcher-repaired scenario once
+  through its full necessary causal route: exact dispatch and watch arrival, one minute-10085 target sound
+  and static-recorder fact, no pre-return lead or player token, east relocation only after the fact,
+  ordinary physical return, exactly one source-owned returned sound lead, and zero debug errors. Its
+  3,600-second estimate reuses the measured M134 clean-build/live-route duration; no further source,
+  scenario, or matcher change or unchanged rerun is authorized if new evidence contradicts a premise.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
