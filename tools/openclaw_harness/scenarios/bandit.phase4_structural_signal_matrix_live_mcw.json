@@ -338,10 +338,9 @@
       "kind": "audit_log_contains",
       "label": "audit_phase4_sound_fact",
       "required_line_patterns": [
-        ["bandit_live_world evidence debug: now_minutes=10085"],
-        ["bandit_live_world signal_adapter request", "current_omt=(138,52,0)", "current_inbounds=no", "sound_events=1"],
-        ["sound_adapter event", "source_omt=(137,49,0)", "current_omt=(138,52,0)", "supported=yes", "permitted=yes"],
-        ["observation scope=active", "source_omt=(137,49,0)", "receiver_omt=(138,52,0)", "source_id=structural-explosion@(137,49,0)", "sense=sound", "share=shared"]
+        ["bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1"],
+        ["bandit_live_world signal_adapter request", "current_omt=(138,52,0)", "current_inbounds=no", "field_signals=0", "sound_events=1"],
+        ["bandit_live_world sound_adapter event", "source_omt=(137,49,0)", "current_omt=(138,52,0)", "supported=yes", "permitted=yes", "emitted_minutes=10081", "now_minutes=10085"]
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_post_arrival_sound_fact_missing",

@@ -5568,10 +5568,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             for group in positive_step["required_line_patterns"]
         ]
         positive_lines = [
-            "bandit_live_world evidence debug: now_minutes=10085 site_cap=8",
+            "bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1",
             "bandit_live_world signal_adapter request current_omt=(138,52,0) map_origin_omt=(133,46,0) current_inbounds=no field_signals=0 sound_events=1",
-            "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes emitted_minutes=10081 now_minutes=10085",
-            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) source_id=structural-explosion@(137,49,0) sense=sound share=shared",
+            "bandit_live_world sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes emitted_minutes=10081 now_minutes=10085",
         ]
         arrival_step = steps["audit_phase4_abstract_watch_arrival"]
         arrival_groups = [
@@ -5608,6 +5607,57 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 filter_debug_noise=False,
             )
             completion_match = artifact_delta_matches_all_patterns(completion)
+
+            def audit_match_for(label: str, lines: List[str]) -> Dict[str, Any]:
+                log_path = run_dir / f"{label}.audit.log"
+                log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                return audit_log_contains(
+                    run_dir,
+                    label,
+                    artifact_log=log_path,
+                    artifact_baseline=0,
+                    patterns=[],
+                    required_line_patterns=positive_groups,
+                )
+
+            wrong_audit_watch = audit_match_for(
+                "wrong_audit_watch",
+                [positive_lines[0], positive_lines[1].replace("current_omt=(138,52,0)", "current_omt=(139,52,0)"), positive_lines[2]],
+            )
+            audit_inbounds_yes = audit_match_for(
+                "audit_inbounds_yes",
+                [positive_lines[0], positive_lines[1].replace("current_inbounds=no", "current_inbounds=yes"), positive_lines[2]],
+            )
+            audit_field_signals_nonzero = audit_match_for(
+                "audit_field_signals_nonzero",
+                [positive_lines[0], positive_lines[1].replace("field_signals=0", "field_signals=1"), positive_lines[2]],
+            )
+            audit_sound_count_wrong = audit_match_for(
+                "audit_sound_count_wrong",
+                [positive_lines[0], positive_lines[1].replace("sound_events=1", "sound_events=2"), positive_lines[2]],
+            )
+            audit_wrong_source = audit_match_for(
+                "audit_wrong_source",
+                [positive_lines[0], positive_lines[1], positive_lines[2].replace("source_omt=(137,49,0)", "source_omt=(136,49,0)")],
+            )
+            audit_nonpermitted = audit_match_for(
+                "audit_nonpermitted",
+                [positive_lines[0], positive_lines[1], positive_lines[2].replace("permitted=yes", "permitted=no")],
+            )
+            audit_wrong_minute = audit_match_for(
+                "audit_wrong_minute",
+                [positive_lines[0], positive_lines[1], positive_lines[2].replace("now_minutes=10085", "now_minutes=10084")],
+            )
+            audit_missing_minute = audit_match_for(
+                "audit_missing_minute",
+                [positive_lines[0], positive_lines[1], positive_lines[2].replace(" now_minutes=10085", "")],
+            )
+            audit_missing_recorder = audit_match_for("audit_missing_recorder", positive_lines[1:])
+            audit_zero_recorder = audit_match_for(
+                "audit_zero_recorder",
+                [positive_lines[0].replace("facts=1", "facts=0"), positive_lines[1], positive_lines[2]],
+            )
+
             def completion_match_for(label: str, lines: List[str]) -> Dict[str, Any]:
                 log_path = run_dir / f"{label}.log"
                 log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -5684,6 +5734,19 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             )
 
         self.assertEqual(positive["status"], "required_state_present")
+        for rejected_audit in (
+            wrong_audit_watch,
+            audit_inbounds_yes,
+            audit_field_signals_nonzero,
+            audit_sound_count_wrong,
+            audit_wrong_source,
+            audit_nonpermitted,
+            audit_wrong_minute,
+            audit_missing_minute,
+            audit_missing_recorder,
+            audit_zero_recorder,
+        ):
+            self.assertEqual(rejected_audit["status"], "required_state_missing")
         self.assertTrue(completion_match["matched"])
         for rejected in (
             wrong_watch,
