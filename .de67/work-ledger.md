@@ -316,8 +316,18 @@ Lineage: `CAOL-hostile-ecology-dev`
 
   Active task `R002-M116` routes that unchanged relocation test through the established working
   focused macOS test binary/link path and executes the exact case plus its adjacent signal/danger
-  controls. It may repair only build-command/tool state, not product or test expectations. Its
-  1,800-second estimate is derived from the test-only route with the changed object already compiled.
+  controls. Consistent macOS tiles test binary `adeeb49104-dirty+SDL3` passed relocation with 153
+  assertions, returned-signal empty/support with 558, watch-arrival empty with 26, unseen-zombie
+  eligibility with 8, and private observed-zombie persistence with 96. Accepted test checkpoint
+  `2c69342b3f` closes the focused matrix; no product change is indicated.
+
+  Active task `R002-M117` reduces the existing structural-signal matrix scenario to its necessary
+  R-002 causal core: exact dispatch; staged physical fire/explosion before the observation boundary;
+  bounded smoke/light/sound facts; no early returned-report lead; physical return through the
+  accepted owner; exactly three approximate returned-report leads; and no player token. It removes
+  only the ecology-incident UI and save/writeback tail and updates the owning fixture-contract test;
+  it does not run the dirty-runtime scenario. Its 1,800-second estimate is derived from the bounded
+  JSON/test edit with no build or GUI execution.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
