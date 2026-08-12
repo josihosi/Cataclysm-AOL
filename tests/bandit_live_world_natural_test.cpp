@@ -11,6 +11,7 @@
 #include "cata_scope_helpers.h"
 #include "clzones.h"
 #include "coordinates.h"
+#include "do_turn.h"
 #include "faction.h"
 #include "json.h"
 #include "json_loader.h"
@@ -75,6 +76,14 @@ bandit_live_world::world_state round_trip( const bandit_live_world::world_state 
     return loaded;
 }
 
+std::string serialize_state( const bandit_live_world::world_state &state )
+{
+    std::ostringstream buffer;
+    JsonOut json( buffer, true );
+    state.serialize( json );
+    return buffer.str();
+}
+
 void generate_camp_footprint( const bandit_live_world::site_record &site )
 {
     for( const tripoint_abs_omt &omt : site.footprint ) {
@@ -85,6 +94,14 @@ void generate_camp_footprint( const bandit_live_world::site_record &site )
         generated.generate( omt, calendar::turn, false );
         generated.delete_unmerged_submaps();
     }
+}
+
+std::optional<std::string> natural_terrain_lookup( const tripoint_abs_omt &omt )
+{
+    if( !overmap_buffer.ter_existing( omt ).is_valid() ) {
+        return std::nullopt;
+    }
+    return overmap_buffer.ter( omt ).id().str();
 }
 } // namespace
 
@@ -172,4 +189,76 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     CHECK( loaded_cannibal->members.size() == 14 );
     CHECK( loaded_bandit->anchor == bandit_anchor );
     CHECK( loaded_cannibal->anchor == cannibal_anchor );
+
+    // Exercise the production near-ring scan and planner against the unchanged generated
+    // geometry, but keep every mutation in an in-memory copy.  The live route reader owns the
+    // actual see-cost, watch-ring, and normalized 18-OMT route checks used by the game path.
+    const std::string durable_state_before = serialize_state( state );
+    bandit_live_world::world_state oracle;
+    oracle.sites.push_back( *bandit_site );
+    int watch_path_budget = 8;
+    std::vector<bandit_live_world::structural_bounty_scan_result> scans;
+    for( const int now_minutes : { 0, 60, 120 } ) {
+        scans.push_back( bandit_live_world::advance_structural_bounty_scan(
+                             oracle, now_minutes, 4, natural_terrain_lookup ) );
+    }
+
+    const bandit_live_world::site_record &oracle_site = oracle.sites.front();
+    int total_candidates = 0;
+    int total_leads = 0;
+    for( const bandit_live_world::structural_bounty_scan_result &scan : scans ) {
+        total_candidates += scan.candidates_sampled;
+        total_leads += scan.leads_seeded;
+    }
+    const std::vector<bandit_live_world::structural_outing_plan> candidates =
+        bandit_live_world::plan_structural_bounty_outing_candidates( oracle_site, 120, false );
+    REQUIRE( candidates.size() == 6 );
+    // This is the production per-site cap owned by routine_candidate_full_route_solve_cap.
+    constexpr std::size_t production_site_route_solve_cap = 2;
+    const std::vector<bandit_live_world::structural_outing_plan> production_candidates(
+        candidates.begin(), candidates.begin() + production_site_route_solve_cap );
+    const std::vector<bandit_live_world::structural_route_read> reads =
+        live_bandit_structural_route_analyzer_reads_for_test( oracle_site, production_candidates,
+                watch_path_budget );
+    REQUIRE( reads.size() == production_candidates.size() );
+    std::vector<std::string> route_records;
+    route_records.reserve( production_candidates.size() );
+    int selected = 0;
+    int rejected = 0;
+    for( std::size_t index = 0; index < production_candidates.size(); ++index ) {
+        const std::string record = live_bandit_structural_route_analyzer_record_for_test(
+                                        oracle_site, production_candidates[index], "non_frontier", reads[index] );
+        route_records.push_back( record );
+        if( record.find( " outcome=selected " ) != std::string::npos ) {
+            selected++;
+        } else {
+            rejected++;
+        }
+    }
+    CAPTURE( oracle_site.anchor, oracle_site.footprint.size(), total_candidates, total_leads,
+             oracle_site.intelligence_map.leads.size(), candidates.size(), reads.size(),
+             watch_path_budget, selected, rejected );
+    CHECK( total_candidates == 12 );
+    CHECK( total_leads == 12 );
+    CHECK( route_records.size() == production_candidates.size() );
+    CHECK( watch_path_budget == 0 );
+    CHECK( selected == 2 );
+    CHECK( rejected == 0 );
+    CHECK( route_records[0].find(
+               "target=(207,31,0) selector=non_frontier outcome=selected "
+               "watch=(210,29,0) route_cost=10" ) != std::string::npos );
+    CHECK( route_records[1].find(
+               "target=(211,27,0) selector=non_frontier outcome=selected "
+               "watch=(209,30,0) route_cost=10" ) != std::string::npos );
+    for( const std::string &record : route_records ) {
+        CHECK( record.find( "selector=non_frontier" ) != std::string::npos );
+        const bool selected_record = record.find( " outcome=selected " ) != std::string::npos;
+        const bool rejected_record = record.find( " outcome=rejected " ) != std::string::npos;
+        CHECK( selected_record != rejected_record );
+    }
+    INFO( "natural feasibility oracle route records:" );
+    for( const std::string &record : route_records ) {
+        INFO( record );
+    }
+    CHECK( durable_state_before == serialize_state( state ) );
 }
