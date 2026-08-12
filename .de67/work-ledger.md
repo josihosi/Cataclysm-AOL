@@ -163,11 +163,28 @@ Lineage: `CAOL-hostile-ecology-dev`
   32.20 OMT from the player, inside the authoritative 40-OMT bootstrap envelope. All search and live-run
   profiles and copied executable artifacts were removed after acceptance.
 
-  Next route: use this production footing to produce a read-only, non-persisting feasibility report for
-  the bootstrapped natural bandit site: first two production-prefix candidates, selected watch/cost,
-  shared eight-read budget, player distance, and ecology-state before/after. Acceptance requires two
-  fresh `830205344` worlds to report the same rows with no preflight ecology-state delta and no special,
-  terrain, location, roster, camp, observer-trait, or lead transform.
+  Accepted feasibility bridge `e4837e2d25` adds an explicit seed-bound, harness-only report around the
+  production bootstrap, hourly structural scan, candidate-prefix planner, live route reader, and shared
+  eight-read budget. It mutates only an in-memory ecology copy, requires canonical persistent ecology
+  before/after equality, and leaves ordinary fresh-world runs independent. The changed product compiled
+  and linked, all 318 discovered Python harness tests passed, and structured review closed global-gating,
+  incomplete-schema, wrong-distance, and arbitrary-seed defects before finding no remaining actionable
+  issue. A general raw-`830205018` control saved normally without a feasibility artifact.
+
+  Two fresh exact changed-binary `830205344` feasibility runs reproduced byte-identical reports: player
+  `(46,48,0)`, natural bandit site `overmap_special:bandit_camp@16,33,0`, nearest footprint point
+  `(17,34,0)` at 32.202484 OMT, four production scan samples, and unchanged empty schema-6 persistent
+  ecology. The first two production-prefix targets `(12,33,0)` and `(16,29,0)` both rejected at normalized
+  route cost 22, above the authoritative 18-OMT cap; neither reached watch selection and the shared watch
+  budget remained eight. Both processes exited zero, saved, emitted no debug errors, and removed their
+  ownership markers. This rejects raw seed `830205344` as the R-002 selected-watch footing; another
+  unchanged run is inadmissible. All scratch profiles and generated reports were removed.
+
+  Next route: use the accepted non-persisting product report in standalone search mode to find a fresh
+  production-data seed whose natural bandit site is within the 40-OMT bootstrap envelope and whose first
+  two production-prefix candidates include the required selected watch/cost under one shared eight-read
+  budget. Discard every losing marker-owned world, then freeze the first viable seed and repeat it twice
+  through the explicit harness gate before attempting the natural outing lifecycle.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
