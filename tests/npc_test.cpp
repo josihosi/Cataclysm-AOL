@@ -1832,8 +1832,83 @@ static std::string serialize_live_world_for_optics_test(
     return out.str();
 }
 
-TEST_CASE( "loaded_returning_pair_repairs_stale_home_routes_before_skipping_local_gate",
-           "[npc][bandit][loaded_covert_return]" )
+TEST_CASE( "live aftermath leaves structural outings to structural maintenance",
+           "[npc][bandit][structural_ownership]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    const time_point original_time = calendar::turn;
+    on_out_of_scope restore_time( [original_time]() {
+        set_time( original_time );
+    } );
+    set_time_to_day();
+
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const std::vector<character_id> generated_ids = { scout.getID(), partner.getID() };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    bandit_live_world::active_outing_state &structural =
+        live_state.sites.front().active_outing;
+    structural.started_minutes = -1;
+    structural.expected_return_minutes = -1;
+    structural.missing_deadline_minutes = -1;
+    structural.last_progress_minutes = current_minutes - 1;
+    structural.last_advanced_minutes = current_minutes - 1;
+    const bandit_live_world::scout_phase structural_phase = structural.phase;
+    const int structural_waypoint = structural.waypoint_index;
+    const int structural_started = structural.started_minutes;
+    const int structural_expected_return = structural.expected_return_minutes;
+    const int structural_missing_deadline = structural.missing_deadline_minutes;
+    const int structural_last_progress = structural.last_progress_minutes;
+    const int structural_last_advanced = structural.last_advanced_minutes;
+
+    CHECK_FALSE( process_live_bandit_aftermath_for_test() );
+    CHECK( structural.phase == structural_phase );
+    CHECK( structural.waypoint_index == structural_waypoint );
+    CHECK( structural.started_minutes == structural_started );
+    CHECK( structural.expected_return_minutes == structural_expected_return );
+    CHECK( structural.missing_deadline_minutes == structural_missing_deadline );
+    CHECK( structural.last_progress_minutes == structural_last_progress );
+    CHECK( structural.last_advanced_minutes == structural_last_advanced );
+
+    structural.kind = bandit_live_world::outing_kind::scout_sortie;
+    structural.schema_version = 5;
+    structural.phase = bandit_live_world::scout_phase::outbound;
+    structural.owner = bandit_live_world::simulation_owner::abstract;
+    structural.handoff_epoch = 0;
+    structural.local_contact_minutes = -1;
+    structural.last_progress_minutes = -1;
+    structural.last_advanced_minutes = -1;
+    structural.local_handoff = bandit_live_world::local_handoff_snapshot();
+    structural.target_footprint.clear();
+    structural.selected_watch_kind = bandit_live_world::structural_watch_kind::none;
+    structural.selected_watch_omt = tripoint_abs_omt();
+    structural.selected_watch_route_cost = -1;
+
+    CHECK( process_live_bandit_aftermath_for_test() );
+    CHECK( structural.started_minutes == current_minutes );
+}
+
+TEST_CASE( "loaded_structural_pair_leaves_home_routes_to_structural_maintenance",
+           "[npc][bandit][structural_ownership]" )
 {
     g->faction_manager_ptr->create_if_needed();
     clear_map_without_vision();
@@ -1869,10 +1944,6 @@ TEST_CASE( "loaded_returning_pair_repairs_stale_home_routes_before_skipping_loca
     site.active_outing.phase = bandit_live_world::scout_phase::returning_home;
     site.active_outing.local_handoff.phase = site.active_outing.phase;
     const tripoint_abs_omt target_omt = site.active_outing.target_omt;
-    const int minimum_target_distance = *bandit_live_world::target_footprint_watch_distance(
-                                            site.active_outing.selected_watch_omt,
-                                            site.active_outing.target_footprint );
-
     for( npc *member : { &scout, &partner } ) {
         member->goal = site.anchor;
         member->omt_path = { target_omt, site.anchor };
@@ -1888,15 +1959,7 @@ TEST_CASE( "loaded_returning_pair_repairs_stale_home_routes_before_skipping_loca
         REQUIRE( member->is_travelling() );
         REQUIRE_FALSE( member->omt_path.empty() );
         CHECK( member->goal == site.anchor );
-        CHECK( std::find( member->omt_path.begin(), member->omt_path.end(), target_omt ) ==
-               member->omt_path.end() );
-        for( const tripoint_abs_omt &step : member->omt_path ) {
-            const std::optional<int> distance =
-                bandit_live_world::target_footprint_watch_distance(
-                    step, site.active_outing.target_footprint );
-            REQUIRE( distance );
-            CHECK( *distance >= minimum_target_distance );
-        }
+        CHECK( member->omt_path == std::vector<tripoint_abs_omt>{ target_omt, site.anchor } );
     }
 }
 

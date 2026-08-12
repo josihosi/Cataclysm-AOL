@@ -2741,12 +2741,6 @@ bool note_live_bandit_aftermath()
             continue;
         }
 
-        if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
-            bandit_live_world::current_external_simulation_cursor( site ) ) {
-            changed |= bandit_live_world::note_active_sortie_started(
-                           site, *cursor, current_minutes );
-        }
-
         if( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie &&
             site.active_outing.owner == bandit_live_world::simulation_owner::local &&
             bandit_live_world::scout_phase_requires_homeward_only(
@@ -2797,6 +2791,20 @@ bool note_live_bandit_aftermath()
                     changed = true;
                 }
             }
+        }
+
+        // Dedicated local casualty and overdue-missing reconciliation above remains structural
+        // authority.  Structural bounty maintenance owns every other structural transition;
+        // the generic observation, phase, and route writer below is for modern scouts and
+        // hostile operations only.
+        if( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie ) {
+            continue;
+        }
+
+        if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site ) ) {
+            changed |= bandit_live_world::note_active_sortie_started(
+                           site, *cursor, current_minutes );
         }
 
         std::vector<bandit_live_world::active_member_observation> observations;
