@@ -325,9 +325,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   R-002 causal core: exact dispatch; staged physical fire/explosion before the observation boundary;
   bounded smoke/light/sound facts; no early returned-report lead; physical return through the
   accepted owner; exactly three approximate returned-report leads; and no player token. It removes
-  only the ecology-incident UI and save/writeback tail and updates the owning fixture-contract test;
-  it does not run the dirty-runtime scenario. Its 1,800-second estimate is derived from the bounded
-  JSON/test edit with no build or GUI execution.
+  only the ecology-incident UI and save/writeback tail and updates the owning fixture-contract test.
+  Accepted checkpoint `50c73b24e9` reduces 43 steps to 27; JSON parsing, three focused controls, all
+  48 scenario fixture-contract tests, and `git diff --check` pass.
+
+  Active task `R002-M118` rebuilds the exact clean checkpoint and runs the compact structural-signal
+  matrix through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the source-OMT-to-watch
+  smoke/light/sound facts, explicit pre-return absence, ordinary physical return, exactly three
+  approximate returned-report leads, no player token, clean runtime identity, and zero debug errors.
+  Its 3,600-second estimate is derived from the measured clean build plus long-wait live route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
