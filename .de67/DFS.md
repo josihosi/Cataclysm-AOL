@@ -1,9 +1,10 @@
 # Bandit and Cannibal Hostile-Camp AI Specification
 
-Status: Refrozen for DE-67 phase 3 after the owner on-foot scout clarification, against preflight
-source baseline `dev@56fb35f144f460ffe5f3c7e283f39836ecadc5ae`.
-Comparison baseline: `port/cdda-master` at `660057ff728b`; this refinement inspects `dev` at
-`274c4c1f239b7c68702a0b76321cb271906dd892`.
+Status: Refrozen for DE-67 phase 3 after the user-approved R-002 proof rescope.
+WEC: `.de67/WEC.md`
+Source baseline: `dev@97b8ea09e8d7823c7a4892386b2d77cccf9c3941`, clean before this
+documentation-only phase; inspected 2026-08-12.
+Comparison baseline: `port/cdda-master` at `660057ff728b`.
 
 This document defines what the feature must do in play, how the implementation is divided between
 game systems, and which parts of the inspected `dev` source are complete, partial, or absent. The
@@ -126,7 +127,8 @@ flowchart LR
 - [x] Danger has soft and hard effects: risk can increase route cost, while an observed overwhelming
   threat can reroute, abort, or force immediate self-defense.
 - [ ] 🔴 R-002 — Ordinary-play bounded-discovery fairness and absence of hidden-state radar remain
-  unproved through the natural changed-executable controls named below.
+  unproved through focused owner tests plus the smallest changed-executable negative/positive
+  production proof named below.
 
 ### 4. Physical movement, stalking, and exposure
 
@@ -337,7 +339,8 @@ What is incomplete or currently wrong:
 ## Acceptance ledger
 
 The feature is complete when these user-visible contracts are crossed off with changed-executable
-evidence. Existing focused tests may support a row but cannot replace its stated live route.
+evidence. Except for the user-rescoped R-002 route below, focused tests may support a row but cannot
+replace its stated live route.
 
 - `R-001`: one natural bandit camp dispatches its exact pair, watches or burns, commits a
   route-reachable paired physical boundary crossing on unchanged geometry, physically returns at
@@ -353,9 +356,12 @@ evidence. Existing focused tests may support a row but cannot replace its stated
   loaded defenders without a payment UI, and causes no offscreen defender deaths.
 - `R-008`: two camps cannot double-harvest one finite site; a repeated bandit shakedown requires
   cooldown plus demonstrably renewed player-camp opportunity.
-- `R-002`: quiet play inside the old radar radius remains undiscovered; clear day/dusk/unlit night,
-  forest/weather/optics, decoy signals, target relocation, and zombie-heavy route cases follow the
-  bounded perception contract.
+- `R-002`: focused owner tests cover clear day/dusk/unlit night, forest/weather/optics, signal
+  uncertainty, target relocation, and unseen-versus-observed danger invariants. The smallest live
+  negative/positive production proof establishes that quiet play inside the old radar radius stays
+  undiscovered; a credible real signal can be discovered without a decoy granting exact hidden
+  player truth; relocation does not drag stale target knowledge; and unseen danger does not affect
+  routing until legitimately observed.
 - `R-009` and `R-010`: save/load preserves authority and causality at every phase; full-feature
   performance and save growth remain acceptable on macOS, Linux/WSL, and Windows.
 
@@ -365,7 +371,11 @@ Focused proof may isolate an authoritative seam, but only the named natural or i
 close a claim that requires player-facing production behavior. Evidence must preserve the exact
 source, binary, fixture, scenario, camp, operation, generation, epoch, and member identities that
 matter to the verdict. Incidental artifact metadata is not part of a verdict unless it can change
-identity, the claim result, or a false-green control.
+identity, the claim result, or a false-green control. R-002 is the user-approved exception to a
+bespoke natural-world route and exact continuity for every matrix row: its focused owner tests own
+the invariant matrix, while one smallest live negative/positive production proof needs only enough
+source/build/scenario provenance and causal observations to exclude a stale binary, setup-only
+artifact, hidden-state injection, or another false green.
 
 ### R-001 — Natural local-to-abstract return
 
@@ -401,10 +411,20 @@ without physical movement, route/ownership progress, or outcome credit.
 
 ### R-002 through R-010
 
-- `R-002`: ordinary-play controls distinguish quiet play inside the old radius from a credible
-  signal; clear day, dusk, and unlit night; road from forest/weather with and without optics; decoy
-  from real signal; relocation; and unseen from legitimately observed zombie danger. No exact
-  avatar, inventory, defender, storage, or hidden-zombie fact may enter the owner.
+- `R-002`: focused owner tests exercise `structural_observer_omt_sight_range`,
+  `structural_observer_route_is_visible`, structural signal validation/retention, local-zombie
+  eligibility and observation, returned-report lead ownership, and avatar-relocation non-ownership.
+  They cover clear day, dusk, and unlit night; road through forest/weather with and without optics;
+  credible real signal versus decoy uncertainty; relocation; and unseen versus legitimately
+  observed zombie danger. The smallest live negative/positive changed-executable proof then shows,
+  through the ordinary `overmap_npc_move` -> structural maintenance path, all four causal controls:
+  quiet play inside the former radar radius creates no discovery; a credible real signal can create
+  an approximate lead while a decoy cannot grant exact avatar, inventory, defender, storage, or
+  hidden-danger truth; moving the avatar does not move an existing target lead; and route choice is
+  unchanged by unseen danger until an ordinary bounded observation records it. The proof may reuse
+  one compact scenario and the minimum identities needed to distinguish those transitions; it does
+  not require a bespoke natural-world certification run, fixture, operation, or member-identity
+  chain for every invariant row.
 - `R-003`: one natural visible-burn incident plus a quiet, unattacked control distinguishes burned
   evidence and committed egress from ordinary covert neutrality. It must show no pacing, false
   anger, or route/report identity replacement.
@@ -443,3 +463,13 @@ Staged setup ends before the asserted behavior. No helper, mock, raw-save transf
 teleport, handwritten artifact, or test-only code may manufacture gameplay credit. The transition
 comes from the authoritative production owner, and positive or negative controls exist only when
 they distinguish the claimed mechanism.
+
+## Freeze record
+
+- Status: Refrozen
+- Frozen source baseline: `dev@97b8ea09e8d7823c7a4892386b2d77cccf9c3941`; the worktree was clean
+  before `.de67/WEC.md` was imported and this DFS was rescoped on 2026-08-12.
+- User-owned choice: preserve R-002's bounded-real-perception behavior and rescope only its proof
+  burden as stated verbatim in `.de67/WEC.md`; leave R-001 and R-003 through R-010 product
+  requirements unchanged.
+- Evidence-implied refinements: none.
