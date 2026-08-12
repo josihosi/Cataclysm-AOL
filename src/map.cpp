@@ -11062,6 +11062,25 @@ bool map::try_fall( const tripoint_bub_ms &p, Creature *c )
     c->add_msg_if_npc( _( "<npcname> falls down a level!" ) );
     Character *you = dynamic_cast<Character *>( c );
     if( you == nullptr ) {
+        monster *falling_monster = c->as_monster();
+        const auto invalid_monster_landing = [this, falling_monster]( const tripoint_bub_ms & p ) {
+            return falling_monster != nullptr && impassable( p ) &&
+                   !get_impassable_field_at( p ).has_value() &&
+                   !falling_monster->will_move_to( this, p );
+        };
+        if( invalid_monster_landing( where ) ) {
+            std::optional<tripoint_bub_ms> safe_landing;
+            for( const tripoint_bub_ms &candidate : points_in_radius( where, 1 ) ) {
+                if( candidate.z() == where.z() && has_floor_or_water( candidate ) &&
+                    falling_monster->will_move_to( this, candidate ) && g->is_empty( candidate ) ) {
+                    safe_landing = candidate;
+                    break;
+                }
+            }
+            if( safe_landing ) {
+                where = safe_landing.value();
+            }
+        }
         c->setpos( *this, where );
         if( c->get_size() == creature_size::tiny ) {
             height = std::max( 0, height - 1 );

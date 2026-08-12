@@ -53,12 +53,15 @@ using move_statistics = statistics<int>;
 static const furn_str_id furn_f_null( "f_null" );
 
 static const mtype_id mon_dog_zombie_brute( "mon_dog_zombie_brute" );
+static const mtype_id mon_test_climb_nobash( "mon_test_climb_nobash" );
 static const mtype_id mon_test_zombie( "mon_test_zombie" );
 static const mtype_id pseudo_dormant_mon_zombie_fat( "pseudo_dormant_mon_zombie_fat" );
 
 static const oter_str_id oter_field( "field" );
 
 static const ter_str_id ter_t_fence( "t_fence" );
+static const ter_str_id ter_t_chainfence( "t_chainfence" );
+static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
 static const ter_str_id ter_t_palisade( "t_palisade" );
 static const ter_str_id ter_t_water_dp( "t_water_dp" );
@@ -1213,6 +1216,83 @@ TEST_CASE( "failed_horde_placement_preserves_entity", "[monster][hordes]" )
         CHECK( overmap_buffer.entity_at( abs_pos ) == nullptr );
         CHECK( get_creature_tracker().creature_at<monster>( abs_pos ) != nullptr );
     }
+}
+
+TEST_CASE( "falling_monster_avoids_impassable_landing_tile", "[monster][falling]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    const tripoint_bub_ms start{ 60, 60, 0 };
+    const tripoint_bub_ms blocked_landing = start + tripoint::below;
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( blocked_landing, 1 ) ) {
+        here.ter_set( candidate, ter_t_floor );
+    }
+    here.ter_set( blocked_landing, ter_t_palisade );
+    here.ter_set( start, ter_id( "t_open_air" ) );
+
+    monster *falling = g->place_critter_at( mon_test_zombie, start );
+
+    REQUIRE( falling != nullptr );
+    CHECK( falling->pos_bub( here ).z() == blocked_landing.z() );
+    CHECK( falling->pos_bub( here ) != blocked_landing );
+    CHECK( falling->can_move_to( falling->pos_bub( here ) ) );
+}
+
+TEST_CASE( "falling_monster_completes_fall_without_safe_adjacent_tile", "[monster][falling]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    const tripoint_bub_ms start{ 60, 60, 0 };
+    const tripoint_bub_ms blocked_landing = start + tripoint::below;
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( blocked_landing, 1 ) ) {
+        here.ter_set( candidate, ter_t_palisade );
+    }
+    here.ter_set( start, ter_id( "t_open_air" ) );
+
+    monster *falling = g->place_critter_at( mon_test_zombie, start );
+
+    REQUIRE( falling != nullptr );
+    CHECK( falling->pos_bub( here ) == blocked_landing );
+}
+
+TEST_CASE( "falling_monster_relocation_requires_supported_compatible_terrain", "[monster][falling]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    const tripoint_bub_ms start{ 60, 60, 0 };
+    const tripoint_bub_ms blocked_landing = start + tripoint::below;
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( blocked_landing, 1 ) ) {
+        here.ter_set( candidate, ter_id( "t_open_air" ) );
+    }
+    here.ter_set( blocked_landing, ter_t_palisade );
+    here.ter_set( start, ter_id( "t_open_air" ) );
+
+    monster *falling = g->place_critter_at( mon_test_zombie, start );
+
+    REQUIRE( falling != nullptr );
+    CHECK( falling->pos_bub( here ) == blocked_landing );
+}
+
+TEST_CASE( "falling_climber_stays_on_compatible_impassable_terrain", "[monster][falling]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    const tripoint_bub_ms start{ 60, 60, 0 };
+    const tripoint_bub_ms climbable_landing = start + tripoint::below;
+
+    for( const tripoint_bub_ms &candidate : here.points_in_radius( climbable_landing, 1 ) ) {
+        here.ter_set( candidate, ter_t_floor );
+    }
+    here.ter_set( climbable_landing, ter_t_chainfence );
+    here.ter_set( start, ter_id( "t_open_air" ) );
+
+    monster *falling = g->place_critter_at( mon_test_climb_nobash, start );
+
+    REQUIRE( falling != nullptr );
+    CHECK( falling->pos_bub( here ) == climbable_landing );
 }
 
 TEST_CASE( "obstacles_placed_on_map_are_present_in_overmap", "[map][hordes]" )
