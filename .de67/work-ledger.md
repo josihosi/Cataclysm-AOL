@@ -243,7 +243,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   owner checkpoint `84bea307c0` routes returned-signal arrivals past that generic watch early-return
   into the existing supported/empty resolver; its direct watch discriminator passed 366 assertions,
   the restored support/empty/return suite passed 558 assertions, and three fixture checks passed.
-  Active task `R002-M105` runs the same compact lifecycle from the clean committed binary; its
+  Clean `5c23db78e4` run `20260812_090235` passed runtime identity, selected watch, dispatch,
+  stalking, and no-player-token gates, then proved the earlier generic selected-watch assessment
+  still intercepts the returned signal before the later resolver. Accepted owner checkpoint
+  `fcf1e022f3` bypasses that generic assessment only for returned signals. Its production-shaped
+  approach-to-watch discriminator failed six transition assertions under a temporary reverse-patch,
+  then passed with the full signal controls at 629 assertions across three cases. Active task
+  `R002-M108` runs the repaired compact decoy lifecycle from the clean committed binary; its
   3,600-second estimate carries the measured same-binary build/live route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
