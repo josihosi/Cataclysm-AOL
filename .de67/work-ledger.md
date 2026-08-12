@@ -456,7 +456,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   regenerates the archive and current test executable, and reruns the exact five-assertion `nogame` case
   through clean process exit plus `git diff --check`. It must stop on any different crash owner or source
   failure. Its 900-second estimate reuses M126's completed single-object compile, archive/link, and test
-  time and changes only the crash-report-identified teardown owner.
+  time and changes only the crash-report-identified teardown owner. The exact case again passed all five
+  assertions but exited 139 after teardown, rejecting another isolated TILES-object repair. The untouched
+  non-TILES object family is internally coherent at the earlier `Character` layout offset and is the
+  repository's supported alternate macOS test target; using it removes the failing SDL/TILES object family
+  without changing the pure formatter owner or assertion strength.
+
+  Active task `R002-M128` builds the current PCH-disabled non-TILES macOS test target, runs the exact M123
+  five-assertion `nogame` discriminator through clean exit, and checks the diff. It may remove only generated
+  archive/test outputs needed to select this target, and must not edit source, tests, or guidance. Its
+  1,800-second estimate reuses the measured M125/M126 archive and link work with allowance for compiling the
+  three changed non-TILES objects; the rest of that object family is already coherent.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
