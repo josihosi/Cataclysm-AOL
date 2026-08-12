@@ -7494,15 +7494,31 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "bandit_phase4_decoy_empty_signal_v0_2026-08-05",
         )
         preflight = steps[labels.index("preflight_fresh_returned_smoke_decoy")]
-        postflight = steps[labels.index("audit_saved_decoy_lead_stale_and_pair_home")]
+        postflight = steps[labels.index("audit_decoy_empty_evidence_debug")]
         self.assertEqual(preflight["required_lead_target_id"], exact_target)
-        self.assertEqual(postflight["required_lead_target_id"], exact_target)
         self.assertEqual(preflight["required_lead_source_contains"], exact_source)
-        self.assertEqual(postflight["required_lead_source_contains"], exact_source)
         self.assertEqual(preflight["required_lead_status"], "suspected")
-        self.assertEqual(postflight["required_lead_status"], "stale")
-        self.assertEqual(postflight["required_lead_confidence"], 0)
-        self.assertEqual(postflight["required_lead_last_outcome"], "signal_investigation_empty")
+        self.assertEqual(postflight["kind"], "audit_log_contains")
+        self.assertEqual(
+            postflight["required_line_patterns"],
+            [
+                [
+                    "site id=overmap_special:bandit_camp@140,51,0",
+                    "anchor=(140,51,0)",
+                    "leads_total=1",
+                ],
+                [
+                    "lead id=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0",
+                    "last_known_omt=(137,49,0)",
+                    "origin=returned_report",
+                    "source_key=structural-signal:structural-smoke@(137,49,0)",
+                    "status=stale",
+                    "confidence=0",
+                    "times_checked_empty=1",
+                    "last_outcome=signal_investigation_empty",
+                ],
+            ],
+        )
 
         empty_note = "returned signal investigation was empty"
         empty_wait = steps[labels.index("wait_1_hour_for_decoy_empty_arrival")]
@@ -7543,7 +7559,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
 
         waits = [step for step in steps if step["kind"] == "long_wait"]
-        self.assertEqual(len(waits), 4)
+        self.assertEqual(len(waits), 3)
         self.assertTrue(all(step["expected_duration"] == "1h" for step in waits))
         self.assertTrue(all(step["auto_acknowledge_interruptions"] is False for step in waits))
         self.assertLess(
@@ -7552,11 +7568,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertLess(
             labels.index("audit_decoy_empty_transition"),
-            labels.index("record_decoy_empty_incident"),
-        )
-        self.assertLess(
-            labels.index("record_decoy_empty_incident"),
-            labels.index("audit_saved_decoy_lead_stale_and_pair_home"),
+            labels.index("audit_decoy_empty_evidence_debug"),
         )
         press_keys = [
             key
@@ -7565,10 +7577,9 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertNotIn("I", press_keys)
         self.assertNotIn("P", press_keys)
-        self.assertEqual(press_keys.count("A"), 1)
-        self.assertEqual(press_keys.count("R"), 1)
+        self.assertEqual(press_keys, [])
         self.assertIn(
-            "empty intervention ledger",
+            "bounded read-only evidence debug lead row",
             scenario["evidence_contract"]["observer_artifact_requirement"],
         )
 

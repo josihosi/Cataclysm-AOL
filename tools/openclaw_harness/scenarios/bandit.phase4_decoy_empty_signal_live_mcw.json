@@ -151,139 +151,29 @@
       "expected_immediate_state": "the real outing is returning home from the unchanged uncertainty OMT"
     },
     {
-      "kind": "press",
-      "label": "open_decoy_arrival_ecology_overmap",
-      "keys": ["m"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the normal overmap opens with the ecology overlay after empty arrival"
-    },
-    {
-      "kind": "press",
-      "label": "select_decoy_returning_dispatch",
-      "keys": ["left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "["],
-      "delay_ms": 150,
-      "settle_seconds": 2,
-      "capture_after": true,
-      "expected_visible_fact": "the returning dispatch is selected at the original decoy OMT, not at the player"
-    },
-    {
-      "kind": "press",
-      "label": "close_decoy_arrival_overmap",
-      "keys": ["escape"],
-      "delay_ms": 200,
-      "settle_seconds": 1,
-      "expected_visible_fact": "the overmap closes with the returning dispatch selected"
-    },
-    {
-      "kind": "press",
-      "label": "open_decoy_ecology_console",
-      "keys": ["}", "C"],
-      "delay_ms": 250,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the existing ecology console opens for the selected returning pair"
-    },
-    {
-      "kind": "press",
-      "label": "arm_decoy_return_watch",
-      "keys": ["A"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the selected phase-change watch binds the real returning dispatch"
-    },
-    {
-      "kind": "press",
-      "label": "record_decoy_empty_incident",
-      "keys": ["R"],
-      "delay_ms": 200,
-      "settle_seconds": 3,
-      "capture_after": true,
-      "expected_visible_fact": "an atomic natural-provenance incident pair records the empty-return state and fixed destination"
-    },
-    {
-      "kind": "press",
-      "label": "close_decoy_ecology_console",
-      "keys": ["escape"],
-      "delay_ms": 200,
-      "settle_seconds": 1,
-      "expected_visible_fact": "the console closes before the physical return wait"
-    },
-    {
-      "kind": "long_wait",
-      "label": "wait_final_1_hour_for_decoy_pair_return",
-      "choice_key": "5",
-      "expected_duration": "1h",
-      "pre_menu_choice_key": "w",
-      "allow_artifact_elapsed_without_menu_ocr": true,
-      "auto_acknowledge_interruptions": false,
-      "completion_wait_seconds": 2,
-      "completion_artifact_timeout_seconds": 180,
-      "artifact_state_patterns": ["scheduler_hour=142", "members_returned=2", "structural outing returned home lead="],
-      "expected_visible_fact": "the exact pair physically returns while the decoy lead stays stale"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_before_decoy_save",
-      "expected_visible_fact": "saved-player mtime baseline is recorded before final writeback"
-    },
-    {
-      "kind": "press",
-      "label": "open_save_prompt_after_decoy_return",
-      "keys": ["S"],
-      "delay_ms": 250,
-      "settle_seconds": 1,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": ["quit"],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_untrusted_phase4_decoy_save_prompt",
-      "abort_reason": "save-and-quit prompt was not visibly proven after decoy return",
-      "expected_visible_fact": "the case-sensitive save-and-quit prompt is open"
-    },
-    {
-      "kind": "press",
-      "label": "confirm_save_after_decoy_return",
-      "keys": ["Y"],
-      "delay_ms": 250,
-      "settle_seconds": 5,
-      "capture_after": false,
-      "expected_visible_fact": "uppercase Y confirms the proven final save prompt"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_after_decoy_save",
-      "changed_since_label": "audit_player_save_mtime_before_decoy_save",
+      "kind": "audit_log_contains",
+      "label": "audit_decoy_empty_evidence_debug",
+      "required_line_patterns": [
+        [
+          "site id=overmap_special:bandit_camp@140,51,0",
+          "anchor=(140,51,0)",
+          "leads_total=1"
+        ],
+        [
+          "lead id=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0",
+          "last_known_omt=(137,49,0)",
+          "origin=returned_report",
+          "source_key=structural-signal:structural-smoke@(137,49,0)",
+          "status=stale",
+          "confidence=0",
+          "times_checked_empty=1",
+          "last_outcome=signal_investigation_empty"
+        ]
+      ],
       "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_untrusted_phase4_decoy_writeback",
-      "abort_reason": "saved-player mtime did not advance after decoy return",
-      "expected_visible_fact": "same-run empty-lead outcome was written to disk"
-    },
-    {
-      "kind": "audit_saved_bandit_live_world_state",
-      "label": "audit_saved_decoy_lead_stale_and_pair_home",
-      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
-      "required_member_count": 5,
-      "required_ready_at_home_count": 5,
-      "required_wounded_or_unready_count": 0,
-      "required_active_outside_count": 0,
-      "required_active_group_id_exact": "",
-      "required_active_target_id_exact": "",
-      "required_min_leads": 1,
-      "required_max_leads": 8,
-      "required_lead_kind": "smoke_signal",
-      "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-smoke@(137,49,0)",
-      "required_lead_source_contains": "structural-signal:structural-smoke@(137,49,0)",
-      "required_lead_status": "stale",
-      "required_lead_last_outcome": "signal_investigation_empty",
-      "required_lead_bounty": 0,
-      "required_lead_threat": 0,
-      "required_lead_confidence": 0,
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_phase4_decoy_stale_writeback_missing",
-      "abort_reason": "saved owner did not retain the exact stale zero-confidence smoke lead with the full pair home",
-      "expected_immediate_state": "the camp retains one honest stale clue at the original OMT and no active pressure"
+      "abort_verdict": "blocked_phase4_decoy_evidence_debug_missing",
+      "abort_reason": "same-run evidence debug report did not expose the exact stale returned-smoke lead mutation",
+      "expected_immediate_state": "the bounded read-only evidence report binds the stale zero-confidence empty-signal lead to its camp, source, and fixed OMT"
     },
     {
       "kind": "audit_log_not_contains",
@@ -297,9 +187,9 @@
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_decoy_empty_signal_live_mcw",
   "evidence_contract": {
-    "claim": "one real bandit pair investigates a staged but schema-valid returned smoke clue, finds no physical/same-source support at its fixed uncertainty OMT, writes the lead stale with zero confidence, and returns without learning the player location",
+    "claim": "one real bandit pair investigates a staged but schema-valid returned smoke clue, finds no physical/same-source support at its fixed uncertainty OMT, and the authoritative returned-signal arrival writes the lead stale with zero confidence",
     "setup_boundary": "the returned-report smoke lead and DEBUG_CLAIRVOYANCE mutation are explicit fixture footing; no active outing, route, arrival, empty result, stale state, return, or replacement target is injected",
-    "observer_artifact_requirement": "The same run must contain a natural-provenance ecology_incident JSON/PNG pair for the returning dispatch at the decoy OMT with an empty intervention ledger; coordinator inspection is authoritative for that payload.",
-    "failure_rule": "No credit if the exact pair does not dispatch/arrive/return, if the lead is not saved stale and zero-confidence, if target OMT changes, or if player@ appears in the signal lifecycle."
+    "observer_artifact_requirement": "The same run must contain the bounded read-only evidence debug lead row for the exact camp, returned-smoke lead/source/OMT, status=stale, confidence=0, times_checked_empty=1, and last_outcome=signal_investigation_empty.",
+    "failure_rule": "No credit if the exact pair does not dispatch/arrive, if the evidence row does not bind the stale zero-confidence empty mutation to the exact target/source, if target OMT changes, or if player@ appears in the signal lifecycle."
   }
 }

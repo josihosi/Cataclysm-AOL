@@ -15053,6 +15053,10 @@ std::string render_evidence_debug_report( const world_state &state, const int cu
                 << " last_known_omt=" << omt( lead.omt )
                 << " origin=" << to_string( lead.origin )
                 << " source_key=" << token( lead.source_key )
+                << " status=" << to_string( lead.status )
+                << " confidence=" << lead.confidence
+                << " times_checked_empty=" << lead.times_checked_empty
+                << " last_outcome=" << token( lead.last_outcome )
                 << " last_seen_minutes=";
             if( lead.last_seen_minutes < 0 ) {
                 out << "unknown";

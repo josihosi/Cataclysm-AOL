@@ -25681,6 +25681,42 @@ TEST_CASE( "bandit_live_world_evidence_debug_report_is_bounded_deterministic_and
     CHECK( nested_rotated.find( "fact_key=08-fact" ) == std::string::npos );
 }
 
+TEST_CASE( "bandit_live_world_evidence_debug_report_renders_returned_signal_mutation",
+           "[bandit][live_world][phase4_evidence_debug]" )
+{
+    bandit_live_world::world_state world;
+    bandit_live_world::site_record site;
+    site.site_id = "overmap_special:bandit_camp@140,51,0";
+    site.anchor = tripoint_abs_omt( 140, 51, 0 );
+
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0";
+    lead.revision = 4;
+    lead.kind = bandit_live_world::camp_lead_kind::smoke_signal;
+    lead.status = bandit_live_world::camp_lead_status::stale;
+    lead.origin = bandit_live_world::camp_lead_origin::returned_report;
+    lead.target_id = "structural-smoke@(137,49,0)";
+    lead.omt = tripoint_abs_omt( 137, 49, 0 );
+    lead.source_key = "structural-signal:structural-smoke@(137,49,0)";
+    lead.last_seen_minutes = 8280;
+    lead.confidence = 0;
+    lead.times_checked_empty = 1;
+    lead.last_outcome = "signal_investigation_empty";
+    lead.generated_by_this_camp_routine = true;
+    site.intelligence_map.leads.push_back( lead );
+    world.sites.push_back( site );
+
+    const std::string report = bandit_live_world::render_evidence_debug_report( world, 8460 );
+    CHECK( report.find(
+               "site id=overmap_special:bandit_camp@140,51,0 anchor=(140,51,0) leads_total=1" ) !=
+           std::string::npos );
+    CHECK( report.find(
+               "lead id=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0 "
+               "revision=4 last_known_omt=(137,49,0) origin=returned_report "
+               "source_key=structural-signal:structural-smoke@(137,49,0) status=stale confidence=0 "
+               "times_checked_empty=1 last_outcome=signal_investigation_empty" ) != std::string::npos );
+}
+
 TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_stable",
            "[bandit][live_world][phase4_evidence_aging]" )
 {
