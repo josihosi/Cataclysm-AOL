@@ -483,13 +483,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   parsed, and `git diff --check` passed. The existing hour-169/hour-170 detailed carried-observation gates,
   no-early-lead, physical-return, returned-source, and no-player-token gates remain unchanged.
 
-  Active task `R002-M138` builds the exact clean checkpoint and reruns the fully immediate-gate-repaired
-  scenario once through its necessary causal route: exact dispatch and watch arrival, one minute-10085
-  target sound and static-recorder fact, no pre-return lead or player token, east relocation only after the
-  fact, hourly detailed carried-observation retention, ordinary physical return, exactly one source-owned
-  returned sound lead, and zero debug errors. Its 3,600-second estimate reuses the measured M136 clean-
-  build/live-route duration; no further change or unchanged rerun is authorized if evidence contradicts a
-  premise.
+  Diagnosed task `R002-M138` built exact clean `2bc7f5b814+SDL3` binary
+  `8070cebbd579380abd6bab772c50ab212716296e61d65d62a51cefc1f8d84e55`. Run
+  `20260812_140703` passed exact dispatch and minute-10020 approach, then the nominal 30-minute wait ended
+  after five minutes. Fresh screen evidence shows a nearby kreck repeatedly bit the passive avatar and broke
+  limbs; the step was interrupted rather than mis-selected, and it stopped before watch, signal, or return
+  with zero debug errors. The first contradicted premise is safe passive-observer footing after the required
+  west relocation, not wait-menu mapping, product ecology behavior, or the DFS.
+
+  Active task `R002-M139` performs one read-only whole-owner feasibility audit of that interruption. It must
+  inspect the exact run screens/log, fixture player traits and local monster state, player-relocation and
+  loaded-bubble geometry, ordinary monster targeting/interrupt ownership, the scenario's no-ecology-actor
+  mutation boundary, and existing harness primitives. It returns the smallest source-grounded safe footing
+  that keeps source `(137,49,0)` loaded while approach `(139,51,0)` and watch `(138,52,0)` remain abstract,
+  or proves no current fixture route exists. No file edit, build, GUI run, monster deletion, wait retry, or
+  product claim is authorized. Its 900-second estimate reuses the measured accepted geometry-audit task.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
