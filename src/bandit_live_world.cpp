@@ -13933,7 +13933,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 continue;
             }
         }
-        if( outing.phase == scout_phase::observing &&
+        if( !returned_structural_signal_lead( *lead ) &&
+            outing.phase == scout_phase::observing &&
             outing.selected_watch_kind != structural_watch_kind::none &&
             outing.waypoint_index == structural_outing_destination_waypoint( outing ) ) {
             const scout_assessment_result assessment = advance_structural_scout_assessment(

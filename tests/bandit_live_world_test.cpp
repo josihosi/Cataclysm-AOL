@@ -13743,6 +13743,76 @@ TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
     }
 }
 
+TEST_CASE( "hostile_camp_watch_routed_returned_signal_resolves_empty_at_arrival",
+           "[bandit][live_world][phase4_decoy_signal_control][save]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 723100 );
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    bandit_live_world::camp_map_lead *lead =
+        site.intelligence_map.find_lead( outing.target_lead_id );
+    REQUIRE( lead != nullptr );
+    const std::string lead_id = lead->lead_id;
+    REQUIRE( outing.target_id == lead_id );
+    lead->kind = bandit_live_world::camp_lead_kind::smoke_signal;
+    lead->origin = bandit_live_world::camp_lead_origin::returned_report;
+    lead->generated_by_this_camp_routine = true;
+    lead->status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead->confidence = 3;
+    outing.job_type = "scout";
+    const tripoint_abs_omt target_omt = lead->omt;
+    const tripoint_abs_omt watch_omt( target_omt.x(), target_omt.y() + 3, target_omt.z() );
+    const tripoint_abs_omt approach_omt( watch_omt.x(), watch_omt.y() + 1, watch_omt.z() );
+    outing.schema_version = 10;
+    outing.target_footprint = { target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = watch_omt;
+    outing.selected_watch_route_cost = 8;
+    outing.shared_route = { site.anchor, approach_omt, watch_omt, approach_omt, site.anchor };
+    outing.waypoint_index = 1;
+    const int selected_watch_distance = std::max( std::abs( site.anchor.x() - watch_omt.x() ),
+                                        std::abs( site.anchor.y() - watch_omt.y() ) );
+    const int stalking_delay_minutes = std::clamp( selected_watch_distance * 15, 30, 240 );
+    const int homeward_delay_minutes = std::clamp( selected_watch_distance * 10, 30, 180 );
+    const int arrival_delay_minutes = stalking_delay_minutes + homeward_delay_minutes;
+    outing.expected_return_minutes = outing.started_minutes + arrival_delay_minutes +
+                                    homeward_delay_minutes;
+    REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
+                 outing.shared_route, site.anchor, watch_omt, outing.target_footprint ) );
+    REQUIRE( std::find( outing.shared_route.begin(), outing.shared_route.end(), target_omt ) ==
+             outing.shared_route.end() );
+    const int arrival_minutes = outing.started_minutes + arrival_delay_minutes;
+    REQUIRE( arrival_minutes > outing.local_contact_minutes );
+    CAPTURE( arrival_minutes, outing.started_minutes, outing.local_contact_minutes,
+             outing.expected_return_minutes, outing.waypoint_index,
+             bandit_live_world::current_external_simulation_cursor( site ).has_value() );
+    int signal_callbacks = 0;
+    const bandit_live_world::structural_outing_result arrived =
+        bandit_live_world::advance_structural_bounty_outings( world, arrival_minutes, {}, {},
+    [&signal_callbacks, watch_omt, target_omt]( const bandit_live_world::site_record &,
+    const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        signal_callbacks++;
+        CHECK( request.current_omt == watch_omt );
+        CHECK( std::find( request.visible_forward_omts.begin(),
+                         request.visible_forward_omts.end(), target_omt ) !=
+               request.visible_forward_omts.end() );
+        return std::vector<bandit_live_world::structural_signal_read> {};
+    } );
+    CHECK( signal_callbacks == 1 );
+    CHECK( arrived.arrivals_processed == 1 );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
+    CHECK( lead->confidence == 0 );
+    CHECK( lead->times_checked_empty == 1 );
+    CHECK( lead->last_outcome == "signal_investigation_empty" );
+    CHECK( std::any_of( arrived.notes.begin(), arrived.notes.end(), []( const std::string & note ) {
+        return note.find( "returned signal investigation was empty" ) != std::string::npos;
+    } ) );
+}
+
 TEST_CASE( "hostile_camp_returned_signals_receive_bounded_urgent_scheduler_service",
            "[bandit][live_world][phase4_decoy_signal_control][scheduler][fairness][save]" )
 {
