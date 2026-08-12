@@ -468,12 +468,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   passed in 0.079 seconds, the scenario JSON parsed, and `git diff --check` passed. The later detailed
   observation, no-early-lead, physical-return, returned-source, and no-player-token gates are unchanged.
 
-  Active task `R002-M136` builds the exact clean checkpoint and reruns that matcher-repaired scenario once
-  through its full necessary causal route: exact dispatch and watch arrival, one minute-10085 target sound
-  and static-recorder fact, no pre-return lead or player token, east relocation only after the fact,
-  ordinary physical return, exactly one source-owned returned sound lead, and zero debug errors. Its
-  3,600-second estimate reuses the measured M134 clean-build/live-route duration; no further source,
-  scenario, or matcher change or unchanged rerun is authorized if new evidence contradicts a premise.
+  Diagnosed task `R002-M136` built exact clean `d6695956d5+SDL3` binary
+  `2961b07fee70e7d1a13c7d32256b371167dc35de5c8cd47ed3d2eb2065bc057e`. Run
+  `20260812_135427` passed the repaired minute-10085 completion predicate with the exact request/watch,
+  supported/permitted target sound, and one-fact static recorder. The immediately following audit still
+  required hourly-only `evidence debug` and detailed `observation scope=active` rows, so it stopped before
+  east relocation and return with zero debug errors. The first contradicted premise is the duplicate
+  immediate audit contract, not production behavior, matcher machinery, or the DFS.
+
+  Active task `R002-M137` replaces only those unavailable immediate audit rows with the source-emitted
+  one-callback/one-fact recorder summary and exact request/event/minute-10085 groups. Its source-shaped
+  positive and negatives must distinguish the exact recorder fact, watch/inbounds/field/sound identity,
+  permitted target event, and clock. The existing hour-169/hour-170 detailed carried-observation gates,
+  no-early-lead, physical-return, returned-source, and no-player-token gates remain byte-identical. Three
+  focused fixture-contract controls, JSON parsing, and `git diff --check` decide acceptance. Its 900-second
+  estimate reuses the measured comparable audit/matcher task; no product build or live run belongs here.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
