@@ -17,8 +17,9 @@ Lineage: `CAOL-hostile-ecology-dev`
   `(136,49,0)` while approach `(139,51,0)` and watch `(138,52,0)` remain abstract. Production
   already records the post-arrival minute-10085 target sound under the unified static/maintenance
   request owner, and the strict scenario matcher preserves no early report lead, physical return,
-  exact returned-source provenance, and no player token. The last live attempt was interrupted before
-  watch by an infrared kreck attacking the passive avatar; no signal or return credit was claimed.
+  exact returned-source provenance, and no player token. One earlier live attempt was interrupted by
+  an infrared kreck before watch, but the exact clean checkpoint diagnostic below proves that monster
+  presence is not a stable premise of this footing.
 
   Accepted probe checkpoint `2b3bfd81ec` adds an observer-gated, read-only local-bubble safety
   preflight and fail-closed guard before every remaining long wait. Stable records bind resident type
@@ -28,14 +29,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   the exact current Catch2 case passes 21 assertions for kreck infrared/contact/unsafe and deer
   nonhostile/safe controls. The probe changes no ecology owner or world state.
 
-  Next unexecuted frontier `R002-M142` must build the exact clean checkpoint executable and run the
-  structural-signal scenario only through its first post-west-relocation safety preflight. It accepts
-  a diagnostic result, not R-002: exact runtime identity; preserved source-loaded and approach/watch-
-  abstract geometry; a count-consistent resident inventory; and the expected fail-closed kreck row
-  before any long-wait clock advancement. The result must determine whether any source-grounded
-  avatar-only footing can preserve those geometry constraints without thermal contact. It must not
-  continue after an unsafe verdict, guess a coordinate, mutate actors or terrain, or claim signal
-  credit.
+  Exact clean `96613abfca+SDL3` diagnostic run `20260812_145239` reached the post-west-relocation
+  preflight with avatar OMT `(136,49,0)`, the source still loaded, and approach/watch abstract. It
+  emitted one count-consistent summary and 17 complete resident rows, all safe; no kreck was present.
+  The owned process stopped before minute 10020, signal observation, return, or report credit. This
+  source-groundedly proves the existing west footing can be safe and disproves the expected persistent-
+  kreck premise without changing the world or trying another coordinate.
+
+  Next unexecuted frontier `R002-M143` must rerun the exact clean structural-signal scenario from its
+  installed fixture and continue only while every pre-wait safety guard remains green. It accepts the
+  full remaining real-signal causal row: exact dispatch and watch identity; post-arrival target sound;
+  no early camp lead; ordinary physical return; exactly one returned sound lead with no player token;
+  clean runtime identity; and zero debug errors. Any unsafe preflight must stop before its following
+  wait and return a fresh resident inventory; no coordinate guess, actor/terrain mutation, combat
+  acknowledgement, or partial signal/return credit is allowed.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
