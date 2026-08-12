@@ -434,7 +434,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   `cataclysm.a`, links the current test executable, and runs the exact M123 discriminator plus
   `git diff --check`. It must preserve the diagnostic diff and stop on any different unresolved symbol
   family. Its 1,800-second estimate reuses the measured M124 archive/link route and adds only one
-  identified owner-object rebuild and symbol check.
+  identified owner-object rebuild and symbol check. The owner rebuild proved all six required offset-392
+  thunks, and the current test executable linked. The exact discriminator then entered unrelated global
+  game initialization and exited 139 while enumerating SDL render devices, before the pure formatting
+  body ran. The first contradicted premise is the test's missing `nogame` ownership tag: its structs and
+  formatter require no static data, world, renderer, or SDL state. Product behavior and the DFS remain
+  unchanged.
+
+  Active task `R002-M126` marks only the pure M123 formatting discriminator as `nogame`, rebuilds its
+  test object and current executable through the already coherent PCH-disabled macOS route, runs that
+  exact case, and checks the diff. It must not weaken any assertion, alter the diagnostic, or claim any
+  live behavior. Its 900-second estimate is derived from M125 completing the identified owner rebuild,
+  archive generation, and link well within this bound; this retry changes only one test tag and object.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
