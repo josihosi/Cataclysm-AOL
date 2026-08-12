@@ -234,6 +234,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   zero popup/errors. The decoy lifecycle may now rerun after the real-signal probe route. Player
   relocation and legitimately observed versus unseen zombie danger remain afterward.
 
+  Accepted fixture checkpoint `61bd7f2f3f` moves the decoy to source-proved target `(137,49,0)`,
+  defers its competing terrain scan beyond the control window, and adds a fail-closed production watch
+  preflight. Changed-executable run `20260812_083158` selected watch `(138,52,0)` with five qualified
+  candidates and route cost 8, dispatched the exact non-player returned-smoke lead, and seeded no
+  competing lead. It then exposed the current causal frontier: at scheduler hour 141 the pair reached
+  its selected watch but did not execute the lower returned-signal empty-resolution branch. Accepted
+  owner checkpoint `84bea307c0` routes returned-signal arrivals past that generic watch early-return
+  into the existing supported/empty resolver; its direct watch discriminator passed 366 assertions,
+  the restored support/empty/return suite passed 558 assertions, and three fixture checks passed.
+  Active task `R002-M105` runs the same compact lifecycle from the clean committed binary; its
+  3,600-second estimate carries the measured same-binary build/live route.
+
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.

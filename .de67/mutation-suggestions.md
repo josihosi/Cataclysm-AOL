@@ -12,4 +12,19 @@ no-op leaves this scratch ledger intact.
 
 ## Pending suggestions
 
-None.
+### Manual proposal — explicitly search for overengineering
+
+Every incident and random-improvement mutation review should explicitly look for
+**overengineering**, not only generic inefficiency. Check whether implementation layers, special
+cases, proof matrices, fixtures, diagnostics, coordination, retries, identity bookkeeping, or
+handoff artifacts exceed what the DFS contract and honest proof require. When deleting or
+simplifying machinery preserves the requested behavior, authoritative ownership, correctness, and
+the smallest reliable proof, prefer that deletion or simplification and name the avoided
+overengineering in the verdict.
+
+Evidence: R-002 expanded into a bespoke natural-world certification campaign with seed searches,
+per-row live identity continuity, analyzers, and exact-clock harness work even though focused owner
+tests plus one compact live negative/positive proof were sufficient after the user-approved
+rescope. Candidate treatment: add an explicit overengineering check to the applicable efficiency,
+task/test design, and orchestration review sections; keep correctness and proof above efficiency as
+required by the kernel fitness order.
