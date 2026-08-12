@@ -297,8 +297,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   Active task `R002-M114` rebuilds the exact clean checkpoint and runs only the compact decoy
   scenario through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the fixed camp/lead/source
   dispatch, selected watch, empty arrival, exact stale/zero/one/empty evidence row, no player token,
-  clean process exit, and zero debug errors. Its 3,600-second estimate is derived from the measured
-  clean rebuild/live route.
+  clean process exit, and zero debug errors. Exact `492ddab574+SDL3` binary
+  `d54a2be4163c3983bbdfc395081a5119b49113a01f71b3e2549e8f01400e7b5f` and bridge run
+  `20260812_103604` passed that full causal chain with zero debug errors and no `player@` token.
+  The initial settle screenshot caveat was superseded by the green HUD/debug guard and exact
+  five-member saved-state preflight; it cannot affect identity, the transition verdict, or a false
+  green. The decoy contrast is accepted and will not be rerun.
+
+  Active task `R002-M115` audits the authoritative focused tests for supported versus empty returned
+  signals, avatar-relocation non-ownership, and unseen versus legitimately observed zombie danger.
+  It adds or repairs only a missing discriminator, verifies each negative would fail under the
+  rejected hidden-state behavior, and runs the narrow owning suite. Its 3,600-second estimate is
+  derived from the bounded owner/test review plus one focused C++ compile/test route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
