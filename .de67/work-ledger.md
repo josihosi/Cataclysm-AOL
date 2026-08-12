@@ -491,13 +491,23 @@ Lineage: `CAOL-hostile-ecology-dev`
   with zero debug errors. The first contradicted premise is safe passive-observer footing after the required
   west relocation, not wait-menu mapping, product ecology behavior, or the DFS.
 
-  Active task `R002-M139` performs one read-only whole-owner feasibility audit of that interruption. It must
-  inspect the exact run screens/log, fixture player traits and local monster state, player-relocation and
-  loaded-bubble geometry, ordinary monster targeting/interrupt ownership, the scenario's no-ecology-actor
-  mutation boundary, and existing harness primitives. It returns the smallest source-grounded safe footing
-  that keeps source `(137,49,0)` loaded while approach `(139,51,0)` and watch `(138,52,0)` remain abstract,
-  or proves no current fixture route exists. No file edit, build, GUI run, monster deletion, wait retry, or
-  product claim is authorized. Its 900-second estimate reuses the measured accepted geometry-audit task.
+  Accepted audit `R002-M139` traces the unsafe footing through current source and exact run artifacts.
+  `DEBUG_CLOAK` supplies ordinary invisibility only; `Creature::sees` resolves infrared first, and the
+  fixture's kreck has `INFRARED_VISION`. Source `(137,49,0)` remains loaded from player `(136,49,0)` while
+  approach `(139,51,0)` and watch `(138,52,0)` remain outside the roughly 60-map-square bubble, but the
+  current harness cannot inspect resident map monsters, their senses, target memory, or reachability at an
+  alternate offset. No current coordinate is therefore source-groundedly safe. The preceding one-hour
+  approach wait also carried attack residue despite its green scheduler artifact.
+
+  Next unexecuted frontier `R002-M140` is a smallest observer-gated, read-only local-bubble safety preflight
+  plus a fail-closed combat/spotting guard before long waits. It must report resident monster identity,
+  absolute position, relevant senses, target/goal state, and conservative visibility/reachability for the
+  proposed avatar-only footing; reject the known kreck thermal contact; and preserve loaded source,
+  abstract approach/watch, unchanged ecology actors/state, and post-fact east relocation. Do not guess a
+  coordinate, delete or pacify monsters, add invulnerability, auto-acknowledge danger, or rerun unchanged.
+  A fresh coordinator must inspect the exact existing observer action and narrow compile/test route before
+  deriving and starting its immutable estimate; this coordinator halted under the project MSW three-round
+  fuse before dispatch.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
