@@ -26,13 +26,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   nor staging positions. It emitted no member return, returned signal lead, or `returned_report`
   origin, so no return/report credit is accepted.
 
-  Next frontier `R002-M151` must inspect the complete homeward materialization owner, its entry and
-  staging selectors, the unchanged fixture geometry, competing local/abstract readers and writers,
-  owning tests, and the natural transition. If a valid paired crossing exists, implement the smallest
-  source-grounded correction and a discriminator that fails the rejected selection behavior. If the
-  footing cannot provide one, stop with the first contradicted owner or fixture premise. Do not guess
-  coordinates, mutate actors or terrain, assign paths directly, create another movement owner, or
-  grant partial signal/return credit.
+  Accepted read-only owner review `R002-M151` identified `note_live_bandit_aftermath` as the duplicate
+  writer: its generic non-hostile aftermath path advances `structural_sortie` phase, waypoint, and
+  return clocks before canonical `advance_structural_bounty_outings` owns that transition. The modern
+  scout and hostile-operation paths have separate owners and remain in scope for that helper.
+
+  Next frontier `R002-M152` must exclude every `structural_sortie` from that generic phase writer and
+  add a focused discriminator that fails when the duplicate writer advances structural state, plus a
+  positive control preserving its intended modern-scout behavior. Run the narrow owning tests and
+  compile the changed source seam. Do not alter scenario geometry or clocks, add a movement owner,
+  or launch the integrated proof from this implementation task.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
