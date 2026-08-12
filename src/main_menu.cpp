@@ -126,6 +126,9 @@ bool main_menu::create_harness_world( const std::string &world_name, const std::
 
     try {
         avatar &pc = get_avatar();
+        // The interactive main menu loads core definitions before constructing its avatar.
+        // This hidden route bypasses that menu, so preserve the same owner ordering here.
+        g->load_core_data();
         pc = avatar();
         g->gamemode = nullptr;
         world_generator->set_active_world( world );

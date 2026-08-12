@@ -16730,11 +16730,18 @@ def run_startup(args: argparse.Namespace) -> int:
 
     if plan.strategy == "harness_new_world":
         cleanup = cleanup_game_process(proc.pid)
+        try:
+            proc.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            pass
+        if proc.poll() is not None and cleanup.get("status") == "still_running_after_kill":
+            cleanup["status"] = "reaped_after_kill"
         child_stopped = cleanup.get("status") in {
             "already_exited",
             "terminated",
             "terminated_during_kill_escalation",
             "killed",
+            "reaped_after_kill",
         }
         world_cleanup = (
             cleanup_harness_world(profile, plan.harness_new_world, run_dir)
