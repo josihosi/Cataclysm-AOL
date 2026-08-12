@@ -14178,7 +14178,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
         if( outing.phase == scout_phase::observing && outing.local_contact_minutes >= 0 &&
             elapsed >= active_structural_outing_arrival_delay_minutes( candidate ) ) {
             const std::string lead_id = lead->lead_id;
-            if( structural_outing_uses_watch_route( outing ) ) {
+            const bool returned_signal_arrival = returned_structural_signal_lead( *lead );
+            if( structural_outing_uses_watch_route( outing ) && !returned_signal_arrival ) {
                 const int destination_waypoint = structural_outing_destination_waypoint( outing );
                 const bool newly_arrived = waypoint_progressed ||
                                            outing.waypoint_index != destination_waypoint;
@@ -14197,7 +14198,6 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             }
             const bool terrain_opportunity_arrival =
                 lead->kind == camp_lead_kind::terrain_opportunity;
-            const bool returned_signal_arrival = returned_structural_signal_lead( *lead );
             bool returned_signal_had_support = false;
             if( frontier_sector ) {
                 lead->status = camp_lead_status::scout_confirmed;
