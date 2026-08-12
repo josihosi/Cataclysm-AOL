@@ -124,13 +124,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   macOS binary passed 49 assertions. Structured review caught and closed an earlier false-green that had
   evaluated candidates beyond the production prefix; generated test artifacts were removed.
 
-  Next route: add the minimum deterministic fresh-world/capture bridge that can reproduce this ordinary
-  generation path in a disposable live profile without special, terrain, player-location, or lead
-  transforms. Preserve the distinction between the test's direct RNG seed and the product CLI's hashed
-  `--seed` input and earlier RNG consumption; do not assume the numeric test seed is a live CLI preimage.
-  The bridge must create and select a normal saved world, prove the natural bandit camp and the two
-  selector-valid production-prefix candidates from saved/runtime owners, then capture that unchanged
-  world for the observer-gated scheduler proof.
+  Accepted live-bridge ownership audit found no current end-to-end route. Product `--seed` hashes a string
+  and applies before static-data load; ordinary new-game setup then consumes RNG while creating the
+  character, selecting a start, and generating overmaps. Play Now creates a normal but randomly named
+  world, while the harness forwards only `--userdir` and an optional existing `--world`. Persistence and
+  fixture capture are honest once a character saves, but the live bootstrap only owns existing specials
+  within 40 OMT and the current analyzer action is observer-trait gated. CLI seed alone, raw seed alone,
+  a test-created save, and GUI Play Now plus audit each omit a necessary provenance or determinism owner.
+
+  Next route: add a distinct harness-only raw numeric seed at an explicit ordinary-overmap-generation
+  boundary, named fresh normal-world creation through existing worldfactory/setup/NOW/start-game owners,
+  and a non-persisting feasibility report for natural camp identity, player distance, the first two
+  production-prefix candidates, selected watch/cost, and the shared eight-read budget. Extend harness argv,
+  save-marker, and unchanged capture wiring around that product seam. Acceptance requires the same named
+  normal world and character save on two fresh invocations, the accepted natural camp and two selected
+  rows, player bootstrap reach, no ecology-state delta from preflight, and no special, terrain, location,
+  roster, camp, observer-trait, or lead transform.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
