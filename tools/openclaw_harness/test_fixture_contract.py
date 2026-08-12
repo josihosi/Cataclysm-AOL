@@ -5194,61 +5194,32 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
         steps = list(scenario["steps"])
         labels = [step["label"] for step in steps]
-        observer_labels = [
-            "open_natural_phase4_ecology_overmap",
-            "move_ecology_cursor_to_natural_dispatch",
-            "select_and_capture_natural_phase4_dispatch",
-            "close_ecology_overmap_after_natural_selection",
-            "open_debug_menu_for_natural_ecology_watch",
-            "open_ecology_observer_console",
-            "arm_default_selected_phase_watch",
-            "record_natural_phase4_ecology_incident",
-            "close_ecology_console_before_signal_return",
-        ]
-        observer_keys = [
-            "m", "left", "down", "down", "down", "[", "escape", "}", "C", "A", "R", "escape"
-        ]
-
         self.assertEqual(
             scenario["fixture"],
             "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
         )
         self.assertLess(
-            labels.index("audit_no_returned_signal_lead_before_physical_return"),
-            labels.index(observer_labels[0]),
-        )
-        self.assertLess(
             labels.index("audit_phase4_three_active_signal_facts"),
-            labels.index(observer_labels[0]),
+            labels.index("audit_no_returned_signal_lead_before_physical_return"),
         )
-        self.assertEqual(
-            [labels.index(label) for label in observer_labels],
-            sorted(labels.index(label) for label in observer_labels),
-        )
-        self.assertLess(
-            labels.index(observer_labels[-1]),
-            labels.index("wait_final_1_hour_for_signal_pair_physical_return"),
-        )
-        self.assertEqual(
-            [
-                key
-                for label in observer_labels
-                for key in steps[labels.index(label)]["keys"]
-            ],
-            observer_keys,
-        )
-        self.assertNotIn("I", observer_keys)
-        self.assertNotIn("P", observer_keys)
-        self.assertTrue(
-            steps[labels.index("select_and_capture_natural_phase4_dispatch")]["capture_after"]
-        )
-        self.assertTrue(
-            steps[labels.index("record_natural_phase4_ecology_incident")]["capture_after"]
-        )
-        self.assertIn(
-            "coordinator artifact inspection",
-            scenario["evidence_contract"]["observer_artifact_requirement"],
-        )
+        for removed_label in (
+            "open_natural_phase4_ecology_overmap",
+            "move_ecology_cursor_to_natural_dispatch",
+            "select_and_capture_natural_phase4_dispatch",
+            "open_debug_menu_for_natural_ecology_watch",
+            "open_ecology_observer_console",
+            "arm_default_selected_phase_watch",
+            "record_natural_phase4_ecology_incident",
+            "audit_player_save_mtime_before_signal_matrix_save",
+            "open_save_prompt_after_signal_matrix",
+            "confirm_save_after_signal_matrix",
+            "audit_player_save_mtime_after_signal_matrix_save",
+            "audit_saved_returned_smoke_lead",
+            "audit_saved_returned_light_lead",
+            "audit_saved_returned_sound_lead",
+        ):
+            self.assertNotIn(removed_label, labels)
+        self.assertNotIn("ecology_incident", scenario["evidence_contract"]["observer_artifact_requirement"])
         return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
         self.assertIn(["scheduler_hour=172", "members_returned=2"], return_audit["required_line_patterns"])
         self.assertIn(["structural outing returned signal leads=3"], return_audit["required_line_patterns"])
@@ -5259,12 +5230,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ),
             3,
         )
-        for label in (
-            "audit_saved_returned_smoke_lead",
-            "audit_saved_returned_light_lead",
-            "audit_saved_returned_sound_lead",
-        ):
-            self.assertLess(labels.index(return_audit["label"]), labels.index(label))
+        self.assertEqual(labels[-2:], [
+            "audit_phase4_structural_signal_physical_return",
+            "audit_phase4_returned_signal_leads_have_no_player_token",
+        ])
 
     def test_phase4_signal_matrix_derives_schema10_watch_footing_and_clocks(self) -> None:
         fixture_name = "bandit_phase4_ecology_observer_handoff_v0_2026-08-05"

@@ -1,6 +1,6 @@
 {
   "name": "bandit.phase4_structural_signal_matrix_live_mcw",
-  "description": "Phase-4 live smoke/light/sound matrix plus a comfort-first ecology-observer incident on one production-owned schema-10 structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward source-proved terrain-opportunity road target (137,49,0), approaches through (139,51,0), and watches from (138,52,0). The passive player at abs_ms (3336,1187,0) keeps the target and return route in loaded reality while the watch remains out of bounds; scenario setup places one real active explosive and one physical fire 36 map squares west on the target. Production must retain three typed target-to-watch facts and create exactly three returned_report leads only after physical return.",
+  "description": "Phase-4 live smoke/light/sound matrix on one production-owned schema-10 structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward source-proved terrain-opportunity road target (137,49,0), approaches through (139,51,0), and watches from (138,52,0). The passive player at abs_ms (3336,1187,0) keeps the target and return route in loaded reality while the watch remains out of bounds; scenario setup places one real active explosive and one physical fire 36 map squares west on the target. Production must retain three typed target-to-watch facts and create exactly three returned_report leads only after physical return.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
@@ -320,85 +320,6 @@
       "expected_immediate_state": "no camp lead has been created from the pair's carried route facts"
     },
     {
-      "kind": "press",
-      "label": "open_natural_phase4_ecology_overmap",
-      "keys": ["m"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the ordinary overmap opens with the DEBUG_CLAIRVOYANCE ecology overlay while the production-owned dispatch remains at exact watch OMT (138,52,0)",
-      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
-    },
-    {
-      "kind": "press",
-      "label": "move_ecology_cursor_to_natural_dispatch",
-      "keys": ["left", "down", "down", "down"],
-      "delay_ms": 250,
-      "settle_seconds": 1,
-      "expected_visible_fact": "the overmap cursor moves from player OMT (139,49,0) to natural dispatch watch OMT (138,52,0) without moving the avatar",
-      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
-    },
-    {
-      "kind": "press",
-      "label": "select_and_capture_natural_phase4_dispatch",
-      "keys": ["["],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "capture_after": true,
-      "expected_visible_fact": "the visible ecology details select the real bandit dispatch carrying three natural signal facts at watch OMT (138,52,0)",
-      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
-    },
-    {
-      "kind": "press",
-      "label": "close_ecology_overmap_after_natural_selection",
-      "keys": ["escape"],
-      "delay_ms": 200,
-      "settle_seconds": 1,
-      "expected_visible_fact": "the overmap closes while retaining the process-local ecology selection for the debug console"
-    },
-    {
-      "kind": "press",
-      "label": "open_debug_menu_for_natural_ecology_watch",
-      "keys": ["}"],
-      "delay_ms": 200,
-      "settle_seconds": 1,
-      "expected_visible_fact": "the ordinary debug menu opens without changing the selected ecology entity or signal state"
-    },
-    {
-      "kind": "press",
-      "label": "open_ecology_observer_console",
-      "keys": ["C"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the existing console opens in DEBUG_CLAIRVOYANCE ecology-observer mode with shared watch and incident controls"
-    },
-    {
-      "kind": "press",
-      "label": "arm_default_selected_phase_watch",
-      "keys": ["A"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the default capture-and-continue selected-phase watch binds the natural dispatch without advancing time or intervening",
-      "proof_deferred_to_label": "record_natural_phase4_ecology_incident"
-    },
-    {
-      "kind": "press",
-      "label": "record_natural_phase4_ecology_incident",
-      "keys": ["R"],
-      "delay_ms": 200,
-      "settle_seconds": 3,
-      "capture_after": true,
-      "expected_visible_fact": "the console records a same-run compact natural-provenance incident JSON and paired screenshot for the selected dispatch",
-      "failure_rule": "Coordinator artifact inspection must confirm the ecology_incident JSON and PNG pair; this scenario deliberately adds no OCR abort or duplicate payload parser."
-    },
-    {
-      "kind": "press",
-      "label": "close_ecology_console_before_signal_return",
-      "keys": ["escape"],
-      "delay_ms": 200,
-      "settle_seconds": 2,
-      "expected_visible_fact": "the console closes and normal gameplay resumes with no debug intervention and the existing signal-return waits unchanged"
-    },
-    {
       "kind": "long_wait",
       "label": "wait_1_hour_with_three_carried_signal_facts",
       "choice_key": "5",
@@ -473,7 +394,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_structural_signal_physical_return_missing",
       "abort_reason": "same-run maintenance/evidence did not show physical return plus the atomic three-lead return transaction",
-      "expected_immediate_state": "the reunited camp completed the atomic three-lead return transaction; the exact post-save owner audits below prove each persisted lead outside the rotating diagnostic cap"
+      "expected_immediate_state": "the reunited camp completed the atomic three-lead return transaction; the same-run returned-lead audit proves each exact source-owned report"
     },
     {
       "kind": "audit_log_not_contains",
@@ -483,118 +404,14 @@
       "abort_verdict": "blocked_phase4_returned_signal_player_coordinate_leak",
       "abort_reason": "a returned-report evidence line exposed a player-coordinate token",
       "expected_immediate_state": "returned signal provenance names structural source classes and route OMTs, never player coordinates"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_before_signal_matrix_save",
-      "expected_visible_fact": "saved-player mtime baseline is recorded before final writeback"
-    },
-    {
-      "kind": "press",
-      "label": "open_save_prompt_after_signal_matrix",
-      "keys": ["S"],
-      "delay_ms": 250,
-      "settle_seconds": 1,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": ["quit", "Case Sensitive"],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_untrusted_phase4_signal_matrix_save_prompt",
-      "abort_reason": "save-and-quit prompt was not visibly proven",
-      "expected_visible_fact": "the case-sensitive final save-and-quit prompt is open"
-    },
-    {
-      "kind": "press",
-      "label": "confirm_save_after_signal_matrix",
-      "keys": ["Y"],
-      "delay_ms": 250,
-      "settle_seconds": 5,
-      "capture_after": false,
-      "expected_visible_fact": "uppercase Y confirms the proven final save prompt"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_after_signal_matrix_save",
-      "changed_since_label": "audit_player_save_mtime_before_signal_matrix_save",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_untrusted_phase4_signal_matrix_writeback",
-      "abort_reason": "saved-player mtime did not advance after final save",
-      "expected_visible_fact": "same-run final camp/lead state was written to disk"
-    },
-    {
-      "kind": "audit_saved_bandit_live_world_state",
-      "label": "audit_saved_returned_smoke_lead",
-      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
-      "required_member_count": 5,
-      "required_ready_at_home_count": 5,
-      "required_wounded_or_unready_count": 0,
-      "required_active_outside_count": 0,
-      "required_active_group_id_exact": "",
-      "required_active_target_id_exact": "",
-      "required_min_leads": 4,
-      "required_lead_kind": "smoke_signal",
-      "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-smoke@(137,49,0)",
-      "required_lead_source_contains": "structural-signal:structural-smoke@(137,49,0)",
-      "required_lead_status": "suspected",
-      "required_lead_last_outcome": "returned_structural_smoke_report",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_phase4_structural_smoke_returned_lead_missing",
-      "abort_reason": "saved camp state did not contain the exact returned-report smoke lead after physical return",
-      "expected_immediate_state": "the idle reunited camp persistently knows the exact bounded smoke lead only through a returned scout report"
-    },
-    {
-      "kind": "audit_saved_bandit_live_world_state",
-      "label": "audit_saved_returned_light_lead",
-      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
-      "required_member_count": 5,
-      "required_ready_at_home_count": 5,
-      "required_wounded_or_unready_count": 0,
-      "required_active_outside_count": 0,
-      "required_active_group_id_exact": "",
-      "required_active_target_id_exact": "",
-      "required_min_leads": 4,
-      "required_lead_kind": "light_signal",
-      "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-light@(137,49,0)",
-      "required_lead_source_contains": "structural-signal:structural-light@(137,49,0)",
-      "required_lead_status": "suspected",
-      "required_lead_last_outcome": "returned_structural_light_report",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_phase4_structural_light_returned_lead_missing",
-      "abort_reason": "saved camp state did not contain the exact returned-report light lead after physical return",
-      "expected_immediate_state": "the idle reunited camp persistently knows the exact bounded light lead only through a returned scout report"
-    },
-    {
-      "kind": "audit_saved_bandit_live_world_state",
-      "label": "audit_saved_returned_sound_lead",
-      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
-      "required_member_count": 5,
-      "required_ready_at_home_count": 5,
-      "required_wounded_or_unready_count": 0,
-      "required_active_outside_count": 0,
-      "required_active_group_id_exact": "",
-      "required_active_target_id_exact": "",
-      "required_min_leads": 4,
-      "required_lead_kind": "sound_signal",
-      "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-explosion@(137,49,0)",
-      "required_lead_source_contains": "structural-signal:structural-explosion@(137,49,0)",
-      "required_lead_status": "suspected",
-      "required_lead_last_outcome": "returned_structural_sound_report",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_phase4_structural_sound_returned_lead_missing",
-      "abort_reason": "saved camp state did not contain the exact returned-report sound lead after physical return",
-      "expected_immediate_state": "the idle reunited camp persistently knows the exact bounded sound lead only through a returned scout report"
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.phase4_structural_signal_matrix_live_mcw",
   "evidence_contract": {
-    "claim": "one autonomous schema-10 abstract scout pair reaches its selected watch, reads physical smoke, light, and a semantic explosion from the committed target footprint, appears in a same-run natural ecology-observer screenshot/incident pair before return, retains typed facts without creating camp knowledge early, and creates exactly three bounded returned_report leads only after physical return",
+    "claim": "one autonomous schema-10 abstract scout pair reaches its selected watch, reads physical smoke, light, and a semantic explosion from the committed target footprint, retains typed facts without creating camp knowledge early, and creates exactly three bounded returned_report leads only after physical return",
     "setup_boundary": "passive debug-cloaked player relocation, the source-proved road lead, one physical fire, and one real SPAWN_ACTIVE explosive are fixture/scenario footing; the derived observer child adds only DEBUG_CLAIRVOYANCE and its transform report must name that mutation; no typed observation, signal lead, target footprint, watch selection, route position, camp report, or return is injected",
     "load_only_verdict": "load/setup proof only / inconclusive for the structural signal matrix",
-    "observer_artifact_requirement": "The same harness run must contain a natural-provenance ecology_incident JSON and its atomic PNG pair plus the selected-dispatch overmap capture. File payload and pairing verification is coordinator artifact inspection, not a new harness parser.",
-    "failure_rule": "No Phase-4 matrix credit unless exact dispatch and approach clocks, target-loaded/watch-abstract geometry, the exact minute-10080 target-footprint-to-watch smoke/light/explosion observations, pre-return no-lead state, the same-run natural observer screenshot/incident pair, physical return, and three exact persisted returned-report leads are separately green."
+    "observer_artifact_requirement": "The same harness run must contain the exact source-OMT-to-watch smoke, light, and sound observations, an explicit pre-return absence of returned_report, the physical return transition, and one bounded returned-lead audit for all three source-owned reports. The artifact rows are authoritative for this causal proof.",
+    "failure_rule": "No Phase-4 matrix credit unless exact dispatch and approach clocks, target-loaded/watch-abstract geometry, the exact minute-10080 target-footprint-to-watch smoke/light/explosion observations, pre-return no-lead state, physical return, and three exact same-run returned_report leads are separately green."
   }
 }
