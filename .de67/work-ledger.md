@@ -100,14 +100,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   no bounded safe watch geography, with no watch or route cost. McWilliams has no remaining candidate
   footing, so another run there is inadmissible.
 
-  Next route: before any live execution, audit current packaged natural-camp fixtures and their manifests,
-  saved camp/lead state, route geometry, and provenance for a different selector-valid footing. Start with
-  the existing Phase-4 road-day `(137,49,0)` / watch `(138,52,0)` scenarios, but accept them only if a
-  fixture preserves a production-created idle non-frontier lead and ready camp rather than a hand-authored
-  lead, transformed geometry, or already-active outing. The read-only result must name the exact fixture,
-  camp, lead, target, watch, route constraints, and natural scheduler entry point before another clocked
-  live run. If no packaged fixture qualifies, replan tooling or natural world generation rather than
-  altering McWilliams, weakening the selector, or dragging the player/target.
+  Accepted packaged-fixture audit found no truthful alternate footing. The natural idle camp fixture at
+  `(140,51,0)` has five ready members and three production-origin terrain leads at `(136,51,0)`,
+  `(140,47,0)`, and `(144,51,0)`, but every concealed three-to-five-OMT watch lane exceeds the current
+  visibility budget. The selector-valid road-day `(137,49,0)` / `(138,52,0)` geometry is ineligible
+  because its manifest explicitly injects `bandit_camp_map_lead`; other natural captures are already
+  active, and the cannibal fixtures use seed/relabel transforms or lack a ready roster and lead.
+
+  Next route: inspect the current world-generation and harness owners for a reproducible fresh-world path
+  that naturally places a hostile camp and permits read-only camp/lead/watch feasibility before a proof
+  run. Use an authoritative deterministic seed only if the product or harness already exposes one; do not
+  invent retry counts or mutate generated terrain/save state. The smallest accepted tooling route must
+  create or select a normally generated world, identify the camp footprint and natural scan candidates,
+  evaluate current see-cost and route constraints without applying a lead, and capture a fixture only
+  after unchanged geometry supplies a selector-valid candidate. If no such current route exists, add the
+  minimum reusable natural-generation/preflight capability rather than weakening the selector.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
