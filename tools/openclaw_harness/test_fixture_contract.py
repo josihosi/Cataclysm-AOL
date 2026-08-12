@@ -47,6 +47,7 @@ from startup_harness import (  # noqa: E402
     StartupPlan,
     acknowledge_blocking_interruptions,
     audit_fresh_ecology_incident_pair,
+    audit_local_reality_safety_preflight_text,
     audit_log_contains,
     audit_log_not_contains,
     audit_saved_bandit_live_world_state,
@@ -5225,6 +5226,31 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("audit_phase4_three_active_signal_facts", labels)
         self.assertIn("wait_5_minutes_for_abstract_watch_arrival", labels)
         self.assertIn("audit_phase4_sound_fact", labels)
+        west_relocation = labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach")
+        guarded_waits = [
+            index for index, step in enumerate(steps)
+            if step["kind"] == "long_wait" and index > west_relocation
+        ]
+        self.assertTrue(guarded_waits)
+        for wait_index in guarded_waits:
+            self.assertEqual(
+                steps[wait_index - 1]["kind"],
+                "debug_run_local_reality_safety_preflight",
+            )
+        self.assertLess(
+            labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach"),
+            labels.index("preflight_local_reality_before_signal_approach_wait"),
+        )
+        self.assertLess(
+            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
+            labels.index("preflight_local_reality_before_carried_sound_wait"),
+        )
+        self.assertIn("target remains loaded", scenario["description"])
+        self.assertIn("approach/watch remain abstract", scenario["description"])
+        harness_source = (HARNESS_DIR / "startup_harness.py").read_text(encoding="utf-8")
+        self.assertIn("missing, malformed, or unsafe preflight output blocks", harness_source)
+        self.assertIn("audit_local_reality_safety_preflight_text", harness_source)
+        self.assertIn("same_z_possible_reach", harness_source)
         self.assertNotIn("ecology_incident", scenario["evidence_contract"]["observer_artifact_requirement"])
         return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
         self.assertIn(["scheduler_hour=172", "members_returned=2"], return_audit["required_line_patterns"])
@@ -5240,6 +5266,42 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "audit_phase4_structural_signal_physical_return",
             "audit_phase4_returned_signal_leads_have_no_player_token",
         ])
+
+    def test_local_reality_safety_preflight_parser_fails_closed(self) -> None:
+        summary = (
+            "bandit_live_world local_reality_safety_preflight observer=(1,2,0) "
+            "resident_monsters={count} outcome={outcome}"
+        )
+        resident = (
+            "bandit_live_world local_reality_safety_resident identity=mon_deer@(3,2,0) "
+            "type=mon_deer position=(3,2,0) senses=infrared:no hostile=no visible=no "
+            "contact=no same_z_possible_reach=yes attack_target=other_or_none goal=none "
+            "verdict={verdict}"
+        )
+        self.assertEqual(
+            audit_local_reality_safety_preflight_text(summary.format(count=0, outcome="safe"))["status"],
+            "required_state_present",
+        )
+        self.assertEqual(
+            audit_local_reality_safety_preflight_text(
+                summary.format(count=1, outcome="safe") + "\n" + resident.format(verdict="safe")
+            )["status"],
+            "required_state_present",
+        )
+        for text in (
+            "",
+            summary.format(count=1, outcome="safe"),
+            summary.format(count=2, outcome="safe") + "\n" + resident.format(verdict="safe"),
+            summary.format(count=1, outcome="unsafe") + "\n" + resident.format(verdict="safe"),
+            summary.format(count=1, outcome="safe") + "\n" + resident.format(verdict="unsafe"),
+            summary.format(count=1, outcome="safe") + "\n" + resident.format(verdict="safe").replace(
+                "goal=none ", ""
+            ),
+        ):
+            self.assertEqual(
+                audit_local_reality_safety_preflight_text(text)["status"],
+                "required_state_missing",
+            )
 
     def test_phase4_signal_matrix_derives_schema10_watch_footing_and_clocks(self) -> None:
         fixture_name = "bandit_phase4_ecology_observer_handoff_v0_2026-08-05"

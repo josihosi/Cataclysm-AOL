@@ -151,6 +151,11 @@
       "failure_rule": "Three OMT west is the minimal fail-closed footing: two OMT west would leave approach at the loaded boundary; this relocation edits only the avatar and not ecology actors or target state."
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_signal_approach_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_1_hour_for_schema10_signal_approach",
       "choice_key": "5",
@@ -163,6 +168,11 @@
       "artifact_state_patterns": ["scheduler_hour=167", "now_minutes=10020", "structural outing stalking check kept arrival open lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"],
       "expected_visible_fact": "the first production owner hour reaches canonical approach OMT (139,51,0) without entering target footprint or selected watch",
       "failure_rule": "If the first post-dispatch hour lacks the exact approach transition, source timing is not creditable."
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_watch_boundary_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",
@@ -178,6 +188,11 @@
       "expected_visible_fact": "the pair remains on canonical approach while the clock advances from minute 10020 to 10050"
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_first_watch_cadence_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_first_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
@@ -189,6 +204,11 @@
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10055"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10055"
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_second_watch_cadence_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",
@@ -204,6 +224,11 @@
       "expected_visible_fact": "the pair remains on canonical approach through minute 10060"
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_third_watch_cadence_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_third_5_minutes_toward_schema10_watch_boundary",
       "choice_key": "3",
@@ -215,6 +240,11 @@
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10065"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10065"
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_fourth_watch_cadence_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",
@@ -230,6 +260,11 @@
       "expected_visible_fact": "the pair remains on canonical approach through minute 10070"
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_fifth_watch_cadence_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_fifth_5_minutes_to_stage_schema10_watch_boundary",
       "choice_key": "3",
@@ -241,6 +276,11 @@
       "completion_artifact_timeout_seconds": 60,
       "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10075"],
       "expected_visible_fact": "minute 10075 is the final five-minute overmap boundary before the source-derived watch transition"
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_watch_arrival_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",
@@ -315,6 +355,11 @@
       "failure_rule": "If the real explosive does not emit after the 10080 watch boundary, the sound-positive route is red."
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_sound_fact_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_5_minutes_for_post_arrival_sound_fact",
       "choice_key": "3",
@@ -385,6 +430,11 @@
       "failure_rule": "This post-observation debug relocation is footing for the unchanged physical return route, not an ecology transition or returned-report credit."
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_carried_sound_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_1_hour_with_carried_sound_fact",
       "choice_key": "5",
@@ -398,6 +448,11 @@
       "artifact_state_patterns": ["scheduler_hour=169", "now_minutes=10140", "observation scope=active", "sense=sound"],
       "expected_visible_fact": "one production hour retains the carried sound fact at the selected watch without publishing camp knowledge",
       "failure_rule": "If the bounded wait loses the carried sound fact, the matrix is red."
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_report_transition_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",
@@ -415,6 +470,11 @@
       "failure_rule": "If the bounded wait loses the carried sound fact or publishes camp knowledge, the matrix is red."
     },
     {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_homeward_transition_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_third_1_hour_for_sound_pair_homeward_transition",
       "choice_key": "5",
@@ -428,6 +488,11 @@
       "artifact_state_patterns": ["scheduler_hour=171", "now_minutes=10260", "structural outing secured its normal watch report and began return lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"],
       "expected_visible_fact": "the production pair leaves watch through canonical approach (139,51,0), carrying the sound fact into loaded reality for physical return",
       "failure_rule": "If the exact pair does not begin homeward travel on its source-derived clock, physical-return proof is blocked."
+    },
+    {
+      "kind": "debug_run_local_reality_safety_preflight",
+      "label": "preflight_local_reality_before_physical_return_wait",
+      "failure_rule": "Fail closed unless the observer-only local-reality report is complete and safe before advancing time."
     },
     {
       "kind": "long_wait",

@@ -8,6 +8,10 @@
 #include <string>
 #include <vector>
 
+class avatar;
+class map;
+class monster;
+
 namespace bandit_live_world
 {
 struct site_record;
@@ -25,6 +29,8 @@ bool dematerialize_live_bandit_structural_handoffs_for_test();
 void process_monsters_and_npcs_turn_for_test();
 void process_overmap_npc_move_for_test();
 void run_live_bandit_structural_route_analyzer_for_debug();
+std::string live_bandit_local_reality_safety_record_for_test( const map &here,
+        const avatar &observer, monster &critter );
 bool write_harness_new_world_feasibility_artifact();
 bandit_live_world::structural_route_read live_bandit_structural_route_read_for_test(
     const bandit_live_world::site_record &site,

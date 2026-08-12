@@ -10,6 +10,7 @@
 #include "calendar.h"
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
+#include "avatar.h"
 #include "clzones.h"
 #include "coordinates.h"
 #include "do_turn.h"
@@ -18,15 +19,45 @@
 #include "json.h"
 #include "json_loader.h"
 #include "map.h"
+#include "map_helpers.h"
+#include "map_helpers_tests.h"
 #include "map_scale_constants.h"
 #include "npc.h"
 #include "overmap.h"
 #include "overmapbuffer.h"
 #include "point.h"
+#include "player_helpers.h"
 #include "rng.h"
 
 namespace
 {
+TEST_CASE( "local reality safety preflight rejects thermal hostile contact", "[bandit][observer]" )
+{
+    clear_avatar();
+    clear_map();
+    map &here = get_map();
+    avatar &observer = get_avatar();
+    observer.setpos( here, tripoint_bub_ms( 60, 60, 0 ) );
+
+    monster &kreck = spawn_test_monster( "mon_kreck", tripoint_bub_ms( 61, 60, 0 ) );
+    const std::string unsafe = live_bandit_local_reality_safety_record_for_test( here, observer,
+                               kreck );
+    CHECK( unsafe == live_bandit_local_reality_safety_record_for_test( here, observer, kreck ) );
+    CHECK( unsafe.find( "identity=mon_kreck@(61,60,0)" ) != std::string::npos );
+    CHECK( unsafe.find( "type=mon_kreck" ) != std::string::npos );
+    CHECK( unsafe.find( "senses=infrared:yes" ) != std::string::npos );
+    CHECK( unsafe.find( "contact=yes" ) != std::string::npos );
+    CHECK( unsafe.find( "verdict=unsafe" ) != std::string::npos );
+
+    monster &deer = spawn_test_monster( "mon_deer", tripoint_bub_ms( 70, 60, 0 ) );
+    const std::string safe = live_bandit_local_reality_safety_record_for_test( here, observer, deer );
+    CHECK( safe.find( "type=mon_deer" ) != std::string::npos );
+    CHECK( safe.find( "contact=no" ) != std::string::npos );
+    CHECK( safe.find( "hostile=no" ) != std::string::npos );
+    CHECK( safe.find( "same_z_possible_reach=" ) != std::string::npos );
+    CHECK( safe.find( "verdict=safe" ) != std::string::npos );
+}
+
 std::optional<std::string> existing_special_lookup( const tripoint_abs_omt &omt )
 {
     if( const std::optional<overmap_special_id> special =

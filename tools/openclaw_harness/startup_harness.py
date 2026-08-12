@@ -3153,6 +3153,73 @@ def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
     return fields
 
 
+def audit_local_reality_safety_preflight_text(text: str) -> Dict[str, Any]:
+    """Fail closed unless one complete, safe local-reality preflight is present."""
+    summary_marker = "bandit_live_world local_reality_safety_preflight "
+    resident_marker = "bandit_live_world local_reality_safety_resident "
+    required_resident_fields = {
+        "identity", "type", "position", "senses", "hostile", "visible", "contact",
+        "same_z_possible_reach", "attack_target", "goal", "verdict",
+    }
+    summaries: List[Dict[str, str]] = []
+    residents: List[Dict[str, str]] = []
+    issues: List[str] = []
+    for line in text.splitlines():
+        normalized = " ".join(str(line).split())
+        marker = ""
+        destination: Optional[List[Dict[str, str]]] = None
+        if summary_marker in normalized:
+            marker = summary_marker
+            destination = summaries
+        elif resident_marker in normalized:
+            marker = resident_marker
+            destination = residents
+        else:
+            continue
+        fields = {
+            key: value for key, value in
+            (token.split("=", 1) for token in normalized.split(marker, 1)[1].split() if "=" in token)
+        }
+        if destination is summaries:
+            if set(fields) != {"observer", "resident_monsters", "outcome"}:
+                issues.append("malformed_summary")
+            else:
+                destination.append(fields)
+        elif set(fields) != required_resident_fields:
+            issues.append("malformed_resident")
+        else:
+            destination.append(fields)
+    if len(summaries) != 1:
+        issues.append("missing_or_multiple_summary")
+    if len(summaries) == 1:
+        summary = summaries[0]
+        try:
+            count = int(summary["resident_monsters"])
+        except ValueError:
+            issues.append("malformed_resident_count")
+            count = -1
+        if count < 0 or count != len(residents):
+            issues.append("resident_count_mismatch")
+        if summary["outcome"] != "safe":
+            issues.append("unsafe_summary")
+    for resident in residents:
+        if resident["identity"] != resident["type"] + "@" + resident["position"]:
+            issues.append("ambiguous_resident_identity")
+        if resident["senses"] not in {"infrared:yes", "infrared:no"}:
+            issues.append("malformed_senses")
+        if any(resident[field] not in {"yes", "no"} for field in
+               {"hostile", "visible", "contact", "same_z_possible_reach"}):
+            issues.append("malformed_boolean")
+        if resident["verdict"] != "safe":
+            issues.append("unsafe_resident")
+    return {
+        "status": "required_state_present" if not issues else "required_state_missing",
+        "issues": sorted(set(issues)),
+        "summary_count": len(summaries),
+        "resident_count": len(residents),
+    }
+
+
 def audit_structural_route_analyzer(
     run_dir: Path,
     label: str,
@@ -6713,6 +6780,20 @@ def debug_run_structural_route_analyzer(
     run_debug_menu_shortcut_path(
         pid,
         ["escape", "}", "C", "v"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+
+
+def debug_run_local_reality_safety_preflight(
+    pid: int,
+    *,
+    delay_ms: int = 200,
+    menu_settle_seconds: float = 0.45,
+) -> None:
+    """Invoke the read-only DEBUG_CLAIRVOYANCE local-reality safety preflight."""
+    debug_run_structural_route_analyzer(
+        pid,
         delay_ms=delay_ms,
         menu_settle_seconds=menu_settle_seconds,
     )
@@ -14291,6 +14372,38 @@ def execute_probe_steps(
                 "expected_immediate_state": "the artifact log contains owner-derived selected or rejected route lines bound to site and target",
                 "failure_rule": "missing or identity-free analyzer output does not prove the production frontier route",
             })
+        elif kind == "debug_run_local_reality_safety_preflight":
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            debug_run_local_reality_safety_preflight(
+                pid,
+                delay_ms=delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report.update({
+                "delay_ms": delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "debug_menu_path": ["escape", "}", "C", "v"],
+                "action_description": "invoke the read-only local-reality safety preflight",
+                "expected_immediate_state": "the artifact log contains resident identity, senses, target/goal, and a conservative safety verdict",
+                "failure_rule": "missing, malformed, or unsafe preflight output blocks the following long wait",
+            })
+            safety_metadata = audit_local_reality_safety_preflight_text(
+                read_log_delta(artifact_log, artifact_log_start_size,
+                               filter_debug_noise=filter_debug_noise)
+                if artifact_log is not None else ""
+            )
+            report["metadata"] = safety_metadata
+            if safety_metadata.get("status") != "required_state_present":
+                report["abort"] = {
+                    "guard": "local_reality_safety_preflight",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": "blocked_local_reality_safety_preflight",
+                    "reason": "the observer preflight was missing, malformed, or unsafe",
+                    "issues": safety_metadata.get("issues", []),
+                }
+                reports.append(report)
+                return reports
         elif kind == "audit_structural_route_analyzer":
             raw_outcomes = step.get("required_outcomes", step.get("outcomes", ["selected", "rejected"]))
             if isinstance(raw_outcomes, str):

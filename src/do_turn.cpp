@@ -6741,6 +6741,51 @@ void run_live_bandit_structural_route_analyzer_for_debug()
             log_plan( frontier, "frontier", reads.front() );
         }
     }
+
+    map &here = get_map();
+    avatar &observer = get_avatar();
+    std::vector<std::string> records;
+    bool unsafe = false;
+    for( monster &critter : g->all_monsters() ) {
+        const std::string record = live_bandit_local_reality_safety_record_for_test( here, observer,
+                                   critter );
+        unsafe = unsafe || record.find( " verdict=unsafe" ) != std::string::npos;
+        records.push_back( record );
+    }
+    std::sort( records.begin(), records.end() );
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_reality_safety_preflight"
+                               << " observer=" << observer.pos_abs().to_string()
+                               << " resident_monsters=" << records.size()
+                               << " outcome=" << ( unsafe ? "unsafe" : "safe" ) << '\n';
+    for( const std::string &record : records ) {
+        DebugLog( D_INFO, DC_ALL ) << record << '\n';
+    }
+}
+
+std::string live_bandit_local_reality_safety_record_for_test( const map &here,
+        const avatar &observer, monster &critter )
+{
+    const bool hostile = critter.attitude_to( observer ) == Creature::Attitude::HOSTILE;
+    const bool infrared = critter.has_flag( mon_flag_INFRARED_VISION );
+    const bool visible = critter.sees_without_clairvoyance( here, observer );
+    const bool contact = rl_dist( critter.pos_abs(), observer.pos_abs() ) <= 1;
+    const bool same_z_possible_reach = critter.can_reach_to( observer.pos_bub( here ) );
+    const Creature *const attack_target = critter.attack_target();
+    const bool targets_observer = attack_target == &observer;
+    const bool unsafe = hostile && ( contact || targets_observer ||
+                                     ( visible && same_z_possible_reach ) );
+    return "bandit_live_world local_reality_safety_resident"
+           " identity=" + critter.type->id.str() + "@" + critter.pos_abs().to_string() +
+           " type=" + critter.type->id.str() +
+           " position=" + critter.pos_abs().to_string() +
+           " senses=infrared:" + ( infrared ? "yes" : "no" ) +
+           " hostile=" + ( hostile ? "yes" : "no" ) +
+           " visible=" + ( visible ? "yes" : "no" ) +
+           " contact=" + ( contact ? "yes" : "no" ) +
+           " same_z_possible_reach=" + ( same_z_possible_reach ? "yes" : "no" ) +
+           " attack_target=" + ( targets_observer ? "avatar" : "other_or_none" ) +
+           " goal=" + ( critter.has_dest() ? critter.get_dest().to_string() : "none" ) +
+           " verdict=" + ( unsafe ? "unsafe" : "safe" );
 }
 
 namespace bandit_live_world
