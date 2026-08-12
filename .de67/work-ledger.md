@@ -49,6 +49,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
 
+  Next frontier `R003-M001` must inspect the complete reciprocal-visibility burn owner, egress
+  selection/completion, local/abstract handoff, covert relationship precedence, report application,
+  owning tests, and the Phase-5 producer fixture/scenario. Produce a finite closure map for one
+  credited burn row and its quiet control, and verify read-only that the installed unchanged geometry
+  can reach every required transition without a debug-set outcome. Its 1,200-second estimate reuses
+  the accepted same-repository whole-owner diagnostic window. Do not run GUI proof while local
+  Accessibility is denied, mutate the fixture, or add proof machinery before the causal footing is
+  established.
+
 - [ ] R-004 — Prove authoritative casualty and split-return knowledge: both scouts dead yields no
   informed response and releases the mission slot; one survivor yields only a provisional report;
   a later survivor revises the same report instead of duplicating it.
