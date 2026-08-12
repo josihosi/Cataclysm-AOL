@@ -5199,7 +5199,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
         )
         self.assertLess(
-            labels.index("audit_phase4_three_active_signal_facts"),
+            labels.index("audit_phase4_sound_fact"),
             labels.index("audit_no_returned_signal_lead_before_physical_return"),
         )
         for removed_label in (
@@ -5219,16 +5219,20 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "audit_saved_returned_sound_lead",
         ):
             self.assertNotIn(removed_label, labels)
+        self.assertNotIn("stage_physical_fire_on_target_omt", labels)
+        self.assertNotIn("audit_phase4_three_active_signal_facts", labels)
+        self.assertIn("wait_5_minutes_for_abstract_watch_arrival", labels)
+        self.assertIn("audit_phase4_sound_fact", labels)
         self.assertNotIn("ecology_incident", scenario["evidence_contract"]["observer_artifact_requirement"])
         return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
         self.assertIn(["scheduler_hour=172", "members_returned=2"], return_audit["required_line_patterns"])
-        self.assertIn(["structural outing returned signal leads=3"], return_audit["required_line_patterns"])
+        self.assertIn(["structural outing returned signal leads=1"], return_audit["required_line_patterns"])
         self.assertEqual(
             sum(
                 "origin=returned_report" in group
                 for group in return_audit["required_line_patterns"]
             ),
-            3,
+            1,
         )
         self.assertEqual(labels[-2:], [
             "audit_phase4_structural_signal_physical_return",
@@ -5372,7 +5376,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("wait_1_hour_for_schema10_signal_approach"),
         )
         self.assertLess(
-            labels.index("audit_phase4_three_active_signal_facts"),
+            labels.index("audit_phase4_sound_fact"),
             labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
         )
         self.assertEqual(
@@ -5471,10 +5475,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 world_y += screen_y
             return world_x, world_y
 
-        for setup_label in (
-            "stage_physical_fire_on_target_omt",
-            "stage_active_explosive_on_target_omt",
-        ):
+        for setup_label in ("stage_active_explosive_after_watch_arrival",):
             setup = steps[labels.index(setup_label)]
             self.assertEqual(len(setup["target_keys"]), 36)
             self.assertEqual(set(setup["target_keys"]), {"right"})
@@ -5495,10 +5496,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         expected_clocks = {
             "wait_1_hour_for_schema10_signal_approach": ("scheduler_hour=167", "now_minutes=10020"),
-            "wait_5_minutes_for_three_active_signal_facts": ("scheduler_hour=168", "now_minutes=10080"),
-            "wait_1_hour_with_three_carried_signal_facts": ("scheduler_hour=169", "now_minutes=10140"),
-            "wait_second_1_hour_for_signal_pair_report_transition": ("scheduler_hour=170", "now_minutes=10200"),
-            "wait_third_1_hour_for_signal_pair_homeward_transition": ("scheduler_hour=171", "now_minutes=10260"),
+            "wait_5_minutes_for_abstract_watch_arrival": ("scheduler_hour=168", "now_minutes=10080"),
+            "wait_5_minutes_for_post_arrival_sound_fact": ("scheduler_hour=168", "now_minutes=10085"),
+            "wait_1_hour_with_carried_sound_fact": ("scheduler_hour=169", "now_minutes=10140"),
+            "wait_second_1_hour_for_sound_pair_report_transition": ("scheduler_hour=170", "now_minutes=10200"),
+            "wait_third_1_hour_for_sound_pair_homeward_transition": ("scheduler_hour=171", "now_minutes=10260"),
             "wait_final_1_hour_for_signal_pair_physical_return": ("scheduler_hour=172", "now_minutes=10320"),
         }
         for label, clock_patterns in expected_clocks.items():
@@ -5527,9 +5529,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             or label == "wait_fifth_5_minutes_to_stage_schema10_watch_boundary"
         )
         self.assertEqual(staging_wait_minutes, 55)
-        self.assertLess(labels.index("stage_active_explosive_on_target_omt"), labels.index("wait_5_minutes_for_three_active_signal_facts"))
+        self.assertLess(labels.index("wait_5_minutes_for_abstract_watch_arrival"), labels.index("stage_active_explosive_after_watch_arrival"))
+        self.assertLess(labels.index("stage_active_explosive_after_watch_arrival"), labels.index("wait_5_minutes_for_post_arrival_sound_fact"))
         self.assertLess(
-            labels.index("audit_phase4_three_active_signal_facts"),
+            labels.index("audit_phase4_sound_fact"),
             labels.index("audit_no_local_handoff_through_signal_observation"),
         )
         self.assertLess(
@@ -5543,16 +5546,21 @@ class ScenarioFixtureContractTest(unittest.TestCase):
     def test_phase4_signal_matrix_log_groups_use_normalized_runner_matchers(self) -> None:
         scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
         steps = {step["label"]: step for step in scenario["steps"]}
-        positive_step = steps["audit_phase4_three_active_signal_facts"]
+        positive_step = steps["audit_phase4_sound_fact"]
         positive_groups = [
             normalize_screen_text_patterns(group)
             for group in positive_step["required_line_patterns"]
         ]
         positive_lines = [
+            "bandit_live_world evidence debug: now_minutes=10085 site_cap=8",
             "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=2 sound_events=1",
-            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) sense=smoke share=shared",
-            "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) sense=light share=shared",
+            "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes",
             "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) source_id=structural-explosion@(137,49,0) sense=sound share=shared",
+        ]
+        arrival_step = steps["audit_phase4_abstract_watch_arrival"]
+        arrival_groups = [
+            normalize_screen_text_patterns(group)
+            for group in arrival_step["required_line_patterns"]
         ]
         forbidden_groups = [
             normalize_screen_text_patterns(group)
@@ -5572,6 +5580,23 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 artifact_baseline=0,
                 patterns=[],
                 required_line_patterns=positive_groups,
+            )
+            arrival_log = run_dir / "arrival.log"
+            arrival_log.write_text(
+                "\n".join([
+                    "bandit_live_world structural maintenance scheduler_hour=168 arrivals=1",
+                    "bandit_live_world evidence debug: now_minutes=10080 site_cap=8",
+                    "- structural outing reached selected watch without resolving remote lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road",
+                ]) + "\n",
+                encoding="utf-8",
+            )
+            arrival = audit_log_contains(
+                run_dir,
+                "arrival",
+                artifact_log=arrival_log,
+                artifact_baseline=0,
+                patterns=[],
+                required_line_patterns=arrival_groups,
             )
             clean_negative = audit_log_not_contains(
                 run_dir,
@@ -5593,6 +5618,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             )
 
         self.assertEqual(positive["status"], "required_state_present")
+        self.assertEqual(arrival["status"], "required_state_present")
         self.assertEqual(clean_negative["status"], "required_state_present")
         self.assertEqual(forbidden["status"], "required_state_missing")
         self.assertEqual(
