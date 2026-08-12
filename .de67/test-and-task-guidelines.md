@@ -80,6 +80,11 @@ When a finding exposes an adjacent owner, fixture, or matcher premise, decide be
 dispatch whether the task still has a credible causal path to its terminal DFS outcome. If it does
 not, replace local patch chaining with the read-only whole-owner design pass and simplify the proof
 surface or reframe the task from that result.
+Before further dispatch would add a wait, receipt, or parser token, freeze a finite closure map for
+the ledger item: name every still-required authoritative transition and the source-emitted completion
+predicate that closes it. Findings may change that route, but a new proof requirement is admissible
+only when deleting it leaves the closure map unproven. A token the named owner cannot emit is a task
+or fixture-contract failure, not authority to extend the wait or add another receipt.
 Before accepting a focused progress regression, verify that its non-advancing control would fail
 under the rejected implementation; compile success, diff inspection, and assertion count are not
 substitutes for that discriminator.
