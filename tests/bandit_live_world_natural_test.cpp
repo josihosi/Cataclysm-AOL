@@ -1,5 +1,6 @@
 #include "bandit_live_world.h"
 
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -13,6 +14,7 @@
 #include "coordinates.h"
 #include "do_turn.h"
 #include "faction.h"
+#include "game.h"
 #include "json.h"
 #include "json_loader.h"
 #include "map.h"
@@ -37,8 +39,8 @@ std::optional<std::string> existing_special_lookup( const tripoint_abs_omt &omt 
 std::map<std::string, tripoint_abs_omt> find_natural_hostile_camps()
 {
     std::map<std::string, tripoint_abs_omt> found;
-    // The test runner initializes overmap (0,0) with an empty custom batch.  Generate one adjacent
-    // overmap through the ordinary default route so mandatory-special spill remains bounded.
+    // Match the hidden fresh-world route: generate (1,0) through the ordinary default route
+    // while no cardinal neighbor is loaded.
     overmap &generated = overmap_buffer.get( point_abs_om( 1, 0 ) );
     for( int x = 0; x < OMAPX && found.size() < 2; ++x ) {
         for( int y = 0; y < OMAPY && found.size() < 2; ++y ) {
@@ -110,8 +112,10 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
 {
     std::vector<character_id> generated_npc_ids;
     zone_manager original_zones = zone_manager::get_manager();
+    const unsigned int original_game_seed = g->get_seed();
     on_out_of_scope clear_generated_state( [&generated_npc_ids,
-                                            original_zones = std::move( original_zones )]() mutable {
+                                            original_zones = std::move( original_zones ),
+                                            original_game_seed]() mutable {
         for( const character_id &id : generated_npc_ids ) {
             shared_ptr_fast<npc> generated_npc = overmap_buffer.remove_npc( id );
             if( generated_npc && generated_npc->get_faction() ) {
@@ -119,13 +123,21 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
             }
         }
         zone_manager::get_manager() = std::move( original_zones );
+        g->set_seed( original_game_seed );
         overmap_buffer.clear();
     } );
 
     overmap_buffer.clear();
     REQUIRE_FALSE( overmap_buffer.has( point_abs_om( 1, 0 ) ) );
-    rng_set_engine_seed( 830204914 );
+    REQUIRE_FALSE( overmap_buffer.has( point_abs_om( 1, -1 ) ) );
+    REQUIRE_FALSE( overmap_buffer.has( point_abs_om( 1, 1 ) ) );
+    REQUIRE_FALSE( overmap_buffer.has( point_abs_om( 0, 0 ) ) );
+    REQUIRE_FALSE( overmap_buffer.has( point_abs_om( 2, 0 ) ) );
+    constexpr std::uint32_t raw_seed = 830205018;
+    g->set_seed( raw_seed );
+    rng_set_engine_seed( raw_seed );
     const std::map<std::string, tripoint_abs_omt> camps = find_natural_hostile_camps();
+    CAPTURE( raw_seed );
     REQUIRE( camps.count( "bandit_camp" ) == 1 );
     REQUIRE( camps.count( "cannibal_camp" ) == 1 );
 
@@ -241,15 +253,16 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     CHECK( total_candidates == 12 );
     CHECK( total_leads == 12 );
     CHECK( route_records.size() == production_candidates.size() );
-    CHECK( watch_path_budget == 0 );
+    CHECK( watch_path_budget == 5 );
     CHECK( selected == 2 );
     CHECK( rejected == 0 );
+    CAPTURE( route_records[0], route_records[1] );
     CHECK( route_records[0].find(
-               "target=(207,31,0) selector=non_frontier outcome=selected "
-               "watch=(210,29,0) route_cost=10" ) != std::string::npos );
+               "target=(217,30,0) selector=non_frontier outcome=selected "
+               "watch=(218,27,0) route_cost=8" ) != std::string::npos );
     CHECK( route_records[1].find(
-               "target=(211,27,0) selector=non_frontier outcome=selected "
-               "watch=(209,30,0) route_cost=10" ) != std::string::npos );
+               "target=(214,25,0) selector=non_frontier outcome=selected "
+               "watch=(217,27,0) route_cost=12" ) != std::string::npos );
     for( const std::string &record : route_records ) {
         CHECK( record.find( "selector=non_frontier" ) != std::string::npos );
         const bool selected_record = record.find( " outcome=selected " ) != std::string::npos;

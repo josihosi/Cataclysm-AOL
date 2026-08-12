@@ -204,6 +204,8 @@ class StartupPlan:
     existing_worlds: List[Dict[str, Any]]
     fixture: str
     run_dir: str
+    harness_new_world: str = ""
+    harness_raw_seed: str = ""
 
 
 def repo_root() -> Path:
@@ -1157,6 +1159,23 @@ def choose_strategy(profile: str, explicit_world: str) -> Tuple[str, str, str, L
     return "play_now_default", reason, "", worlds
 
 
+def validate_harness_new_world(world: str, raw_seed: str) -> Tuple[str, str]:
+    """Validate the hidden fresh-world request while preserving the exact seed text."""
+    world_name = str(world or "").strip()
+    seed_text = str(raw_seed or "").strip()
+    if not world_name:
+        raise ValueError("harness new-world name cannot be empty")
+    if world_name in {".", ".."} or "/" in world_name or "\\" in world_name:
+        raise ValueError("harness new-world name must be one path component")
+    if not seed_text or not seed_text.isdecimal() or any(char not in "0123456789" for char in seed_text):
+        raise ValueError("harness raw seed must be an unsigned decimal integer")
+    if int(seed_text, 10) == 0:
+        raise ValueError("harness raw seed must be non-zero")
+    if int(seed_text, 10) > 0xFFFFFFFF:
+        raise ValueError("harness raw seed is outside the uint32 range")
+    return world_name, seed_text
+
+
 def detect_executable() -> Path:
     root = repo_root()
     for name in (
@@ -1187,8 +1206,29 @@ def create_run_dir(profile: str) -> Path:
     return run_dir
 
 
-def build_plan(profile: str, explicit_world: str, fixture: str) -> StartupPlan:
-    strategy, reason, target_world, worlds = choose_strategy(profile, explicit_world)
+def build_plan(
+    profile: str,
+    explicit_world: str,
+    fixture: str,
+    harness_new_world: str = "",
+    harness_raw_seed: str = "",
+) -> StartupPlan:
+    plan_harness_world = ""
+    plan_harness_seed = ""
+    if harness_new_world or harness_raw_seed:
+        world_name, seed_text = validate_harness_new_world(harness_new_world, harness_raw_seed)
+        if explicit_world or fixture:
+            raise ValueError("harness new-world mode cannot be combined with --world or --fixture")
+        if (save_dir_for_profile(profile) / world_name).exists():
+            raise ValueError(f"harness new-world target already exists: {world_name}")
+        strategy = "harness_new_world"
+        reason = "fresh named normal world requested by harness"
+        target_world = world_name
+        worlds = list_worlds(profile)
+        plan_harness_world = world_name
+        plan_harness_seed = seed_text
+    else:
+        strategy, reason, target_world, worlds = choose_strategy(profile, explicit_world)
     run_dir = create_run_dir(profile)
     plan = StartupPlan(
         profile=profile,
@@ -1200,6 +1240,8 @@ def build_plan(profile: str, explicit_world: str, fixture: str) -> StartupPlan:
         existing_worlds=[asdict_world(world) for world in worlds],
         fixture=fixture,
         run_dir=str(run_dir),
+        harness_new_world=plan_harness_world,
+        harness_raw_seed=plan_harness_seed,
     )
     return plan
 
@@ -9159,11 +9201,17 @@ def launch_game(
     *,
     child_environment: Optional[Dict[str, str]] = None,
     scenario: str = "",
+    harness_new_world: str = "",
+    harness_raw_seed: str = "",
 ) -> subprocess.Popen[str]:
     exe = detect_executable()
-    cmd = [str(exe), "--userdir", f".userdata/{profile}/"]
-    if target_world:
-        cmd.extend(["--world", target_world])
+    cmd = build_game_command(
+        exe,
+        profile,
+        target_world,
+        harness_new_world=harness_new_world,
+        harness_raw_seed=harness_raw_seed,
+    )
     env = dict(child_environment or game_child_environment(profile))
     env["OPENCLAW_HARNESS_RUN_DIR"] = str(run_dir.resolve())
     env["OPENCLAW_HARNESS_PROFILE"] = profile
@@ -9174,6 +9222,27 @@ def launch_game(
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
     return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True, env=env)
+
+
+def build_game_command(
+    executable: Path,
+    profile: str,
+    target_world: str,
+    *,
+    harness_new_world: str = "",
+    harness_raw_seed: str = "",
+) -> List[str]:
+    cmd = [str(executable), "--userdir", f".userdata/{profile}/"]
+    if harness_new_world:
+        cmd.extend(["--harness-new-world", harness_new_world, "--harness-raw-seed", harness_raw_seed])
+    elif target_world:
+        cmd.extend(["--world", target_world])
+    return cmd
+
+
+def startup_gui_automation_required(strategy: str) -> bool:
+    """Whether startup owns Peekaboo permission, focus, and input steps."""
+    return strategy != "harness_new_world"
 
 
 def pid_command(pid: int) -> str:
@@ -9227,7 +9296,7 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
             info["status"] = "already_exited"
             return info
         info["command_lookup"] = "unavailable"
-    elif not re.search(r"cataclysm-(tiles|tlg-tiles)", command):
+    elif not re.search(r"(?:Cataclysm-AOL|cataclysm-(?:tiles|tlg-tiles))(?:\.exe)?(?:\s|$)", command):
         info["status"] = "skipped_non_cataclysm_process"
         return info
 
@@ -9257,6 +9326,64 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
 
     info["status"] = "killed" if wait_for_pid_exit(pid, 1.0) else "still_running_after_kill"
     return info
+
+
+def harness_save_ready(returncode: int, marker: Dict[str, Any], baseline_mtime: float) -> bool:
+    """A harness world is ready only after clean exit and a newer save marker."""
+    if returncode != 0 or not isinstance(marker, dict):
+        return False
+    return float(marker.get("mtime", 0.0) or 0.0) > float(baseline_mtime or 0.0)
+
+
+def harness_process_ready(
+    returncode: int,
+    marker: Dict[str, Any],
+    baseline_mtime: float,
+    debug_error_evidence_count: int,
+) -> bool:
+    """Classify the completed process without hiding newly captured debug errors."""
+    return (
+        harness_save_ready(returncode, marker, baseline_mtime)
+        and debug_error_evidence_count == 0
+    )
+
+
+def harness_world_owner_path(profile: str, world_name: str) -> Path:
+    return save_dir_for_profile(profile) / world_name / ".openclaw-harness-owner"
+
+
+def harness_world_owned_by_run(profile: str, world_name: str, run_dir: Path) -> bool:
+    owner_path = harness_world_owner_path(profile, world_name)
+    try:
+        return owner_path.is_file() and owner_path.read_text(encoding="utf-8") == str(run_dir.resolve())
+    except OSError:
+        return False
+
+
+def cleanup_harness_world(profile: str, world_name: str, run_dir: Path) -> Dict[str, Any]:
+    """Remove a target only when the product marker proves this run owns it."""
+    save_root = save_dir_for_profile(profile)
+    world_dir = save_root / world_name
+    result: Dict[str, Any] = {
+        "world": world_name,
+        "path": str(world_dir),
+        "status": "absent",
+    }
+    if not world_dir.exists() and not world_dir.is_symlink():
+        return result
+    if not harness_world_owned_by_run(profile, world_name, run_dir):
+        result["status"] = "skipped_unowned_world"
+        return result
+    try:
+        if world_dir.is_symlink() or world_dir.resolve().parent != save_root.resolve():
+            result["status"] = "skipped_unsafe_path"
+            return result
+        shutil.rmtree(world_dir)
+        result["status"] = "removed"
+    except OSError as error:
+        result["status"] = "remove_failed"
+        result["error"] = str(error)
+    return result
 
 
 def load_fixture_manifest(path: Path) -> Dict[str, Any]:
@@ -15714,6 +15841,8 @@ def build_startup_step_ledger(
                 "strategy": plan.strategy,
                 "executable": plan.executable,
                 "fixture": plan.fixture,
+                "harness_new_world": plan.harness_new_world,
+                "harness_raw_seed": plan.harness_raw_seed,
             },
         ),
         startup_ledger_row(
@@ -15753,7 +15882,11 @@ def build_startup_step_ledger(
             failure_rule="missing pid or early process exit is red",
             next_step_gate="focus/load polling may continue only with a live pid",
             verdict="green_process_started" if readiness_ok or not failure_reason == "process_exited" else "red_process_exited",
-            metadata={"pid": readiness.get("pid", 0)},
+            metadata={
+                "pid": readiness.get("pid", 0),
+                "harness_new_world": plan.harness_new_world,
+                "harness_raw_seed": plan.harness_raw_seed,
+            },
         ),
         startup_ledger_row(
             step="window focus",
@@ -16169,11 +16302,26 @@ def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     config_profile = resolve_profile_name(getattr(args, "config_profile", "") or profile)
     config = load_profile_config(config_profile)
+    harness_new_world = str(getattr(args, "harness_new_world", "") or "").strip()
+    harness_raw_seed = str(getattr(args, "harness_raw_seed", "") or "").strip()
+    if harness_new_world or harness_raw_seed:
+        try:
+            harness_new_world, harness_raw_seed = validate_harness_new_world(
+                harness_new_world, harness_raw_seed
+            )
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
+        if args.world or args.fixture:
+            raise SystemExit("harness new-world mode cannot be combined with --world or --fixture")
+        if (save_dir_for_profile(profile) / harness_new_world).exists():
+            raise SystemExit(f"harness new-world target already exists: {harness_new_world}")
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
     profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
 
     if args.dry_run:
-        plan = build_plan(profile, args.world, args.fixture)
+        plan = build_plan(
+            profile, args.world, args.fixture, harness_new_world, harness_raw_seed
+        )
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
         dry_result = asdict(plan)
@@ -16209,13 +16357,22 @@ def run_startup(args: argparse.Namespace) -> int:
             fixture_profile=getattr(args, "fixture_profile", ""),
         )
     flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
-    plan = build_plan(profile, args.world, args.fixture)
+    plan = build_plan(
+        profile, args.world, args.fixture, harness_new_world, harness_raw_seed
+    )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
 
     child_environment = game_child_environment(profile)
-    peekaboo_permissions = require_peekaboo_permissions()
-    write_json(run_dir / "peekaboo.permissions.json", peekaboo_permissions)
+    gui_automation_required = startup_gui_automation_required(plan.strategy)
+    if gui_automation_required:
+        peekaboo_permissions = require_peekaboo_permissions()
+        write_json(run_dir / "peekaboo.permissions.json", peekaboo_permissions)
+    else:
+        peekaboo_permissions = {
+            "status": "not_required_harness_new_world",
+            "gui_automation": False,
+        }
     killed_pids = kill_existing_game_processes()
     ensure_dir(config_dir_for_profile(profile))
     debug_log = config_dir_for_profile(profile) / "debug.log"
@@ -16232,17 +16389,32 @@ def run_startup(args: argparse.Namespace) -> int:
         run_dir,
         child_environment=child_environment,
         scenario=str(getattr(args, "scenario_identity", "") or ""),
+        harness_new_world=plan.harness_new_world,
+        harness_raw_seed=plan.harness_raw_seed,
     )
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
-        "command": [plan.executable, "--userdir", f".userdata/{profile}/"] + (["--world", plan.target_world] if plan.target_world else []),
+        "command": build_game_command(
+            Path(plan.executable),
+            profile,
+            plan.target_world,
+            harness_new_world=plan.harness_new_world,
+            harness_raw_seed=plan.harness_raw_seed,
+        ),
+        "harness_new_world": plan.harness_new_world,
+        "harness_raw_seed": plan.harness_raw_seed,
         "killed_previous_pids": killed_pids,
     })
 
     startup_cfg = config["startup"]
     time.sleep(float(startup_cfg["initial_wait_seconds"]))
-    focus_result = peekaboo_focus_pid_with_retry(proc.pid)
-    if plan.strategy == "play_now_default":
+    focus_result = {
+        "ok": True,
+        "status": "skipped_harness_new_world",
+    }
+    if gui_automation_required:
+        focus_result = peekaboo_focus_pid_with_retry(proc.pid)
+    if gui_automation_required and plan.strategy == "play_now_default":
         peekaboo_press_sequence(proc.pid, list(startup_cfg["play_now_default_sequence"]))
         time.sleep(float(startup_cfg["post_input_wait_seconds"]))
 
@@ -16258,6 +16430,82 @@ def run_startup(args: argparse.Namespace) -> int:
     while time.monotonic() < deadline:
         code = proc.poll()
         if code is not None:
+            if plan.strategy == "harness_new_world":
+                debug_delta = capture_debug_delta(
+                    profile,
+                    debug_size,
+                    run_dir,
+                    debug_delta_count + 1,
+                    expected_identity=debug_identity,
+                )
+                debug_size = int(debug_delta.get("current_size", debug_size) or 0)
+                debug_identity = debug_delta.get("current_identity", debug_identity)
+                if debug_delta.get("artifact_path"):
+                    debug_delta_count += 1
+                error_evidence_lines = debug_delta.get("error_evidence_lines", [])
+                if isinstance(error_evidence_lines, list) and error_evidence_lines:
+                    debug_error_evidence_count += 1
+                copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
+                marker = latest_world_save_marker(profile, expected_world)
+                save_ready = harness_save_ready(code, marker, baseline_save_marker_mtime)
+                ready = harness_process_ready(
+                    code,
+                    marker,
+                    baseline_save_marker_mtime,
+                    debug_error_evidence_count,
+                ) and harness_world_owned_by_run(profile, plan.harness_new_world, run_dir)
+                world_cleanup = (
+                    {"status": "not_required_owned_world"}
+                    if ready
+                    else cleanup_harness_world(profile, plan.harness_new_world, run_dir)
+                )
+                if ready:
+                    harness_world_owner_path(profile, plan.harness_new_world).unlink(missing_ok=True)
+                readiness = {
+                    "kind": "harness_process_exit",
+                    "pid": proc.pid,
+                    "returncode": code,
+                    "marker": marker,
+                    "save_marker_created": save_ready,
+                    "debug_delta": debug_delta,
+                    "debug_error_evidence_count": debug_error_evidence_count,
+                    "world_cleanup": world_cleanup,
+                }
+                result = {
+                    "ok": ready,
+                    "reason": (
+                        "harness_world_saved"
+                        if ready
+                        else "harness_world_debug_errors"
+                        if save_ready and debug_error_evidence_count > 0
+                        else "harness_world_save_marker_missing"
+                        if code == 0
+                        else "harness_world_process_failed"
+                    ),
+                    "pid": proc.pid,
+                    "profile": profile,
+                    "config_profile": config_profile,
+                    "strategy": plan.strategy,
+                    "harness_new_world": plan.harness_new_world,
+                    "harness_raw_seed": plan.harness_raw_seed,
+                    "command": build_game_command(
+                        Path(plan.executable),
+                        profile,
+                        plan.target_world,
+                        harness_new_world=plan.harness_new_world,
+                        harness_raw_seed=plan.harness_raw_seed,
+                    ),
+                    "readiness": readiness,
+                    "exit_code": code,
+                    "world_cleanup": world_cleanup,
+                    "run_dir": str(run_dir),
+                    "evidence_class": "startup/load",
+                    "feature_proof": False,
+                    "gui_automation": "not_run_harness_new_world_route",
+                }
+                write_json(run_dir / "startup.result.json", result)
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+                return 0 if ready else 1
             screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
@@ -16331,6 +16579,26 @@ def run_startup(args: argparse.Namespace) -> int:
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 1
 
+        if plan.strategy == "harness_new_world":
+            # A live harness bootstrap is non-interactive.  Do not let a marker
+            # written before process exit enter the GUI-backed readiness path.
+            debug_delta = capture_debug_delta(
+                profile,
+                debug_size,
+                run_dir,
+                debug_delta_count + 1,
+                expected_identity=debug_identity,
+            )
+            debug_size = int(debug_delta.get("current_size", debug_size) or 0)
+            debug_identity = debug_delta.get("current_identity", debug_identity)
+            if debug_delta.get("artifact_path"):
+                debug_delta_count += 1
+            error_evidence_lines = debug_delta.get("error_evidence_lines", [])
+            if isinstance(error_evidence_lines, list) and error_evidence_lines:
+                debug_error_evidence_count += 1
+            time.sleep(poll_seconds)
+            continue
+
         ok, data = success_from_lastworld(profile, baseline_mtime, expected_world)
         readiness_kind = "lastworld"
         if not ok:
@@ -16340,11 +16608,12 @@ def run_startup(args: argparse.Namespace) -> int:
             post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
-            focus_result = peekaboo_focus_pid_with_retry(proc.pid)
-            post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
-            if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
-                peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
-                time.sleep(float(startup_cfg["post_input_wait_seconds"]))
+            if gui_automation_required:
+                focus_result = peekaboo_focus_pid_with_retry(proc.pid)
+                post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
+                if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
+                    peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
+                    time.sleep(float(startup_cfg["post_input_wait_seconds"]))
             screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
@@ -16458,6 +16727,57 @@ def run_startup(args: argparse.Namespace) -> int:
             # on log text alone; the final OCR capture classifies visible UI.
             debug_error_evidence_count += 1
         time.sleep(poll_seconds)
+
+    if plan.strategy == "harness_new_world":
+        cleanup = cleanup_game_process(proc.pid)
+        child_stopped = cleanup.get("status") in {
+            "already_exited",
+            "terminated",
+            "terminated_during_kill_escalation",
+            "killed",
+        }
+        world_cleanup = (
+            cleanup_harness_world(profile, plan.harness_new_world, run_dir)
+            if child_stopped
+            else {"status": "skipped_child_not_stopped"}
+        )
+        readiness = {
+            "kind": "harness_timeout",
+            "baseline_save_marker": baseline_save_marker,
+            "latest_save_marker": latest_world_save_marker(profile, expected_world),
+            "pid": proc.pid,
+            "cleanup": cleanup,
+            "world_cleanup": world_cleanup,
+        }
+        result = {
+            "ok": False,
+            "reason": "harness_startup_timeout",
+            "pid": proc.pid,
+            "profile": profile,
+            "config_profile": config_profile,
+            "strategy": plan.strategy,
+            "harness_new_world": plan.harness_new_world,
+            "harness_raw_seed": plan.harness_raw_seed,
+            "command": build_game_command(
+                Path(plan.executable),
+                profile,
+                plan.target_world,
+                harness_new_world=plan.harness_new_world,
+                harness_raw_seed=plan.harness_raw_seed,
+            ),
+            "peekaboo_permissions": peekaboo_permissions,
+            "focus": focus_result,
+            "readiness": readiness,
+            "cleanup": cleanup,
+            "world_cleanup": world_cleanup,
+            "run_dir": str(run_dir),
+            "evidence_class": "startup/load",
+            "feature_proof": False,
+            "gui_automation": "not_run_harness_new_world_route",
+        }
+        write_json(run_dir / "startup.result.json", result)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 1
 
     screen = capture_screenshot(proc.pid, run_dir, "failure_timeout")
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
@@ -18038,6 +18358,8 @@ def build_parser() -> argparse.ArgumentParser:
     plan_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     plan_p.add_argument("--world", default="", help="Explicit target world name.")
     plan_p.add_argument("--fixture", default="", help="Fixture name only for plan metadata.")
+    plan_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
+    plan_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
 
     start_p = subparsers.add_parser("start", help="Launch and try to reach gameplay.")
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
@@ -18051,6 +18373,8 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
     start_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
     start_p.add_argument("--dry-run", action="store_true", help="Resolve plan only; do not launch or press keys.")
+    start_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
 
     list_p = subparsers.add_parser("list-fixtures", help="List harness-owned save fixtures for a profile.")
     list_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
@@ -18124,7 +18448,16 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command == "plan":
-        plan = build_plan(resolve_profile_name(args.profile), args.world, args.fixture)
+        try:
+            plan = build_plan(
+                resolve_profile_name(args.profile),
+                args.world,
+                args.fixture,
+                args.harness_new_world,
+                args.harness_raw_seed,
+            )
+        except ValueError as error:
+            parser.error(str(error))
         print(json.dumps(asdict(plan), indent=2, ensure_ascii=False))
         return 0
     if args.command == "start":

@@ -25,6 +25,7 @@
 #include <queue>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -742,6 +743,28 @@ void game::setup()
     // back to menu for save loading, new game etc
 }
 
+void game::prepare_harness_overmap_seed( const std::uint32_t seed_value )
+{
+    // The accepted oracle generates (1,0) with no loaded cardinal neighbor.
+    // Fail closed if another startup read changed that topology.
+    if( overmap_buffer.has( point_abs_om( 1, -1 ) ) ||
+        overmap_buffer.has( point_abs_om( 1, 1 ) ) ||
+        overmap_buffer.has( point_abs_om( 0, 0 ) ) ||
+        overmap_buffer.has( point_abs_om( 2, 0 ) ) ) {
+        throw std::runtime_error( "harness seed boundary has an unexpected overmap neighbor" );
+    }
+    harness_overmap_seed = seed_value;
+    set_seed( seed_value );
+    rng_set_engine_seed( seed_value );
+    // Character randomization reads overmap (0,0).  Generate the accepted oracle
+    // origin first so that read cannot consume its OVERMAP_UNIQUE specials.
+    const point_abs_om harness_origin( 1, 0 );
+    overmap_buffer.get( harness_origin );
+    DebugLog( D_INFO, DC_ALL ) << "harness_new_world seed_boundary raw_seed="
+                               << seed_value << " overmap_origin="
+                               << harness_origin.to_string() << std::endl;
+}
+
 bool game::has_gametype() const
 {
     return gamemode && gamemode->id() != special_game_type::NONE;
@@ -781,7 +804,12 @@ bool game::start_game()
         gamemode = std::make_unique<special_game>();
     }
 
-    seed = rng_bits();
+    if( harness_overmap_seed ) {
+        seed = *harness_overmap_seed;
+        harness_overmap_seed.reset();
+    } else {
+        seed = rng_bits();
+    }
     new_game = true;
     start_calendar();
     weather.nextweather = calendar::turn;
@@ -1673,6 +1701,11 @@ bool game::cancel_activity_query( const std::string &text )
 unsigned int game::get_seed() const
 {
     return seed;
+}
+
+void game::set_seed( const unsigned int seed_value )
+{
+    seed = seed_value;
 }
 
 void game::set_npcs_dirty()

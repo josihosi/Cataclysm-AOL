@@ -3,6 +3,7 @@
 #define CATA_SRC_MAIN_MENU_H
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,9 @@ class main_menu
 
         static std::string queued_world_to_load;
         static std::string queued_save_id_to_load;
+
+        /** Run the hidden harness-only fresh normal-world route. */
+        static bool create_harness_world( const std::string &world_name, std::uint32_t raw_seed );
     private:
         // ASCII art that says "Cataclysm Dark Days Ahead"
         std::vector<std::string> mmenu_title;
@@ -124,4 +128,3 @@ class main_menu
 };
 
 #endif // CATA_SRC_MAIN_MENU_H
-

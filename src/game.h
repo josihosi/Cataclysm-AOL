@@ -250,6 +250,8 @@ class game
         void load_mod_interaction_data_from_dir( const cata_path &path, const std::string &src );
     public:
         void setup();
+        /** Generate the harness overmap from a raw seed before character creation can read one. */
+        void prepare_harness_overmap_seed( std::uint32_t seed );
         /** Saving and loading functions. */
         void serialize_json( std::ostream &fout ); // for save
         void unserialize( std::istream &fin, const cata_path &path ); // for load
@@ -259,6 +261,7 @@ class game
         void unserialize_master( const cata_path &file_name, std::istream &fin ); // for load
         void unserialize_master( const JsonValue &jv ); // for load
     private:
+        std::optional<std::uint32_t> harness_overmap_seed;
         void unserialize_impl( const JsonObject &data );
     public:
 
@@ -1012,6 +1015,7 @@ class game
         static void display_om_pathfinding_progress( size_t open_set, size_t known_size );
 
         unsigned int get_seed() const;
+        void set_seed( unsigned int seed_value );
 
         /** If invoked, NPCs will be reloaded before next turn. */
         void set_npcs_dirty();

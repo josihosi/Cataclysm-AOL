@@ -9,6 +9,7 @@
 #include <cstring>
 #include <exception>
 #include <functional>
+#include <fstream>
 #include <initializer_list>
 #include <istream>
 #include <locale>
@@ -33,6 +34,7 @@
 #include "enums.h"
 #include "filesystem.h"
 #include "game.h"
+#include "harness_world.h"
 #include "gamemode.h"
 #include "get_version.h"
 #include "help.h"
@@ -41,6 +43,7 @@
 #include "llm_intent.h"
 #include "mapbuffer.h"
 #include "mapsharing.h"
+#include "mod_manager.h"
 #include "messages.h"
 #include "music.h"
 #include "options.h"
@@ -84,6 +87,61 @@ enum class main_menu_opts : int {
 
 std::string main_menu::queued_world_to_load;
 std::string main_menu::queued_save_id_to_load;
+
+bool main_menu::create_harness_world( const std::string &world_name, const std::uint32_t raw_seed )
+{
+    world_generator->init();
+    if( !world_generator->valid_worldname( world_name, true ) ) {
+        return false;
+    }
+
+    const cata_path world_path = PATH_INFO::savedir_path() / world_name;
+    if( std::filesystem::exists( world_path.get_unrelative_path() ) ) {
+        return false;
+    }
+
+    const std::vector<mod_id> mods = world_generator->get_mod_manager().get_default_mods();
+    WORLD *world = world_generator->make_new_world( world_name, mods );
+    if( world == nullptr ) {
+        return false;
+    }
+    const auto discard_world = [&]() {
+        world_generator->delete_world( world_name, true );
+    };
+    const char *const harness_run_dir = std::getenv( "OPENCLAW_HARNESS_RUN_DIR" );
+    if( harness_run_dir == nullptr || harness_run_dir[0] == '\0' ) {
+        discard_world();
+        return false;
+    }
+    const std::filesystem::path owner_path = world_path.get_unrelative_path() /
+            ".openclaw-harness-owner";
+    {
+        std::ofstream owner( owner_path );
+        owner << harness_run_dir;
+        if( !owner ) {
+            discard_world();
+            return false;
+        }
+    }
+
+    try {
+        avatar &pc = get_avatar();
+        pc = avatar();
+        g->gamemode = nullptr;
+        world_generator->set_active_world( world );
+        g->setup();
+        g->prepare_harness_overmap_seed( raw_seed );
+        if( !pc.create( character_type::NOW ) || !g->start_game() || !g->save() ) {
+            discard_world();
+            return false;
+        }
+    } catch( const std::exception &err ) {
+        DebugLog( D_ERROR, DC_ALL ) << "harness_new_world failed: " << err.what() << std::endl;
+        discard_world();
+        return false;
+    }
+    return true;
+}
 
 static int getopt( main_menu_opts o )
 {

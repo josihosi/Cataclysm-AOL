@@ -46,6 +46,7 @@
 #include "game.h"
 #include "game_constants.h"
 #include "game_ui.h"
+#include "harness_world.h"
 #include "get_version.h"
 #include "help.h"
 #include "input.h"
@@ -182,6 +183,7 @@ struct arg_handler {
     std::string_view help_group; //!< Section of the help message in which to include this argument.
     int num_args; //!< How many further arguments are expected for this parameter (usually 0 or 1).
     handler_method handler;  //!< The callback to be invoked when this argument is encountered.
+    bool hidden = false; //!< Omit automation-only arguments from player-facing help.
 };
 
 template<typename FirstPassArgs, typename SecondPassArgs>
@@ -191,10 +193,14 @@ void printHelpMessage( const FirstPassArgs &first_pass_arguments,
     // Group all arguments by help_group.
     std::multimap<std::string, const arg_handler *> help_map;
     for( const arg_handler &handler : first_pass_arguments ) {
-        help_map.emplace( handler.help_group, &handler );
+        if( !handler.hidden ) {
+            help_map.emplace( handler.help_group, &handler );
+        }
     }
     for( const arg_handler &handler : second_pass_arguments ) {
-        help_map.emplace( handler.help_group, &handler );
+        if( !handler.hidden ) {
+            help_map.emplace( handler.help_group, &handler );
+        }
     }
 
     std::cout << "Command line parameters:\n";
@@ -280,6 +286,8 @@ struct cli_opts {
     std::vector<std::string> opts;
     std::string world; /** if set try to load first save in this world on startup */
     bool disable_ascii_art = false;
+    std::string harness_world_name;
+    std::string harness_raw_seed;
 };
 
 cli_opts parse_commandline( int argc, const char **argv )
@@ -346,6 +354,28 @@ cli_opts parse_commandline( int argc, const char **argv )
                     result.world = params[0];
                     return 1;
                 }
+            },
+            {
+                "--harness-new-world", "<name>",
+                "(Harness automation) Create a fresh named normal world and save a Play Now character",
+                section_default,
+                1,
+                [&result]( int, const char **params ) -> int {
+                    result.harness_world_name = params[0];
+                    return 1;
+                },
+                true
+            },
+            {
+                "--harness-raw-seed", "<uint32>",
+                "(Harness automation) Apply a raw numeric seed at ordinary overmap generation",
+                section_default,
+                1,
+                [&result]( int, const char **params ) -> int {
+                    result.harness_raw_seed = params[0];
+                    return 1;
+                },
+                true
             },
             {
                 "--basepath", "<path>",
@@ -549,6 +579,19 @@ cli_opts parse_commandline( int argc, const char **argv )
 
     process_args( argv, argc, first_pass_arguments );
     process_args( argv, argc, second_pass_arguments );
+
+    if( result.harness_world_name.empty() != result.harness_raw_seed.empty() ) {
+        std::cerr << "Harness new-world mode requires both --harness-new-world and "
+                  << "--harness-raw-seed.\n";
+        std::exit( 1 );
+    }
+    if( !result.harness_world_name.empty() ) {
+        std::string error;
+        if( !parse_harness_world_options( result.harness_world_name, result.harness_raw_seed, &error ) ) {
+            std::cerr << "Invalid harness new-world request: " << error << "\n";
+            std::exit( 1 );
+        }
+    }
 
     return result;
 }
@@ -865,6 +908,19 @@ int main( int argc, const char *argv[] )
     replay_buffered_debugmsg_prompts();
 
     main_menu::queued_world_to_load = std::move( cli.world );
+
+    if( !cli.harness_world_name.empty() ) {
+        std::string error;
+        const std::optional<harness_world_options> harness = parse_harness_world_options(
+                    cli.harness_world_name, cli.harness_raw_seed, &error );
+        if( !harness || !main_menu::create_harness_world( harness->world_name, harness->raw_seed ) ) {
+            DebugLog( D_ERROR, DC_ALL ) << "harness_new_world failed: "
+                                        << ( error.empty() ? "world creation or save failed" : error )
+                                        << std::endl;
+            return 1;
+        }
+        return 0;
+    }
 
     while( true ) {
         main_menu menu;
