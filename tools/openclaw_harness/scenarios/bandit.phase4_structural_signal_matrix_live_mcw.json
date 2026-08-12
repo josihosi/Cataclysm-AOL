@@ -325,12 +325,10 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 240,
       "artifact_state_patterns": [
-        "scheduler_hour=168",
-        "now_minutes=10085",
-        "bandit_live_world signal_adapter request",
-        "sound_adapter event",
-        "observation scope=active",
-        "sense=sound"
+        "bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1",
+        "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=0 sound_events=1",
+        "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes",
+        "now_minutes=10085"
       ],
       "expected_visible_fact": "the next ordinary cadence consumes the real post-arrival semantic explosion and proves exactly one target-to-watch sound fact",
       "failure_rule": "If the post-arrival cadence lacks the exact active sound observation, the sound-positive route is red."

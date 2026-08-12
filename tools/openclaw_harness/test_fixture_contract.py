@@ -60,10 +60,12 @@ from startup_harness import (  # noqa: E402
     apply_player_mutations_transform,
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
+    artifact_delta_matches_all_patterns,
     classify_blocking_interruption,
     classify_wait_screen_text,
     classify_wait_step_ledger,
     cleanup_extracted_overmap,
+    capture_wait_artifact_delta,
     debug_map_editor_place_field,
     debug_map_editor_place_item,
     decode_overmap_layer,
@@ -5497,7 +5499,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         expected_clocks = {
             "wait_1_hour_for_schema10_signal_approach": ("scheduler_hour=167", "now_minutes=10020"),
             "wait_5_minutes_for_abstract_watch_arrival": ("scheduler_hour=168", "now_minutes=10080"),
-            "wait_5_minutes_for_post_arrival_sound_fact": ("scheduler_hour=168", "now_minutes=10085"),
+            "wait_5_minutes_for_post_arrival_sound_fact": ("now_minutes=10085",),
             "wait_1_hour_with_carried_sound_fact": ("scheduler_hour=169", "now_minutes=10140"),
             "wait_second_1_hour_for_sound_pair_report_transition": ("scheduler_hour=170", "now_minutes=10200"),
             "wait_third_1_hour_for_sound_pair_homeward_transition": ("scheduler_hour=171", "now_minutes=10260"),
@@ -5546,6 +5548,19 @@ class ScenarioFixtureContractTest(unittest.TestCase):
     def test_phase4_signal_matrix_log_groups_use_normalized_runner_matchers(self) -> None:
         scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
         steps = {step["label"]: step for step in scenario["steps"]}
+        immediate_step = steps["wait_5_minutes_for_post_arrival_sound_fact"]
+        immediate_patterns = normalize_screen_text_patterns(
+            immediate_step["artifact_state_patterns"]
+        )
+        self.assertEqual(
+            immediate_patterns,
+            [
+                "bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1",
+                "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=0 sound_events=1",
+                "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes",
+                "now_minutes=10085",
+            ],
+        )
         positive_step = steps["audit_phase4_sound_fact"]
         positive_groups = [
             normalize_screen_text_patterns(group)
@@ -5553,8 +5568,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         positive_lines = [
             "bandit_live_world evidence debug: now_minutes=10085 site_cap=8",
-            "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=2 sound_events=1",
-            "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes",
+            "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=0 sound_events=1",
+            "sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes emitted_minutes=10081 now_minutes=10085",
             "observation scope=active source_omt=(137,49,0) receiver_omt=(138,52,0) source_id=structural-explosion@(137,49,0) sense=sound share=shared",
         ]
         arrival_step = steps["audit_phase4_abstract_watch_arrival"]
@@ -5572,7 +5587,37 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
             artifact_log = run_dir / "debug.log"
-            artifact_log.write_text("\n".join(positive_lines) + "\n", encoding="utf-8")
+            completion_lines = [
+                "bandit_live_world signal_adapter request current_omt=(138,52,0) current_inbounds=no field_signals=0 sound_events=1",
+                "bandit_live_world sound_adapter event source_omt=(137,49,0) current_omt=(138,52,0) supported=yes permitted=yes emitted_minutes=10081 now_minutes=10085",
+                "bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1",
+            ]
+            artifact_log.write_text("\n".join(positive_lines + completion_lines) + "\n", encoding="utf-8")
+            completion = capture_wait_artifact_delta(
+                artifact_log,
+                run_dir,
+                "completion",
+                "completion_poll",
+                0,
+                immediate_patterns,
+                filter_debug_noise=False,
+            )
+            completion_match = artifact_delta_matches_all_patterns(completion)
+            adapter_only_log = run_dir / "adapter_only.log"
+            adapter_only_log.write_text(
+                "\n".join(completion_lines[:2]) + "\n",
+                encoding="utf-8",
+            )
+            adapter_only = capture_wait_artifact_delta(
+                adapter_only_log,
+                run_dir,
+                "adapter_only",
+                "completion_poll",
+                0,
+                immediate_patterns,
+                filter_debug_noise=False,
+            )
+            adapter_only_match = artifact_delta_matches_all_patterns(adapter_only)
             positive = audit_log_contains(
                 run_dir,
                 "positive",
@@ -5618,6 +5663,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             )
 
         self.assertEqual(positive["status"], "required_state_present")
+        self.assertTrue(completion_match["matched"])
+        self.assertFalse(adapter_only_match["matched"])
+        self.assertEqual(
+            adapter_only_match["missing_patterns"],
+            [
+                "bandit_live_world sound_observation sites=1 active=1 callbacks=1 recorded=1 facts=1",
+            ],
+        )
         self.assertEqual(arrival["status"], "required_state_present")
         self.assertEqual(clean_negative["status"], "required_state_present")
         self.assertEqual(forbidden["status"], "required_state_missing")
