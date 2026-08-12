@@ -452,12 +452,23 @@ Lineage: `CAOL-hostile-ecology-dev`
   0.081 seconds, the scenario JSON parsed, and `git diff --check` passed. The later detailed source/sense
   observation, no-early-lead, physical-return, exact returned-source, and no-player-token gates remain.
 
-  Active task `R002-M134` builds the exact clean checkpoint and reruns that repaired sound-positive
-  scenario through its full necessary causal route: exact dispatch and watch arrival, one minute-10085
-  target sound and static-recorder fact, no pre-return lead or player token, east relocation only after the
-  fact, ordinary physical return, exactly one source-owned returned sound lead, and zero debug errors. Its
-  3,600-second estimate reuses the measured M132 clean-build/live-route duration; no further source,
-  scenario, or matcher change is authorized unless new production evidence contradicts a premise.
+  Diagnosed task `R002-M134` built exact clean `04f2c84fb0+SDL3` binary
+  `a07d0e85bcb00ccb3cd671c9c7204ac79c0689f79e120187b88cbf7563427b97`. Run
+  `20260812_133711` reached the exact dispatch and watch arrival, then emitted the minute-10085 target
+  request, supported/permitted sound, and `sites=1 active=1 callbacks=1 recorded=1 facts=1` with zero debug
+  errors. The literal per-line completion matcher rejected only the request pattern because production
+  inserts `map_origin_omt=(133,46,0)` between `current_omt` and `current_inbounds`; the source-shaped test
+  omitted that field. The harness stopped before east relocation and return, so no downstream credit is
+  claimed. The first contradicted premise is matcher contiguity, not production behavior or the DFS.
+
+  Active task `R002-M135` makes only the request matcher resilient to production's intervening
+  `map_origin_omt` while preserving exact watch OMT, `current_inbounds=no`, zero field signals, one sound
+  event, minute-10085, and the one-fact recorder gate. Its normalized source-shaped control must accept the
+  exact production row and reject wrong watch, inbounds, field count, sound count, or absent recorder
+  completion. The later detailed observation, no-early-lead, physical-return, returned-source, and
+  no-player-token gates remain byte-identical. Three focused fixture-contract controls, JSON parsing, and
+  `git diff --check` decide acceptance. Its 900-second estimate reuses the measured comparable matcher task;
+  no product build or live run belongs in this task.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
