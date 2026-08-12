@@ -92,13 +92,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   unchanged retry is admissible.
 
   The dispatch owner requires drive 500 unless force-due. With no previous routine resolution, cadence
-  does not rise; this stable camp identity reaches its already-proved first-frontier force-due deadline
-  after 13 hours. Next route: build the current clean `dev` HEAD containing `c74f0c88e4`, install the
-  existing zero-lead natural McWilliams fixture, advance the established 6h + 6h + 1h normal wait path,
-  and audit every scheduler-emitted row from that single run. A new `selector=non_frontier` selected row
-  with watch and route cost establishes the footing; an all-rejected or empty candidate set is truthful
-  negative evidence and stops the run. Do not hand-author a lead, retry either rejected target, weaken
-  the selector, drag the target with the player, or alter world geometry to fit the fixture.
+  does not rise; this stable camp identity reaches its first-frontier force-due deadline after 13 hours.
+  Exact `9328ff8229+SDL3` Mac binary
+  `e81ecef6b838ea421b38a285a033f667a130848714d6feaa34b1eedf5a604b17` and bridge-backed run
+  `20260812_020844` completed the established 6h + 6h + 1h normal wait route. The production scheduler
+  emitted exactly the known `(164,30,0)` frontier and `(164,35,0)` non-frontier rows; both rejected for
+  no bounded safe watch geography, with no watch or route cost. McWilliams has no remaining candidate
+  footing, so another run there is inadmissible.
+
+  Next route: before any live execution, audit current packaged natural-camp fixtures and their manifests,
+  saved camp/lead state, route geometry, and provenance for a different selector-valid footing. Start with
+  the existing Phase-4 road-day `(137,49,0)` / watch `(138,52,0)` scenarios, but accept them only if a
+  fixture preserves a production-created idle non-frontier lead and ready camp rather than a hand-authored
+  lead, transformed geometry, or already-active outing. The read-only result must name the exact fixture,
+  camp, lead, target, watch, route constraints, and natural scheduler entry point before another clocked
+  live run. If no packaged fixture qualifies, replan tooling or natural world generation rather than
+  altering McWilliams, weakening the selector, or dragging the player/target.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
