@@ -157,7 +157,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 30m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10050"],
       "expected_visible_fact": "the pair remains on canonical approach while the clock advances from minute 10020 to 10050"
     },
     {
@@ -170,7 +170,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10055"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10055"
     },
     {
@@ -183,7 +183,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10060"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10060"
     },
     {
@@ -196,7 +196,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10065"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10065"
     },
     {
@@ -209,7 +209,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10070"],
       "expected_visible_fact": "the pair remains on canonical approach through minute 10070"
     },
     {
@@ -222,7 +222,7 @@
       "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing 5m",
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 60,
-      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no"],
+      "artifact_state_patterns": ["bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=10075"],
       "expected_visible_fact": "minute 10075 is the final five-minute overmap boundary before the source-derived watch transition"
     },
     {

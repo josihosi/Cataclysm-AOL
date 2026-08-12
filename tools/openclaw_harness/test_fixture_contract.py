@@ -1082,6 +1082,38 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(report["status"], "timed_out")
         self.assertEqual(report["match"]["missing_patterns"], ["endpoint"])
 
+    def test_poll_does_not_combine_quiet_state_and_clock_from_different_scans(self) -> None:
+        expected = (
+            "bandit_live_world signal scan: signal_packet=no "
+            "kind=smoke/fire/light now_minutes=10050"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("baseline\n", encoding="utf-8")
+            post_choice_baseline = artifact_log.stat().st_size
+            with artifact_log.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    "bandit_live_world signal scan: signal_packet=no "
+                    "kind=smoke/fire/light now_minutes=10049\n"
+                    "bandit_live_world signal scan: signal_packet=yes "
+                    "kind=smoke/fire/light now_minutes=10050\n"
+                )
+
+            report = poll_wait_artifact_completion(
+                artifact_log,
+                run_dir,
+                "wait_contract",
+                post_choice_baseline,
+                [expected],
+                timeout_seconds=0.01,
+                poll_seconds=0.001,
+                filter_debug_noise=False,
+            )
+
+        self.assertEqual(report["status"], "timed_out")
+        self.assertEqual(report["match"]["missing_patterns"], [expected])
+
     def test_poll_requires_relative_authoritative_wait_elapsed_minutes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
@@ -5430,6 +5462,22 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         for label, clock_patterns in expected_clocks.items():
             patterns = steps[labels.index(label)]["artifact_state_patterns"]
             self.assertTrue(all(pattern in patterns for pattern in clock_patterns))
+        expected_staging_clocks = {
+            "wait_30_minutes_toward_schema10_watch_boundary": 10050,
+            "wait_first_5_minutes_toward_schema10_watch_boundary": 10055,
+            "wait_second_5_minutes_toward_schema10_watch_boundary": 10060,
+            "wait_third_5_minutes_toward_schema10_watch_boundary": 10065,
+            "wait_fourth_5_minutes_toward_schema10_watch_boundary": 10070,
+            "wait_fifth_5_minutes_to_stage_schema10_watch_boundary": 10075,
+        }
+        for label, now_minutes in expected_staging_clocks.items():
+            self.assertEqual(
+                steps[labels.index(label)]["artifact_state_patterns"],
+                [
+                    "bandit_live_world signal scan: signal_packet=no "
+                    f"kind=smoke/fire/light now_minutes={now_minutes}"
+                ],
+            )
         staging_wait_minutes = sum(
             {"30m": 30, "5m": 5}[steps[labels.index(label)]["expected_duration"]]
             for label in labels

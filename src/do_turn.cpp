@@ -5033,6 +5033,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
 
     if( observations.empty() ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
+                                   << " now_minutes=" << live_bandit_current_minutes()
                                    << " scan_radius_ms=" << live_bandit_local_source_scan_radius_ms
                                    << " weather=" << bandit_mark_generation::to_string( weather_band )
                                    << " light_time=" << bandit_mark_generation::to_string( light_time )
@@ -5043,6 +5044,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
                                    << '\n';
     } else {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
+                                   << " now_minutes=" << live_bandit_current_minutes()
                                    << " packets=" << observations.size()
                                    << " smoke_packets=" << smoke_packets
                                    << " light_packets=" << light_packets
