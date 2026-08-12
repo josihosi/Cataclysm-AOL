@@ -107,14 +107,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   because its manifest explicitly injects `bandit_camp_map_lead`; other natural captures are already
   active, and the cannibal fixtures use seed/relabel transforms or lack a ready roster and lead.
 
-  Next route: inspect the current world-generation and harness owners for a reproducible fresh-world path
-  that naturally places a hostile camp and permits read-only camp/lead/watch feasibility before a proof
-  run. Use an authoritative deterministic seed only if the product or harness already exposes one; do not
-  invent retry counts or mutate generated terrain/save state. The smallest accepted tooling route must
-  create or select a normally generated world, identify the camp footprint and natural scan candidates,
-  evaluate current see-cost and route constraints without applying a lead, and capture a fixture only
-  after unchanged geometry supplies a selector-valid candidate. If no such current route exists, add the
-  minimum reusable natural-generation/preflight capability rather than weakening the selector.
+  Accepted fresh-world audit found no existing end-to-end harness route. Product `--seed` ownership and
+  ordinary overmap special generation exist, and the established natural-world test seed `830204914`
+  still passed 34 assertions while generating both hostile camp kinds through the normal adjacent-overmap
+  route. The harness can only autoload an existing save or use interactive Play Now; it does not pass a
+  seed or create a named deterministic world. Its existing special, player-location, and lead transforms
+  would violate the required natural provenance. Saved-state audit and the production route analyzer can
+  inspect camp, lead, watch, and route state only after that missing bridge.
+
+  Next route: extend the authoritative deterministic natural-world test into a read-only feasibility
+  oracle over its unchanged generated overmap. It must identify the natural bandit-camp footprint and
+  production terrain-scan candidates, evaluate the current see-cost, shared watch-read budget, and
+  normalized 18-OMT route owner without applying a lead to a saved world, and report whether any
+  non-frontier candidate selects. If the accepted seed has no valid footing, prove that exact negative
+  before choosing another product-seeded world; do not invent retry counts. Only after unchanged natural
+  geometry is selector-valid should the harness gain the minimum deterministic fresh-world/capture bridge.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
