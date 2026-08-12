@@ -406,77 +406,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   test already proves a continued watch request contains its target footprint, so neither a product
   fix nor another timing rewrite is admissible until the live request geometry is exposed.
 
-  Active task `R002-M123` extends the existing observer-only `signal_adapter request` record with
-  the outing's selected watch, target footprint, and exact bounded `visible_forward_omts`, plus a
-  focused formatting discriminator. It must not alter selection or observation behavior. The changed
-  object and focused tests must pass before a clean diagnostic rerun. Its 900-second estimate is
-  derived from the accepted `R002-M113` observer/test task and `R002-M119` scenario/test task, both
-  within this bound. The observer-only source and its three touched objects compiled, and
-  `git diff --check` passed, but the PCH-disabled macOS test link reused a mixed `cataclysm.a` and
-  failed on incompatible `Character` symbols before producing a current test executable. The first
-  contradicted premise is build-artifact coherence, not product behavior, test meaning, or the DFS;
-  the stale executable was correctly rejected and the on-time finding leaves R-002 red.
+  Accepted diagnostic checkpoint `a3ae713d34` extends the existing observer-only
+  `signal_adapter request` record with selected-watch identity, phase and waypoint, the canonical target
+  footprint, and the exact bounded `visible_forward_omts`, without changing selection or observation.
+  A complete PCH-disabled macOS TILES target rebuild eliminated mixed-layout objects; current test binary
+  `85bff44497c8ca569aa0d20dd81bd9011c380bc0571342ba99b7be3f87b7ae84` then exited zero with all five
+  formatting assertions in its one `nogame` case. Archive-only rebuilds and individual-object guesses were
+  rejected because make does not invalidate objects when the PCH flag changes.
 
-  Active task `R002-M124` preserves the M123 observer-only diff, removes only the incoherent generated
-  archive needed by the test link, rebuilds the same PCH-disabled macOS test route, and runs the exact
-  focused diagnostic discriminator. It must stop on any changed source failure and must not alter
-  observation behavior or broaden the test. Its 1,800-second estimate is derived from M123 reaching
-  the link in roughly ten minutes, with the remaining allowance assigned to regenerating the archive,
-  relinking, and executing the one focused case. Regenerating only the archive reproduced the link
-  failure, so archive staleness is rejected. Symbol inspection identifies the coherent first mismatch:
-  current `avatar.o`, `character.o`, and `npc.o` require `Character` virtual thunks at offset 392,
-  while `visitable.o` still defines them at offset 376. Its dependency file shows that object was built
-  through the prior main PCH, and `PCH=0` did not invalidate it. This is a build-artifact provenance gap,
-  not a source, test, behavior, or DFS gap.
-
-  Active task `R002-M125` force-rebuilds only the stale `obj/tiles/visitable.o` owner with the same
-  PCH-disabled macOS flags, proves its defining thunk offsets match the current requesters, regenerates
-  `cataclysm.a`, links the current test executable, and runs the exact M123 discriminator plus
-  `git diff --check`. It must preserve the diagnostic diff and stop on any different unresolved symbol
-  family. Its 1,800-second estimate reuses the measured M124 archive/link route and adds only one
-  identified owner-object rebuild and symbol check. The owner rebuild proved all six required offset-392
-  thunks, and the current test executable linked. The exact discriminator then entered unrelated global
-  game initialization and exited 139 while enumerating SDL render devices, before the pure formatting
-  body ran. The first contradicted premise is the test's missing `nogame` ownership tag: its structs and
-  formatter require no static data, world, renderer, or SDL state. Product behavior and the DFS remain
-  unchanged.
-
-  Active task `R002-M126` marks only the pure M123 formatting discriminator as `nogame`, rebuilds its
-  test object and current executable through the already coherent PCH-disabled macOS route, runs that
-  exact case, and checks the diff. It must not weaken any assertion, alter the diagnostic, or claim any
-  live behavior. Its 900-second estimate is derived from M125 completing the identified owner rebuild,
-  archive generation, and link well within this bound; this retry changes only one test tag and object.
-  The pure case ran and passed all five assertions, but process teardown still exited 139, so the task
-  correctly withheld completion. The current macOS crash report identifies `widget_factory` destruction
-  through `widget::~widget()` and `widget_clause`'s function member, not SDL or the tested formatter.
-  This newly isolates a second old-PCH owner object; the passing assertion body does not waive clean-exit
-  evidence.
-
-  Active task `R002-M127` force-rebuilds only `obj/tiles/widget.o` with the same PCH-disabled macOS flags,
-  regenerates the archive and current test executable, and reruns the exact five-assertion `nogame` case
-  through clean process exit plus `git diff --check`. It must stop on any different crash owner or source
-  failure. Its 900-second estimate reuses M126's completed single-object compile, archive/link, and test
-  time and changes only the crash-report-identified teardown owner. The exact case again passed all five
-  assertions but exited 139 after teardown, rejecting another isolated TILES-object repair. The untouched
-  non-TILES object family is internally coherent at the earlier `Character` layout offset and is the
-  repository's supported alternate macOS test target; using it removes the failing SDL/TILES object family
-  without changing the pure formatter owner or assertion strength.
-
-  Active task `R002-M128` builds the current PCH-disabled non-TILES macOS test target, runs the exact M123
-  five-assertion `nogame` discriminator through clean exit, and checks the diff. It may remove only generated
-  archive/test outputs needed to select this target, and must not edit source, tests, or guidance. Its
-  1,800-second estimate reuses the measured M125/M126 archive and link work with allowance for compiling the
-  three changed non-TILES objects; the rest of that object family was expected to be coherent. The alternate
-  target instead rebuilt current requesters while retaining an old-PCH `visitable.o`, reproducing the same
-  offset-392-versus-376 link failure. This rejects target switching and the premise that either incremental
-  object family can prove ABI coherence after `PCH=0`; make does not track the flag change as invalidation.
-
-  Active task `R002-M129` removes all generated object/dependency files for the TILES production/test target,
-  then fully rebuilds that one target with `PCH=0`, runs the exact five-assertion `nogame` diagnostic case
-  through clean exit, and checks the diff. It must preserve every source/test change and the unrelated
-  suggestion edit. Its 3,600-second estimate is derived from the already measured clean changed-executable
-  builds used by M118, M120, and M122 and is the smallest build boundary that eliminates every untracked-PCH
-  object rather than guessing another individual owner.
+  Active task `R002-M130` builds exact clean checkpoint `a3ae713d34` and reruns the post-arrival sound
+  scenario only through its first positive observation boundary. It accepts a diagnostic result, not R-002:
+  exact runtime identity; unchanged dispatch, target, member pair, and abstract arrival; the fresh minute-
+  10085 target sound; and the new request row sufficient to decide whether selected watch, phase, target
+  footprint, or bounded forward geometry diverges from the focused owner route. It stops after capturing
+  that causal row, before proposing a product fix or requiring return. Its 3,600-second estimate reuses the
+  measured clean-build/live-route duration of M118, M120, and M122.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
