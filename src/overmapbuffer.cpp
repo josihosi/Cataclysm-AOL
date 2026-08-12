@@ -23,6 +23,7 @@
 #include "coordinates.h"
 #include "cuboid_rectangle.h"
 #include "debug.h"
+#include "field.h"
 #include "filesystem.h"
 #include "flexbuffer_json.h"
 #include "game.h"
@@ -2256,9 +2257,14 @@ void overmapbuffer::spawn_monster( const tripoint_abs_sm &p, bool spawn_nonlocal
         }
         monster *placed = nullptr;
         if( entry.node.mapped().monster_data ) {
-            placed = g->place_critter_around( make_shared_fast<monster>(
-                                                  *entry.node.mapped().monster_data ),
-                                              local, 1, true );
+            shared_ptr_fast<monster> stored = make_shared_fast<monster>(
+                    *entry.node.mapped().monster_data );
+            // Mirror monmove's invalid-location boundary without letting reload evade hazards.
+            const bool requires_terrain_relocation = here.inbounds( local ) &&
+                    here.impassable( local ) &&
+                    !here.get_impassable_field_at( local ).has_value() &&
+                    !stored->can_move_to( local );
+            placed = g->place_critter_around( stored, local, 1, !requires_terrain_relocation );
             // TODO: make sure entity data such as destination is synched
         } else {
             placed = g->place_critter_around( entry.node.mapped().type_id->id, local, 1 );
