@@ -422,7 +422,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   focused diagnostic discriminator. It must stop on any changed source failure and must not alter
   observation behavior or broaden the test. Its 1,800-second estimate is derived from M123 reaching
   the link in roughly ten minutes, with the remaining allowance assigned to regenerating the archive,
-  relinking, and executing the one focused case.
+  relinking, and executing the one focused case. Regenerating only the archive reproduced the link
+  failure, so archive staleness is rejected. Symbol inspection identifies the coherent first mismatch:
+  current `avatar.o`, `character.o`, and `npc.o` require `Character` virtual thunks at offset 392,
+  while `visitable.o` still defines them at offset 376. Its dependency file shows that object was built
+  through the prior main PCH, and `PCH=0` did not invalidate it. This is a build-artifact provenance gap,
+  not a source, test, behavior, or DFS gap.
+
+  Active task `R002-M125` force-rebuilds only the stale `obj/tiles/visitable.o` owner with the same
+  PCH-disabled macOS flags, proves its defining thunk offsets match the current requesters, regenerates
+  `cataclysm.a`, links the current test executable, and runs the exact M123 discriminator plus
+  `git diff --check`. It must preserve the diagnostic diff and stop on any different unresolved symbol
+  family. Its 1,800-second estimate reuses the measured M124 archive/link route and adds only one
+  identified owner-object rebuild and symbol check.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
