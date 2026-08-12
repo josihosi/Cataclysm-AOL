@@ -14,10 +14,10 @@ TEST_CASE( "harness_world_options_accepts_raw_uint32_seed" )
 TEST_CASE( "harness_world_options_accepts_production_feasibility_seed" )
 {
     std::string error;
-    const auto parsed = parse_harness_world_options( "natural-r002-m96", "830205344", &error );
+    const auto parsed = parse_harness_world_options( "natural-r002-m97", "830205385", &error );
     REQUIRE( parsed );
-    CHECK( parsed->world_name == "natural-r002-m96" );
-    CHECK( parsed->raw_seed == 830205344U );
+    CHECK( parsed->world_name == "natural-r002-m97" );
+    CHECK( parsed->raw_seed == 830205385U );
     CHECK( error.empty() );
 }
 

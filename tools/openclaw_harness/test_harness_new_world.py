@@ -65,7 +65,7 @@ class HarnessNewWorldTest(unittest.TestCase):
             artifact = {
                 "artifact_kind": "harness_new_world_feasibility",
                 "artifact_version": 1,
-                "raw_seed": "830205344",
+                "raw_seed": "830205385",
                 "natural_bandit_site_found": True,
                 "natural_bandit_site_id": "overmap_special:bandit_camp@16,33,0",
                 "player_omt": {"x": 46, "y": 48, "z": 0},
@@ -116,7 +116,7 @@ class HarnessNewWorldTest(unittest.TestCase):
             )
             self.assertEqual(harness.load_harness_feasibility_artifact(run_dir), artifact)
             self.assertTrue(harness.harness_feasibility_artifact_ready(artifact))
-            self.assertTrue(harness.harness_feasibility_artifact_ready(artifact, "830205344"))
+            self.assertTrue(harness.harness_feasibility_artifact_ready(artifact, "830205385"))
             self.assertFalse(harness.harness_feasibility_artifact_ready(artifact, "830205018"))
             artifact["persistent_ecology_unchanged"] = False
             self.assertFalse(harness.harness_feasibility_artifact_ready(artifact))
@@ -173,12 +173,12 @@ class HarnessNewWorldTest(unittest.TestCase):
             ), patch.object(harness, "create_run_dir", return_value=root / "run"):
                 with self.assertRaisesRegex(ValueError, "requires harness new-world mode"):
                     harness.build_plan("profile", "", "", harness_bandit_feasibility=True)
-                with self.assertRaisesRegex(ValueError, "requires raw seed 830205344"):
+                with self.assertRaisesRegex(ValueError, "requires raw seed 830205385"):
                     harness.build_plan(
                         "profile", "", "", "natural-r002", "830205018", True
                     )
                 plan = harness.build_plan(
-                    "profile", "", "", "natural-r002", "830205344", True
+                    "profile", "", "", "natural-r002", "830205385", True
                 )
         self.assertTrue(plan.harness_bandit_feasibility)
 
