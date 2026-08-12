@@ -476,13 +476,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   east relocation and return with zero debug errors. The first contradicted premise is the duplicate
   immediate audit contract, not production behavior, matcher machinery, or the DFS.
 
-  Active task `R002-M137` replaces only those unavailable immediate audit rows with the source-emitted
-  one-callback/one-fact recorder summary and exact request/event/minute-10085 groups. Its source-shaped
-  positive and negatives must distinguish the exact recorder fact, watch/inbounds/field/sound identity,
-  permitted target event, and clock. The existing hour-169/hour-170 detailed carried-observation gates,
-  no-early-lead, physical-return, returned-source, and no-player-token gates remain byte-identical. Three
-  focused fixture-contract controls, JSON parsing, and `git diff --check` decide acceptance. Its 900-second
-  estimate reuses the measured comparable audit/matcher task; no product build or live run belongs here.
+  Accepted checkpoint `2234d52bb5` replaces only those unavailable immediate audit rows with the
+  source-emitted one-callback/one-fact recorder summary and exact request/event/minute-10085 groups. Its
+  source-shaped positive passes; ten wrong or missing recorder, watch, inbounds, field/sound, source,
+  permission, and clock variants fail. Three focused controls passed in 0.079 seconds, the scenario JSON
+  parsed, and `git diff --check` passed. The existing hour-169/hour-170 detailed carried-observation gates,
+  no-early-lead, physical-return, returned-source, and no-player-token gates remain unchanged.
+
+  Active task `R002-M138` builds the exact clean checkpoint and reruns the fully immediate-gate-repaired
+  scenario once through its necessary causal route: exact dispatch and watch arrival, one minute-10085
+  target sound and static-recorder fact, no pre-return lead or player token, east relocation only after the
+  fact, hourly detailed carried-observation retention, ordinary physical return, exactly one source-owned
+  returned sound lead, and zero debug errors. Its 3,600-second estimate reuses the measured M136 clean-
+  build/live-route duration; no further change or unchanged rerun is authorized if evidence contradicts a
+  premise.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
