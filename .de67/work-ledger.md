@@ -437,12 +437,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   control 105; `git diff --check` passed. The helper preserves the existing three-OMT cap, z-level filter,
   and deduplication.
 
-  Active task `R002-M132` builds the exact clean checkpoint and reruns the existing post-arrival sound
-  scenario through its full necessary causal route: unchanged exact dispatch and abstract arrival, a fresh
-  minute-10085 target sound admitted by the now-shared request geometry, no pre-return lead or player token,
-  explicit east relocation only after the active fact, ordinary physical return, exactly one source-owned
-  approximate sound lead, and zero debug errors. Its 3,600-second estimate reuses the measured M130 live
-  route and current coherent build artifacts.
+  Diagnosed task `R002-M132` built exact clean `fc3260caa6+SDL3` binary
+  `d79cc5d01dd1dcb9778dbecca5afbb962a64b0050520f7016e594ad9f2ff100e`. Run
+  `20260812_130357` preserved the dispatch and watch identity, admitted the fresh target sound with
+  `supported=yes permitted=yes`, and the static recorder reported `sites=1 active=1 callbacks=1
+  recorded=1 facts=1`. The five-minute harness step nevertheless waited for `observation scope=active`,
+  which is rendered only by hourly evidence debug. The first contradicted premise is therefore the
+  scenario's immediate completion predicate, not production recording, sound geometry, or the DFS.
+
+  Active task `R002-M133` replaces only that overdefined immediate predicate with the production static
+  recorder's exact one-callback/one-fact completion row and updates its owning normalized matcher control.
+  It must preserve the later detailed source/sense observation, no-early-lead, physical-return, exact
+  returned-source, and no-player-token gates. JSON parsing, the focused fixture-contract controls, and
+  `git diff --check` decide acceptance. Its 900-second estimate reuses the accepted scenario/test repair
+  estimate derived from the measured 393-second checkpoint span; no product rebuild or live rerun belongs
+  in this task.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
