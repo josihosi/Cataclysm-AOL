@@ -5659,6 +5659,24 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         for label, clock_patterns in expected_clocks.items():
             patterns = steps[labels.index(label)]["artifact_state_patterns"]
             self.assertTrue(all(pattern in patterns for pattern in clock_patterns))
+        homeward_transition = steps[labels.index(
+            "wait_third_1_hour_for_sound_pair_homeward_transition"
+        )]
+        final_return = steps[labels.index("wait_final_1_hour_for_signal_pair_physical_return")]
+        completed_assessment = (
+            "structural outing completed its watch assessment "
+            "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
+        )
+        secured_return = (
+            "structural outing secured its normal watch report and began return "
+            "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
+        )
+        self.assertIn(completed_assessment, homeward_transition["artifact_state_patterns"])
+        self.assertNotIn(secured_return, homeward_transition["artifact_state_patterns"])
+        self.assertIn(secured_return, final_return["artifact_state_patterns"])
+        self.assertIn("structural outing returned signal leads=1", final_return["artifact_state_patterns"])
+        self.assertIn("members_returned=2", final_return["artifact_state_patterns"])
+        self.assertIn("origin=returned_report", final_return["artifact_state_patterns"])
         expected_staging_clocks = {
             "wait_30_minutes_toward_schema10_watch_boundary": 10050,
             "wait_first_5_minutes_toward_schema10_watch_boundary": 10055,
