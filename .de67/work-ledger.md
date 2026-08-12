@@ -397,7 +397,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   no local handoff through that fact; no pre-return lead; east relocation only afterward; ordinary
   physical return; exactly one source-owned returned sound lead; no player token; and zero debug
   errors. Its 3,600-second estimate reuses the measured clean-build/live-route evidence from
-  `R002-M118` and `R002-M120`.
+  `R002-M118` and `R002-M120`. Exact `24138bbfb0+SDL3` binary
+  `494b7961d990ea51263776223c5ad64f48e584a5c5874db5ee1c7e537de18fe0` and bridge run
+  `20260812_115613` passed the exact dispatch and observation-free minute-10080 abstract arrival.
+  At minute 10085 the post-arrival explosion was fresh and audible (`effective_volume=2000`,
+  `required_volume=95`) but the adapter classified source `(137,49,0)` as not permitted from watch
+  `(138,52,0)`, so it recorded zero facts and the harness stopped before return. The direct owner
+  test already proves a continued watch request contains its target footprint, so neither a product
+  fix nor another timing rewrite is admissible until the live request geometry is exposed.
+
+  Active task `R002-M123` extends the existing observer-only `signal_adapter request` record with
+  the outing's selected watch, target footprint, and exact bounded `visible_forward_omts`, plus a
+  focused formatting discriminator. It must not alter selection or observation behavior. The changed
+  object and focused tests must pass before a clean diagnostic rerun. Its 900-second estimate is
+  derived from the accepted `R002-M113` observer/test task and `R002-M119` scenario/test task, both
+  within this bound.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
