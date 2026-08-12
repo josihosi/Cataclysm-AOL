@@ -145,12 +145,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   removed. No fixture, special, terrain, location, roster, camp, observer-trait, or lead transform entered
   this seam.
 
-  Next route: build the accepted product and execute the hidden bridge twice under two fresh profiles with
-  the same raw seed and distinct absent world names. Compare the saved ordinary overmap/camp identity,
-  player bootstrap distance, first two production-prefix candidates, selected watch/cost, shared read
-  budget, and preflight ecology-state delta. Acceptance requires matching natural results on both runs,
-  player reach, no persisted preflight mutation, and no transform or ownership marker left in either
-  successful world.
+  Live fresh-world finding `8eb1d94c01` proves the bridge but rejects the test-data seed as a production
+  oracle. Two fresh exact `6f30923a4b` product runs with raw `830205018` and distinct absent names both
+  exited zero, saved the same Play Now character identity, emitted no debug errors, removed their
+  ownership markers, and produced identical special placements. Both contained the same natural
+  `bandit_camp` in `o.0.0` at ground points `(172,1,0)`, `(173,1,0)`, `(172,2,0)`, and `(173,2,0)`;
+  neither contained `cannibal_camp`. The Catch2 process also loads `TEST_DATA`, so its two-camp seed is
+  not authoritative for a standalone production-data world. The first changed live run additionally
+  exposed and closed missing main-menu core-data ordering and timeout-child zombie reaping.
+
+  Next route: find and freeze a raw seed under the standalone production data set, not Catch2
+  `TEST_DATA`. Use the hidden bridge or a production-data-only ordinary-generation executable, require
+  both natural hostile camp kinds, then prove two fresh named saves reproduce their placements before
+  evaluating player reach, the first two production-prefix candidates, selected watch/cost, shared read
+  budget, and preflight ecology-state delta. No transform or ownership marker may remain in a successful
+  world.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
