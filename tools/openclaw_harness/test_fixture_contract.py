@@ -5363,9 +5363,46 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 installed_world, player_save
             )
         self.assertEqual((installed_player_omt, player_abs_ms), ((139, 49, 0), [3336, 1187, 0]))
-        source_abs_ms = [player_abs_ms[0] - 36, player_abs_ms[1], player_abs_ms[2]]
-        self.assertEqual((player_abs_ms, source_abs_ms), ([3336, 1187, 0], [3300, 1187, 0]))
+        west_relocation = steps[labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach")]
+        east_relocation = steps[labels.index("relocate_passive_avatar_three_omt_east_for_signal_return")]
+        self.assertEqual(west_relocation["keys"], ["left", "left", "left", "enter"])
+        self.assertEqual(east_relocation["keys"], ["right", "right", "right", "enter"])
+        self.assertLess(
+            labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach"),
+            labels.index("wait_1_hour_for_schema10_signal_approach"),
+        )
+        self.assertLess(
+            labels.index("audit_phase4_three_active_signal_facts"),
+            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
+        )
+        self.assertEqual(
+            steps[labels.index("audit_no_local_handoff_through_signal_observation")]["since_label"],
+            "relocate_passive_avatar_three_omt_west_before_signal_approach",
+        )
+        west_player_abs_ms = [player_abs_ms[0] - 72, player_abs_ms[1], player_abs_ms[2]]
+        self.assertEqual(west_player_abs_ms, [3264, 1187, 0])
+        source_abs_ms = [west_player_abs_ms[0] + 36, west_player_abs_ms[1], west_player_abs_ms[2]]
+        self.assertEqual((west_player_abs_ms, source_abs_ms), ([3264, 1187, 0], [3300, 1187, 0]))
         self.assertEqual(tuple(value // 24 for value in source_abs_ms[:2]) + (0,), target)
+        west_avatar_omt = (136, 49, 0)
+        loaded_handoff_radius_sm = 4
+        two_west_avatar_omt = (137, 49, 0)
+        three_west_route_delta_sm = (
+            2 * abs(approach[0] - west_avatar_omt[0]),
+            2 * abs(approach[1] - west_avatar_omt[1]),
+        )
+        two_west_route_delta_sm = (
+            2 * abs(approach[0] - two_west_avatar_omt[0]),
+            2 * abs(approach[1] - two_west_avatar_omt[1]),
+        )
+        self.assertEqual(three_west_route_delta_sm, (6, 4))
+        self.assertEqual(two_west_route_delta_sm, (4, 4))
+        self.assertEqual(max(two_west_route_delta_sm), loaded_handoff_radius_sm)
+        self.assertGreater(max(three_west_route_delta_sm), loaded_handoff_radius_sm)
+        self.assertEqual(
+            (2 * abs(target[0] - west_avatar_omt[0]), 2 * abs(target[1] - west_avatar_omt[1])),
+            (2, 0),
+        )
 
         def distance_to_omt(point_ms: List[int], omt: tuple[int, int, int]) -> int:
             distances = []
@@ -5377,11 +5414,12 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertEqual(
             (
-                distance_to_omt(player_abs_ms, approach),
-                distance_to_omt(player_abs_ms, camp),
-                distance_to_omt(player_abs_ms, watch),
+                distance_to_omt(west_player_abs_ms, target),
+                distance_to_omt(west_player_abs_ms, approach),
+                distance_to_omt(west_player_abs_ms, camp),
+                distance_to_omt(west_player_abs_ms, watch),
             ),
-            (37, 37, 61),
+            (24, 72, 96, 61),
         )
         resolved_profile = resolve_profile_snapshot_payload(
             scenario["profile_snapshot"], scenario["profile_snapshot_profile"]
@@ -5415,6 +5453,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertFalse(is_tileset_isometric)
         screen_direction_delta = {
             "left": (-1, 0),
+            "right": (1, 0),
         }
         rotate_direction_vec = (1, 2, 5, 0, 4, 8, 3, 6, 7)
 
@@ -5438,19 +5477,19 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ):
             setup = steps[labels.index(setup_label)]
             self.assertEqual(len(setup["target_keys"]), 36)
-            self.assertEqual(set(setup["target_keys"]), {"left"})
+            self.assertEqual(set(setup["target_keys"]), {"right"})
             world_delta = profile_world_delta(setup["target_keys"])
             placed_abs_ms = [
-                player_abs_ms[0] + world_delta[0],
-                player_abs_ms[1] + world_delta[1],
-                player_abs_ms[2],
+                west_player_abs_ms[0] + world_delta[0],
+                west_player_abs_ms[1] + world_delta[1],
+                west_player_abs_ms[2],
             ]
             placed_omt = tuple(value // 24 for value in placed_abs_ms[:2]) + (0,)
-            self.assertEqual(world_delta, (-36, 0))
+            self.assertEqual(world_delta, (36, 0))
             self.assertEqual(placed_abs_ms, source_abs_ms)
             self.assertEqual(placed_omt, target)
             self.assertIn(
-                "36 screen-left non-isometric EDITMAP actions",
+                "36 screen-right non-isometric EDITMAP actions",
                 setup["expected_visible_fact"],
             )
 
@@ -5489,7 +5528,16 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertEqual(staging_wait_minutes, 55)
         self.assertLess(labels.index("stage_active_explosive_on_target_omt"), labels.index("wait_5_minutes_for_three_active_signal_facts"))
+        self.assertLess(
+            labels.index("audit_phase4_three_active_signal_facts"),
+            labels.index("audit_no_local_handoff_through_signal_observation"),
+        )
+        self.assertLess(
+            labels.index("audit_no_local_handoff_through_signal_observation"),
+            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
+        )
         self.assertLess(labels.index("audit_no_returned_signal_lead_before_physical_return"), labels.index("wait_final_1_hour_for_signal_pair_physical_return"))
+        self.assertNotIn("screen-left", json.dumps(scenario, sort_keys=True))
         self.assertNotIn("136,51,0", json.dumps(scenario, sort_keys=True))
 
     def test_phase4_signal_matrix_log_groups_use_normalized_runner_matchers(self) -> None:

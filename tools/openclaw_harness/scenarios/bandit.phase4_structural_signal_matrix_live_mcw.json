@@ -1,6 +1,6 @@
 {
   "name": "bandit.phase4_structural_signal_matrix_live_mcw",
-  "description": "Phase-4 live smoke/light/sound matrix on one production-owned schema-10 structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward source-proved terrain-opportunity road target (137,49,0), approaches through (139,51,0), and watches from (138,52,0). The passive player at abs_ms (3336,1187,0) keeps the target and return route in loaded reality while the watch remains out of bounds; scenario setup places one real active explosive and one physical fire 36 map squares west on the target. Production must retain three typed target-to-watch facts and create exactly three returned_report leads only after physical return.",
+  "description": "Phase-4 live smoke/light/sound matrix on one production-owned schema-10 structural sortie. The derived handoff fixture preserves the same signal footing and adds only DEBUG_CLAIRVOYANCE. An idle five-member camp autonomously dispatches its exact pair toward source-proved terrain-opportunity road target (137,49,0), approaches through (139,51,0), and watches from (138,52,0). Before approach, the passive avatar is explicitly relocated three OMT west to (136,49,0): the target remains loaded for real setup while approach/watch remain abstract. Scenario setup then places one real active explosive and one physical fire 36 map squares east on the target. After the three facts, the avatar is explicitly relocated three OMT east to reload the physical return route. Production must retain three typed target-to-watch facts and create exactly three returned_report leads only after physical return.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
@@ -134,6 +134,24 @@
       "expected_immediate_state": "the exact pair remains production-owned abstract traffic after dispatch"
     },
     {
+      "kind": "press",
+      "label": "open_debug_long_teleport_before_signal_approach",
+      "keys": ["}", "t", "l"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "Debug Functions opens Teleport then the ordinary long-range overmap destination picker before the autonomous approach begins"
+    },
+    {
+      "kind": "press",
+      "label": "relocate_passive_avatar_three_omt_west_before_signal_approach",
+      "keys": ["left", "left", "left", "enter"],
+      "delay_ms": 150,
+      "settle_seconds": 4,
+      "capture_after": true,
+      "expected_visible_fact": "the passive avatar is explicitly relocated from (139,49,0) to (136,49,0); target (137,49,0) stays loaded while approach (139,51,0) and watch (138,52,0) are outside loaded bounds",
+      "failure_rule": "Three OMT west is the minimal fail-closed footing: two OMT west would leave approach at the loaded boundary; this relocation edits only the avatar and not ecology actors or target state."
+    },
+    {
       "kind": "long_wait",
       "label": "wait_1_hour_for_schema10_signal_approach",
       "choice_key": "5",
@@ -231,16 +249,16 @@
       "field_query": "fd_fire",
       "field_intensity": 3,
       "target_keys": [
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left"
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
       ],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real intense fd_fire field is placed by 36 screen-left non-isometric EDITMAP actions from player abs_ms (3336,1187,0) onto source abs_ms (3300,1187,0) in target OMT (137,49,0); production projects both physical smoke and light from that source",
+      "expected_visible_fact": "one real intense fd_fire field is placed by 36 screen-right non-isometric EDITMAP actions from relocated player abs_ms (3264,1187,0) onto source abs_ms (3300,1187,0) in target OMT (137,49,0); production projects both physical smoke and light from that source",
       "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
@@ -248,16 +266,16 @@
       "label": "stage_active_explosive_on_target_omt",
       "item_query": "C-4 explosive (active)",
       "target_keys": [
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left",
-        "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left"
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right",
+        "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"
       ],
       "delay_ms": 45,
       "type_delay_ms": 20,
       "menu_settle_seconds": 0.45,
       "prompt_settle_seconds": 0.25,
       "capture_after": true,
-      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed by the same 36 screen-left non-isometric EDITMAP actions onto source abs_ms (3300,1187,0) in target OMT (137,49,0) just after the minute-10075 overmap boundary, leaving its semantic explosion queued until the minute-10080 watch pass",
+      "expected_visible_fact": "one real SPAWN_ACTIVE C-4 item is placed by the same 36 screen-right non-isometric EDITMAP actions onto source abs_ms (3300,1187,0) in target OMT (137,49,0) just after the minute-10075 overmap boundary, leaving its semantic explosion queued until the minute-10080 watch pass",
       "proof_deferred_to_label": "audit_phase4_three_active_signal_facts"
     },
     {
@@ -312,12 +330,40 @@
     },
     {
       "kind": "audit_log_not_contains",
+      "label": "audit_no_local_handoff_through_signal_observation",
+      "since_label": "relocate_passive_avatar_three_omt_west_before_signal_approach",
+      "forbidden_line_patterns": [["bandit_live_world local_handoff committed"]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase4_signal_approach_entered_loaded_reality",
+      "abort_reason": "the west-relocated passive avatar still allowed a local handoff before or at the positive signal-fact boundary",
+      "expected_immediate_state": "the exact pair remains abstract through approach, watch, and all three source-to-watch observations"
+    },
+    {
+      "kind": "audit_log_not_contains",
       "label": "audit_no_returned_signal_lead_before_physical_return",
       "forbidden_line_patterns": [["origin=returned_report"]],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_structural_signal_lead_created_before_return",
       "abort_reason": "a returned-report lead appeared before physical scout return",
       "expected_immediate_state": "no camp lead has been created from the pair's carried route facts"
+    },
+    {
+      "kind": "press",
+      "label": "open_debug_long_teleport_after_signal_observation",
+      "keys": ["}", "t", "l"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "Debug Functions opens the ordinary long-range overmap destination picker after the three source-to-watch facts are proven"
+    },
+    {
+      "kind": "press",
+      "label": "relocate_passive_avatar_three_omt_east_for_signal_return",
+      "keys": ["right", "right", "right", "enter"],
+      "delay_ms": 150,
+      "settle_seconds": 4,
+      "capture_after": true,
+      "expected_visible_fact": "the passive avatar is explicitly relocated from (136,49,0) back to (139,49,0) only after the positive signal audit, reloading the existing physical approach/return route without editing ecology actors or manufacturing return credit",
+      "failure_rule": "This post-observation debug relocation is footing for the unchanged physical return route, not an ecology transition or returned-report credit."
     },
     {
       "kind": "long_wait",
