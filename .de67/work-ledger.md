@@ -204,14 +204,27 @@ Lineage: `CAOL-hostile-ecology-dev`
   and two active outside members. A separate untouched exact-seed control saved cleanly with no feasibility
   artifact and zero `bandit_live_world` sites.
 
-  The same positive run is not accepted feature proof: ordinary long waiting emitted four
-  `game::monmove` errors when zombies occupied `(7,28,-1)`, a closed wood door. A separately generated
-  exact-seed retry, moved away through normal player input before waiting, reproduced the same error.
-  Current upstream still treats this recoverable relocate-or-die branch as `D_ERROR`, so simply hiding or
-  downgrading the diagnostic is not an admissible proof fix. Next route: isolate why this fresh-world
-  z-level repeatedly places an active monster in the closed door, make the smallest behavioral correction
-  or prove a clean ordinary production route, then repeat the exact natural dispatch and quiet control with
-  zero feature-phase errors.
+  Accepted causal closure `466ee0a6ca` traces the closed-door error to `map::try_fall`: the ledge branch
+  accepted an impassable lower tile, placed an ordinary falling monster there, and left `monmove` to emit
+  the error on its next turn. Falling monsters now choose only a supported, empty adjacent tile they can
+  enter; when none exists they retain the prior completed blocked landing instead of suspending the fall,
+  and compatible climbing monsters retain their valid impassable landing. The focused falling suite passed
+  10 assertions covering relocation, no-candidate completion, unsupported-candidate rejection, and a
+  climbing-compatible control. Structured review closed three concrete hazards before reporting no
+  remaining finding. Fresh exact-seed repaired-binary waits reached nine hours at the shelter and five
+  hours in a normally reached forest with zero feature-phase errors; both non-crediting attempts ended only
+  when an ordinary nearby monster killed the unattended player.
+
+  Accepted repaired-runtime proof run `20260812_071618` reloads the untouched owner written by the natural
+  hour-142 dispatch run, audits the exact member pair 3/4 plus one ready home member before and after 30
+  ordinary live turns, advances the normal save writeback, and finishes with feature-path classification,
+  all nine step-local checks green, and zero new debug errors. Equal raw-seed quiet creation
+  `20260812_071735` exited zero with a clean save and no error evidence. Harness checkpoint `1bb94a7163`
+  prevents a normal active-wait banner plus historical `Safe mode OFF!` HUD text from being mistaken for a
+  new safe-mode prompt while genuine full or partial safe-mode prompts remain fail-closed; its 22 focused
+  interruption-classifier controls pass. The closed-door causal blocker is therefore green. Resume R-002
+  at the still-red real-versus-empty signal provenance contrast, followed by player relocation without
+  target drag and legitimately observed versus unseen zombie danger.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
@@ -256,4 +269,5 @@ Lineage: `CAOL-hostile-ecology-dev`
 ## Batch result
 
 Active. R-001/T01 remains accepted at `0d9c63fb18` with its evidence preserved; it is not projected
-here because this ledger contains still-red DFS claims only. R-002 is the current causal target.
+here because this ledger contains still-red DFS claims only. R-002 resumes at the real-versus-empty
+signal provenance contrast; its closed-door causal blocker is accepted green.
