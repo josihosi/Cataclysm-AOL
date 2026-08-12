@@ -304,6 +304,21 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         )
         press.assert_not_called()
 
+    def test_active_wait_banner_wins_over_safe_mode_hud_history(self) -> None:
+        observed_ocr = (
+            "Press . or 5 to interrupt\n"
+            "waiting:\n382\n"
+            "Safe: Off\n"
+            "Safe mode OFF!\n"
+            "Tiles"
+        )
+
+        result = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+
+        self.assertEqual(result["status"], "clear")
+        self.assertEqual(result["classification"], "wait_activity_in_progress")
+        self.assertEqual(result["response_key"], "")
+
     def test_bare_press_without_active_wait_progress_remains_blocked(self) -> None:
         result = classify_blocking_interruption({
             "ok": True,
@@ -323,6 +338,16 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
             ),
             (
                 "Spotted hostile while waiting\nPress | to interrupt waiting",
+                "unknown_prompt",
+                "partial_safe_mode_spotted_hostile_prompt",
+            ),
+            (
+                "Safe mode\nPress\nTiles\nPress . to interrupt waiting",
+                "known_prompt",
+                "safe_mode_spotted_hostile_prompt",
+            ),
+            (
+                "Safe mode\nPress . to interrupt waiting",
                 "unknown_prompt",
                 "partial_safe_mode_spotted_hostile_prompt",
             ),

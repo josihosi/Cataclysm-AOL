@@ -2094,6 +2094,9 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
+    strong_semantic_safe_mode_marker = any(
+        marker != "safe mode" for marker in semantic_safe_mode_markers
+    )
     shadow_warning_markers = [
         marker
         for marker in (
@@ -2166,10 +2169,20 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             and wait_progress_percentage
         )
     )
+    safe_mode_explicitly_off = (
+        "safe mode off" in normalized_ocr_body or
+        "safe off" in normalized_ocr_body
+    )
     if (
         ("press ' to turn it off" in safe_mode_markers and "ignore monster" in safe_mode_markers)
         or ("off, press" in safe_mode_markers and "ignore monster" in safe_mode_markers)
-        or all(marker in safe_mode_markers for marker in ("safe mode", "press", "tiles"))
+        or (
+            all(marker in safe_mode_markers for marker in ("safe mode", "press", "tiles"))
+            and not (
+                safe_mode_explicitly_off and
+                (contiguous_wait_activity or fragmented_wait_activity)
+            )
+        )
     ):
         return {
             **base,
@@ -2179,7 +2192,9 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "matched_markers": safe_mode_markers,
         }
     if safe_mode_markers and (
-        semantic_safe_mode_markers or not ( contiguous_wait_activity or fragmented_wait_activity )
+        strong_semantic_safe_mode_marker or
+        not (contiguous_wait_activity or fragmented_wait_activity) or
+        ("safe mode" in semantic_safe_mode_markers and not safe_mode_explicitly_off)
     ):
         return {
             **base,
