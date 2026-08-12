@@ -363,7 +363,26 @@ Lineage: `CAOL-hostile-ecology-dev`
   pre-return lead; ordinary physical return after the explicit east relocation; exactly three
   approximate returned-report leads; no player token; and zero debug errors. Its 3,600-second
   estimate reuses the measured `R002-M118` clean-build/live-route estimate because only bounded
-  scenario ordering changed.
+  scenario ordering changed. Exact `7e93f04dea+SDL3` binary
+  `00ba8be5286dfb5976dcb0ada2dfae8d1054e15364e9ba8db59d2c6535ac416c` and bridge run
+  `20260812_113122` proved the geometry repair: hour-166 dispatch remained exact, no local handoff
+  occurred, and the minute-10080 abstract adapter ran at watch `(138,52,0)` with two field packets
+  and one sound event. It still recorded zero observations. The first contradicted premise is again
+  scenario timing, not product ownership: the explosion was emitted at minute 10076, while arrival
+  advanced `observation_window_start_minutes` to 10080, so the validator rejected the pre-arrival
+  sound; actual fog reduced sight to zero and independently screened the smoke/light reads. The
+  timeout correctly prevented east relocation and all downstream return claims. No production or
+  DFS mutation is indicated.
+
+  Active task `R002-M121` reduces the credible-real-signal row to its weather-independent production
+  core. The outing first reaches its abstract watch with no claimed signal observation. Only then
+  does scenario setup emit one real bounded explosion sound from the unchanged target, and the next
+  ordinary maintenance cadence must record one target-to-watch active sound fact whose emission is
+  inside the persisted observation window. Focused owner tests continue to own the smoke/light/sound
+  matrix. The scenario must retain the west-bound no-handoff guard through that fact, no pre-return
+  returned-report lead, east relocation only after the fact, ordinary physical return, exactly one
+  approximate returned sound lead, no player token, and owning fixture-contract discriminators.
+  Its 900-second estimate reuses the accepted `R002-M119` scenario/test repair estimate.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
