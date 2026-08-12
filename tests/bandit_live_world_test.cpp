@@ -8896,7 +8896,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         REQUIRE( unassembled_plan.valid );
         REQUIRE( unassembled_plan.reroute_needed );
         REQUIRE_FALSE( unassembled_plan.snapshot.cohesion_assembled );
-        maintain_live_bandit_local_pair_cohesion_for_test();
+        REQUIRE( maintain_live_bandit_local_pair_cohesion_for_test() == 2 );
+        CHECK( maintain_live_bandit_local_pair_cohesion_for_test() == 2 );
         CHECK_FALSE( live_site.active_outing.local_handoff.cohesion_assembled );
         REQUIRE( bandit_live_world::current_external_simulation_cursor( live_site ) );
         std::set<character_id> claimed_unassembled_members;

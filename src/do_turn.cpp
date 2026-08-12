@@ -3872,12 +3872,10 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                 }
                 backup.member->path = backup.path;
             }
-            // A same-minute cohesion re-read has no persisted delta, but the local owner
-            // must retain motor priority for the rest of that minute.  Any attempted route
-            // that fails to commit instead remains fail-closed.
-            if( !route_attempted && plan.movement_orders.empty() ) {
-                append_assembly_orders( site.active_outing );
-            }
+            // A same-minute cohesion re-read may have no persisted delta, but the local owner
+            // must retain motor priority for the rest of that minute.  Rebuild the motor view
+            // from the current authoritative outing even when this pass attempted a route.
+            append_assembly_orders( site.active_outing );
             continue;
         }
 
@@ -8617,9 +8615,9 @@ bool materialize_live_bandit_structural_handoffs_for_test()
     return materialize_live_bandit_structural_handoffs();
 }
 
-void maintain_live_bandit_local_pair_cohesion_for_test()
+std::size_t maintain_live_bandit_local_pair_cohesion_for_test()
 {
-    maintain_live_bandit_local_pair_cohesion();
+    return maintain_live_bandit_local_pair_cohesion().size();
 }
 
 bool dematerialize_live_bandit_structural_handoffs_for_test()
