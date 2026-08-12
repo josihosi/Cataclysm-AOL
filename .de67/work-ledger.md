@@ -34,8 +34,9 @@ Lineage: `CAOL-hostile-ecology-dev`
   Next frontier `R002-M152` must exclude every `structural_sortie` from that generic phase writer and
   add a focused discriminator that fails when the duplicate writer advances structural state, plus a
   positive control preserving its intended modern-scout behavior. Run the narrow owning tests and
-  compile the changed source seam. Do not alter scenario geometry or clocks, add a movement owner,
-  or launch the integrated proof from this implementation task.
+  compile the changed source seam. Its 1,200-second estimate reuses accepted `R002-M151`'s exact
+  same-owner window for this one-guard/test implementation. Do not alter scenario geometry or clocks,
+  add a movement owner, or launch the integrated proof from this implementation task.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
