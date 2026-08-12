@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -58,6 +59,72 @@ class HarnessNewWorldTest(unittest.TestCase):
         self.assertTrue(harness.harness_process_ready(0, marker, 10.0, 0))
         self.assertFalse(harness.harness_process_ready(0, marker, 10.0, 1))
 
+    def test_feasibility_artifact_is_required_and_surfaced(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact = {
+                "artifact_kind": "harness_new_world_feasibility",
+                "artifact_version": 1,
+                "raw_seed": "830205344",
+                "natural_bandit_site_found": True,
+                "natural_bandit_site_id": "overmap_special:bandit_camp@16,33,0",
+                "player_omt": {"x": 46, "y": 48, "z": 0},
+                "natural_bandit_site_anchor": {"x": 16, "y": 33, "z": 0},
+                "natural_bandit_site_nearest_omt": {"x": 17, "y": 34, "z": 0},
+                "natural_bandit_site_distance_omt": 32.202484376209235,
+                "persistent_ecology_unchanged": True,
+                "persistent_ecology_state_before": "{\"sites\":[]}",
+                "persistent_ecology_state_after": "{\"sites\":[]}",
+                "bootstrap_radius_omt": 40,
+                "bootstrap_created_sites": 1,
+                "bootstrap_recognized_tiles": 4,
+                "structural_scan_budget": 12,
+                "structural_scan_budget_used": 4,
+                "structural_scan_sites_considered": 1,
+                "structural_scan_candidates_sampled": 4,
+                "structural_scan_notes": ["bounded"],
+                "candidate_prefix_limit": 2,
+                "candidate_rows": [
+                    {
+                        "lead_id": f"lead-{index}",
+                        "target_omt": {"x": index, "y": 0, "z": 0},
+                        "selector": "non_frontier",
+                        "outcome": "rejected",
+                        "watch": None,
+                        "watch_route_cost": -1,
+                        "analyzer_record": "outcome=rejected",
+                        "watch_budget_before": 8,
+                        "watch_budget_after": 8,
+                        "read": {
+                            "reachable": False,
+                            "complete_route_cost": 22,
+                            "max_segment_risk": 400,
+                            "summary": "route cap exceeded",
+                            "watch_geography_supplied": False,
+                            "watch_candidates": [],
+                            "watch_shared_route": [],
+                        },
+                    }
+                    for index in range(2)
+                ],
+                "route_watch_budget_before": 8,
+                "route_watch_budget_after": 8,
+                "route_watch_budget_used": 0,
+            }
+            (run_dir / "harness_new_world_feasibility.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+            self.assertEqual(harness.load_harness_feasibility_artifact(run_dir), artifact)
+            self.assertTrue(harness.harness_feasibility_artifact_ready(artifact))
+            self.assertTrue(harness.harness_feasibility_artifact_ready(artifact, "830205344"))
+            self.assertFalse(harness.harness_feasibility_artifact_ready(artifact, "830205018"))
+            artifact["persistent_ecology_unchanged"] = False
+            self.assertFalse(harness.harness_feasibility_artifact_ready(artifact))
+            artifact["persistent_ecology_unchanged"] = True
+            artifact["candidate_rows"].pop()
+            self.assertFalse(harness.harness_feasibility_artifact_ready(artifact))
+        self.assertFalse(harness.harness_feasibility_artifact_ready({}))
+
     def test_cleanup_accepts_supported_executable_identities(self) -> None:
         for command in (
             "/game/Cataclysm-AOL --userdir .userdata/p/",
@@ -96,6 +163,24 @@ class HarnessNewWorldTest(unittest.TestCase):
         self.assertEqual(plan.target_world, "natural-r002")
         self.assertEqual(plan.harness_new_world, "natural-r002")
         self.assertEqual(plan.harness_raw_seed, "830205018")
+        self.assertFalse(plan.harness_bandit_feasibility)
+
+    def test_plan_requires_explicit_fresh_world_feasibility_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            with patch.object(harness, "repo_root", return_value=root), patch.object(
+                harness, "detect_executable", return_value=root / "game"
+            ), patch.object(harness, "create_run_dir", return_value=root / "run"):
+                with self.assertRaisesRegex(ValueError, "requires harness new-world mode"):
+                    harness.build_plan("profile", "", "", harness_bandit_feasibility=True)
+                with self.assertRaisesRegex(ValueError, "requires raw seed 830205344"):
+                    harness.build_plan(
+                        "profile", "", "", "natural-r002", "830205018", True
+                    )
+                plan = harness.build_plan(
+                    "profile", "", "", "natural-r002", "830205344", True
+                )
+        self.assertTrue(plan.harness_bandit_feasibility)
 
     def test_failed_run_cleanup_removes_only_the_named_fresh_world(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

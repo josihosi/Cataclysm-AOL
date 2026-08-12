@@ -31,6 +31,7 @@
 #include "character_id.h"
 #include "color.h"
 #include "debug.h"
+#include "do_turn.h"
 #include "enums.h"
 #include "filesystem.h"
 #include "game.h"
@@ -134,7 +135,8 @@ bool main_menu::create_harness_world( const std::string &world_name, const std::
         world_generator->set_active_world( world );
         g->setup();
         g->prepare_harness_overmap_seed( raw_seed );
-        if( !pc.create( character_type::NOW ) || !g->start_game() || !g->save() ) {
+        if( !pc.create( character_type::NOW ) || !g->start_game() ||
+            !write_harness_new_world_feasibility_artifact() || !g->save() ) {
             discard_world();
             return false;
         }

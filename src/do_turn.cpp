@@ -9,6 +9,8 @@
 #include <climits>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -61,6 +63,7 @@
 #include "input_context.h"
 #include "item_wakeup.h"
 #include "item.h"
+#include "json.h"
 #include "magic_enchantment.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -3353,6 +3356,9 @@ struct live_bandit_sound_observation {
 
 static constexpr int live_bandit_system_envelope_omt = 40;
 static constexpr int live_bandit_local_source_scan_radius_ms = 60;
+static constexpr int live_bandit_structural_scan_budget = 12;
+static constexpr int live_bandit_structural_dispatch_cap = 2;
+static constexpr int live_bandit_structural_watch_path_budget = 8;
 
 struct live_bandit_local_source_reading {
     int fire_intensity = 0;
@@ -6234,10 +6240,7 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int current_minutes = live_bandit_current_minutes();
-    static constexpr int structural_scan_budget = 12;
-    static constexpr int structural_dispatch_cap = 2;
-    static constexpr int structural_watch_path_budget = 8;
-    int watch_paths_remaining = structural_watch_path_budget;
+    int watch_paths_remaining = live_bandit_structural_watch_path_budget;
     const bool observer_enabled = get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE );
     const auto route_lookup = [&watch_paths_remaining, observer_enabled](
     const bandit_live_world::site_record & site,
@@ -6253,7 +6256,8 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
     };
     bandit_live_world::structural_bounty_maintenance_result result =
         bandit_live_world::advance_structural_bounty_maintenance( state, current_minutes,
-                structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
+                live_bandit_structural_scan_budget, live_bandit_structural_dispatch_cap,
+                live_bandit_structural_terrain_id,
                 live_bandit_structural_threat_read, route_lookup,
                 live_bandit_structural_abstract_threat_read,
                 [&live_signals, &live_sounds](
@@ -6439,6 +6443,220 @@ std::string live_bandit_structural_route_analyzer_record_for_test(
     return live_bandit_structural_route_analyzer_record( site, plan, selector, read );
 }
 
+namespace
+{
+void write_harness_omt( JsonOut &json, const tripoint_abs_omt &omt )
+{
+    json.start_object();
+    json.member( "x", omt.x() );
+    json.member( "y", omt.y() );
+    json.member( "z", omt.z() );
+    json.end_object();
+}
+
+void write_harness_route_read( JsonOut &json,
+                               const bandit_live_world::structural_route_read &read )
+{
+    json.start_object();
+    json.member( "reachable", read.reachable );
+    json.member( "complete_route_cost", read.complete_route_cost );
+    json.member( "max_segment_risk", read.max_segment_risk );
+    json.member( "summary", read.summary );
+    json.member( "watch_geography_supplied", read.watch_geography_supplied );
+    json.member( "watch_candidates" );
+    json.start_array();
+    for( const bandit_live_world::watch_selection_candidate &candidate : read.watch_candidates ) {
+        json.start_object();
+        json.member( "omt" );
+        write_harness_omt( json, candidate.omt );
+        json.member( "route_cost", candidate.route_cost );
+        json.end_object();
+    }
+    json.end_array();
+    json.member( "watch_shared_route" );
+    json.start_array();
+    for( const tripoint_abs_omt &omt : read.watch_shared_route ) {
+        write_harness_omt( json, omt );
+    }
+    json.end_array();
+    json.end_object();
+}
+
+std::string canonical_harness_ecology_state(
+    const bandit_live_world::world_state &state )
+{
+    std::ostringstream serialized;
+    JsonOut json( serialized );
+    state.serialize( json );
+    return serialized.str();
+}
+} // namespace
+
+bool write_harness_new_world_feasibility_artifact()
+{
+    const char *const feasibility_requested =
+        std::getenv( "OPENCLAW_HARNESS_BANDIT_FEASIBILITY" );
+    if( feasibility_requested == nullptr ||
+        std::string_view( feasibility_requested ) != "1" ) {
+        return true;
+    }
+    const char *const run_dir_value = std::getenv( "OPENCLAW_HARNESS_RUN_DIR" );
+    if( run_dir_value == nullptr || run_dir_value[0] == '\0' ) {
+        return false;
+    }
+
+    const bandit_live_world::world_state persistent_before =
+        overmap_buffer.global_state.bandit_live_world;
+    const std::string ecology_before = canonical_harness_ecology_state( persistent_before );
+    bandit_live_world::world_state analysis_state = persistent_before;
+    const tripoint_abs_omt player_omt = get_avatar().pos_abs_omt();
+    const auto special_lookup = []( const tripoint_abs_omt &candidate ) -> std::optional<std::string> {
+        if( const std::optional<overmap_special_id> special =
+                overmap_buffer.overmap_special_at_existing( candidate ) ) {
+            return special->str();
+        }
+        return std::nullopt;
+    };
+    const int bootstrap_radius_omt = live_bandit_system_envelope_omt;
+    const bandit_live_world::abstract_bootstrap_result bootstrap =
+        bandit_live_world::register_abstract_sites_near( analysis_state, player_omt,
+                bootstrap_radius_omt, special_lookup );
+
+    const bandit_live_world::site_record *natural_bandit_site = nullptr;
+    double natural_bandit_distance = std::numeric_limits<double>::infinity();
+    tripoint_abs_omt natural_bandit_nearest_omt;
+    for( const bandit_live_world::site_record &site : analysis_state.sites ) {
+        if( site.site_kind != bandit_live_world::owned_site_kind::bandit_camp ) {
+            continue;
+        }
+        const auto nearest = std::min_element( site.footprint.begin(), site.footprint.end(),
+        [&player_omt]( const tripoint_abs_omt & lhs, const tripoint_abs_omt & rhs ) {
+            const auto squared_distance = [&player_omt]( const tripoint_abs_omt & omt ) {
+                const double dx = static_cast<double>( omt.x() - player_omt.x() );
+                const double dy = static_cast<double>( omt.y() - player_omt.y() );
+                return dx * dx + dy * dy;
+            };
+            return std::make_tuple( squared_distance( lhs ), lhs.z(), lhs.y(), lhs.x() ) <
+                   std::make_tuple( squared_distance( rhs ), rhs.z(), rhs.y(), rhs.x() );
+        } );
+        const tripoint_abs_omt nearest_omt = nearest == site.footprint.end() ? site.anchor : *nearest;
+        const double dx = static_cast<double>( nearest_omt.x() - player_omt.x() );
+        const double dy = static_cast<double>( nearest_omt.y() - player_omt.y() );
+        const double distance = std::hypot( dx, dy );
+        if( distance <= bootstrap_radius_omt && distance < natural_bandit_distance ) {
+            natural_bandit_site = &site;
+            natural_bandit_distance = distance;
+            natural_bandit_nearest_omt = nearest_omt;
+        }
+    }
+
+    const int now_minutes = live_bandit_current_minutes();
+    const bandit_live_world::structural_bounty_scan_result scan =
+        bandit_live_world::advance_structural_bounty_scan( analysis_state, now_minutes,
+                live_bandit_structural_scan_budget,
+                live_bandit_structural_terrain_id );
+    const bandit_live_world::site_record *analyzed_site = natural_bandit_site == nullptr ? nullptr :
+            analysis_state.find_site( natural_bandit_site->site_id );
+    const std::vector<bandit_live_world::structural_outing_plan> all_candidates =
+        analyzed_site == nullptr ? std::vector<bandit_live_world::structural_outing_plan>() :
+        bandit_live_world::plan_structural_bounty_outing_candidates( *analyzed_site, now_minutes,
+                false );
+    // routine_candidate_full_route_solve_cap owns this production per-site prefix.
+    constexpr std::size_t production_site_route_solve_cap = 2;
+    const std::size_t candidate_count = std::min( production_site_route_solve_cap,
+                                        all_candidates.size() );
+    std::vector<bandit_live_world::structural_outing_plan> candidates;
+    candidates.reserve( candidate_count );
+    for( std::size_t index = 0; index < candidate_count; ++index ) {
+        candidates.push_back( all_candidates[index] );
+    }
+    const int watch_budget_before = live_bandit_structural_watch_path_budget;
+    int watch_budget_after = watch_budget_before;
+    std::vector<bandit_live_world::structural_route_read> reads;
+    if( analyzed_site != nullptr ) {
+        reads = live_bandit_structural_route_analyzer_reads_for_test( *analyzed_site, candidates,
+                watch_budget_after );
+    }
+
+    const std::string ecology_after = canonical_harness_ecology_state(
+                                          overmap_buffer.global_state.bandit_live_world );
+    const bool ecology_unchanged = ecology_before == ecology_after;
+    const std::filesystem::path artifact_path = std::filesystem::path( run_dir_value ) /
+            "harness_new_world_feasibility.json";
+    std::ofstream artifact( artifact_path );
+    if( !artifact ) {
+        return false;
+    }
+    JsonOut json( artifact );
+    json.start_object();
+    json.member( "artifact_kind", "harness_new_world_feasibility" );
+    json.member( "artifact_version", 1 );
+    json.member( "raw_seed", g->get_seed() );
+    json.member( "player_omt" );
+    write_harness_omt( json, player_omt );
+    json.member( "persistent_ecology_state_before", ecology_before );
+    json.member( "persistent_ecology_state_after", ecology_after );
+    json.member( "persistent_ecology_unchanged", ecology_unchanged );
+    json.member( "bootstrap_radius_omt", bootstrap_radius_omt );
+    json.member( "bootstrap_created_sites", bootstrap.created_sites );
+    json.member( "bootstrap_recognized_tiles", bootstrap.recognized_tiles );
+    json.member( "natural_bandit_site_found", natural_bandit_site != nullptr );
+    if( natural_bandit_site != nullptr ) {
+        json.member( "natural_bandit_site_id", natural_bandit_site->site_id );
+        json.member( "natural_bandit_site_anchor" );
+        write_harness_omt( json, natural_bandit_site->anchor );
+        json.member( "natural_bandit_site_nearest_omt" );
+        write_harness_omt( json, natural_bandit_nearest_omt );
+        json.member( "natural_bandit_site_distance_omt", natural_bandit_distance );
+    }
+    json.member( "structural_scan_budget", scan.scan_budget );
+    json.member( "structural_scan_budget_used", scan.budget_used );
+    json.member( "structural_scan_sites_considered", scan.sites_considered );
+    json.member( "structural_scan_candidates_sampled", scan.candidates_sampled );
+    json.member( "structural_scan_notes", scan.notes );
+    json.member( "candidate_prefix_limit", production_site_route_solve_cap );
+    json.member( "candidate_rows" );
+    json.start_array();
+    for( std::size_t index = 0; index < candidates.size(); ++index ) {
+        const bandit_live_world::structural_outing_plan &plan = candidates[index];
+        const bandit_live_world::structural_route_read &read = reads[index];
+        json.start_object();
+        json.member( "lead_id", plan.lead_id );
+        json.member( "target_omt" );
+        write_harness_omt( json, plan.target_omt );
+        json.member( "selector", "non_frontier" );
+        json.member( "watch_budget_before", watch_budget_before );
+        json.member( "watch_budget_after", watch_budget_after );
+        const auto selected_watch = std::find_if( read.watch_candidates.begin(),
+                read.watch_candidates.end(), [&read](
+            const bandit_live_world::watch_selection_candidate &candidate ) {
+            return read.watch_shared_route.size() > 2 &&
+                   read.watch_shared_route[2] == candidate.omt;
+        } );
+        const bool selected = read.reachable && selected_watch != read.watch_candidates.end() &&
+                              !read.watch_shared_route.empty();
+        json.member( "outcome", selected ? "selected" : "rejected" );
+        json.member( "watch" );
+        if( selected ) {
+            write_harness_omt( json, selected_watch->omt );
+        } else {
+            json.write_null();
+        }
+        json.member( "watch_route_cost", selected ? selected_watch->route_cost : -1 );
+        json.member( "analyzer_record", live_bandit_structural_route_analyzer_record_for_test(
+                         *analyzed_site, plan, "non_frontier", read ) );
+        json.member( "read" );
+        write_harness_route_read( json, read );
+        json.end_object();
+    }
+    json.end_array();
+    json.member( "route_watch_budget_before", watch_budget_before );
+    json.member( "route_watch_budget_after", watch_budget_after );
+    json.member( "route_watch_budget_used", watch_budget_before - watch_budget_after );
+    json.end_object();
+    return static_cast<bool>( artifact );
+}
+
 void run_live_bandit_structural_route_analyzer_for_debug()
 {
     if( !get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE ) ) {
@@ -6447,8 +6665,7 @@ void run_live_bandit_structural_route_analyzer_for_debug()
 
     const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int now_minutes = live_bandit_current_minutes();
-    static constexpr int structural_watch_path_budget = 8;
-    int watch_paths_remaining = structural_watch_path_budget;
+    int watch_paths_remaining = live_bandit_structural_watch_path_budget;
     for( const bandit_live_world::site_record &site : state.sites ) {
         const std::vector<bandit_live_world::structural_outing_plan> candidates =
             bandit_live_world::plan_structural_bounty_outing_candidates( site, now_minutes, false );

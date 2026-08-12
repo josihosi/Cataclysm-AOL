@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import os
 import re
 import shutil
@@ -182,6 +183,7 @@ PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
 OMAPX = 180
 OMAPY = OMAPX
 OVERMAP_DEPTH = 10
+R002_PRODUCTION_FEASIBILITY_SEED = "830205344"
 
 
 @dataclass
@@ -206,6 +208,7 @@ class StartupPlan:
     run_dir: str
     harness_new_world: str = ""
     harness_raw_seed: str = ""
+    harness_bandit_feasibility: bool = False
 
 
 def repo_root() -> Path:
@@ -1212,11 +1215,17 @@ def build_plan(
     fixture: str,
     harness_new_world: str = "",
     harness_raw_seed: str = "",
+    harness_bandit_feasibility: bool = False,
 ) -> StartupPlan:
     plan_harness_world = ""
     plan_harness_seed = ""
     if harness_new_world or harness_raw_seed:
         world_name, seed_text = validate_harness_new_world(harness_new_world, harness_raw_seed)
+        if harness_bandit_feasibility and seed_text != R002_PRODUCTION_FEASIBILITY_SEED:
+            raise ValueError(
+                "bandit feasibility requires raw seed "
+                + R002_PRODUCTION_FEASIBILITY_SEED
+            )
         if explicit_world or fixture:
             raise ValueError("harness new-world mode cannot be combined with --world or --fixture")
         if (save_dir_for_profile(profile) / world_name).exists():
@@ -1228,6 +1237,8 @@ def build_plan(
         plan_harness_world = world_name
         plan_harness_seed = seed_text
     else:
+        if harness_bandit_feasibility:
+            raise ValueError("bandit feasibility requires harness new-world mode")
         strategy, reason, target_world, worlds = choose_strategy(profile, explicit_world)
     run_dir = create_run_dir(profile)
     plan = StartupPlan(
@@ -1242,6 +1253,7 @@ def build_plan(
         run_dir=str(run_dir),
         harness_new_world=plan_harness_world,
         harness_raw_seed=plan_harness_seed,
+        harness_bandit_feasibility=harness_bandit_feasibility,
     )
     return plan
 
@@ -9348,6 +9360,119 @@ def harness_process_ready(
     )
 
 
+def harness_feasibility_artifact_path(run_dir: Path) -> Path:
+    return run_dir / "harness_new_world_feasibility.json"
+
+
+def load_harness_feasibility_artifact(run_dir: Path) -> Dict[str, Any]:
+    try:
+        value = json.loads(harness_feasibility_artifact_path(run_dir).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def harness_feasibility_candidate_row_ready(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return False
+    outcome = row.get("outcome")
+    target = row.get("target_omt")
+    read = row.get("read")
+    if (
+        not isinstance(row.get("lead_id"), str)
+        or not row.get("lead_id")
+        or row.get("selector") != "non_frontier"
+        or outcome not in {"selected", "rejected"}
+        or not isinstance(row.get("analyzer_record"), str)
+        or not isinstance(target, dict)
+        or not all(isinstance(target.get(axis), int) for axis in ("x", "y", "z"))
+        or not isinstance(read, dict)
+        or not isinstance(read.get("reachable"), bool)
+        or not isinstance(read.get("complete_route_cost"), int)
+        or not isinstance(read.get("max_segment_risk"), int)
+        or not isinstance(read.get("summary"), str)
+        or not isinstance(read.get("watch_geography_supplied"), bool)
+        or not isinstance(read.get("watch_candidates"), list)
+        or not isinstance(read.get("watch_shared_route"), list)
+    ):
+        return False
+    if outcome == "selected":
+        watch = row.get("watch")
+        return (
+            isinstance(watch, dict)
+            and all(isinstance(watch.get(axis), int) for axis in ("x", "y", "z"))
+            and isinstance(row.get("watch_route_cost"), int)
+            and row["watch_route_cost"] >= 0
+            and read["reachable"]
+            and row["watch_route_cost"] == read["complete_route_cost"]
+        )
+    return row.get("watch") is None and row.get("watch_route_cost") == -1
+
+
+def harness_feasibility_artifact_ready(artifact: Dict[str, Any], expected_raw_seed: str = "") -> bool:
+    rows = artifact.get("candidate_rows")
+    budget_before = artifact.get("route_watch_budget_before")
+    budget_after = artifact.get("route_watch_budget_after")
+    budget_used = artifact.get("route_watch_budget_used")
+    before = artifact.get("persistent_ecology_state_before")
+    after = artifact.get("persistent_ecology_state_after")
+    player = artifact.get("player_omt")
+    anchor = artifact.get("natural_bandit_site_anchor")
+    nearest = artifact.get("natural_bandit_site_nearest_omt")
+    distance = artifact.get("natural_bandit_site_distance_omt")
+    point_fields_ready = all(
+        isinstance(point, dict)
+        and all(isinstance(point.get(axis), int) for axis in ("x", "y", "z"))
+        for point in (player, anchor, nearest)
+    )
+    measured_distance = (
+        math.hypot(nearest["x"] - player["x"], nearest["y"] - player["y"])
+        if point_fields_ready
+        else math.inf
+    )
+    return (
+        artifact.get("artifact_kind") == "harness_new_world_feasibility"
+        and artifact.get("artifact_version") == 1
+        and (not expected_raw_seed or str(artifact.get("raw_seed", "")) == expected_raw_seed)
+        and bool(artifact.get("natural_bandit_site_found"))
+        and isinstance(artifact.get("natural_bandit_site_id"), str)
+        and bool(artifact.get("natural_bandit_site_id"))
+        and point_fields_ready
+        and isinstance(distance, (int, float))
+        and math.isfinite(distance)
+        and math.isclose(distance, measured_distance, rel_tol=1e-6, abs_tol=1e-6)
+        and artifact.get("bootstrap_radius_omt") == 40
+        and distance <= 40
+        and isinstance(before, str)
+        and bool(before)
+        and before == after
+        and artifact.get("persistent_ecology_unchanged") is True
+        and isinstance(artifact.get("bootstrap_created_sites"), int)
+        and artifact.get("bootstrap_created_sites") >= 1
+        and isinstance(artifact.get("bootstrap_recognized_tiles"), int)
+        and artifact.get("bootstrap_recognized_tiles") >= 1
+        and artifact.get("structural_scan_budget") == 12
+        and isinstance(artifact.get("structural_scan_budget_used"), int)
+        and 0 <= artifact.get("structural_scan_budget_used") <= 12
+        and isinstance(artifact.get("structural_scan_sites_considered"), int)
+        and artifact.get("structural_scan_sites_considered") >= 1
+        and isinstance(artifact.get("structural_scan_candidates_sampled"), int)
+        and artifact.get("structural_scan_candidates_sampled") >= 2
+        and isinstance(artifact.get("structural_scan_notes"), list)
+        and artifact.get("candidate_prefix_limit") == 2
+        and isinstance(rows, list)
+        and len(rows) == 2
+        and all(harness_feasibility_candidate_row_ready(row) for row in rows)
+        and rows[0].get("lead_id") != rows[1].get("lead_id")
+        and budget_before == 8
+        and isinstance(budget_after, int)
+        and 0 <= budget_after <= budget_before
+        and budget_used == budget_before - budget_after
+        and all(row.get("watch_budget_before") == budget_before for row in rows)
+        and all(row.get("watch_budget_after") == budget_after for row in rows)
+    )
+
+
 def harness_world_owner_path(profile: str, world_name: str) -> Path:
     return save_dir_for_profile(profile) / world_name / ".openclaw-harness-owner"
 
@@ -16304,6 +16429,9 @@ def run_startup(args: argparse.Namespace) -> int:
     config = load_profile_config(config_profile)
     harness_new_world = str(getattr(args, "harness_new_world", "") or "").strip()
     harness_raw_seed = str(getattr(args, "harness_raw_seed", "") or "").strip()
+    harness_bandit_feasibility = bool(
+        getattr(args, "harness_bandit_feasibility", False)
+    )
     if harness_new_world or harness_raw_seed:
         try:
             harness_new_world, harness_raw_seed = validate_harness_new_world(
@@ -16320,7 +16448,8 @@ def run_startup(args: argparse.Namespace) -> int:
 
     if args.dry_run:
         plan = build_plan(
-            profile, args.world, args.fixture, harness_new_world, harness_raw_seed
+            profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
+            harness_bandit_feasibility
         )
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
@@ -16358,12 +16487,16 @@ def run_startup(args: argparse.Namespace) -> int:
         )
     flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
     plan = build_plan(
-        profile, args.world, args.fixture, harness_new_world, harness_raw_seed
+        profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
+        harness_bandit_feasibility
     )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
 
     child_environment = game_child_environment(profile)
+    child_environment.pop("OPENCLAW_HARNESS_BANDIT_FEASIBILITY", None)
+    if plan.harness_bandit_feasibility:
+        child_environment["OPENCLAW_HARNESS_BANDIT_FEASIBILITY"] = "1"
     gui_automation_required = startup_gui_automation_required(plan.strategy)
     if gui_automation_required:
         peekaboo_permissions = require_peekaboo_permissions()
@@ -16394,15 +16527,10 @@ def run_startup(args: argparse.Namespace) -> int:
     )
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
-        "command": build_game_command(
-            Path(plan.executable),
-            profile,
-            plan.target_world,
-            harness_new_world=plan.harness_new_world,
-            harness_raw_seed=plan.harness_raw_seed,
-        ),
+        "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
         "harness_new_world": plan.harness_new_world,
         "harness_raw_seed": plan.harness_raw_seed,
+        "harness_bandit_feasibility": plan.harness_bandit_feasibility,
         "killed_previous_pids": killed_pids,
     })
 
@@ -16447,6 +16575,18 @@ def run_startup(args: argparse.Namespace) -> int:
                     debug_error_evidence_count += 1
                 copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
                 marker = latest_world_save_marker(profile, expected_world)
+                feasibility_artifact = (
+                    load_harness_feasibility_artifact(run_dir)
+                    if plan.harness_bandit_feasibility
+                    else {}
+                )
+                feasibility_ready = (
+                    harness_feasibility_artifact_ready(
+                        feasibility_artifact, plan.harness_raw_seed
+                    )
+                    if plan.harness_bandit_feasibility
+                    else True
+                )
                 save_ready = harness_save_ready(code, marker, baseline_save_marker_mtime)
                 ready = harness_process_ready(
                     code,
@@ -16454,6 +16594,7 @@ def run_startup(args: argparse.Namespace) -> int:
                     baseline_save_marker_mtime,
                     debug_error_evidence_count,
                 ) and harness_world_owned_by_run(profile, plan.harness_new_world, run_dir)
+                ready = ready and feasibility_ready
                 world_cleanup = (
                     {"status": "not_required_owned_world"}
                     if ready
@@ -16467,6 +16608,9 @@ def run_startup(args: argparse.Namespace) -> int:
                     "returncode": code,
                     "marker": marker,
                     "save_marker_created": save_ready,
+                    "feasibility_artifact": feasibility_artifact,
+                    "feasibility_artifact_required": plan.harness_bandit_feasibility,
+                    "feasibility_artifact_ready": feasibility_ready,
                     "debug_delta": debug_delta,
                     "debug_error_evidence_count": debug_error_evidence_count,
                     "world_cleanup": world_cleanup,
@@ -16478,6 +16622,8 @@ def run_startup(args: argparse.Namespace) -> int:
                         if ready
                         else "harness_world_debug_errors"
                         if save_ready and debug_error_evidence_count > 0
+                        else "harness_world_feasibility_artifact_missing"
+                        if save_ready and plan.harness_bandit_feasibility and not feasibility_ready
                         else "harness_world_save_marker_missing"
                         if code == 0
                         else "harness_world_process_failed"
@@ -16488,16 +16634,12 @@ def run_startup(args: argparse.Namespace) -> int:
                     "strategy": plan.strategy,
                     "harness_new_world": plan.harness_new_world,
                     "harness_raw_seed": plan.harness_raw_seed,
-                    "command": build_game_command(
-                        Path(plan.executable),
-                        profile,
-                        plan.target_world,
-                        harness_new_world=plan.harness_new_world,
-                        harness_raw_seed=plan.harness_raw_seed,
-                    ),
+                    "harness_bandit_feasibility": plan.harness_bandit_feasibility,
+                    "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
                     "readiness": readiness,
                     "exit_code": code,
                     "world_cleanup": world_cleanup,
+                    "feasibility_artifact": feasibility_artifact,
                     "run_dir": str(run_dir),
                     "evidence_class": "startup/load",
                     "feature_proof": False,
@@ -18367,6 +18509,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_p.add_argument("--fixture", default="", help="Fixture name only for plan metadata.")
     plan_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
     plan_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
+    plan_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
 
     start_p = subparsers.add_parser("start", help="Launch and try to reach gameplay.")
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
@@ -18382,6 +18525,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--dry-run", action="store_true", help="Resolve plan only; do not launch or press keys.")
     start_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
 
     list_p = subparsers.add_parser("list-fixtures", help="List harness-owned save fixtures for a profile.")
     list_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
@@ -18462,6 +18606,7 @@ def main() -> int:
                 args.fixture,
                 args.harness_new_world,
                 args.harness_raw_seed,
+                args.harness_bandit_feasibility,
             )
         except ValueError as error:
             parser.error(str(error))
