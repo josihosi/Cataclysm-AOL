@@ -445,13 +445,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   which is rendered only by hourly evidence debug. The first contradicted premise is therefore the
   scenario's immediate completion predicate, not production recording, sound geometry, or the DFS.
 
-  Active task `R002-M133` replaces only that overdefined immediate predicate with the production static
-  recorder's exact one-callback/one-fact completion row and updates its owning normalized matcher control.
-  It must preserve the later detailed source/sense observation, no-early-lead, physical-return, exact
-  returned-source, and no-player-token gates. JSON parsing, the focused fixture-contract controls, and
-  `git diff --check` decide acceptance. Its 900-second estimate reuses the accepted scenario/test repair
-  estimate derived from the measured 393-second checkpoint span; no product rebuild or live rerun belongs
-  in this task.
+  Accepted checkpoint `2b149c42ca` replaces only that overdefined immediate predicate with the production
+  static recorder's exact one-callback/one-fact completion row while retaining the source-emitted
+  minute-10085 clock, exact request, and permitted event. Its normalized matcher control rejects the same
+  adapter/request evidence without the recorder completion. Three focused fixture-contract tests passed in
+  0.081 seconds, the scenario JSON parsed, and `git diff --check` passed. The later detailed source/sense
+  observation, no-early-lead, physical-return, exact returned-source, and no-player-token gates remain.
+
+  Active task `R002-M134` builds the exact clean checkpoint and reruns that repaired sound-positive
+  scenario through its full necessary causal route: exact dispatch and watch arrival, one minute-10085
+  target sound and static-recorder fact, no pre-return lead or player token, east relocation only after the
+  fact, ordinary physical return, exactly one source-owned returned sound lead, and zero debug errors. Its
+  3,600-second estimate reuses the measured M132 clean-build/live-route duration; no further source,
+  scenario, or matcher change is authorized unless new production evidence contradicts a premise.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
