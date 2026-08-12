@@ -287,8 +287,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   Active task `R002-M113` adds `status`, `confidence`, `times_checked_empty`, and `last_outcome` to
   each bounded evidence-debug lead row with a focused renderer discriminator; prunes the decoy
   scenario after an exact same-run stale/zero/one/empty row plus its existing provenance and
-  no-player-token gates; and runs that changed-executable bridge proof. Its 3,600-second estimate is
-  derived from the measured build/live route plus the narrow renderer and scenario tests.
+  no-player-token gates; and runs that changed-executable bridge proof. Accepted checkpoint
+  `2510c78cd9` implements that observer/scenario surface. Its focused C++ discriminator, owning
+  fixture-contract control, `git diff --check`, and macOS build passed. The pre-checkpoint binary
+  identified itself as `60c5831ca9-dirty+SDL3`, so run `20260812_103115` correctly stopped at the
+  harness runtime-provenance gate before feature steps; zero debug errors and empty stderr were
+  observed, and the process was cleaned up.
+
+  Active task `R002-M114` rebuilds the exact clean checkpoint and runs only the compact decoy
+  scenario through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the fixed camp/lead/source
+  dispatch, selected watch, empty arrival, exact stale/zero/one/empty evidence row, no player token,
+  clean process exit, and zero debug errors. Its 3,600-second estimate is derived from the measured
+  clean rebuild/live route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
