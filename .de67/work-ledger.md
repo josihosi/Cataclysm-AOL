@@ -251,7 +251,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   then passed with the full signal controls at 629 assertions across three cases. Clean binary
   `bdb692fe53+SDL3` built successfully but the harness's default local `--no-remote` permission
   preflight rejected Accessibility before launch while the signed Peekaboo bridge reported it granted.
-  Bridge-backed `R002-M109` run `20260812_093958` reached the exact empty-signal arrival on clean
+  Bridge-backed run `20260812_093958` reached the exact empty-signal arrival on clean
   `05642f91d2+SDL3`, but its completion poll timed out after the final read saw
   `scheduler_hour=141` and `arrivals=1` just before the following empty-investigation note became
   visible. Accepted harness checkpoint `bd7be34f9b` takes one final generic observation at the exact
@@ -259,7 +259,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   discriminator fails under the former ordering, and 11 focused poll tests plus all 201 fixture
   contract tests pass.
 
-  Changed-harness `R002-M110` run `20260812_095920` again reached the exact empty-signal arrival with
+  Changed-harness run `20260812_095920` again reached the exact empty-signal arrival with
   zero debug errors, but correctly failed closed because the scenario literal says
   `signal investigation empty` while the authoritative producer says
   `returned signal investigation was empty and began return`. No incident or saved return was
@@ -267,7 +267,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   decoy scenario gates to the exact producer wording; its focused contract control and all 48
   scenario fixture-contract tests pass.
 
-  Changed-scenario `R002-M111` run `20260812_100906` passed dispatch, fixed-target/no-player-token,
+  Changed-scenario run `20260812_100906` passed dispatch, fixed-target/no-player-token,
   empty arrival, and the corrected transition audit on exact `05642f91d2+SDL3` with zero debug
   errors. Its final-return wait then repeatedly rejected homeward materialization because the loaded
   bubble had no paired entry or staging positions; no incident pair, return receipt, save writeback,
@@ -275,7 +275,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   signal lead stale with zero confidence, but the current evidence-debug row does not expose those
   fields.
 
-  Accepted whole-owner review `R002-M112` establishes that this post-arrival return, incident, and
+  Accepted whole-owner review establishes that this post-arrival return, incident, and
   save tail is overdefined for R-002. The refrozen proof route assigns the invariant matrix to
   focused owner tests and requires only the smallest identity-bound live causal observation; physical
   camp receipt and persistence remain R-001/R-009 surfaces. Accepting only the prose note would still
@@ -284,7 +284,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   relocation and unseen-versus-observed danger in the compact fixture; then perform one closure
   review against the four DFS controls.
 
-  Accepted task `R002-M113` adds `status`, `confidence`, `times_checked_empty`, and `last_outcome` to
+  The accepted observer checkpoint adds `status`, `confidence`, `times_checked_empty`, and `last_outcome` to
   each bounded evidence-debug lead row with a focused renderer discriminator; prunes the decoy
   scenario after an exact same-run stale/zero/one/empty row plus its existing provenance and
   no-player-token gates; and runs that changed-executable bridge proof. Accepted checkpoint
@@ -294,7 +294,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   harness runtime-provenance gate before feature steps; zero debug errors and empty stderr were
   observed, and the process was cleaned up.
 
-  Accepted task `R002-M114` rebuilds the exact clean checkpoint and runs only the compact decoy
+  The accepted compact decoy run rebuilds the exact clean checkpoint and runs only the compact decoy
   scenario through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the fixed camp/lead/source
   dispatch, selected watch, empty arrival, exact stale/zero/one/empty evidence row, no player token,
   clean process exit, and zero debug errors. Exact `492ddab574+SDL3` binary
@@ -304,7 +304,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   five-member saved-state preflight; it cannot affect identity, the transition verdict, or a false
   green. The decoy contrast is accepted and will not be rerun.
 
-  Accepted task `R002-M115` audits the authoritative focused tests for supported versus empty returned
+  The accepted focused-matrix audit checks the authoritative tests for supported versus empty returned
   signals, avatar-relocation non-ownership, and unseen versus legitimately observed zombie danger.
   It adds or repairs only a missing discriminator, verifies each negative would fail under the
   rejected hidden-state behavior, and runs the narrow owning suite. The audit found no gap in the
@@ -314,14 +314,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   broad macOS relink used a mismatched dependency set and did not execute the assertions; only ignored
   `tests/cata_test` was removed.
 
-  Accepted task `R002-M116` routes that unchanged relocation test through the established working
+  The accepted focused-matrix run routes that unchanged relocation test through the established working
   focused macOS test binary/link path and executes the exact case plus its adjacent signal/danger
   controls. Consistent macOS tiles test binary `adeeb49104-dirty+SDL3` passed relocation with 153
   assertions, returned-signal empty/support with 558, watch-arrival empty with 26, unseen-zombie
   eligibility with 8, and private observed-zombie persistence with 96. Accepted test checkpoint
   `2c69342b3f` closes the focused matrix; no product change is indicated.
 
-  Accepted task `R002-M117` reduces the existing structural-signal matrix scenario to its necessary
+  The accepted scenario reduction reduces the existing structural-signal matrix scenario to its necessary
   R-002 causal core: exact dispatch; staged physical fire/explosion before the observation boundary;
   bounded smoke/light/sound facts; no early returned-report lead; physical return through the
   accepted owner; exactly three approximate returned-report leads; and no player token. It removes
@@ -329,7 +329,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   Accepted checkpoint `50c73b24e9` reduces 43 steps to 27; JSON parsing, three focused controls, all
   48 scenario fixture-contract tests, and `git diff --check` pass.
 
-  Diagnosed task `R002-M118` rebuilds the exact clean checkpoint and runs the compact structural-signal
+  The first diagnosed signal run rebuilds the exact clean checkpoint and runs the compact structural-signal
   matrix through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the source-OMT-to-watch
   smoke/light/sound facts, explicit pre-return absence, ordinary physical return, exactly three
   approximate returned-report leads, no player token, clean runtime identity, and zero debug errors.
@@ -342,27 +342,27 @@ Lineage: `CAOL-hostile-ecology-dev`
   outing was therefore local, so the abstract signal adapter correctly did not run at minute 10080.
   No production defect or DFS gap is indicated; the failed scenario geometry earns no signal credit.
 
-  Accepted task `R002-M119` repairs only that scenario footing. It must move the passive avatar far
+  The accepted geometry repair changes only that scenario footing. It must move the passive avatar far
   enough west that physical source `(137,49,0)` remains inside the loaded map while approach/watch
   route OMTs remain outside, preserve the exact production target and pair, and add fail-closed
   assertions for the explicit relocation and absence of a pre-observation local handoff. After the
   three source-to-watch facts are produced, it may explicitly reload the existing physical return
   route without moving or editing ecology actors. The owning fixture-contract tests and JSON checks
   must prove the revised causal ordering before another clean live run. Its 900-second estimate is
-  derived from the comparable `R002-M117` scenario/test task's measured 393-second checkpoint span,
+  derived from the comparable scenario/test task's measured 393-second checkpoint span,
   with additional allowance for the loaded-boundary and return-route guards. Accepted checkpoint
   `7e93f04dea` explicitly moves the avatar three OMT west before approach, keeps the unchanged source
   36 map squares east, rejects any local handoff through the positive fact boundary, and moves the
   avatar east only after those facts to reload the physical return route. The owning 48 scenario
   fixture-contract tests, JSON parse, and `git diff --check` pass.
 
-  Diagnosed task `R002-M120` builds exact clean checkpoint `7e93f04dea` and reruns the compact
+  The diagnosed geometry run builds exact clean checkpoint `7e93f04dea` and reruns the compact
   structural-signal matrix through the signed bridge. It accepts only exact runtime identity; the
   unchanged scheduler dispatch/target/pair; no local handoff from the west relocation through the
   positive boundary; real target-source smoke/light/sound observations at the selected watch; no
   pre-return lead; ordinary physical return after the explicit east relocation; exactly three
   approximate returned-report leads; no player token; and zero debug errors. Its 3,600-second
-  estimate reuses the measured `R002-M118` clean-build/live-route estimate because only bounded
+  estimate reuses the measured prior clean-build/live-route estimate because only bounded
   scenario ordering changed. Exact `7e93f04dea+SDL3` binary
   `00ba8be5286dfb5976dcb0ada2dfae8d1054e15364e9ba8db59d2c6535ac416c` and bridge run
   `20260812_113122` proved the geometry repair: hour-166 dispatch remained exact, no local handoff
@@ -374,7 +374,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   timeout correctly prevented east relocation and all downstream return claims. No production or
   DFS mutation is indicated.
 
-  Accepted task `R002-M121` reduces the credible-real-signal row to its weather-independent production
+  The accepted sound scenario reduces the credible-real-signal row to its weather-independent production
   core. The outing first reaches its abstract watch with no claimed signal observation. Only then
   does scenario setup emit one real bounded explosion sound from the unchanged target, and the next
   ordinary maintenance cadence must record one target-to-watch active sound fact whose emission is
@@ -382,7 +382,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   matrix. The scenario must retain the west-bound no-handoff guard through that fact, no pre-return
   returned-report lead, east relocation only after the fact, ordinary physical return, exactly one
   approximate returned sound lead, no player token, and owning fixture-contract discriminators.
-  Its 900-second estimate reuses the accepted `R002-M119` scenario/test repair estimate. Accepted
+  Its 900-second estimate reuses the accepted scenario/test repair estimate. Accepted
   checkpoint `24138bbfb0` removes the weather-dependent live smoke/light claims, proves the split
   minute-10080 arrival boundary, stages the physical explosive afterward, and binds the next cadence
   to a minute-10085 sound observation. It retains the ownership, early-lead, return, provenance, and
@@ -390,14 +390,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   fixture-contract tests including source-shaped split-line matcher controls, and `git diff --check`
   pass.
 
-  Diagnosed task `R002-M122` builds exact clean checkpoint `24138bbfb0` and runs the sound-positive
+  The diagnosed sound run builds exact clean checkpoint `24138bbfb0` and runs the sound-positive
   scenario through the signed bridge. It accepts only exact runtime identity; the unchanged
   dispatch/target/pair; abstract watch arrival at minute 10080 with no observation; a real explosion
   emitted afterward and recorded at minute 10085 as one active target-to-watch shared sound fact;
   no local handoff through that fact; no pre-return lead; east relocation only afterward; ordinary
   physical return; exactly one source-owned returned sound lead; no player token; and zero debug
   errors. Its 3,600-second estimate reuses the measured clean-build/live-route evidence from
-  `R002-M118` and `R002-M120`. Exact `24138bbfb0+SDL3` binary
+  the prior changed-binary runs. Exact `24138bbfb0+SDL3` binary
   `494b7961d990ea51263776223c5ad64f48e584a5c5874db5ee1c7e537de18fe0` and bridge run
   `20260812_115613` passed the exact dispatch and observation-free minute-10080 abstract arrival.
   At minute 10085 the post-arrival explosion was fresh and audible (`effective_volume=2000`,
