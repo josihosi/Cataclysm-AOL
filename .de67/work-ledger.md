@@ -38,13 +38,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   separate bridge-visible permission report was green. Run `20260812_162541` contains setup only and
   earns no product credit.
 
-  Next frontier `R002-M154` must compare the exact local and bridge permission payloads and exercise
-  the smallest harmless PID-bound input/focus operation on the same host. Inspect the transport
-  selector, permission parser, callers, owning tests, and bridge target identity. If exactly one safe
-  transport rule remains, implement and test the smallest tooling correction; otherwise stop with the
-  unavailable permission or target-authority premise. Its 1,200-second estimate reuses accepted
-  whole-owner task `R002-M151`'s exact diagnostic window. Do not rerun the product scenario, weaken a
-  permission gate without a real input operation, or permit input to an unproved host/application.
+  Exact transport diagnosis proves local Peekaboo Screen Recording, Accessibility, and Event
+  Synthesizing are denied while the same-host bridge reports them green. Bridge app identity and
+  switching work, but PID-bound `press` remains local even with an explicit bridge socket and fails
+  `PERMISSION_ERROR_ACCESSIBILITY`; bridge focus also cannot establish the required input authority.
+  No safe harness correction exists. R-002 remains blocked until local Accessibility is granted to
+  the CLI process. Then recheck local permission status, one harmless PID-bound press, and verified
+  focus before rerunning the unchanged changed-executable proof; bridge status alone is not credit.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
