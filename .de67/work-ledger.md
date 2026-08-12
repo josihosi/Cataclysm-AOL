@@ -251,9 +251,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   then passed with the full signal controls at 629 assertions across three cases. Clean binary
   `bdb692fe53+SDL3` built successfully but the harness's default local `--no-remote` permission
   preflight rejected Accessibility before launch while the signed Peekaboo bridge reported it granted.
-  Active task `R002-M109` reruns the repaired lifecycle through the harness's existing explicit
-  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge` route; its 3,600-second estimate carries the measured
-  same-binary build/live route.
+  Bridge-backed `R002-M109` run `20260812_093958` reached the exact empty-signal arrival on clean
+  `05642f91d2+SDL3`, but its completion poll timed out after the final read saw
+  `scheduler_hour=141` and `arrivals=1` just before the following empty-investigation note became
+  visible. The retained artifact contains that adjacent note, while the poll checked its deadline
+  without one final observation, so return/save/writeback remain open and an unchanged rerun is
+  inadmissible. Active task `R002-M110` repairs that generic timeout-boundary observation race with a
+  focused regression, then reruns the same decoy lifecycle through
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. Its 3,600-second estimate carries the measured same-binary
+  build/live route plus the narrow harness repair and test.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
