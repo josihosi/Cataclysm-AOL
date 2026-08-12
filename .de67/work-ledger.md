@@ -248,9 +248,12 @@ Lineage: `CAOL-hostile-ecology-dev`
   still intercepts the returned signal before the later resolver. Accepted owner checkpoint
   `fcf1e022f3` bypasses that generic assessment only for returned signals. Its production-shaped
   approach-to-watch discriminator failed six transition assertions under a temporary reverse-patch,
-  then passed with the full signal controls at 629 assertions across three cases. Active task
-  `R002-M108` runs the repaired compact decoy lifecycle from the clean committed binary; its
-  3,600-second estimate carries the measured same-binary build/live route.
+  then passed with the full signal controls at 629 assertions across three cases. Clean binary
+  `bdb692fe53+SDL3` built successfully but the harness's default local `--no-remote` permission
+  preflight rejected Accessibility before launch while the signed Peekaboo bridge reported it granted.
+  Active task `R002-M109` reruns the repaired lifecycle through the harness's existing explicit
+  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge` route; its 3,600-second estimate carries the measured
+  same-binary build/live route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
