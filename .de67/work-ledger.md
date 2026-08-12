@@ -273,12 +273,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   bubble had no paired entry or staging positions; no incident pair, return receipt, save writeback,
   or saved-owner audit followed. The authoritative in-memory owner had already set the returned
   signal lead stale with zero confidence, but the current evidence-debug row does not expose those
-  fields. Active task `R002-M112` performs one whole-owner design pass over the refrozen R-002 proof
-  route, live lead observer, incident publication, schema-10 return receipt, handoff ownership, and
-  focused tests. It must choose the smallest source-grounded route that proves the decoy contrast
-  without importing an unnecessary return-lifecycle requirement, and freeze the finite remaining
-  R-002 roadmap before further editing or live runs. Its 1,800-second estimate is derived from the
-  bounded read-only code/artifact review with no build or GUI execution.
+  fields.
+
+  Accepted whole-owner review `R002-M112` establishes that this post-arrival return, incident, and
+  save tail is overdefined for R-002. The refrozen proof route assigns the invariant matrix to
+  focused owner tests and requires only the smallest identity-bound live causal observation; physical
+  camp receipt and persistence remain R-001/R-009 surfaces. Accepting only the prose note would still
+  be too weak. The finite remaining R-002 route is: expose and live-prove the authoritative decoy
+  state; audit/fill only actual focused-matrix gaps; prove the credible real-signal positive; prove
+  relocation and unseen-versus-observed danger in the compact fixture; then perform one closure
+  review against the four DFS controls.
+
+  Active task `R002-M113` adds `status`, `confidence`, `times_checked_empty`, and `last_outcome` to
+  each bounded evidence-debug lead row with a focused renderer discriminator; prunes the decoy
+  scenario after an exact same-run stale/zero/one/empty row plus its existing provenance and
+  no-player-token gates; and runs that changed-executable bridge proof. Its 3,600-second estimate is
+  derived from the measured build/live route plus the narrow renderer and scenario tests.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
