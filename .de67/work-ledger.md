@@ -62,6 +62,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   informed response and releases the mission slot; one survivor yields only a provisional report;
   a later survivor revises the same report instead of duplicating it.
 
+  Next frontier `R004-M001` must inspect the authoritative loaded death and overdue-missing writers,
+  local/abstract casualty reconciliation, provisional/final report application, late-survivor
+  revision, reservation release, scheduler readers, owning tests, serialization, and the natural
+  debug-casualty route. Produce a finite closure map for both-dead and split-return controls and name
+  the first production or evidence gap. Its 1,200-second estimate reuses the accepted same-repository
+  whole-owner diagnostic window. Do not launch GUI proof while local Accessibility is denied, add a
+  second casualty owner, or treat direct helper mutation as natural death/return credit.
+
 - [ ] R-005 — Wire and prove the production response owner. A matching final decision must naturally
   create one fresh response reservation and advance its first production transition; stale or
   duplicate generations, scout-party reuse, duplicate owners, and LLM-created ecology truth fail.
