@@ -411,7 +411,18 @@ Lineage: `CAOL-hostile-ecology-dev`
   focused formatting discriminator. It must not alter selection or observation behavior. The changed
   object and focused tests must pass before a clean diagnostic rerun. Its 900-second estimate is
   derived from the accepted `R002-M113` observer/test task and `R002-M119` scenario/test task, both
-  within this bound.
+  within this bound. The observer-only source and its three touched objects compiled, and
+  `git diff --check` passed, but the PCH-disabled macOS test link reused a mixed `cataclysm.a` and
+  failed on incompatible `Character` symbols before producing a current test executable. The first
+  contradicted premise is build-artifact coherence, not product behavior, test meaning, or the DFS;
+  the stale executable was correctly rejected and the on-time finding leaves R-002 red.
+
+  Active task `R002-M124` preserves the M123 observer-only diff, removes only the incoherent generated
+  archive needed by the test link, rebuilds the same PCH-disabled macOS test route, and runs the exact
+  focused diagnostic discriminator. It must stop on any changed source failure and must not alter
+  observation behavior or broaden the test. Its 1,800-second estimate is derived from M123 reaching
+  the link in roughly ten minutes, with the remaining allowance assigned to regenerating the archive,
+  relinking, and executing the one focused case.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
