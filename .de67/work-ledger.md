@@ -466,7 +466,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   five-assertion `nogame` discriminator through clean exit, and checks the diff. It may remove only generated
   archive/test outputs needed to select this target, and must not edit source, tests, or guidance. Its
   1,800-second estimate reuses the measured M125/M126 archive and link work with allowance for compiling the
-  three changed non-TILES objects; the rest of that object family is already coherent.
+  three changed non-TILES objects; the rest of that object family was expected to be coherent. The alternate
+  target instead rebuilt current requesters while retaining an old-PCH `visitable.o`, reproducing the same
+  offset-392-versus-376 link failure. This rejects target switching and the premise that either incremental
+  object family can prove ABI coherence after `PCH=0`; make does not track the flag change as invalidation.
+
+  Active task `R002-M129` removes all generated object/dependency files for the TILES production/test target,
+  then fully rebuilds that one target with `PCH=0`, runs the exact five-assertion `nogame` diagnostic case
+  through clean exit, and checks the diff. It must preserve every source/test change and the unrelated
+  suggestion edit. Its 3,600-second estimate is derived from the already measured clean changed-executable
+  builds used by M118, M120, and M122 and is the smallest build boundary that eliminates every untracked-PCH
+  object rather than guessing another individual owner.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
