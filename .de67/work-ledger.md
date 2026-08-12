@@ -195,11 +195,23 @@ Lineage: `CAOL-hostile-ecology-dev`
   rejection with route cost 12, leaving six reads. All 318 discovered Python harness tests passed and
   scratch search/repeat artifacts were removed.
 
-  Next route: advance this fresh unchanged footing through the ordinary hourly structural-maintenance
-  owner and prove that the selected first-prefix row becomes the same natural outing without an observer,
-  lead, camp, roster, terrain, location, special, or saved-ecology transform. Capture the pre-dispatch
-  feasibility identity, scheduler-owned dispatch identity, and post-save ecology delta in one run; repeat
-  the unchanged quiet/control world separately rather than reusing the feasibility copy.
+  Natural-dispatch finding `ab47ca6b84` advances the exact raw-`830205385` world through ordinary GUI
+  waiting without an observer, lead, camp, roster, terrain, location, special, or saved-ecology transform.
+  At scheduler hour 142 / minute 8520 the production watch preflight selected `(174,13,0)` at normalized
+  route cost 10, and structural maintenance dispatched the exact accepted first-prefix lead
+  `overmap_special:bandit_camp@177,13,0:terrain_opportunity:177,9,0:field`. The normal post-wait save
+  contains schema-6 ecology with that active abstract outing, exact member pair 3/4, one ready home member,
+  and two active outside members. A separate untouched exact-seed control saved cleanly with no feasibility
+  artifact and zero `bandit_live_world` sites.
+
+  The same positive run is not accepted feature proof: ordinary long waiting emitted four
+  `game::monmove` errors when zombies occupied `(7,28,-1)`, a closed wood door. A separately generated
+  exact-seed retry, moved away through normal player input before waiting, reproduced the same error.
+  Current upstream still treats this recoverable relocate-or-die branch as `D_ERROR`, so simply hiding or
+  downgrading the diagnostic is not an admissible proof fix. Next route: isolate why this fresh-world
+  z-level repeatedly places an active monster in the closed door, make the smallest behavioral correction
+  or prove a clean ordinary production route, then repeat the exact natural dispatch and quiet control with
+  zero feature-phase errors.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
