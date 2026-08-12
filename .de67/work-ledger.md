@@ -26,17 +26,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   nor staging positions. It emitted no member return, returned signal lead, or `returned_report`
   origin, so no return/report credit is accepted.
 
-  Accepted read-only owner review `R002-M151` identified `note_live_bandit_aftermath` as the duplicate
-  writer: its generic non-hostile aftermath path advances `structural_sortie` phase, waypoint, and
-  return clocks before canonical `advance_structural_bounty_outings` owns that transition. The modern
-  scout and hostile-operation paths have separate owners and remain in scope for that helper.
+  Accepted checkpoint `defdcd64fa` preserves the dedicated structural casualty/overdue-missing
+  reconciliation but excludes `structural_sortie` from the generic aftermath phase, route, and clock
+  writer. Canonical structural maintenance remains the only ordinary owner of watch completion,
+  homeward materialization, physical-return receipt, and returned-report publication. Its focused
+  regression passes 30 assertions across the structural no-mutation and modern-scout positive
+  controls, and the changed source/test objects plus test executable compile cleanly.
 
-  Next frontier `R002-M152` must exclude every `structural_sortie` from that generic phase writer and
-  add a focused discriminator that fails when the duplicate writer advances structural state, plus a
-  positive control preserving its intended modern-scout behavior. Run the narrow owning tests and
-  compile the changed source seam. Its 1,200-second estimate reuses accepted `R002-M151`'s exact
-  same-owner window for this one-guard/test implementation. Do not alter scenario geometry or clocks,
-  add a movement owner, or launch the integrated proof from this implementation task.
+  Next frontier `R002-M153` must build the changed SDL3 executable at exact `defdcd64fa` and rerun the
+  unchanged `bandit.phase4_structural_signal_matrix_live_mcw` scenario from its installed fixture.
+  Accept only the full causal row: every safety preflight green; exact dispatch/watch/sound identity;
+  no early lead; ordinary paired physical return; exactly one source-owned `returned_report` sound
+  lead with no player token; clean runtime identity; and zero debug errors. Its 3,600-second estimate
+  reuses exact same-scenario task `R002-M150`'s measured window. Stop on the first unsafe preflight or
+  owner divergence without coordinate, actor, terrain, geometry, clock, or receipt mutation.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
