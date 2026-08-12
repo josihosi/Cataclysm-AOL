@@ -2729,7 +2729,9 @@ def poll_wait_artifact_completion(
     contaminating = False
     aborted = False
     abort_reason = ""
-    while True:
+
+    def observe_completion() -> Dict[str, Any]:
+        nonlocal poll_attempts, poll_report
         poll_attempts += 1
         poll_report = capture_wait_artifact_delta(
             artifact_log,
@@ -2769,6 +2771,10 @@ def poll_wait_artifact_completion(
             poll_match["missing_patterns"] = list(
                 poll_match.get("missing_patterns", [])
             ) + [f"now_minutes_delta>={minimum_elapsed_minutes}"]
+        return poll_match
+
+    while True:
+        poll_match = observe_completion()
         if poll_match["matched"]:
             break
         if interruption_handler is not None:
@@ -2805,6 +2811,11 @@ def poll_wait_artifact_completion(
                 break
         elapsed_seconds = time.monotonic() - poll_started
         if elapsed_seconds >= timeout_seconds:
+            # A producer may append its terminal record while the deadline check is
+            # running. Take one last observation at that boundary, but never after
+            # an interruption has made the wait unsafe to classify.
+            if not aborted:
+                poll_match = observe_completion()
             break
         time.sleep( min( max( poll_seconds, 0.05 ), timeout_seconds - elapsed_seconds ) )
     elapsed_seconds = round( time.monotonic() - poll_started, 3 )

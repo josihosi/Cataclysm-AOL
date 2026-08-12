@@ -1173,6 +1173,40 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(report["status"], "timed_out")
         self.assertIn("now_minutes_delta>=360", report["match"]["missing_patterns"])
 
+    def test_poll_observes_completion_written_at_timeout_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            start_size = artifact_log.stat().st_size
+            clock_values = iter((0.0, 1.0, 1.0))
+            wrote_boundary_artifact = False
+
+            def monotonic() -> float:
+                nonlocal wrote_boundary_artifact
+                value = next(clock_values)
+                if value >= 1.0 and not wrote_boundary_artifact:
+                    with artifact_log.open("a", encoding="utf-8") as stream:
+                        stream.write("endpoint\n")
+                    wrote_boundary_artifact = True
+                return value
+
+            with mock.patch("startup_harness.time.monotonic", side_effect=monotonic):
+                report = poll_wait_artifact_completion(
+                    artifact_log,
+                    run_dir,
+                    "wait_contract",
+                    start_size,
+                    ["endpoint"],
+                    timeout_seconds=1.0,
+                    poll_seconds=0.001,
+                    filter_debug_noise=False,
+                )
+
+        self.assertEqual(report["status"], "matched")
+        self.assertEqual(report["attempts"], 2)
+        self.assertEqual(report["match"]["missing_patterns"], [])
+
     def test_latest_now_minutes_marker_respects_end_offset(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact_log = Path(temp_dir) / "debug.log"
