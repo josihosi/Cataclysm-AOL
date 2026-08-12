@@ -428,13 +428,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   appends only later route waypoints and omits the target footprint at an already-reached watch, unlike the
   hourly maintenance request builder and its focused test.
 
-  Active task `R002-M131` unifies the static and maintenance request geometry so an abstract scout already
+  Accepted checkpoint `f5865eaa78` unifies the static and maintenance request geometry so an abstract scout already
   at its selected watch exposes the same bounded canonical target footprint to either signal cadence. It
   adds a focused static-recorder discriminator that fails under the omission and retains the existing
   off-route rejection. No sound range, confidence, timing, or observation ownership may change. Changed
-  objects, the exact owning test, adjacent signal controls, and `git diff --check` must pass. Its 1,800-second
-  estimate is derived from the accepted focused diagnostic build now that the macOS TILES object family is
-  coherent, with allowance for the shared-helper refactor and narrow relink.
+  objects and the coherent macOS TILES test build passed. The new static watch case passed 21 assertions;
+  the hourly target control passed 45, malformed/off-route signal control 23, and bad-batch/off-route sound
+  control 105; `git diff --check` passed. The helper preserves the existing three-OMT cap, z-level filter,
+  and deduplication.
+
+  Active task `R002-M132` builds the exact clean checkpoint and reruns the existing post-arrival sound
+  scenario through its full necessary causal route: unchanged exact dispatch and abstract arrival, a fresh
+  minute-10085 target sound admitted by the now-shared request geometry, no pre-return lead or player token,
+  explicit east relocation only after the active fact, ordinary physical return, exactly one source-owned
+  approximate sound lead, and zero debug errors. Its 3,600-second estimate reuses the measured M130 live
+  route and current coherent build artifacts.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
