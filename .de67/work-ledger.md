@@ -14,35 +14,25 @@ Lineage: `CAOL-hostile-ecology-dev`
   need only their smallest changed-executable confirmation.
 
   The current structural-signal footing keeps physical source `(137,49,0)` loaded from west avatar
-  `(136,49,0)` while approach `(139,51,0)` and watch `(138,52,0)` remain abstract. Production
-  already records the post-arrival minute-10085 target sound under the unified static/maintenance
-  request owner, and the strict scenario matcher preserves no early report lead, physical return,
-  exact returned-source provenance, and no player token. One earlier live attempt was interrupted by
-  an infrared kreck before watch, but the exact clean checkpoint diagnostic below proves that monster
-  presence is not a stable premise of this footing.
+  `(136,49,0)` while approach `(139,51,0)` and watch `(138,52,0)` remain abstract. Accepted clean HEAD
+  `cd42dd8ff5` aligns the source-derived watch-assessment and homeward clocks, retains the post-arrival
+  target sound, and keeps camp knowledge absent before return. Its strict scenario and focused fixture
+  tests still require the exact returned-source provenance and no player token.
 
-  Accepted probe checkpoint `2b3bfd81ec` adds an observer-gated, read-only local-bubble safety
-  preflight and fail-closed guard before every remaining long wait. Stable records bind resident type
-  and absolute position, infrared sense, hostility, visibility/contact, conservative same-z reach,
-  target/goal state, and verdict. Its strict parser accepts an empty safe bubble and rejects missing,
-  malformed, count-mismatched, or unsafe output. All 49 owning Python fixture-contract tests pass;
-  the exact current Catch2 case passes 21 assertions for kreck infrared/contact/unsafe and deer
-  nonhostile/safe controls. The probe changes no ecology owner or world state.
+  Exact changed-executable run `20260812_153452` passed all 13 read-only safety preflights, the
+  minute-10085 source-to-watch sound observation, the no-early-lead control, and the hour-171
+  assessment. At hour 172 production retained a pending physical camp-return receipt: homeward
+  materialization rejected the pair because the loaded boundary supplied neither valid paired entry
+  nor staging positions. It emitted no member return, returned signal lead, or `returned_report`
+  origin, so no return/report credit is accepted.
 
-  Exact clean `96613abfca+SDL3` diagnostic run `20260812_145239` reached the post-west-relocation
-  preflight with avatar OMT `(136,49,0)`, the source still loaded, and approach/watch abstract. It
-  emitted one count-consistent summary and 17 complete resident rows, all safe; no kreck was present.
-  The owned process stopped before minute 10020, signal observation, return, or report credit. This
-  source-groundedly proves the existing west footing can be safe and disproves the expected persistent-
-  kreck premise without changing the world or trying another coordinate.
-
-  Next unexecuted frontier `R002-M143` must rerun the exact clean structural-signal scenario from its
-  installed fixture and continue only while every pre-wait safety guard remains green. It accepts the
-  full remaining real-signal causal row: exact dispatch and watch identity; post-arrival target sound;
-  no early camp lead; ordinary physical return; exactly one returned sound lead with no player token;
-  clean runtime identity; and zero debug errors. Any unsafe preflight must stop before its following
-  wait and return a fresh resident inventory; no coordinate guess, actor/terrain mutation, combat
-  acknowledgement, or partial signal/return credit is allowed.
+  Next frontier `R002-M151` must inspect the complete homeward materialization owner, its entry and
+  staging selectors, the unchanged fixture geometry, competing local/abstract readers and writers,
+  owning tests, and the natural transition. If a valid paired crossing exists, implement the smallest
+  source-grounded correction and a discriminator that fails the rejected selection behavior. If the
+  footing cannot provide one, stop with the first contradicted owner or fixture premise. Do not guess
+  coordinates, mutate actors or terrain, assign paths directly, create another movement owner, or
+  grant partial signal/return credit.
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
