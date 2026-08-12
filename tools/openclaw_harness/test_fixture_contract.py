@@ -7504,6 +7504,21 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(postflight["required_lead_confidence"], 0)
         self.assertEqual(postflight["required_lead_last_outcome"], "signal_investigation_empty")
 
+        empty_note = "returned signal investigation was empty"
+        empty_wait = steps[labels.index("wait_1_hour_for_decoy_empty_arrival")]
+        self.assertEqual(
+            empty_wait["artifact_state_patterns"],
+            ["scheduler_hour=141", "arrivals=1", empty_note],
+        )
+        empty_audit = steps[labels.index("audit_decoy_empty_transition")]
+        self.assertEqual(empty_audit["required_line_patterns"], [[empty_note]])
+        player_negative = steps[labels.index("audit_decoy_lifecycle_has_no_player_token")]
+        self.assertEqual(
+            player_negative["forbidden_line_patterns"][1],
+            [empty_note, "player@"],
+        )
+        self.assertNotIn("signal investigation empty", json.dumps(scenario))
+
         watch_preflight = steps[labels.index("audit_decoy_watch_geography_selected")]
         self.assertEqual(
             watch_preflight["required_line_patterns"],

@@ -17,7 +17,7 @@
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
     "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0",
-    "signal investigation empty",
+    "returned signal investigation was empty",
     "structural outing returned home lead=",
     "origin=returned_report",
     "last_outcome=signal_investigation_empty"
@@ -137,14 +137,14 @@
       "auto_acknowledge_interruptions": false,
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 180,
-      "artifact_state_patterns": ["scheduler_hour=141", "arrivals=1", "signal investigation empty"],
+      "artifact_state_patterns": ["scheduler_hour=141", "arrivals=1", "returned signal investigation was empty"],
       "expected_visible_fact": "the pair reaches only OMT 137,49,0 and records the unsupported signal as empty/stale",
       "failure_rule": "The row is red if arrival invents a replacement location or retains confidence without support."
     },
     {
       "kind": "audit_log_contains",
       "label": "audit_decoy_empty_transition",
-      "required_line_patterns": [["signal investigation empty"]],
+      "required_line_patterns": [["returned signal investigation was empty"]],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_decoy_empty_transition_missing",
       "abort_reason": "same-run arrival did not record the unsupported signal investigation as empty",
@@ -288,7 +288,7 @@
     {
       "kind": "audit_log_not_contains",
       "label": "audit_decoy_lifecycle_has_no_player_token",
-      "forbidden_line_patterns": [["smoke_signal", "player@"], ["signal investigation empty", "player@"]],
+      "forbidden_line_patterns": [["smoke_signal", "player@"], ["returned signal investigation was empty", "player@"]],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_phase4_decoy_player_coordinate_leak",
       "abort_reason": "the decoy lifecycle exposed an avatar-coordinate target",
