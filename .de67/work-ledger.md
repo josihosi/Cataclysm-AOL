@@ -263,10 +263,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   zero debug errors, but correctly failed closed because the scenario literal says
   `signal investigation empty` while the authoritative producer says
   `returned signal investigation was empty and began return`. No incident or saved return was
-  reached, so an unchanged rerun is inadmissible. Active task `R002-M111` binds the scenario and its
-  parser control to the exact producer wording, then reruns the lifecycle through
-  `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. Its 3,600-second estimate carries the measured same-binary
-  test/live route.
+  reached, so an unchanged rerun is inadmissible. Accepted matcher checkpoint `d1f62a6d33` binds all
+  decoy scenario gates to the exact producer wording; its focused contract control and all 48
+  scenario fixture-contract tests pass.
+
+  Changed-scenario `R002-M111` run `20260812_100906` passed dispatch, fixed-target/no-player-token,
+  empty arrival, and the corrected transition audit on exact `05642f91d2+SDL3` with zero debug
+  errors. Its final-return wait then repeatedly rejected homeward materialization because the loaded
+  bubble had no paired entry or staging positions; no incident pair, return receipt, save writeback,
+  or saved-owner audit followed. The authoritative in-memory owner had already set the returned
+  signal lead stale with zero confidence, but the current evidence-debug row does not expose those
+  fields. Active task `R002-M112` performs one whole-owner design pass over the refrozen R-002 proof
+  route, live lead observer, incident publication, schema-10 return receipt, handoff ownership, and
+  focused tests. It must choose the smallest source-grounded route that proves the decoy contrast
+  without importing an unnecessary return-lifecycle requirement, and freeze the finite remaining
+  R-002 roadmap before further editing or live runs. Its 1,800-second estimate is derived from the
+  bounded read-only code/artifact review with no build or GUI execution.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
