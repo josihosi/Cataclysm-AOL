@@ -7243,10 +7243,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(signal["routine_activated_minutes"], 0)
         self.assertEqual(signal["next_routine_dispatch_eligible_minutes"], 8280)
         self.assertEqual(signal["last_routine_resolved_minutes"], 3960)
-        self.assertEqual(signal["target_omt"], [136, 51, 0])
+        self.assertEqual(signal["last_checked_minutes"], -1)
+        self.assertEqual(signal["target_omt"], [137, 49, 0])
         self.assertEqual(
             signal["source_key"],
-            "structural-signal:structural-smoke@(136,51,0)",
+            "structural-signal:structural-smoke@(137,49,0)",
         )
         self.assertEqual(resolved["save_transforms"][-1]["kind"], "player_mutations")
         self.assertEqual(
@@ -7265,6 +7266,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             if transform["kind"] == "bandit_clear_site_evidence"
         )
         self.assertEqual(clear["site_id"], "overmap_special:bandit_camp@140,51,0")
+        self.assertEqual(clear["next_near_tick_minutes"], 8640)
 
     def test_phase4_decoy_transform_clears_current_schema_outing_and_legacy_pressure(self) -> None:
         resolved = resolve_fixture_payload(
@@ -7349,8 +7351,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 if lead["lead_id"] == signal["lead_id"]
             )
             self.assertEqual(lead["kind"], "smoke_signal")
-            self.assertEqual(lead["target_id"], "structural-smoke@(136,51,0)")
-            self.assertEqual(lead["omt"], [136, 51, 0])
+            self.assertEqual(lead["target_id"], "structural-smoke@(137,49,0)")
+            self.assertEqual(lead["omt"], [137, 49, 0])
             self.assertEqual(lead["bounty"], 0)
 
     def test_phase5_visible_burn_producer_fixture_is_uncloaked_target_footing(self) -> None:
@@ -7450,8 +7452,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         scenario = load_scenario("bandit.phase4_decoy_empty_signal_live_mcw")
         steps = list(scenario["steps"])
         labels = [step["label"] for step in steps]
-        exact_target = "structural-smoke@(136,51,0)"
-        exact_source = "structural-signal:structural-smoke@(136,51,0)"
+        exact_target = "structural-smoke@(137,49,0)"
+        exact_source = "structural-signal:structural-smoke@(137,49,0)"
 
         self.assertEqual(
             scenario["fixture"],
@@ -7467,6 +7469,29 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(postflight["required_lead_status"], "stale")
         self.assertEqual(postflight["required_lead_confidence"], 0)
         self.assertEqual(postflight["required_lead_last_outcome"], "signal_investigation_empty")
+
+        watch_preflight = steps[labels.index("audit_decoy_watch_geography_selected")]
+        self.assertEqual(
+            watch_preflight["required_line_patterns"],
+            [[
+                "bandit_live_world watch_geography_preflight",
+                "site=overmap_special:bandit_camp@140,51,0",
+                "target=(137,49,0)",
+                "qualified=",
+                "route_reachable=",
+                "selected_omt=",
+                "outcome=selected",
+            ]],
+        )
+        self.assertTrue(watch_preflight["abort_on_metadata_failure"])
+        self.assertLess(
+            labels.index("wait_1_hour_for_decoy_dispatch"),
+            labels.index("audit_decoy_watch_geography_selected"),
+        )
+        self.assertLess(
+            labels.index("audit_decoy_watch_geography_selected"),
+            labels.index("audit_exact_decoy_dispatch"),
+        )
 
         waits = [step for step in steps if step["kind"] == "long_wait"]
         self.assertEqual(len(waits), 4)

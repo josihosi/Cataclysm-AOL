@@ -16,7 +16,7 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-    "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(136,51,0)@136,51,0",
+    "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0",
     "signal investigation empty",
     "structural outing returned home lead=",
     "origin=returned_report",
@@ -44,8 +44,8 @@
       "required_max_leads": 1,
       "required_lead_kind": "smoke_signal",
       "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-smoke@(136,51,0)",
-      "required_lead_source_contains": "structural-signal:structural-smoke@(136,51,0)",
+      "required_lead_target_id": "structural-smoke@(137,49,0)",
+      "required_lead_source_contains": "structural-signal:structural-smoke@(137,49,0)",
       "required_lead_status": "suspected",
       "required_lead_last_outcome": "returned_structural_smoke_report",
       "required_lead_bounty": 0,
@@ -54,7 +54,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_phase4_decoy_fixture",
       "abort_reason": "fixture did not contain one fresh returned smoke lead and an otherwise idle ready camp",
-      "expected_immediate_state": "one non-player returned smoke clue points only to road OMT 136,51,0 before production dispatch"
+      "expected_immediate_state": "one non-player returned smoke clue points only to road OMT 137,49,0 before production dispatch"
     },
     {
       "kind": "long_wait",
@@ -69,10 +69,27 @@
       "artifact_state_patterns": [
         "scheduler_hour=139",
         "dispatches_applied=1",
-        "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(136,51,0)@136,51,0"
+        "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0"
       ],
       "expected_visible_fact": "the real scheduler dispatches exactly one pair toward the decoy uncertainty OMT",
       "failure_rule": "A missing dispatch or a player target makes the decoy row red."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_decoy_watch_geography_selected",
+      "required_line_patterns": [[
+        "bandit_live_world watch_geography_preflight",
+        "site=overmap_special:bandit_camp@140,51,0",
+        "target=(137,49,0)",
+        "qualified=",
+        "route_reachable=",
+        "selected_omt=",
+        "outcome=selected"
+      ]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_phase4_decoy_watch_geography_unavailable",
+      "abort_reason": "the selected decoy target did not pass the production bounded watch-geography selector",
+      "expected_immediate_state": "production selects a bounded non-target watch before the decoy dispatch receives credit"
     },
     {
       "kind": "audit_log_contains",
@@ -80,7 +97,7 @@
       "required_line_patterns": [
         [
           "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
-          "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(136,51,0)@136,51,0"
+          "lead=overmap_special:bandit_camp@140,51,0#lead:smoke_signal:structural-smoke@(137,49,0)@137,49,0"
         ]
       ],
       "abort_on_metadata_failure": true,
@@ -121,7 +138,7 @@
       "completion_wait_seconds": 2,
       "completion_artifact_timeout_seconds": 180,
       "artifact_state_patterns": ["scheduler_hour=141", "arrivals=1", "signal investigation empty"],
-      "expected_visible_fact": "the pair reaches only OMT 136,51,0 and records the unsupported signal as empty/stale",
+      "expected_visible_fact": "the pair reaches only OMT 137,49,0 and records the unsupported signal as empty/stale",
       "failure_rule": "The row is red if arrival invents a replacement location or retains confidence without support."
     },
     {
@@ -256,8 +273,8 @@
       "required_max_leads": 8,
       "required_lead_kind": "smoke_signal",
       "required_lead_origin": "returned_report",
-      "required_lead_target_id": "structural-smoke@(136,51,0)",
-      "required_lead_source_contains": "structural-signal:structural-smoke@(136,51,0)",
+      "required_lead_target_id": "structural-smoke@(137,49,0)",
+      "required_lead_source_contains": "structural-signal:structural-smoke@(137,49,0)",
       "required_lead_status": "stale",
       "required_lead_last_outcome": "signal_investigation_empty",
       "required_lead_bounty": 0,
