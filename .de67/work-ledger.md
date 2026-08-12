@@ -414,13 +414,27 @@ Lineage: `CAOL-hostile-ecology-dev`
   formatting assertions in its one `nogame` case. Archive-only rebuilds and individual-object guesses were
   rejected because make does not invalidate objects when the PCH flag changes.
 
-  Active task `R002-M130` builds exact clean checkpoint `a3ae713d34` and reruns the post-arrival sound
+  Diagnosed live task builds exact clean checkpoint `a3ae713d34` and reruns the post-arrival sound
   scenario only through its first positive observation boundary. It accepts a diagnostic result, not R-002:
   exact runtime identity; unchanged dispatch, target, member pair, and abstract arrival; the fresh minute-
   10085 target sound; and the new request row sufficient to decide whether selected watch, phase, target
   footprint, or bounded forward geometry diverges from the focused owner route. It stops after capturing
   that causal row, before proposing a product fix or requiring return. Its 3,600-second estimate reuses the
-  measured clean-build/live-route duration of M118, M120, and M122.
+  measured clean-build/live-route duration of prior live runs. Exact `d7a1856ff4+SDL3` run
+  `20260812_124857` preserved dispatch and abstract arrival, then proved the minute-10085 outing was at
+  exact watch `(138,52,0)`, observing at waypoint 2, with target footprint `[(137,49,0)]`, while the sound
+  request had zero `visible_forward_omts`; the fresh audible source was therefore rejected as not permitted.
+  Source review locates the first divergence in the five-minute sound owner: its static request builder
+  appends only later route waypoints and omits the target footprint at an already-reached watch, unlike the
+  hourly maintenance request builder and its focused test.
+
+  Active task `R002-M131` unifies the static and maintenance request geometry so an abstract scout already
+  at its selected watch exposes the same bounded canonical target footprint to either signal cadence. It
+  adds a focused static-recorder discriminator that fails under the omission and retains the existing
+  off-route rejection. No sound range, confidence, timing, or observation ownership may change. Changed
+  objects, the exact owning test, adjacent signal controls, and `git diff --check` must pass. Its 1,800-second
+  estimate is derived from the accepted focused diagnostic build now that the macOS TILES object family is
+  coherent, with allowance for the shared-helper refactor and narrow relink.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
