@@ -382,7 +382,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   matrix. The scenario must retain the west-bound no-handoff guard through that fact, no pre-return
   returned-report lead, east relocation only after the fact, ordinary physical return, exactly one
   approximate returned sound lead, no player token, and owning fixture-contract discriminators.
-  Its 900-second estimate reuses the accepted `R002-M119` scenario/test repair estimate.
+  Its 900-second estimate reuses the accepted `R002-M119` scenario/test repair estimate. Accepted
+  checkpoint `24138bbfb0` removes the weather-dependent live smoke/light claims, proves the split
+  minute-10080 arrival boundary, stages the physical explosive afterward, and binds the next cadence
+  to a minute-10085 sound observation. It retains the ownership, early-lead, return, provenance, and
+  no-player-token controls with exactly one returned sound lead. JSON parsing, all 48 scenario
+  fixture-contract tests including source-shaped split-line matcher controls, and `git diff --check`
+  pass.
+
+  Active task `R002-M122` builds exact clean checkpoint `24138bbfb0` and runs the sound-positive
+  scenario through the signed bridge. It accepts only exact runtime identity; the unchanged
+  dispatch/target/pair; abstract watch arrival at minute 10080 with no observation; a real explosion
+  emitted afterward and recorded at minute 10085 as one active target-to-watch shared sound fact;
+  no local handoff through that fact; no pre-return lead; east relocation only afterward; ordinary
+  physical return; exactly one source-owned returned sound lead; no player token; and zero debug
+  errors. Its 3,600-second estimate reuses the measured clean-build/live-route evidence from
+  `R002-M118` and `R002-M120`.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
