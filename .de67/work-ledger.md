@@ -180,11 +180,26 @@ Lineage: `CAOL-hostile-ecology-dev`
   ownership markers. This rejects raw seed `830205344` as the R-002 selected-watch footing; another
   unchanged run is inadmissible. All scratch profiles and generated reports were removed.
 
-  Next route: use the accepted non-persisting product report in standalone search mode to find a fresh
-  production-data seed whose natural bandit site is within the 40-OMT bootstrap envelope and whose first
-  two production-prefix candidates include the required selected watch/cost under one shared eight-read
-  budget. Discard every losing marker-owned world, then freeze the first viable seed and repeat it twice
-  through the explicit harness gate before attempting the natural outing lifecycle.
+  Accepted replacement footing `301904f904` advances the explicit proof gate to raw seed `830205385`,
+  the first viable result in the monotonic standalone search from `830205345`. Search concurrency used
+  the measured 10 logical CPUs; every losing marker-owned world and report was removed after its child
+  exited. Seeds through `830205384` had no viable first-prefix selection. The winning natural world has
+  player `(139,4,0)`, bandit site `overmap_special:bandit_camp@177,13,0`, nearest footprint point
+  `(177,13,0)` at 39.051248 OMT, and no cannibal-camp placement in the generated overmaps.
+
+  Two fresh exact `f8425cdc53` product runs with distinct absent names reproduced byte-identical reports,
+  identical bandit-camp placements, clean saves, zero debug errors, removed ownership markers, unchanged
+  empty schema-6 persistent ecology, four production scan samples, and the same first two production-
+  prefix rows under one shared eight-read budget. Target `(177,9,0)` selected watch `(174,13,0)` at
+  normalized route cost 10 and consumed two reads; target `(181,13,0)` remained a truthful non-watch
+  rejection with route cost 12, leaving six reads. All 318 discovered Python harness tests passed and
+  scratch search/repeat artifacts were removed.
+
+  Next route: advance this fresh unchanged footing through the ordinary hourly structural-maintenance
+  owner and prove that the selected first-prefix row becomes the same natural outing without an observer,
+  lead, camp, roster, terrain, location, special, or saved-ecology transform. Capture the pre-dispatch
+  feasibility identity, scheduler-owned dispatch identity, and post-save ecology delta in one run; repeat
+  the unchanged quiet/control world separately rather than reusing the feasibility copy.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
