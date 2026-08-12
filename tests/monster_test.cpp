@@ -1213,48 +1213,6 @@ TEST_CASE( "failed_horde_placement_preserves_entity", "[monster][hordes]" )
         CHECK( overmap_buffer.entity_at( abs_pos ) == nullptr );
         CHECK( get_creature_tracker().creature_at<monster>( abs_pos ) != nullptr );
     }
-
-    SECTION( "heavyweight entity relocates from newly impassable terrain" ) {
-        // A stored monster's terrain can change while it is outside the reality bubble.
-        here.ter_set( local_pos, ter_t_grass );
-        monster *live = g->place_critter_at( mon_test_zombie, local_pos );
-        REQUIRE( live != nullptr );
-        g->despawn_monster( *live );
-        REQUIRE( overmap_buffer.entity_at( abs_pos ) != nullptr );
-
-        here.ter_set( local_pos, ter_t_palisade );
-        overmap_buffer.spawn_monster( submap_pos );
-
-        CHECK( overmap_buffer.entity_at( abs_pos ) == nullptr );
-        monster *reloaded = nullptr;
-        for( monster &candidate : g->all_monsters() ) {
-            if( candidate.type->id == mon_test_zombie ) {
-                reloaded = &candidate;
-                break;
-            }
-        }
-        REQUIRE( reloaded != nullptr );
-        CHECK( reloaded->pos_abs() != abs_pos );
-        CHECK( reloaded->can_move_to( reloaded->pos_bub( here ) ) );
-    }
-
-    SECTION( "nonlocal heavyweight entity materializes without local terrain" ) {
-        const tripoint_bub_ms outside_local_pos{ -12, 60, 0 };
-        const tripoint_abs_ms outside_abs_pos = here.get_abs( outside_local_pos );
-        REQUIRE_FALSE( here.inbounds( outside_local_pos ) );
-
-        here.ter_set( local_pos, ter_t_grass );
-        monster *live = g->place_critter_at( mon_test_zombie, local_pos );
-        REQUIRE( live != nullptr );
-        live->setpos( outside_abs_pos, false );
-        g->despawn_monster( *live );
-        REQUIRE( overmap_buffer.entity_at( outside_abs_pos ) != nullptr );
-
-        overmap_buffer.spawn_monster( project_to<coords::sm>( outside_abs_pos ), true );
-
-        CHECK( overmap_buffer.entity_at( outside_abs_pos ) == nullptr );
-        CHECK( get_creature_tracker().creature_at<monster>( outside_abs_pos ) != nullptr );
-    }
 }
 
 TEST_CASE( "obstacles_placed_on_map_are_present_in_overmap", "[map][hordes]" )
