@@ -5303,6 +5303,95 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 "required_state_missing",
             )
 
+    def test_safe_local_reality_preflight_closes_console_after_parse(self) -> None:
+        summary = (
+            "bandit_live_world local_reality_safety_preflight observer=(1,2,0) "
+            "resident_monsters=0 outcome=safe\n"
+        )
+        events: List[Any] = []
+        with tempfile.TemporaryDirectory(prefix="local_reality_preflight_") as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("", encoding="utf-8")
+
+            def invoke_preflight(*_args: Any, **_kwargs: Any) -> None:
+                events.append("analyzer")
+                artifact_log.write_text(summary, encoding="utf-8")
+
+            def record_press(*args: Any, **kwargs: Any) -> None:
+                events.append(("press", args, kwargs))
+
+            with (
+                mock.patch(
+                    "startup_harness.debug_run_local_reality_safety_preflight",
+                    side_effect=invoke_preflight,
+                ),
+                mock.patch(
+                    "startup_harness.peekaboo_press_sequence",
+                    side_effect=record_press,
+                ),
+                mock.patch("startup_harness.time.sleep"),
+            ):
+                reports = execute_probe_steps(
+                    42,
+                    run_dir,
+                    [{
+                        "kind": "debug_run_local_reality_safety_preflight",
+                        "label": "safe_preflight",
+                        "delay_ms": 123,
+                        "menu_settle_seconds": 0.2,
+                    }],
+                    profile="dev-harness",
+                    world="McWilliams",
+                    artifact_log=artifact_log,
+                )
+
+        self.assertEqual(events[0], "analyzer")
+        self.assertEqual(
+            events[1],
+            ("press", (42, ["escape"]), {"delay_ms": 123}),
+        )
+        self.assertEqual(reports[0]["metadata"]["status"], "required_state_present")
+        self.assertTrue(reports[0]["debug_console_closed"])
+
+    def test_unsafe_local_reality_preflight_does_not_close_console(self) -> None:
+        events: List[Any] = []
+        with tempfile.TemporaryDirectory(prefix="local_reality_preflight_unsafe_") as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("", encoding="utf-8")
+
+            def invoke_preflight(*_args: Any, **_kwargs: Any) -> None:
+                events.append("analyzer")
+                artifact_log.write_text(
+                    "bandit_live_world local_reality_safety_preflight observer=(1,2,0) "
+                    "resident_monsters=0 outcome=unsafe\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch(
+                    "startup_harness.debug_run_local_reality_safety_preflight",
+                    side_effect=invoke_preflight,
+                ),
+                mock.patch("startup_harness.peekaboo_press_sequence") as press,
+            ):
+                reports = execute_probe_steps(
+                    42,
+                    run_dir,
+                    [{
+                        "kind": "debug_run_local_reality_safety_preflight",
+                        "label": "unsafe_preflight",
+                    }],
+                    profile="dev-harness",
+                    world="McWilliams",
+                    artifact_log=artifact_log,
+                )
+
+        self.assertEqual(events, ["analyzer"])
+        self.assertEqual(reports[-1]["abort"]["guard"], "local_reality_safety_preflight")
+        press.assert_not_called()
+
     def test_phase4_signal_matrix_derives_schema10_watch_footing_and_clocks(self) -> None:
         fixture_name = "bandit_phase4_ecology_observer_handoff_v0_2026-08-05"
         resolved = resolve_fixture_payload(fixture_name, "live-debug")

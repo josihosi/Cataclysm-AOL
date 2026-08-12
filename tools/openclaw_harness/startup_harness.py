@@ -6799,6 +6799,17 @@ def debug_run_local_reality_safety_preflight(
     )
 
 
+def debug_close_clairvoyance_console(
+    pid: int,
+    *,
+    delay_ms: int = 200,
+    menu_settle_seconds: float = 0.45,
+) -> None:
+    """Return to ordinary gameplay after a successful read-only observer action."""
+    peekaboo_press_sequence(pid, ["escape"], delay_ms=delay_ms)
+    time.sleep(menu_settle_seconds)
+
+
 def debug_map_editor_place_furniture(
     pid: int,
     *,
@@ -14404,6 +14415,12 @@ def execute_probe_steps(
                 }
                 reports.append(report)
                 return reports
+            debug_close_clairvoyance_console(
+                pid,
+                delay_ms=delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report["debug_console_closed"] = True
         elif kind == "audit_structural_route_analyzer":
             raw_outcomes = step.get("required_outcomes", step.get("outcomes", ["selected", "rejected"]))
             if isinstance(raw_outcomes, str):
