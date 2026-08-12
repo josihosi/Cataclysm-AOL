@@ -2032,6 +2032,7 @@ std::string to_string( camp_lead_kind kind );
 std::string to_string( camp_lead_origin origin );
 std::string to_string( camp_lead_status status );
 std::string to_string( outing_kind kind );
+std::string to_string( structural_watch_kind kind );
 std::string to_string( simulation_owner owner );
 std::string to_string( scout_phase phase );
 std::string to_string( sortie_observation_kind kind );

@@ -44,6 +44,35 @@ std::string live_bandit_homeward_partner_route_read_for_test(
 std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
 live_bandit_homeward_boundary_steps_for_test();
 
+TEST_CASE( "live structural signal request diagnostic binds watch footprint and forward geometry",
+           "[bandit_live_world][structural_bounty][nogame]" )
+{
+    bandit_live_world::active_outing_state outing;
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = tripoint_abs_omt( 138, 52, 0 );
+    outing.waypoint_index = 2;
+    outing.phase = bandit_live_world::scout_phase::observing;
+    outing.target_footprint = {
+        tripoint_abs_omt( 137, 49, 0 ), tripoint_abs_omt( 137, 50, 0 )
+    };
+    bandit_live_world::structural_threat_observer_request request;
+    request.visible_forward_omts = {
+        tripoint_abs_omt( 137, 49, 0 ), tripoint_abs_omt( 137, 50, 0 )
+    };
+
+    const std::string diagnostic = live_bandit_structural_signal_request_diagnostic_for_test(
+                                       outing, request );
+    CHECK( diagnostic.find( "selected_watch_kind=exact" ) != std::string::npos );
+    CHECK( diagnostic.find( "selected_watch_omt=(138,52,0)" ) != std::string::npos );
+    CHECK( diagnostic.find( "waypoint_index=2 phase=observing" ) != std::string::npos );
+    CHECK( diagnostic.find(
+               "target_footprint_count=2 target_footprint=[(137,49,0),(137,50,0)]" ) !=
+           std::string::npos );
+    CHECK( diagnostic.find(
+               "visible_forward_omts_count=2 visible_forward_omts=[(137,49,0),(137,50,0)]" ) !=
+           std::string::npos );
+}
+
 TEST_CASE( "live structural watch route read uses overmap geography",
            "[bandit_live_world][structural_bounty]" )
 {

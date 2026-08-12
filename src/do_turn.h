@@ -11,6 +11,8 @@
 namespace bandit_live_world
 {
 struct site_record;
+struct active_outing_state;
+struct structural_threat_observer_request;
 struct structural_route_read;
 struct structural_outing_plan;
 } // namespace bandit_live_world
@@ -37,6 +39,9 @@ std::string live_bandit_structural_route_analyzer_record_for_test(
     const bandit_live_world::structural_outing_plan &plan,
     const std::string &selector,
     const bandit_live_world::structural_route_read &read );
+std::string live_bandit_structural_signal_request_diagnostic_for_test(
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request );
 bool live_bandit_local_handoff_position_is_motor_addressable(
     const tripoint_abs_ms &position, const tripoint_abs_sm &motor_center,
     int motor_radius_sm );

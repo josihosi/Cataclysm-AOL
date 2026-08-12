@@ -6046,6 +6046,43 @@ std::string live_bandit_structural_route_analyzer_record(
            selected_fields + " summary=" + read.summary;
 }
 
+std::string live_bandit_structural_signal_request_diagnostic(
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request )
+{
+    // The footprint renderer is bounded by the authoritative canonical footprint cap.
+    constexpr std::size_t max_rendered_omts = 64;
+    const auto render_omts = [max_rendered_omts]( const std::vector<tripoint_abs_omt> &omts ) {
+        std::ostringstream rendered;
+        rendered << '[';
+        const std::size_t rendered_count = std::min( omts.size(), max_rendered_omts );
+        for( std::size_t index = 0; index < rendered_count; ++index ) {
+            if( index > 0 ) {
+                rendered << ',';
+            }
+            rendered << omts[index].to_string();
+        }
+        if( rendered_count < omts.size() ) {
+            if( rendered_count > 0 ) {
+                rendered << ',';
+            }
+            rendered << "...";
+        }
+        rendered << ']';
+        return rendered.str();
+    };
+    std::ostringstream diagnostic;
+    diagnostic << " selected_watch_kind=" << bandit_live_world::to_string( outing.selected_watch_kind )
+               << " selected_watch_omt=" << outing.selected_watch_omt.to_string()
+               << " waypoint_index=" << outing.waypoint_index
+               << " phase=" << bandit_live_world::to_string( outing.phase )
+               << " target_footprint_count=" << outing.target_footprint.size()
+               << " target_footprint=" << render_omts( outing.target_footprint )
+               << " visible_forward_omts_count=" << request.visible_forward_omts.size()
+               << " visible_forward_omts=" << render_omts( request.visible_forward_omts );
+    return diagnostic.str();
+}
+
 std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_signal_reads(
     const std::vector<live_bandit_signal_observation> &signals,
     const std::vector<live_bandit_sound_observation> &sound_events,
@@ -6062,7 +6099,9 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                                    << coords::project_to<coords::omt>( get_map().get_abs_sub() )
                                    << " current_inbounds=" << ( request_current_inbounds ? "yes" : "no" )
                                    << " field_signals=" << signals.size()
-                                   << " sound_events=" << sound_events.size() << '\n';
+                                   << " sound_events=" << sound_events.size()
+                                   << live_bandit_structural_signal_request_diagnostic( outing, request )
+                                   << '\n';
     }
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
         outing.owner != bandit_live_world::simulation_owner::abstract ||
@@ -6441,6 +6480,13 @@ std::string live_bandit_structural_route_analyzer_record_for_test(
     const bandit_live_world::structural_route_read &read )
 {
     return live_bandit_structural_route_analyzer_record( site, plan, selector, read );
+}
+
+std::string live_bandit_structural_signal_request_diagnostic_for_test(
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request )
+{
+    return live_bandit_structural_signal_request_diagnostic( outing, request );
 }
 
 namespace
