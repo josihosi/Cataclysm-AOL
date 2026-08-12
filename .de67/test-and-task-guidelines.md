@@ -25,15 +25,22 @@ actual local input or scenario action, and verify that the named authoritative o
 the matcher can consume the required identity-bound result. Read-only feasibility must cover each
 named positive selector and its required contrast on the installed geometry, including route,
 terrain, clock, and watch constraints. Where evidence is parsed from logs, validate the emitted
-record boundaries and normalized matcher representation with representative accepted and rejected
-owner output; a source-only, bridge-only, or synthetic-log pass does not establish that chain.
+record boundaries and normalized matcher representation with representative accepted, rejected, and
+expected-absence owner output. An expected absence requires a bounded, identity-bound completion
+verdict rather than an unbounded wait. A source-only, bridge-only, or synthetic-log pass does not
+establish that chain.
 
 ## Task definition
 
 Describe the desired outcome in natural language, bind it to one red DFS claim and the relevant code
-surface, state material boundaries, and name the evidence that will decide acceptance. Do not demand
-a fixed receipt shape. Ask the worker to stop and report expected versus observed behavior with
-direct evidence when a blocker or unexpected production result invalidates a task premise.
+surface, state material boundaries, and name the evidence that will decide acceptance. Before editing
+or executing proof, make a read-only pass through the complete production owner, state transitions,
+precedence, readers, writers, early exits, and intended invariants; classify a contrary result as an
+implementation deviation, contradicted design premise, false test premise, or irrelevant harness
+behavior before proposing another patch or dispatch. State the task's terminal DFS outcome and the
+causal path by which its evidence can reach that outcome. Do not demand a fixed receipt shape. Ask
+the worker to stop and report expected versus observed behavior with direct evidence when a blocker
+or unexpected production result invalidates a task premise.
 When a task refreshes a timeout or lease from “progress,” define progress in route/ownership terms
 and name movement that must not refresh it, such as alternating or pacing tiles.
 
@@ -54,6 +61,9 @@ negative controls only when they distinguish a real competing explanation. Do no
 volume for coverage of the requested behavior. Separate the mechanism verdict from incidental
 metadata or receipt formatting; an incidental mismatch is fatal only when it can change identity,
 the verdict, or a false-green control.
+Do not add bespoke fixtures, proof matrices, diagnostics, coordination, or receipt layers when
+deleting them preserves the DFS-required behavior, authoritative ownership, and reliable
+discriminator; prefer the smaller proof surface.
 Deadline or lease regressions require paired controls: valid monotonic route advancement that
 survives the prior deadline, and movement-changing but non-advancing oscillation that remains
 bounded. The non-advancing control must distinguish the rejected progress predicate; immobility
@@ -66,6 +76,10 @@ passes only the claim it exercises. Preserve concise evidence paths; do not enco
 nested receipts. A blocker or unexpected result is evidence for causal review, never proof that the
 claim passed or automatic authority to weaken its test. Do not rerun an unchanged failing route
 without changed source, tooling, or causal evidence.
+When a finding exposes an adjacent owner, fixture, or matcher premise, decide before follow-up
+dispatch whether the task still has a credible causal path to its terminal DFS outcome. If it does
+not, replace local patch chaining with the read-only whole-owner design pass and simplify the proof
+surface or reframe the task from that result.
 Before accepting a focused progress regression, verify that its non-advancing control would fail
 under the rejected implementation; compile success, diff inspection, and assertion count are not
 substitutes for that discriminator.
