@@ -254,12 +254,19 @@ Lineage: `CAOL-hostile-ecology-dev`
   Bridge-backed `R002-M109` run `20260812_093958` reached the exact empty-signal arrival on clean
   `05642f91d2+SDL3`, but its completion poll timed out after the final read saw
   `scheduler_hour=141` and `arrivals=1` just before the following empty-investigation note became
-  visible. The retained artifact contains that adjacent note, while the poll checked its deadline
-  without one final observation, so return/save/writeback remain open and an unchanged rerun is
-  inadmissible. Active task `R002-M110` repairs that generic timeout-boundary observation race with a
-  focused regression, then reruns the same decoy lifecycle through
+  visible. Accepted harness checkpoint `bd7be34f9b` takes one final generic observation at the exact
+  timeout boundary without extending the deadline or retrying after an unsafe interruption. Its
+  discriminator fails under the former ordering, and 11 focused poll tests plus all 201 fixture
+  contract tests pass.
+
+  Changed-harness `R002-M110` run `20260812_095920` again reached the exact empty-signal arrival with
+  zero debug errors, but correctly failed closed because the scenario literal says
+  `signal investigation empty` while the authoritative producer says
+  `returned signal investigation was empty and began return`. No incident or saved return was
+  reached, so an unchanged rerun is inadmissible. Active task `R002-M111` binds the scenario and its
+  parser control to the exact producer wording, then reruns the lifecycle through
   `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. Its 3,600-second estimate carries the measured same-binary
-  build/live route plus the narrow harness repair and test.
+  test/live route.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
