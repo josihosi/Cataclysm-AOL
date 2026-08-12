@@ -307,8 +307,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   Active task `R002-M115` audits the authoritative focused tests for supported versus empty returned
   signals, avatar-relocation non-ownership, and unseen versus legitimately observed zombie danger.
   It adds or repairs only a missing discriminator, verifies each negative would fail under the
-  rejected hidden-state behavior, and runs the narrow owning suite. Its 3,600-second estimate is
-  derived from the bounded owner/test review plus one focused C++ compile/test route.
+  rejected hidden-state behavior, and runs the narrow owning suite. The audit found no gap in the
+  returned-signal or zombie-observation controls. It added one active-outing relocation discriminator
+  that binds target ID/OMT, lead ID/source, full route, and no `player@` after avatar movement and one
+  real owner advance. The changed test object compiled and `git diff --check` passed, but the attempted
+  broad macOS relink used a mismatched dependency set and did not execute the assertions; only ignored
+  `tests/cata_test` was removed.
+
+  Active task `R002-M116` routes that unchanged relocation test through the established working
+  focused macOS test binary/link path and executes the exact case plus its adjacent signal/danger
+  controls. It may repair only build-command/tool state, not product or test expectations. Its
+  1,800-second estimate is derived from the test-only route with the changed object already compiled.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
