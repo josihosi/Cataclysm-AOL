@@ -333,7 +333,24 @@ Lineage: `CAOL-hostile-ecology-dev`
   matrix through `CAOL_PEEKABOO_INPUT_TRANSPORT=bridge`. It accepts only the source-OMT-to-watch
   smoke/light/sound facts, explicit pre-return absence, ordinary physical return, exactly three
   approximate returned-report leads, no player token, clean runtime identity, and zero debug errors.
-  Its 3,600-second estimate is derived from the measured clean build plus long-wait live route.
+  Its 3,600-second estimate is derived from the measured clean build plus long-wait live route. Exact
+  `8f7718303e+SDL3` binary `d0afc92625861abcb1d271e36e37c8d3a79a302733e0185ad587a2b4dbca233d`
+  and bridge run `20260812_110327` reached the exact hour-166 dispatch and staged a real minute-10080
+  packet with smoke and light, but recorded zero active observations. Source and artifact inspection
+  found the first contradicted premise: the scenario description claimed watch approach `(139,51,0)`
+  was outside loaded reality, while production committed a local handoff there at minute 10020. The
+  outing was therefore local, so the abstract signal adapter correctly did not run at minute 10080.
+  No production defect or DFS gap is indicated; the failed scenario geometry earns no signal credit.
+
+  Active task `R002-M119` repairs only that scenario footing. It must move the passive avatar far
+  enough west that physical source `(137,49,0)` remains inside the loaded map while approach/watch
+  route OMTs remain outside, preserve the exact production target and pair, and add fail-closed
+  assertions for the explicit relocation and absence of a pre-observation local handoff. After the
+  three source-to-watch facts are produced, it may explicitly reload the existing physical return
+  route without moving or editing ecology actors. The owning fixture-contract tests and JSON checks
+  must prove the revised causal ordering before another clean live run. Its 900-second estimate is
+  derived from the comparable `R002-M117` scenario/test task's measured 393-second checkpoint span,
+  with additional allowance for the loaded-boundary and return-route guards.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
