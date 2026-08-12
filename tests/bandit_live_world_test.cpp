@@ -24190,6 +24190,33 @@ TEST_CASE( "hostile_camp_avatar_relocation_does_not_drag_returned_report_lead",
         CHECK( serialize_world( world ) == before_round_trip );
         check_stationary_single_writer( world.sites.front() );
         CHECK( serialize_world( world ).find( "player@" ) == std::string::npos );
+
+        bandit_live_world::world_state active_world = make_structural_signal_test_world(
+                    cannibal, cannibal ? 722120 : 721120 );
+        bandit_live_world::site_record &active_site = active_world.sites.front();
+        const std::string active_target_id = active_site.active_outing.target_id;
+        const tripoint_abs_omt active_target_omt = active_site.active_outing.target_omt;
+        const std::string active_lead_id = active_site.active_outing.target_lead_id;
+        const std::vector<tripoint_abs_omt> active_route = active_site.active_outing.shared_route;
+        const bandit_live_world::camp_map_lead *active_lead =
+            active_site.intelligence_map.find_lead( active_lead_id );
+        REQUIRE( active_lead != nullptr );
+        const std::string active_lead_before_relocation = serialize_camp_map_lead( *active_lead );
+
+        get_avatar().setpos( project_to<coords::ms>( new_avatar_omt ), false );
+        const bandit_live_world::structural_outing_result active_advance =
+            bandit_live_world::advance_structural_bounty_outings( active_world,
+                    active_site.active_outing.last_advanced_minutes + 1, {} );
+        CHECK( active_advance.active_outings_considered == 1 );
+        CHECK( active_site.active_outing.target_id == active_target_id );
+        CHECK( active_site.active_outing.target_omt == active_target_omt );
+        CHECK( active_site.active_outing.target_lead_id == active_lead_id );
+        CHECK( active_site.active_outing.shared_route == active_route );
+        active_lead = active_site.intelligence_map.find_lead( active_lead_id );
+        REQUIRE( active_lead != nullptr );
+        CHECK( serialize_camp_map_lead( *active_lead ) == active_lead_before_relocation );
+        CHECK( active_site.active_outing.target_omt != new_avatar_omt );
+        CHECK( serialize_world( active_world ).find( "player@" ) == std::string::npos );
     }
 }
 
