@@ -84,12 +84,21 @@ Lineage: `CAOL-hostile-ecology-dev`
   state are unchanged. Changed objects compiled, four parser controls passed, `git diff --check`
   passed, and structured local Codex review found no actionable defect.
 
-  Next route: build the current clean `dev` HEAD containing `c74f0c88e4`, install the existing
-  zero-lead natural McWilliams fixture, advance one real hourly structural cadence, and audit every
-  scheduler-emitted row. A new `selector=non_frontier` selected row with watch and route cost establishes
-  the footing; an all-rejected or empty candidate set is truthful negative evidence and stops the run.
-  Do not hand-author a lead, retry either rejected target, weaken the selector, drag the target with the
-  player, or alter world geometry to fit the fixture.
+  Exact `c9f27d4432+SDL3` Mac binary
+  `9d4ee996c6f917dd77636d13fe706f2dbec88e0c7012225cb4aeb71133b7a9b1` and bridge-backed run
+  `20260812_015405` proved the zero-lead fixture's first hourly maintenance call. It seeded one natural
+  lead but reported `drive=329`, `full_route_solves=0`, and `dispatches_applied=0`, so no production
+  route callback or normalized analyzer row was expected. The one-hour premise was false and no
+  unchanged retry is admissible.
+
+  The dispatch owner requires drive 500 unless force-due. With no previous routine resolution, cadence
+  does not rise; this stable camp identity reaches its already-proved first-frontier force-due deadline
+  after 13 hours. Next route: build the current clean `dev` HEAD containing `c74f0c88e4`, install the
+  existing zero-lead natural McWilliams fixture, advance the established 6h + 6h + 1h normal wait path,
+  and audit every scheduler-emitted row from that single run. A new `selector=non_frontier` selected row
+  with watch and route cost establishes the footing; an all-rejected or empty candidate set is truthful
+  negative evidence and stops the run. Do not hand-author a lead, retry either rejected target, weaken
+  the selector, drag the target with the player, or alter world geometry to fit the fixture.
 
   Accepted tooling frontier: `apply_bandit_camp_map_lead_transform` now clears canonical
   nested ownership and remove all seven legacy active fields from a schema-12 save. Its focused
