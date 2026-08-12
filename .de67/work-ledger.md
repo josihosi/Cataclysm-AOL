@@ -446,6 +446,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   exact case, and checks the diff. It must not weaken any assertion, alter the diagnostic, or claim any
   live behavior. Its 900-second estimate is derived from M125 completing the identified owner rebuild,
   archive generation, and link well within this bound; this retry changes only one test tag and object.
+  The pure case ran and passed all five assertions, but process teardown still exited 139, so the task
+  correctly withheld completion. The current macOS crash report identifies `widget_factory` destruction
+  through `widget::~widget()` and `widget_clause`'s function member, not SDL or the tested formatter.
+  This newly isolates a second old-PCH owner object; the passing assertion body does not waive clean-exit
+  evidence.
+
+  Active task `R002-M127` force-rebuilds only `obj/tiles/widget.o` with the same PCH-disabled macOS flags,
+  regenerates the archive and current test executable, and reruns the exact five-assertion `nogame` case
+  through clean process exit plus `git diff --check`. It must stop on any different crash owner or source
+  failure. Its 900-second estimate reuses M126's completed single-object compile, archive/link, and test
+  time and changes only the crash-report-identified teardown owner.
 
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
