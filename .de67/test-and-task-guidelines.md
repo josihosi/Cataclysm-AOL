@@ -100,6 +100,10 @@ suggestions; only a successful guarded mutation transaction does.
 
 ## Deadline estimation
 
-Estimate from inspected scope, measured tooling/setup time, dependencies, and relevant prior tasks.
-State the reason in the work ledger. The immutable timer begins at actual worker dispatch, and honest
-late work still counts as a deadline miss.
+Estimate the whole ledger item from its first dispatch through honest claim acceptance, not only the
+first worker attempt. Derive that estimate from inspected exploration uncertainty, tooling/setup,
+implementation, build, proof, dependencies, and relevant prior tasks, and state the reason in the
+work ledger. On every later attempt, read and preserve the persisted item start, estimate, and
+deadline. An attempt-local duration may guide coordination, but it never replaces or rebases the
+item estimate or deadline; findings and completed attempts do not stop the item clock. Honest late
+work still counts as a deadline miss.
