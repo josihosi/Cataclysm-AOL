@@ -33,7 +33,10 @@ establish that chain.
 ## Task definition
 
 Describe the desired outcome in natural language, bind it to one red DFS claim and the relevant code
-surface, state material boundaries, and name the evidence that will decide acceptance. Before editing
+surface, state material boundaries, and name the evidence that will decide acceptance. Before any
+candidate product edit or dispatch, identify the production owner, its direct callers, and its owning
+tests, then complete the read-only pass below; pre-existing candidate product work does not substitute
+for that pass. Before editing
 or executing proof, make a read-only pass through the complete production owner, state transitions,
 precedence, readers, writers, early exits, and intended invariants; classify a contrary result as an
 implementation deviation, contradicted design premise, false test premise, or irrelevant harness

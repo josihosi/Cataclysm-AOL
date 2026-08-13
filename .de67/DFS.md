@@ -126,9 +126,11 @@ flowchart LR
   route data.
 - [x] Danger has soft and hard effects: risk can increase route cost, while an observed overwhelming
   threat can reroute, abort, or force immediate self-defense.
+<!-- DE67:DFS-SLICE:BEGIN id=R-002-S001 claim=R-002 -->
 - [ ] 🔴 R-002 — Ordinary-play bounded-discovery fairness and absence of hidden-state radar remain
   unproved through focused owner tests plus the smallest changed-executable negative/positive
   production proof named below.
+<!-- DE67:DFS-SLICE:END id=R-002-S001 claim=R-002 -->
 
 ### 4. Physical movement, stalking, and exposure
 
@@ -142,6 +144,7 @@ flowchart LR
 - [x] The target camp footprint and a watch position remain distinct. Normal stalking observes from
   a three-OMT radius—two empty OMTs between the scouts and the camp—and falls farther back when
   terrain or exposure requires it.
+<!-- DE67:DFS-SLICE:BEGIN id=R-003-S001 claim=R-003 -->
 - [x] Reciprocal ordinary visual contact burns the party. Being burned adds useful close-contact
   evidence and target alertness, then commits the scouts to egress. It is not deliberately farmed
   as a scouting tactic.
@@ -152,6 +155,7 @@ flowchart LR
   between adjacent visible tiles while its strategic owner wants to leave.
 - [ ] 🔴 R-003 — Burned-pair evidence, coherent egress, covert neutrality, and identity continuity
   remain unproved through the natural visible-pair route and its quiet control.
+<!-- DE67:DFS-SLICE:END id=R-003-S001 claim=R-003 -->
 - [x] R-001 — The natural local-to-abstract return handoff is not complete. `T01-M1` through
   `T01-M5` preserved generation-1 members 4/5 and the unchanged McWilliams route while moving the
   frontier past safe boundary selection, asymmetric pair travel, and recenter visibility.
@@ -164,27 +168,34 @@ flowchart LR
 
 ### 5. Report, assessment, and response decision
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-004-S001 claim=R-004 -->
 - [x] A camp learns no useful target dossier until a survivor physically returns. Two dead scouts
   yield only overdue/missing state. One survivor yields a partial/provisional report restricted to
   evidence available to that survivor; a later survivor may revise it.
 - [x] Reports identify their source operation, member(s), evidence revisions, timestamps, target,
   uncertainty, defender bounds, coarse visible equipment, opportunity cues, route risk, exposure,
   and losses. Applying the same return/report/cargo packet twice is a no-op.
+<!-- DE67:DFS-SLICE:END id=R-004-S001 claim=R-004 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-005-S001 claim=R-005 -->
 - [x] Camp assessment compares pessimistic target strength, uncertainty, alertness, route risk,
   opportunity, ready camp power, and the required home reserve. It may hold, rescout, abandon, or
   prepare one faction-specific follow-on.
 - [x] A follow-on response selects and reserves a fresh party from current survivors rather than
   reusing the scout reservation. The current planner preserves the report revision and operation
   generation.
+<!-- DE67:DFS-SLICE:BEGIN id=R-004-S002 claim=R-004 -->
 - [ ] 🔴 R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
   release remain unproved through the natural authoritative death and return routes.
+<!-- DE67:DFS-SLICE:END id=R-004-S002 claim=R-004 -->
 - [ ] 🔴 R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
   to tests. `transition_hostile_operation_phase` is likewise exercised by tests and origin-recall
   cleanup, not by a complete live response lifecycle. The follow-on owner is therefore scaffolding,
   not an implemented player-facing feature.
+<!-- DE67:DFS-SLICE:END id=R-005-S001 claim=R-005 -->
 
 ### 6. Faction-specific consequences
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-006-S001 claim=R-006 -->
 Bandits and cannibals share exploration and assessment. They diverge only after a returned report
 authorizes a response.
 
@@ -193,18 +204,24 @@ authorizes a response.
   patrol combat, demand a share of currently reachable camp storage, and resolve payment, refusal,
   player attack, withdrawal, casualties, and return.
   The parley-neutrality hook exists, but no natural scout-to-shakedown run proves the lifecycle.
+<!-- DE67:DFS-SLICE:END id=R-006-S001 claim=R-006 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-007-S001 claim=R-007 -->
 - [ ] 🔴 R-007 — **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
   travel physically, rally in concealment at a plausible two-to-three-OMT planning distance, wait
   for true local darkness, and attack the avatar plus all loaded camp defenders. Cannibals never
   open the payment interface. No invisible offscreen defender deaths are permitted. The state
   vocabulary exists, but the live lifecycle is not wired or proved.
+<!-- DE67:DFS-SLICE:END id=R-007-S001 claim=R-007 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-008-S001 claim=R-008 -->
 - [ ] 🔴 R-008 — Aftermath must update the attacking camp's casualties, readiness, target alertness,
   outcome memory, payment/plunder, and future eligibility. A bandit may repeat only after cooldown
   plus renewed target opportunity; a cannibal may reassess survivors rather than replaying an
   obsolete report.
+<!-- DE67:DFS-SLICE:END id=R-008-S001 claim=R-008 -->
 - [x] Autonomous inter-camp war is outside this version. Other hostile camps contribute route risk;
   they do not trigger a second unspecced faction-war simulation.
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-009-S001 claim=R-009 -->
 ### 7. Persistence, performance, and proof
 
 - [x] Camps, private leads, finite resources, outings, reservations, reports, decisions, casualties,
@@ -214,6 +231,8 @@ authorizes a response.
   route. The observer is not a gameplay owner.
 - [ ] 🔴 R-009 — Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
   shakedown contact, and cannibal darkness wait—must be proved with the changed executable.
+<!-- DE67:DFS-SLICE:END id=R-009-S001 claim=R-009 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-010-S001 claim=R-010 -->
 - [ ] 🔴 R-010 — Mac performance/save measurements for the observer and early ecology are not final
   qualification for the completed feature. Before integration, measure the full production path
   on macOS, Linux/WSL, and Windows, including scheduler cost, loaded-NPC cost, save-size growth, and
@@ -221,6 +240,7 @@ authorizes a response.
 - See `R-010`: release qualification remains blocked until the natural scout-to-decision incident,
   bandit shakedown, cannibal night raid, persistence boundaries, and relevant platform routes are
   green. `port/cdda-master` remains untouched meanwhile.
+<!-- DE67:DFS-SLICE:END id=R-010-S001 claim=R-010 -->
 
 ## Competing AI systems and override direction
 
@@ -411,6 +431,7 @@ without physical movement, route/ownership progress, or outcome credit.
 
 ### R-002 through R-010
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-002-S002 claim=R-002 -->
 - `R-002`: focused owner tests exercise `structural_observer_omt_sight_range`,
   `structural_observer_route_is_visible`, structural signal validation/retention, local-zombie
   eligibility and observation, returned-report lead ownership, and avatar-relocation non-ownership.
@@ -425,37 +446,54 @@ without physical movement, route/ownership progress, or outcome credit.
   one compact scenario and the minimum identities needed to distinguish those transitions; it does
   not require a bespoke natural-world certification run, fixture, operation, or member-identity
   chain for every invariant row.
+<!-- DE67:DFS-SLICE:END id=R-002-S002 claim=R-002 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-003-S002 claim=R-003 -->
 - `R-003`: one natural visible-burn incident plus a quiet, unattacked control distinguishes burned
   evidence and committed egress from ordinary covert neutrality. It must show no pacing, false
   anger, or route/report identity replacement.
+<!-- DE67:DFS-SLICE:END id=R-003-S002 claim=R-003 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-004-S003 claim=R-004 -->
 - `R-004`: both scouts dead yields no informed response and no wedged slot; one survivor yields a
   partial/provisional report; and a later survivor revises rather than duplicates it. Stable
   operation, member, and report identities and authoritative deaths are required.
+<!-- DE67:DFS-SLICE:END id=R-004-S003 claim=R-004 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-005-S002 claim=R-005 -->
 - `R-005`: a focused owner control rejects stale or duplicate generations and reuse of the scout
   reservation. A changed-executable incident naturally turns the matching final decision into one
   fresh response and advances it through its first production transition, with one strategic owner
   and no LLM-created ecology truth.
+<!-- DE67:DFS-SLICE:END id=R-005-S002 claim=R-005 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-006-S002 claim=R-006 -->
 - `R-006`: one paid branch and one refusal-or-attack branch distinguish real demand/payment from
   premature combat and escalation/combat/return from dialogue-only success. Both physically rally,
   close casualties and survivors, return, and write back exactly once; teleportation, invisible
   payment, broad patrol neutrality, and missing replay-safe closure fail.
+<!-- DE67:DFS-SLICE:END id=R-006-S002 claim=R-006 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-007-S002 claim=R-007 -->
 - `R-007`: a pre-darkness hold and a later true-dark attack in the same causal route distinguish
   darkness policy from elapsed-time attack. The incident engages the avatar and all loaded
   defenders, exposes no payment UI, causes no offscreen defender death, physically reconciles
   survivors and casualties, and contains no bandit-policy leakage or debug-triggered contact.
+<!-- DE67:DFS-SLICE:END id=R-007-S002 claim=R-007 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-008-S002 claim=R-008 -->
 - `R-008`: two camps contesting one site distinguishes global consumption from duplicated private
   belief. Repeat attempts before and after real stored-goods, population, or activity renewal
   distinguish cooldown-only replay from renewed opportunity. Faction aftermath applies exactly
   once; timer-created value, stale-report replay, and duplicate writeback fail.
+<!-- DE67:DFS-SLICE:END id=R-008-S002 claim=R-008 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-009-S002 claim=R-009 -->
 - `R-009`: one save/reload at each named boundary—local/abstract handoff, split return, shakedown
   contact, and cannibal darkness wait—preserves generation, epoch, member, and application identity
   and resumes through production. Schema-only or raw-save-rewrite evidence does not close it.
+<!-- DE67:DFS-SLICE:END id=R-009-S002 claim=R-009 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-010-S002 claim=R-010 -->
 - `R-010`: the same completed production path has named CPU/scheduler, retained-memory,
   save-size/load-latency, runtime, and packaging evidence on macOS, Linux/WSL, and Windows. Final
   promotion uses the reviewed orchestrator route and requires fresh explicit authority before
   touching `port/cdda-master`; no red predecessor may remain. It adds no generic final live run,
   adversarial review, or full-diff review beyond the explicitly named specification and platform
   proofs.
+<!-- DE67:DFS-SLICE:END id=R-010-S002 claim=R-010 -->
 
 ### Proof integrity
 

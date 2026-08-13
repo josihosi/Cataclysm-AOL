@@ -12,6 +12,7 @@ Lineage: `CAOL-hostile-ecology-dev`
   target drag, and unseen-versus-observed zombie danger. The remaining live causal row is real signal
   provenance through ordinary production observation and physical return; relocation and danger then
   need only their smallest changed-executable confirmation.
+  - DFS slices: `R-002-S001`, `R-002-S002`
 
   The current structural-signal footing keeps physical source `(137,49,0)` loaded from west avatar
   `(136,49,0)` while approach `(139,51,0)` and watch `(138,52,0)` remain abstract. Accepted clean HEAD
@@ -48,6 +49,7 @@ Lineage: `CAOL-hostile-ecology-dev`
 - [ ] R-003 — Prove one natural visible burn and its quiet control: the exact pair must gain
   close-contact evidence, remain covert-neutral before contact, egress coherently without pacing,
   and preserve its route/report identities.
+  - DFS slices: `R-003-S001`, `R-003-S002`
 
   Accepted whole-owner review proves the installed Phase-5 producer is intentionally non-credit and
   stops after saving an observing pair. No calibrated producer output is tracked, so current geometry
@@ -61,6 +63,7 @@ Lineage: `CAOL-hostile-ecology-dev`
 - [ ] R-004 — Prove authoritative casualty and split-return knowledge: both scouts dead yields no
   informed response and releases the mission slot; one survivor yields only a provisional report;
   a later survivor revises the same report instead of duplicating it.
+  - DFS slices: `R-004-S001`, `R-004-S002`, `R-004-S003`
 
   Accepted whole-owner review proves `structural_sortie` owns the production route. Loaded death via
   `game::cleanup_dead` and structural casualty reconciliation are authoritative; both confirmed dead
@@ -82,26 +85,32 @@ Lineage: `CAOL-hostile-ecology-dev`
 - [ ] R-005 — Wire and prove the production response owner. A matching final decision must naturally
   create one fresh response reservation and advance its first production transition; stale or
   duplicate generations, scout-party reuse, duplicate owners, and LLM-created ecology truth fail.
+  - DFS slices: `R-005-S001`, `R-005-S002`
 
 - [ ] R-006 — Prove the full bandit shakedown lifecycle through one paid branch and one refusal or
   attack branch, including fresh party reservation, physical rally/approach, real reachable-storage
   demand, controlled escalation, casualties/survivors, return, and exactly-once aftermath.
+  - DFS slices: `R-006-S001`, `R-006-S002`
 
 - [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
   one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
   defender deaths, bandit-policy leakage, or debug-created contact.
+  - DFS slices: `R-007-S001`, `R-007-S002`
 
 - [ ] R-008 — Prove exactly-once aftermath and renewable opportunity: two camps cannot consume the
   same finite site twice, and repeat shakedown eligibility requires cooldown plus demonstrably new
   stored goods, population, or activity rather than timer-created value or stale-report replay.
+  - DFS slices: `R-008-S001`, `R-008-S002`
 
 - [ ] R-009 — Prove changed-executable save/reload continuation at local/abstract handoff, split
   return, shakedown contact, and cannibal darkness wait while preserving generation, epoch, member,
   and application identities through the resumed production transition.
+  - DFS slices: `R-009-S001`, `R-009-S002`
 
 - [ ] R-010 — After every predecessor is green, measure the completed production route on macOS,
   Linux/WSL, and Windows for scheduler/loaded-NPC CPU, retained memory, save growth, save/load
   latency, runtime, and packaging. Do not touch `port/cdda-master` without fresh explicit authority.
+  - DFS slices: `R-010-S001`, `R-010-S002`
 
 ## Batch result
 
