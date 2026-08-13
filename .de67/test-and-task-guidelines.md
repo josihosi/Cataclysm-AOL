@@ -44,6 +44,10 @@ behavior before proposing another patch or dispatch. State the task's terminal D
 causal path by which its evidence can reach that outcome. Do not demand a fixed receipt shape. Ask
 the worker to stop and report expected versus observed behavior with direct evidence when a blocker
 or unexpected production result invalidates a task premise.
+Terminalize an exploration attempt as completed only when its result supplies a changed strategy and
+honest proof route ready for immediate closure freezing. If it instead disproves required geometry or
+output, or exposes an external-authority prerequisite, record a worker finding and reconcile it before
+the immutable claim deadline; an attempt terminal does not stop the item clock.
 When a task refreshes a timeout or lease from “progress,” define progress in route/ownership terms
 and name movement that must not refresh it, such as alternating or pacing tiles.
 

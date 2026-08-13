@@ -51,14 +51,28 @@ Lineage: `CAOL-hostile-ecology-dev`
   and preserve its route/report identities.
   - DFS slices: `R-003-S001`, `R-003-S002`
 
-  Accepted whole-owner review proves the installed Phase-5 producer is intentionally non-credit and
-  stops after saving an observing pair. No calibrated producer output is tracked, so current geometry
-  cannot yet prove ordinary reciprocal line of sight, legal egress/home routing, or the exact pair and
-  watch continuation. The live owner also emits no bounded identity-bound quiet-neutral or egress-
-  completion verdict. The smallest next route is to generate and inspect one real producer output,
-  then derive the burn and same-geometry quiet continuations or add only the missing owner emission.
-  That route is blocked by the same denied local Accessibility authority recorded under R-002; do not
-  substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
+  `R003-M001` completed its review before the deadline, but its own evidence contradicted the task
+  premise that unchanged geometry was read-only proof-ready. The installed Phase-5 producer is
+  intentionally non-credit and stops after saving an observing pair; no real producer output has
+  calibrated ordinary reciprocal line of sight, legal egress/home routing, or exact pair/watch
+  continuation. Treat that result as an exploration finding, not a closure-ready completion.
+
+  The finite recovery for the next fresh attempt is:
+  - after local Accessibility and one harmless input preflight are green, run the unchanged
+    non-credit producer once and retain its output; inspect the exact activity, generation, epoch,
+    pair, target, watch, route, handoff, ordinary reciprocal-LOS, and legal-egress footing on that
+    captured geometry, stopping with a finding if any required selector is false;
+  - derive a quiet and a burn continuation from that same output. The quiet branch must provide a
+    bounded identity-bound verdict for covert neutrality, no false anger, no burn, and unchanged
+    pair/watch ownership. The burn branch must use only ordinary reciprocal sight and emit shared
+    close-contact evidence, target alertness, and committed withdrawal for the same identities; and
+  - continue the burned pair through target-OMT exit, local/abstract handoff, physical return, and
+    report application, rejecting pacing or any pair, operation, generation, epoch, route, or report
+    replacement. If a named live-owner verdict is not representable, add only that read-only owner
+    emission and its accepted/forbidden matcher controls before rerunning the live route.
+
+  This recovery remains blocked by the same denied local Accessibility authority recorded under
+  R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
 - [ ] R-004 — Prove authoritative casualty and split-return knowledge: both scouts dead yields no
   informed response and releases the mission slot; one survivor yields only a provisional report;
