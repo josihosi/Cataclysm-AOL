@@ -91,10 +91,8 @@ Lineage: `CAOL-hostile-ecology-dev`
   under the same reservation and publish only a provisional carrier-scoped report; the later survivor
   must revise that same source operation report before canonical release and assessment. Add focused
   owner tests for first/later receipt, replay, casualty scope, and preserved all-dead no-report slot
-  release, then compile and run the narrow suites. Its 3,600-second estimate is derived from the
-  inspected cross-cutting owner, report, reservation, serialization, and test surfaces. Do not reuse
-  the legacy outing owner, create a second report record, or accept helper-only state mutation as a
-  physical receipt.
+  release, then compile and run the narrow suites. Do not reuse the legacy outing owner, create a
+  second report record, or accept helper-only state mutation as a physical receipt.
 
 - [ ] R-005 — Wire and prove the production response owner. A matching final decision must naturally
   create one fresh response reservation and advance its first production transition; stale or
