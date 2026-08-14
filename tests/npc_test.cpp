@@ -68,6 +68,9 @@
 #include "pathfinding.h"
 #include "pocket_type.h"
 #include "pimpl.h"
+
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_homeward_boundary_steps_for_test();
 #include "player_activity.h"
 #include "player_helpers.h"
 #include "point.h"
@@ -2048,8 +2051,29 @@ TEST_CASE( "inactive_structural_pair_physically_returns_through_report_and_decis
     outing.local_handoff.handoff_epoch = outing.handoff_epoch;
     outing.local_handoff.waypoint_index = outing.waypoint_index;
     outing.local_handoff.phase = outing.phase;
+    const tripoint_abs_omt &homeward_omt = outing.shared_route[
+                                            static_cast<std::size_t>( outing.waypoint_index )];
+    outing.local_handoff.route_position = homeward_omt;
+    outing.local_handoff.approach_from = outing.shared_route[
+                                           static_cast<std::size_t>( outing.waypoint_index - 1 )];
     outing.local_handoff.egress_omt = outing.shared_route.back();
     outing.local_handoff.committed_minutes = current_minutes;
+    outing.local_handoff.cohesion_best_staging_distances.assign(
+        outing.local_handoff.members.size(), 0 );
+    outing.local_handoff.cohesion_assembled = true;
+    outing.local_handoff.cohesion_deadline_minutes = -1;
+    outing.local_handoff.cohesion_reroutes_used = 0;
+    outing.local_handoff.cohesion_abort_return = false;
+    const tripoint_abs_ms homeward_origin = project_to<coords::ms>( homeward_omt );
+    for( std::size_t index = 0; index < outing.local_handoff.members.size(); ++index ) {
+        bandit_live_world::local_handoff_member_snapshot &snapshot =
+            outing.local_handoff.members[index];
+        snapshot.entry_position = tripoint_abs_ms( homeward_origin.x() + static_cast<int>( index ),
+                                  homeward_origin.y(), homeward_origin.z() );
+        snapshot.staging_position = tripoint_abs_ms( homeward_origin.x() + static_cast<int>( index ),
+                                    homeward_origin.y() + 4, homeward_origin.z() );
+        snapshot.exit_position = snapshot.entry_position;
+    }
     outing.assessment.observation_started_minutes = current_minutes - 60;
     outing.assessment.last_progress_minutes = current_minutes;
     outing.assessment.pinned_target_revision = outing.target_lead_revision;
@@ -2087,6 +2111,8 @@ TEST_CASE( "inactive_structural_pair_physically_returns_through_report_and_decis
     const std::vector<tripoint_abs_omt> initial_positions = {
         scout.pos_abs_omt(), partner.pos_abs_omt()
     };
+
+    REQUIRE( bandit_live_world::current_external_simulation_cursor( site ) );
 
     g->reload_npcs();
     REQUIRE_FALSE( scout.is_active() );
@@ -2137,6 +2163,173 @@ TEST_CASE( "inactive_structural_pair_physically_returns_through_report_and_decis
            bandit_live_world::camp_decision_state::report_awaiting_assessment );
     CHECK( completed_site->camp_decision.source_report_activity_id == activity_id );
     CHECK( completed_site->camp_decision.source_report_generation == generation );
+}
+
+TEST_CASE( "structural_casualty_survivor_reaches_physical_return_receipt",
+           "[npc][bandit][physical_return_integration][r004]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    const time_point original_time = calendar::turn;
+    on_out_of_scope restore_time( [original_time]() {
+        set_time( original_time );
+    } );
+    set_time_to_day();
+
+    npc &fallen = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &survivor = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    const character_id fallen_id = fallen.getID();
+    const character_id survivor_id = survivor.getID();
+    const std::vector<character_id> generated_ids = { fallen.getID(), survivor.getID() };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+    const int current_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site( fallen, survivor, current_minutes ) );
+    bandit_live_world::site_record &site = live_state.sites.front();
+    const std::string site_id = site.site_id;
+    site.anchor = tripoint_abs_omt( site.anchor.x() - 2, site.anchor.y(), site.anchor.z() );
+    site.footprint = { site.anchor };
+    site.site_kind = bandit_live_world::owned_site_kind::bandit_camp;
+    site.profile = bandit_live_world::hostile_site_profile::camp_style;
+    site.routine_activated_minutes = current_minutes;
+    site.active_outing.clear();
+    for( bandit_live_world::member_record &member : site.members ) {
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    const tripoint_abs_omt target_omt( site.anchor.x() + 5, site.anchor.y(), site.anchor.z() );
+    const bandit_live_world::structural_bounty_read bounty =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead(
+                 site, target_omt, bounty, current_minutes ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
+                                    site.site_id, target_omt, "town" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, current_minutes );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, current_minutes ) );
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    const std::optional<bandit_live_world::simulation_advance_cursor> handoff_cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( handoff_cursor );
+    const tripoint_abs_omt initial_omt = outing.shared_route.front();
+    const tripoint_abs_ms initial_origin = project_to<coords::ms>( initial_omt );
+    std::vector<bandit_live_world::local_handoff_member_read> handoff_reads;
+    for( std::size_t index = 0; index < outing.member_ids.size(); ++index ) {
+        handoff_reads.push_back( { outing.member_ids[index], true, false, 90,
+                                   index == 0 ? fallen.pos_abs() : survivor.pos_abs(),
+                                   tripoint_abs_ms( initial_origin.x() + static_cast<int>( index ),
+                                                     initial_origin.y(), initial_origin.z() ),
+                                   tripoint_abs_ms( initial_origin.x() + static_cast<int>( index ),
+                                                     initial_origin.y() + 1, initial_origin.z() ) } );
+    }
+    const bandit_live_world::local_handoff_plan handoff =
+        bandit_live_world::plan_local_pair_handoff( site, *handoff_cursor, current_minutes,
+                handoff_reads );
+    REQUIRE( handoff.valid );
+    REQUIRE( bandit_live_world::commit_local_pair_handoff( site, handoff,
+    []( const bandit_live_world::local_handoff_member_snapshot & ) {
+        return true;
+    }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    outing.phase = bandit_live_world::scout_phase::returning_home;
+    outing.waypoint_index = 3;
+    outing.local_handoff.phase = outing.phase;
+    outing.local_handoff.waypoint_index = outing.waypoint_index;
+    outing.local_handoff.route_position = outing.shared_route[3];
+    outing.local_handoff.approach_from = outing.shared_route[2];
+    outing.local_handoff.egress_omt = outing.shared_route.back();
+    outing.local_handoff.committed_minutes = current_minutes;
+    outing.local_handoff.cohesion_best_staging_distances.assign(
+        outing.local_handoff.members.size(), 0 );
+    const tripoint_abs_ms homeward_origin = project_to<coords::ms>( outing.local_handoff.route_position );
+    for( std::size_t index = 0; index < outing.local_handoff.members.size(); ++index ) {
+        bandit_live_world::local_handoff_member_snapshot &snapshot =
+            outing.local_handoff.members[index];
+        snapshot.entry_position = tripoint_abs_ms( homeward_origin.x() + static_cast<int>( index ),
+                                  homeward_origin.y(), homeward_origin.z() );
+        snapshot.staging_position = tripoint_abs_ms( homeward_origin.x() + static_cast<int>( index ),
+                                    homeward_origin.y() + 1, homeward_origin.z() );
+        snapshot.exit_position = snapshot.entry_position;
+    }
+    outing.last_progress_minutes = current_minutes;
+    outing.last_advanced_minutes = current_minutes;
+    outing.assessment.observation_started_minutes = current_minutes - 60;
+    outing.assessment.last_progress_minutes = current_minutes;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    outing.assessment.exit_reason = "physical casualty return";
+    outing.schema_version = 10;
+    const tripoint_abs_omt &homeward_omt = outing.shared_route[
+                                           static_cast<std::size_t>( outing.waypoint_index )];
+    const int homeward_distance = std::max( { 1, std::abs( site.anchor.x() - homeward_omt.x() ),
+                                              std::abs( site.anchor.y() - homeward_omt.y() ) } );
+    outing.expected_return_minutes = current_minutes + std::clamp( homeward_distance * 10, 30, 180 );
+    outing.missing_deadline_minutes = outing.expected_return_minutes + 24 * 60;
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    REQUIRE( bandit_live_world::reconcile_local_pair_casualties(
+                 site, *cursor, { { fallen.getID(), bandit_live_world::member_state::dead,
+                                    outing.local_handoff.members.front().exit_position } },
+                 current_minutes ) );
+    g->reload_npcs();
+    npc *const loaded_survivor = g->find_npc( survivor_id );
+    REQUIRE( loaded_survivor != nullptr );
+    map &here = get_map();
+    CHECK_FALSE( here.inbounds( project_to<coords::ms>( site.anchor ) + point( SEEX, SEEY ) ) );
+    const tripoint_abs_ms boundary_departure( 0, 47, loaded_survivor->pos_abs().z() );
+    REQUIRE( here.inbounds( boundary_departure ) );
+    loaded_survivor->setpos( here, here.get_bub( boundary_departure ) );
+    loaded_survivor->goal = site.anchor;
+    loaded_survivor->omt_path = { site.anchor,
+                                  tripoint_abs_omt( -1, site.anchor.y(), site.anchor.z() ),
+                                  tripoint_abs_omt( 0, site.anchor.y(), site.anchor.z() ),
+                                  outing.shared_route[3] };
+    loaded_survivor->set_mission( NPC_MISSION_TRAVELLING );
+    loaded_survivor->add_effect( effect_npc_suspend, 1_hours );
+    const auto boundary_steps = live_bandit_homeward_boundary_steps_for_test();
+    const auto boundary_step = boundary_steps.find( survivor_id );
+    REQUIRE( boundary_step != boundary_steps.end() );
+    CHECK( boundary_step->second.first == boundary_departure );
+    CHECK_FALSE( here.inbounds( boundary_step->second.second ) );
+    set_time( calendar::turn + 1_hours );
+    process_overmap_npc_move_for_test();
+    const bandit_live_world::site_record *site_after_overmap = live_state.find_site( site_id );
+    REQUIRE( site_after_overmap != nullptr );
+    REQUIRE( site_after_overmap->active_outing.member_return_receipts.size() == 1 );
+    process_monsters_and_npcs_turn_for_test();
+    const bandit_live_world::site_record *site_after_monmove = live_state.find_site( site_id );
+    REQUIRE( site_after_monmove != nullptr );
+    REQUIRE( site_after_monmove->active_outing.member_return_receipts.size() == 1 );
+    CHECK( site_after_monmove->active_outing.member_return_receipts.front().member_id == survivor_id );
+    CHECK( site_after_monmove->find_member( fallen_id )->state ==
+           bandit_live_world::member_state::dead );
+    CHECK( site_after_monmove->find_member( survivor_id )->state ==
+           bandit_live_world::member_state::at_home );
+    const bandit_live_world::structural_outing_result maintenance =
+        bandit_live_world::advance_structural_bounty_outings(
+            live_state, to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ), {} );
+    INFO( "maintenance notes=" << maintenance.notes.size() );
+    const bandit_live_world::site_record *completed_site = live_state.find_site( site_id );
+    REQUIRE( completed_site != nullptr );
+    REQUIRE( completed_site->current_scout_report.is_present() );
+    CHECK( completed_site->current_scout_report.provisional );
+    CHECK( completed_site->current_scout_report.carrier_ids ==
+           std::vector<character_id>{ survivor_id } );
 }
 
 TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",

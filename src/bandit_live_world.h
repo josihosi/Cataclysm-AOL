@@ -477,6 +477,15 @@ struct local_pair_casualty_read {
     tripoint_abs_ms last_position;
 };
 
+struct structural_member_return_receipt {
+    character_id member_id;
+    std::string application_key;
+    int returned_minutes = -1;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct local_handoff_plan {
     bool valid = false;
     simulation_advance_cursor expected_cursor;
@@ -602,6 +611,7 @@ struct scout_report_record {
     std::string target_lead_id;
     int target_lead_revision = 0;
     std::string application_key;
+    std::vector<character_id> carrier_ids;
     std::vector<sortie_observation> observations;
     scout_assessment_state assessment;
     std::vector<character_id> casualty_ids;
@@ -701,6 +711,7 @@ struct active_outing_state {
     std::string return_application_key;
     std::string report_application_key;
     std::string cargo_application_key;
+    std::vector<structural_member_return_receipt> member_return_receipts;
     local_handoff_snapshot local_handoff;
     abstract_encounter_state abstract_encounter;
     int abstract_detour_attempts = 0;
@@ -1743,6 +1754,9 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
         const local_dematerialization_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
         const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+bool record_structural_member_physical_return( site_record &site,
+        const simulation_advance_cursor &expected_cursor, character_id member_id,
+        const tripoint_abs_omt &returned_omt, int current_minutes );
 local_handoff_commit_result start_local_pair_alternate_watch_reposition(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     int current_minutes );
