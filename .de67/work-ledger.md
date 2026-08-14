@@ -82,17 +82,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
   scheduler is the production owner. Freeze these closure gaps:
 
-  - `G-004`: at scheduler hour N, publish decision CAS plus selection-bound plan/apply as one
-    failure-atomic site candidate; stale input or replay leaves the prior site intact.
   - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
     cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
 
-  Next closure attempt `R005-M005` binds `G-004` revision 1. Wire the closed live materializer,
-  authoritative member reads, canonical route/rally adapter, and authorized plan/apply into the
-  hourly scheduler. At hour N, transition the report decision and apply the operation only on one
-  site candidate; any stale input, failed route, insufficient selection, or apply rejection must
-  leave the pre-attempt decision and operation state intact. Prove one assembling reservation and
-  exact scheduler-hour replay suppression without advancing outbound.
+  Final closure attempt `R005-M006` binds `G-005` revision 1. On the first later scheduler hour,
+  advance only the same active assembling hostile operation through its exact simulation cursor to
+  outbound. Revalidate every selected member at home/ready, preserve the named reserve at home,
+  reject same-hour, stale cursor, changed readiness, duplicate ownership, or replay byte-identically,
+  and prove the real `process_overmap_npc_move_for_test()` route reaches exactly one outbound state.
 
   The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
   measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
