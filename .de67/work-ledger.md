@@ -79,11 +79,22 @@ Lineage: `CAOL-hostile-ecology-dev`
   defender deaths, bandit-policy leakage, or debug-created contact.
   - DFS slices: `R-007-S001`, `R-007-S002`
 
-  Exploration learning goal: map the production owners and observable route that carry the exact
-  fresh cannibal party from the shared hostile scheduler/rally spine through a true-darkness hold,
-  loaded avatar-and-defender combat, and physical casualty/survivor return. End only with a finite
-  closure map and changed-executable proof route that distinguish darkness from elapsed time and
-  reject payment UI, offscreen deaths, bandit-policy leakage, debug contact, and identity replay.
+  Completed exploration `R007-M001` proves the shared scheduler, authorized response, party sizing,
+  and physical rally owners are reusable, but production has no true-dark hold, non-shakedown
+  contact dispatcher, all-loaded-defender target owner, or raid casualty/return owner. Freeze these
+  ordered closure gaps:
+
+  - `G-001`: own a raid-aware rally hold until true local darkness, then replay-safe physical
+    approach and committed contact for the same identities.
+  - `G-002`: dispatch committed raid contact to combat against the avatar and every loaded allied
+    defender without shakedown UI, broad bandit policy, or offscreen defender mutation.
+  - `G-003`: reconcile authoritative raid casualties and survivors into survivor-only physical
+    return, all-dead or arrival terminal release, and no shakedown aftermath leakage.
+
+  One changed-executable production fixture must carry the exact scheduler-raised raid through the
+  byte-stable pre-dark hold, true-night contact, loaded-only combat, and physical return, with
+  missing identity/cursor/path and replay controls inert. The existing attack-not-extort policy
+  control passes 61 assertions.
 
   The immutable whole-item estimate is 5396 seconds, the next whole second above R-006's directly
   measured 5395.802046-second first-dispatch-to-acceptance interval, used as the nearest completed
