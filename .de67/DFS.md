@@ -187,7 +187,7 @@ flowchart LR
 - [x] R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
   release remain unproved through the natural authoritative death and return routes.
 <!-- DE67:DFS-SLICE:END id=R-004-S002 claim=R-004 -->
-- [ ] 🔴 R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
+- [x] R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
   to tests. `transition_hostile_operation_phase` is likewise exercised by tests and origin-recall
   cleanup, not by a complete live response lifecycle. The follow-on owner is therefore scaffolding,
   not an implemented player-facing feature.

@@ -74,27 +74,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   This recovery remains blocked by the same denied local Accessibility authority recorded under
   R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
-- [ ] R-005 — Wire and prove the production response owner. A matching final decision must naturally
-  create one fresh response reservation and advance its first production transition; stale or
-  duplicate generations, scout-party reuse, duplicate owners, and LLM-created ecology truth fail.
-  - DFS slices: `R-005-S001`, `R-005-S002`
-
-  Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
-  scheduler is the production owner. Freeze these closure gaps:
-
-  - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
-    cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
-
-  Final closure attempt `R005-M006` binds `G-005` revision 1. On the first later scheduler hour,
-  advance only the same active assembling hostile operation through its exact simulation cursor to
-  outbound. Revalidate every selected member at home/ready, preserve the named reserve at home,
-  reject same-hour, stale cursor, changed readiness, duplicate ownership, or replay byte-identically,
-  and prove the real `process_overmap_npc_move_for_test()` route reaches exactly one outbound state.
-
-  The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
-  measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
-  adjacent production-owner delivery.
-
 - [ ] R-006 — Prove the full bandit shakedown lifecycle through one paid branch and one refusal or
   attack branch, including fresh party reservation, physical rally/approach, real reachable-storage
   demand, controlled escalation, casualties/survivors, return, and exactly-once aftermath.
