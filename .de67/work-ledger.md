@@ -88,10 +88,13 @@ Lineage: `CAOL-hostile-ecology-dev`
   before hourly hostile maintenance, the scheduler rejects operation commit without the exact global
   claim, and active receipts cannot renew from changed evidence. The source-bound real motor and
   target-opportunity controls passed 440 and 174 assertions from the recorded binary/input hashes.
-  G-002 is next: produce that globally claimed current-source setup, reload committed shakedown
-  contact through the full game owner, and drive visible Fight through ordinary combat/aftermath with
-  stable identities, terminal receipts, and inert replay. G-003 then proves the cannibal daylight
-  hold and exact true-night continuation after full-owner reload.
+  R-009 is reopened to exploration because the bound SDL route observed the honest global receipt
+  but structural maintenance still reported zero planned dispatches, response operations, and active
+  outings. The single learning goal is to identify how an ordinary physical scout observation and
+  return publishes a camp-local report referencing that global player-site opportunity, so the
+  scheduler may claim it without granting camps hidden-state access. Success is one authoritative
+  observation-to-report owner chain and an integrated falsifiable proof route. The visible Fight and
+  cannibal darkness-wait continuations remain unresolved closure obligations.
 
   The immutable whole-item estimate is 7864 seconds, the next whole second above R-008's directly
   measured 7863.018709897995-second first-dispatch-to-acceptance interval, used as the nearest
