@@ -82,8 +82,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
   scheduler is the production owner. Freeze these closure gaps:
 
-  - `G-002`: canonicalize the real NPC overmap path from camp to target and select its validated
-    first departure OMT as the deterministic rally.
   - `G-003`: materialize only enough concrete responders for the existing two-to-six response plus
     named home-reserve policy before live reads, with no anonymous or partial-reservation fallback.
   - `G-004`: at scheduler hour N, publish decision CAS plus selection-bound plan/apply as one
@@ -91,11 +89,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
     cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
 
-  Next closure attempt `R005-M003` binds `G-002` revision 1. Add the smallest production-facing
-  hostile route adapter around the existing NPC overmap path: reverse its target-to-origin points,
-  require exact camp/target endpoints, same z-level, bounded length, and no adjacent duplicates, and
-  select `route[1]` as the deterministic rally. Prove valid, adjacent-target, malformed, and missing
-  route controls without wiring scheduler ownership or claiming later gaps.
+  Next closure attempt `R005-M004` binds `G-003` revision 1. Add a response-specific production
+  materializer that targets the existing maximum responder count plus the named home reserve, creates
+  only missing concrete at-home candidates through the authoritative tracked-spawn path, and leaves
+  the decision awaiting assessment when creation is unavailable, partial, or still insufficient.
+  Prove bounded success and failure controls without reserving a party or claiming scheduler apply.
 
   The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
   measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
