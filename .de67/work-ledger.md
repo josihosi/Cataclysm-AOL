@@ -82,18 +82,17 @@ Lineage: `CAOL-hostile-ecology-dev`
   Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
   scheduler is the production owner. Freeze these closure gaps:
 
-  - `G-003`: materialize only enough concrete responders for the existing two-to-six response plus
-    named home-reserve policy before live reads, with no anonymous or partial-reservation fallback.
   - `G-004`: at scheduler hour N, publish decision CAS plus selection-bound plan/apply as one
     failure-atomic site candidate; stale input or replay leaves the prior site intact.
   - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
     cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
 
-  Next closure attempt `R005-M004` binds `G-003` revision 1. Add a response-specific production
-  materializer that targets the existing maximum responder count plus the named home reserve, creates
-  only missing concrete at-home candidates through the authoritative tracked-spawn path, and leaves
-  the decision awaiting assessment when creation is unavailable, partial, or still insufficient.
-  Prove bounded success and failure controls without reserving a party or claiming scheduler apply.
+  Next closure attempt `R005-M005` binds `G-004` revision 1. Wire the closed live materializer,
+  authoritative member reads, canonical route/rally adapter, and authorized plan/apply into the
+  hourly scheduler. At hour N, transition the report decision and apply the operation only on one
+  site candidate; any stale input, failed route, insufficient selection, or apply rejection must
+  leave the pre-attempt decision and operation state intact. Prove one assembling reservation and
+  exact scheduler-hour replay suppression without advancing outbound.
 
   The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
   measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
