@@ -164,7 +164,7 @@ STARTUP_HUD_BODY_PATTERNS: Tuple[Pattern[str], ...] = (
 STARTUP_HUD_STATUS_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\bmove\s*:", re.IGNORECASE),
     re.compile(r"\bsafe\s*:", re.IGNORECASE),
-    re.compile(r"\b(?:activity|hctivitu)\s*:", re.IGNORECASE),
+    re.compile(r"\bactivit\w*\s*:", re.IGNORECASE),
     re.compile(r"\bwield\s*:", re.IGNORECASE),
     re.compile(r"\bweary(?:\s+malus)?\s*:", re.IGNORECASE),
 )
@@ -7618,9 +7618,7 @@ def populate_runtime_version_comparison(summary: Dict[str, Any]) -> None:
     summary["runtime_worktree_compare_error"] = worktree_error
     if runtime_error or worktree_error:
         return
-    summary["version_matches_runtime_paths"] = not (
-        bool(summary.get("captured_dirty")) or runtime_changes or worktree_changes
-    )
+    summary["version_matches_runtime_paths"] = not (runtime_changes or worktree_changes)
 
 
 def window_area(window: Dict[str, Any]) -> int:
