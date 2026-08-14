@@ -4033,9 +4033,15 @@ TEST_CASE( "bandit_live_world_canonicalizes_reversed_hostile_operation_routes",
     const std::optional<bandit_live_world::canonical_hostile_operation_route> adjacent =
         bandit_live_world::canonicalize_hostile_operation_route( { target, anchor }, anchor,
                 target );
-    REQUIRE( adjacent );
-    CHECK( adjacent->route == std::vector<tripoint_abs_omt> { anchor, target } );
-    CHECK( adjacent->rally_omt == target );
+    CHECK_FALSE( adjacent );
+
+    const tripoint_abs_omt farther_target( 15, 20, 0 );
+    const std::optional<bandit_live_world::canonical_hostile_operation_route> farther =
+        bandit_live_world::canonicalize_hostile_operation_route(
+            { farther_target, tripoint_abs_omt( 14, 20, 0 ), tripoint_abs_omt( 13, 20, 0 ),
+              tripoint_abs_omt( 12, 20, 0 ), rally, anchor }, anchor, farther_target );
+    REQUIRE( farther );
+    CHECK( farther->rally_omt == tripoint_abs_omt( 12, 20, 0 ) );
 
     CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( {}, anchor, target ) );
     CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { target }, anchor,
@@ -24918,6 +24924,7 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     } );
 
     bandit_live_world::world_state world;
+    world.sites.reserve( 16 );
     REQUIRE( bandit_live_world::register_abstract_site( world,
              bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
              tripoint_abs_omt( 10, 20, 0 ), special_lookup, 12 ) );
@@ -25040,38 +25047,99 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
     }
 
-    const std::string assembling_operation = serialize_record( live_site.active_hostile_operation );
-    calendar::turn += 60_minutes;
-    process_overmap_npc_move_for_test();
-    REQUIRE( live_site.active_hostile_operation.is_active() );
-    CHECK( live_site.active_hostile_operation.phase ==
-           bandit_live_world::hostile_operation_phase::outbound );
-    CHECK( live_site.active_hostile_operation.reservation.member_ids ==
-           expected_selection.member_ids );
-    CHECK( live_site.active_hostile_operation.reservation.generation == expected_generation );
-    CHECK( live_site.active_hostile_operation.reservation.activity_id ==
-           live_site.site_id + "#hostile:" + std::to_string( expected_generation ) );
-    CHECK( live_site.active_hostile_operation.source_report_revision ==
-           live_site.current_scout_report.revision );
-    CHECK( live_site.active_hostile_operation.source_report_generation ==
-           live_site.current_scout_report.source_generation );
-    CHECK( live_site.active_hostile_operation.source_report_activity_id ==
-           live_site.current_scout_report.source_activity_id );
-    CHECK_FALSE( live_site.active_outing.is_active() );
-    for( const character_id id : expected_selection.member_ids ) {
-        CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::outbound );
-    }
-    for( const character_id id : expected_selection.reserve_member_ids ) {
-        CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
-        CHECK_FALSE( live_site.find_member( id )->wounded_or_unready );
-    }
-    CHECK( live_site.active_hostile_operation.last_transition_reason ==
-           "scheduler-authorized hostile operation departure" );
-    CHECK( serialize_record( live_site.active_hostile_operation ) != assembling_operation );
+    SECTION( "reserved party travels through the ordinary overmap motor" ) {
+        const std::string assembling_operation = serialize_record( live_site.active_hostile_operation );
+        calendar::turn += 60_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::outbound );
+        CHECK( live_site.active_hostile_operation.reservation.member_ids ==
+               expected_selection.member_ids );
+        CHECK( live_site.active_hostile_operation.reservation.generation == expected_generation );
+        CHECK( live_site.active_hostile_operation.reservation.activity_id ==
+               live_site.site_id + "#hostile:" + std::to_string( expected_generation ) );
+        CHECK( live_site.active_hostile_operation.source_report_revision ==
+               live_site.current_scout_report.revision );
+        CHECK( live_site.active_hostile_operation.source_report_generation ==
+               live_site.current_scout_report.source_generation );
+        CHECK( live_site.active_hostile_operation.source_report_activity_id ==
+               live_site.current_scout_report.source_activity_id );
+        CHECK_FALSE( live_site.active_outing.is_active() );
+        for( const character_id id : expected_selection.member_ids ) {
+            CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::outbound );
+        }
+        for( const character_id id : expected_selection.reserve_member_ids ) {
+            CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
+            CHECK_FALSE( live_site.find_member( id )->wounded_or_unready );
+        }
+        CHECK( live_site.active_hostile_operation.last_transition_reason ==
+               "scheduler-authorized hostile operation departure" );
+        CHECK( serialize_record( live_site.active_hostile_operation ) != assembling_operation );
+        CHECK( rl_dist( live_site.active_hostile_operation.rally_omt,
+                        live_site.active_hostile_operation.reservation.target_omt ) >= 2 );
+        CHECK( rl_dist( live_site.active_hostile_operation.rally_omt,
+                        live_site.active_hostile_operation.reservation.target_omt ) <= 3 );
+        CHECK( std::any_of( expected_selection.member_ids.begin(), expected_selection.member_ids.end(),
+        [&live_site]( const character_id id ) {
+            npc *member = g->find_npc( id );
+            return member != nullptr && member->pos_abs_omt() !=
+                   live_site.active_hostile_operation.rally_omt;
+        } ) );
 
-    const std::string before_departure_replay = serialize_record( live_site );
-    process_overmap_npc_move_for_test();
-    CHECK( serialize_record( live_site ) == before_departure_replay );
+        const std::string before_departure_replay = serialize_record( live_site );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == before_departure_replay );
+
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::rallying );
+        for( const character_id id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->pos_abs_omt() == live_site.active_hostile_operation.rally_omt );
+        }
+        for( const character_id id : expected_selection.reserve_member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
+            CHECK_FALSE( live_site.find_member( id )->wounded_or_unready );
+            CHECK( std::find( live_site.footprint.begin(), live_site.footprint.end(),
+                              member->pos_abs_omt() ) != live_site.footprint.end() );
+        }
+        CHECK_FALSE( live_site.active_outing.is_active() );
+
+        const std::string before_rally_replay = serialize_record( live_site );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == before_rally_replay );
+    }
+
+    SECTION( "a later missing reserved member leaves earlier members untouched" ) {
+        REQUIRE( expected_selection.member_ids.size() >= 2 );
+        npc *valid_member = g->find_npc( expected_selection.member_ids.front() );
+        REQUIRE( valid_member != nullptr );
+        const tripoint_abs_omt valid_goal_before = valid_member->goal;
+        const std::vector<tripoint_abs_omt> valid_path_before = valid_member->omt_path;
+        const bool valid_travelling_before = valid_member->is_travelling();
+        const character_id missing_member_id = expected_selection.member_ids.back();
+        g->remove_npc( missing_member_id );
+        generated_npc_ids.erase( std::remove( generated_npc_ids.begin(), generated_npc_ids.end(),
+                                              missing_member_id ), generated_npc_ids.end() );
+
+        calendar::turn += 60_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::outbound );
+        CHECK( valid_member->goal == valid_goal_before );
+        CHECK( valid_member->omt_path == valid_path_before );
+        CHECK( valid_member->is_travelling() == valid_travelling_before );
+        const std::string rejected_site = serialize_record( live_site );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == rejected_site );
+    }
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",

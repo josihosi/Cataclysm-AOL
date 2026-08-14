@@ -15840,7 +15840,15 @@ std::optional<canonical_hostile_operation_route> canonicalize_hostile_operation_
 
     canonical_hostile_operation_route result;
     result.route.assign( target_to_origin_path.rbegin(), target_to_origin_path.rend() );
-    result.rally_omt = result.route[1];
+    const auto rally = std::find_if( result.route.begin() + 1, result.route.end() - 1,
+    [&target_omt]( const tripoint_abs_omt & candidate ) {
+        const int distance = rl_dist( candidate, target_omt );
+        return distance >= 2 && distance <= 3;
+    } );
+    if( rally == result.route.end() - 1 ) {
+        return std::nullopt;
+    }
+    result.rally_omt = *rally;
     return result;
 }
 

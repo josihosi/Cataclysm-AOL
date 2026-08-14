@@ -1045,6 +1045,88 @@ bool live_bandit_route_member_home( npc &member_npc, const bandit_live_world::si
     return live_bandit_route_member_to( member_npc, site, site.anchor );
 }
 
+bool advance_live_bandit_hostile_rallies()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int current_minutes = live_bandit_current_minutes();
+    bool changed = false;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+        bandit_live_world::active_outing_state &reservation = operation.reservation;
+        if( site.retired_empty_site || !operation.is_active() ||
+            operation.phase != bandit_live_world::hostile_operation_phase::outbound ||
+            reservation.owner != bandit_live_world::simulation_owner::abstract ||
+            !operation.has_rally || reservation.shared_route.size() < 3 ||
+            reservation.shared_route.front() != site.anchor ||
+            reservation.shared_route.back() != reservation.target_omt ||
+            std::find( reservation.shared_route.begin() + 1,
+                       reservation.shared_route.end() - 1, operation.rally_omt ) ==
+            reservation.shared_route.end() - 1 ) {
+            continue;
+        }
+        const int rally_distance = rl_dist( operation.rally_omt, reservation.target_omt );
+        if( rally_distance < 2 || rally_distance > 3 ) {
+            continue;
+        }
+
+        struct hostile_rally_travel_order {
+            npc *member_npc;
+            std::vector<tripoint_abs_omt> route;
+        };
+        std::vector<hostile_rally_travel_order> travel_orders;
+        bool ready_to_depart = true;
+        bool all_at_rally = true;
+        for( const character_id member_id : reservation.member_ids ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            npc *member_npc = g->find_npc( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::outbound ||
+                member_npc == nullptr || member_npc->is_dead() ) {
+                ready_to_depart = false;
+                break;
+            }
+            if( member_npc->pos_abs_omt() == operation.rally_omt ) {
+                continue;
+            }
+            all_at_rally = false;
+            if( member_npc->goal == operation.rally_omt && !member_npc->omt_path.empty() &&
+                member_npc->is_travelling() ) {
+                continue;
+            }
+            const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                        member_npc->pos_abs_omt(), operation.rally_omt,
+                        overmap_path_params::for_npc() ).points;
+            if( route.empty() || route.front() != operation.rally_omt ||
+                route.back() != member_npc->pos_abs_omt() ) {
+                ready_to_depart = false;
+                break;
+            }
+            travel_orders.push_back( { member_npc, route } );
+        }
+        if( !ready_to_depart || !all_at_rally ) {
+            if( ready_to_depart ) {
+                for( hostile_rally_travel_order &order : travel_orders ) {
+                    order.member_npc->goal = operation.rally_omt;
+                    order.member_npc->omt_path = std::move( order.route );
+                    order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                    changed = true;
+                }
+            }
+            continue;
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor || current_minutes <= cursor->last_advanced_minutes ) {
+            continue;
+        }
+        changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
+                   bandit_live_world::hostile_operation_phase::outbound,
+                   bandit_live_world::hostile_operation_phase::rallying, current_minutes,
+                   "hostile operation reached persisted rally" ) ==
+                   bandit_live_world::hostile_operation_transition_result::applied;
+    }
+    return changed;
+}
+
 struct live_bandit_covert_egress_plan {
     std::vector<bandit_live_world::covert_scout_egress_candidate> candidates;
     std::map<tripoint_abs_omt,
@@ -8445,6 +8527,7 @@ void overmap_npc_move()
                                    << " recorded=" << recorded.sites_recorded
                                    << " facts=" << recorded.facts_recorded << '\n';
     }
+    advance_live_bandit_hostile_rallies();
     materialize_live_bandit_structural_handoffs();
     const auto dispatch_done = std::chrono::steady_clock::now();
     const std::set<character_id> local_pair_homeward_member_ids =
