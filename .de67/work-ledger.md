@@ -84,8 +84,10 @@ Lineage: `CAOL-hostile-ecology-dev`
   contact dispatcher, all-loaded-defender target owner, or raid casualty/return owner. Freeze these
   ordered closure gaps:
 
-  - `G-002`: dispatch committed raid contact to combat against the avatar and every loaded allied
-    defender without shakedown UI, broad bandit policy, or offscreen defender mutation.
+  - `G-002` revision 2: materialize the exact committed raid party through an authoritative
+    production local-contact owner, then dispatch those active in-bounds identities to ordinary
+    combat against the avatar and every loaded allied defender without shakedown UI, broad bandit
+    policy, debug relocation, or offscreen defender mutation.
   - `G-003`: reconcile authoritative raid casualties and survivors into survivor-only physical
     return, all-dead or arrival terminal release, and no shakedown aftermath leakage.
 
@@ -98,6 +100,12 @@ Lineage: `CAOL-hostile-ecology-dev`
   rally in daylight, then uses ordinary production paths at true night to reach committed contact
   with the same identities. The exact fixture passes 48 assertions; shared hostile and cannibal
   policy regressions pass 311 and 61 assertions.
+
+  The latest finding proves OMT committed contact leaves the exact party abstract/inactive; no
+  production owner materializes it into the avatar's loaded map, so the first G-002 revision could
+  not honestly exercise ordinary combat without prohibited direct relocation. Revision 2 must prove
+  production materialization before the loaded-only combat bridge; its unaccepted dispatcher draft
+  remains working-tree candidate code, not accepted frontier.
 
   The immutable whole-item estimate is 5396 seconds, the next whole second above R-006's directly
   measured 5395.802046-second first-dispatch-to-acceptance interval, used as the nearest completed
