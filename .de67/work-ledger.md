@@ -79,10 +79,20 @@ Lineage: `CAOL-hostile-ecology-dev`
   stored goods, population, or activity rather than timer-created value or stale-report replay.
   - DFS slices: `R-008-S001`, `R-008-S002`
 
-  Exploration learning goal: identify the authoritative global site-consumption and renewal owner,
-  its exact operation/report/generation receipt, and the observation route that distinguishes two
-  camps' private beliefs from one finite opportunity. End with a finite closure map proving cooldown
-  alone cannot renew value while real stored goods, population, or activity can.
+  Completed exploration `R008-M001` proves the existing operation/report/generation receipt is
+  replay-safe but camp-local; no world-level target consumption or renewal owner exists. Freeze:
+
+  - `G-001`: persist a world-level stable target opportunity record with observed
+    goods/population/activity revision and atomic consumed-by operation/report/generation identity.
+  - `G-002`: join terminal hostile aftermath to the global claim and attacking camp readiness,
+    cooldown, alert, and outcome transaction exactly once; stale/losing/replay remains byte-stable.
+  - `G-003`: create a new target revision only from authoritative reachable goods, loaded
+    population, or activity changes; cooldown alone cannot renew and cannibals reassess survivors.
+  - `G-004`: drive two real camps through one-target scheduler arbitration, persisted reload, one
+    winner before renewal, and one fresh authorization only after real renewal.
+
+  One changed-executable two-camp fixture must prove the exact global receipt, stale/losing replay,
+  cooldown-only rejection, real-evidence revision, and post-renewal authorization.
 
   The immutable whole-item estimate is 2910 seconds, the next whole second above R-007's directly
   measured 2908.768838-second first-dispatch-to-acceptance interval, used as the nearest completed
