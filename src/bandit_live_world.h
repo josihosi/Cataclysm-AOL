@@ -1394,6 +1394,11 @@ struct structural_bounty_maintenance_result {
     int response_rescouts_ready = 0;
     int response_decisions_abandoned = 0;
     int response_denial_rejections = 0;
+    int response_materialization_attempts = 0;
+    int response_members_materialized = 0;
+    int response_operations_planned = 0;
+    int response_operations_applied = 0;
+    int response_operation_rejections = 0;
     int dispatch_cap = 0;
     bool dispatch_cap_reached = false;
     std::vector<std::string> notes;
@@ -1661,7 +1666,12 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 const structural_threat_observer_request & )> &signal_lookup = {},
         const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch = {},
         const std::function<std::vector<response_member_power_read>( const site_record & )>
-        &response_member_read_lookup = {} );
+        &response_member_read_lookup = {},
+        const std::function<int( world_state &, std::size_t )> &materialize_for_response = {},
+        const std::function<std::optional<canonical_hostile_operation_route>(
+        const site_record & )> &hostile_route_lookup = {},
+        const std::function<bool( site_record &, const authorized_hostile_operation_plan & )>
+        &hostile_operation_apply = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 std::string render_evidence_debug_report( const world_state &state, int current_minutes );

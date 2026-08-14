@@ -6090,7 +6090,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     return read;
 }
 
-[[maybe_unused]] std::optional<bandit_live_world::canonical_hostile_operation_route>
+std::optional<bandit_live_world::canonical_hostile_operation_route>
 live_bandit_hostile_operation_route_read( const bandit_live_world::site_record &site )
 {
     const auto path = overmap_buffer.get_travel_path(
@@ -6392,6 +6392,14 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                                world, world.sites[site_index] );
                 }, []( const bandit_live_world::site_record & site ) {
                     return live_bandit_response_member_power_reads_impl( site );
+                }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
+                    if( site_index >= world.sites.size() ) {
+                        return 0;
+                    }
+                    return live_bandit_materialize_abstract_members_for_response(
+                               world, world.sites[site_index] );
+                }, []( const bandit_live_world::site_record & site ) {
+                    return live_bandit_hostile_operation_route_read( site );
                 } );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_evidence_debug_report(

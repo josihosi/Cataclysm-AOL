@@ -24899,19 +24899,21 @@ TEST_CASE( "bandit_live_world_response_materialization_targets_named_home_reserv
 }
 
 TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_members",
-           "[bandit][live_world][response_materialization][live_adapter]" )
+           "[bandit][live_world][response_materialization][live_adapter][scheduler]" )
 {
     clear_npcs();
+    const time_point saved_turn = calendar::turn;
     bandit_live_world::world_state saved_world =
         overmap_buffer.global_state.bandit_live_world;
     std::vector<character_id> generated_npc_ids;
-    on_out_of_scope cleanup( [&generated_npc_ids,
+    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn,
                               saved_world = std::move( saved_world )]() mutable {
         for( const character_id id : generated_npc_ids ) {
             g->remove_npc( id );
             overmap_buffer.remove_npc( id );
         }
         overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        calendar::turn = saved_turn;
         clear_creatures();
     } );
 
@@ -24940,7 +24942,7 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     report.source_generation = 1;
     report.source_job_type = "scout";
     report.target_id = "response-materialization-target";
-    report.target_omt = tripoint_abs_omt( 20, 20, 0 );
+    report.target_omt = tripoint_abs_omt( 6, 20, 0 );
     report.application_key = report.source_activity_id + ":report:1";
     report.delivered_minutes = 1;
     REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
@@ -24997,14 +24999,229 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     REQUIRE( created_ids.size() == 2 );
     generated_npc_ids.insert( generated_npc_ids.end(), created_ids.begin(), created_ids.end() );
 
-    live_site.camp_decision.state = bandit_live_world::camp_decision_state::idle;
-    const std::string unavailable_decision = serialize_record( live_site.camp_decision );
-    const std::string unavailable_report = serialize_record( live_site.current_scout_report );
-    CHECK( materialize_live_bandit_response_members_for_test( site_id ) == 0 );
-    CHECK( serialize_record( live_site.camp_decision ) == unavailable_decision );
-    CHECK( serialize_record( live_site.current_scout_report ) == unavailable_report );
+    calendar::turn = calendar::start_of_cataclysm + 60_minutes;
+    live_site.current_scout_report.assessment.certainty = 60;
+    live_site.current_scout_report.assessment.readiness_latched = true;
+    live_site.current_scout_report.assessment.threshold_class =
+        bandit_live_world::scout_assessment_threshold_class::normal;
+    live_site.current_scout_report.assessment.danger_high = 15;
+    live_site.current_scout_report.assessment.bounty_estimate = 2;
+    const std::vector<bandit_live_world::response_member_power_read> live_reads =
+        live_bandit_response_member_power_reads_for_test( live_site );
+    const bandit_live_world::response_party_selection_result expected_selection =
+        bandit_live_world::select_capable_response_party( live_site,
+                live_site.current_scout_report.action_policy, 15, live_reads );
+    REQUIRE( expected_selection.eligible );
+    REQUIRE( bandit_live_world::evaluate_response_authorization( live_site, 60,
+             expected_selection, live_reads ).authorized );
+    const int expected_generation = live_site.next_outing_generation;
+    process_overmap_npc_move_for_test();
+    REQUIRE( live_site.active_hostile_operation.is_active() );
+    CHECK( live_site.camp_decision.state ==
+           bandit_live_world::camp_decision_state::preparing_follow_on );
+    CHECK( live_site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::assembling );
+    CHECK( live_site.active_hostile_operation.reservation.generation == expected_generation );
+    CHECK( live_site.active_hostile_operation.reservation.activity_id ==
+           live_site.site_id + "#hostile:" + std::to_string( expected_generation ) );
+    CHECK( live_site.active_hostile_operation.source_report_revision ==
+           live_site.current_scout_report.revision );
+    CHECK( live_site.active_hostile_operation.source_report_generation ==
+           live_site.current_scout_report.source_generation );
+    CHECK( live_site.active_hostile_operation.source_report_activity_id ==
+           live_site.current_scout_report.source_activity_id );
+    CHECK( live_site.active_hostile_operation.reservation.member_ids ==
+           expected_selection.member_ids );
     CHECK_FALSE( live_site.active_outing.is_active() );
-    CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+    for( const character_id id : expected_selection.member_ids ) {
+        CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+    for( const character_id id : expected_selection.reserve_member_ids ) {
+        CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+}
+
+TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",
+           "[bandit][live_world][scheduler][response_authorization][hostile_operation]" )
+{
+    constexpr int now_minutes = 120;
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 7; ++index ) {
+        add_bandit_camp_member( world, index, 92500 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt rally( site.anchor.x() + 1, site.anchor.y(), site.anchor.z() );
+    const tripoint_abs_omt target( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    bandit_live_world::scout_report_record &report = site.current_scout_report;
+    report.revision = 5;
+    report.action_policy = bandit_live_world::camp_report_policy::bandit_shakedown;
+    report.source_activity_id = site.site_id + "#scout:2";
+    report.source_generation = 2;
+    report.source_job_type = "scout";
+    report.target_id = "scheduler-response-target";
+    report.target_omt = target;
+    report.application_key = report.source_activity_id + ":report:2";
+    report.delivered_minutes = 100;
+    report.assessment.certainty = 100;
+    report.assessment.readiness_latched = true;
+    report.assessment.threshold_class = bandit_live_world::scout_assessment_threshold_class::normal;
+    report.assessment.danger_high = 15;
+    report.assessment.bounty_estimate = 2;
+    REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+
+    const auto serialize_record = []( const auto & record ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        record.serialize( json );
+        return out.str();
+    };
+    const bandit_live_world::world_state awaiting = world;
+    const auto materialize_one = []( bandit_live_world::world_state & current,
+    const std::size_t site_index ) {
+        REQUIRE( site_index == 0 );
+        add_bandit_camp_member( current, 7, 92500 );
+        return 1;
+    };
+    const auto capable_reads = []( const bandit_live_world::site_record & current ) {
+        std::vector<bandit_live_world::response_member_power_read> result;
+        for( const character_id id : current.roster().physically_present_ids ) {
+            result.push_back( { id, true, true, true, 10 } );
+        }
+        return result;
+    };
+    const std::function<bool( bandit_live_world::site_record &,
+    const bandit_live_world::authorized_hostile_operation_plan & )> no_apply_callback;
+    const auto assert_candidate_rejected = [&serialize_record, &materialize_one](
+    bandit_live_world::world_state candidate, const auto & reads,
+    const auto & route, const auto & apply ) {
+        const std::string decision_before = serialize_record( candidate.sites.front().camp_decision );
+        const std::string operation_before = serialize_record(
+                                                 candidate.sites.front().active_hostile_operation );
+        const bandit_live_world::structural_bounty_maintenance_result rejected =
+            bandit_live_world::advance_structural_bounty_maintenance( candidate, now_minutes, 0, 0,
+                    {}, {}, {}, {}, {}, {}, reads, materialize_one, route, apply );
+        CHECK( rejected.response_materialization_attempts == 1 );
+        CHECK( candidate.sites.front().find_member( character_id( 92507 ) ) != nullptr );
+        CHECK( serialize_record( candidate.sites.front().camp_decision ) == decision_before );
+        CHECK( serialize_record( candidate.sites.front().active_hostile_operation ) ==
+               operation_before );
+    };
+    SECTION( "stale identity, insufficient selection, and rejected route preserve the candidate" ) {
+        bandit_live_world::world_state stale = awaiting;
+        stale.sites.front().current_scout_report.revision++;
+        assert_candidate_rejected( std::move( stale ), capable_reads,
+        []( const bandit_live_world::site_record & ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>();
+        }, no_apply_callback );
+
+        bandit_live_world::world_state stale_generation = awaiting;
+        stale_generation.sites.front().current_scout_report.source_generation++;
+        assert_candidate_rejected( std::move( stale_generation ), capable_reads,
+        []( const bandit_live_world::site_record & ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>();
+        }, no_apply_callback );
+
+        assert_candidate_rejected( awaiting,
+        []( const bandit_live_world::site_record & current ) {
+            std::vector<bandit_live_world::response_member_power_read> result;
+            for( const character_id id : current.roster().physically_present_ids ) {
+                result.push_back( { id, true, true, true, 1 } );
+            }
+            return result;
+        }, []( const bandit_live_world::site_record & ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>();
+        }, no_apply_callback );
+
+        assert_candidate_rejected( awaiting, capable_reads,
+        []( const bandit_live_world::site_record & current ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>(
+                       bandit_live_world::canonical_hostile_operation_route{ { current.anchor },
+                               current.anchor } );
+        }, no_apply_callback );
+
+        assert_candidate_rejected( awaiting, capable_reads,
+        [rally, target]( const bandit_live_world::site_record & current ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>(
+                       bandit_live_world::canonical_hostile_operation_route{ { current.anchor, rally,
+                               target }, rally } );
+        }, []( bandit_live_world::site_record &,
+        const bandit_live_world::authorized_hostile_operation_plan & ) {
+            return false;
+        } );
+    }
+
+    int materialize_calls = 0;
+    int reads_calls = 0;
+    int route_calls = 0;
+    const auto reads = [&materialize_calls, &reads_calls]( const bandit_live_world::site_record & current ) {
+        CHECK( materialize_calls == 1 );
+        reads_calls++;
+        std::vector<bandit_live_world::response_member_power_read> result;
+        for( const character_id id : current.roster().physically_present_ids ) {
+            result.push_back( { id, true, true, true, 10 } );
+        }
+        return result;
+    };
+    const bandit_live_world::response_party_selection_result expected_selection =
+        bandit_live_world::select_capable_response_party( site, report.action_policy,
+                report.assessment.danger_high, capable_reads( site ) );
+    const bandit_live_world::response_authorization_evaluation expected_authorization =
+        bandit_live_world::evaluate_response_authorization( site, now_minutes,
+                expected_selection, capable_reads( site ) );
+    INFO( expected_authorization.rejection_reason );
+    REQUIRE( expected_authorization.authorized );
+    const auto route = [&route_calls, rally, target]( const bandit_live_world::site_record & current ) {
+        route_calls++;
+        CHECK( current.camp_decision.state ==
+               bandit_live_world::camp_decision_state::preparing_follow_on );
+        return std::optional<bandit_live_world::canonical_hostile_operation_route>(
+                   bandit_live_world::canonical_hostile_operation_route{ { current.anchor, rally,
+                           target }, rally } );
+    };
+    const bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance( world, now_minutes, 0, 0,
+                {}, {}, {}, {}, {}, {}, reads,
+    [&materialize_calls]( bandit_live_world::world_state &, std::size_t ) {
+        materialize_calls++;
+        return 0;
+    }, route );
+    CHECK( result.response_materialization_attempts == 1 );
+    CHECK( result.response_operations_planned == 1 );
+    CHECK( result.response_operations_applied == 1 );
+    CHECK( materialize_calls == 1 );
+    CHECK( reads_calls == 1 );
+    CHECK( route_calls == 1 );
+    CHECK( site.camp_decision.state == bandit_live_world::camp_decision_state::preparing_follow_on );
+    REQUIRE( site.active_hostile_operation.is_active() );
+    CHECK( site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::assembling );
+    CHECK( site.active_hostile_operation.reservation.generation == 1 );
+    CHECK( site.active_hostile_operation.reservation.activity_id == site.site_id + "#hostile:1" );
+    CHECK( site.active_hostile_operation.source_report_revision == report.revision );
+    CHECK( site.active_hostile_operation.source_report_generation == report.source_generation );
+    CHECK( site.active_hostile_operation.source_report_activity_id == report.source_activity_id );
+    CHECK_FALSE( site.active_outing.is_active() );
+    for( const character_id id : site.active_hostile_operation.reservation.member_ids ) {
+        CHECK( site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+    for( const character_id id : expected_selection.reserve_member_ids ) {
+        CHECK( site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+
+    const std::string before_replay = serialize_world( world );
+    const bandit_live_world::structural_bounty_maintenance_result replay =
+        bandit_live_world::advance_structural_bounty_maintenance( world, now_minutes, 0, 0,
+                {}, {}, {}, {}, {}, {}, reads,
+    [&materialize_calls]( bandit_live_world::world_state &, std::size_t ) {
+        materialize_calls++;
+        return 0;
+    }, route );
+    CHECK( replay.scheduler_replay_suppressed );
+    CHECK( materialize_calls == 1 );
+    CHECK( reads_calls == 1 );
+    CHECK( route_calls == 1 );
+    CHECK( serialize_world( world ) == before_replay );
 }
 
 TEST_CASE( "bandit_live_world_response_authorization_centralizes_hard_report_and_party_gates",

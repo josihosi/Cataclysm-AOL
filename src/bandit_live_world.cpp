@@ -14526,7 +14526,12 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 const structural_threat_observer_request & )> &signal_lookup,
         const std::function<int( world_state &, std::size_t )> &materialize_for_dispatch,
         const std::function<std::vector<response_member_power_read>( const site_record & )>
-        &response_member_read_lookup )
+        &response_member_read_lookup,
+        const std::function<int( world_state &, std::size_t )> &materialize_for_response,
+        const std::function<std::optional<canonical_hostile_operation_route>(
+        const site_record & )> &hostile_route_lookup,
+        const std::function<bool( site_record &, const authorized_hostile_operation_plan & )>
+        &hostile_operation_apply )
 {
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_maintenance );
@@ -14694,9 +14699,19 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     }
     if( response_member_read_lookup ) {
         for( const std::size_t site_index : dispatch_site_indices ) {
+            if( state.sites[site_index].camp_decision.state !=
+                camp_decision_state::report_awaiting_assessment ) {
+                continue;
+            }
+            if( materialize_for_response ) {
+                result.response_materialization_attempts++;
+                result.response_members_materialized += std::max( 0,
+                        materialize_for_response( state, site_index ) );
+            }
             site_record &site = state.sites[site_index];
             if( site.camp_decision.state !=
                 camp_decision_state::report_awaiting_assessment ) {
+                result.response_operation_rejections++;
                 continue;
             }
             const std::vector<response_member_power_read> reads =
@@ -14709,6 +14724,47 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             const response_authorization_evaluation authorization =
                 evaluate_response_authorization( site, now_minutes, selection, reads );
             if( authorization.authorized ) {
+                site_record candidate = site;
+                const camp_decision_transition_result transition =
+                    transition_camp_decision_state( candidate,
+                            camp_decision_state::report_awaiting_assessment,
+                            camp_decision_state::preparing_follow_on,
+                            site.camp_decision.source_report_revision,
+                            site.camp_decision.source_report_generation, now_minutes, -1,
+                            "authorized response preparing follow-on" );
+                if( transition != camp_decision_transition_result::applied ) {
+                    result.response_operation_rejections++;
+                    continue;
+                }
+                const hostile_operation_kind operation_kind = operation_kind_for_report_policy(
+                            candidate.camp_decision.report_policy );
+                const std::optional<canonical_hostile_operation_route> route =
+                    hostile_route_lookup ? hostile_route_lookup( candidate ) : std::nullopt;
+                if( operation_kind == hostile_operation_kind::none || !route ) {
+                    result.response_operation_rejections++;
+                    continue;
+                }
+                const authorized_hostile_operation_plan plan =
+                    plan_hostile_operation_with_authorized_response( candidate, operation_kind,
+                            selection, route->route, route->rally_omt, now_minutes );
+                if( !plan.plan.valid ) {
+                    result.response_operation_rejections++;
+                    continue;
+                }
+                result.response_operations_planned++;
+                const bool applied = hostile_operation_apply ? hostile_operation_apply( candidate, plan ) :
+                                     apply_hostile_operation_plan_with_authorized_response( candidate, plan );
+                if( !applied ) {
+                    result.response_operation_rejections++;
+                    continue;
+                }
+                site = std::move( candidate );
+                result.response_operations_applied++;
+                continue;
+            }
+            if( !report_matches_camp_decision( site.current_scout_report,
+                                               site.camp_decision ) ) {
+                result.response_denial_rejections++;
                 continue;
             }
             const response_denial_resolution resolution =
@@ -15114,6 +15170,11 @@ std::string render_structural_bounty_maintenance_report(
         << " response_rescouts_ready=" << result.response_rescouts_ready
         << " response_decisions_abandoned=" << result.response_decisions_abandoned
         << " response_denial_rejections=" << result.response_denial_rejections
+        << " response_materialization_attempts=" << result.response_materialization_attempts
+        << " response_members_materialized=" << result.response_members_materialized
+        << " response_operations_planned=" << result.response_operations_planned
+        << " response_operations_applied=" << result.response_operations_applied
+        << " response_operation_rejections=" << result.response_operation_rejections
         << " dispatch_cap_reached=" << ( result.dispatch_cap_reached ? "yes" : "no" )
         << " active_outings=" << result.outing.active_outings_considered
         << " stalking_checks=" << result.outing.stalking_checks_processed
