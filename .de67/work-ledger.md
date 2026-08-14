@@ -79,6 +79,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   stored goods, population, or activity rather than timer-created value or stale-report replay.
   - DFS slices: `R-008-S001`, `R-008-S002`
 
+  Exploration learning goal: identify the authoritative global site-consumption and renewal owner,
+  its exact operation/report/generation receipt, and the observation route that distinguishes two
+  camps' private beliefs from one finite opportunity. End with a finite closure map proving cooldown
+  alone cannot renew value while real stored goods, population, or activity can.
+
+  The immutable whole-item estimate is 2910 seconds, the next whole second above R-007's directly
+  measured 2908.768838-second first-dispatch-to-acceptance interval, used as the nearest completed
+  adjacent hostile-lifecycle delivery.
+
 - [ ] R-009 — Prove changed-executable save/reload continuation at local/abstract handoff, split
   return, shakedown contact, and cannibal darkness wait while preserving generation, epoch, member,
   and application identities through the resumed production transition.
