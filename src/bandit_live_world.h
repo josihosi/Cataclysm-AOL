@@ -896,6 +896,11 @@ struct response_authorization_evaluation {
     std::string rejection_reason;
 };
 
+struct authorized_hostile_operation_plan {
+    hostile_operation_plan plan;
+    response_party_selection_result selection;
+};
+
 enum class response_denial_resolution {
     rejected,
     held,
@@ -1824,7 +1829,13 @@ hostile_operation_transition_result transition_hostile_operation_phase( site_rec
 hostile_operation_plan plan_hostile_operation( const site_record &site,
         hostile_operation_kind operation_kind, const std::vector<tripoint_abs_omt> &route,
         const tripoint_abs_omt &rally_omt, int current_minutes );
+authorized_hostile_operation_plan plan_hostile_operation_with_authorized_response( const site_record &site,
+        hostile_operation_kind operation_kind, const response_party_selection_result &selection,
+        const std::vector<tripoint_abs_omt> &route, const tripoint_abs_omt &rally_omt,
+        int current_minutes );
 bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan );
+bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
+        const authorized_hostile_operation_plan &authorized_plan );
 bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
                                       int sortie_limit_minutes );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,

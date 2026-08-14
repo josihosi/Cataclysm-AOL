@@ -3925,6 +3925,93 @@ TEST_CASE( "bandit_live_world_plans_and_applies_a_fresh_report_pinned_hostile_op
                      cannibal_rally, 702 ).valid );
 }
 
+TEST_CASE( "bandit_live_world_authorized_hostile_response_preserves_named_party_and_reserve",
+           "[bandit][live_world][hostile_operation][response_authorization]" )
+{
+    using bandit_live_world::hostile_operation_kind;
+    using bandit_live_world::response_member_power_read;
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 7; ++index ) {
+        add_bandit_camp_member( world, index, 45350 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt rally( 14, 20, 0 );
+    const tripoint_abs_omt target( 18, 20, 0 );
+    prepare_hostile_follow_on( site, 9, 4, "authorized-target", target, 900 );
+
+    site.find_member( character_id( 45350 ) )->wounded_or_unready = true;
+    site.find_member( character_id( 45351 ) )->wounded_or_unready = true;
+    std::vector<response_member_power_read> reads;
+    for( int index = 0; index < 7; ++index ) {
+        reads.push_back( { character_id( 45350 + index ), true, true, true,
+                           index < 2 ? 1 : 10 - index } );
+    }
+    const bandit_live_world::response_party_selection_result selection =
+        bandit_live_world::select_capable_response_party(
+            site, site.current_scout_report.action_policy,
+            site.current_scout_report.assessment.danger_high, reads );
+    REQUIRE( selection.eligible );
+    const std::vector<character_id> scout_ids = { character_id( 45350 ), character_id( 45351 ) };
+    CHECK_FALSE( std::any_of( selection.member_ids.begin(), selection.member_ids.end(),
+    [&scout_ids]( const character_id id ) {
+        return std::find( scout_ids.begin(), scout_ids.end(), id ) != scout_ids.end();
+    } ) );
+    REQUIRE( selection.reserve_member_ids.size() == 3 );
+    site.find_member( character_id( 45350 ) )->wounded_or_unready = false;
+    site.find_member( character_id( 45351 ) )->wounded_or_unready = false;
+
+    const bandit_live_world::response_party_selection_result divergent =
+        bandit_live_world::select_fresh_response_party( site, hostile_operation_kind::shakedown );
+    REQUIRE( divergent.eligible );
+    CHECK( divergent.member_ids != selection.member_ids );
+    const bandit_live_world::authorized_hostile_operation_plan plan =
+        bandit_live_world::plan_hostile_operation_with_authorized_response(
+            site, hostile_operation_kind::shakedown, selection,
+            { site.anchor, rally, target }, rally, 902 );
+    REQUIRE( plan.plan.valid );
+    CHECK( plan.plan.operation.reservation.member_ids == selection.member_ids );
+
+    bandit_live_world::response_party_selection_result duplicate = selection;
+    duplicate.reserve_member_ids.front() = duplicate.member_ids.front();
+    CHECK_FALSE( bandit_live_world::plan_hostile_operation_with_authorized_response(
+                     site, hostile_operation_kind::shakedown, duplicate,
+                     { site.anchor, rally, target }, rally, 902 ).plan.valid );
+    bandit_live_world::response_party_selection_result missing = selection;
+    missing.reserve_member_ids.back() = character_id( 99999 );
+    CHECK_FALSE( bandit_live_world::plan_hostile_operation_with_authorized_response(
+                     site, hostile_operation_kind::shakedown, missing,
+                     { site.anchor, rally, target }, rally, 902 ).plan.valid );
+
+    const auto requires_identical_rejection = [&plan]( bandit_live_world::world_state candidate ) {
+        const std::string before = serialize_world( candidate );
+        CHECK_FALSE( bandit_live_world::apply_hostile_operation_plan_with_authorized_response(
+                         candidate.sites.front(), plan ) );
+        CHECK( serialize_world( candidate ) == before );
+    };
+    bandit_live_world::world_state selected_unready = world;
+    selected_unready.sites.front().find_member( selection.member_ids.front() )->wounded_or_unready = true;
+    requires_identical_rejection( selected_unready );
+    bandit_live_world::world_state reserve_unready = world;
+    reserve_unready.sites.front().find_member( selection.reserve_member_ids.front() )->wounded_or_unready = true;
+    requires_identical_rejection( reserve_unready );
+    bandit_live_world::world_state stale_report = world;
+    stale_report.sites.front().current_scout_report.revision++;
+    requires_identical_rejection( stale_report );
+    bandit_live_world::world_state stale_generation = world;
+    stale_generation.sites.front().next_outing_generation++;
+    requires_identical_rejection( stale_generation );
+
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan_with_authorized_response( site, plan ) );
+    CHECK( site.active_hostile_operation.reservation.member_ids == selection.member_ids );
+    for( const character_id &member_id : selection.member_ids ) {
+        CHECK( site.find_member( member_id )->state == bandit_live_world::member_state::at_home );
+    }
+    for( const character_id &member_id : selection.reserve_member_ids ) {
+        CHECK( site.find_member( member_id )->state == bandit_live_world::member_state::at_home );
+    }
+}
+
 TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
            "[bandit][live_world][hostile_operation][phase][cas]" )
 {

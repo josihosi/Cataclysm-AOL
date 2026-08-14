@@ -15612,6 +15612,116 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     return plan;
 }
 
+static bool authorized_response_selection_is_current( const site_record &site,
+        const hostile_operation_kind operation_kind,
+        const response_party_selection_result &selection )
+{
+    const camp_report_policy policy = site.camp_decision.report_policy;
+    const bandit_dry_run::job_template expected_job =
+        operation_kind == hostile_operation_kind::raid ?
+        bandit_dry_run::job_template::raid : bandit_dry_run::job_template::toll;
+    const response_power_evaluation power = evaluate_response_party_power(
+                policy, site.current_scout_report.assessment.danger_high, { 1 } );
+    if( !selection.eligible || policy == camp_report_policy::none ||
+        selection.job != expected_job || selection.party_size < 2 ||
+        selection.party_size > static_cast<int>( max_hostile_operation_members ) ||
+        selection.party_size != static_cast<int>( selection.member_ids.size() ) ||
+        selection.required_local_reserve != hostile_response_home_reserve(
+            site.roster().living_total ) ||
+        selection.reserve_member_ids.size() != static_cast<std::size_t>(
+            selection.required_local_reserve ) || !power.valid ||
+        selection.required_power != power.required_power ||
+        selection.party_power < selection.required_power ) {
+        return false;
+    }
+
+    std::vector<character_id> checked_ids;
+    checked_ids.reserve( selection.member_ids.size() + selection.reserve_member_ids.size() );
+    const auto check_at_home_ready = [&site, &checked_ids]( const character_id & member_id ) {
+        const member_record *member = site.find_member( member_id );
+        if( !member_id.is_valid() || member == nullptr ||
+            member->state != member_state::at_home || member->wounded_or_unready ||
+            std::find( checked_ids.begin(), checked_ids.end(), member_id ) != checked_ids.end() ) {
+            return false;
+        }
+        checked_ids.push_back( member_id );
+        return true;
+    };
+    return std::all_of( selection.member_ids.begin(), selection.member_ids.end(),
+    check_at_home_ready ) && std::all_of( selection.reserve_member_ids.begin(),
+    selection.reserve_member_ids.end(), check_at_home_ready );
+}
+
+authorized_hostile_operation_plan plan_hostile_operation_with_authorized_response(
+    const site_record &site, const hostile_operation_kind operation_kind,
+    const response_party_selection_result &selection,
+    const std::vector<tripoint_abs_omt> &route, const tripoint_abs_omt &rally_omt,
+    const int current_minutes )
+{
+    authorized_hostile_operation_plan authorized_plan;
+    hostile_operation_plan &plan = authorized_plan.plan;
+    const camp_report_policy expected_policy = report_policy_for_profile(
+                effective_profile( site ) );
+    const hostile_operation_kind expected_kind = operation_kind_for_report_policy(
+                site.camp_decision.report_policy );
+    if( site.retired_empty_site || site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
+        site.camp_decision.report_policy != expected_policy ||
+        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ||
+        operation_kind != expected_kind || current_minutes < 0 ||
+        current_minutes < site.camp_decision.last_transition_minutes ||
+        !authorized_response_selection_is_current( site, operation_kind, selection ) ||
+        !hostile_operation_party_preserves_home( site, selection.member_ids.size() ) ||
+        route.size() < 2 || route.size() > max_active_outing_route_steps ||
+        route.front() != site.anchor || route.back() != site.camp_decision.target_omt ||
+        std::find( route.begin(), route.end(), rally_omt ) == route.end() ) {
+        plan.notes.push_back( "hostile operation blocked: authorized response is no longer current" );
+        return authorized_plan;
+    }
+
+    hostile_operation_state &operation = plan.operation;
+    active_outing_state &reservation = operation.reservation;
+    operation.operation_kind = operation_kind;
+    operation.phase = hostile_operation_phase::assembling;
+    operation.source_report_revision = site.current_scout_report.revision;
+    operation.source_report_generation = site.current_scout_report.source_generation;
+    operation.source_report_activity_id = site.current_scout_report.source_activity_id;
+    operation.source_report_application_key = site.current_scout_report.application_key;
+    operation.has_rally = true;
+    operation.rally_omt = rally_omt;
+    operation.last_transition_reason = "authorized hostile operation reserved from final scout report";
+    reservation.kind = outing_kind::hostile_operation;
+    reservation.activity_id = site.site_id + "#hostile:" +
+                              std::to_string( site.next_outing_generation );
+    reservation.camp_id = site.site_id;
+    reservation.generation = site.next_outing_generation;
+    reservation.member_ids = selection.member_ids;
+    reservation.leader_id = selection.member_ids.front();
+    reservation.shared_route = route;
+    reservation.waypoint_index = 0;
+    reservation.target_id = site.camp_decision.target_id;
+    reservation.target_omt = site.camp_decision.target_omt;
+    reservation.job_type = operation_kind == hostile_operation_kind::raid ? "raid" : "toll";
+    reservation.target_lead_id = site.camp_decision.target_lead_id;
+    reservation.target_lead_revision = site.camp_decision.target_lead_revision;
+    reservation.phase = scout_phase::assembling;
+    reservation.started_minutes = current_minutes;
+    reservation.last_progress_minutes = current_minutes;
+    reservation.last_advanced_minutes = current_minutes;
+    reservation.owner = simulation_owner::abstract;
+    reservation.return_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                reservation.activity_id, reservation.generation, "return" );
+    reservation.report_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                reservation.activity_id, reservation.generation, "report" );
+    reservation.cargo_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                reservation.activity_id, reservation.generation, "cargo" );
+    authorized_plan.selection = selection;
+    plan.valid = true;
+    plan.notes.push_back( "hostile operation ready: authorized report-pinned party at rally " +
+                          rally_omt.to_string() );
+    return authorized_plan;
+}
+
 hostile_operation_plan plan_hostile_operation( const site_record &site,
         const hostile_operation_kind operation_kind,
         const std::vector<tripoint_abs_omt> &route,
@@ -15759,6 +15869,72 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
             return false;
         }
         checked_member_ids.push_back( member_id );
+    }
+
+    site_record candidate = site;
+    candidate.active_hostile_operation = operation;
+    candidate.next_outing_generation++;
+    const camp_map_lead *lead = find_camp_map_dispatch_lead_for_target(
+                                    candidate, reservation.target_omt,
+                                    reservation.target_id );
+    if( lead != nullptr ) {
+        candidate.remembered_target_or_mark = reservation.target_id;
+        candidate.remembered_threat_estimate = std::max( 0, lead->threat );
+        candidate.remembered_bounty_estimate = std::max( 0, lead->bounty );
+        push_unique_mark( candidate.known_recent_marks, reservation.target_id );
+    }
+    site = std::move( candidate );
+    return true;
+}
+
+bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
+        const authorized_hostile_operation_plan &authorized_plan )
+{
+    const hostile_operation_plan &plan = authorized_plan.plan;
+    const hostile_operation_state &operation = plan.operation;
+    const active_outing_state &reservation = operation.reservation;
+    const camp_report_policy expected_policy = report_policy_for_profile(
+                effective_profile( site ) );
+    const hostile_operation_kind expected_kind = operation_kind_for_report_policy(
+                site.camp_decision.report_policy );
+    const std::string expected_activity_id = site.site_id + "#hostile:" +
+            std::to_string( site.next_outing_generation );
+    const bool rally_is_on_route = operation.has_rally &&
+                                   std::find( reservation.shared_route.begin(),
+                                           reservation.shared_route.end(), operation.rally_omt ) !=
+                                   reservation.shared_route.end();
+    if( !plan.valid || site.retired_empty_site || site.has_active_outside_pressure() ||
+        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
+        site.camp_decision.report_policy != expected_policy ||
+        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ||
+        !report_matches_hostile_operation( site.current_scout_report, operation ) ||
+        operation.operation_kind != expected_kind || operation.legacy_unpinned ||
+        operation.phase != hostile_operation_phase::assembling ||
+        reservation.kind != outing_kind::hostile_operation ||
+        reservation.phase != scout_phase::assembling || reservation.camp_id != site.site_id ||
+        reservation.activity_id != expected_activity_id ||
+        reservation.generation != site.next_outing_generation ||
+        !authorized_response_selection_is_current( site, operation.operation_kind,
+                authorized_plan.selection ) ||
+        reservation.member_ids != authorized_plan.selection.member_ids ||
+        !hostile_operation_party_preserves_home( site, reservation.member_ids.size() ) ||
+        reservation.shared_route.size() < 2 ||
+        reservation.shared_route.size() > max_active_outing_route_steps ||
+        reservation.shared_route.front() != site.anchor ||
+        reservation.shared_route.back() != site.camp_decision.target_omt ||
+        !rally_is_on_route || reservation.target_id != site.camp_decision.target_id ||
+        reservation.target_omt != site.camp_decision.target_omt ||
+        reservation.target_lead_id != site.camp_decision.target_lead_id ||
+        reservation.target_lead_revision != site.camp_decision.target_lead_revision ||
+        !hostile_operation_job_matches( operation.operation_kind, reservation.job_type ) ||
+        reservation.started_minutes < site.camp_decision.last_transition_minutes ||
+        reservation.started_minutes != reservation.last_progress_minutes ||
+        reservation.started_minutes != reservation.last_advanced_minutes ||
+        reservation.owner != simulation_owner::abstract || reservation.handoff_epoch != 0 ||
+        !reservation.observations.empty() || !reservation.casualty_ids.empty() ||
+        !reservation.resolved_member_ids.empty() || reservation.cargo.supply_units != 0 ||
+        reservation.cargo.trade_value != 0 ) {
+        return false;
     }
 
     site_record candidate = site;
