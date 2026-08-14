@@ -206,7 +206,7 @@ authorizes a response.
   The parley-neutrality hook exists, but no natural scout-to-shakedown run proves the lifecycle.
 <!-- DE67:DFS-SLICE:END id=R-006-S001 claim=R-006 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-007-S001 claim=R-007 -->
-- [ ] 🔴 R-007 — **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
+- [x] R-007 — **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
   travel physically, rally in concealment at a plausible two-to-three-OMT planning distance, wait
   for true local darkness, and attack the avatar plus all loaded camp defenders. Cannibals never
   open the payment interface. No invisible offscreen defender deaths are permitted. The state

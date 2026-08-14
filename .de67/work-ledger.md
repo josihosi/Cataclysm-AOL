@@ -74,39 +74,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   This recovery remains blocked by the same denied local Accessibility authority recorded under
   R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
-- [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
-  one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
-  defender deaths, bandit-policy leakage, or debug-created contact.
-  - DFS slices: `R-007-S001`, `R-007-S002`
-
-  Completed exploration `R007-M001` proves the shared scheduler, authorized response, party sizing,
-  and physical rally owners are reusable, but production has no true-dark hold, non-shakedown
-  contact dispatcher, all-loaded-defender target owner, or raid casualty/return owner. Freeze these
-  ordered closure gaps:
-
-  - `G-003`: reconcile authoritative raid casualties and survivors into survivor-only physical
-    return, all-dead or arrival terminal release, and no shakedown aftermath leakage.
-
-  One changed-executable production fixture must carry the exact scheduler-raised raid through the
-  byte-stable pre-dark hold, true-night contact, loaded-only combat, and physical return, with
-  missing identity/cursor/path and replay controls inert. The existing attack-not-extort policy
-  control passes 61 assertions.
-
-  `G-001` is closed at checkpoint `967800e778`: a real-NPC raid holds byte-stably at its physical
-  rally in daylight, then uses ordinary production paths at true night to reach committed contact
-  with the same identities. The exact fixture passes 48 assertions; shared hostile and cannibal
-  policy regressions pass 311 and 61 assertions.
-
-  `G-002` revision 2 is closed at checkpoint `440b756433`: production transactionally materializes
-  the exact committed party, and a three-member raid applies ordinary observed pressure to the
-  avatar and two loaded allied defenders while an off-map ally and all shakedown/payment/parley
-  state remain untouched. The focused fixture passes 92 assertions; shared hostile, cannibal policy,
-  and shakedown regressions pass 311, 61, and 58 assertions.
-
-  The immutable whole-item estimate is 5396 seconds, the next whole second above R-006's directly
-  measured 5395.802046-second first-dispatch-to-acceptance interval, used as the nearest completed
-  adjacent hostile-lifecycle delivery.
-
 - [ ] R-008 — Prove exactly-once aftermath and renewable opportunity: two camps cannot consume the
   same finite site twice, and repeat shakedown eligibility requires cooldown plus demonstrably new
   stored goods, population, or activity rather than timer-created value or stale-report replay.
