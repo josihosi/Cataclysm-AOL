@@ -83,8 +83,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   the real dialogue, trade, fight, and narrow parley spine begins only after local contact. Freeze
   these ordered closure gaps:
 
-  - `G-003`: replace paid immediate logical release with real trade-backed, identity-bound
-    returning-home travel and terminal release only after physical survivor arrival.
   - `G-004`: reconcile refusal/player-attack combat from authoritative live deaths and survivors
     into returning-home travel, casualty closure, and terminal release for the hostile operation.
   - `G-005`: persist and enforce one hostile operation/report/generation-keyed terminal aftermath
@@ -104,6 +102,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   local toll reservation only after contact. The changed executable passed the natural lifecycle at
   195 assertions and the focused shakedown surface at 58 assertions; authoritative missing-member,
   reserve-exclusion, and replay controls remain inert.
+
+  `G-003` is closed at checkpoint `e83fe2d588`: successful real trade preserves the exact hostile
+  reservation through ordinary physical return to the persisted anchor, and releases it only after
+  every tracked survivor arrives. The changed executable passed the natural adapter at 214
+  assertions and retained the 58-assertion shakedown surface contract.
 
 - [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
   one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
