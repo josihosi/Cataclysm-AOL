@@ -79,6 +79,26 @@ Lineage: `CAOL-hostile-ecology-dev`
   demand, controlled escalation, casualties/survivors, return, and exactly-once aftermath.
   - DFS slices: `R-006-S001`, `R-006-S002`
 
+  Completed exploration `R006-M001` proves the production scheduler reaches only outbound while
+  the real dialogue, trade, fight, and narrow parley spine begins only after local contact. Freeze
+  these ordered closure gaps:
+
+  - `G-001`: own canonical hostile outbound travel for the exact reserved party, materializing and
+    advancing real NPCs until all eligible members physically reach the persisted plausible
+    two-to-three-OMT rally, then atomically transition outbound to rallying.
+  - `G-002`: own rallying through open physical approach and committed local contact for the same
+    identities, with precise shakedown-only parley neutrality and no premature patrol combat.
+  - `G-003`: replace paid immediate logical release with real trade-backed, identity-bound
+    returning-home travel and terminal release only after physical survivor arrival.
+  - `G-004`: reconcile refusal/player-attack combat from authoritative live deaths and survivors
+    into returning-home travel, casualty closure, and terminal release for the hostile operation.
+  - `G-005`: persist and enforce one hostile operation/report/generation-keyed terminal aftermath
+    receipt so paid and fight writeback are exactly once and replay byte-stable.
+
+  The immutable whole-item estimate is 5720 seconds, the next whole second above R-005's directly
+  measured 5719.554281-second first-dispatch-to-acceptance interval, used as the nearest completed
+  adjacent response-owner delivery.
+
 - [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
   one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
   defender deaths, bandit-policy leakage, or debug-created contact.
