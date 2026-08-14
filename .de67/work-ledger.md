@@ -79,11 +79,14 @@ Lineage: `CAOL-hostile-ecology-dev`
   stored goods, population, or activity rather than timer-created value or stale-report replay.
   - DFS slices: `R-008-S001`, `R-008-S002`
 
-  `G-003` revision 1 creates a new target revision only from authoritative reachable goods, loaded
-  population, or activity changes. Cooldown or elapsed time alone must remain byte-stable and cannot
-  renew eligibility; cannibals must discard obsolete reports and reassess survivors. Prove the
-  evidence-to-revision owner and its persisted negative controls in one changed executable. Do not
-  enter `G-004` scheduler arbitration.
+  `G-002~B1` revision 1 repairs the invalidated terminal reload proof. Canonicalize the prepared
+  retained-report generation at its responsible fixture or production owner without weakening byte
+  equality, rebuild one exact `TESTS=1` artifact with independently checkable source/test provenance,
+  and rerun the unchanged planner, winning aftermath, replay, stale/losing, reservation-release, and
+  settled/reloaded route. The first proved divergence is `applied_report_generation` 0 -> 4.
+
+  The unaccepted G-003 renewal candidate remains in the three dirty product files. Preserve it while
+  repairing and re-proving `G-002~B1`; G-003 revision 2 and G-004 remain open and out of scope.
 
   The immutable whole-item estimate is 2910 seconds, the next whole second above R-007's directly
   measured 2908.768838-second first-dispatch-to-acceptance interval, used as the nearest completed

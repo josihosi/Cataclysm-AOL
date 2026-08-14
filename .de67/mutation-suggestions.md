@@ -71,3 +71,44 @@ falsify evidence, exceed authority, or erase attempt accounting.
   `ef4f61c407cc77eaf34ee66b3d5ccf8f97c06b8e`. The routine push remains pending because
   noninteractive GitHub credential lookup failed with `failed to get: -25308`; no alternate
   remote or authentication route was assumed.
+
+## R008-M004 integrity breach — reload proof was not bound to the tested artifact
+
+- **Short verdict:** R008-M004's claimed changed-`TESTS=1` settled/reloaded equality is false for
+  the exact G-002 fixture; acceptance did not establish that the invoked executable matched the
+  relevant source/test snapshot or inspect the serializer/deserializer normalization it claimed to
+  prove.
+- **Cause and direct evidence:** At clean checkpoint `a2d0f7bd04`,
+  `prepare_hostile_follow_on` gives the retained non-provisional scout report source generation 4
+  while `site_record::applied_report_generation` remains its default 0. Site serialization writes
+  that 0, but `site_record::deserialize` raises it to the retained report's source generation.
+  Terminal aftermath and hostile reservation release do not canonicalize that field. A rebuild
+  from an unchanged current source snapshot produced `tests/cata_test` SHA-256
+  `0e55c6b80240b6be355f247835bc48fb217a1b64531c00b10da2001f6aef0db4`, and the exact terminal
+  test failed at `tests/bandit_live_world_test.cpp:25848`; the first isolated serialized divergence
+  is `applied_report_generation` 0 -> 4. The diff from `a2d0f7bd04` to the current G-003 candidate
+  changes opportunity evidence/revision/receipt renewal and cannibal report clearing, not this
+  normalization, fixture value, or terminal owner.
+- **Micro recovery (G-002~B1 revision 1):** Preserve exact settled/reloaded byte equality. First
+  make the prepared terminal state canonical at its responsible fixture or production owner without
+  bypassing deserialization or weakening the assertion. Then rebuild the exact `TESTS=1` artifact
+  from unchanged relevant inputs and bind the invoked executable to that snapshot. Finally rerun
+  the production planner, winning aftermath, duplicate/stale/losing controls, reservation release,
+  and settled/reloaded comparison; inspect the named serialized fields and accept only exact
+  equality. G-003 remains unaccepted and G-004 remains out of scope.
+- **Macro candidate:** Amend only canonical
+  `de-67-3/assets/environment/test-and-task-guidelines.md` under **Test checking**. Compiled proof
+  must carry independently checkable provenance binding the invoked executable to the exact
+  unchanged relevant source/test snapshot and successful build; an unbound "changed executable"
+  claim is inadmissible. Save/reload proof must inspect the fixture's serialized pre-state and the
+  owning serializer/deserializer normalization, run the exact round-trip comparison in that bound
+  artifact, and report the first named divergence on failure.
+- **Affected surface:** Product recovery is confined to successor gap G-002~B1's canonical-state
+  repair and unchanged proof route. Method mutation is confined to the canonical Test checking
+  body. Guard receipt
+  `03f7e800a555b8bc2116b3a9e35e8b497c5bf75ccfc8d3f9deb5a99a813cfb49` was promoted
+  byte-for-byte and checkpointed in canonical de67-lab commit
+  `2855cdd023cf6fa86093d1534b082acd2b8b8aca`. Its routine push was attempted and failed
+  noninteractively with `failed to get: -25308`; no alternate credential or remote was assumed.
+  Product code, workspace-local guideline copies, protected method files, clocks, and proof strength
+  remain unchanged by this review.
