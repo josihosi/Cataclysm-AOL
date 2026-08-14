@@ -751,6 +751,11 @@ struct hostile_operation_state {
     int source_report_generation = 0;
     std::string source_report_activity_id;
     std::string source_report_application_key;
+    std::string shakedown_pending_branch;
+    int shakedown_pending_demanded_value = 0;
+    int shakedown_pending_surrendered_value = 0;
+    int shakedown_pending_reachable_value = 0;
+    bool shakedown_pending_basecamp_scene = false;
     bool has_rally = false;
     tripoint_abs_omt rally_omt;
     std::string last_transition_reason;
@@ -938,6 +943,10 @@ struct site_record {
     int applied_report_generation = 0;
     int applied_cargo_generation = 0;
     std::string last_cargo_application_key;
+    std::string last_hostile_shakedown_aftermath_key;
+    std::string last_hostile_shakedown_operation_id;
+    std::string last_hostile_shakedown_report_key;
+    int last_hostile_shakedown_generation = 0;
     int applied_resource_generation = 0;
     std::string last_resource_application_key;
     int last_resource_claimed_units = 0;
@@ -1864,6 +1873,8 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool );
 shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome );
+bool apply_terminal_hostile_shakedown_aftermath( site_record &site,
+        const std::string &expected_activity_id, int expected_generation );
 void begin_shakedown_basecamp_defender_observation( site_record &site, int live_defenders );
 shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
         int live_defenders );

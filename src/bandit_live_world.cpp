@@ -7819,6 +7819,11 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "source_report_generation", std::max( 0, source_report_generation ) );
     json.member( "source_report_activity_id", source_report_activity_id );
     json.member( "source_report_application_key", source_report_application_key );
+    json.member( "shakedown_pending_branch", shakedown_pending_branch );
+    json.member( "shakedown_pending_demanded_value", shakedown_pending_demanded_value );
+    json.member( "shakedown_pending_surrendered_value", shakedown_pending_surrendered_value );
+    json.member( "shakedown_pending_reachable_value", shakedown_pending_reachable_value );
+    json.member( "shakedown_pending_basecamp_scene", shakedown_pending_basecamp_scene );
     json.member( "has_rally", has_rally );
     json.member( "rally_omt", rally_omt );
     json.member( "last_transition_reason",
@@ -7851,6 +7856,11 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "source_report_generation", candidate.source_report_generation );
     jo.read( "source_report_activity_id", candidate.source_report_activity_id );
     jo.read( "source_report_application_key", candidate.source_report_application_key );
+    jo.read( "shakedown_pending_branch", candidate.shakedown_pending_branch );
+    jo.read( "shakedown_pending_demanded_value", candidate.shakedown_pending_demanded_value );
+    jo.read( "shakedown_pending_surrendered_value", candidate.shakedown_pending_surrendered_value );
+    jo.read( "shakedown_pending_reachable_value", candidate.shakedown_pending_reachable_value );
+    jo.read( "shakedown_pending_basecamp_scene", candidate.shakedown_pending_basecamp_scene );
     jo.read( "has_rally", candidate.has_rally );
     jo.read( "rally_omt", candidate.rally_omt );
     jo.read( "last_transition_reason", candidate.last_transition_reason );
@@ -7897,6 +7907,10 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "applied_report_generation", applied_report_generation );
     json.member( "applied_cargo_generation", applied_cargo_generation );
     json.member( "last_cargo_application_key", last_cargo_application_key );
+    json.member( "last_hostile_shakedown_aftermath_key", last_hostile_shakedown_aftermath_key );
+    json.member( "last_hostile_shakedown_operation_id", last_hostile_shakedown_operation_id );
+    json.member( "last_hostile_shakedown_report_key", last_hostile_shakedown_report_key );
+    json.member( "last_hostile_shakedown_generation", last_hostile_shakedown_generation );
     json.member( "applied_resource_generation", applied_resource_generation );
     json.member( "last_resource_application_key", last_resource_application_key );
     json.member( "last_resource_claimed_units", last_resource_claimed_units );
@@ -7953,6 +7967,10 @@ void site_record::deserialize( const JsonObject &jo )
     applied_report_generation = 0;
     applied_cargo_generation = 0;
     last_cargo_application_key.clear();
+    last_hostile_shakedown_aftermath_key.clear();
+    last_hostile_shakedown_operation_id.clear();
+    last_hostile_shakedown_report_key.clear();
+    last_hostile_shakedown_generation = 0;
     applied_resource_generation = 0;
     last_resource_application_key.clear();
     last_resource_claimed_units = 0;
@@ -8131,6 +8149,10 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "applied_report_generation", applied_report_generation );
     jo.read( "applied_cargo_generation", applied_cargo_generation );
     jo.read( "last_cargo_application_key", last_cargo_application_key );
+    jo.read( "last_hostile_shakedown_aftermath_key", last_hostile_shakedown_aftermath_key );
+    jo.read( "last_hostile_shakedown_operation_id", last_hostile_shakedown_operation_id );
+    jo.read( "last_hostile_shakedown_report_key", last_hostile_shakedown_report_key );
+    jo.read( "last_hostile_shakedown_generation", last_hostile_shakedown_generation );
     const bool any_resource_receipt_field =
         jo.has_member( "applied_resource_generation" ) ||
         jo.has_member( "last_resource_application_key" ) ||
@@ -19512,6 +19534,60 @@ shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
     return effect;
 }
 
+bool apply_terminal_hostile_shakedown_aftermath( site_record &site,
+        const std::string &expected_activity_id, const int expected_generation )
+{
+    hostile_operation_state &operation = site.active_hostile_operation;
+    active_outing_state &reservation = operation.reservation;
+    if( !operation.is_active() || operation.operation_kind != hostile_operation_kind::shakedown ||
+        reservation.activity_id != expected_activity_id ||
+        reservation.generation != expected_generation || operation.source_report_application_key.empty() ||
+        operation.shakedown_pending_branch.empty() ) {
+        return false;
+    }
+    const std::string key = expected_activity_id + "|" + operation.source_report_application_key +
+                            "|" + std::to_string( expected_generation );
+    if( !site.last_hostile_shakedown_aftermath_key.empty() &&
+        site.last_hostile_shakedown_aftermath_key == key ) {
+        return site.last_hostile_shakedown_aftermath_key == key &&
+               site.last_hostile_shakedown_operation_id == expected_activity_id &&
+               site.last_hostile_shakedown_report_key == operation.source_report_application_key &&
+               site.last_hostile_shakedown_generation == expected_generation;
+    }
+    shakedown_outcome outcome;
+    outcome.paid = operation.shakedown_pending_branch == "paid";
+    outcome.fought = operation.shakedown_pending_branch == "fight";
+    outcome.demanded_value = operation.shakedown_pending_demanded_value;
+    outcome.surrendered_value = operation.shakedown_pending_surrendered_value;
+    outcome.reachable_goods_value = operation.shakedown_pending_reachable_value;
+    outcome.basecamp_or_camp_scene = operation.shakedown_pending_basecamp_scene;
+    outcome.bandit_losses = static_cast<int>( reservation.casualty_ids.size() );
+    if( !outcome.paid && !outcome.fought ) {
+        return false;
+    }
+    if( outcome.fought && outcome.demanded_value <= 0 ) {
+        site.last_shakedown_outcome = "fight_unresolved";
+        site.shakedown_last_demanded_value = 0;
+        site.shakedown_last_surrendered_value = 0;
+        site.shakedown_last_reachable_value = 0;
+        site.shakedown_anger++;
+        if( outcome.bandit_losses > 0 ) {
+            site.shakedown_bandit_losses += outcome.bandit_losses;
+            site.shakedown_caution += std::max( 1, outcome.bandit_losses );
+            site.remembered_retreat_bias += std::max( 1, outcome.bandit_losses );
+            site.remembered_pressure =
+                bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+        }
+    } else if( !apply_shakedown_outcome( site, outcome ).valid ) {
+        return false;
+    }
+    site.last_hostile_shakedown_aftermath_key = key;
+    site.last_hostile_shakedown_operation_id = expected_activity_id;
+    site.last_hostile_shakedown_report_key = operation.source_report_application_key;
+    site.last_hostile_shakedown_generation = expected_generation;
+    return true;
+}
+
 
 void begin_shakedown_basecamp_defender_observation( site_record &site, const int live_defenders )
 {
@@ -20281,6 +20357,7 @@ bool begin_matching_hostile_shakedown_combat( site_record &site,
     }
     site_record candidate = site;
     candidate.last_shakedown_outcome = "fight_unresolved";
+    candidate.active_hostile_operation.shakedown_pending_branch = "fight";
     for( const character_id member_id : candidate.active_hostile_operation.reservation.member_ids ) {
         member_record *member = candidate.find_member( member_id );
         if( member == nullptr || member->state != member_state::local_contact ) {

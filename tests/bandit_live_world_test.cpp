@@ -25168,6 +25168,15 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
 
         const bandit_live_world::simulation_advance_cursor contact_cursor =
             require_current_simulation_cursor( live_site );
+        const std::string paid_operation_id =
+            live_site.active_hostile_operation.reservation.activity_id;
+        const std::string paid_report_key =
+            live_site.active_hostile_operation.source_report_application_key;
+        const int paid_generation = live_site.active_hostile_operation.reservation.generation;
+        live_site.active_hostile_operation.shakedown_pending_branch = "paid";
+        live_site.active_hostile_operation.shakedown_pending_demanded_value = 100;
+        live_site.active_hostile_operation.shakedown_pending_surrendered_value = 100;
+        live_site.active_hostile_operation.shakedown_pending_reachable_value = 100;
         REQUIRE( bandit_live_world::transition_hostile_operation_phase( live_site,
                  contact_cursor, bandit_live_world::hostile_operation_phase::committed_contact,
                  bandit_live_world::hostile_operation_phase::returning_home,
@@ -25203,6 +25212,20 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         calendar::turn += 1_minutes;
         process_overmap_npc_move_for_test();
         CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.last_hostile_shakedown_operation_id == paid_operation_id );
+        CHECK( live_site.last_hostile_shakedown_report_key == paid_report_key );
+        CHECK( live_site.last_hostile_shakedown_generation == paid_generation );
+        CHECK( live_site.last_shakedown_outcome == "paid" );
+        CHECK( live_site.shakedown_last_surrendered_value == 100 );
+        const std::string paid_closed = serialize_record( live_site );
+        JsonObject paid_closed_json = json_loader::from_string( paid_closed );
+        bandit_live_world::site_record reloaded_paid_site;
+        reloaded_paid_site.deserialize( paid_closed_json );
+        CHECK( reloaded_paid_site.last_hostile_shakedown_operation_id == paid_operation_id );
+        CHECK( reloaded_paid_site.last_hostile_shakedown_report_key == paid_report_key );
+        CHECK( reloaded_paid_site.last_hostile_shakedown_generation == paid_generation );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == paid_closed );
         for( const character_id id : expected_selection.member_ids ) {
             CHECK( live_site.find_member( id )->state ==
                    bandit_live_world::member_state::at_home );
@@ -25270,6 +25293,11 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
             member->spawn_at_omt( live_site.active_hostile_operation.reservation.target_omt );
         }
 
+        const std::string fight_operation_id =
+            live_site.active_hostile_operation.reservation.activity_id;
+        const std::string fight_report_key =
+            live_site.active_hostile_operation.source_report_application_key;
+        const int fight_generation = live_site.active_hostile_operation.reservation.generation;
         calendar::turn += 5_minutes;
         npc *victim = g->find_npc( expected_selection.member_ids.front() );
         REQUIRE( victim != nullptr );
@@ -25318,6 +25346,11 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         CHECK_FALSE( live_site.active_hostile_operation.is_active() );
         CHECK( live_site.find_member( expected_selection.member_ids.front() )->state ==
                bandit_live_world::member_state::dead );
+        CHECK( live_site.last_hostile_shakedown_operation_id == fight_operation_id );
+        CHECK( live_site.last_hostile_shakedown_report_key == fight_report_key );
+        CHECK( live_site.last_hostile_shakedown_generation == fight_generation );
+        CHECK( live_site.last_shakedown_outcome == "fight_unresolved" );
+        CHECK( live_site.shakedown_bandit_losses == 1 );
     }
 }
 

@@ -650,6 +650,11 @@ bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
         bandit_live_world::hostile_operation_transition_result::applied ) {
         return false;
     }
+    site.active_hostile_operation.shakedown_pending_branch = "paid";
+    site.active_hostile_operation.shakedown_pending_demanded_value = surface.demanded_value;
+    site.active_hostile_operation.shakedown_pending_surrendered_value = surrendered_value;
+    site.active_hostile_operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
+    site.active_hostile_operation.shakedown_pending_basecamp_scene = surface.includes_basecamp_inventory;
     for( live_bandit_paid_return_travel_order &order : plan.travel_orders ) {
         order.member_npc->set_attitude( NPCATT_NULL );
         order.member_npc->goal = site.anchor;
@@ -668,12 +673,12 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
         return;
     }
     const std::vector<character_id> member_ids = outing->member_ids;
-    bandit_live_world::shakedown_outcome outcome;
-    outcome.fought = true;
-    outcome.basecamp_or_camp_scene = surface.includes_basecamp_inventory;
-    outcome.demanded_value = surface.demanded_value;
-    outcome.reachable_goods_value = surface.reachable_goods_value;
-    bandit_live_world::apply_shakedown_outcome( site, outcome );
+    bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    operation.shakedown_pending_branch = "fight";
+    operation.shakedown_pending_demanded_value = surface.demanded_value;
+    operation.shakedown_pending_surrendered_value = 0;
+    operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
+    operation.shakedown_pending_basecamp_scene = surface.includes_basecamp_inventory;
     if( surface.includes_basecamp_inventory ) {
         bandit_live_world::begin_shakedown_basecamp_defender_observation( site,
                 live_bandit_nearby_basecamp_defender_count( u ) );
@@ -1303,6 +1308,10 @@ bool advance_live_bandit_hostile_returns()
         }
         const std::string activity_id = reservation.activity_id;
         const int generation = reservation.generation;
+        if( !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site, activity_id,
+                generation ) ) {
+            continue;
+        }
         changed |= bandit_live_world::release_matching_external_reservation( site, activity_id,
                    generation, "paid shakedown survivors physically returned home" ).has_value();
     }
@@ -2016,6 +2025,10 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
         }
         if( site.active_hostile_operation.phase ==
             bandit_live_world::hostile_operation_phase::lost ) {
+            if( !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site,
+                    activity_id, generation ) ) {
+                return false;
+            }
             return bandit_live_world::release_matching_external_reservation( site,
                     activity_id, generation,
                     "all shakedown combat participants died" ).has_value();
