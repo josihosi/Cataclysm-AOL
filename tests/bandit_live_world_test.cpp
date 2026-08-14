@@ -25354,6 +25354,148 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     }
 }
 
+TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
+           "[bandit][live_world][cannibal][raid][darkness][live_adapter]" )
+{
+    clear_npcs();
+    const time_point saved_turn = calendar::turn;
+    bandit_live_world::world_state saved_world = overmap_buffer.global_state.bandit_live_world;
+    std::vector<character_id> generated_npc_ids;
+    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn,
+                              saved_world = std::move( saved_world )]() mutable {
+        for( const character_id id : generated_npc_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        calendar::turn = saved_turn;
+        clear_creatures();
+    } );
+
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::register_abstract_site( world,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
+             tripoint_abs_omt( 10, 20, 0 ), special_lookup, 4 ) );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.site_kind = bandit_live_world::owned_site_kind::cannibal_camp;
+    site.profile = bandit_live_world::hostile_site_profile::cannibal_camp;
+    for( int index = 0; index < 4; ++index ) {
+        shared_ptr_fast<npc> member = make_shared_fast<npc>();
+        member->normalize();
+        member->load_npc_template( npc_template_id( "cannibal_hunter" ) );
+        member->spawn_at_omt( site.anchor );
+        REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", member->getID(),
+                 member->pos_abs(), std::string( "bandit_camp" ), std::nullopt,
+                 special_lookup ) );
+        overmap_buffer.insert_npc( member );
+        generated_npc_ids.push_back( member->getID() );
+    }
+    std::optional<bandit_live_world::canonical_hostile_operation_route> raid_route;
+    for( const tripoint_abs_omt &candidate : { tripoint_abs_omt( 6, 20, 0 ),
+            tripoint_abs_omt( 10, 24, 0 ), tripoint_abs_omt( 14, 20, 0 ),
+            tripoint_abs_omt( 10, 16, 0 ) } ) {
+        const std::vector<tripoint_abs_omt> target_to_anchor =
+            overmap_buffer.get_travel_path( site.anchor, candidate,
+                                            overmap_path_params::for_npc() ).points;
+        raid_route = bandit_live_world::canonicalize_hostile_operation_route(
+                         target_to_anchor, site.anchor, candidate );
+        if( raid_route ) {
+            break;
+        }
+    }
+    REQUIRE( raid_route );
+    const tripoint_abs_omt target = raid_route->route.back();
+    const tripoint_abs_omt rally = raid_route->rally_omt;
+    prepare_hostile_follow_on( site, 1, 1, "raid-target", target, 1 );
+    const bandit_live_world::hostile_operation_plan plan =
+        bandit_live_world::plan_hostile_operation( site, bandit_live_world::hostile_operation_kind::raid,
+                raid_route->route, rally, 2 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+    overmap_buffer.global_state.bandit_live_world = std::move( world );
+    bandit_live_world::site_record &live_site = overmap_buffer.global_state.bandit_live_world.sites.front();
+    REQUIRE( transition_test_hostile_operation( live_site,
+             bandit_live_world::hostile_operation_phase::assembling,
+             bandit_live_world::hostile_operation_phase::outbound, 3, "raid test departed" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+
+    calendar::turn = calendar::turn_zero + 12_hours;
+    REQUIRE_FALSE( is_night( calendar::turn ) );
+    const std::vector<character_id> raid_ids =
+        live_site.active_hostile_operation.reservation.member_ids;
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        member->spawn_at_omt( rally );
+    }
+    REQUIRE( transition_test_hostile_operation( live_site,
+             bandit_live_world::hostile_operation_phase::outbound,
+             bandit_live_world::hostile_operation_phase::rallying, 720,
+             "raid party physically reached persisted rally" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( live_site.active_hostile_operation.phase ==
+             bandit_live_world::hostile_operation_phase::rallying );
+    REQUIRE_FALSE( raid_ids.empty() );
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->pos_abs_omt() == rally );
+    }
+    const auto serialize_site = []( const auto & record ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        record.serialize( json );
+        return out.str();
+    };
+    const std::string pre_dark = serialize_site( live_site.active_hostile_operation );
+    calendar::turn += 1_hours;
+    REQUIRE_FALSE( is_night( calendar::turn ) );
+    process_overmap_npc_move_for_test();
+    CHECK( serialize_site( live_site.active_hostile_operation ) == pre_dark );
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->pos_abs_omt() == rally );
+        CHECK( member->goal != live_site.active_hostile_operation.reservation.target_omt );
+    }
+
+    calendar::turn += 12_hours + 1_minutes;
+    REQUIRE( is_night( calendar::turn ) );
+    const std::vector<tripoint_abs_omt> night_route = overmap_buffer.get_travel_path(
+                rally, live_site.active_hostile_operation.reservation.target_omt,
+                overmap_path_params::for_npc() ).points;
+    REQUIRE_FALSE( night_route.empty() );
+    CHECK( night_route.front() == live_site.active_hostile_operation.reservation.target_omt );
+    CHECK( night_route.back() == rally );
+    process_overmap_npc_move_for_test();
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    REQUIRE( live_site.active_hostile_operation.phase ==
+             bandit_live_world::hostile_operation_phase::approaching );
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->goal == live_site.active_hostile_operation.reservation.target_omt );
+        CHECK( member->is_travelling() );
+    }
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->pos_abs_omt() == live_site.active_hostile_operation.reservation.target_omt );
+    }
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    CHECK( live_site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::committed_contact );
+    const std::string committed = serialize_site( live_site );
+    process_overmap_npc_move_for_test();
+    CHECK( serialize_site( live_site ) == committed );
+}
+
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",
            "[bandit][live_world][scheduler][response_authorization][hostile_operation]" )
 {

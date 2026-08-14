@@ -1202,6 +1202,10 @@ bool advance_live_bandit_hostile_approaches()
             } ) ) {
                 continue;
             }
+            if( operation.operation_kind == bandit_live_world::hostile_operation_kind::raid &&
+                !is_night( calendar::turn ) ) {
+                continue;
+            }
             for( hostile_approach_travel_order &order : travel_orders ) {
                 order.member_npc->goal = reservation.target_omt;
                 order.member_npc->omt_path = std::move( order.route );
