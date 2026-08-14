@@ -25698,6 +25698,109 @@ TEST_CASE( "hostile target opportunity ledger arbitrates and persists exact rece
     CHECK( legacy.hostile_target_opportunities.empty() );
 }
 
+TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp aftermath",
+           "[bandit][live_world][hostile_operation][target_opportunity][aftermath]" )
+{
+    bandit_live_world::world_state state;
+    for( int index = 0; index < 7; ++index ) {
+        add_bandit_camp_member( state, index, 33500 );
+        add_bandit_work_camp_member( state, index, 33600 );
+    }
+    REQUIRE( state.sites.size() == 2 );
+
+    const tripoint_abs_omt target( 41, 52, 0 );
+    const auto prepare_terminal_shakedown = [&target]( bandit_live_world::site_record & site ) {
+        const std::string lead_id = site.site_id + ":shared-target";
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = lead_id;
+        lead.revision = 3;
+        lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+        lead.origin = bandit_live_world::camp_lead_origin::observer;
+        lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+        lead.target_id = "shared-target";
+        lead.omt = target;
+        lead.source_key = "shared-target-source";
+        lead.bounty = 1000;
+        lead.threat = 1;
+        lead.confidence = 4;
+        lead.threat_confirmed = true;
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+        prepare_hostile_follow_on( site, 7, 4, "shared-target", target, 0, lead_id );
+        const bandit_live_world::hostile_operation_plan plan =
+            bandit_live_world::plan_hostile_operation( site,
+                    bandit_live_world::hostile_operation_kind::shakedown,
+                    { site.anchor, target }, site.anchor, 2 );
+        INFO( ( plan.notes.empty() ? "missing terminal shakedown plan diagnostic" :
+                plan.notes.front() ) );
+        REQUIRE( plan.valid );
+        REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+        REQUIRE( transition_test_hostile_operation( site,
+                 bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound, 3,
+                 "test terminal shakedown departed" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation( site,
+                 bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::returning_home, 4,
+                 "test terminal shakedown returned" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+        operation.shakedown_pending_branch = "paid";
+        operation.shakedown_pending_demanded_value = 100;
+        operation.shakedown_pending_surrendered_value = 75;
+        operation.shakedown_pending_reachable_value = 100;
+    };
+    prepare_terminal_shakedown( state.sites[0] );
+    prepare_terminal_shakedown( state.sites[1] );
+    REQUIRE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
+             100, 3, 1, 3 ) );
+
+    bandit_live_world::site_record &winner = state.sites[0];
+    const std::string winner_operation = winner.active_hostile_operation.reservation.activity_id;
+    const std::string winner_report = winner.active_hostile_operation.source_report_application_key;
+    const int winner_generation = winner.active_hostile_operation.reservation.generation;
+    REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, winner,
+             winner_operation, winner_generation ) );
+    const bandit_live_world::hostile_target_opportunity_record *receipt =
+        state.find_hostile_target_opportunity( "shared-target", target );
+    REQUIRE( receipt != nullptr );
+    CHECK( receipt->consumed_operation_id == winner_operation );
+    CHECK( receipt->consumed_report_key == winner_report );
+    CHECK( receipt->consumed_generation == winner_generation );
+    CHECK( winner.last_shakedown_outcome == "paid" );
+    CHECK( winner.shakedown_loot_value == 75 );
+    CHECK( winner.camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
+    CHECK( winner.camp_decision.next_eligible_minutes >
+           winner.active_hostile_operation.reservation.last_advanced_minutes );
+    const bandit_live_world::camp_map_lead *winner_lead = winner.intelligence_map.find_lead(
+                winner.active_hostile_operation.reservation.target_lead_id );
+    REQUIRE( winner_lead != nullptr );
+    CHECK( winner_lead->target_alert );
+    CHECK( winner_lead->last_outcome == "paid" );
+
+    const std::string claimed = serialize_world( state );
+    CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, winner,
+           winner_operation, winner_generation ) );
+    CHECK( serialize_world( state ) == claimed );
+
+    bandit_live_world::site_record &loser = state.sites[1];
+    const std::string loser_operation = loser.active_hostile_operation.reservation.activity_id;
+    const int loser_generation = loser.active_hostile_operation.reservation.generation;
+    CHECK_FALSE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, loser,
+                 loser_operation, loser_generation ) );
+    CHECK_FALSE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, winner,
+                 winner_operation, winner_generation + 1 ) );
+    CHECK( serialize_world( state ) == claimed );
+
+    REQUIRE( bandit_live_world::release_matching_external_reservation( winner, winner_operation,
+             winner_generation, "terminal shakedown test release" ) );
+    const std::string settled = serialize_world( state );
+    JsonObject claimed_json = json_loader::from_string( settled );
+    bandit_live_world::world_state reloaded;
+    reloaded.deserialize( claimed_json );
+    CHECK( serialize_world( reloaded ) == settled );
+}
+
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",
            "[bandit][live_world][scheduler][response_authorization][hostile_operation]" )
 {

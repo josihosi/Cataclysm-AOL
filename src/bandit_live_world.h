@@ -1903,7 +1903,7 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool );
 shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome );
-bool apply_terminal_hostile_shakedown_aftermath( site_record &site,
+bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record &site,
         const std::string &expected_activity_id, int expected_generation );
 void begin_shakedown_basecamp_defender_observation( site_record &site, int live_defenders );
 shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,

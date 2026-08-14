@@ -1313,7 +1313,7 @@ bool advance_live_bandit_hostile_returns()
         const std::string activity_id = reservation.activity_id;
         const int generation = reservation.generation;
         if( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown &&
-            !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site, activity_id,
+            !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, site, activity_id,
                     generation ) ) {
             continue;
         }
@@ -2130,7 +2130,8 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
         }
         if( site.active_hostile_operation.phase ==
             bandit_live_world::hostile_operation_phase::lost ) {
-            if( !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site,
+            if( !bandit_live_world::apply_terminal_hostile_shakedown_aftermath(
+                    overmap_buffer.global_state.bandit_live_world, site,
                     activity_id, generation ) ) {
                 return false;
             }

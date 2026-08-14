@@ -19640,25 +19640,57 @@ shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
     return effect;
 }
 
-bool apply_terminal_hostile_shakedown_aftermath( site_record &site,
+namespace
+{
+
+bool terminal_hostile_shakedown_identity_matches( const hostile_operation_state &operation,
+        const std::string &expected_activity_id,
+        const int expected_generation )
+{
+    const active_outing_state &reservation = operation.reservation;
+    return operation.is_active() &&
+           operation.operation_kind == hostile_operation_kind::shakedown &&
+           reservation.activity_id == expected_activity_id &&
+           reservation.generation == expected_generation &&
+           !operation.source_report_application_key.empty() &&
+           !operation.shakedown_pending_branch.empty() && !reservation.target_id.empty() &&
+           reservation.target_lead_revision > 0;
+}
+
+bool terminal_hostile_shakedown_aftermath_was_applied( const site_record &site,
+        const hostile_operation_state &operation, const std::string &expected_activity_id,
+        const int expected_generation )
+{
+    return site.last_hostile_shakedown_aftermath_key == expected_activity_id + "|" +
+           operation.source_report_application_key + "|" + std::to_string( expected_generation ) &&
+           site.last_hostile_shakedown_operation_id == expected_activity_id &&
+           site.last_hostile_shakedown_report_key == operation.source_report_application_key &&
+           site.last_hostile_shakedown_generation == expected_generation;
+}
+
+bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
         const std::string &expected_activity_id, const int expected_generation )
 {
     hostile_operation_state &operation = site.active_hostile_operation;
     active_outing_state &reservation = operation.reservation;
-    if( !operation.is_active() || operation.operation_kind != hostile_operation_kind::shakedown ||
-        reservation.activity_id != expected_activity_id ||
-        reservation.generation != expected_generation || operation.source_report_application_key.empty() ||
-        operation.shakedown_pending_branch.empty() ) {
+    if( !terminal_hostile_shakedown_identity_matches( operation, expected_activity_id,
+            expected_generation ) || reservation.last_advanced_minutes < 0 ) {
         return false;
     }
-    const std::string key = expected_activity_id + "|" + operation.source_report_application_key +
-                            "|" + std::to_string( expected_generation );
-    if( !site.last_hostile_shakedown_aftermath_key.empty() &&
-        site.last_hostile_shakedown_aftermath_key == key ) {
-        return site.last_hostile_shakedown_aftermath_key == key &&
-               site.last_hostile_shakedown_operation_id == expected_activity_id &&
-               site.last_hostile_shakedown_report_key == operation.source_report_application_key &&
-               site.last_hostile_shakedown_generation == expected_generation;
+    const camp_decision_record &decision = site.camp_decision;
+    if( decision.state != camp_decision_state::preparing_follow_on ||
+        decision.source_report_revision != operation.source_report_revision ||
+        decision.source_report_generation != operation.source_report_generation ||
+        decision.source_report_activity_id != operation.source_report_activity_id ||
+        decision.source_report_application_key != operation.source_report_application_key ||
+        decision.target_id != reservation.target_id || decision.target_omt != reservation.target_omt ||
+        decision.target_lead_id != reservation.target_lead_id ||
+        decision.target_lead_revision != reservation.target_lead_revision ) {
+        return false;
+    }
+    if( terminal_hostile_shakedown_aftermath_was_applied( site, operation,
+            expected_activity_id, expected_generation ) ) {
+        return true;
     }
     shakedown_outcome outcome;
     outcome.paid = operation.shakedown_pending_branch == "paid";
@@ -19687,10 +19719,71 @@ bool apply_terminal_hostile_shakedown_aftermath( site_record &site,
     } else if( !apply_shakedown_outcome( site, outcome ).valid ) {
         return false;
     }
-    site.last_hostile_shakedown_aftermath_key = key;
+    camp_map_lead *lead = site.intelligence_map.find_lead( reservation.target_lead_id );
+    if( lead == nullptr || lead->revision != reservation.target_lead_revision ||
+        lead->target_id != reservation.target_id || lead->omt != reservation.target_omt ) {
+        return false;
+    }
+    const int current_minutes = reservation.last_advanced_minutes;
+    const int next_eligible_minutes = minutes_after_saturated( current_minutes,
+                                      routine_cooldown_delay_minutes( site.site_id, 24 * 60 ) );
+    if( transition_camp_decision_state( site, camp_decision_state::preparing_follow_on,
+                                        camp_decision_state::cooldown,
+                                        operation.source_report_revision,
+                                        operation.source_report_generation, current_minutes,
+                                        next_eligible_minutes,
+                                        "terminal hostile shakedown consumed target opportunity" ) !=
+        camp_decision_transition_result::applied ) {
+        return false;
+    }
+    lead = site.intelligence_map.find_lead( reservation.target_lead_id );
+    if( lead == nullptr || lead->revision != reservation.target_lead_revision ) {
+        return false;
+    }
+    lead->target_alert = true;
+    lead->scout_seen = true;
+    lead->last_checked_minutes = current_minutes;
+    lead->prior_bandit_losses = outcome.bandit_losses;
+    lead->last_outcome = site.last_shakedown_outcome;
+    site.last_hostile_shakedown_aftermath_key = expected_activity_id + "|" +
+            operation.source_report_application_key + "|" + std::to_string( expected_generation );
     site.last_hostile_shakedown_operation_id = expected_activity_id;
     site.last_hostile_shakedown_report_key = operation.source_report_application_key;
     site.last_hostile_shakedown_generation = expected_generation;
+    return true;
+}
+
+} // namespace
+
+bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record &site,
+        const std::string &expected_activity_id, const int expected_generation )
+{
+    const hostile_operation_state &operation = site.active_hostile_operation;
+    const active_outing_state &reservation = operation.reservation;
+    if( !terminal_hostile_shakedown_identity_matches( operation, expected_activity_id,
+            expected_generation ) ) {
+        return false;
+    }
+
+    world_state state_candidate = state;
+    const hostile_target_claim_result claimed = claim_hostile_target_opportunity( state_candidate,
+            reservation.target_id, reservation.target_omt, reservation.target_lead_revision,
+            expected_activity_id, operation.source_report_application_key, expected_generation );
+    if( claimed == hostile_target_claim_result::already_applied ) {
+        return terminal_hostile_shakedown_aftermath_was_applied( site, operation,
+                expected_activity_id, expected_generation );
+    }
+    if( claimed != hostile_target_claim_result::applied ) {
+        return false;
+    }
+
+    site_record site_candidate = site;
+    if( !apply_terminal_hostile_shakedown_aftermath_local( site_candidate, expected_activity_id,
+            expected_generation ) ) {
+        return false;
+    }
+    state.hostile_target_opportunities = std::move( state_candidate.hostile_target_opportunities );
+    site = std::move( site_candidate );
     return true;
 }
 
