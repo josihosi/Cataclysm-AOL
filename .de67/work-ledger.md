@@ -83,14 +83,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   is closed from bound `cata_test` artifact `62c18e0c65ed`: two real scout NPCs resumed through the
   full global owner and ordinary `note_live_bandit_aftermath`, preserving provisional identity across
   reload before finalizing receipts once and replaying byte-stably. The reopened exploration closed
-  with one production owner strategy, and the new finite closure map is frozen. G-001 is next: make
-  `overmap_npc_move()` the sole production observer of stable player-site opportunity evidence
-  immediately before hourly hostile maintenance, reject scheduler operation commit without the exact
-  global claim, and prevent a changed observation from renewing a claimed revision mid-operation.
-  Prove ordering, full-owner serialization, one claim, and inert missing/stale/replay paths through
-  the source-bound `process_overmap_npc_move_for_test()` route. G-002 then produces that real setup,
-  reloads committed contact, and drives visible Fight through ordinary combat/aftermath. G-003 proves
-  the cannibal daylight hold and exact true-night continuation after full-owner reload.
+  with one production owner strategy, and the new finite closure map is frozen. G-001 is closed at
+  checkpoint `bd05012e65`: `overmap_npc_move()` now observes stable player-site opportunity evidence
+  before hourly hostile maintenance, the scheduler rejects operation commit without the exact global
+  claim, and active receipts cannot renew from changed evidence. The source-bound real motor and
+  target-opportunity controls passed 440 and 174 assertions from the recorded binary/input hashes.
+  G-002 is next: produce that globally claimed current-source setup, reload committed shakedown
+  contact through the full game owner, and drive visible Fight through ordinary combat/aftermath with
+  stable identities, terminal receipts, and inert replay. G-003 then proves the cannibal daylight
+  hold and exact true-night continuation after full-owner reload.
 
   The immutable whole-item estimate is 7864 seconds, the next whole second above R-008's directly
   measured 7863.018709897995-second first-dispatch-to-acceptance interval, used as the nearest
