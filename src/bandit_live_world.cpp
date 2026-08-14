@@ -8225,8 +8225,15 @@ void site_record::deserialize( const JsonObject &jo )
             camp_decision.report_policy = legacy_policy;
         }
     }
+    const bool pinned_report_was_serialized = std::any_of( acted_reports.begin(), acted_reports.end(),
+    [this]( const acted_report_summary & summary ) {
+        return acted_report_key_matches( summary, camp_decision.target_id, camp_decision.target_omt,
+                                         camp_decision.report_policy ) &&
+               summary.source_generation == camp_decision.source_report_generation &&
+               summary.report_revision == camp_decision.source_report_revision;
+    } );
     if( camp_decision.has_pinned_report() &&
-        camp_decision.report_policy != camp_report_policy::none ) {
+        camp_decision.report_policy != camp_report_policy::none && !pinned_report_was_serialized ) {
         acted_report_summary acted;
         acted.target_id = camp_decision.target_id;
         acted.target_omt = camp_decision.target_omt;
@@ -9747,22 +9754,62 @@ void hostile_target_opportunity_record::deserialize( const JsonObject &jo )
     }
 }
 
-bool observe_hostile_target_opportunity( world_state &state, const std::string &target_id,
-        const tripoint_abs_omt &target_omt, const int goods_value, const int population,
-        const int activity, const int revision )
+bool observe_authoritative_hostile_target_opportunity( world_state &state,
+        const std::string &target_id, const tripoint_abs_omt &target_omt,
+        const hostile_target_opportunity_evidence &evidence )
 {
     if( target_id.empty() || target_id.size() > max_camp_lead_target_id_length ||
-        goods_value < 0 || population < 0 || activity < 0 || revision <= 0 ) {
+        evidence.reachable_goods_value < 0 || evidence.loaded_population < 0 ||
+        evidence.activity < 0 ) {
         return false;
     }
-    const hostile_target_opportunity_record *current =
-        state.find_hostile_target_opportunity( target_id, target_omt );
-    if( current != nullptr ) {
-        return current->goods_value == goods_value && current->population == population &&
-               current->activity == activity && current->revision == revision;
+    auto current = std::find_if( state.hostile_target_opportunities.begin(),
+    state.hostile_target_opportunities.end(), [&target_id, &target_omt](
+    const hostile_target_opportunity_record & record ) {
+        return record.target_id == target_id && record.target_omt == target_omt;
+    } );
+    if( current == state.hostile_target_opportunities.end() ) {
+        int initial_revision = 1;
+        for( const site_record &site : state.sites ) {
+            for( const camp_map_lead &lead : site.intelligence_map.leads ) {
+                if( lead.target_id == target_id && lead.omt == target_omt ) {
+                    initial_revision = std::max( initial_revision, lead.revision );
+                }
+            }
+        }
+        state.hostile_target_opportunities.push_back( { target_id, target_omt,
+                evidence.reachable_goods_value, evidence.loaded_population, evidence.activity,
+                initial_revision, "", "", 0 } );
+        return true;
     }
-    state.hostile_target_opportunities.push_back( { target_id, target_omt, goods_value,
-            population, activity, revision, "", "", 0 } );
+    if( current->goods_value == evidence.reachable_goods_value &&
+        current->population == evidence.loaded_population &&
+        current->activity == evidence.activity ) {
+        return true;
+    }
+    if( current->revision == std::numeric_limits<int>::max() ) {
+        return false;
+    }
+    current->goods_value = evidence.reachable_goods_value;
+    current->population = evidence.loaded_population;
+    current->activity = evidence.activity;
+    current->revision++;
+    current->consumed_operation_id.clear();
+    current->consumed_report_key.clear();
+    current->consumed_generation = 0;
+    for( site_record &site : state.sites ) {
+        if( effective_profile( site ) != hostile_site_profile::cannibal_camp ||
+            site.has_active_outside_pressure() ||
+            site.current_scout_report.target_id != target_id ||
+            site.current_scout_report.target_omt != target_omt ) {
+            continue;
+        }
+        site.current_scout_report.clear();
+        if( site.camp_decision.target_id == target_id &&
+            site.camp_decision.target_omt == target_omt ) {
+            site.camp_decision.clear();
+        }
+    }
     return true;
 }
 
@@ -14668,7 +14715,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     structural_bounty_maintenance_result result;
     result.scheduler_consider_cap = routine_scheduler_consider_cap;
     result.full_route_solve_cap = routine_scheduler_full_route_solve_cap;
-    state.schema_version = 6;
+    state.schema_version = 7;
     result.intelligence_aging = advance_camp_intelligence_aging( state, now_minutes );
     advance_world_camp_supplies( state, now_minutes );
     result.dispatch_cap = std::min( routine_scheduler_start_cap, std::max( 0, dispatch_cap ) );
@@ -14903,6 +14950,17 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 const bool applied = hostile_operation_apply ? hostile_operation_apply( candidate, plan ) :
                                      apply_hostile_operation_plan_with_authorized_response( candidate, plan );
                 if( !applied ) {
+                    result.response_operation_rejections++;
+                    continue;
+                }
+                const active_outing_state &reservation = plan.plan.operation.reservation;
+                if( state.find_hostile_target_opportunity( reservation.target_id,
+                        reservation.target_omt ) != nullptr &&
+                    claim_hostile_target_opportunity( state, reservation.target_id,
+                            reservation.target_omt, reservation.target_lead_revision,
+                            reservation.activity_id,
+                            plan.plan.operation.source_report_application_key,
+                            reservation.generation ) != hostile_target_claim_result::applied ) {
                     result.response_operation_rejections++;
                     continue;
                 }
@@ -19770,10 +19828,21 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
             reservation.target_id, reservation.target_omt, reservation.target_lead_revision,
             expected_activity_id, operation.source_report_application_key, expected_generation );
     if( claimed == hostile_target_claim_result::already_applied ) {
-        return terminal_hostile_shakedown_aftermath_was_applied( site, operation,
-                expected_activity_id, expected_generation );
+        if( terminal_hostile_shakedown_aftermath_was_applied( site, operation,
+                expected_activity_id, expected_generation ) ) {
+            return true;
+        }
+        const hostile_target_opportunity_record *receipt =
+            state_candidate.find_hostile_target_opportunity( reservation.target_id,
+                    reservation.target_omt );
+        if( receipt == nullptr || receipt->consumed_operation_id != expected_activity_id ||
+            receipt->consumed_report_key != operation.source_report_application_key ||
+            receipt->consumed_generation != expected_generation ) {
+            return false;
+        }
     }
-    if( claimed != hostile_target_claim_result::applied ) {
+    if( claimed != hostile_target_claim_result::applied &&
+        claimed != hostile_target_claim_result::already_applied ) {
         return false;
     }
 

@@ -74,24 +74,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   This recovery remains blocked by the same denied local Accessibility authority recorded under
   R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
-- [ ] R-008 — Prove exactly-once aftermath and renewable opportunity: two camps cannot consume the
-  same finite site twice, and repeat shakedown eligibility requires cooldown plus demonstrably new
-  stored goods, population, or activity rather than timer-created value or stale-report replay.
-  - DFS slices: `R-008-S001`, `R-008-S002`
-
-  `G-002~B1` revision 1 repairs the invalidated terminal reload proof. Canonicalize the prepared
-  retained-report generation at its responsible fixture or production owner without weakening byte
-  equality, rebuild one exact `TESTS=1` artifact with independently checkable source/test provenance,
-  and rerun the unchanged planner, winning aftermath, replay, stale/losing, reservation-release, and
-  settled/reloaded route. The first proved divergence is `applied_report_generation` 0 -> 4.
-
-  The unaccepted G-003 renewal candidate remains in the three dirty product files. Preserve it while
-  repairing and re-proving `G-002~B1`; G-003 revision 2 and G-004 remain open and out of scope.
-
-  The immutable whole-item estimate is 2910 seconds, the next whole second above R-007's directly
-  measured 2908.768838-second first-dispatch-to-acceptance interval, used as the nearest completed
-  adjacent hostile-lifecycle delivery.
-
 - [ ] R-009 — Prove changed-executable save/reload continuation at local/abstract handoff, split
   return, shakedown contact, and cannibal darkness wait while preserving generation, epoch, member,
   and application identities through the resumed production transition.

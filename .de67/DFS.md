@@ -213,7 +213,7 @@ authorizes a response.
   vocabulary exists, but the live lifecycle is not wired or proved.
 <!-- DE67:DFS-SLICE:END id=R-007-S001 claim=R-007 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-008-S001 claim=R-008 -->
-- [ ] 🔴 R-008 — Aftermath must update the attacking camp's casualties, readiness, target alertness,
+- [x] R-008 — Aftermath must update the attacking camp's casualties, readiness, target alertness,
   outcome memory, payment/plunder, and future eligibility. A bandit may repeat only after cooldown
   plus renewed target opportunity; a cannibal may reassess survivors rather than replaying an
   obsolete report.

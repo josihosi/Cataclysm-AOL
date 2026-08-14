@@ -759,7 +759,8 @@ bandit_live_world::simulation_advance_cursor require_current_simulation_cursor(
 void prepare_hostile_follow_on( bandit_live_world::site_record &site, const int report_revision,
                                 const int scout_generation, const std::string &target_id,
                                 const tripoint_abs_omt &target_omt, const int delivered_minutes,
-                                const std::string &target_lead_id = "" )
+                                const std::string &target_lead_id = "",
+                                const int target_lead_revision = 3 )
 {
     site.current_scout_report.revision = report_revision;
     site.current_scout_report.action_policy =
@@ -773,12 +774,13 @@ void prepare_hostile_follow_on( bandit_live_world::site_record &site, const int 
     site.current_scout_report.target_id = target_id;
     site.current_scout_report.target_omt = target_omt;
     site.current_scout_report.target_lead_id = target_lead_id;
-    site.current_scout_report.target_lead_revision = 3;
+    site.current_scout_report.target_lead_revision = target_lead_revision;
     site.current_scout_report.application_key =
         site.current_scout_report.source_activity_id + ":report:" +
         std::to_string( scout_generation );
     site.current_scout_report.delivered_minutes = delivered_minutes;
     site.current_scout_report.provisional = false;
+    site.applied_report_generation = std::max( site.applied_report_generation, scout_generation );
     site.next_outing_generation = std::max( site.next_outing_generation, scout_generation + 1 );
     REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
              bandit_live_world::camp_decision_transition_result::applied );
@@ -25650,12 +25652,13 @@ TEST_CASE( "hostile target opportunity ledger arbitrates and persists exact rece
 {
     bandit_live_world::world_state state;
     const tripoint_abs_omt target( 41, 52, 0 );
-    REQUIRE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
-             90, 4, 2, 7 ) );
-    CHECK_FALSE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
-                 91, 4, 2, 7 ) );
+    const bandit_live_world::hostile_target_opportunity_evidence evidence { 90, 4, 2 };
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, evidence ) );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, evidence ) );
     REQUIRE( state.find_hostile_target_opportunity( "shared-target", target ) != nullptr );
-    REQUIRE( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
+    REQUIRE( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 1,
              "camp-a#hostile:3", "camp-a:report:9", 3 ) ==
              bandit_live_world::hostile_target_claim_result::applied );
 
@@ -25666,14 +25669,14 @@ TEST_CASE( "hostile target opportunity ledger arbitrates and persists exact rece
         return out.str();
     };
     const std::string claimed = serialize_state( state );
-    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 1,
            "camp-a#hostile:3", "camp-a:report:9", 3 ) ==
            bandit_live_world::hostile_target_claim_result::already_applied );
     CHECK( serialize_state( state ) == claimed );
     CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
            "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
            bandit_live_world::hostile_target_claim_result::rejected );
-    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 6,
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 2,
            "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
            bandit_live_world::hostile_target_claim_result::rejected );
     CHECK( serialize_state( state ) == claimed );
@@ -25688,8 +25691,89 @@ TEST_CASE( "hostile target opportunity ledger arbitrates and persists exact rece
     CHECK( record->goods_value == 90 );
     CHECK( record->population == 4 );
     CHECK( record->activity == 2 );
-    CHECK( record->revision == 7 );
+    CHECK( record->revision == 1 );
     CHECK( record->consumed_operation_id == "camp-a#hostile:3" );
+
+    state.routine_scheduler_last_hour = 12;
+    const std::string cooldown_only = serialize_state( state );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, evidence ) );
+    CHECK( serialize_state( state ) == cooldown_only );
+
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, { 91, 4, 2 } ) );
+    record = state.find_hostile_target_opportunity( "shared-target", target );
+    REQUIRE( record != nullptr );
+    CHECK( record->revision == 2 );
+    CHECK( record->consumed_generation == 0 );
+    const std::string goods_renewal = serialize_state( state );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, { 91, 4, 2 } ) );
+    CHECK( serialize_state( state ) == goods_renewal );
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target,
+           1, "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
+           bandit_live_world::hostile_target_claim_result::rejected );
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target,
+           2, "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
+           bandit_live_world::hostile_target_claim_result::applied );
+
+    const auto renew_and_reclaim = [&state, &target, &serialize_state](
+    const bandit_live_world::hostile_target_opportunity_evidence & renewal,
+    const int expected_revision, const std::string & operation_id ) {
+        REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+                 "shared-target", target, renewal ) );
+        const bandit_live_world::hostile_target_opportunity_record *renewed =
+            state.find_hostile_target_opportunity( "shared-target", target );
+        REQUIRE( renewed != nullptr );
+        CHECK( renewed->goods_value == renewal.reachable_goods_value );
+        CHECK( renewed->population == renewal.loaded_population );
+        CHECK( renewed->activity == renewal.activity );
+        CHECK( renewed->revision == expected_revision );
+        CHECK( renewed->consumed_operation_id.empty() );
+        CHECK( renewed->consumed_report_key.empty() );
+        CHECK( renewed->consumed_generation == 0 );
+        const std::string stable_renewal = serialize_state( state );
+        REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+                 "shared-target", target, renewal ) );
+        CHECK( serialize_state( state ) == stable_renewal );
+        REQUIRE( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target",
+                 target, expected_revision, operation_id, operation_id + ":report", 4 ) ==
+                 bandit_live_world::hostile_target_claim_result::applied );
+    };
+    renew_and_reclaim( { 91, 5, 2 }, 3, "camp-c#hostile:5" );
+    renew_and_reclaim( { 91, 5, 3 }, 4, "camp-d#hostile:6" );
+
+    const std::string renewed = serialize_state( state );
+    JsonObject renewed_json = json_loader::from_string( renewed );
+    bandit_live_world::world_state renewed_reloaded;
+    renewed_reloaded.deserialize( renewed_json );
+    CHECK( serialize_state( renewed_reloaded ) == renewed );
+
+    bandit_live_world::world_state cannibal_state;
+    for( int index = 0; index < 2; ++index ) {
+        add_cannibal_camp_member( cannibal_state, index, 34200 );
+    }
+    bandit_live_world::site_record &cannibal = cannibal_state.sites.front();
+    const std::string cannibal_lead_id = "cannibal-renewal-target";
+    bandit_live_world::camp_map_lead cannibal_lead;
+    cannibal_lead.lead_id = cannibal_lead_id;
+    cannibal_lead.revision = 1;
+    cannibal_lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    cannibal_lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    cannibal_lead.target_id = "shared-target";
+    cannibal_lead.omt = target;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( cannibal, cannibal_lead ) );
+    prepare_hostile_follow_on( cannibal, 2, 1, "shared-target", target, 0,
+                               cannibal_lead_id, 1 );
+    REQUIRE( cannibal.current_scout_report.is_present() );
+    REQUIRE( cannibal.camp_decision.state ==
+             bandit_live_world::camp_decision_state::preparing_follow_on );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( cannibal_state,
+             "shared-target", target, { 90, 4, 2 } ) );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( cannibal_state,
+             "shared-target", target, { 90, 5, 2 } ) );
+    CHECK_FALSE( cannibal.current_scout_report.is_present() );
+    CHECK( cannibal.camp_decision.state == bandit_live_world::camp_decision_state::idle );
 
     JsonObject legacy_json = json_loader::from_string(
                                 R"({"schema_version":6,"owner_id":"legacy","routine_scheduler_cursor":0,"routine_terrain_scan_cursor":0,"routine_scheduler_last_hour":-1,"sites":[]})" );
@@ -25752,8 +25836,8 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     };
     prepare_terminal_shakedown( state.sites[0] );
     prepare_terminal_shakedown( state.sites[1] );
-    REQUIRE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
-             100, 3, 1, 3 ) );
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             "shared-target", target, { 100, 3, 1 } ) );
 
     bandit_live_world::site_record &winner = state.sites[0];
     const std::string winner_operation = winner.active_hostile_operation.reservation.activity_id;
@@ -25799,6 +25883,184 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     bandit_live_world::world_state reloaded;
     reloaded.deserialize( claimed_json );
     CHECK( serialize_world( reloaded ) == settled );
+}
+
+TEST_CASE( "scheduler arbitrates one authoritative hostile target across two real camps",
+           "[bandit][live_world][scheduler][hostile_operation][target_opportunity]" )
+{
+    constexpr int initial_minutes = 120;
+    bandit_live_world::world_state state;
+    for( int index = 0; index < 7; ++index ) {
+        add_bandit_camp_member( state, index, 35000 );
+        add_bandit_work_camp_member( state, index, 36000 );
+    }
+    REQUIRE( state.sites.size() == 2 );
+
+    const std::string target_id = "scheduler-shared-target";
+    const tripoint_abs_omt target( 41, 52, 0 );
+    const auto serialize_site = []( const bandit_live_world::site_record & site ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        site.serialize( json );
+        return out.str();
+    };
+    const auto prepare_assessment = [&target_id, &target]( bandit_live_world::site_record & site ) {
+        const std::string lead_id = site.site_id + ":" + target_id;
+        bandit_live_world::camp_map_lead lead;
+        lead.lead_id = lead_id;
+        lead.revision = 1;
+        lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+        lead.origin = bandit_live_world::camp_lead_origin::observer;
+        lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+        lead.target_id = target_id;
+        lead.omt = target;
+        lead.bounty = 1000;
+        lead.threat = 1;
+        lead.confidence = 4;
+        lead.threat_confirmed = true;
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+        bandit_live_world::scout_report_record &report = site.current_scout_report;
+        report.revision = 5;
+        report.action_policy = bandit_live_world::camp_report_policy::bandit_shakedown;
+        report.source_activity_id = site.site_id + "#scout:2";
+        report.source_generation = 2;
+        report.source_job_type = "scout";
+        report.target_id = target_id;
+        report.target_omt = target;
+        report.target_lead_id = lead_id;
+        report.target_lead_revision = lead.revision;
+        report.application_key = report.source_activity_id + ":report:2";
+        report.delivered_minutes = 100;
+        report.assessment.certainty = 95;
+        report.assessment.readiness_latched = true;
+        report.assessment.threshold_class =
+            bandit_live_world::scout_assessment_threshold_class::normal;
+        report.assessment.danger_high = 15;
+        report.assessment.bounty_estimate = 2;
+        site.applied_report_generation = report.source_generation;
+        site.next_outing_generation = report.source_generation + 1;
+        site.intelligence_map.last_daily_cleanup_minutes = 0;
+        REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
+                 bandit_live_world::camp_decision_transition_result::applied );
+    };
+    prepare_assessment( state.sites[0] );
+    prepare_assessment( state.sites[1] );
+    for( bandit_live_world::site_record &site : state.sites ) {
+        REQUIRE( bandit_live_world::advance_camp_supply( site, initial_minutes ) );
+        site.routine_activated_minutes = initial_minutes;
+    }
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             target_id, target, { 100, 3, 1 } ) );
+
+    const auto reads = []( const bandit_live_world::site_record & site ) {
+        std::vector<bandit_live_world::response_member_power_read> result;
+        for( const character_id id : site.roster().physically_present_ids ) {
+            result.push_back( { id, true, true, true, 10 } );
+        }
+        return result;
+    };
+    const auto route = [&target]( const bandit_live_world::site_record & site ) {
+        return std::optional<bandit_live_world::canonical_hostile_operation_route>(
+                   bandit_live_world::canonical_hostile_operation_route{ { site.anchor, target },
+                           site.anchor } );
+    };
+    const auto advance_scheduler = [&reads, &route]( bandit_live_world::world_state & world,
+    const int now_minutes ) {
+        return bandit_live_world::advance_structural_bounty_maintenance( world, now_minutes, 0, 0,
+                {}, {}, {}, {}, {}, {}, reads, {}, route );
+    };
+
+    const std::string first_site_before = serialize_site( state.sites[0] );
+    const std::string second_site_before = serialize_site( state.sites[1] );
+    const bandit_live_world::structural_bounty_maintenance_result first =
+        advance_scheduler( state, initial_minutes );
+    CHECK( first.response_operations_applied == 1 );
+    CHECK( first.response_operation_rejections == 1 );
+    const bandit_live_world::site_record *winner = state.sites[0].active_hostile_operation.is_active() ?
+            &state.sites[0] : &state.sites[1];
+    const bandit_live_world::site_record *loser = winner == &state.sites[0] ?
+            &state.sites[1] : &state.sites[0];
+    REQUIRE( winner->active_hostile_operation.is_active() );
+    CHECK_FALSE( loser->active_hostile_operation.is_active() );
+    CHECK( serialize_site( *loser ) == ( loser == &state.sites[0] ?
+                                         first_site_before : second_site_before ) );
+    const bandit_live_world::hostile_target_opportunity_record *receipt =
+        state.find_hostile_target_opportunity( target_id, target );
+    REQUIRE( receipt != nullptr );
+    CHECK( receipt->revision == 1 );
+    CHECK( receipt->consumed_operation_id ==
+           winner->active_hostile_operation.reservation.activity_id );
+    CHECK( receipt->consumed_report_key ==
+           winner->active_hostile_operation.source_report_application_key );
+    CHECK( receipt->consumed_generation ==
+           winner->active_hostile_operation.reservation.generation );
+
+    const std::string first_serialized = serialize_world( state );
+    bandit_live_world::world_state reloaded;
+    reloaded.deserialize( json_loader::from_string( first_serialized ) );
+    CHECK( serialize_world( reloaded ) == first_serialized );
+
+    for( bandit_live_world::site_record &site : state.sites ) {
+        REQUIRE( bandit_live_world::advance_camp_supply( site, initial_minutes + 60 ) );
+    }
+    const std::string loser_before_cooldown = serialize_site( *loser );
+    const bandit_live_world::structural_bounty_maintenance_result cooldown =
+        advance_scheduler( state, initial_minutes + 60 );
+    CHECK( cooldown.response_operations_applied == 0 );
+    CHECK( cooldown.response_operation_rejections == 1 );
+    CHECK( serialize_site( *loser ) == loser_before_cooldown );
+    const std::string before_replay = serialize_world( state );
+    const bandit_live_world::structural_bounty_maintenance_result replay =
+        advance_scheduler( state, initial_minutes + 60 );
+    CHECK( replay.scheduler_replay_suppressed );
+    CHECK( serialize_world( state ) == before_replay );
+
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+             target_id, target, { 101, 3, 1 } ) );
+    receipt = state.find_hostile_target_opportunity( target_id, target );
+    REQUIRE( receipt != nullptr );
+    CHECK( receipt->revision == 2 );
+    CHECK( receipt->consumed_generation == 0 );
+    bandit_live_world::site_record &fresh_site = winner == &state.sites[0] ?
+            state.sites[1] : state.sites[0];
+    const bandit_live_world::camp_map_lead *stale_lead = fresh_site.intelligence_map.find_lead(
+                fresh_site.current_scout_report.target_lead_id );
+    REQUIRE( stale_lead != nullptr );
+    bandit_live_world::camp_map_lead refreshed_lead = *stale_lead;
+    refreshed_lead.revision = 2;
+    refreshed_lead.source_key = "scheduler-shared-target-renewed";
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( fresh_site, refreshed_lead ) );
+    bandit_live_world::scout_report_record &fresh_report = fresh_site.current_scout_report;
+    fresh_report.revision++;
+    fresh_report.source_generation++;
+    fresh_report.source_activity_id = fresh_site.site_id + "#scout:" +
+                                      std::to_string( fresh_report.source_generation );
+    fresh_report.target_lead_revision = refreshed_lead.revision;
+    fresh_report.application_key = fresh_report.source_activity_id + ":report:" +
+                                   std::to_string( fresh_report.source_generation );
+    fresh_report.delivered_minutes = initial_minutes + 119;
+    fresh_site.applied_report_generation = fresh_report.source_generation;
+    fresh_site.next_outing_generation = std::max( fresh_site.next_outing_generation,
+                                      fresh_report.source_generation + 1 );
+    REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( fresh_site ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    const bandit_live_world::structural_bounty_maintenance_result renewed =
+        advance_scheduler( state, initial_minutes + 120 );
+    CHECK( renewed.response_operations_applied == 1 );
+    REQUIRE( loser->active_hostile_operation.is_active() );
+    receipt = state.find_hostile_target_opportunity( target_id, target );
+    REQUIRE( receipt != nullptr );
+    CHECK( receipt->consumed_operation_id ==
+           loser->active_hostile_operation.reservation.activity_id );
+    CHECK( receipt->consumed_report_key ==
+           loser->active_hostile_operation.source_report_application_key );
+    CHECK( receipt->consumed_generation ==
+           loser->active_hostile_operation.reservation.generation );
+
+    const std::string renewed_serialized = serialize_world( state );
+    bandit_live_world::world_state renewed_reloaded;
+    renewed_reloaded.deserialize( json_loader::from_string( renewed_serialized ) );
+    CHECK( serialize_world( renewed_reloaded ) == renewed_serialized );
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",

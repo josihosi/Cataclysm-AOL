@@ -803,6 +803,12 @@ struct hostile_target_opportunity_record {
     void deserialize( const JsonObject &jo );
 };
 
+struct hostile_target_opportunity_evidence {
+    int reachable_goods_value = 0;
+    int loaded_population = 0;
+    int activity = 0;
+};
+
 enum class hostile_target_claim_result {
     rejected,
     applied,
@@ -1573,9 +1579,9 @@ finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, int undiscovered_units );
 std::string finite_resource_claim_application_key( const std::string &operation_id,
         int operation_generation, const tripoint_abs_omt &omt );
-bool observe_hostile_target_opportunity( world_state &state, const std::string &target_id,
-        const tripoint_abs_omt &target_omt, int goods_value, int population, int activity,
-        int revision );
+bool observe_authoritative_hostile_target_opportunity( world_state &state,
+        const std::string &target_id, const tripoint_abs_omt &target_omt,
+        const hostile_target_opportunity_evidence &evidence );
 hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt, int revision,
         const std::string &operation_id, const std::string &report_key, int generation );
