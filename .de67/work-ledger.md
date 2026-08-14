@@ -91,8 +91,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   The bounded-discovery exploration is closed and a new finite map is frozen. G-001 is next: a normal
   terrain lead dispatches the scout; only the materialized scout's real local visual may persist
   `player@OMT` plus the then-current global receipt revision, and only ordinary survivor return may
-  publish the matching `basecamp_activity` lead and final report. Receipt-only, moved-player,
-  no-visual, stale-receipt, and replay controls must remain inert before an exact scheduler claim.
+  publish the matching `basecamp_activity` lead and final report. Revision 1 produced that candidate
+  code but no owning test matched and the changed `do_turn` path was not linked into the invoked
+  binary. Revision 2 must add the exact motor fixture, force a source-bound rebuild of every changed
+  production/test object, and prove terrain dispatch through sight, serialized return/report, and
+  exact claim. Receipt-only, moved-player, no-visual, stale-receipt, and replay stay inert.
   G-002 then reloads the physically observed and globally claimed committed-contact owner before
   visible Fight and ordinary aftermath. G-003 proves the cannibal daylight hold and exact true-night
   continuation after full-owner reload.
