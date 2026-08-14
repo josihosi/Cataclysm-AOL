@@ -79,6 +79,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   defender deaths, bandit-policy leakage, or debug-created contact.
   - DFS slices: `R-007-S001`, `R-007-S002`
 
+  Exploration learning goal: map the production owners and observable route that carry the exact
+  fresh cannibal party from the shared hostile scheduler/rally spine through a true-darkness hold,
+  loaded avatar-and-defender combat, and physical casualty/survivor return. End only with a finite
+  closure map and changed-executable proof route that distinguish darkness from elapsed time and
+  reject payment UI, offscreen deaths, bandit-policy leakage, debug contact, and identity replay.
+
+  The immutable whole-item estimate is 5396 seconds, the next whole second above R-006's directly
+  measured 5395.802046-second first-dispatch-to-acceptance interval, used as the nearest completed
+  adjacent hostile-lifecycle delivery.
+
 - [ ] R-008 — Prove exactly-once aftermath and renewable opportunity: two camps cannot consume the
   same finite site twice, and repeat shakedown eligibility requires cooldown plus demonstrably new
   stored goods, population, or activity rather than timer-created value or stale-report replay.
