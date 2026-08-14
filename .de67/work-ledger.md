@@ -83,8 +83,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   the real dialogue, trade, fight, and narrow parley spine begins only after local contact. Freeze
   these ordered closure gaps:
 
-  - `G-002`: own rallying through open physical approach and committed local contact for the same
-    identities, with precise shakedown-only parley neutrality and no premature patrol combat.
   - `G-003`: replace paid immediate logical release with real trade-backed, identity-bound
     returning-home travel and terminal release only after physical survivor arrival.
   - `G-004`: reconcile refusal/player-attack combat from authoritative live deaths and survivors
@@ -100,6 +98,12 @@ Lineage: `CAOL-hostile-ecology-dev`
   after whole-party/path preflight and reaches rallying only after every eligible survivor is
   physically at the persisted two-to-three-OMT rally. Missing-member and replay controls are inert;
   no approach/contact behavior is included.
+
+  `G-002` is closed at checkpoint `40383aebf3`: production advances the exact rallying party through
+  ordinary physical approach to committed contact, and parley neutrality is limited to the active
+  local toll reservation only after contact. The changed executable passed the natural lifecycle at
+  195 assertions and the focused shakedown surface at 58 assertions; authoritative missing-member,
+  reserve-exclusion, and replay controls remain inert.
 
 - [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
   one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
