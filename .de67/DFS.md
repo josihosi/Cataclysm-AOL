@@ -199,7 +199,7 @@ flowchart LR
 Bandits and cannibals share exploration and assessment. They diverge only after a returned report
 authorizes a response.
 
-- [ ] 🔴 R-006 — **Bandit shakedown:** reserve a fresh response party, travel physically, rally outside the
+- [x] R-006 — **Bandit shakedown:** reserve a fresh response party, travel physically, rally outside the
   camp at a plausible two-to-three-OMT planning distance, approach openly, suppress premature
   patrol combat, demand a share of currently reachable camp storage, and resolve payment, refusal,
   player attack, withdrawal, casualties, and return.

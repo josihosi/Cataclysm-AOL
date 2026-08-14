@@ -74,43 +74,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   This recovery remains blocked by the same denied local Accessibility authority recorded under
   R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
-- [ ] R-006 — Prove the full bandit shakedown lifecycle through one paid branch and one refusal or
-  attack branch, including fresh party reservation, physical rally/approach, real reachable-storage
-  demand, controlled escalation, casualties/survivors, return, and exactly-once aftermath.
-  - DFS slices: `R-006-S001`, `R-006-S002`
-
-  Completed exploration `R006-M001` proves the production scheduler reaches only outbound while
-  the real dialogue, trade, fight, and narrow parley spine begins only after local contact. Freeze
-  these ordered closure gaps:
-
-  - `G-005`: persist and enforce one hostile operation/report/generation-keyed terminal aftermath
-    receipt so paid and fight writeback are exactly once and replay byte-stable.
-
-  The immutable whole-item estimate is 5720 seconds, the next whole second above R-005's directly
-  measured 5719.554281-second first-dispatch-to-acceptance interval, used as the nearest completed
-  adjacent response-owner delivery.
-
-  `G-001` is closed: the exact reserved tracked party receives ordinary engine travel orders only
-  after whole-party/path preflight and reaches rallying only after every eligible survivor is
-  physically at the persisted two-to-three-OMT rally. Missing-member and replay controls are inert;
-  no approach/contact behavior is included.
-
-  `G-002` is closed at checkpoint `40383aebf3`: production advances the exact rallying party through
-  ordinary physical approach to committed contact, and parley neutrality is limited to the active
-  local toll reservation only after contact. The changed executable passed the natural lifecycle at
-  195 assertions and the focused shakedown surface at 58 assertions; authoritative missing-member,
-  reserve-exclusion, and replay controls remain inert.
-
-  `G-003` is closed at checkpoint `e83fe2d588`: successful real trade preserves the exact hostile
-  reservation through ordinary physical return to the persisted anchor, and releases it only after
-  every tracked survivor arrives. The changed executable passed the natural adapter at 214
-  assertions and retained the 58-assertion shakedown surface contract.
-
-  `G-004` is closed at checkpoint `cbd5acbed4`: the real player-attack callback ends narrow parley,
-  authoritative loaded-NPC death state records only exact casualties, and surviving identities
-  travel physically home before terminal release. The changed executable passed 297 natural-route
-  assertions and the 58-assertion shakedown surface regression.
-
 - [ ] R-007 — Prove the full cannibal lifecycle through a pre-dark hold and later true-dark attack in
   one causal route, engaging the avatar and all loaded defenders without payment UI, offscreen
   defender deaths, bandit-policy leakage, or debug-created contact.
