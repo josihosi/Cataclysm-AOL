@@ -93,9 +93,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   `player@OMT` plus the then-current global receipt revision, and only ordinary survivor return may
   publish the matching `basecamp_activity` lead and final report. Revision 1 produced that candidate
   code but no owning test matched and the changed `do_turn` path was not linked into the invoked
-  binary. Revision 2 must add the exact motor fixture, force a source-bound rebuild of every changed
-  production/test object, and prove terrain dispatch through sight, serialized return/report, and
-  exact claim. Receipt-only, moved-player, no-visual, stale-receipt, and replay stay inert.
+  binary. Revision 2 rebuilt the changed objects but still added no owning fixture. Revision 3 must
+  first create a uniquely matched deterministic motor fixture with real terrain sortie state,
+  materialized members, loaded player-basecamp geometry, and bounded sight; only then may it build
+  and prove ordinary observation, full-owner round-trip, return/report, and exact claim. Receipt-only,
+  moved-player, no-visual, stale-receipt, and replay stay inert; a build-only pass earns no credit.
   G-002 then reloads the physically observed and globally claimed committed-contact owner before
   visible Fight and ordinary aftermath. G-003 proves the cannibal daylight hold and exact true-night
   continuation after full-owner reload.
