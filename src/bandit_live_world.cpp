@@ -15722,6 +15722,29 @@ authorized_hostile_operation_plan plan_hostile_operation_with_authorized_respons
     return authorized_plan;
 }
 
+std::optional<canonical_hostile_operation_route> canonicalize_hostile_operation_route(
+    const std::vector<tripoint_abs_omt> &target_to_origin_path,
+    const tripoint_abs_omt &anchor, const tripoint_abs_omt &target_omt )
+{
+    if( target_to_origin_path.size() < 2 ||
+        target_to_origin_path.size() > max_active_outing_route_steps ||
+        target_to_origin_path.front() != target_omt ||
+        target_to_origin_path.back() != anchor ) {
+        return std::nullopt;
+    }
+    for( std::size_t index = 0; index < target_to_origin_path.size(); ++index ) {
+        if( target_to_origin_path[index].z() != anchor.z() ||
+            ( index > 0 && target_to_origin_path[index] == target_to_origin_path[index - 1] ) ) {
+            return std::nullopt;
+        }
+    }
+
+    canonical_hostile_operation_route result;
+    result.route.assign( target_to_origin_path.rbegin(), target_to_origin_path.rend() );
+    result.rally_omt = result.route[1];
+    return result;
+}
+
 hostile_operation_plan plan_hostile_operation( const site_record &site,
         const hostile_operation_kind operation_kind,
         const std::vector<tripoint_abs_omt> &route,

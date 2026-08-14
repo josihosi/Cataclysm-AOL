@@ -4012,6 +4012,56 @@ TEST_CASE( "bandit_live_world_authorized_hostile_response_preserves_named_party_
     }
 }
 
+TEST_CASE( "bandit_live_world_canonicalizes_reversed_hostile_operation_routes",
+           "[bandit][live_world][hostile_operation][route_adapter]" )
+{
+    const tripoint_abs_omt anchor( 10, 20, 0 );
+    const tripoint_abs_omt rally( 11, 20, 0 );
+    const tripoint_abs_omt target( 13, 20, 0 );
+    const std::vector<tripoint_abs_omt> reversed = { target, tripoint_abs_omt( 12, 20, 0 ),
+            rally, anchor };
+    const std::vector<tripoint_abs_omt> preserved_input = reversed;
+
+    const std::optional<bandit_live_world::canonical_hostile_operation_route> canonical =
+        bandit_live_world::canonicalize_hostile_operation_route( reversed, anchor, target );
+    REQUIRE( canonical );
+    CHECK( reversed == preserved_input );
+    CHECK( canonical->route == std::vector<tripoint_abs_omt> { anchor, rally,
+            tripoint_abs_omt( 12, 20, 0 ), target } );
+    CHECK( canonical->rally_omt == rally );
+
+    const std::optional<bandit_live_world::canonical_hostile_operation_route> adjacent =
+        bandit_live_world::canonicalize_hostile_operation_route( { target, anchor }, anchor,
+                target );
+    REQUIRE( adjacent );
+    CHECK( adjacent->route == std::vector<tripoint_abs_omt> { anchor, target } );
+    CHECK( adjacent->rally_omt == target );
+
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( {}, anchor, target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { target }, anchor,
+                 target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { anchor, rally,
+                 target }, anchor, target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { rally, anchor },
+                 anchor, target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { target, rally,
+                 tripoint_abs_omt( 9, 20, 0 ) }, anchor, target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { target, rally,
+                 tripoint_abs_omt( 10, 20, 1 ) }, anchor, target ) );
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( { target, rally,
+                 rally, anchor }, anchor, target ) );
+
+    std::vector<tripoint_abs_omt> overlong;
+    overlong.reserve( 257 );
+    for( int index = 0; index < 257; ++index ) {
+        overlong.emplace_back( 1000 + index, 20, 0 );
+    }
+    overlong.front() = target;
+    overlong.back() = anchor;
+    CHECK_FALSE( bandit_live_world::canonicalize_hostile_operation_route( overlong, anchor,
+                 target ) );
+}
+
 TEST_CASE( "bandit_live_world_hostile_operation_phases_are_one_way_and_atomic",
            "[bandit][live_world][hostile_operation][phase][cas]" )
 {

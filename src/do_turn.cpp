@@ -6068,6 +6068,16 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     return read;
 }
 
+[[maybe_unused]] std::optional<bandit_live_world::canonical_hostile_operation_route>
+live_bandit_hostile_operation_route_read( const bandit_live_world::site_record &site )
+{
+    const auto path = overmap_buffer.get_travel_path(
+                          site.anchor, site.camp_decision.target_omt,
+                          overmap_path_params::for_npc() );
+    return bandit_live_world::canonicalize_hostile_operation_route(
+               path.points, site.anchor, site.camp_decision.target_omt );
+}
+
 std::string live_bandit_structural_route_analyzer_record(
     const bandit_live_world::site_record &site,
     const bandit_live_world::structural_outing_plan &plan,

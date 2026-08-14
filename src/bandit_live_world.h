@@ -901,6 +901,11 @@ struct authorized_hostile_operation_plan {
     response_party_selection_result selection;
 };
 
+struct canonical_hostile_operation_route {
+    std::vector<tripoint_abs_omt> route;
+    tripoint_abs_omt rally_omt;
+};
+
 enum class response_denial_resolution {
     rejected,
     held,
@@ -1833,6 +1838,9 @@ authorized_hostile_operation_plan plan_hostile_operation_with_authorized_respons
         hostile_operation_kind operation_kind, const response_party_selection_result &selection,
         const std::vector<tripoint_abs_omt> &route, const tripoint_abs_omt &rally_omt,
         int current_minutes );
+std::optional<canonical_hostile_operation_route> canonicalize_hostile_operation_route(
+            const std::vector<tripoint_abs_omt> &target_to_origin_path,
+            const tripoint_abs_omt &anchor, const tripoint_abs_omt &target_omt );
 bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan );
 bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
         const authorized_hostile_operation_plan &authorized_plan );
