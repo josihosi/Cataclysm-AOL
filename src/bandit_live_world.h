@@ -1399,6 +1399,8 @@ struct structural_bounty_maintenance_result {
     int response_operations_planned = 0;
     int response_operations_applied = 0;
     int response_operation_rejections = 0;
+    int hostile_departures_applied = 0;
+    int hostile_departure_rejections = 0;
     int dispatch_cap = 0;
     bool dispatch_cap_reached = false;
     std::vector<std::string> notes;

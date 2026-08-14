@@ -14590,6 +14590,26 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         return result;
     }
 
+    for( const std::size_t site_index : routine_site_indices ) {
+        site_record &site = state.sites[site_index];
+        if( !site.active_hostile_operation.is_active() ||
+            site.active_hostile_operation.phase != hostile_operation_phase::assembling ) {
+            continue;
+        }
+        const std::optional<simulation_advance_cursor> cursor =
+            current_external_simulation_cursor( site );
+        if( !cursor || now_minutes <= cursor->last_advanced_minutes ||
+            transition_hostile_operation_phase( site, *cursor,
+                    hostile_operation_phase::assembling,
+                    hostile_operation_phase::outbound, now_minutes,
+                    "scheduler-authorized hostile operation departure" ) !=
+            hostile_operation_transition_result::applied ) {
+            result.hostile_departure_rejections++;
+            continue;
+        }
+        result.hostile_departures_applied++;
+    }
+
     result.terrain_scan_cursor_before = state.routine_terrain_scan_cursor;
     result.scan.scan_budget = std::max( 0, scan_budget );
     if( result.scan.scan_budget == 0 ) {
@@ -15175,6 +15195,8 @@ std::string render_structural_bounty_maintenance_report(
         << " response_operations_planned=" << result.response_operations_planned
         << " response_operations_applied=" << result.response_operations_applied
         << " response_operation_rejections=" << result.response_operation_rejections
+        << " hostile_departures_applied=" << result.hostile_departures_applied
+        << " hostile_departure_rejections=" << result.hostile_departure_rejections
         << " dispatch_cap_reached=" << ( result.dispatch_cap_reached ? "yes" : "no" )
         << " active_outings=" << result.outing.active_outings_considered
         << " stalking_checks=" << result.outing.stalking_checks_processed
