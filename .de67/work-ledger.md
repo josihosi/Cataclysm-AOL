@@ -74,26 +74,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   This recovery remains blocked by the same denied local Accessibility authority recorded under
   R-002; do not substitute clairvoyance, debug-set burn/egress/report, or guessed geometry.
 
-- [ ] R-004 — Prove authoritative casualty and split-return knowledge: both scouts dead yields no
-  informed response and releases the mission slot; one survivor yields only a provisional report;
-  a later survivor revises the same report instead of duplicating it.
-  - DFS slices: `R-004-S001`, `R-004-S002`, `R-004-S003`
-
-  Accepted whole-owner review proves `structural_sortie` owns the production route. Loaded death via
-  `game::cleanup_dead` and structural casualty reconciliation are authoritative; both confirmed dead
-  reaches `lost`, releases the reservation, and creates no report. The missing transition is an
-  individual structural physical-return receipt: current maintenance waits for whole-outing closure
-  and creates one final report, while the existing provisional/revision reducer serves legacy
-  `scout_sortie` only.
-
-  Next frontier `R004-M002` must implement one identity-bound per-member structural return reduction
-  inside the canonical structural maintenance/return owner. The first physical survivor must remain
-  under the same reservation and publish only a provisional carrier-scoped report; the later survivor
-  must revise that same source operation report before canonical release and assessment. Add focused
-  owner tests for first/later receipt, replay, casualty scope, and preserved all-dead no-report slot
-  release, then compile and run the narrow suites. Do not reuse the legacy outing owner, create a
-  second report record, or accept helper-only state mutation as a physical receipt.
-
 - [ ] R-005 — Wire and prove the production response owner. A matching final decision must naturally
   create one fresh response reservation and advance its first production transition; stale or
   duplicate generations, scout-party reuse, duplicate owners, and LLM-created ecology truth fail.

@@ -184,7 +184,7 @@ flowchart LR
   reusing the scout reservation. The current planner preserves the report revision and operation
   generation.
 <!-- DE67:DFS-SLICE:BEGIN id=R-004-S002 claim=R-004 -->
-- [ ] 🔴 R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
+- [x] R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
   release remain unproved through the natural authoritative death and return routes.
 <!-- DE67:DFS-SLICE:END id=R-004-S002 claim=R-004 -->
 - [ ] 🔴 R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
